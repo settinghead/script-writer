@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "dev": "./run-ts src/server/index.ts",
     "test-llm": "./run-ts src/server/test-llm-script.ts"
@@ -17,17 +18,27 @@
   },
   "homepage": "https://github.com/settinghead/script-writer#readme",
   "dependencies": {
+    "@radix-ui/react-slot": "^1.2.2",
+    "@tailwindcss/vite": "^4.1.7",
     "@types/express": "^5.0.2",
+    "@vitejs/plugin-react": "^4.4.1",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
+    "lucide-react": "^0.511.0",
     "openai": "^4.100.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "tailwind-merge": "^3.3.0",
+    "tailwindcss": "^4.1.7",
     "typescript": "^5.8.3",
     "vite": "^6.3.5",
     "vite-express": "^0.21.1"
   },
   "devDependencies": {
-    "tsx": "^4.19.4"
+    "@types/node": "^22.15.19",
+    "tsx": "^4.19.4",
+    "tw-animate-css": "^1.3.0"
   }
 }

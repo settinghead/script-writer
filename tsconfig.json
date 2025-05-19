@@ -1,4 +1,13 @@
 {
+    "files": [],
+    "references": [
+      {
+        "path": "./tsconfig.app.json"
+      },
+      {
+        "path": "./tsconfig.node.json"
+      }
+    ],
     "compilerOptions": {
       "composite": true,
       "target": "es2022",
@@ -19,10 +28,9 @@
       "isolatedModules": true,
       "incremental": true,
       "baseUrl": ".",
+      
       "paths": {
-        "@/*": [
-          "./*"
-        ]
+        "@/*": ["./src/*"]
       },
       "types": [
         "node"
