@@ -16,7 +16,7 @@ app.get("/message", (_req, res) => {
 });
 
 // Updated endpoint for AI chat completions using Vercel AI SDK
-app.post("/llm-api/chat/completions", async (req, res) => {
+app.post("/llm-api/chat/completions", async (req: any, res: any) => {
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
     console.error('Error: DEEPSEEK_API_KEY environment variable is not set.');

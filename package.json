@@ -43,7 +43,9 @@
   },
   "devDependencies": {
     "@types/node": "^22.15.19",
+    "less": "^4.3.0",
     "tsx": "^4.19.4",
-    "tw-animate-css": "^1.3.0"
+    "tw-animate-css": "^1.3.0",
+    "vite-plugin-style-import": "^2.0.0"
   }
 }
