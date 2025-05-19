@@ -29,12 +29,64 @@ interface InspirationResponse {
     // Add any other fields that might be in the response
 }
 
+// Improved helper function to handle the specific SSE format
+const cleanResponseText = (text: string): string => {
+    try {
+        // Step 1: Strip out all the SSE prefixes completely
+        // This handles patterns like `:{"messageId":"..."}`, `0:"text"`, `e:{...}`, etc.
+        let cleaned = '';
+        const lines = text.split('\n');
+
+        for (const line of lines) {
+            // Extract content between quotes for lines with quotes
+            const match = line.match(/\d+:"(.*)"|:(.*)$/);
+            if (match) {
+                // Get the content from whichever capture group matched
+                const content = match[1] || match[2] || '';
+                // Unescape any escaped characters in the content (like \n, \")
+                cleaned += content.replace(/\\n/g, '\n').replace(/\\"/g, '"');
+            }
+        }
+
+        // Step 2: Extract content from markdown code blocks
+        const jsonMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/);
+        if (jsonMatch && jsonMatch[1]) {
+            cleaned = jsonMatch[1].trim();
+        }
+
+        // Step 3: Final cleanup - remove any remaining markdown or non-JSON syntax
+        cleaned = cleaned.replace(/```json|```/g, '').trim();
+
+        // Step 4: Make sure we have a proper JSON object by checking for outer braces
+        if (!cleaned.startsWith('{') && cleaned.includes('{')) {
+            cleaned = cleaned.substring(cleaned.indexOf('{'));
+        }
+        if (!cleaned.endsWith('}') && cleaned.includes('}')) {
+            cleaned = cleaned.substring(0, cleaned.lastIndexOf('}') + 1);
+        }
+
+        return cleaned;
+    } catch (error) {
+        console.error('Error in cleanResponseText:', error);
+        return text; // Return original text if cleaning fails
+    }
+};
+
+// Debugging helper to visualize the text transformation
+const logCleaning = (original: string) => {
+    const cleaned = cleanResponseText(original);
+    console.log('ORIGINAL TEXT:', original);
+    console.log('CLEANED TEXT:', cleaned);
+    return cleaned;
+};
+
 const InspirationTab: React.FC = () => {
     const [userInput, setUserInput] = useState('古早言情剧');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<Error | null>(null);
     const [result, setResult] = useState<InspirationResponse | null>(null);
     const [partialResult, setPartialResult] = useState('');
+    const [rawResponse, setRawResponse] = useState(''); // Store raw response for debugging
 
     const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -51,6 +103,7 @@ const InspirationTab: React.FC = () => {
         setError(null);
         setResult(null);
         setPartialResult('');
+        setRawResponse('');
 
         // Create a new AbortController for this request
         if (abortControllerRef.current) {
@@ -88,7 +141,6 @@ const InspirationTab: React.FC = () => {
             }
 
             let accumulatedText = '';
-            let decodedResult = '';
 
             while (true) {
                 const { done, value } = await reader.read();
@@ -98,31 +150,59 @@ const InspirationTab: React.FC = () => {
                 const chunk = new TextDecoder().decode(value);
                 accumulatedText += chunk;
 
-                try {
-                    // Try to repair and parse the accumulated JSON so far
-                    decodedResult = jsonrepair(accumulatedText);
-                    setPartialResult(decodedResult);
+                // Save raw response for debugging
+                setRawResponse(prev => prev + chunk);
 
-                    // If we can parse the repaired JSON, update the result
+                // Only try to parse if we see a closing brace character (potential end of JSON)
+                if (chunk.includes('}')) {
                     try {
-                        const jsonResult = JSON.parse(decodedResult) as InspirationResponse;
-                        setResult(jsonResult);
-                    } catch (parseError) {
-                        // Not yet a complete JSON, that's okay for streaming
+                        // Clean the text and log the cleaning process
+                        const cleanedText = cleanResponseText(accumulatedText);
+
+                        if (cleanedText.trim()) {
+                            // Try to repair the cleaned JSON
+                            try {
+                                const repairedJson = jsonrepair(cleanedText);
+                                setPartialResult(repairedJson);
+
+                                // If we can parse the repaired JSON, update the result
+                                try {
+                                    const jsonResult = JSON.parse(repairedJson) as InspirationResponse;
+                                    if (jsonResult.mediaType || jsonResult.plotOutline) {
+                                        setResult(jsonResult);
+                                    }
+                                } catch (parseError) {
+                                    // Not yet a complete JSON, that's okay for streaming
+                                }
+                            } catch (repairError) {
+                                // Expected for partial JSON
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error processing chunk:', error);
                     }
-                } catch (repairError) {
-                    // JSON repair failed, which is expected for partial JSON
-                    // Just continue accumulating more chunks
                 }
             }
 
             // Final attempt to parse the complete response
             try {
-                const finalJson = JSON.parse(jsonrepair(accumulatedText)) as InspirationResponse;
-                setResult(finalJson);
+                console.log('Final processing:', accumulatedText.substring(0, 100) + '...');
+                const cleanedFinalText = cleanResponseText(accumulatedText);
+                console.log('Cleaned final:', cleanedFinalText.substring(0, 100) + '...');
+
+                if (cleanedFinalText && cleanedFinalText.trim()) {
+                    const repairedFinal = jsonrepair(cleanedFinalText);
+                    const finalJson = JSON.parse(repairedFinal) as InspirationResponse;
+                    setResult(finalJson);
+                } else {
+                    throw new Error('Cleaned text was empty');
+                }
             } catch (finalError) {
                 console.error('Failed to parse final JSON:', finalError);
-                setError(new Error('Failed to parse response as JSON'));
+                // If we have a partial result already, don't show an error
+                if (!result) {
+                    setError(new Error('Failed to parse response as JSON. Check console for details.'));
+                }
             }
         } catch (err) {
             if (err.name === 'AbortError') {
@@ -146,6 +226,43 @@ const InspirationTab: React.FC = () => {
         };
     }, []);
 
+    // Function to manually parse the raw response if automatic parsing fails
+    const tryManualParse = () => {
+        try {
+            if (!rawResponse) return;
+
+            // Manual extraction from the raw response
+            let jsonStr = '';
+            let inJson = false;
+            const lines = rawResponse.split('\n');
+
+            for (const line of lines) {
+                if (line.includes('{"mediaType"') || line.includes('"mediaType"')) {
+                    inJson = true;
+                    jsonStr = '{';
+                } else if (inJson) {
+                    const contentMatch = line.match(/\d+:"(.*)"/);
+                    if (contentMatch && contentMatch[1]) {
+                        jsonStr += contentMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
+                    }
+
+                    if (line.includes('}')) {
+                        jsonStr += '}';
+                        break;
+                    }
+                }
+            }
+
+            if (jsonStr) {
+                const manualJson = JSON.parse(jsonrepair(jsonStr)) as InspirationResponse;
+                setResult(manualJson);
+                setError(null);
+            }
+        } catch (err) {
+            console.error('Manual parse failed:', err);
+        }
+    };
+
     return (
         <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
             <Title level={4}>灵感生成器</Title>
@@ -167,10 +284,19 @@ const InspirationTab: React.FC = () => {
                 icon={<SendOutlined />}
                 onClick={generateInspiration}
                 loading={isLoading}
-                style={{ marginBottom: '24px' }}
+                style={{ marginBottom: '24px', marginRight: '8px' }}
             >
                 生成
             </Button>
+
+            {error && rawResponse && (
+                <Button
+                    onClick={tryManualParse}
+                    style={{ marginBottom: '24px' }}
+                >
+                    尝试手动解析
+                </Button>
+            )}
 
             {error && (
                 <Alert
@@ -199,10 +325,14 @@ const InspirationTab: React.FC = () => {
 
                     {result ? (
                         <div>
-                            {result.mediaType && result.platform && (
+                            {result.mediaType && (
                                 <div style={{ marginBottom: '16px' }}>
                                     <Text strong>适合媒体类型:</Text> {result.mediaType}
-                                    <br />
+                                </div>
+                            )}
+
+                            {result.platform && (
+                                <div style={{ marginBottom: '16px' }}>
                                     <Text strong>推荐平台:</Text> {result.platform}
                                 </div>
                             )}
@@ -248,6 +378,16 @@ const InspirationTab: React.FC = () => {
                     )}
                 </div>
             )}
+
+            {/* Debug panel - uncomment if needed */}
+            {/* {rawResponse && (
+                <div style={{ marginTop: '20px', border: '1px solid #333', padding: '10px', borderRadius: '8px' }}>
+                    <Text strong>Raw Response (for debugging):</Text>
+                    <pre style={{ maxHeight: '200px', overflowY: 'auto', fontSize: '12px', color: '#888' }}>
+                        {rawResponse}
+                    </pre>
+                </div>
+            )} */}
         </div>
     );
 };
