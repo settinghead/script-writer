@@ -40,6 +40,7 @@ app.post("/llm-api/chat/completions", async (req: any, res: any) => {
       messages: messages,
       // You can pass other options from restOfBody if they are supported by streamText
       // e.g., temperature: restOfBody.temperature
+      ...restOfBody // Pass through other options like response_format
     });
 
     // Manually pipe the ReadableStream (DataStream) to the Express response

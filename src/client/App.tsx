@@ -12,7 +12,7 @@ const { Title } = Typography;
 const { TabPane } = Tabs;
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('chat');
+  const [activeTab, setActiveTab] = useState('inspiration');
 
   const handleTabChange = (key: string) => {
     setActiveTab(key);

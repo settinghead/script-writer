@@ -22,7 +22,7 @@ interface InspirationResponse {
 }
 
 const InspirationTab: React.FC = () => {
-    const [userInput, setUserInput] = useState('');
+    const [userInput, setUserInput] = useState('古早言情剧');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<Error | null>(null);
     const [result, setResult] = useState<InspirationResponse | null>(null);
