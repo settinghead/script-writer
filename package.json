@@ -4,8 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "run:openai": "tsx src/openai-script.ts"
+    "test-llm": "./run-ts src/server/test-llm-script.ts"
   },
   "repository": {
     "type": "git",
