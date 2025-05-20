@@ -1,9 +1,10 @@
 {
-    "compilerOptions": {
-        "paths": {
-            "@/*": [
-              "./src/*"
-            ]
-          }
+  "compilerOptions": {
+    "composite": true,
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ]
     }
+  }
 }

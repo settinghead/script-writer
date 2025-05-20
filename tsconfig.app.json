@@ -1,5 +1,8 @@
 {
     "types": [
         "vite/client"
-    ]
+    ],
+    "compilerOptions": {
+        "composite": true,
+    }
 }
