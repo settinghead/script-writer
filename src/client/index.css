@@ -129,6 +129,14 @@
   overflow: hidden;
 }
 
+.ant-tabs-content {
+  height: 100%;
+}
+
+.ant-tabs-tabpane {
+  height: 100%;
+}
+
 .chat-panel-wrapper {
   /* Default styles for desktop */
   height: 100% !important;
