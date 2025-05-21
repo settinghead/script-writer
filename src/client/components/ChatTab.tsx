@@ -110,7 +110,7 @@ const ChatTab: React.FC = () => {
                     disabled={isLoading}
                     icon={<SendOutlined />}
                 >
-                    发送
+
                 </Button>
             </form>
         </div>

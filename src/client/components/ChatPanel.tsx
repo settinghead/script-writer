@@ -4,25 +4,46 @@ import { Button, Input, Typography, Spin, Alert } from 'antd';
 import { SendOutlined, UserOutlined, RobotOutlined } from '@ant-design/icons';
 
 const { Text, Paragraph } = Typography;
+const { TextArea } = Input;
 
 interface ChatPanelProps {
     onScriptEdit?: (content: string) => void;
 }
 
 const ChatPanel: React.FC<ChatPanelProps> = ({ onScriptEdit }) => {
-    const { messages, input, handleInputChange, handleSubmit, isLoading, error } = useChat({
+    const { messages, input, setInput, handleSubmit, isLoading, error } = useChat({
         api: '/llm-api/chat/completions',
     });
 
     // Default model name
     const MODEL_NAME = 'deepseek-chat';
 
-    const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-        handleSubmit(e, {
-            body: {
-                model: MODEL_NAME,
-            }
-        });
+    const handleLocalInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        setInput(e.target.value);
+    };
+
+    const attemptSubmit = (form: HTMLFormElement | null) => {
+        if (!isLoading && input.trim() && form) {
+            const syntheticEvent = new Event('submit', { cancelable: true, bubbles: true }) as unknown as React.FormEvent<HTMLFormElement>;
+            Object.defineProperty(syntheticEvent, 'target', { writable: false, value: form });
+            handleSubmit(syntheticEvent, {
+                body: {
+                    model: MODEL_NAME,
+                }
+            });
+        }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === 'Enter' && (e.ctrlKey || e.shiftKey)) {
+            e.preventDefault();
+            attemptSubmit(e.currentTarget.closest('form'));
+        }
+    };
+
+    const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        attemptSubmit(e.currentTarget);
     };
 
     return (
@@ -100,25 +121,38 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onScriptEdit }) => {
                 )}
             </div>
 
-            <form onSubmit={onSubmit} style={{ display: 'flex', gap: '8px' }}>
-                <Input
-                    placeholder="输入你的问题..."
-                    value={input}
-                    onChange={e => handleInputChange(e)}
-                    disabled={isLoading}
-                    style={{ flexGrow: 1 }}
-                    size="small"
-                    suffix={isLoading && <Spin size="small" />}
-                />
-                <Button
-                    type="primary"
-                    htmlType="submit"
-                    disabled={isLoading}
-                    icon={<SendOutlined />}
-                    size="small"
-                >
-                    发送
-                </Button>
+            <form onSubmit={handleFormSubmit} style={{ display: 'flex', alignItems: 'flex-end' }}>
+                <Input.Group compact style={{ display: 'flex', width: '100%' }}>
+                    <TextArea
+                        placeholder="输入你的问题... (Ctrl+Enter 或 Shift+Enter 发送)"
+                        value={input}
+                        onChange={handleLocalInputChange}
+                        onKeyDown={handleKeyDown}
+                        disabled={isLoading}
+                        autoSize={{ minRows: 1, maxRows: 5 }}
+                        style={{
+                            flexGrow: 1,
+                            resize: 'none',
+                            borderRight: 0, // Remove right border to blend with button
+                            borderTopRightRadius: 0, // Adjust radius
+                            borderBottomRightRadius: 0, // Adjust radius
+                        }}
+                    />
+                    <Button
+                        type="primary"
+                        htmlType="submit"
+                        disabled={isLoading || !input.trim()}
+                        icon={<SendOutlined />}
+                        style={{
+                            borderTopLeftRadius: 0, // Adjust radius
+                            borderBottomLeftRadius: 0, // Adjust radius
+                            height: 'auto', // Allow button height to match TextArea
+                            alignSelf: 'stretch' // Make button stretch to TextArea height
+                        }}
+                    >
+
+                    </Button>
+                </Input.Group>
             </form>
         </div>
     );
