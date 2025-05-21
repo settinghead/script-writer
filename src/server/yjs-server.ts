@@ -174,9 +174,13 @@ export const setupYjsWebSocketServer = (httpServer: HttpServer) => {
 
     httpServer.on('upgrade', (request, socket, head) => {
         // Only handle upgrades to the /yjs path
-        const pathname = new URL(request.url!, `http://${request.headers.host}`).pathname;
+        const url = new URL(request.url!, `http://${request.headers.host}`);
+        const pathname = url.pathname;
+
         if (pathname === '/yjs') {
             wss.handleUpgrade(request, socket, head, (ws) => {
+                // We already extract the room name in the connection handler,
+                // so we can just pass the request as is
                 wss.emit('connection', ws, request);
             });
         } else {
