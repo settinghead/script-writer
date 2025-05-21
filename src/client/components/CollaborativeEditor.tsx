@@ -28,12 +28,12 @@ class CustomWebsocketProvider {
 
     constructor(roomId: string, doc: Y.Doc, onStatusChange: (status: { status: string }) => void) {
         this.doc = doc;
-        this.roomId = roomId;
+        this.roomId = roomId || 'default-script-room'; // Fallback if no roomId provided
         this.awareness = new awarenessProtocol.Awareness(doc);
         this.onStatusChange = onStatusChange;
         // Construct URL with room as a query parameter, targeting the current host (Vite dev server)
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const url = `${protocol}//${window.location.host}/yjs?room=${encodeURIComponent(roomId)}`;
+        const url = `${protocol}//${window.location.host}/yjs?room=${encodeURIComponent(this.roomId)}`;
         this.connect(url);
     }
 
@@ -95,11 +95,27 @@ class CustomWebsocketProvider {
     }
 
     destroy() {
-        this.awareness.destroy();
+        // Remove event listeners to prevent memory leaks
+        if (this.doc) {
+            this.doc.off('update', null);
+        }
+
+        // Clean up the awareness
+        if (this.awareness) {
+            this.awareness.off('update', null);
+            this.awareness.destroy();
+        }
+
+        // Close the websocket connection
         if (this.ws) {
+            this.ws.onmessage = null;
+            this.ws.onopen = null;
+            this.ws.onclose = null;
             this.ws.close();
             this.ws = null;
         }
+
+        this.connected = false;
     }
 
     off(event: string, callback: any) {
