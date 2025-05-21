@@ -129,8 +129,6 @@
   overflow: hidden;
 }
 
-
-
 .ant-tabs-content {
   height: 100%;
 }
@@ -169,39 +167,28 @@
 
 /* Mobile specific styles */
 @media (max-width: 768px) {
-  .chat-panel-wrapper {
-    position: fixed;
-    top: 0;
-    left: -100%;
-    /* Off-screen by default */
-    width: 80% !important;
-    /* Adjust width as needed */
-    max-width: 300px;
-    height: 100% !important;
-    background-color: var(--card, #1f1f1f);
-    /* Use theme color */
-    z-index: 1001;
-    transition: left 0.3s ease-in-out;
-    border-right: 1px solid var(--border, #303030);
-    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-  }
-
-  .chat-panel-wrapper.visible {
-    left: 0;
-    /* Slide in */
-  }
-
-  .editor-main-area {
-    width: 100%;
+  .chat-panel-container {
+    transition: height 0.3s ease, flex 0.3s ease;
   }
 
   .mobile-chat-toggle-button {
     display: block;
     /* Show on mobile */
+    transition: bottom 0.3s ease;
   }
 
-  .custom-handle {
-    display: none !important;
-    /* Hide resizer handle on mobile */
+  /* Remove old side panel styles */
+  .chat-panel-wrapper {
+    position: static;
+    width: 100% !important;
+    max-width: none;
+    background-color: var(--card, #1f1f1f);
+    border-right: none;
+    border-top: 1px solid var(--border, #303030);
+    box-shadow: none;
+  }
+
+  .editor-main-area {
+    transition: flex 0.3s ease;
   }
 }

@@ -57,21 +57,54 @@ const ScriptTab: React.FC = () => {
     return (
         <div className="script-tab-container">
             {isMobile ? (
-                <>
+                <div style={{
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    position: 'relative',
+                    overflow: 'hidden'
+                }}>
                     <Button
                         type="primary"
                         shape="circle"
                         icon={chatVisible ? <CloseOutlined /> : <MessageOutlined />}
                         onClick={toggleChat}
                         className="mobile-chat-toggle-button"
+                        style={{
+                            position: 'absolute',
+                            bottom: chatVisible ? '50%' : '20px',
+                            right: '20px',
+                            zIndex: 1000,
+                            transition: 'bottom 0.3s ease'
+                        }}
                     />
-                    <div className={`chat-panel-wrapper ${chatVisible ? 'visible' : ''}`}>
-                        <ChatPanel />
-                    </div>
-                    <div className="editor-main-area">
+
+                    <div
+                        className="editor-main-area"
+                        style={{
+                            flex: chatVisible ? '0 0 50%' : 1,
+                            transition: 'flex 0.3s ease',
+                            overflow: 'hidden'
+                        }}
+                    >
                         <CollaborativeEditor roomId={roomId} />
                     </div>
-                </>
+
+                    <div
+                        className="chat-panel-container"
+                        style={{
+                            flex: chatVisible ? '0 0 50%' : '0 0 0%',
+                            overflow: 'hidden',
+                            transition: 'flex 0.3s ease',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            height: chatVisible ? '50%' : '0',
+                            borderTop: chatVisible ? '1px solid #303030' : 'none'
+                        }}
+                    >
+                        {chatVisible && <ChatPanel />}
+                    </div>
+                </div>
             ) : (
                 <>
                     <ResizableBox

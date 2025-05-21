@@ -175,6 +175,17 @@ interface SlateEditorProps {
 }
 
 const SlateEditor: React.FC<SlateEditorProps> = ({ sharedType, provider }) => {
+    const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobile(window.innerWidth <= 768);
+        };
+
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
     // Create and configure the editor
     const editor = useMemo(() => {
         // Create Slate editor with history, React, and Yjs integrations
@@ -228,7 +239,7 @@ const SlateEditor: React.FC<SlateEditorProps> = ({ sharedType, provider }) => {
 
     return (
         <div className="slate-editor-container" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-            <EditorToolbar editor={editor} />
+            {!isMobile && <EditorToolbar editor={editor} />}
             <div style={{ flex: 1, overflow: 'auto', padding: '12px' }}>
                 <Slate editor={editor} initialValue={initialValue} onChange={onChange}>
                     <Cursors>
