@@ -26,11 +26,14 @@ class CustomWebsocketProvider {
     roomId: string;
     onStatusChange: (status: { status: string }) => void;
 
-    constructor(url: string, roomId: string, doc: Y.Doc, onStatusChange: (status: { status: string }) => void) {
+    constructor(roomId: string, doc: Y.Doc, onStatusChange: (status: { status: string }) => void) {
         this.doc = doc;
         this.roomId = roomId;
         this.awareness = new awarenessProtocol.Awareness(doc);
         this.onStatusChange = onStatusChange;
+        // Construct URL with room as a query parameter, targeting the current host (Vite dev server)
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const url = `${protocol}//${window.location.host}/yjs?room=${encodeURIComponent(roomId)}`;
         this.connect(url);
     }
 
@@ -114,9 +117,8 @@ const CollaborativeEditor: React.FC<CollaborativeEditorProps> = ({ roomId }) => 
         const yDoc = new Y.Doc();
         const sharedDoc = yDoc.get('slate', Y.XmlText);
 
-        // Custom status change handler
         const handleStatusChange = (event: { status: string }) => {
-            console.log('Connection status:', event.status);
+            console.log('YJS Connection status:', event.status);
             if (event.status === 'connected') {
                 setConnected(true);
             } else {
@@ -124,9 +126,8 @@ const CollaborativeEditor: React.FC<CollaborativeEditorProps> = ({ roomId }) => 
             }
         };
 
-        // Connect to WebSocket provider
+        // Connect to WebSocket provider - no explicit URL, it's derived from window.location
         const wsProvider = new CustomWebsocketProvider(
-            `ws://${window.location.host}/yjs/${roomId}`,
             roomId,
             yDoc,
             handleStatusChange
