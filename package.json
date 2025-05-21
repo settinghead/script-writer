@@ -10,7 +10,8 @@
     "build:frontend": "vite build",
     "build": "npm run clean && npm run build:backend && npm run build:frontend",
     "clean": "rimraf dist",
-    "start": "node dist-server/index.js"
+    "start": "node dist-server/index.js",
+    "test": "echo 'No tests specified; skipping.'"
   },
   "repository": {
     "type": "git",
