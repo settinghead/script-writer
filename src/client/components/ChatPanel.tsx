@@ -1,6 +1,6 @@
 import React from 'react';
 import { useChat } from '@ai-sdk/react';
-import { Button, Input, Typography, Spin, Alert } from 'antd';
+import { Button, Input, Typography, Spin, Alert, Space } from 'antd';
 import { SendOutlined, UserOutlined, RobotOutlined } from '@ant-design/icons';
 
 const { Text, Paragraph } = Typography;
@@ -122,7 +122,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onScriptEdit }) => {
             </div>
 
             <form onSubmit={handleFormSubmit} style={{ display: 'flex', alignItems: 'flex-end' }}>
-                <Input.Group compact style={{ display: 'flex', width: '100%' }}>
+                <Space.Compact style={{ display: 'flex', width: '100%' }}>
                     <TextArea
                         placeholder="输入你的问题... (Ctrl+Enter 或 Shift+Enter 发送)"
                         value={input}
@@ -133,9 +133,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onScriptEdit }) => {
                         style={{
                             flexGrow: 1,
                             resize: 'none',
-                            borderRight: 0, // Remove right border to blend with button
-                            borderTopRightRadius: 0, // Adjust radius
-                            borderBottomRightRadius: 0, // Adjust radius
                         }}
                     />
                     <Button
@@ -144,15 +141,11 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onScriptEdit }) => {
                         disabled={isLoading || !input.trim()}
                         icon={<SendOutlined />}
                         style={{
-                            borderTopLeftRadius: 0, // Adjust radius
-                            borderBottomLeftRadius: 0, // Adjust radius
-                            height: 'auto', // Allow button height to match TextArea
-                            alignSelf: 'stretch' // Make button stretch to TextArea height
+                            height: 'auto',
+                            alignSelf: 'stretch'
                         }}
-                    >
-
-                    </Button>
-                </Input.Group>
+                    />
+                </Space.Compact>
             </form>
         </div>
     );
