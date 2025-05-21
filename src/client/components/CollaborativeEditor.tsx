@@ -210,29 +210,16 @@ const SlateEditor: React.FC<SlateEditorProps> = ({ sharedType, provider }) => {
     const renderLeaf = useCallback(props => <Leaf {...props} />, []);
 
     return (
-        <div className="slate-editor-container" style={{
-            height: '100%',
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden'
-        }}>
+        <div className="slate-editor-container" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
             <EditorToolbar editor={editor} />
-            <div style={{
-                flex: 1,
-                overflow: 'auto',
-                padding: '12px',
-                position: 'relative'
-            }}>
+            <div style={{ flex: 1, overflow: 'auto', padding: '12px' }}>
                 <Slate editor={editor} initialValue={initialValue} onChange={onChange}>
                     <Cursors>
                         <Editable
                             className="editor-content"
                             renderElement={renderElement}
                             renderLeaf={renderLeaf}
-                            style={{
-                                minHeight: '100%',
-                                paddingBottom: '120px' // Provide space at the bottom for better UX
-                            }}
+                            style={{ minHeight: '100%' }}
                             placeholder="开始编写剧本..."
                         />
                     </Cursors>

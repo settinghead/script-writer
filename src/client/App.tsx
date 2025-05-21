@@ -10,10 +10,9 @@ import "./index.css";
 
 const { Header, Content } = Layout;
 const { Title } = Typography;
-const { TabPane } = Tabs;
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('inspiration');
+  const [activeTab, setActiveTab] = useState('script'); // Default to script tab for testing
 
   const handleTabChange = (key: string) => {
     setActiveTab(key);
@@ -29,43 +28,32 @@ const App: React.FC = () => {
         }
       }}
     >
-      <Layout style={{
-        height: '100vh',
-        overflow: 'hidden' // Prevent outer scrollbar
-      }}>
-        <Header style={{
-          padding: '0 20px',
-          height: '64px', // Explicitly set header height
-          lineHeight: '64px'
-        }}>
-          <Title level={3} style={{ color: 'white', margin: '0' }}>AI 剧本写作助手</Title>
+      <Layout style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
+        <Header style={{ padding: '0 20px', flexShrink: 0 }}>
+          <Title level={3} style={{ color: 'white', margin: '16px 0' }}>AI 剧本写作助手</Title>
         </Header>
-        <Content style={{
-          height: 'calc(100vh - 64px)', // Full height minus header
-          overflow: 'hidden'
-        }}>
+        <Content style={{ flexGrow: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           <Tabs
             activeKey={activeTab}
             onChange={handleTabChange}
             style={{
-              height: '100%',
+              flexGrow: 1,
               display: 'flex',
-              flexDirection: 'column'
-            }}
-            tabBarStyle={{
-              marginBottom: 0,
-              padding: '0 20px'
+              flexDirection: 'column',
+              overflow: 'hidden',
+              padding: '0 20px',
+              color: 'white'
             }}
             items={[
               {
                 key: 'inspiration',
                 label: '灵感',
-                children: <div style={{ height: 'calc(100% - 46px)', overflow: 'auto' }}><InspirationTab /></div>
+                children: <InspirationTab />
               },
               {
                 key: 'chat',
                 label: '对话',
-                children: <div style={{ height: 'calc(100% - 46px)', overflow: 'auto' }}><ChatTab /></div>
+                children: <ChatTab />
               },
               {
                 key: 'script',
@@ -73,6 +61,12 @@ const App: React.FC = () => {
                 children: <ScriptTab />
               }
             ]}
+            // Add this to make TabPanes also flex containers
+            renderTabBar={(props, DefaultTabBar) => (
+              <DefaultTabBar {...props} style={{ flexShrink: 0 }} />
+            )}
+            // Apply styles to the content area of the tabs
+            tabBarStyle={{ marginBottom: 0 }}
           />
         </Content>
       </Layout>

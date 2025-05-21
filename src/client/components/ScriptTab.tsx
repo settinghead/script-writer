@@ -1,111 +1,77 @@
 import React, { useState, useEffect } from 'react';
 import { ResizableBox } from 'react-resizable';
-import { Button, Drawer } from 'antd';
-import { MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
 import 'react-resizable/css/styles.css';
 import ChatPanel from './ChatPanel';
 import CollaborativeEditor from './CollaborativeEditor';
+import { Button } from 'antd';
+import { MessageOutlined, CloseOutlined } from '@ant-design/icons';
 
 const ScriptTab: React.FC = () => {
-    const [isMobile, setIsMobile] = useState(false);
+    const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
     const [chatVisible, setChatVisible] = useState(false);
 
-    // Check if we're on mobile based on screen width
     useEffect(() => {
-        const checkMobile = () => {
-            setIsMobile(window.innerWidth < 768);
+        const handleResize = () => {
+            setIsMobile(window.innerWidth <= 768);
+            if (window.innerWidth > 768) {
+                setChatVisible(false); // Close pop-out chat if resizing to desktop
+            }
         };
 
-        // Initial check
-        checkMobile();
-
-        // Add listener for window resize
-        window.addEventListener('resize', checkMobile);
-
-        // Clean up
-        return () => window.removeEventListener('resize', checkMobile);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    // For mobile: we use a drawer for the chat
-    if (isMobile) {
-        return (
-            <div style={{
-                width: '100%',
-                height: 'calc(100vh - 64px)', // Header height
-                display: 'flex',
-                flexDirection: 'column',
-                overflow: 'hidden',
-                position: 'relative'
-            }}>
-                <Button
-                    type="primary"
-                    icon={<MenuUnfoldOutlined />}
-                    onClick={() => setChatVisible(true)}
-                    style={{
-                        position: 'absolute',
-                        left: 16,
-                        top: 16,
-                        zIndex: 10
-                    }}
-                />
+    const toggleChat = () => {
+        setChatVisible(!chatVisible);
+    };
 
-                <div style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
-                    <CollaborativeEditor roomId="default-script-room" />
-                </div>
-
-                <Drawer
-                    title="对话"
-                    placement="left"
-                    onClose={() => setChatVisible(false)}
-                    open={chatVisible}
-                    width="80%"
-                    bodyStyle={{ padding: 0, height: '100%' }}
-                >
-                    <ChatPanel />
-                </Drawer>
-            </div>
-        );
-    }
-
-    // For desktop: we use a resizable split layout
     return (
-        <div style={{
-            display: 'flex',
-            width: '100%',
-            height: 'calc(100vh - 64px)', // Header height
-            overflow: 'hidden'
-        }}>
-            <ResizableBox
-                width={300} // 30% of typical 1000px width
-                height={Infinity}
-                minConstraints={[200, Infinity]}
-                maxConstraints={[500, Infinity]}
-                resizeHandles={['e']}
-                className="chat-panel-wrapper"
-                handle={<div className="custom-handle" style={{
-                    width: '5px',
-                    height: '100%',
-                    background: '#303030',
-                    cursor: 'col-resize',
-                    position: 'absolute',
-                    right: 0,
-                    top: 0,
-                    zIndex: 10
-                }} />}
-                axis="x"
-            >
-                <div style={{ height: '100%', overflow: 'hidden' }}>
-                    <ChatPanel />
-                </div>
-            </ResizableBox>
-            <div style={{
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-                overflow: 'hidden'
-            }}>
-                <CollaborativeEditor roomId="default-script-room" />
-            </div>
+        <div className="script-tab-container">
+            {isMobile ? (
+                <>
+                    <Button
+                        type="primary"
+                        shape="circle"
+                        icon={chatVisible ? <CloseOutlined /> : <MessageOutlined />}
+                        onClick={toggleChat}
+                        className="mobile-chat-toggle-button"
+                    />
+                    <div className={`chat-panel-wrapper ${chatVisible ? 'visible' : ''}`}>
+                        <ChatPanel />
+                    </div>
+                    <div className="editor-main-area">
+                        <CollaborativeEditor roomId="default-script-room" />
+                    </div>
+                </>
+            ) : (
+                <>
+                    <ResizableBox
+                        width={300} // 30% of typical 1000px width
+                        height={Infinity} // This will be constrained by the parent flex container
+                        minConstraints={[200, Infinity]}
+                        maxConstraints={[500, Infinity]}
+                        resizeHandles={['e']}
+                        className="chat-panel-wrapper"
+                        axis="x" // Ensure resizing is only horizontal
+                        handle={<div className="custom-handle" style={{
+                            width: '5px',
+                            height: '100%',
+                            background: '#303030',
+                            cursor: 'col-resize',
+                            position: 'absolute',
+                            right: 0,
+                            top: 0,
+                            zIndex: 1 // Ensure handle is above other content
+                        }} />}
+                    >
+                        <ChatPanel />
+                    </ResizableBox>
+                    <div className="editor-main-area">
+                        <CollaborativeEditor roomId="default-script-room" />
+                    </div>
+                </>
+            )}
         </div>
     );
 };
