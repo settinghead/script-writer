@@ -26,8 +26,14 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onScriptEdit }) => {
     };
 
     return (
-        <div style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '12px' }}>
-            <Paragraph style={{ fontSize: '12px', margin: '0 0 8px 0' }}>
+        <div style={{
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            padding: '12px',
+            overflow: 'hidden' // Prevent outer scrollbar
+        }}>
+            <Paragraph style={{ fontSize: '12px', margin: '0 0 8px 0', flexShrink: 0 }}>
                 与AI助手进行对话，获取创作建议和帮助。
             </Paragraph>
 
@@ -37,7 +43,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onScriptEdit }) => {
                     description={error.message}
                     type="error"
                     showIcon
-                    style={{ marginBottom: '8px', fontSize: '12px' }}
+                    style={{ marginBottom: '8px', fontSize: '12px', flexShrink: 0 }}
                 />
             )}
 
@@ -45,7 +51,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onScriptEdit }) => {
                 style={{
                     flexGrow: 1,
                     marginBottom: '12px',
-                    overflowY: 'auto',
+                    overflowY: 'auto', // Enable scrolling here
                     backgroundColor: '#1f1f1f',
                     border: '1px solid #303030',
                     borderRadius: '8px',
@@ -100,7 +106,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onScriptEdit }) => {
                 )}
             </div>
 
-            <form onSubmit={onSubmit} style={{ display: 'flex', gap: '8px' }}>
+            <form onSubmit={onSubmit} style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
                 <Input
                     placeholder="输入你的问题..."
                     value={input}

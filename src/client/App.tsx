@@ -29,28 +29,43 @@ const App: React.FC = () => {
         }
       }}
     >
-      <Layout style={{ minHeight: '100vh' }}>
-        <Header style={{ padding: '0 20px' }}>
-          <Title level={3} style={{ color: 'white', margin: '16px 0' }}>AI 剧本写作助手</Title>
+      <Layout style={{
+        height: '100vh',
+        overflow: 'hidden' // Prevent outer scrollbar
+      }}>
+        <Header style={{
+          padding: '0 20px',
+          height: '64px', // Explicitly set header height
+          lineHeight: '64px'
+        }}>
+          <Title level={3} style={{ color: 'white', margin: '0' }}>AI 剧本写作助手</Title>
         </Header>
-        <Content>
+        <Content style={{
+          height: 'calc(100vh - 64px)', // Full height minus header
+          overflow: 'hidden'
+        }}>
           <Tabs
             activeKey={activeTab}
             onChange={handleTabChange}
             style={{
-              padding: '0 20px',
-              color: 'white'
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+            tabBarStyle={{
+              marginBottom: 0,
+              padding: '0 20px'
             }}
             items={[
               {
                 key: 'inspiration',
                 label: '灵感',
-                children: <InspirationTab />
+                children: <div style={{ height: 'calc(100% - 46px)', overflow: 'auto' }}><InspirationTab /></div>
               },
               {
                 key: 'chat',
                 label: '对话',
-                children: <ChatTab />
+                children: <div style={{ height: 'calc(100% - 46px)', overflow: 'auto' }}><ChatTab /></div>
               },
               {
                 key: 'script',
