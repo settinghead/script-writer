@@ -9,6 +9,7 @@ import { MessageOutlined, CloseOutlined } from '@ant-design/icons';
 const ScriptTab: React.FC = () => {
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
     const [chatVisible, setChatVisible] = useState(false);
+    const [roomId, setRoomId] = useState<string>('');
 
     useEffect(() => {
         const handleResize = () => {
@@ -22,9 +23,36 @@ const ScriptTab: React.FC = () => {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
+    useEffect(() => {
+        // Check URL for room ID parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        let id = urlParams.get('room');
+
+        // If no room ID in URL, use default or generate a new one
+        if (!id) {
+            id = 'default-script-room';
+
+            // Update URL with the room ID for sharing
+            const newUrl = new URL(window.location.href);
+            newUrl.searchParams.set('room', id);
+            window.history.replaceState({}, '', newUrl.toString());
+        }
+
+        setRoomId(id);
+    }, []);
+
     const toggleChat = () => {
         setChatVisible(!chatVisible);
     };
+
+    // Don't render editor until we have a room ID
+    if (!roomId) {
+        return (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                Loading script room...
+            </div>
+        );
+    }
 
     return (
         <div className="script-tab-container">
@@ -41,7 +69,7 @@ const ScriptTab: React.FC = () => {
                         <ChatPanel />
                     </div>
                     <div className="editor-main-area">
-                        <CollaborativeEditor roomId="default-script-room" />
+                        <CollaborativeEditor roomId={roomId} />
                     </div>
                 </>
             ) : (
@@ -68,7 +96,7 @@ const ScriptTab: React.FC = () => {
                         <ChatPanel />
                     </ResizableBox>
                     <div className="editor-main-area">
-                        <CollaborativeEditor roomId="default-script-room" />
+                        <CollaborativeEditor roomId={roomId} />
                     </div>
                 </>
             )}
