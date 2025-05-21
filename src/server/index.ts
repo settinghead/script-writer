@@ -11,9 +11,13 @@ dotenv.config();
 
 const PORT = parseInt(process.env.PORT || "4600");
 const app = express();
-const server = http.createServer(app);
 
 app.use(express.json()); // Middleware to parse JSON bodies
+
+// Create the server with ViteExpress
+const server = ViteExpress.listen(app, PORT, () => {
+  console.log(`Server is listening on http://localhost:${PORT}`);
+});
 
 // Set up YJS WebSocket server
 const yjs = setupYjsWebSocketServer(server);
@@ -235,9 +239,4 @@ app.get("/api/scripts/:id", (req, res) => {
   // In a real implementation, you'd retrieve the script from a database
   // For now, just return a basic response
   res.json({ id, exists: true });
-});
-
-// Use server instead of app for WebSocket support
-ViteExpress.listen(server, PORT, () => {
-  console.log(`Server is listening on http://localhost:${PORT}`);
 });

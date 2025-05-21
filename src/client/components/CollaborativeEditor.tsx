@@ -126,7 +126,7 @@ const CollaborativeEditor: React.FC<CollaborativeEditorProps> = ({ roomId }) => 
 
         // Connect to WebSocket provider
         const wsProvider = new CustomWebsocketProvider(
-            `ws://${window.location.host}/yjs/${roomId}`,
+            `ws://${window.location.host}/yjs`,
             roomId,
             yDoc,
             handleStatusChange

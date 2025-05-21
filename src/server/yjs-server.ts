@@ -1,6 +1,6 @@
 import * as Y from 'yjs';
 import { Server as HttpServer } from 'http';
-import WebSocket from 'ws';
+import { WebSocketServer, WebSocket } from 'ws';
 import * as awarenessProtocol from 'y-protocols/awareness';
 
 interface Document {
@@ -64,7 +64,7 @@ const setupWSConnection = (ws: WebSocket, req: any, { docName, gc = true }) => {
 };
 
 export const setupYjsWebSocketServer = (httpServer: HttpServer) => {
-    const wss = new WebSocket.Server({ noServer: true });
+    const wss = new WebSocketServer({ noServer: true });
 
     wss.on('connection', (ws, req, roomName) => {
         console.log(`New YJS connection for room: ${roomName}`);
