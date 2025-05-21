@@ -127,22 +127,30 @@ const CollaborativeEditor: React.FC<CollaborativeEditorProps> = ({ roomId }) => 
     const [connected, setConnected] = useState(false);
     const [sharedType, setSharedType] = useState<Y.XmlText | null>(null);
     const [provider, setProvider] = useState<CustomWebsocketProvider | null>(null);
+    const [initialSyncComplete, setInitialSyncComplete] = useState(false);
 
     // Set up Yjs document and provider
     useEffect(() => {
+        console.log(`Creating YJS doc for room: ${roomId}`);
         const yDoc = new Y.Doc();
+        // Get the shared XmlText from the YDoc
         const sharedDoc = yDoc.get('slate', Y.XmlText);
 
         const handleStatusChange = (event: { status: string }) => {
             console.log('YJS Connection status:', event.status);
             if (event.status === 'connected') {
                 setConnected(true);
+                // When connected, mark sync as complete after a small delay
+                // to allow initial data to load
+                setTimeout(() => {
+                    setInitialSyncComplete(true);
+                }, 500);
             } else {
                 setConnected(false);
             }
         };
 
-        // Connect to WebSocket provider - no explicit URL, it's derived from window.location
+        // Connect to WebSocket provider
         const wsProvider = new CustomWebsocketProvider(
             roomId,
             yDoc,
@@ -153,12 +161,14 @@ const CollaborativeEditor: React.FC<CollaborativeEditorProps> = ({ roomId }) => 
         setProvider(wsProvider);
 
         return () => {
+            console.log(`Cleaning up YJS resources for room: ${roomId}`);
             yDoc?.destroy();
             wsProvider?.destroy();
+            setInitialSyncComplete(false);
         };
     }, [roomId]);
 
-    if (!connected || !sharedType || !provider) {
+    if (!connected || !sharedType || !provider || !initialSyncComplete) {
         return (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
                 正在连接协作会话...
@@ -176,6 +186,7 @@ interface SlateEditorProps {
 
 const SlateEditor: React.FC<SlateEditorProps> = ({ sharedType, provider }) => {
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+    const [editorValue, setEditorValue] = useState(initialValue);
 
     useEffect(() => {
         const handleResize = () => {
@@ -206,16 +217,19 @@ const SlateEditor: React.FC<SlateEditorProps> = ({ sharedType, provider }) => {
             )
         );
 
-        // Ensure editor always has at least 1 valid child
+        // Only add normalizeNode handler to ensure editor has content
+        // but NOT to add extra paragraphs on each load
         const { normalizeNode } = slateEditor;
         slateEditor.normalizeNode = entry => {
             const [node] = entry;
 
-            if (!Editor.isEditor(node) || node.children.length > 0) {
-                return normalizeNode(entry);
+            // Only add initialValue if the editor is completely empty
+            if (Editor.isEditor(node) && node.children.length === 0) {
+                Transforms.insertNodes(slateEditor, initialValue, { at: [0] });
+                return;
             }
 
-            Transforms.insertNodes(slateEditor, initialValue, { at: [0] });
+            return normalizeNode(entry);
         };
 
         return slateEditor;
@@ -229,8 +243,8 @@ const SlateEditor: React.FC<SlateEditorProps> = ({ sharedType, provider }) => {
 
     // We need an onChange handler even if we don't use it directly
     const onChange = useCallback(newValue => {
-        // This function body can be empty since YJS handles the updates
-        // But we need the function to satisfy Slate's API
+        // Store the value for initializing Slate (though YJS will override this)
+        setEditorValue(newValue);
     }, []);
 
     // Custom rendering functions
@@ -241,7 +255,7 @@ const SlateEditor: React.FC<SlateEditorProps> = ({ sharedType, provider }) => {
         <div className="slate-editor-container" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
             {!isMobile && <EditorToolbar editor={editor} />}
             <div style={{ flex: 1, overflow: 'auto', padding: '12px' }}>
-                <Slate editor={editor} initialValue={initialValue} onChange={onChange}>
+                <Slate editor={editor} initialValue={editorValue} onChange={onChange}>
                     <Cursors>
                         <Editable
                             className="editor-content"

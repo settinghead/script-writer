@@ -27,6 +27,11 @@ const getDocumentFilePath = (roomId: string): string => {
 const loadDocument = (roomId: string): Y.Doc => {
     const filePath = getDocumentFilePath(roomId);
     const ydoc = new Y.Doc();
+
+    // Initialize with default empty document structure for 'slate'
+    ydoc.getArray('slate');
+
+    // Try to load from disk if exists
     if (fs.existsSync(filePath)) {
         try {
             const fileContent = fs.readFileSync(filePath, 'utf-8');
@@ -34,11 +39,16 @@ const loadDocument = (roomId: string): Y.Doc => {
             if (data && data.docUpdate) {
                 Y.applyUpdate(ydoc, new Uint8Array(data.docUpdate));
                 console.log(`Loaded YJS document for room: ${roomId} from ${filePath}`);
+            } else {
+                console.log(`Document found for room ${roomId} but no updates to apply.`);
             }
         } catch (error) {
             console.error(`Error loading document for room ${roomId}:`, error);
         }
+    } else {
+        console.log(`No saved document for room ${roomId}. Creating new.`);
     }
+
     return ydoc;
 };
 
