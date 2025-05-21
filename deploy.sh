@@ -35,20 +35,20 @@ npm ci
 npm run test
 
 # Build the project
-cp /var/www/.env.prod $DEPLOY_DIR/app/.env
+cp /var/www/.env.prod $DEPLOY_DIR/.env
 npm run build
 
 # Create symlink for new deployment
 ln -sfn $DEPLOY_DIR /var/www/$PROJECT_NAME-current
 
 # Update symlink for Nginx
-mkdir -p /var/www/$PROJECT_NAME/app
-ln -sfn $DEPLOY_DIR/app/dist-client /var/www/$PROJECT_NAME-current/app/dist-client
-ln -sfn $DEPLOY_DIR/app/dist-server /var/www/$PROJECT_NAME-current/app/dist-server
+mkdir -p /var/www/$PROJECT_NAME
+ln -sfn $DEPLOY_DIR/dist-client /var/www/$PROJECT_NAME-current/dist-client
+ln -sfn $DEPLOY_DIR/dist-server /var/www/$PROJECT_NAME-current/dist-server
 
 # Restart backend with PM2
 pm2 delete $PROJECT_NAME-api || true
-cd $DEPLOY_DIR/app
+cd $DEPLOY_DIR
 NODE_ENV=production pm2 start dist-server/index.js --name $PROJECT_NAME-api
 
 # Keep only the 5 most recent deployments
