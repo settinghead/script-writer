@@ -6,7 +6,12 @@
   "type": "module",
   "scripts": {
     "dev": "./run-ts src/server/index.ts",
-    "test-llm": "./run-ts src/server/test-llm-script.ts"
+    "test-llm": "./run-ts src/server/test-llm-script.ts",
+    "build:backend": "tsc --project tsconfig.node.json",
+    "build:frontend": "vite build",
+    "build": "npm run clean && npm run build:backend && npm run build:frontend",
+    "clean": "rimraf dist",
+    "start": "node dist-server/index.js"
   },
   "repository": {
     "type": "git",
@@ -24,7 +29,6 @@
     "@radix-ui/react-slot": "^1.2.2",
     "@slate-yjs/core": "^1.0.2",
     "@slate-yjs/react": "^1.1.0",
-    "@tailwindcss/vite": "^4.1.7",
     "@types/express": "^5.0.2",
     "@types/react-resizable": "^3.0.8",
     "@types/slate": "^0.47.16",
@@ -46,8 +50,6 @@
     "slate": "^0.114.0",
     "slate-history": "^0.113.1",
     "slate-react": "^0.114.2",
-    "tailwind-merge": "^3.3.0",
-    "tailwindcss": "^4.1.7",
     "typescript": "^5.8.3",
     "vite": "^6.3.5",
     "vite-express": "^0.21.1",
@@ -59,6 +61,7 @@
   "devDependencies": {
     "@types/node": "^22.15.19",
     "less": "^4.3.0",
+    "rimraf": "^6.0.1",
     "tsx": "^4.19.4",
     "tw-animate-css": "^1.3.0",
     "vite-plugin-style-import": "^2.0.0"

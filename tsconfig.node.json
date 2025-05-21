@@ -1,10 +1,29 @@
 {
   "compilerOptions": {
-    "composite": true,
+    "target": "ES2020",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "strict": true,
+    "outDir": "./dist-server",
+    "sourceMap": true,
+    "skipLibCheck": true,
+    "jsx": "react",
+    "baseUrl": ".",
     "paths": {
       "@/*": [
-        "./src/*"
+        "src/*"
       ]
-    }
-  }
+    },
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true
+  },
+  "include": [
+    "src/server/**/*.ts",
+    "src/server/**/*.tsx"
+  ],
+  "exclude": [
+    "src/server/**/*.spec.ts"
+  ]
 }
