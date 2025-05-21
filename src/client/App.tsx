@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { Tabs, Layout, Typography, ConfigProvider, theme } from 'antd';
 import InspirationTab from './components/InspirationTab';
 import ChatTab from './components/ChatTab';
+import ScriptTab from './components/ScriptTab';
 
 // Import CSS for any custom styling needed
 import "./index.css";
@@ -50,6 +51,11 @@ const App: React.FC = () => {
                 key: 'chat',
                 label: '对话',
                 children: <ChatTab />
+              },
+              {
+                key: 'script',
+                label: '剧本编辑',
+                children: <ScriptTab />
               }
             ]}
           />
