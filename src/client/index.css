@@ -129,12 +129,20 @@
   overflow: hidden;
 }
 
+
+
 .ant-tabs-content {
   height: 100%;
 }
 
 .ant-tabs-tabpane {
   height: 100%;
+}
+
+.cursors {
+  height: 100%;
+  padding: 0.3rem;
+  font-size: 1.2rem;
 }
 
 .chat-panel-wrapper {
