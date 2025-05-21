@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "type": "module",
   "scripts": {
     "dev": "./run-ts src/server/index.ts",
     "test-llm": "./run-ts src/server/test-llm-script.ts",
