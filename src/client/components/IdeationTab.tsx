@@ -194,6 +194,18 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
     const handleItemClick = (path: string[], key: string) => {
         const newPath = [...path, key];
 
+        // Special handling for root level (switching between 男频/女频)
+        if (path.length === 0) {
+            // Always navigate deeper for root level categories
+            if (isMobile) {
+                setNavigationPath(newPath);
+            } else {
+                setSelectedPath(newPath);
+            }
+            return;
+        }
+
+        // Check if we should navigate deeper or finalize selection
         if (hasChildren(path, key) && !isDeepestLevel(path, key)) {
             // Navigate deeper
             if (isMobile) {
@@ -202,9 +214,18 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
                 setSelectedPath(newPath);
             }
         } else {
-            // This is the final selection
-            onSelect(newPath);
-            onClose();
+            // This is the final selection - must be at least 3 levels deep for completion
+            if (newPath.length >= 3) {
+                onSelect(newPath);
+                onClose();
+            } else {
+                // Not deep enough, navigate deeper
+                if (isMobile) {
+                    setNavigationPath(newPath);
+                } else {
+                    setSelectedPath(newPath);
+                }
+            }
         }
     };
 
