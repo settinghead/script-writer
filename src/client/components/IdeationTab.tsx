@@ -138,7 +138,7 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
 }) => {
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
     const [navigationPath, setNavigationPath] = useState<string[]>([]);
-    const [selectedPath, setSelectedPath] = useState<string[]>(currentSelection);
+    const [tempSelectedPath, setTempSelectedPath] = useState<string[]>(currentSelection);
 
     useEffect(() => {
         const handleResize = () => {
@@ -150,7 +150,7 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
 
     useEffect(() => {
         if (visible) {
-            setSelectedPath(currentSelection);
+            setTempSelectedPath(currentSelection);
             setNavigationPath([]);
         }
     }, [visible, currentSelection]);
@@ -190,43 +190,36 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
         return false;
     };
 
-    // Handle item click
-    const handleItemClick = (path: string[], key: string) => {
-        const newPath = [...path, key];
+    // Handle item click - now just updates temp selection, doesn't close
+    const handleItemClick = (path: string[], key: string, columnIndex: number = 0) => {
+        // Use the actual column index to determine the selection level
+        const newPath = [...tempSelectedPath.slice(0, columnIndex), key];
 
-        // Special handling for root level (switching between 男频/女频)
-        if (path.length === 0) {
-            // Always navigate deeper for root level categories
-            if (isMobile) {
-                setNavigationPath(newPath);
-            } else {
-                setSelectedPath(newPath);
-            }
-            return;
-        }
-
-        // Check if we should navigate deeper or finalize selection
         if (hasChildren(path, key) && !isDeepestLevel(path, key)) {
             // Navigate deeper
             if (isMobile) {
                 setNavigationPath(newPath);
             } else {
-                setSelectedPath(newPath);
+                setTempSelectedPath(newPath);
             }
         } else {
-            // This is the final selection - must be at least 3 levels deep for completion
-            if (newPath.length >= 3) {
-                onSelect(newPath);
-                onClose();
-            } else {
-                // Not deep enough, navigate deeper
-                if (isMobile) {
-                    setNavigationPath(newPath);
-                } else {
-                    setSelectedPath(newPath);
-                }
-            }
+            // This is a final selection but don't close yet
+            setTempSelectedPath(newPath);
         }
+    };
+
+    // Handle confirm button
+    const handleConfirm = () => {
+        if (tempSelectedPath.length >= 3) {
+            onSelect(tempSelectedPath);
+            onClose();
+        }
+    };
+
+    // Handle cancel
+    const handleCancel = () => {
+        setTempSelectedPath(currentSelection);
+        onClose();
     };
 
     // Render Miller Columns (Desktop)
@@ -246,18 +239,18 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
                 {Object.keys(currentData).map(key => (
                     <div
                         key={key}
-                        onClick={() => handleItemClick(currentPath, key)}
+                        onClick={() => handleItemClick(currentPath, key, 0)}
                         style={{
                             padding: '8px 12px',
                             cursor: 'pointer',
-                            backgroundColor: selectedPath[0] === key ? '#1890ff20' : 'transparent',
-                            borderLeft: selectedPath[0] === key ? '3px solid #1890ff' : '3px solid transparent',
+                            backgroundColor: tempSelectedPath[0] === key ? '#1890ff20' : 'transparent',
+                            borderLeft: tempSelectedPath[0] === key ? '3px solid #1890ff' : '3px solid transparent',
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center'
                         }}
                         onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ffffff10'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = selectedPath[0] === key ? '#1890ff20' : 'transparent'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = tempSelectedPath[0] === key ? '#1890ff20' : 'transparent'}
                     >
                         <span>{key}</span>
                         {hasChildren(currentPath, key) && <RightOutlined style={{ fontSize: '10px' }} />}
@@ -267,8 +260,8 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
         );
 
         // Add subsequent columns based on selection
-        for (let i = 0; i < selectedPath.length && i < 4; i++) {
-            currentPath = selectedPath.slice(0, i + 1);
+        for (let i = 0; i < tempSelectedPath.length && i < 4; i++) {
+            currentPath = tempSelectedPath.slice(0, i + 1);
             currentData = getDataAtPath(currentPath);
 
             if (currentData && typeof currentData === 'object' && !Array.isArray(currentData)) {
@@ -282,18 +275,18 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
                         {Object.keys(currentData).map(key => (
                             <div
                                 key={key}
-                                onClick={() => handleItemClick(currentPath, key)}
+                                onClick={() => handleItemClick(currentPath, key, i + 1)}
                                 style={{
                                     padding: '8px 12px',
                                     cursor: 'pointer',
-                                    backgroundColor: selectedPath[i + 1] === key ? '#1890ff20' : 'transparent',
-                                    borderLeft: selectedPath[i + 1] === key ? '3px solid #1890ff' : '3px solid transparent',
+                                    backgroundColor: tempSelectedPath[i + 1] === key ? '#1890ff20' : 'transparent',
+                                    borderLeft: tempSelectedPath[i + 1] === key ? '3px solid #1890ff' : '3px solid transparent',
                                     display: 'flex',
                                     justifyContent: 'space-between',
                                     alignItems: 'center'
                                 }}
                                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ffffff10'}
-                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = selectedPath[i + 1] === key ? '#1890ff20' : 'transparent'}
+                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = tempSelectedPath[i + 1] === key ? '#1890ff20' : 'transparent'}
                             >
                                 <span>{key}</span>
                                 {hasChildren(currentPath, key) && !isDeepestLevel(currentPath, key) && (
@@ -307,8 +300,24 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
         }
 
         return (
-            <div style={{ display: 'flex', height: '400px', overflow: 'hidden' }}>
-                {columns}
+            <div style={{ display: 'flex', flexDirection: 'column', height: '400px', overflow: 'hidden' }}>
+                {/* Current selection display */}
+                {tempSelectedPath.length > 0 && (
+                    <div style={{
+                        padding: '12px 16px',
+                        backgroundColor: '#1a1a1a',
+                        borderBottom: '1px solid #303030',
+                        fontSize: '12px',
+                        color: '#52c41a',
+                        marginBottom: '8px'
+                    }}>
+                        当前选择: {tempSelectedPath.join(' > ')}
+                    </div>
+                )}
+
+                <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
+                    {columns}
+                </div>
             </div>
         );
     };
@@ -341,20 +350,34 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
                     </div>
                 </div>
 
+                {/* Current selection display */}
+                {tempSelectedPath.length > 0 && (
+                    <div style={{
+                        padding: '8px 16px',
+                        backgroundColor: '#1a1a1a',
+                        borderBottom: '1px solid #303030',
+                        fontSize: '12px',
+                        color: '#52c41a'
+                    }}>
+                        当前选择: {tempSelectedPath.join(' > ')}
+                    </div>
+                )}
+
                 {/* Items */}
                 <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
                     {currentData && typeof currentData === 'object' && !Array.isArray(currentData) &&
                         Object.keys(currentData).map(key => (
                             <div
                                 key={key}
-                                onClick={() => handleItemClick(navigationPath, key)}
+                                onClick={() => handleItemClick(navigationPath, key, navigationPath.length)}
                                 style={{
                                     padding: '12px 16px',
                                     cursor: 'pointer',
                                     borderBottom: '1px solid #2a2a2a',
                                     display: 'flex',
                                     justifyContent: 'space-between',
-                                    alignItems: 'center'
+                                    alignItems: 'center',
+                                    backgroundColor: tempSelectedPath.includes(key) ? '#1890ff10' : 'transparent'
                                 }}
                             >
                                 <span>{key}</span>
@@ -375,8 +398,22 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
                 title="选择故事类型"
                 placement="bottom"
                 height="60vh"
-                onClose={onClose}
+                onClose={handleCancel}
                 open={visible}
+                footer={
+                    <div style={{ textAlign: 'right', padding: '16px 0' }}>
+                        <Button onClick={handleCancel} style={{ marginRight: '8px' }}>
+                            取消
+                        </Button>
+                        <Button
+                            type="primary"
+                            onClick={handleConfirm}
+                            disabled={tempSelectedPath.length < 3}
+                        >
+                            确定
+                        </Button>
+                    </div>
+                }
             >
                 {renderSingleView()}
             </Drawer>
@@ -387,9 +424,21 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
         <Modal
             title="选择故事类型"
             open={visible}
-            onCancel={onClose}
-            footer={null}
+            onCancel={handleCancel}
             width={800}
+            footer={[
+                <Button key="cancel" onClick={handleCancel}>
+                    取消
+                </Button>,
+                <Button
+                    key="confirm"
+                    type="primary"
+                    onClick={handleConfirm}
+                    disabled={tempSelectedPath.length < 3}
+                >
+                    确定
+                </Button>
+            ]}
         >
             {renderMillerColumns()}
         </Modal>
