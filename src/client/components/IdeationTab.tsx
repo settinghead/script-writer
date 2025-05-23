@@ -383,57 +383,6 @@ interface IdeationResponse {
     // Add any other fields that might be in the response
 }
 
-// Improved helper function to handle the specific SSE format
-const cleanResponseText = (text: string): string => {
-    try {
-        // Step 1: Strip out all the SSE prefixes completely
-        // This handles patterns like `:{"messageId":"..."}`, `0:"text"`, `e:{...}`, etc.
-        let cleaned = '';
-        const lines = text.split('\n');
-
-        for (const line of lines) {
-            // Extract content between quotes for lines with quotes
-            const match = line.match(/\d+:"(.*)"|:(.*)$/);
-            if (match) {
-                // Get the content from whichever capture group matched
-                const content = match[1] || match[2] || '';
-                // Unescape any escaped characters in the content (like \n, \")
-                cleaned += content.replace(/\\n/g, '\n').replace(/\\"/g, '"');
-            }
-        }
-
-        // Step 2: Extract content from markdown code blocks
-        const jsonMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/);
-        if (jsonMatch && jsonMatch[1]) {
-            cleaned = jsonMatch[1].trim();
-        }
-
-        // Step 3: Final cleanup - remove any remaining markdown or non-JSON syntax
-        cleaned = cleaned.replace(/```json|```/g, '').trim();
-
-        // Step 4: Make sure we have a proper JSON object by checking for outer braces
-        if (!cleaned.startsWith('{') && cleaned.includes('{')) {
-            cleaned = cleaned.substring(cleaned.indexOf('{'));
-        }
-        if (!cleaned.endsWith('}') && cleaned.includes('}')) {
-            cleaned = cleaned.substring(0, cleaned.lastIndexOf('}') + 1);
-        }
-
-        return cleaned;
-    } catch (error) {
-        console.error('Error in cleanResponseText:', error);
-        return text; // Return original text if cleaning fails
-    }
-};
-
-// Debugging helper to visualize the text transformation
-const logCleaning = (original: string) => {
-    const cleaned = cleanResponseText(original);
-    console.log('ORIGINAL TEXT:', original);
-    console.log('CLEANED TEXT:', cleaned);
-    return cleaned;
-};
-
 const IdeationTab: React.FC = () => {
     const [userInput, setUserInput] = useState('古早言情剧');
     const [selectedPlatform, setSelectedPlatform] = useState<string>('');
@@ -443,8 +392,6 @@ const IdeationTab: React.FC = () => {
     const [genrePopupVisible, setGenrePopupVisible] = useState(false);
     const [error, setError] = useState<Error | null>(null);
     const [result, setResult] = useState<IdeationResponse | null>(null);
-    const [partialResult, setPartialResult] = useState('');
-    const [rawResponse, setRawResponse] = useState(''); // Store raw response for debugging
 
     const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -502,7 +449,8 @@ const IdeationTab: React.FC = () => {
                     model: 'deepseek-chat',
                     messages: [
                         { role: 'user', content: prompt }
-                    ]
+                    ],
+                    stream: false // Explicitly disable streaming
                 })
             });
 
@@ -510,55 +458,21 @@ const IdeationTab: React.FC = () => {
                 throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
             }
 
-            const reader = response.body?.getReader();
-            if (!reader) {
-                throw new Error('Failed to get response reader');
-            }
+            // Parse as regular JSON response
+            const data = await response.json();
 
-            let accumulatedText = '';
-
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                const chunk = new TextDecoder().decode(value);
-                accumulatedText += chunk;
-            }
-
-            // Extract the idea from the response - more aggressive cleaning for idea generation
-            let cleanedText = accumulatedText;
-
-            // Remove SSE prefixes and metadata
-            cleanedText = cleanedText.replace(/^\d+:"?/gm, '');
-            cleanedText = cleanedText.replace(/^:.*$/gm, '');
-            cleanedText = cleanedText.replace(/^data:\s*/gm, '');
-
-            // Remove JSON structure if present
-            cleanedText = cleanedText.replace(/^\{.*?"content":\s*"?/g, '');
-            cleanedText = cleanedText.replace(/"\s*\}.*$/g, '');
-
-            // Remove quotes and escape characters
-            cleanedText = cleanedText.replace(/\\n/g, '\n');
-            cleanedText = cleanedText.replace(/\\"/g, '"');
-            cleanedText = cleanedText.replace(/^["']/g, '');
-            cleanedText = cleanedText.replace(/["']$/g, '');
-
-            // Remove messageId and other metadata
-            cleanedText = cleanedText.replace(/\{.*?messageId.*?\}/g, '');
-            cleanedText = cleanedText.replace(/messageId:.*$/gm, '');
-
-            // Clean up any remaining artifacts
-            cleanedText = cleanedText.replace(/^\s*[\{\[\]\}]\s*/gm, '');
-            cleanedText = cleanedText.replace(/\s+/g, ' ').trim();
-
-            // Extract just the first meaningful sentence if multiple lines
-            const lines = cleanedText.split('\n').filter(line => line.trim());
-            const idea = lines.find(line => line.length > 10 && !line.includes('{') && !line.includes('messageId')) || lines[0] || cleanedText;
-
-            if (idea && idea.trim()) {
-                setUserInput(idea.trim());
+            // Extract the content from the response
+            let ideaText = '';
+            if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
+                ideaText = data.choices[0].message.content.trim();
             } else {
-                throw new Error('无法解析生成的创意内容');
+                throw new Error('无法从响应中提取内容');
+            }
+
+            if (ideaText && ideaText.length > 5) {
+                setUserInput(ideaText);
+            } else {
+                throw new Error('生成的创意内容为空');
             }
 
         } catch (err) {
@@ -577,8 +491,6 @@ const IdeationTab: React.FC = () => {
         setIsLoading(true);
         setError(null);
         setResult(null);
-        setPartialResult('');
-        setRawResponse('');
 
         // Create a new AbortController for this request
         if (abortControllerRef.current) {
@@ -599,11 +511,12 @@ const IdeationTab: React.FC = () => {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    model: 'deepseek-chat', // Use the model name from your configuration
+                    model: 'deepseek-chat',
                     messages: [
                         { role: 'user', content: fullPrompt }
                     ],
-                    response_format: { type: 'json_object' }
+                    response_format: { type: 'json_object' },
+                    stream: false // Explicitly disable streaming
                 }),
                 signal: abortControllerRef.current.signal
             });
@@ -612,76 +525,34 @@ const IdeationTab: React.FC = () => {
                 throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
             }
 
-            // Handle streaming response
-            const reader = response.body?.getReader();
-            if (!reader) {
-                throw new Error('Failed to get response reader');
+            // Parse as regular JSON response
+            const data = await response.json();
+
+            // Extract the content from the response
+            let contentText = '';
+            if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
+                contentText = data.choices[0].message.content.trim();
+            } else {
+                throw new Error('无法从响应中提取内容');
             }
 
-            let accumulatedText = '';
-
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                // Convert the chunk to text
-                const chunk = new TextDecoder().decode(value);
-                accumulatedText += chunk;
-
-                // Save raw response for debugging
-                setRawResponse(prev => prev + chunk);
-
-                // Only try to parse if we see a closing brace character (potential end of JSON)
-                if (chunk.includes('}')) {
-                    try {
-                        // Clean the text and log the cleaning process
-                        const cleanedText = cleanResponseText(accumulatedText);
-
-                        if (cleanedText.trim()) {
-                            // Try to repair the cleaned JSON
-                            try {
-                                const repairedJson = jsonrepair(cleanedText);
-                                setPartialResult(repairedJson);
-
-                                // If we can parse the repaired JSON, update the result
-                                try {
-                                    const jsonResult = JSON.parse(repairedJson) as IdeationResponse;
-                                    if (jsonResult.mediaType || jsonResult.plotOutline) {
-                                        setResult(jsonResult);
-                                    }
-                                } catch (parseError) {
-                                    // Not yet a complete JSON, that's okay for streaming
-                                }
-                            } catch (repairError) {
-                                // Expected for partial JSON
-                            }
-                        }
-                    } catch (error) {
-                        console.error('Error processing chunk:', error);
-                    }
-                }
-            }
-
-            // Final attempt to parse the complete response
+            // Parse the content as JSON (since we requested JSON format)
             try {
-                console.log('Final processing:', accumulatedText.substring(0, 100) + '...');
-                const cleanedFinalText = cleanResponseText(accumulatedText);
-                console.log('Cleaned final:', cleanedFinalText.substring(0, 100) + '...');
-
-                if (cleanedFinalText && cleanedFinalText.trim()) {
-                    const repairedFinal = jsonrepair(cleanedFinalText);
-                    const finalJson = JSON.parse(repairedFinal) as IdeationResponse;
-                    setResult(finalJson);
-                } else {
-                    throw new Error('Cleaned text was empty');
-                }
-            } catch (finalError) {
-                console.error('Failed to parse final JSON:', finalError);
-                // If we have a partial result already, don't show an error
-                if (!result) {
-                    setError(new Error('Failed to parse response as JSON. Check console for details.'));
+                const jsonResult = JSON.parse(contentText) as IdeationResponse;
+                setResult(jsonResult);
+            } catch (parseError) {
+                // If JSON parsing fails, try with jsonrepair
+                try {
+                    const repairedJson = jsonrepair(contentText);
+                    const jsonResult = JSON.parse(repairedJson) as IdeationResponse;
+                    setResult(jsonResult);
+                } catch (repairError) {
+                    console.error('Failed to parse JSON even after repair:', repairError);
+                    console.log('Raw content:', contentText);
+                    setError(new Error('响应格式不正确，无法解析为JSON'));
                 }
             }
+
         } catch (err) {
             if (err.name === 'AbortError') {
                 console.log('Request was aborted');
@@ -703,43 +574,6 @@ const IdeationTab: React.FC = () => {
             }
         };
     }, []);
-
-    // Function to manually parse the raw response if automatic parsing fails
-    const tryManualParse = () => {
-        try {
-            if (!rawResponse) return;
-
-            // Manual extraction from the raw response
-            let jsonStr = '';
-            let inJson = false;
-            const lines = rawResponse.split('\n');
-
-            for (const line of lines) {
-                if (line.includes('{"mediaType"') || line.includes('"mediaType"')) {
-                    inJson = true;
-                    jsonStr = '{';
-                } else if (inJson) {
-                    const contentMatch = line.match(/\d+:"(.*)"/);
-                    if (contentMatch && contentMatch[1]) {
-                        jsonStr += contentMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
-                    }
-
-                    if (line.includes('}')) {
-                        jsonStr += '}';
-                        break;
-                    }
-                }
-            }
-
-            if (jsonStr) {
-                const manualJson = JSON.parse(jsonrepair(jsonStr)) as IdeationResponse;
-                setResult(manualJson);
-                setError(null);
-            }
-        } catch (err) {
-            console.error('Manual parse failed:', err);
-        }
-    };
 
     return (
         <div style={{ padding: '20px', maxWidth: '600px', width: "100%", margin: '0 auto', overflow: "auto" }}>
@@ -798,173 +632,173 @@ const IdeationTab: React.FC = () => {
                 currentSelection={selectedGenrePath}
             />
 
-            <Divider style={{ margin: '24px 0' }} />
+            {/* Only show subsequent elements when genre selection is complete */}
+            {isGenreSelectionComplete() ? (
+                <>
+                    <Divider style={{ margin: '24px 0' }} />
 
-            {/* Idea Generator Section */}
-            <div style={{
-                marginBottom: '24px',
-                textAlign: 'center',
-                padding: '16px',
-                background: '#1a1a1a',
-                borderRadius: '8px',
-                border: '1px solid #303030'
-            }}>
-                <Text strong style={{ display: 'block', marginBottom: '12px', color: '#d9d9d9' }}>
-                    创意生成器
-                </Text>
-                <Text type="secondary" style={{ display: 'block', marginBottom: '16px', fontSize: '12px' }}>
-                    基于选择的类型生成创意灵感
-                </Text>
-                <Button
-                    type="primary"
-                    size="large"
-                    onClick={generateIdea}
-                    loading={isGeneratingIdea}
-                    disabled={!isGenreSelectionComplete()}
-                    style={{
-                        background: isGenreSelectionComplete() ? '#52c41a' : '#434343',
-                        borderColor: isGenreSelectionComplete() ? '#52c41a' : '#434343',
-                        fontSize: '16px',
-                        height: '40px',
-                        minWidth: '120px'
-                    }}
-                >
-                    <span style={{ marginRight: '8px' }}>🎲</span>
-                    {isGeneratingIdea ? '生成中...' : '随机创意'}
-                </Button>
-                {!isGenreSelectionComplete() && (
-                    <div style={{ marginTop: '8px' }}>
-                        <Text type="secondary" style={{ fontSize: '11px' }}>
-                            请先完成类型选择
-                        </Text>
-                    </div>
-                )}
-            </div>
-
-            <div style={{ marginBottom: '16px' }}>
-                <Text strong style={{ display: 'block', marginBottom: '8px' }}>创作灵感:</Text>
-                <TextArea
-                    rows={4}
-                    value={userInput}
-                    onChange={handleInputChange}
-                    placeholder="输入你的创作灵感..."
-                    disabled={isLoading || isGeneratingIdea}
-                    style={{
-                        background: isGeneratingIdea ? '#2a2a2a' : undefined,
-                        borderColor: isGeneratingIdea ? '#52c41a' : undefined
-                    }}
-                />
-            </div>
-
-            <Button
-                type="primary"
-                icon={<SendOutlined />}
-                onClick={generateIdeation}
-                loading={isLoading}
-                style={{ marginBottom: '24px', marginRight: '8px' }}
-            >
-                生成
-            </Button>
-
-            {error && rawResponse && (
-                <Button
-                    onClick={tryManualParse}
-                    style={{ marginBottom: '24px' }}
-                >
-                    尝试手动解析
-                </Button>
-            )}
-
-            {error && (
-                <Alert
-                    message="Error"
-                    description={error.message}
-                    type="error"
-                    showIcon
-                    style={{ marginBottom: '16px' }}
-                />
-            )}
-
-            {(isLoading || result || partialResult) && (
-                <div
-                    style={{
-                        marginTop: '16px',
+                    {/* Idea Generator Section */}
+                    <div style={{
+                        marginBottom: '24px',
+                        textAlign: 'center',
                         padding: '16px',
-                        border: '1px solid #303030',
+                        background: '#1a1a1a',
                         borderRadius: '8px',
-                        backgroundColor: '#141414'
-                    }}
-                >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                        <Text strong style={{ fontSize: '16px' }}>生成结果</Text>
-                        {isLoading && <Spin />}
+                        border: '1px solid #303030'
+                    }}>
+                        <Text strong style={{ display: 'block', marginBottom: '12px', color: '#d9d9d9' }}>
+                            创意生成器
+                        </Text>
+                        <Text type="secondary" style={{ display: 'block', marginBottom: '16px', fontSize: '12px' }}>
+                            基于选择的类型生成创意灵感
+                        </Text>
+                        <Button
+                            type="primary"
+                            size="large"
+                            onClick={generateIdea}
+                            loading={isGeneratingIdea}
+                            style={{
+                                background: '#52c41a',
+                                borderColor: '#52c41a',
+                                fontSize: '16px',
+                                height: '40px',
+                                minWidth: '120px'
+                            }}
+                        >
+                            <span style={{ marginRight: '8px' }}>🎲</span>
+                            {isGeneratingIdea ? '生成中...' : '随机创意'}
+                        </Button>
                     </div>
 
-                    {result ? (
-                        <div>
-                            {result.mediaType && (
-                                <div style={{ marginBottom: '16px' }}>
-                                    <Text strong>适合媒体类型:</Text> {result.mediaType}
-                                </div>
-                            )}
+                    <div style={{ marginBottom: '16px' }}>
+                        <Text strong style={{ display: 'block', marginBottom: '8px' }}>创作灵感:</Text>
+                        <TextArea
+                            rows={4}
+                            value={userInput}
+                            onChange={handleInputChange}
+                            placeholder="输入你的创作灵感..."
+                            disabled={isLoading || isGeneratingIdea}
+                            style={{
+                                background: isGeneratingIdea ? '#2a2a2a' : undefined,
+                                borderColor: isGeneratingIdea ? '#52c41a' : undefined
+                            }}
+                        />
+                    </div>
 
-                            {result.platform && (
-                                <div style={{ marginBottom: '16px' }}>
-                                    <Text strong>推荐平台:</Text> {result.platform}
-                                </div>
-                            )}
+                    {/* Only show generate button when there's text input */}
+                    {userInput.trim() && (
+                        <Button
+                            type="primary"
+                            icon={<SendOutlined />}
+                            onClick={generateIdeation}
+                            loading={isLoading}
+                            style={{ marginBottom: '24px', marginRight: '8px' }}
+                        >
+                            生成
+                        </Button>
+                    )}
 
-                            {result.plotOutline && (
-                                <div style={{ marginBottom: '16px' }}>
-                                    <Text strong>情节提要:</Text>
-                                    <Paragraph style={{
-                                        padding: '12px',
-                                        backgroundColor: '#1f1f1f',
-                                        borderRadius: '8px',
-                                        marginTop: '8px'
-                                    }}>
-                                        {result.plotOutline}
-                                    </Paragraph>
-                                </div>
-                            )}
+                    {error && (
+                        <Alert
+                            message="Error"
+                            description={error.message}
+                            type="error"
+                            showIcon
+                            style={{ marginBottom: '16px' }}
+                        />
+                    )}
 
-                            {result.analysis && (
+                    {(isLoading || result) && (
+                        <div
+                            style={{
+                                marginTop: '16px',
+                                padding: '16px',
+                                border: '1px solid #303030',
+                                borderRadius: '8px',
+                                backgroundColor: '#141414'
+                            }}
+                        >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                                <Text strong style={{ fontSize: '16px' }}>生成结果</Text>
+                                {isLoading && <Spin />}
+                            </div>
+
+                            {result ? (
                                 <div>
-                                    <Text strong>分析:</Text>
-                                    <Paragraph style={{
-                                        padding: '12px',
-                                        backgroundColor: '#1f1f1f',
-                                        borderRadius: '8px',
-                                        marginTop: '8px'
+                                    {result.mediaType && (
+                                        <div style={{ marginBottom: '16px' }}>
+                                            <Text strong>适合媒体类型:</Text> {result.mediaType}
+                                        </div>
+                                    )}
+
+                                    {result.platform && (
+                                        <div style={{ marginBottom: '16px' }}>
+                                            <Text strong>推荐平台:</Text> {result.platform}
+                                        </div>
+                                    )}
+
+                                    {result.plotOutline && (
+                                        <div style={{ marginBottom: '16px' }}>
+                                            <Text strong>情节提要:</Text>
+                                            <Paragraph style={{
+                                                padding: '12px',
+                                                backgroundColor: '#1f1f1f',
+                                                borderRadius: '8px',
+                                                marginTop: '8px'
+                                            }}>
+                                                {result.plotOutline}
+                                            </Paragraph>
+                                        </div>
+                                    )}
+
+                                    {result.analysis && (
+                                        <div>
+                                            <Text strong>分析:</Text>
+                                            <Paragraph style={{
+                                                padding: '12px',
+                                                backgroundColor: '#1f1f1f',
+                                                borderRadius: '8px',
+                                                marginTop: '8px'
+                                            }}>
+                                                {result.analysis}
+                                            </Paragraph>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div>
+                                    <pre style={{
+                                        whiteSpace: 'pre-wrap',
+                                        wordBreak: 'break-word',
+                                        color: '#d9d9d9'
                                     }}>
-                                        {result.analysis}
-                                    </Paragraph>
+                                        {''}
+                                    </pre>
                                 </div>
                             )}
-                        </div>
-                    ) : (
-                        <div>
-                            <pre style={{
-                                whiteSpace: 'pre-wrap',
-                                wordBreak: 'break-word',
-                                color: '#d9d9d9'
-                            }}>
-                                {partialResult || (isLoading ? '生成中...' : '')}
-                            </pre>
                         </div>
                     )}
+                </>
+            ) : (
+                /* Progress hint when genre selection is incomplete */
+                <div style={{
+                    textAlign: 'center',
+                    padding: '40px 20px',
+                    color: '#666',
+                    background: '#1a1a1a',
+                    borderRadius: '8px',
+                    border: '1px solid #303030',
+                    marginTop: '24px'
+                }}>
+                    <div style={{ fontSize: '48px', marginBottom: '16px' }}>📝</div>
+                    <Text type="secondary" style={{ fontSize: '16px', display: 'block', marginBottom: '8px' }}>
+                        请先完成故事类型选择以继续
+                    </Text>
+                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                        需要选择完整的类型层级（至少3层）
+                    </Text>
                 </div>
             )}
-
-            {/* Debug panel - uncomment if needed */}
-            {/* {rawResponse && (
-                <div style={{ marginTop: '20px', border: '1px solid #333', padding: '10px', borderRadius: '8px' }}>
-                    <Text strong>Raw Response (for debugging):</Text>
-                    <pre style={{ maxHeight: '200px', overflowY: 'auto', fontSize: '12px', color: '#888' }}>
-                        {rawResponse}
-                    </pre>
-                </div>
-            )} */}
         </div>
     );
 };

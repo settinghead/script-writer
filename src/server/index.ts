@@ -34,7 +34,7 @@ app.post("/llm-api/chat/completions", async (req: any, res: any) => {
     return res.status(500).json({ error: "DEEPSEEK_API_KEY not configured" });
   }
 
-  const { messages, model: modelName, ...restOfBody } = req.body;
+  const { messages, model: modelName, stream = true, ...restOfBody } = req.body;
 
   if (!messages || !modelName) {
     return res.status(400).json({ error: "Missing 'messages' or 'model' in request body" });
@@ -46,39 +46,64 @@ app.post("/llm-api/chat/completions", async (req: any, res: any) => {
   });
 
   try {
-    const result = await streamText({
-      model: deepseekAI(modelName),
-      messages: messages,
-      // You can pass other options from restOfBody if they are supported by streamText
-      // e.g., temperature: restOfBody.temperature
-      ...restOfBody // Pass through other options like response_format
-    });
-
-    // Manually pipe the ReadableStream (DataStream) to the Express response
-    // The data stream is compatible with the Vercel AI SDK useChat hook
-    res.setHeader('Content-Type', 'text/plain; charset=utf-8'); // Vercel AI SDK stream is typically text
-    res.setHeader('Transfer-Encoding', 'chunked');
-
-    const reader = result.toDataStream().getReader();
-
-    function pump() {
-      reader.read().then(({ done, value }) => {
-        if (done) {
-          res.end();
-          return;
-        }
-        // value is a Uint8Array, convert to string before writing if it's text data
-        res.write(new TextDecoder().decode(value));
-        pump();
-      }).catch(err => {
-        console.error("Error during stream pump:", err);
-        if (!res.writableEnded) {
-          res.status(500).end("Stream error");
-        }
+    if (stream === false) {
+      // Non-streaming response
+      const { generateText } = await import('ai');
+      const result = await generateText({
+        model: deepseekAI(modelName),
+        messages: messages,
+        ...restOfBody
       });
-    }
-    pump();
 
+      // Return OpenAI-compatible response format
+      res.json({
+        choices: [{
+          message: {
+            role: 'assistant',
+            content: result.text
+          },
+          finish_reason: 'stop',
+          index: 0
+        }],
+        model: modelName,
+        object: 'chat.completion',
+        usage: result.usage ? {
+          prompt_tokens: result.usage.promptTokens,
+          completion_tokens: result.usage.completionTokens,
+          total_tokens: result.usage.totalTokens
+        } : undefined
+      });
+    } else {
+      // Streaming response (original behavior)
+      const result = await streamText({
+        model: deepseekAI(modelName),
+        messages: messages,
+        ...restOfBody
+      });
+
+      // Manually pipe the ReadableStream (DataStream) to the Express response
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.setHeader('Transfer-Encoding', 'chunked');
+
+      const reader = result.toDataStream().getReader();
+
+      function pump() {
+        reader.read().then(({ done, value }) => {
+          if (done) {
+            res.end();
+            return;
+          }
+          res.write(new TextDecoder().decode(value));
+          pump();
+        }).catch(err => {
+          console.error("Error during stream pump:", err);
+          if (!res.writableEnded) {
+            res.status(500).end("Stream error");
+          }
+        });
+      }
+      pump();
+    }
   } catch (error: any) {
     console.error('Error in /llm-api/chat/completions endpoint:', error);
     if (!res.headersSent) {
@@ -89,7 +114,6 @@ app.post("/llm-api/chat/completions", async (req: any, res: any) => {
       }
       return res.status(500).json({ error: "Failed to process AI request", details: error.message });
     }
-    // If headers sent, the manual pipe's error handling should manage it or we ensure it's ended.
     if (!res.writableEnded) {
       console.error("Headers sent, but error occurred. Ending response.");
       res.end();
