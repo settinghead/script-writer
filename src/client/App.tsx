@@ -4,7 +4,7 @@ import '@ant-design/v5-patch-for-react-19';
 import ReactDOM from 'react-dom/client';
 import { Tabs, Layout, Typography, ConfigProvider, theme, Button, Drawer, Menu } from 'antd';
 import { MenuOutlined } from '@ant-design/icons';
-import InspirationTab from './components/InspirationTab';
+import IdeationTab from './components/IdeationTab';
 import ChatTab from './components/ChatTab';
 import ScriptTab from './components/ScriptTab';
 
@@ -37,14 +37,14 @@ const App: React.FC = () => {
 
   // Define tab content components
   const tabComponents = {
-    inspiration: <InspirationTab />,
+    ideation: <IdeationTab />,
     chat: <ChatTab />,
     script: <ScriptTab />
   };
 
   // Mobile menu items
   const menuItems = [
-    { key: 'inspiration', label: '灵感' },
+    { key: 'ideation', label: '灵感' },
     { key: 'chat', label: '对话' },
     { key: 'script', label: '剧本编辑' }
   ];
@@ -112,9 +112,9 @@ const App: React.FC = () => {
               }}
               items={[
                 {
-                  key: 'inspiration',
+                  key: 'ideation',
                   label: '灵感',
-                  children: <InspirationTab />
+                  children: <IdeationTab />
                 },
                 {
                   key: 'chat',

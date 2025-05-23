@@ -4,8 +4,8 @@ import { SendOutlined } from '@ant-design/icons';
 import { jsonrepair } from 'jsonrepair';
 
 // Use a hardcoded template instead of importing from a file
-// The content is directly copied from src/client/inspiration.txt
-const inspirationTemplate = `
+// The content is directly copied from src/client/ideation.txt
+const ideationTemplate = `
 你是一个短视频编剧。你的任务是根据用户输入的灵感，创作一个短视频的情节提要（ Plot Outline ）。
 
 Guidelines：
@@ -40,7 +40,7 @@ Guidelines：
 const { TextArea } = Input;
 const { Title, Text, Paragraph } = Typography;
 
-interface InspirationResponse {
+interface IdeationResponse {
     mediaType?: string;
     platform?: string;
     plotOutline?: string;
@@ -99,11 +99,11 @@ const logCleaning = (original: string) => {
     return cleaned;
 };
 
-const InspirationTab: React.FC = () => {
+const IdeationTab: React.FC = () => {
     const [userInput, setUserInput] = useState('古早言情剧');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<Error | null>(null);
-    const [result, setResult] = useState<InspirationResponse | null>(null);
+    const [result, setResult] = useState<IdeationResponse | null>(null);
     const [partialResult, setPartialResult] = useState('');
     const [rawResponse, setRawResponse] = useState(''); // Store raw response for debugging
 
@@ -113,7 +113,7 @@ const InspirationTab: React.FC = () => {
         setUserInput(e.target.value);
     };
 
-    const generateInspiration = async () => {
+    const generateIdeation = async () => {
         if (!userInput.trim()) {
             return;
         }
@@ -132,7 +132,7 @@ const InspirationTab: React.FC = () => {
 
         try {
             // Create the prompt by replacing placeholder in the template
-            const fullPrompt = inspirationTemplate.replace('{user_input}', userInput);
+            const fullPrompt = ideationTemplate.replace('{user_input}', userInput);
 
             const response = await fetch('/llm-api/chat/completions', {
                 method: 'POST',
@@ -186,7 +186,7 @@ const InspirationTab: React.FC = () => {
 
                                 // If we can parse the repaired JSON, update the result
                                 try {
-                                    const jsonResult = JSON.parse(repairedJson) as InspirationResponse;
+                                    const jsonResult = JSON.parse(repairedJson) as IdeationResponse;
                                     if (jsonResult.mediaType || jsonResult.plotOutline) {
                                         setResult(jsonResult);
                                     }
@@ -211,7 +211,7 @@ const InspirationTab: React.FC = () => {
 
                 if (cleanedFinalText && cleanedFinalText.trim()) {
                     const repairedFinal = jsonrepair(cleanedFinalText);
-                    const finalJson = JSON.parse(repairedFinal) as InspirationResponse;
+                    const finalJson = JSON.parse(repairedFinal) as IdeationResponse;
                     setResult(finalJson);
                 } else {
                     throw new Error('Cleaned text was empty');
@@ -227,7 +227,7 @@ const InspirationTab: React.FC = () => {
             if (err.name === 'AbortError') {
                 console.log('Request was aborted');
             } else {
-                console.error('Error generating inspiration:', err);
+                console.error('Error generating ideation:', err);
                 setError(err instanceof Error ? err : new Error(String(err)));
             }
         } finally {
@@ -273,7 +273,7 @@ const InspirationTab: React.FC = () => {
             }
 
             if (jsonStr) {
-                const manualJson = JSON.parse(jsonrepair(jsonStr)) as InspirationResponse;
+                const manualJson = JSON.parse(jsonrepair(jsonStr)) as IdeationResponse;
                 setResult(manualJson);
                 setError(null);
             }
@@ -301,7 +301,7 @@ const InspirationTab: React.FC = () => {
             <Button
                 type="primary"
                 icon={<SendOutlined />}
-                onClick={generateInspiration}
+                onClick={generateIdeation}
                 loading={isLoading}
                 style={{ marginBottom: '24px', marginRight: '8px' }}
             >
@@ -411,4 +411,4 @@ const InspirationTab: React.FC = () => {
     );
 };
 
-export default InspirationTab; 
+export default IdeationTab; 
