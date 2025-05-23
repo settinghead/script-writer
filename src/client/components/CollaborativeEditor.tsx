@@ -254,7 +254,7 @@ const SlateEditor: React.FC<SlateEditorProps> = ({ sharedType, provider }) => {
     return (
         <div className="slate-editor-container" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
             {!isMobile && <EditorToolbar editor={editor} />}
-            <div style={{ flex: 1, overflow: 'auto', padding: '12px' }}>
+            <div style={{ flex: 1, overflow: 'auto', padding: '12px 5px' }}>
                 <Slate editor={editor} initialValue={editorValue} onChange={onChange}>
                     <Cursors>
                         <Editable
