@@ -30,6 +30,8 @@ export default defineConfig({
       protocol: 'ws',
       host: 'localhost',
     },
+    // Enable history API fallback for client-side routing
+    historyApiFallback: true,
     proxy: {
       // Proxy WebSocket connections for YJS
       '/yjs': {

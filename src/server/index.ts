@@ -240,3 +240,19 @@ app.get("/api/scripts/:id", (req, res) => {
   // For now, just return a basic response
   res.json({ id, exists: true });
 });
+
+// Handle client-side routing fallback
+// This must be the last route to catch all unmatched routes
+app.get('*', (req, res, next) => {
+  // Only handle routes that don't start with /api, /llm-api, or other API routes
+  if (req.path.startsWith('/api') ||
+    req.path.startsWith('/llm-api') ||
+    req.path.startsWith('/yjs') ||
+    req.path.includes('.')) { // Skip routes with file extensions (assets)
+    return next();
+  }
+
+  // For all other routes, let ViteExpress handle the client-side routing
+  // ViteExpress will serve the index.html and React Router will handle the rest
+  next();
+});

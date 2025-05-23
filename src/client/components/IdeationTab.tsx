@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Input, Button, Typography, Spin, Alert } from 'antd';
+import { Input, Button, Typography, Spin, Alert, Select, Row, Col } from 'antd';
 import { SendOutlined } from '@ant-design/icons';
 import { jsonrepair } from 'jsonrepair';
 
@@ -12,7 +12,7 @@ Guidelines：
 
 \`\`\`
 1. 情节具体且明确：精确具体地明确故事的核心情节、主要事件和角色的关键行动。
-2.每个主要角色的动机清晰，知道“为什么角色为什么要做某些事情”
+2.每个主要角色的动机清晰，知道"为什么角色为什么要做某些事情"
 3. 有明确的冲突或目标
 4.故事完整，叙事闭环
 5. 去除笼统的概括语句。不使用任何修辞手法。只描述事件，不描述其他
@@ -21,6 +21,9 @@ Guidelines：
 接下来，你需要将用户输入的灵感改编为故事情节。故事需要充满着激烈的冲突和张力。
 步骤1：分析用户输入的灵感，并确定最适合的叙事范式。这类叙事中最为知名的作品通常在哪种特定媒体或平台上找到（例如起点中文网的悬疑频道、电视上的法制悬疑系列等）。
 步骤2：利用你刚才提到的，会出现的平台风格，根据用户输入灵感，创作出小说剧情。请想象小说已经写出，是短篇小说，而你现在将它缩写为200字左右的情节提要（Plot Outline）。情节提要（Plot Outline）剧情需要由具体的事件组成，所有内容都被写出，起承转合结构，第一人称。剧情要具体，参考情节提要（Plot Outline）guidelines
+
+目标平台：{platform}
+故事类型：{genre}
 ---
 请按照步骤执行，用户输入的灵感是：
 请以JSON格式回复，包含以下字段:
@@ -39,6 +42,69 @@ Guidelines：
 
 const { TextArea } = Input;
 const { Title, Text, Paragraph } = Typography;
+const { Option } = Select;
+
+// Platform options for short drama platforms
+const platformOptions = [
+    { value: '抖音', label: '抖音 (Douyin)' },
+    { value: '快手', label: '快手 (Kuaishou)' },
+    { value: '小红书', label: '小红书 (Xiaohongshu)' },
+    { value: 'B站', label: 'B站 (Bilibili)' },
+    { value: '微博', label: '微博 (Weibo)' },
+    { value: '腾讯视频', label: '腾讯视频 (Tencent Video)' },
+    { value: '爱奇艺', label: '爱奇艺 (iQiyi)' },
+    { value: '优酷', label: '优酷 (Youku)' },
+    { value: '芒果TV', label: '芒果TV (Mango TV)' },
+    { value: '西瓜视频', label: '西瓜视频 (Xigua Video)' }
+];
+
+// Genre hierarchy based on the provided text
+const genreOptions = {
+    '女频': {
+        '爱情类': {
+            '甜宠': ['浪漫甜蜜的爱情故事'],
+            '虐恋': ['充满波折、痛苦和情感挣扎的爱情故事'],
+            '先婚后爱': ['闪婚', '替嫁', '错嫁', '契约婚姻'],
+            '霸总': ['高冷型', '奶狗型', '疯批型', '沙雕型']
+        },
+        '设定类': {
+            '穿越': ['身穿', '魂穿', '近穿', '远穿', '反穿', '来回穿', '双穿', '穿书', '穿系统'],
+            '重生': ['重生', '双重生', '多重生'],
+            '马甲': ['单马甲', '多马甲', '双马甲'],
+            '替身': ['双胞胎', '真假千金', '错认白月光']
+        },
+        '其他类型': {
+            '复仇': ['复仇'],
+            '萌宝': ['单宝', '多宝', '龙凤胎', '双胞胎', '真假萌宝'],
+            '家庭': ['家庭伦理', '寻亲'],
+            '团宠': ['团宠'],
+            '恶女': ['恶毒女配', '双重人格'],
+            '娱乐圈': ['娱乐圈']
+        }
+    },
+    '男频': {
+        '设定类': {
+            '穿越': ['穿越'],
+            '重生': ['重生'],
+            '玄幻': ['修炼成仙', '升级打怪'],
+            '末世': ['天灾', '丧尸', '安全屋']
+        },
+        '逆袭类': {
+            '战神': ['强者', '龙王', '兵王', '城主'],
+            '神豪': ['一夜暴富', '点石成金', '物价贬值', '神仙神豪'],
+            '赘婿': ['赘婿'],
+            '离婚': ['离婚'],
+            '逆袭': ['小人物', '扮猪吃老虎', '马甲大佬'],
+            '残疾大佬': ['残疾大佬'],
+            '金手指': ['超能力', '系统选中', '世界巨变'],
+            '高手下山': ['高手下山']
+        },
+        '其他类型': {
+            '神医': ['神医'],
+            '后宫': ['后宫']
+        }
+    }
+};
 
 interface IdeationResponse {
     mediaType?: string;
@@ -101,6 +167,10 @@ const logCleaning = (original: string) => {
 
 const IdeationTab: React.FC = () => {
     const [userInput, setUserInput] = useState('古早言情剧');
+    const [selectedPlatform, setSelectedPlatform] = useState<string>('');
+    const [selectedMainGenre, setSelectedMainGenre] = useState<string>('');
+    const [selectedSubGenre, setSelectedSubGenre] = useState<string>('');
+    const [selectedDetailGenre, setSelectedDetailGenre] = useState<string>('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<Error | null>(null);
     const [result, setResult] = useState<IdeationResponse | null>(null);
@@ -111,6 +181,66 @@ const IdeationTab: React.FC = () => {
 
     const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         setUserInput(e.target.value);
+    };
+
+    const handlePlatformChange = (value: string) => {
+        setSelectedPlatform(value);
+    };
+
+    const handleMainGenreChange = (value: string) => {
+        setSelectedMainGenre(value);
+        setSelectedSubGenre('');
+        setSelectedDetailGenre('');
+    };
+
+    const handleSubGenreChange = (value: string) => {
+        setSelectedSubGenre(value);
+        setSelectedDetailGenre('');
+    };
+
+    const handleDetailGenreChange = (value: string) => {
+        setSelectedDetailGenre(value);
+    };
+
+    // Get available sub-genres based on selected main genre
+    const getSubGenreOptions = () => {
+        if (!selectedMainGenre || !genreOptions[selectedMainGenre]) return [];
+        return Object.keys(genreOptions[selectedMainGenre]).map(key => ({
+            value: key,
+            label: key
+        }));
+    };
+
+    // Get available detail genres based on selected main and sub genre
+    const getDetailGenreOptions = () => {
+        if (!selectedMainGenre || !selectedSubGenre ||
+            !genreOptions[selectedMainGenre] ||
+            !genreOptions[selectedMainGenre][selectedSubGenre]) return [];
+
+        return Object.keys(genreOptions[selectedMainGenre][selectedSubGenre]).map(key => ({
+            value: key,
+            label: key
+        }));
+    };
+
+    // Get sub-detail options for the final level
+    const getSubDetailOptions = () => {
+        if (!selectedMainGenre || !selectedSubGenre || !selectedDetailGenre ||
+            !genreOptions[selectedMainGenre] ||
+            !genreOptions[selectedMainGenre][selectedSubGenre] ||
+            !genreOptions[selectedMainGenre][selectedSubGenre][selectedDetailGenre]) return [];
+
+        const options = genreOptions[selectedMainGenre][selectedSubGenre][selectedDetailGenre];
+        return options.map(option => ({
+            value: option,
+            label: option
+        }));
+    };
+
+    // Build genre string for the prompt
+    const buildGenreString = () => {
+        const parts = [selectedMainGenre, selectedSubGenre, selectedDetailGenre].filter(Boolean);
+        return parts.join(' > ');
     };
 
     const generateIdeation = async () => {
@@ -131,8 +261,11 @@ const IdeationTab: React.FC = () => {
         abortControllerRef.current = new AbortController();
 
         try {
-            // Create the prompt by replacing placeholder in the template
-            const fullPrompt = ideationTemplate.replace('{user_input}', userInput);
+            // Create the prompt by replacing placeholders in the template
+            const fullPrompt = ideationTemplate
+                .replace('{user_input}', userInput)
+                .replace('{platform}', selectedPlatform || '未指定')
+                .replace('{genre}', buildGenreString() || '未指定');
 
             const response = await fetch('/llm-api/chat/completions', {
                 method: 'POST',
@@ -288,6 +421,66 @@ const IdeationTab: React.FC = () => {
             <Paragraph>
                 输入你的灵感，AI将帮你构建故事情节提要。
             </Paragraph>
+
+            <div style={{ marginBottom: '16px' }}>
+                <Text strong>目标平台:</Text>
+                <Select
+                    style={{ width: '100%' }}
+                    placeholder="选择目标平台"
+                    options={platformOptions}
+                    value={selectedPlatform}
+                    onChange={handlePlatformChange}
+                />
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+                <Text strong>故事类型:</Text>
+                <Select
+                    style={{ width: '100%' }}
+                    placeholder="选择故事类型"
+                    options={genreOptions}
+                    value={selectedMainGenre}
+                    onChange={handleMainGenreChange}
+                >
+                    {Object.keys(genreOptions).map(genre => (
+                        <Option key={genre} value={genre}>{genre}</Option>
+                    ))}
+                </Select>
+            </div>
+
+            {selectedMainGenre && (
+                <div style={{ marginBottom: '16px' }}>
+                    <Text strong>子类型:</Text>
+                    <Select
+                        style={{ width: '100%' }}
+                        placeholder="选择子类型"
+                        options={getSubGenreOptions()}
+                        value={selectedSubGenre}
+                        onChange={handleSubGenreChange}
+                    >
+                        {getSubGenreOptions().map(option => (
+                            <Option key={option.value} value={option.value}>{option.label}</Option>
+                        ))}
+                    </Select>
+                </div>
+            )}
+
+            {selectedSubGenre && (
+                <div style={{ marginBottom: '16px' }}>
+                    <Text strong>细节类型:</Text>
+                    <Select
+                        style={{ width: '100%' }}
+                        placeholder="选择细节类型"
+                        options={getDetailGenreOptions()}
+                        value={selectedDetailGenre}
+                        onChange={handleDetailGenreChange}
+                    >
+                        {getDetailGenreOptions().map(option => (
+                            <Option key={option.value} value={option.value}>{option.label}</Option>
+                        ))}
+                    </Select>
+                </div>
+            )}
 
             <TextArea
                 rows={4}
