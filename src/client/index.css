@@ -1,4 +1,4 @@
-@custom-variant dark (&:is(.dark *));
+/* @custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
@@ -115,7 +115,7 @@
   body {
     @apply bg-background text-foreground;
   }
-}
+} */
 
 /* Styles for the ScriptTab component */
 .script-tab-container {
