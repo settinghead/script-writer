@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Input, Button, Typography, Spin, Alert, Select, Row, Col } from 'antd';
-import { SendOutlined } from '@ant-design/icons';
+import { Input, Button, Typography, Spin, Alert, Select, Row, Col, Divider, Modal, Drawer } from 'antd';
+import { SendOutlined, RightOutlined, LeftOutlined } from '@ant-design/icons';
 import { jsonrepair } from 'jsonrepair';
 
 // Use a hardcoded template instead of importing from a file
@@ -38,6 +38,22 @@ Guidelines：
 {user_input}
 
 
+`;
+
+// Idea generation template
+const ideaGenerationTemplate = `
+你是一个创意生成器。请根据给定的故事类型，生成一个简短、具体、有趣的创意灵感句子。
+
+故事类型：{genre}
+目标平台：{platform}
+
+要求：
+- 只需要一句话（15-30字）
+- 要具体，不要抽象
+- 要有冲突或戏剧性
+- 适合短视频/短剧格式
+
+请直接返回这一句创意，不要其他解释。
 `;
 
 const { TextArea } = Input;
@@ -106,6 +122,259 @@ const genreOptions = {
     }
 };
 
+// Genre Selection Popup Component
+interface GenreSelectionPopupProps {
+    visible: boolean;
+    onClose: () => void;
+    onSelect: (path: string[]) => void;
+    currentSelection: string[];
+}
+
+const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
+    visible,
+    onClose,
+    onSelect,
+    currentSelection
+}) => {
+    const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+    const [navigationPath, setNavigationPath] = useState<string[]>([]);
+    const [selectedPath, setSelectedPath] = useState<string[]>(currentSelection);
+
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobile(window.innerWidth <= 768);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    useEffect(() => {
+        if (visible) {
+            setSelectedPath(currentSelection);
+            setNavigationPath([]);
+        }
+    }, [visible, currentSelection]);
+
+    // Get data at specific path
+    const getDataAtPath = (path: string[]) => {
+        let current: any = genreOptions;
+        for (const segment of path) {
+            current = current[segment];
+            if (!current) return null;
+        }
+        return current;
+    };
+
+    // Check if item has children (is expandable)
+    const hasChildren = (path: string[], key: string) => {
+        const data = getDataAtPath([...path, key]);
+        return data && typeof data === 'object' && !Array.isArray(data);
+    };
+
+    // Check if this is the deepest meaningful level
+    const isDeepestLevel = (path: string[], key: string) => {
+        const data = getDataAtPath([...path, key]);
+        if (Array.isArray(data)) {
+            return data.length <= 1; // If only one option or empty, it's effectively deepest
+        }
+        if (typeof data === 'object') {
+            const children = Object.keys(data);
+            if (children.length === 1) {
+                // Check if the single child is also single-option
+                const childData = data[children[0]];
+                if (Array.isArray(childData) && childData.length <= 1) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    };
+
+    // Handle item click
+    const handleItemClick = (path: string[], key: string) => {
+        const newPath = [...path, key];
+
+        if (hasChildren(path, key) && !isDeepestLevel(path, key)) {
+            // Navigate deeper
+            if (isMobile) {
+                setNavigationPath(newPath);
+            } else {
+                setSelectedPath(newPath);
+            }
+        } else {
+            // This is the final selection
+            onSelect(newPath);
+            onClose();
+        }
+    };
+
+    // Render Miller Columns (Desktop)
+    const renderMillerColumns = () => {
+        const columns = [];
+        let currentData = genreOptions;
+        let currentPath: string[] = [];
+
+        // Add root column
+        columns.push(
+            <div key="root" style={{
+                width: '200px',
+                borderRight: '1px solid #303030',
+                height: '400px',
+                overflowY: 'auto'
+            }}>
+                {Object.keys(currentData).map(key => (
+                    <div
+                        key={key}
+                        onClick={() => handleItemClick(currentPath, key)}
+                        style={{
+                            padding: '8px 12px',
+                            cursor: 'pointer',
+                            backgroundColor: selectedPath[0] === key ? '#1890ff20' : 'transparent',
+                            borderLeft: selectedPath[0] === key ? '3px solid #1890ff' : '3px solid transparent',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ffffff10'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = selectedPath[0] === key ? '#1890ff20' : 'transparent'}
+                    >
+                        <span>{key}</span>
+                        {hasChildren(currentPath, key) && <RightOutlined style={{ fontSize: '10px' }} />}
+                    </div>
+                ))}
+            </div>
+        );
+
+        // Add subsequent columns based on selection
+        for (let i = 0; i < selectedPath.length && i < 4; i++) {
+            currentPath = selectedPath.slice(0, i + 1);
+            currentData = getDataAtPath(currentPath);
+
+            if (currentData && typeof currentData === 'object' && !Array.isArray(currentData)) {
+                columns.push(
+                    <div key={`column-${i}`} style={{
+                        width: '200px',
+                        borderRight: '1px solid #303030',
+                        height: '400px',
+                        overflowY: 'auto'
+                    }}>
+                        {Object.keys(currentData).map(key => (
+                            <div
+                                key={key}
+                                onClick={() => handleItemClick(currentPath, key)}
+                                style={{
+                                    padding: '8px 12px',
+                                    cursor: 'pointer',
+                                    backgroundColor: selectedPath[i + 1] === key ? '#1890ff20' : 'transparent',
+                                    borderLeft: selectedPath[i + 1] === key ? '3px solid #1890ff' : '3px solid transparent',
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ffffff10'}
+                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = selectedPath[i + 1] === key ? '#1890ff20' : 'transparent'}
+                            >
+                                <span>{key}</span>
+                                {hasChildren(currentPath, key) && !isDeepestLevel(currentPath, key) && (
+                                    <RightOutlined style={{ fontSize: '10px' }} />
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                );
+            }
+        }
+
+        return (
+            <div style={{ display: 'flex', height: '400px', overflow: 'hidden' }}>
+                {columns}
+            </div>
+        );
+    };
+
+    // Render Single View Navigation (Mobile)
+    const renderSingleView = () => {
+        const currentData = getDataAtPath(navigationPath);
+        const breadcrumbs = navigationPath.length > 0 ? navigationPath : ['选择类型'];
+
+        return (
+            <div style={{ height: '400px', display: 'flex', flexDirection: 'column' }}>
+                {/* Breadcrumbs */}
+                <div style={{
+                    padding: '12px 16px',
+                    borderBottom: '1px solid #303030',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                }}>
+                    {navigationPath.length > 0 && (
+                        <Button
+                            type="text"
+                            icon={<LeftOutlined />}
+                            onClick={() => setNavigationPath(navigationPath.slice(0, -1))}
+                            style={{ padding: '4px 8px', height: 'auto' }}
+                        />
+                    )}
+                    <div style={{ fontSize: '14px', color: '#1890ff' }}>
+                        {breadcrumbs.join(' > ')}
+                    </div>
+                </div>
+
+                {/* Items */}
+                <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
+                    {currentData && typeof currentData === 'object' && !Array.isArray(currentData) &&
+                        Object.keys(currentData).map(key => (
+                            <div
+                                key={key}
+                                onClick={() => handleItemClick(navigationPath, key)}
+                                style={{
+                                    padding: '12px 16px',
+                                    cursor: 'pointer',
+                                    borderBottom: '1px solid #2a2a2a',
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center'
+                                }}
+                            >
+                                <span>{key}</span>
+                                {hasChildren(navigationPath, key) && !isDeepestLevel(navigationPath, key) && (
+                                    <RightOutlined style={{ fontSize: '12px', color: '#666' }} />
+                                )}
+                            </div>
+                        ))
+                    }
+                </div>
+            </div>
+        );
+    };
+
+    if (isMobile) {
+        return (
+            <Drawer
+                title="选择故事类型"
+                placement="bottom"
+                height="60vh"
+                onClose={onClose}
+                open={visible}
+            >
+                {renderSingleView()}
+            </Drawer>
+        );
+    }
+
+    return (
+        <Modal
+            title="选择故事类型"
+            open={visible}
+            onCancel={onClose}
+            footer={null}
+            width={800}
+        >
+            {renderMillerColumns()}
+        </Modal>
+    );
+};
+
 interface IdeationResponse {
     mediaType?: string;
     platform?: string;
@@ -168,10 +437,10 @@ const logCleaning = (original: string) => {
 const IdeationTab: React.FC = () => {
     const [userInput, setUserInput] = useState('古早言情剧');
     const [selectedPlatform, setSelectedPlatform] = useState<string>('');
-    const [selectedMainGenre, setSelectedMainGenre] = useState<string>('');
-    const [selectedSubGenre, setSelectedSubGenre] = useState<string>('');
-    const [selectedDetailGenre, setSelectedDetailGenre] = useState<string>('');
+    const [selectedGenrePath, setSelectedGenrePath] = useState<string[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [isGeneratingIdea, setIsGeneratingIdea] = useState(false);
+    const [genrePopupVisible, setGenrePopupVisible] = useState(false);
     const [error, setError] = useState<Error | null>(null);
     const [result, setResult] = useState<IdeationResponse | null>(null);
     const [partialResult, setPartialResult] = useState('');
@@ -187,60 +456,117 @@ const IdeationTab: React.FC = () => {
         setSelectedPlatform(value);
     };
 
-    const handleMainGenreChange = (value: string) => {
-        setSelectedMainGenre(value);
-        setSelectedSubGenre('');
-        setSelectedDetailGenre('');
+    const handleGenreSelection = (path: string[]) => {
+        setSelectedGenrePath(path);
     };
 
-    const handleSubGenreChange = (value: string) => {
-        setSelectedSubGenre(value);
-        setSelectedDetailGenre('');
-    };
-
-    const handleDetailGenreChange = (value: string) => {
-        setSelectedDetailGenre(value);
-    };
-
-    // Get available sub-genres based on selected main genre
-    const getSubGenreOptions = () => {
-        if (!selectedMainGenre || !genreOptions[selectedMainGenre]) return [];
-        return Object.keys(genreOptions[selectedMainGenre]).map(key => ({
-            value: key,
-            label: key
-        }));
-    };
-
-    // Get available detail genres based on selected main and sub genre
-    const getDetailGenreOptions = () => {
-        if (!selectedMainGenre || !selectedSubGenre ||
-            !genreOptions[selectedMainGenre] ||
-            !genreOptions[selectedMainGenre][selectedSubGenre]) return [];
-
-        return Object.keys(genreOptions[selectedMainGenre][selectedSubGenre]).map(key => ({
-            value: key,
-            label: key
-        }));
-    };
-
-    // Get sub-detail options for the final level
-    const getSubDetailOptions = () => {
-        if (!selectedMainGenre || !selectedSubGenre || !selectedDetailGenre ||
-            !genreOptions[selectedMainGenre] ||
-            !genreOptions[selectedMainGenre][selectedSubGenre] ||
-            !genreOptions[selectedMainGenre][selectedSubGenre][selectedDetailGenre]) return [];
-
-        const options = genreOptions[selectedMainGenre][selectedSubGenre][selectedDetailGenre];
-        return options.map(option => ({
-            value: option,
-            label: option
-        }));
+    // Check if genre selection is complete (for dice button)
+    const isGenreSelectionComplete = () => {
+        return selectedGenrePath.length >= 3; // At least main > sub > detail
     };
 
     // Build genre string for the prompt
     const buildGenreString = () => {
-        const parts = [selectedMainGenre, selectedSubGenre, selectedDetailGenre].filter(Boolean);
-        return parts.join(' > ');
+        return selectedGenrePath.join(' > ');
+    };
+
+    // Generate a one-sentence idea using LLM
+    const generateIdea = async () => {
+        if (!isGenreSelectionComplete()) {
+            return;
+        }
+
+        // Check if there's substantial content and confirm replacement
+        if (userInput.length > 5) {
+            const confirmed = window.confirm('当前输入框有内容，是否要替换为新的创意？');
+            if (!confirmed) {
+                return;
+            }
+        }
+
+        setIsGeneratingIdea(true);
+        setError(null);
+
+        try {
+            const genreString = buildGenreString();
+            const prompt = ideaGenerationTemplate
+                .replace('{genre}', genreString)
+                .replace('{platform}', selectedPlatform || '通用短视频平台');
+
+            const response = await fetch('/llm-api/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    model: 'deepseek-chat',
+                    messages: [
+                        { role: 'user', content: prompt }
+                    ]
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
+            }
+
+            const reader = response.body?.getReader();
+            if (!reader) {
+                throw new Error('Failed to get response reader');
+            }
+
+            let accumulatedText = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = new TextDecoder().decode(value);
+                accumulatedText += chunk;
+            }
+
+            // Extract the idea from the response - more aggressive cleaning for idea generation
+            let cleanedText = accumulatedText;
+
+            // Remove SSE prefixes and metadata
+            cleanedText = cleanedText.replace(/^\d+:"?/gm, '');
+            cleanedText = cleanedText.replace(/^:.*$/gm, '');
+            cleanedText = cleanedText.replace(/^data:\s*/gm, '');
+
+            // Remove JSON structure if present
+            cleanedText = cleanedText.replace(/^\{.*?"content":\s*"?/g, '');
+            cleanedText = cleanedText.replace(/"\s*\}.*$/g, '');
+
+            // Remove quotes and escape characters
+            cleanedText = cleanedText.replace(/\\n/g, '\n');
+            cleanedText = cleanedText.replace(/\\"/g, '"');
+            cleanedText = cleanedText.replace(/^["']/g, '');
+            cleanedText = cleanedText.replace(/["']$/g, '');
+
+            // Remove messageId and other metadata
+            cleanedText = cleanedText.replace(/\{.*?messageId.*?\}/g, '');
+            cleanedText = cleanedText.replace(/messageId:.*$/gm, '');
+
+            // Clean up any remaining artifacts
+            cleanedText = cleanedText.replace(/^\s*[\{\[\]\}]\s*/gm, '');
+            cleanedText = cleanedText.replace(/\s+/g, ' ').trim();
+
+            // Extract just the first meaningful sentence if multiple lines
+            const lines = cleanedText.split('\n').filter(line => line.trim());
+            const idea = lines.find(line => line.length > 10 && !line.includes('{') && !line.includes('messageId')) || lines[0] || cleanedText;
+
+            if (idea && idea.trim()) {
+                setUserInput(idea.trim());
+            } else {
+                throw new Error('无法解析生成的创意内容');
+            }
+
+        } catch (err) {
+            console.error('Error generating idea:', err);
+            setError(err instanceof Error ? err : new Error(String(err)));
+        } finally {
+            setIsGeneratingIdea(false);
+        }
     };
 
     const generateIdeation = async () => {
@@ -416,7 +742,7 @@ const IdeationTab: React.FC = () => {
     };
 
     return (
-        <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
+        <div style={{ padding: '20px', maxWidth: '600px', width: "100%", margin: '0 auto', overflow: "auto" }}>
             <Title level={4}>灵感生成器</Title>
             <Paragraph>
                 输入你的灵感，AI将帮你构建故事情节提要。
@@ -434,59 +760,101 @@ const IdeationTab: React.FC = () => {
             </div>
 
             <div style={{ marginBottom: '16px' }}>
-                <Text strong>故事类型:</Text>
-                <Select
-                    style={{ width: '100%' }}
-                    placeholder="选择故事类型"
-                    value={selectedMainGenre}
-                    onChange={handleMainGenreChange}
+                <Text strong style={{ display: 'block', marginBottom: '8px' }}>故事类型:</Text>
+                <div
+                    onClick={() => setGenrePopupVisible(true)}
+                    style={{
+                        border: '1px solid #434343',
+                        borderRadius: '6px',
+                        padding: '8px 12px',
+                        minHeight: '32px',
+                        cursor: 'pointer',
+                        background: '#141414',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        transition: 'all 0.3s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.borderColor = '#1890ff'}
+                    onMouseLeave={(e) => e.currentTarget.style.borderColor = '#434343'}
                 >
-                    {Object.keys(genreOptions).map(genre => (
-                        <Option key={genre} value={genre}>{genre}</Option>
-                    ))}
-                </Select>
+                    {selectedGenrePath.length > 0 ? (
+                        <span style={{ color: '#d9d9d9' }}>
+                            {buildGenreString()}
+                        </span>
+                    ) : (
+                        <span style={{ color: '#666' }}>
+                            点击选择故事类型
+                        </span>
+                    )}
+                    <RightOutlined style={{ fontSize: '12px', color: '#666' }} />
+                </div>
             </div>
 
-            {selectedMainGenre && (
-                <div style={{ marginBottom: '16px' }}>
-                    <Text strong>子类型:</Text>
-                    <Select
-                        style={{ width: '100%' }}
-                        placeholder="选择子类型"
-                        value={selectedSubGenre}
-                        onChange={handleSubGenreChange}
-                    >
-                        {getSubGenreOptions().map(option => (
-                            <Option key={option.value} value={option.value}>{option.label}</Option>
-                        ))}
-                    </Select>
-                </div>
-            )}
-
-            {selectedSubGenre && (
-                <div style={{ marginBottom: '16px' }}>
-                    <Text strong>细节类型:</Text>
-                    <Select
-                        style={{ width: '100%' }}
-                        placeholder="选择细节类型"
-                        value={selectedDetailGenre}
-                        onChange={handleDetailGenreChange}
-                    >
-                        {getDetailGenreOptions().map(option => (
-                            <Option key={option.value} value={option.value}>{option.label}</Option>
-                        ))}
-                    </Select>
-                </div>
-            )}
-
-            <TextArea
-                rows={4}
-                value={userInput}
-                onChange={handleInputChange}
-                placeholder="输入你的创作灵感..."
-                style={{ marginBottom: '16px' }}
-                disabled={isLoading}
+            <GenreSelectionPopup
+                visible={genrePopupVisible}
+                onClose={() => setGenrePopupVisible(false)}
+                onSelect={handleGenreSelection}
+                currentSelection={selectedGenrePath}
             />
+
+            <Divider style={{ margin: '24px 0' }} />
+
+            {/* Idea Generator Section */}
+            <div style={{
+                marginBottom: '24px',
+                textAlign: 'center',
+                padding: '16px',
+                background: '#1a1a1a',
+                borderRadius: '8px',
+                border: '1px solid #303030'
+            }}>
+                <Text strong style={{ display: 'block', marginBottom: '12px', color: '#d9d9d9' }}>
+                    创意生成器
+                </Text>
+                <Text type="secondary" style={{ display: 'block', marginBottom: '16px', fontSize: '12px' }}>
+                    基于选择的类型生成创意灵感
+                </Text>
+                <Button
+                    type="primary"
+                    size="large"
+                    onClick={generateIdea}
+                    loading={isGeneratingIdea}
+                    disabled={!isGenreSelectionComplete()}
+                    style={{
+                        background: isGenreSelectionComplete() ? '#52c41a' : '#434343',
+                        borderColor: isGenreSelectionComplete() ? '#52c41a' : '#434343',
+                        fontSize: '16px',
+                        height: '40px',
+                        minWidth: '120px'
+                    }}
+                >
+                    <span style={{ marginRight: '8px' }}>🎲</span>
+                    {isGeneratingIdea ? '生成中...' : '随机创意'}
+                </Button>
+                {!isGenreSelectionComplete() && (
+                    <div style={{ marginTop: '8px' }}>
+                        <Text type="secondary" style={{ fontSize: '11px' }}>
+                            请先完成类型选择
+                        </Text>
+                    </div>
+                )}
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+                <Text strong style={{ display: 'block', marginBottom: '8px' }}>创作灵感:</Text>
+                <TextArea
+                    rows={4}
+                    value={userInput}
+                    onChange={handleInputChange}
+                    placeholder="输入你的创作灵感..."
+                    disabled={isLoading || isGeneratingIdea}
+                    style={{
+                        background: isGeneratingIdea ? '#2a2a2a' : undefined,
+                        borderColor: isGeneratingIdea ? '#52c41a' : undefined
+                    }}
+                />
+            </div>
 
             <Button
                 type="primary"

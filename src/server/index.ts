@@ -3,7 +3,6 @@ import ViteExpress from "vite-express";
 import { createOpenAI } from '@ai-sdk/openai';
 import { streamText } from 'ai';
 import dotenv from 'dotenv';
-import http from 'http';
 import { setupYjsWebSocketServer, applyEditsToYDoc } from './yjs-server';
 import { parseLLMResponse } from './llm-to-yjs';
 
@@ -243,7 +242,7 @@ app.get("/api/scripts/:id", (req, res) => {
 
 // Handle client-side routing fallback
 // This must be the last route to catch all unmatched routes
-app.get('*', (req, res, next) => {
+app.get(/(.*)/, (req, res, next) => {
   // Only handle routes that don't start with /api, /llm-api, or other API routes
   if (req.path.startsWith('/api') ||
     req.path.startsWith('/llm-api') ||
