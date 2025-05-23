@@ -438,7 +438,6 @@ const IdeationTab: React.FC = () => {
                 <Select
                     style={{ width: '100%' }}
                     placeholder="选择故事类型"
-                    options={genreOptions}
                     value={selectedMainGenre}
                     onChange={handleMainGenreChange}
                 >
@@ -454,7 +453,6 @@ const IdeationTab: React.FC = () => {
                     <Select
                         style={{ width: '100%' }}
                         placeholder="选择子类型"
-                        options={getSubGenreOptions()}
                         value={selectedSubGenre}
                         onChange={handleSubGenreChange}
                     >
@@ -471,7 +469,6 @@ const IdeationTab: React.FC = () => {
                     <Select
                         style={{ width: '100%' }}
                         placeholder="选择细节类型"
-                        options={getDetailGenreOptions()}
                         value={selectedDetailGenre}
                         onChange={handleDetailGenreChange}
                     >
