@@ -49,7 +49,7 @@ ln -sfn $DEPLOY_DIR/dist-server /var/www/$PROJECT_NAME-current/dist-server
 # Restart backend with PM2
 pm2 delete $PROJECT_NAME-api || true
 cd $DEPLOY_DIR
-NODE_ENV=production pm2 start dist-server/index.js --name $PROJECT_NAME-api
+NODE_ENV=production pm2 start dist-server/server/index.js --name $PROJECT_NAME-api
 
 # Keep only the 5 most recent deployments
 cd /var/www
