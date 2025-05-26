@@ -42,18 +42,20 @@ Guidelines：
 
 // Idea generation template
 const ideaGenerationTemplate = `
-你是一个创意生成器。请根据给定的故事类型，生成一个简短、具体、有趣的创意灵感句子。
+你是一个创意生成器。请根据给定的故事类型，生成5个简短、具体、有趣的创意灵感句子。
 
 故事类型：{genre}
 目标平台：{platform}
 
 要求：
-- 只需要一句话（15-30字）
-- 要具体，不要抽象
-- 要有冲突或戏剧性
-- 适合短视频/短剧格式
+- 每个创意一句话（15-30字）
+- 每个创意都要具体，不要抽象
+- 每个创意都要有冲突或戏剧性
+- 每个创意都适合短视频/短剧格式
 
-请直接返回这一句创意，不要其他解释。
+请以JSON数组的格式返回这5个创意，例如：
+["创意1", "创意2", "创意3", "创意4", "创意5"]
+不要其他解释或包裹。
 `;
 
 const { TextArea } = Input;
@@ -462,6 +464,8 @@ const IdeationTab: React.FC = () => {
     const [genrePopupVisible, setGenrePopupVisible] = useState(false);
     const [error, setError] = useState<Error | null>(null);
     const [result, setResult] = useState<IdeationResponse | null>(null);
+    const [generatedIdeas, setGeneratedIdeas] = useState<string[]>([]);
+    const [selectedIdeaIndex, setSelectedIdeaIndex] = useState<number | null>(null);
 
     const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -475,6 +479,12 @@ const IdeationTab: React.FC = () => {
 
     const handleGenreSelection = (path: string[]) => {
         setSelectedGenrePath(path);
+    };
+
+    // Handle idea card selection
+    const handleIdeaSelection = (index: number) => {
+        setSelectedIdeaIndex(index);
+        setUserInput(generatedIdeas[index]);
     };
 
     // Check if genre selection is complete (for dice button)
@@ -520,7 +530,8 @@ const IdeationTab: React.FC = () => {
                     messages: [
                         { role: 'user', content: prompt }
                     ],
-                    stream: false // Explicitly disable streaming
+                    stream: false, // Explicitly disable streaming
+                    response_format: { type: 'json_object' } // Ensure JSON output
                 })
             });
 
@@ -532,17 +543,40 @@ const IdeationTab: React.FC = () => {
             const data = await response.json();
 
             // Extract the content from the response
-            let ideaText = '';
+            let ideasArray: string[] = [];
             if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
-                ideaText = data.choices[0].message.content.trim();
+                const contentText = data.choices[0].message.content.trim();
+                try {
+                    ideasArray = JSON.parse(contentText);
+                    if (!Array.isArray(ideasArray) || ideasArray.some(item => typeof item !== 'string') || ideasArray.length === 0) {
+                        throw new Error('响应不是一个包含字符串的有效非空数组');
+                    }
+                } catch (parseError) {
+                    console.error('Failed to parse ideas JSON:', parseError);
+                    console.log('Raw content for ideas:', contentText);
+                    // Try to repair if simple parse fails, e.g. if LLM adds ```json wrapper
+                    try {
+                        const repairedJson = jsonrepair(contentText);
+                        ideasArray = JSON.parse(repairedJson);
+                        if (!Array.isArray(ideasArray) || ideasArray.some(item => typeof item !== 'string') || ideasArray.length === 0) {
+                            throw new Error('修复后的响应仍然不是一个包含字符串的有效非空数组');
+                        }
+                    } catch (repairError) {
+                        console.error('Failed to parse ideas JSON even after repair:', repairError);
+                        throw new Error('无法解析生成的创意为JSON数组');
+                    }
+                }
             } else {
                 throw new Error('无法从响应中提取内容');
             }
 
-            if (ideaText && ideaText.length > 5) {
-                setUserInput(ideaText);
+            if (ideasArray.length > 0 && ideasArray[0] && ideasArray[0].length > 0) {
+                setGeneratedIdeas(ideasArray);
+                setSelectedIdeaIndex(0);
+                setUserInput(ideasArray[0]); // Use the first idea
+                console.log("Generated ideas:", ideasArray); // Log all ideas
             } else {
-                throw new Error('生成的创意内容为空');
+                throw new Error('生成的创意内容为空或格式不正确');
             }
 
         } catch (err) {
@@ -592,7 +626,7 @@ const IdeationTab: React.FC = () => {
             });
 
             if (!response.ok) {
-                throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
+                throw new Error(`Server responded with ${response.status}: ${response.statusText} `);
             }
 
             // Parse as regular JSON response
@@ -742,17 +776,93 @@ const IdeationTab: React.FC = () => {
 
                     <div style={{ marginBottom: '16px' }}>
                         <Text strong style={{ display: 'block', marginBottom: '8px' }}>创作灵感:</Text>
-                        <TextArea
-                            rows={4}
-                            value={userInput}
-                            onChange={handleInputChange}
-                            placeholder="输入你的创作灵感..."
-                            disabled={isLoading || isGeneratingIdea}
-                            style={{
-                                background: isGeneratingIdea ? '#2a2a2a' : undefined,
-                                borderColor: isGeneratingIdea ? '#52c41a' : undefined
-                            }}
-                        />
+
+                        {/* Generated Ideas Cards */}
+                        {generatedIdeas.length > 0 && (
+                            <div style={{ marginBottom: '16px' }}>
+                                <Text type="secondary" style={{ display: 'block', marginBottom: '8px', fontSize: '12px' }}>
+                                    选择一个创意（点击卡片选择）:
+                                </Text>
+                                <div style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                                    gap: '8px',
+                                    marginBottom: '16px'
+                                }}>
+                                    {generatedIdeas.map((idea, index) => (
+                                        <div
+                                            key={index}
+                                            onClick={() => handleIdeaSelection(index)}
+                                            style={{
+                                                padding: '12px',
+                                                border: selectedIdeaIndex === index ? '2px solid #1890ff' : '1px solid #434343',
+                                                borderRadius: '6px',
+                                                cursor: 'pointer',
+                                                backgroundColor: selectedIdeaIndex === index ? '#1890ff10' : '#1a1a1a',
+                                                transition: 'all 0.3s',
+                                                position: 'relative'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                if (selectedIdeaIndex !== index) {
+                                                    e.currentTarget.style.backgroundColor = '#2a2a2a';
+                                                    e.currentTarget.style.borderColor = '#666';
+                                                }
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                if (selectedIdeaIndex !== index) {
+                                                    e.currentTarget.style.backgroundColor = '#1a1a1a';
+                                                    e.currentTarget.style.borderColor = '#434343';
+                                                }
+                                            }}
+                                        >
+                                            <div style={{
+                                                position: 'absolute',
+                                                top: '8px',
+                                                right: '8px',
+                                                width: '20px',
+                                                height: '20px',
+                                                borderRadius: '50%',
+                                                backgroundColor: selectedIdeaIndex === index ? '#1890ff' : '#666',
+                                                color: 'white',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                fontSize: '12px',
+                                                fontWeight: 'bold'
+                                            }}>
+                                                {index + 1}
+                                            </div>
+                                            <div style={{
+                                                fontSize: '14px',
+                                                lineHeight: '1.4',
+                                                paddingRight: '30px',
+                                                color: selectedIdeaIndex === index ? '#d9d9d9' : '#bfbfbf'
+                                            }}>
+                                                {idea}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Editable textarea for selected/modified idea */}
+                        <div>
+                            <Text type="secondary" style={{ display: 'block', marginBottom: '8px', fontSize: '12px' }}>
+                                {generatedIdeas.length > 0 ? '编辑选中的创意:' : '输入你的创作灵感:'}
+                            </Text>
+                            <TextArea
+                                rows={4}
+                                value={userInput}
+                                onChange={handleInputChange}
+                                placeholder={generatedIdeas.length > 0 ? "编辑选中的创意..." : "输入你的创作灵感..."}
+                                disabled={isLoading || isGeneratingIdea}
+                                style={{
+                                    background: isGeneratingIdea ? '#2a2a2a' : undefined,
+                                    borderColor: isGeneratingIdea ? '#52c41a' : undefined
+                                }}
+                            />
+                        </div>
                     </div>
 
                     {/* Only show generate button when there's text input */}
