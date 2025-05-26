@@ -469,7 +469,7 @@ const IdeationTab: React.FC = () => {
                                 </Text>
                                 <div style={{
                                     display: 'grid',
-                                    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                                    gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fit, minmax(250px, 1fr))',
                                     gap: '8px',
                                     marginBottom: '16px'
                                 }}>
