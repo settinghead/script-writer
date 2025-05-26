@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Input, Button, Typography, Spin, Alert, Select, Row, Col, Divider, Modal, Drawer } from 'antd';
+import { Input, Button, Typography, Spin, Alert, Select, Row, Col, Divider, Modal, Drawer, Checkbox, Slider } from 'antd';
 import { SendOutlined, RightOutlined, LeftOutlined } from '@ant-design/icons';
 import { jsonrepair } from 'jsonrepair';
+import GenreSelectionPopup, { GenreSelectionPopupProps as GenrePopupPropsType } from './GenreSelectionPopup';
 
 // Use a hardcoded template instead of importing from a file
 // The content is directly copied from src/client/ideation.txt
@@ -76,377 +77,6 @@ const platformOptions = [
     { value: '西瓜视频', label: '西瓜视频 (Xigua Video)' }
 ];
 
-// Genre hierarchy based on the provided text
-const genreOptions = {
-    '女频': {
-        '爱情类': {
-            '甜宠': ['浪漫甜蜜的爱情故事'],
-            '虐恋': ['充满波折、痛苦和情感挣扎的爱情故事'],
-            '先婚后爱': ['闪婚', '替嫁', '错嫁', '契约婚姻'],
-            '霸总': ['高冷型', '奶狗型', '疯批型', '沙雕型']
-        },
-        '设定类': {
-            '穿越': ['身穿', '魂穿', '近穿', '远穿', '反穿', '来回穿', '双穿', '穿书', '穿系统'],
-            '重生': ['重生', '双重生', '多重生'],
-            '马甲': ['单马甲', '多马甲', '双马甲'],
-            '替身': ['双胞胎', '真假千金', '错认白月光']
-        },
-        '其他类型': {
-            '复仇': ['复仇'],
-            '萌宝': ['单宝', '多宝', '龙凤胎', '双胞胎', '真假萌宝'],
-            '家庭': ['家庭伦理', '寻亲'],
-            '团宠': ['团宠'],
-            '恶女': ['恶毒女配', '双重人格'],
-            '娱乐圈': ['娱乐圈']
-        }
-    },
-    '男频': {
-        '设定类': {
-            '穿越': ['穿越'],
-            '重生': ['重生'],
-            '玄幻': ['修炼成仙', '升级打怪'],
-            '末世': ['天灾', '丧尸', '安全屋']
-        },
-        '逆袭类': {
-            '战神': ['强者', '龙王', '兵王', '城主'],
-            '神豪': ['一夜暴富', '点石成金', '物价贬值', '神仙神豪'],
-            '赘婿': ['赘婿'],
-            '离婚': ['离婚'],
-            '逆袭': ['小人物', '扮猪吃老虎', '马甲大佬'],
-            '残疾大佬': ['残疾大佬'],
-            '金手指': ['超能力', '系统选中', '世界巨变'],
-            '高手下山': ['高手下山']
-        },
-        '其他类型': {
-            '神医': ['神医'],
-            '后宫': ['后宫']
-        }
-    }
-};
-
-// Genre Selection Popup Component
-interface GenreSelectionPopupProps {
-    visible: boolean;
-    onClose: () => void;
-    onSelect: (path: string[]) => void;
-    currentSelection: string[];
-}
-
-const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
-    visible,
-    onClose,
-    onSelect,
-    currentSelection
-}) => {
-    const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-    const [navigationPath, setNavigationPath] = useState<string[]>([]);
-    const [tempSelectedPath, setTempSelectedPath] = useState<string[]>(currentSelection);
-
-    useEffect(() => {
-        const handleResize = () => {
-            setIsMobile(window.innerWidth <= 768);
-        };
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
-
-    useEffect(() => {
-        if (visible) {
-            setTempSelectedPath(currentSelection);
-            setNavigationPath([]);
-        }
-    }, [visible, currentSelection]);
-
-    // Get data at specific path
-    const getDataAtPath = (path: string[]) => {
-        let current: any = genreOptions;
-        for (const segment of path) {
-            current = current[segment];
-            if (!current) return null;
-        }
-        return current;
-    };
-
-    // Check if item has children (is expandable)
-    const hasChildren = (path: string[], key: string) => {
-        const data = getDataAtPath([...path, key]);
-        return data && typeof data === 'object' && !Array.isArray(data);
-    };
-
-    // Check if this is the deepest meaningful level
-    const isDeepestLevel = (path: string[], key: string) => {
-        const data = getDataAtPath([...path, key]);
-        if (Array.isArray(data)) {
-            return data.length <= 1; // If only one option or empty, it's effectively deepest
-        }
-        if (typeof data === 'object') {
-            const children = Object.keys(data);
-            if (children.length === 1) {
-                // Check if the single child is also single-option
-                const childData = data[children[0]];
-                if (Array.isArray(childData) && childData.length <= 1) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    };
-
-    // Handle item click - now just updates temp selection, doesn't close
-    const handleItemClick = (path: string[], key: string, columnIndex: number = 0) => {
-        // Use the actual column index to determine the selection level
-        const newPath = [...tempSelectedPath.slice(0, columnIndex), key];
-
-        if (hasChildren(path, key) && !isDeepestLevel(path, key)) {
-            // Navigate deeper
-            if (isMobile) {
-                setNavigationPath(newPath);
-            } else {
-                setTempSelectedPath(newPath);
-            }
-        } else {
-            // This is a final selection but don't close yet
-            setTempSelectedPath(newPath);
-        }
-    };
-
-    // Handle confirm button
-    const handleConfirm = () => {
-        if (tempSelectedPath.length >= 3) {
-            onSelect(tempSelectedPath);
-            onClose();
-        }
-    };
-
-    // Handle cancel
-    const handleCancel = () => {
-        setTempSelectedPath(currentSelection);
-        onClose();
-    };
-
-    // Render Miller Columns (Desktop)
-    const renderMillerColumns = () => {
-        const columns = [];
-        let currentData = genreOptions;
-        let currentPath: string[] = [];
-
-        // Add root column
-        columns.push(
-            <div key="root" style={{
-                width: '200px',
-                borderRight: '1px solid #303030',
-                height: '400px',
-                overflowY: 'auto'
-            }}>
-                {Object.keys(currentData).map(key => (
-                    <div
-                        key={key}
-                        onClick={() => handleItemClick(currentPath, key, 0)}
-                        style={{
-                            padding: '8px 12px',
-                            cursor: 'pointer',
-                            backgroundColor: tempSelectedPath[0] === key ? '#1890ff20' : 'transparent',
-                            borderLeft: tempSelectedPath[0] === key ? '3px solid #1890ff' : '3px solid transparent',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ffffff10'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = tempSelectedPath[0] === key ? '#1890ff20' : 'transparent'}
-                    >
-                        <span>{key}</span>
-                        {hasChildren(currentPath, key) && <RightOutlined style={{ fontSize: '10px' }} />}
-                    </div>
-                ))}
-            </div>
-        );
-
-        // Add subsequent columns based on selection
-        for (let i = 0; i < tempSelectedPath.length && i < 4; i++) {
-            currentPath = tempSelectedPath.slice(0, i + 1);
-            currentData = getDataAtPath(currentPath);
-
-            if (currentData && typeof currentData === 'object' && !Array.isArray(currentData)) {
-                columns.push(
-                    <div key={`column-${i}`} style={{
-                        width: '200px',
-                        borderRight: '1px solid #303030',
-                        height: '400px',
-                        overflowY: 'auto'
-                    }}>
-                        {Object.keys(currentData).map(key => (
-                            <div
-                                key={key}
-                                onClick={() => handleItemClick(currentPath, key, i + 1)}
-                                style={{
-                                    padding: '8px 12px',
-                                    cursor: 'pointer',
-                                    backgroundColor: tempSelectedPath[i + 1] === key ? '#1890ff20' : 'transparent',
-                                    borderLeft: tempSelectedPath[i + 1] === key ? '3px solid #1890ff' : '3px solid transparent',
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center'
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ffffff10'}
-                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = tempSelectedPath[i + 1] === key ? '#1890ff20' : 'transparent'}
-                            >
-                                <span>{key}</span>
-                                {hasChildren(currentPath, key) && !isDeepestLevel(currentPath, key) && (
-                                    <RightOutlined style={{ fontSize: '10px' }} />
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                );
-            }
-        }
-
-        return (
-            <div style={{ display: 'flex', flexDirection: 'column', height: '400px', overflow: 'hidden' }}>
-                {/* Current selection display */}
-                {tempSelectedPath.length > 0 && (
-                    <div style={{
-                        padding: '12px 16px',
-                        backgroundColor: '#1a1a1a',
-                        borderBottom: '1px solid #303030',
-                        fontSize: '12px',
-                        color: '#52c41a',
-                        marginBottom: '8px'
-                    }}>
-                        当前选择: {tempSelectedPath.join(' > ')}
-                    </div>
-                )}
-
-                <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
-                    {columns}
-                </div>
-            </div>
-        );
-    };
-
-    // Render Single View Navigation (Mobile)
-    const renderSingleView = () => {
-        const currentData = getDataAtPath(navigationPath);
-        const breadcrumbs = navigationPath.length > 0 ? navigationPath : ['选择类型'];
-
-        return (
-            <div style={{ height: '400px', display: 'flex', flexDirection: 'column' }}>
-                {/* Breadcrumbs */}
-                <div style={{
-                    padding: '12px 16px',
-                    borderBottom: '1px solid #303030',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                }}>
-                    {navigationPath.length > 0 && (
-                        <Button
-                            type="text"
-                            icon={<LeftOutlined />}
-                            onClick={() => setNavigationPath(navigationPath.slice(0, -1))}
-                            style={{ padding: '4px 8px', height: 'auto' }}
-                        />
-                    )}
-                    <div style={{ fontSize: '14px', color: '#1890ff' }}>
-                        {breadcrumbs.join(' > ')}
-                    </div>
-                </div>
-
-                {/* Current selection display */}
-                {tempSelectedPath.length > 0 && (
-                    <div style={{
-                        padding: '8px 16px',
-                        backgroundColor: '#1a1a1a',
-                        borderBottom: '1px solid #303030',
-                        fontSize: '12px',
-                        color: '#52c41a'
-                    }}>
-                        当前选择: {tempSelectedPath.join(' > ')}
-                    </div>
-                )}
-
-                {/* Items */}
-                <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
-                    {currentData && typeof currentData === 'object' && !Array.isArray(currentData) &&
-                        Object.keys(currentData).map(key => (
-                            <div
-                                key={key}
-                                onClick={() => handleItemClick(navigationPath, key, navigationPath.length)}
-                                style={{
-                                    padding: '12px 16px',
-                                    cursor: 'pointer',
-                                    borderBottom: '1px solid #2a2a2a',
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    backgroundColor: tempSelectedPath.includes(key) ? '#1890ff10' : 'transparent'
-                                }}
-                            >
-                                <span>{key}</span>
-                                {hasChildren(navigationPath, key) && !isDeepestLevel(navigationPath, key) && (
-                                    <RightOutlined style={{ fontSize: '12px', color: '#666' }} />
-                                )}
-                            </div>
-                        ))
-                    }
-                </div>
-            </div>
-        );
-    };
-
-    if (isMobile) {
-        return (
-            <Drawer
-                title="选择故事类型"
-                placement="bottom"
-                height="60vh"
-                onClose={handleCancel}
-                open={visible}
-                footer={
-                    <div style={{ textAlign: 'right', padding: '16px 0' }}>
-                        <Button onClick={handleCancel} style={{ marginRight: '8px' }}>
-                            取消
-                        </Button>
-                        <Button
-                            type="primary"
-                            onClick={handleConfirm}
-                            disabled={tempSelectedPath.length < 3}
-                        >
-                            确定
-                        </Button>
-                    </div>
-                }
-            >
-                {renderSingleView()}
-            </Drawer>
-        );
-    }
-
-    return (
-        <Modal
-            title="选择故事类型"
-            open={visible}
-            onCancel={handleCancel}
-            width={800}
-            footer={[
-                <Button key="cancel" onClick={handleCancel}>
-                    取消
-                </Button>,
-                <Button
-                    key="confirm"
-                    type="primary"
-                    onClick={handleConfirm}
-                    disabled={tempSelectedPath.length < 3}
-                >
-                    确定
-                </Button>
-            ]}
-        >
-            {renderMillerColumns()}
-        </Modal>
-    );
-};
-
 interface IdeationResponse {
     mediaType?: string;
     platform?: string;
@@ -458,7 +88,9 @@ interface IdeationResponse {
 const IdeationTab: React.FC = () => {
     const [userInput, setUserInput] = useState('古早言情剧');
     const [selectedPlatform, setSelectedPlatform] = useState<string>('');
-    const [selectedGenrePath, setSelectedGenrePath] = useState<string[]>([]);
+    const [selectedGenrePaths, setSelectedGenrePaths] = useState<string[][]>([]);
+    const [genreProportions, setGenreProportions] = useState<number[]>([]);
+    const [proportionModalVisible, setProportionModalVisible] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [isGeneratingIdea, setIsGeneratingIdea] = useState(false);
     const [genrePopupVisible, setGenrePopupVisible] = useState(false);
@@ -477,8 +109,24 @@ const IdeationTab: React.FC = () => {
         setSelectedPlatform(value);
     };
 
-    const handleGenreSelection = (path: string[]) => {
-        setSelectedGenrePath(path);
+    const handleMultiGenreSelection = (paths: string[][]) => {
+        setSelectedGenrePaths(paths);
+        if (paths.length > 0) {
+            const initialProportions = new Array(paths.length).fill(0);
+            if (paths.length === 1) {
+                setGenreProportions([100]);
+            } else {
+                const equalShare = 100 / paths.length;
+                setGenreProportions(paths.map(() => equalShare));
+            }
+        } else {
+            setGenreProportions([]);
+        }
+    };
+
+    const handleProportionsConfirm = (newProportions: number[]) => {
+        setGenreProportions(newProportions);
+        setProportionModalVisible(false);
     };
 
     // Handle idea card selection
@@ -489,12 +137,18 @@ const IdeationTab: React.FC = () => {
 
     // Check if genre selection is complete (for dice button)
     const isGenreSelectionComplete = () => {
-        return selectedGenrePath.length >= 3; // At least main > sub > detail
+        return selectedGenrePaths.length >= 3; // At least main > sub > detail
     };
 
     // Build genre string for the prompt
     const buildGenreString = () => {
-        return selectedGenrePath.join(' > ');
+        if (selectedGenrePaths.length === 0) return '未指定';
+        if (selectedGenrePaths.length === 1) return selectedGenrePaths[0].join(' > ');
+
+        return selectedGenrePaths.map((path, index) => {
+            const proportion = genreProportions[index] !== undefined ? genreProportions[index] : (100 / selectedGenrePaths.length);
+            return `${path.join(' > ')} (${proportion.toFixed(0)}%)`;
+        }).join(', ');
     };
 
     // Generate a one-sentence idea using LLM
@@ -716,13 +370,25 @@ const IdeationTab: React.FC = () => {
                     onMouseEnter={(e) => e.currentTarget.style.borderColor = '#1890ff'}
                     onMouseLeave={(e) => e.currentTarget.style.borderColor = '#434343'}
                 >
-                    {selectedGenrePath.length > 0 ? (
-                        <span style={{ color: '#d9d9d9' }}>
-                            {buildGenreString()}
+                    {selectedGenrePaths.length > 0 ? (
+                        <span
+                            style={{ color: '#d9d9d9', cursor: selectedGenrePaths.length > 1 ? 'pointer' : 'default' }}
+                            onClick={() => {
+                                if (selectedGenrePaths.length > 1) {
+                                    setProportionModalVisible(true);
+                                } else {
+                                    setGenrePopupVisible(true); // If only one, or to change selection
+                                }
+                            }}
+                        >
+                            {buildGenreString()} {selectedGenrePaths.length > 1 && "(点击调整比例)"}
                         </span>
                     ) : (
-                        <span style={{ color: '#666' }}>
-                            点击选择故事类型
+                        <span
+                            style={{ color: '#666', cursor: 'pointer' }}
+                            onClick={() => setGenrePopupVisible(true)}
+                        >
+                            点击选择故事类型 (可多选, 最多3个)
                         </span>
                     )}
                     <RightOutlined style={{ fontSize: '12px', color: '#666' }} />
@@ -732,9 +398,19 @@ const IdeationTab: React.FC = () => {
             <GenreSelectionPopup
                 visible={genrePopupVisible}
                 onClose={() => setGenrePopupVisible(false)}
-                onSelect={handleGenreSelection}
-                currentSelection={selectedGenrePath}
+                onSelect={handleMultiGenreSelection}
+                currentSelection={selectedGenrePaths}
             />
+
+            {selectedGenrePaths.length > 1 && (
+                <ProportionAdjustmentModal
+                    visible={proportionModalVisible}
+                    onClose={() => setProportionModalVisible(false)}
+                    genrePaths={selectedGenrePaths}
+                    initialProportions={genreProportions} // Pass current raw proportions
+                    onConfirm={handleProportionsConfirm}
+                />
+            )}
 
             {/* Only show subsequent elements when genre selection is complete */}
             {isGenreSelectionComplete() ? (
@@ -983,4 +659,93 @@ const IdeationTab: React.FC = () => {
     );
 };
 
-export default IdeationTab; 
+export default IdeationTab;
+
+// --- ProportionAdjustmentModal Component ---
+interface ProportionAdjustmentModalProps {
+    visible: boolean;
+    onClose: () => void;
+    genrePaths: string[][];
+    initialProportions: number[];
+    onConfirm: (newProportions: number[]) => void;
+}
+
+const ProportionAdjustmentModal: React.FC<ProportionAdjustmentModalProps> = ({
+    visible,
+    onClose,
+    genrePaths,
+    initialProportions,
+    onConfirm
+}) => {
+    const [proportions, setProportions] = useState<number[]>(initialProportions);
+
+    useEffect(() => {
+        // Sync with initialProportions when modal opens or props change
+        setProportions(initialProportions);
+    }, [initialProportions, visible]);
+
+    const handleSliderChange = (index: number, value: number | null) => {
+        if (value === null) return;
+        const newProportions = [...proportions];
+        newProportions[index] = value;
+        setProportions(newProportions);
+    };
+
+    const handleSubmit = () => {
+        // Normalize proportions to sum to 100 before confirming
+        const sum = proportions.reduce((acc, p) => acc + p, 0);
+        if (sum === 0) { // Avoid division by zero; treat as equal if all are 0
+            const equalShare = 100 / proportions.length;
+            onConfirm(proportions.map(() => equalShare));
+        } else {
+            const normalized = proportions.map(p => (p / sum) * 100);
+            onConfirm(normalized);
+        }
+        onClose();
+    };
+
+    const totalRawSum = proportions.reduce((a, b) => a + b, 0);
+
+    return (
+        <Modal
+            title="调整故事类型比例"
+            open={visible}
+            onCancel={onClose}
+            onOk={handleSubmit}
+            okText="确定"
+            cancelText="取消"
+            width={600}
+        >
+            <Paragraph type="secondary">
+                调整各类别的相对重要性。最终比例将自动归一化为总和100%。
+            </Paragraph>
+            {genrePaths.map((path, index) => {
+                const pathString = path.join(' > ');
+                const currentRawValue = proportions[index] || 0;
+                const currentPercentage = totalRawSum > 0 ? (currentRawValue / totalRawSum) * 100 : (100 / genrePaths.length);
+
+                return (
+                    <div key={index} style={{ marginBottom: '20px' }}>
+                        <Row align="middle">
+                            <Col flex="1">
+                                <Text strong>{pathString}</Text>
+                            </Col>
+                            <Col style={{ width: '80px', textAlign: 'right' }}>
+                                <Text type="secondary">{`${currentPercentage.toFixed(1)}%`}</Text>
+                            </Col>
+                        </Row>
+                        <Slider
+                            min={0}
+                            max={100} // Raw value slider
+                            step={1}
+                            value={currentRawValue}
+                            onChange={(value) => handleSliderChange(index, value)}
+                            tooltip={{ formatter: (value) => `${value}` }}
+                        />
+                    </div>
+                );
+            })}
+            {genrePaths.length === 0 && <Paragraph>没有选择任何故事类型。</Paragraph>}
+        </Modal>
+    );
+}; 
