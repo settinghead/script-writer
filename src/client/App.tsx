@@ -126,6 +126,7 @@ const AppContent: React.FC = () => {
             </Drawer>
             <div style={{ flexGrow: 1, overflow: 'auto', padding: '0 10px' }}>
               <Routes>
+                <Route path="/ideation/:id" element={<IdeationTab />} />
                 <Route path="/ideation" element={<IdeationTab />} />
                 <Route path="/chat" element={<ChatTab />} />
                 <Route path="/script" element={<ScriptTab />} />
@@ -185,6 +186,7 @@ const AppContent: React.FC = () => {
               flexDirection: 'column'
             }}>
               <Routes>
+                <Route path="/ideation/:id" element={<IdeationTab />} />
                 <Route path="/ideation" element={<IdeationTab />} />
                 <Route path="/chat" element={<ChatTab />} />
                 <Route path="/script" element={<ScriptTab />} />

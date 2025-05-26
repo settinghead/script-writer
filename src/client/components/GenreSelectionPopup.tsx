@@ -512,8 +512,11 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
             open={visible}
             onCancel={handleCancel}
             width={Math.min(220 * (activeNavigationPath.length + 2) + (tempSelectedPaths.length >= 2 ? 50 : 0), 1000)}
-            style={{ height: modalContentHeight }}
-            style={{ overflowY: 'auto', maxHeight: tempSelectedPaths.length >= 2 ? '60vh' : '400px' }}
+            style={{
+                height: modalContentHeight,
+                overflowY: 'auto',
+                maxHeight: tempSelectedPaths.length >= 2 ? '60vh' : '400px'
+            }}
             footer={[
                 <Button key="cancel" onClick={handleCancel}>
                     取消

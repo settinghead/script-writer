@@ -1,8 +1,10 @@
 import express from "express";
 import ViteExpress from "vite-express";
 import { createOpenAI } from '@ai-sdk/openai';
-import { streamText } from 'ai';
-import dotenv from 'dotenv';
+import { streamText, generateText } from 'ai';
+import * as dotenv from 'dotenv';
+import * as sqlite3 from 'sqlite3';
+import { v4 as uuidv4 } from 'uuid';
 import { setupYjsWebSocketServer, applyEditsToYDoc } from './yjs-server';
 import { parseLLMResponse } from './llm-to-yjs';
 
@@ -12,6 +14,48 @@ const PORT = parseInt(process.env.PORT || "4600");
 const app = express();
 
 app.use(express.json()); // Middleware to parse JSON bodies
+
+// Initialize SQLite database
+const db = new sqlite3.Database('./ideations.db', (err) => {
+  if (err) {
+    console.error('Error opening database:', err.message);
+  } else {
+    console.log('Connected to SQLite database');
+    initializeDatabase();
+  }
+});
+
+// Create tables if they don't exist
+const initializeDatabase = () => {
+  db.serialize(() => {
+    // Create ideation_runs table
+    db.run(`
+      CREATE TABLE IF NOT EXISTS ideation_runs (
+        id TEXT PRIMARY KEY,
+        user_input TEXT,
+        selected_platform TEXT,
+        genre_prompt_string TEXT,
+        genre_paths_json TEXT,
+        genre_proportions_json TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        media_type TEXT,
+        platform_recommendation TEXT,
+        plot_outline TEXT,
+        analysis TEXT
+      )
+    `);
+
+    // Create generated_initial_ideas table
+    db.run(`
+      CREATE TABLE IF NOT EXISTS generated_initial_ideas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        run_id TEXT,
+        idea_text TEXT,
+        FOREIGN KEY (run_id) REFERENCES ideation_runs (id)
+      )
+    `);
+  });
+};
 
 // Create the server with ViteExpress
 const server = ViteExpress.listen(app, PORT, () => {
@@ -87,7 +131,7 @@ app.post("/llm-api/chat/completions", async (req: any, res: any) => {
 
       const reader = result.toDataStream().getReader();
 
-      function pump() {
+      const pump = () => {
         reader.read().then(({ done, value }) => {
           if (done) {
             res.end();
@@ -197,7 +241,7 @@ app.post("/llm-api/script/edit", async (req: any, res: any) => {
     const reader = result.toDataStream().getReader();
     let fullResponse = '';
 
-    function pump() {
+    const pump = () => {
       reader.read().then(({ done, value }) => {
         if (done) {
           // Process the complete response to extract edit commands
@@ -247,6 +291,297 @@ app.post("/llm-api/script/edit", async (req: any, res: any) => {
   }
 });
 
+// Ideation management endpoints
+app.post("/api/ideations/create_run_with_ideas", async (req: any, res: any) => {
+  const {
+    selectedPlatform,
+    genrePaths,
+    genreProportions,
+    initialIdeas
+  } = req.body;
+
+  if (!initialIdeas || !Array.isArray(initialIdeas) || initialIdeas.length === 0) {
+    return res.status(400).json({ error: "Missing or empty 'initialIdeas' in request body" });
+  }
+
+  const runId = uuidv4();
+  const genrePathsJson = JSON.stringify(genrePaths || []);
+  const genreProportionsJson = JSON.stringify(genreProportions || []);
+
+  // Build genre string for the prompt
+  const buildGenrePromptString = (): string => {
+    if (!genrePaths || genrePaths.length === 0) return '未指定';
+    return genrePaths.map((path: string[], index: number) => {
+      const proportion = genreProportions && genreProportions[index] !== undefined
+        ? genreProportions[index]
+        : (100 / genrePaths.length);
+      const pathString = path.join(' > ');
+      return genrePaths.length > 1
+        ? `${pathString} (${proportion.toFixed(0)}%)`
+        : pathString;
+    }).join(', ');
+  };
+
+  const genrePromptString = buildGenrePromptString();
+
+  try {
+    // Insert initial run data
+    await new Promise<void>((resolve, reject) => {
+      db.run(
+        `INSERT INTO ideation_runs (id, user_input, selected_platform, genre_prompt_string, genre_paths_json, genre_proportions_json)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [runId, '', selectedPlatform || '', genrePromptString, genrePathsJson, genreProportionsJson],
+        function (err) {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
+
+    // Insert initial ideas
+    for (const idea of initialIdeas) {
+      await new Promise<void>((resolve, reject) => {
+        db.run(
+          `INSERT INTO generated_initial_ideas (run_id, idea_text) VALUES (?, ?)`,
+          [runId, idea],
+          function (err) {
+            if (err) reject(err);
+            else resolve();
+          }
+        );
+      });
+    }
+
+    // Return the run ID
+    res.json({ runId });
+
+  } catch (error: any) {
+    console.error('Error in create_run_with_ideas:', error);
+    res.status(500).json({ error: "Failed to create ideation run", details: error.message });
+  }
+});
+
+app.post("/api/ideations/create_run_and_generate_plot", async (req: any, res: any) => {
+  const apiKey = process.env.DEEPSEEK_API_KEY;
+  if (!apiKey) {
+    console.error('Error: DEEPSEEK_API_KEY environment variable is not set.');
+    return res.status(500).json({ error: "DEEPSEEK_API_KEY not configured" });
+  }
+
+  const {
+    userInput,
+    selectedPlatform,
+    genrePaths,
+    genreProportions,
+    initialIdeas,
+    ideationTemplate
+  } = req.body;
+
+  if (!userInput || !ideationTemplate) {
+    return res.status(400).json({ error: "Missing 'userInput' or 'ideationTemplate' in request body" });
+  }
+
+  const runId = uuidv4();
+  const genrePathsJson = JSON.stringify(genrePaths || []);
+  const genreProportionsJson = JSON.stringify(genreProportions || []);
+
+  // Build genre string for the prompt
+  const buildGenrePromptString = (): string => {
+    if (!genrePaths || genrePaths.length === 0) return '未指定';
+    return genrePaths.map((path: string[], index: number) => {
+      const proportion = genreProportions && genreProportions[index] !== undefined
+        ? genreProportions[index]
+        : (100 / genrePaths.length);
+      const pathString = path.join(' > ');
+      return genrePaths.length > 1
+        ? `${pathString} (${proportion.toFixed(0)}%)`
+        : pathString;
+    }).join(', ');
+  };
+
+  const genrePromptString = buildGenrePromptString();
+
+  try {
+    // Insert initial run data
+    await new Promise<void>((resolve, reject) => {
+      db.run(
+        `INSERT INTO ideation_runs (id, user_input, selected_platform, genre_prompt_string, genre_paths_json, genre_proportions_json)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [runId, userInput, selectedPlatform || '', genrePromptString, genrePathsJson, genreProportionsJson],
+        function (err) {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
+
+    // Insert initial ideas if provided
+    if (initialIdeas && initialIdeas.length > 0) {
+      for (const idea of initialIdeas) {
+        await new Promise<void>((resolve, reject) => {
+          db.run(
+            `INSERT INTO generated_initial_ideas (run_id, idea_text) VALUES (?, ?)`,
+            [runId, idea],
+            function (err) {
+              if (err) reject(err);
+              else resolve();
+            }
+          );
+        });
+      }
+    }
+
+    // Generate plot using LLM
+    const deepseekAI = createOpenAI({
+      apiKey: apiKey,
+      baseURL: 'https://api.deepseek.com',
+    });
+
+    const fullPrompt = ideationTemplate
+      .replace('{user_input}', userInput)
+      .replace('{platform}', selectedPlatform || '未指定')
+      .replace('{genre}', genrePromptString || '未指定');
+
+    const result = await generateText({
+      model: deepseekAI('deepseek-chat'),
+      messages: [
+        { role: 'user', content: fullPrompt }
+      ]
+    });
+
+    // Parse the LLM response
+    let llmResult: any = {};
+    try {
+      llmResult = JSON.parse(result.text);
+    } catch (parseError) {
+      console.error('Failed to parse LLM response:', parseError);
+      // Try with jsonrepair if available
+      try {
+        const { jsonrepair } = await import('jsonrepair');
+        const repairedJson = jsonrepair(result.text);
+        llmResult = JSON.parse(repairedJson);
+      } catch (repairError) {
+        console.error('Failed to repair JSON:', repairError);
+        llmResult = { error: 'Failed to parse LLM response' };
+      }
+    }
+
+    // Update the run with LLM results
+    await new Promise<void>((resolve, reject) => {
+      db.run(
+        `UPDATE ideation_runs 
+         SET media_type = ?, platform_recommendation = ?, plot_outline = ?, analysis = ?
+         WHERE id = ?`,
+        [
+          llmResult.mediaType || '',
+          llmResult.platform || '',
+          llmResult.plotOutline || '',
+          llmResult.analysis || '',
+          runId
+        ],
+        function (err) {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
+
+    // Return the run ID and LLM result
+    res.json({
+      runId,
+      result: llmResult
+    });
+
+  } catch (error: any) {
+    console.error('Error in create_run_and_generate_plot:', error);
+    res.status(500).json({ error: "Failed to create ideation run", details: error.message });
+  }
+});
+
+app.get("/api/ideations/:id", async (req: any, res: any) => {
+  const { id } = req.params;
+
+  try {
+    // Get the ideation run
+    const run = await new Promise<any>((resolve, reject) => {
+      db.get(
+        `SELECT * FROM ideation_runs WHERE id = ?`,
+        [id],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        }
+      );
+    });
+
+    if (!run) {
+      return res.status(404).json({ error: "Ideation run not found" });
+    }
+
+    // Get the initial ideas
+    const ideas = await new Promise<any[]>((resolve, reject) => {
+      db.all(
+        `SELECT idea_text FROM generated_initial_ideas WHERE run_id = ? ORDER BY id`,
+        [id],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows || []);
+        }
+      );
+    });
+
+    // Parse JSON fields
+    let genrePaths: string[][] = [];
+    let genreProportions: number[] = [];
+
+    try {
+      genrePaths = JSON.parse(run.genre_paths_json || '[]');
+      genreProportions = JSON.parse(run.genre_proportions_json || '[]');
+    } catch (parseError) {
+      console.error('Error parsing genre data:', parseError);
+    }
+
+    res.json({
+      id: run.id,
+      userInput: run.user_input,
+      selectedPlatform: run.selected_platform,
+      genrePaths,
+      genreProportions,
+      initialIdeas: ideas.map(idea => idea.idea_text),
+      result: {
+        mediaType: run.media_type,
+        platform: run.platform_recommendation,
+        plotOutline: run.plot_outline,
+        analysis: run.analysis
+      },
+      createdAt: run.created_at
+    });
+
+  } catch (error: any) {
+    console.error('Error fetching ideation run:', error);
+    res.status(500).json({ error: "Failed to fetch ideation run", details: error.message });
+  }
+});
+
+app.get("/api/ideations", async (req: any, res: any) => {
+  try {
+    const runs = await new Promise<any[]>((resolve, reject) => {
+      db.all(
+        `SELECT id, user_input, selected_platform, created_at FROM ideation_runs ORDER BY created_at DESC`,
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows || []);
+        }
+      );
+    });
+
+    res.json(runs);
+  } catch (error: any) {
+    console.error('Error fetching ideation runs:', error);
+    res.status(500).json({ error: "Failed to fetch ideation runs", details: error.message });
+  }
+});
+
 // Script document management endpoints
 app.post("/api/scripts", (req, res) => {
   const { name = 'Untitled Script' } = req.body;
@@ -278,4 +613,111 @@ app.get(/(.*)/, (req, res, next) => {
   // For all other routes, let ViteExpress handle the client-side routing
   // ViteExpress will serve the index.html and React Router will handle the rest
   next();
+});
+
+app.post("/api/ideations/:id/generate_plot", async (req: any, res: any) => {
+  const apiKey = process.env.DEEPSEEK_API_KEY;
+  if (!apiKey) {
+    console.error('Error: DEEPSEEK_API_KEY environment variable is not set.');
+    return res.status(500).json({ error: "DEEPSEEK_API_KEY not configured" });
+  }
+
+  const { id: runId } = req.params;
+  const { userInput, ideationTemplate } = req.body;
+
+  if (!userInput || !ideationTemplate) {
+    return res.status(400).json({ error: "Missing 'userInput' or 'ideationTemplate' in request body" });
+  }
+
+  try {
+    // Get the existing run data
+    const run = await new Promise<any>((resolve, reject) => {
+      db.get(
+        `SELECT * FROM ideation_runs WHERE id = ?`,
+        [runId],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        }
+      );
+    });
+
+    if (!run) {
+      return res.status(404).json({ error: "Ideation run not found" });
+    }
+
+    // Update the user input
+    await new Promise<void>((resolve, reject) => {
+      db.run(
+        `UPDATE ideation_runs SET user_input = ? WHERE id = ?`,
+        [userInput, runId],
+        function (err) {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
+
+    // Generate plot using LLM
+    const deepseekAI = createOpenAI({
+      apiKey: apiKey,
+      baseURL: 'https://api.deepseek.com',
+    });
+
+    const fullPrompt = ideationTemplate
+      .replace('{user_input}', userInput)
+      .replace('{platform}', run.selected_platform || '未指定')
+      .replace('{genre}', run.genre_prompt_string || '未指定');
+
+    const result = await generateText({
+      model: deepseekAI('deepseek-chat'),
+      messages: [
+        { role: 'user', content: fullPrompt }
+      ]
+    });
+
+    // Parse the LLM response
+    let llmResult: any = {};
+    try {
+      llmResult = JSON.parse(result.text);
+    } catch (parseError) {
+      console.error('Failed to parse LLM response:', parseError);
+      // Try with jsonrepair if available
+      try {
+        const { jsonrepair } = await import('jsonrepair');
+        const repairedJson = jsonrepair(result.text);
+        llmResult = JSON.parse(repairedJson);
+      } catch (repairError) {
+        console.error('Failed to repair JSON:', repairError);
+        llmResult = { error: 'Failed to parse LLM response' };
+      }
+    }
+
+    // Update the run with LLM results
+    await new Promise<void>((resolve, reject) => {
+      db.run(
+        `UPDATE ideation_runs 
+         SET media_type = ?, platform_recommendation = ?, plot_outline = ?, analysis = ?
+         WHERE id = ?`,
+        [
+          llmResult.mediaType || '',
+          llmResult.platform || '',
+          llmResult.plotOutline || '',
+          llmResult.analysis || '',
+          runId
+        ],
+        function (err) {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
+
+    // Return the LLM result
+    res.json({ result: llmResult });
+
+  } catch (error: any) {
+    console.error('Error in generate_plot:', error);
+    res.status(500).json({ error: "Failed to generate plot", details: error.message });
+  }
 });

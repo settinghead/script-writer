@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Input, Button, Typography, Spin, Alert, Select, Row, Col, Divider, Modal, Drawer, Checkbox, Slider } from 'antd';
 import { SendOutlined, RightOutlined, LeftOutlined } from '@ant-design/icons';
 import { jsonrepair } from 'jsonrepair';
@@ -88,6 +89,8 @@ interface IdeationResponse {
 }
 
 const IdeationTab: React.FC = () => {
+    const { id: ideationRunId } = useParams<{ id: string }>();
+    const navigate = useNavigate();
     const [userInput, setUserInput] = useState('');
     const [selectedPlatform, setSelectedPlatform] = useState<string>('');
     const [selectedGenrePaths, setSelectedGenrePaths] = useState<string[][]>([]);
@@ -95,6 +98,7 @@ const IdeationTab: React.FC = () => {
     const [proportionModalVisible, setProportionModalVisible] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [isGeneratingIdea, setIsGeneratingIdea] = useState(false);
+    const [isLoadingRun, setIsLoadingRun] = useState(false);
     const [genrePopupVisible, setGenrePopupVisible] = useState(false);
     const [error, setError] = useState<Error | null>(null);
     const [result, setResult] = useState<IdeationResponse | null>(null);
@@ -112,6 +116,52 @@ const IdeationTab: React.FC = () => {
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
+
+    // Effect to load existing ideation run if ID is present
+    useEffect(() => {
+        if (ideationRunId) {
+            loadIdeationRun(ideationRunId);
+        }
+    }, [ideationRunId]);
+
+    // Function to load an existing ideation run
+    const loadIdeationRun = async (runId: string) => {
+        setIsLoadingRun(true);
+        setError(null);
+
+        try {
+            const response = await fetch(`/api/ideations/${runId}`);
+
+            if (!response.ok) {
+                throw new Error(`Failed to load ideation run: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            // Populate the component state with loaded data
+            setUserInput(data.userInput || '');
+            setSelectedPlatform(data.selectedPlatform || '');
+            setSelectedGenrePaths(data.genrePaths || []);
+            setGenreProportions(data.genreProportions || []);
+            setGeneratedIdeas(data.initialIdeas || []);
+
+            // Set the selected idea index to the first one if ideas exist
+            if (data.initialIdeas && data.initialIdeas.length > 0) {
+                setSelectedIdeaIndex(0);
+            }
+
+            // Set the result if it exists
+            if (data.result && (data.result.plotOutline || data.result.mediaType)) {
+                setResult(data.result);
+            }
+
+        } catch (err) {
+            console.error('Error loading ideation run:', err);
+            setError(err instanceof Error ? err : new Error(String(err)));
+        } finally {
+            setIsLoadingRun(false);
+        }
+    };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         setUserInput(e.target.value);
@@ -246,10 +296,37 @@ const IdeationTab: React.FC = () => {
             }
 
             if (ideasArray.length > 0 && ideasArray[0] && ideasArray[0].length > 0) {
-                setGeneratedIdeas(ideasArray);
-                setSelectedIdeaIndex(0);
-                setUserInput(ideasArray[0]); // Use the first idea
-                console.log("Generated ideas:", ideasArray); // Log all ideas
+                // Create a persistent run with the generated ideas
+                const createRunResponse = await fetch('/api/ideations/create_run_with_ideas', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        selectedPlatform,
+                        genrePaths: selectedGenrePaths,
+                        genreProportions,
+                        initialIdeas: ideasArray
+                    })
+                });
+
+                if (!createRunResponse.ok) {
+                    throw new Error(`Failed to create run: ${createRunResponse.status}`);
+                }
+
+                const runData = await createRunResponse.json();
+
+                if (runData.runId) {
+                    // Set the ideas and navigate to the new URL
+                    setGeneratedIdeas(ideasArray);
+                    setSelectedIdeaIndex(0);
+                    setUserInput(ideasArray[0]); // Use the first idea
+
+                    // Navigate to the new URL with the run ID
+                    navigate(`/ideation/${runData.runId}`);
+                } else {
+                    throw new Error('Invalid response from create run API');
+                }
             } else {
                 throw new Error('生成的创意内容为空或格式不正确');
             }
@@ -267,81 +344,82 @@ const IdeationTab: React.FC = () => {
             return;
         }
 
-        setIsLoading(true);
-        setError(null);
-        setResult(null);
+        // Check if we have an existing run ID from the URL
+        if (!ideationRunId) {
+            // If no run ID, create a new run (fallback for direct access)
+            setIsLoading(true);
+            setError(null);
+            setResult(null);
 
-        // Create a new AbortController for this request
-        if (abortControllerRef.current) {
-            abortControllerRef.current.abort();
-        }
-        abortControllerRef.current = new AbortController();
-
-        try {
-            // Create the prompt by replacing placeholders in the template
-            const fullPrompt = ideationTemplate
-                .replace('{user_input}', userInput)
-                .replace('{platform}', selectedPlatform || '未指定')
-                .replace('{genre}', buildGenrePromptString() || '未指定');
-
-            const response = await fetch('/llm-api/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    model: 'deepseek-chat',
-                    messages: [
-                        { role: 'user', content: fullPrompt }
-                    ],
-                    response_format: { type: 'json_object' },
-                    stream: false // Explicitly disable streaming
-                }),
-                signal: abortControllerRef.current.signal
-            });
-
-            if (!response.ok) {
-                throw new Error(`Server responded with ${response.status}: ${response.statusText} `);
-            }
-
-            // Parse as regular JSON response
-            const data = await response.json();
-
-            // Extract the content from the response
-            let contentText = '';
-            if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
-                contentText = data.choices[0].message.content.trim();
-            } else {
-                throw new Error('无法从响应中提取内容');
-            }
-
-            // Parse the content as JSON (since we requested JSON format)
             try {
-                const jsonResult = JSON.parse(contentText) as IdeationResponse;
-                setResult(jsonResult);
-            } catch (parseError) {
-                // If JSON parsing fails, try with jsonrepair
-                try {
-                    const repairedJson = jsonrepair(contentText);
-                    const jsonResult = JSON.parse(repairedJson) as IdeationResponse;
-                    setResult(jsonResult);
-                } catch (repairError) {
-                    console.error('Failed to parse JSON even after repair:', repairError);
-                    console.log('Raw content:', contentText);
-                    setError(new Error('响应格式不正确，无法解析为JSON'));
-                }
-            }
+                const response = await fetch('/api/ideations/create_run_and_generate_plot', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        userInput,
+                        selectedPlatform,
+                        genrePaths: selectedGenrePaths,
+                        genreProportions,
+                        initialIdeas: generatedIdeas,
+                        ideationTemplate
+                    })
+                });
 
-        } catch (err) {
-            if (err.name === 'AbortError') {
-                console.log('Request was aborted');
-            } else {
+                if (!response.ok) {
+                    throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+
+                if (data.runId && data.result) {
+                    setResult(data.result);
+                    navigate(`/ideation/${data.runId}`);
+                } else {
+                    throw new Error('Invalid response from server');
+                }
+            } catch (err) {
                 console.error('Error generating ideation:', err);
                 setError(err instanceof Error ? err : new Error(String(err)));
+            } finally {
+                setIsLoading(false);
             }
-        } finally {
-            setIsLoading(false);
-            abortControllerRef.current = null;
+        } else {
+            // Update existing run with plot generation
+            setIsLoading(true);
+            setError(null);
+            setResult(null);
+
+            try {
+                const response = await fetch(`/api/ideations/${ideationRunId}/generate_plot`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        userInput,
+                        ideationTemplate
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+
+                if (data.result) {
+                    setResult(data.result);
+                } else {
+                    throw new Error('Invalid response from server');
+                }
+            } catch (err) {
+                console.error('Error generating plot:', err);
+                setError(err instanceof Error ? err : new Error(String(err)));
+            } finally {
+                setIsLoading(false);
+            }
         }
     };
 
@@ -356,312 +434,321 @@ const IdeationTab: React.FC = () => {
 
     return (
         <div style={{ padding: '20px', maxWidth: '600px', width: "100%", margin: '0 auto', overflow: "auto" }}>
-            <Title level={4}>灵感生成器</Title>
-            <Paragraph>
-                输入你的灵感，AI将帮你构建故事情节提要。
-            </Paragraph>
-
-            <div style={{ marginBottom: '16px' }}>
-                <Text strong>目标平台:</Text>
-                <Select
-                    style={{ width: '100%' }}
-                    placeholder="选择目标平台"
-                    options={platformOptions}
-                    value={selectedPlatform}
-                    onChange={handlePlatformChange}
-                />
-            </div>
-
-            <div style={{ marginBottom: '16px' }}>
-                <Text strong style={{ display: 'block', marginBottom: '8px' }}>故事类型:</Text>
-                <div
-                    onClick={() => setGenrePopupVisible(true)}
-                    style={{
-                        border: '1px solid #434343',
-                        borderRadius: '6px',
-                        padding: '8px 12px',
-                        minHeight: '32px',
-                        cursor: 'pointer',
-                        background: '#141414',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        transition: 'all 0.3s'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.borderColor = '#1890ff'}
-                    onMouseLeave={(e) => e.currentTarget.style.borderColor = '#434343'}
-                >
-                    {selectedGenrePaths.length > 0 ? (
-                        <span
-                            style={{ color: '#d9d9d9', cursor: 'pointer' }}
-                            onClick={() => setGenrePopupVisible(true)}
-                        >
-                            {/* Render the array of elements from buildGenreDisplayElements */}
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                                {buildGenreDisplayElements()}
-                            </div>
-                        </span>
-                    ) : (
-                        <span
-                            style={{ color: '#666', cursor: 'pointer' }}
-                            onClick={() => setGenrePopupVisible(true)}
-                        >
-                            点击选择故事类型 (可多选, 最多3个)
-                        </span>
-                    )}
-                    <RightOutlined style={{ fontSize: '12px', color: '#666' }} />
+            {isLoadingRun ? (
+                <div style={{ textAlign: 'center', padding: '40px' }}>
+                    <Spin size="large" />
+                    <div style={{ marginTop: '16px', color: '#d9d9d9' }}>加载创意记录中...</div>
                 </div>
-            </div>
-
-            <GenreSelectionPopup
-                visible={genrePopupVisible}
-                onClose={() => setGenrePopupVisible(false)}
-                onSelect={handleGenreSelectionConfirm}
-                currentSelectionPaths={selectedGenrePaths}
-            />
-
-            {/* Only show subsequent elements when genre selection is complete */}
-            {isGenreSelectionComplete() ? (
+            ) : (
                 <>
-                    <Divider style={{ margin: '24px 0' }} />
+                    <Title level={4}>灵感生成器</Title>
+                    <Paragraph>
+                        输入你的灵感，AI将帮你构建故事情节提要。
+                    </Paragraph>
 
-                    {/* Idea Generator Section */}
-                    <div style={{
-                        marginBottom: '24px',
-                        textAlign: 'center',
-                        padding: '16px',
-                        background: '#1a1a1a',
-                        borderRadius: '8px',
-                        border: '1px solid #303030'
-                    }}>
-                        <Text strong style={{ display: 'block', marginBottom: '12px', color: '#d9d9d9' }}>
-                            创意生成器
-                        </Text>
-                        <Text type="secondary" style={{ display: 'block', marginBottom: '16px', fontSize: '12px' }}>
-                            基于选择的类型生成创意灵感
-                        </Text>
-                        <Button
-                            type="primary"
-                            size="large"
-                            onClick={generateIdea}
-                            loading={isGeneratingIdea}
-                            style={{
-                                background: '#52c41a',
-                                borderColor: '#52c41a',
-                                fontSize: '16px',
-                                height: '40px',
-                                minWidth: '120px'
-                            }}
-                        >
-                            <span style={{ marginRight: '8px' }}>🎲</span>
-                            {isGeneratingIdea ? '生成中...' : '随机创意'}
-                        </Button>
+                    <div style={{ marginBottom: '16px' }}>
+                        <Text strong>目标平台:</Text>
+                        <Select
+                            style={{ width: '100%' }}
+                            placeholder="选择目标平台"
+                            options={platformOptions}
+                            value={selectedPlatform}
+                            onChange={handlePlatformChange}
+                        />
                     </div>
 
                     <div style={{ marginBottom: '16px' }}>
-                        <Text strong style={{ display: 'block', marginBottom: '8px' }}>创作灵感:</Text>
-
-                        {/* Generated Ideas Cards */}
-                        {generatedIdeas.length > 0 && (
-                            <div style={{ marginBottom: '16px' }}>
-                                <Text type="secondary" style={{ display: 'block', marginBottom: '8px', fontSize: '12px' }}>
-                                    选择一个创意（点击卡片选择）:
-                                </Text>
-                                <div style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fit, minmax(250px, 1fr))',
-                                    gap: '8px',
-                                    marginBottom: '16px'
-                                }}>
-                                    {generatedIdeas.map((idea, index) => (
-                                        <div
-                                            key={index}
-                                            onClick={() => handleIdeaSelection(index)}
-                                            style={{
-                                                padding: '12px',
-                                                border: selectedIdeaIndex === index ? '2px solid #1890ff' : '1px solid #434343',
-                                                borderRadius: '6px',
-                                                cursor: 'pointer',
-                                                backgroundColor: selectedIdeaIndex === index ? '#1890ff10' : '#1a1a1a',
-                                                transition: 'all 0.3s',
-                                                position: 'relative'
-                                            }}
-                                            onMouseEnter={(e) => {
-                                                if (selectedIdeaIndex !== index) {
-                                                    e.currentTarget.style.backgroundColor = '#2a2a2a';
-                                                    e.currentTarget.style.borderColor = '#666';
-                                                }
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                if (selectedIdeaIndex !== index) {
-                                                    e.currentTarget.style.backgroundColor = '#1a1a1a';
-                                                    e.currentTarget.style.borderColor = '#434343';
-                                                }
-                                            }}
-                                        >
-                                            <div style={{
-                                                position: 'absolute',
-                                                top: '8px',
-                                                right: '8px',
-                                                width: '20px',
-                                                height: '20px',
-                                                borderRadius: '50%',
-                                                backgroundColor: selectedIdeaIndex === index ? '#1890ff' : '#666',
-                                                color: 'white',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                fontSize: '12px',
-                                                fontWeight: 'bold'
-                                            }}>
-                                                {index + 1}
-                                            </div>
-                                            <div style={{
-                                                fontSize: '14px',
-                                                lineHeight: '1.4',
-                                                paddingRight: '30px',
-                                                color: selectedIdeaIndex === index ? '#d9d9d9' : '#bfbfbf'
-                                            }}>
-                                                {idea}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Editable textarea for selected/modified idea */}
-                        <div>
-                            <Text type="secondary" style={{ display: 'block', marginBottom: '8px', fontSize: '12px' }}>
-                                {generatedIdeas.length > 0 ? '编辑选中的创意:' : '输入你的创作灵感:'}
-                            </Text>
-                            <TextArea
-                                rows={4}
-                                value={userInput}
-                                onChange={handleInputChange}
-                                placeholder={generatedIdeas.length > 0 ? "编辑选中的创意..." : "输入你的创作灵感..."}
-                                disabled={isLoading || isGeneratingIdea}
-                                style={{
-                                    background: isGeneratingIdea ? '#2a2a2a' : undefined,
-                                    borderColor: isGeneratingIdea ? '#52c41a' : undefined
-                                }}
-                            />
+                        <Text strong style={{ display: 'block', marginBottom: '8px' }}>故事类型:</Text>
+                        <div
+                            onClick={() => setGenrePopupVisible(true)}
+                            style={{
+                                border: '1px solid #434343',
+                                borderRadius: '6px',
+                                padding: '8px 12px',
+                                minHeight: '32px',
+                                cursor: 'pointer',
+                                background: '#141414',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                transition: 'all 0.3s'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.borderColor = '#1890ff'}
+                            onMouseLeave={(e) => e.currentTarget.style.borderColor = '#434343'}
+                        >
+                            {selectedGenrePaths.length > 0 ? (
+                                <span
+                                    style={{ color: '#d9d9d9', cursor: 'pointer' }}
+                                    onClick={() => setGenrePopupVisible(true)}
+                                >
+                                    {/* Render the array of elements from buildGenreDisplayElements */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                                        {buildGenreDisplayElements()}
+                                    </div>
+                                </span>
+                            ) : (
+                                <span
+                                    style={{ color: '#666', cursor: 'pointer' }}
+                                    onClick={() => setGenrePopupVisible(true)}
+                                >
+                                    点击选择故事类型 (可多选, 最多3个)
+                                </span>
+                            )}
+                            <RightOutlined style={{ fontSize: '12px', color: '#666' }} />
                         </div>
                     </div>
 
-                    {/* Only show generate button when there's text input */}
-                    {userInput.trim() && (
-                        <Button
-                            type="primary"
-                            icon={<SendOutlined />}
-                            onClick={generateIdeation}
-                            loading={isLoading}
-                            style={{ marginBottom: '24px', marginRight: '8px' }}
-                        >
-                            生成
-                        </Button>
-                    )}
+                    <GenreSelectionPopup
+                        visible={genrePopupVisible}
+                        onClose={() => setGenrePopupVisible(false)}
+                        onSelect={handleGenreSelectionConfirm}
+                        currentSelectionPaths={selectedGenrePaths}
+                    />
 
-                    {error && (
-                        <Alert
-                            message="Error"
-                            description={error.message}
-                            type="error"
-                            showIcon
-                            style={{ marginBottom: '16px' }}
-                        />
-                    )}
+                    {/* Only show subsequent elements when genre selection is complete */}
+                    {isGenreSelectionComplete() ? (
+                        <>
+                            <Divider style={{ margin: '24px 0' }} />
 
-                    {(isLoading || result) && (
-                        <div
-                            style={{
-                                marginTop: '16px',
+                            {/* Idea Generator Section */}
+                            <div style={{
+                                marginBottom: '24px',
+                                textAlign: 'center',
                                 padding: '16px',
-                                border: '1px solid #303030',
+                                background: '#1a1a1a',
                                 borderRadius: '8px',
-                                backgroundColor: '#141414'
-                            }}
-                        >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                                <Text strong style={{ fontSize: '16px' }}>生成结果</Text>
-                                {isLoading && <Spin />}
+                                border: '1px solid #303030'
+                            }}>
+                                <Text strong style={{ display: 'block', marginBottom: '12px', color: '#d9d9d9' }}>
+                                    创意生成器
+                                </Text>
+                                <Text type="secondary" style={{ display: 'block', marginBottom: '16px', fontSize: '12px' }}>
+                                    基于选择的类型生成创意灵感
+                                </Text>
+                                <Button
+                                    type="primary"
+                                    size="large"
+                                    onClick={generateIdea}
+                                    loading={isGeneratingIdea}
+                                    style={{
+                                        background: '#52c41a',
+                                        borderColor: '#52c41a',
+                                        fontSize: '16px',
+                                        height: '40px',
+                                        minWidth: '120px'
+                                    }}
+                                >
+                                    <span style={{ marginRight: '8px' }}>🎲</span>
+                                    {isGeneratingIdea ? '生成中...' : '随机创意'}
+                                </Button>
                             </div>
 
-                            {result ? (
+                            <div style={{ marginBottom: '16px' }}>
+                                <Text strong style={{ display: 'block', marginBottom: '8px' }}>创作灵感:</Text>
+
+                                {/* Generated Ideas Cards */}
+                                {generatedIdeas.length > 0 && (
+                                    <div style={{ marginBottom: '16px' }}>
+                                        <Text type="secondary" style={{ display: 'block', marginBottom: '8px', fontSize: '12px' }}>
+                                            选择一个创意（点击卡片选择）:
+                                        </Text>
+                                        <div style={{
+                                            display: 'grid',
+                                            gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fit, minmax(250px, 1fr))',
+                                            gap: '8px',
+                                            marginBottom: '16px'
+                                        }}>
+                                            {generatedIdeas.map((idea, index) => (
+                                                <div
+                                                    key={index}
+                                                    onClick={() => handleIdeaSelection(index)}
+                                                    style={{
+                                                        padding: '12px',
+                                                        border: selectedIdeaIndex === index ? '2px solid #1890ff' : '1px solid #434343',
+                                                        borderRadius: '6px',
+                                                        cursor: 'pointer',
+                                                        backgroundColor: selectedIdeaIndex === index ? '#1890ff10' : '#1a1a1a',
+                                                        transition: 'all 0.3s',
+                                                        position: 'relative'
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                        if (selectedIdeaIndex !== index) {
+                                                            e.currentTarget.style.backgroundColor = '#2a2a2a';
+                                                            e.currentTarget.style.borderColor = '#666';
+                                                        }
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        if (selectedIdeaIndex !== index) {
+                                                            e.currentTarget.style.backgroundColor = '#1a1a1a';
+                                                            e.currentTarget.style.borderColor = '#434343';
+                                                        }
+                                                    }}
+                                                >
+                                                    <div style={{
+                                                        position: 'absolute',
+                                                        top: '8px',
+                                                        right: '8px',
+                                                        width: '20px',
+                                                        height: '20px',
+                                                        borderRadius: '50%',
+                                                        backgroundColor: selectedIdeaIndex === index ? '#1890ff' : '#666',
+                                                        color: 'white',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        fontSize: '12px',
+                                                        fontWeight: 'bold'
+                                                    }}>
+                                                        {index + 1}
+                                                    </div>
+                                                    <div style={{
+                                                        fontSize: '14px',
+                                                        lineHeight: '1.4',
+                                                        paddingRight: '30px',
+                                                        color: selectedIdeaIndex === index ? '#d9d9d9' : '#bfbfbf'
+                                                    }}>
+                                                        {idea}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Editable textarea for selected/modified idea */}
                                 <div>
-                                    {result.mediaType && (
-                                        <div style={{ marginBottom: '16px' }}>
-                                            <Text strong>适合媒体类型:</Text> {result.mediaType}
-                                        </div>
-                                    )}
-
-                                    {result.platform && (
-                                        <div style={{ marginBottom: '16px' }}>
-                                            <Text strong>推荐平台:</Text> {result.platform}
-                                        </div>
-                                    )}
-
-                                    {result.plotOutline && (
-                                        <div style={{ marginBottom: '16px' }}>
-                                            <Text strong>情节提要:</Text>
-                                            <Paragraph style={{
-                                                padding: '12px',
-                                                backgroundColor: '#1f1f1f',
-                                                borderRadius: '8px',
-                                                marginTop: '8px'
-                                            }}>
-                                                {result.plotOutline}
-                                            </Paragraph>
-                                        </div>
-                                    )}
-
-                                    {result.analysis && (
-                                        <div>
-                                            <Text strong>分析:</Text>
-                                            <Paragraph style={{
-                                                padding: '12px',
-                                                backgroundColor: '#1f1f1f',
-                                                borderRadius: '8px',
-                                                marginTop: '8px'
-                                            }}>
-                                                {result.analysis}
-                                            </Paragraph>
-                                        </div>
-                                    )}
+                                    <Text type="secondary" style={{ display: 'block', marginBottom: '8px', fontSize: '12px' }}>
+                                        {generatedIdeas.length > 0 ? '编辑选中的创意:' : '输入你的创作灵感:'}
+                                    </Text>
+                                    <TextArea
+                                        rows={4}
+                                        value={userInput}
+                                        onChange={handleInputChange}
+                                        placeholder={generatedIdeas.length > 0 ? "编辑选中的创意..." : "输入你的创作灵感..."}
+                                        disabled={isLoading || isGeneratingIdea}
+                                        style={{
+                                            background: isGeneratingIdea ? '#2a2a2a' : undefined,
+                                            borderColor: isGeneratingIdea ? '#52c41a' : undefined
+                                        }}
+                                    />
                                 </div>
-                            ) : (
-                                <div>
-                                    <pre style={{
-                                        whiteSpace: 'pre-wrap',
-                                        wordBreak: 'break-word',
-                                        color: '#d9d9d9'
-                                    }}>
-                                        {''}
-                                    </pre>
+                            </div>
+
+                            {/* Only show generate button when there's text input */}
+                            {userInput.trim() && (
+                                <Button
+                                    type="primary"
+                                    icon={<SendOutlined />}
+                                    onClick={generateIdeation}
+                                    loading={isLoading}
+                                    style={{ marginBottom: '24px', marginRight: '8px' }}
+                                >
+                                    生成
+                                </Button>
+                            )}
+
+                            {error && (
+                                <Alert
+                                    message="Error"
+                                    description={error.message}
+                                    type="error"
+                                    showIcon
+                                    style={{ marginBottom: '16px' }}
+                                />
+                            )}
+
+                            {(isLoading || result) && (
+                                <div
+                                    style={{
+                                        marginTop: '16px',
+                                        padding: '16px',
+                                        border: '1px solid #303030',
+                                        borderRadius: '8px',
+                                        backgroundColor: '#141414'
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                                        <Text strong style={{ fontSize: '16px' }}>生成结果</Text>
+                                        {isLoading && <Spin />}
+                                    </div>
+
+                                    {result ? (
+                                        <div>
+                                            {result.mediaType && (
+                                                <div style={{ marginBottom: '16px' }}>
+                                                    <Text strong>适合媒体类型:</Text> {result.mediaType}
+                                                </div>
+                                            )}
+
+                                            {result.platform && (
+                                                <div style={{ marginBottom: '16px' }}>
+                                                    <Text strong>推荐平台:</Text> {result.platform}
+                                                </div>
+                                            )}
+
+                                            {result.plotOutline && (
+                                                <div style={{ marginBottom: '16px' }}>
+                                                    <Text strong>情节提要:</Text>
+                                                    <Paragraph style={{
+                                                        padding: '12px',
+                                                        backgroundColor: '#1f1f1f',
+                                                        borderRadius: '8px',
+                                                        marginTop: '8px'
+                                                    }}>
+                                                        {result.plotOutline}
+                                                    </Paragraph>
+                                                </div>
+                                            )}
+
+                                            {result.analysis && (
+                                                <div>
+                                                    <Text strong>分析:</Text>
+                                                    <Paragraph style={{
+                                                        padding: '12px',
+                                                        backgroundColor: '#1f1f1f',
+                                                        borderRadius: '8px',
+                                                        marginTop: '8px'
+                                                    }}>
+                                                        {result.analysis}
+                                                    </Paragraph>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div>
+                                            <pre style={{
+                                                whiteSpace: 'pre-wrap',
+                                                wordBreak: 'break-word',
+                                                color: '#d9d9d9'
+                                            }}>
+                                                {''}
+                                            </pre>
+                                        </div>
+                                    )}
                                 </div>
                             )}
+                        </>
+                    ) : (
+                        /* Progress hint when genre selection is incomplete */
+                        <div style={{
+                            textAlign: 'center',
+                            padding: '40px 20px',
+                            color: '#666',
+                            background: '#1a1a1a',
+                            borderRadius: '8px',
+                            border: '1px solid #303030',
+                            marginTop: '24px'
+                        }}>
+                            <div style={{ fontSize: '48px', marginBottom: '16px' }}>📝</div>
+                            <Text type="secondary" style={{ fontSize: '16px', display: 'block', marginBottom: '8px' }}>
+                                请先完成故事类型选择以继续
+                            </Text>
+                            <Text type="secondary" style={{ fontSize: '12px' }}>
+                                需要选择完整的类型层级（至少3层）
+                            </Text>
                         </div>
                     )}
                 </>
-            ) : (
-                /* Progress hint when genre selection is incomplete */
-                <div style={{
-                    textAlign: 'center',
-                    padding: '40px 20px',
-                    color: '#666',
-                    background: '#1a1a1a',
-                    borderRadius: '8px',
-                    border: '1px solid #303030',
-                    marginTop: '24px'
-                }}>
-                    <div style={{ fontSize: '48px', marginBottom: '16px' }}>📝</div>
-                    <Text type="secondary" style={{ fontSize: '16px', display: 'block', marginBottom: '8px' }}>
-                        请先完成故事类型选择以继续
-                    </Text>
-                    <Text type="secondary" style={{ fontSize: '12px' }}>
-                        需要选择完整的类型层级（至少3层）
-                    </Text>
-                </div>
             )}
         </div>
     );
