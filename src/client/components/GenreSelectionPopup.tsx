@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Drawer, Button, Checkbox, Typography } from 'antd';
+import { Modal, Drawer, Button, Checkbox, Typography, Slider, Row, Col } from 'antd';
 import { RightOutlined, LeftOutlined } from '@ant-design/icons';
 
-// const { Paragraph } = Typography; // Not used directly here, but Text is. Text is used by ProportionAdjustmentModal
+const { Text } = Typography;
 
 // Genre hierarchy (remains exported for potential use elsewhere, though primarily internal now)
 export const genreOptions = {
@@ -55,20 +55,32 @@ export const genreOptions = {
 export interface GenreSelectionPopupProps {
     visible: boolean;
     onClose: () => void;
-    onSelect: (paths: string[][]) => void;
-    currentSelection: string[][];
+    onSelect: (selection: { paths: string[][]; proportions: number[] }) => void;
+    currentSelectionPaths: string[][];
 }
 
 const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
     visible,
     onClose,
     onSelect,
-    currentSelection
+    currentSelectionPaths
 }) => {
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
     const [navigationPath, setNavigationPath] = useState<string[]>([]);
-    const [tempSelectedPaths, setTempSelectedPaths] = useState<string[][]>(currentSelection);
+    const [tempSelectedPaths, setTempSelectedPaths] = useState<string[][]>(currentSelectionPaths);
+    const [tempProportions, setTempProportions] = useState<number[]>([]);
     const [activeNavigationPath, setActiveNavigationPath] = useState<string[]>([]);
+
+    const initializeProportions = (paths: string[][]) => {
+        if (paths.length === 0) {
+            setTempProportions([]);
+        } else if (paths.length === 1) {
+            setTempProportions([100]);
+        } else {
+            const equalShare = Math.floor(100 / paths.length);
+            setTempProportions(paths.map(() => equalShare));
+        }
+    };
 
     useEffect(() => {
         const handleResize = () => {
@@ -80,18 +92,18 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
 
     useEffect(() => {
         if (visible) {
-            setTempSelectedPaths(currentSelection);
+            setTempSelectedPaths(currentSelectionPaths);
+            initializeProportions(currentSelectionPaths);
             setNavigationPath([]);
-            // Initialize activeNavigationPath when the modal becomes visible or currentSelection changes (for Miller columns)
             if (!isMobile) {
-                if (currentSelection.length > 0 && currentSelection[0].length > 0) {
-                    setActiveNavigationPath(currentSelection[0].slice(0, -1));
+                if (currentSelectionPaths.length > 0 && currentSelectionPaths[0].length > 0) {
+                    setActiveNavigationPath(currentSelectionPaths[0].slice(0, -1));
                 } else {
                     setActiveNavigationPath([]);
                 }
             }
         }
-    }, [visible, currentSelection, isMobile]);
+    }, [visible, currentSelectionPaths, isMobile]);
 
     const getDataAtPath = (path: string[]) => {
         let current: any = genreOptions;
@@ -134,42 +146,114 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
 
     const handleCheckboxChange = (itemPath: string[], itemName: string) => {
         const fullItemPath = [...itemPath, itemName];
+        let newSelectedPaths: string[][] = [];
+
         setTempSelectedPaths(prevSelectedPaths => {
             const isAlreadySelected = prevSelectedPaths.some(p => JSON.stringify(p) === JSON.stringify(fullItemPath));
             if (isAlreadySelected) {
-                return prevSelectedPaths.filter(p => JSON.stringify(p) !== JSON.stringify(fullItemPath));
+                newSelectedPaths = prevSelectedPaths.filter(p => JSON.stringify(p) !== JSON.stringify(fullItemPath));
             } else {
                 if (prevSelectedPaths.length < 3) {
-                    return [...prevSelectedPaths, fullItemPath];
+                    newSelectedPaths = [...prevSelectedPaths, fullItemPath];
+                } else {
+                    newSelectedPaths = prevSelectedPaths;
                 }
-                return prevSelectedPaths;
             }
+            initializeProportions(newSelectedPaths);
+            return newSelectedPaths;
         });
     };
 
+    const handleProportionSliderChange = (index: number, value: number | null) => {
+        if (value === null) return;
+        const newProportions = [...tempProportions];
+        newProportions[index] = value;
+        setTempProportions(newProportions);
+    };
+
     const handleConfirm = () => {
-        if (tempSelectedPaths.length > 0 && tempSelectedPaths.length <= 3) { // Ensure not over limit before confirming
-            onSelect(tempSelectedPaths);
+        if (tempSelectedPaths.length > 0 && tempSelectedPaths.length <= 3) {
+            let finalProportions: number[];
+            if (tempSelectedPaths.length === 0) {
+                finalProportions = [];
+            } else if (tempSelectedPaths.length === 1) {
+                finalProportions = [100];
+            } else {
+                const sum = tempProportions.reduce((acc, p) => acc + p, 0);
+                if (sum === 0) {
+                    const equalShare = 100 / tempProportions.length;
+                    finalProportions = tempProportions.map(() => equalShare);
+                } else {
+                    finalProportions = tempProportions.map(p => Math.round((p / sum) * 100));
+                    const currentSum = finalProportions.reduce((a, b) => a + b, 0);
+                    if (currentSum !== 100 && finalProportions.length > 0) {
+                        finalProportions[0] += (100 - currentSum);
+                    }
+                }
+            }
+            onSelect({ paths: tempSelectedPaths, proportions: finalProportions });
             onClose();
         }
     };
 
     const handleCancel = () => {
-        setTempSelectedPaths(currentSelection); // Reset to original selection on cancel
+        setTempSelectedPaths(currentSelectionPaths);
+        initializeProportions(currentSelectionPaths);
         onClose();
+    };
+
+    const renderProportionSliders = () => {
+        if (tempSelectedPaths.length < 2) return null;
+
+        const totalRawSum = tempProportions.reduce((a, b) => a + b, 0);
+
+        return (
+            <div style={{ marginTop: '20px', padding: '0 16px' }}>
+                <Text strong style={{ display: 'block', marginBottom: '10px' }}>调整类型比例:</Text>
+                {tempSelectedPaths.map((path, index) => {
+                    const pathString = path.join(' > ');
+                    const currentRawValue = tempProportions[index] || 0;
+                    const baseValue = tempProportions.length > 0 ? (100 / tempProportions.length) : 0;
+                    const displayValue = tempProportions[index] !== undefined ? tempProportions[index] : baseValue;
+
+                    const currentPercentage = totalRawSum > 0 ? (displayValue / totalRawSum) * 100 : (tempSelectedPaths.length > 0 ? (100 / tempSelectedPaths.length) : 0);
+
+                    return (
+                        <div key={`slider-${index}`} style={{ marginBottom: '15px' }}>
+                            <Row align="middle" gutter={16}>
+                                <Col flex="1">
+                                    <Text ellipsis={{ tooltip: pathString }}>{pathString}</Text>
+                                </Col>
+                                <Col style={{ width: '70px', textAlign: 'right' }}>
+                                    <Text type="secondary">{`${currentPercentage.toFixed(0)}%`}</Text>
+                                </Col>
+                            </Row>
+                            <Slider
+                                min={0}
+                                max={100}
+                                step={1}
+                                value={displayValue}
+                                onChange={(value) => handleProportionSliderChange(index, value)}
+                                tooltip={{ formatter: (value) => `${value}` }}
+                            />
+                        </div>
+                    );
+                })}
+            </div>
+        );
     };
 
     const renderMillerColumns = () => {
         const columns = [];
         let currentLevelData: any = genreOptions;
-        let currentPathSegmentsForRender: string[] = []; // Path for the current column items
+        let currentPathSegmentsForRender: string[] = [];
 
-        // Column 0 (Root)
         columns.push(
             <div key="col-root" style={{
                 width: '200px',
                 borderRight: '1px solid #303030',
-                height: '400px',
+                height: 'auto',
+                maxHeight: '300px',
                 overflowY: 'auto'
             }}>
                 {Object.keys(currentLevelData).map(key => {
@@ -213,7 +297,6 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
             </div>
         );
 
-        // Subsequent columns based on activeNavigationPath
         for (let i = 0; i < activeNavigationPath.length; i++) {
             currentPathSegmentsForRender = activeNavigationPath.slice(0, i + 1);
             currentLevelData = getDataAtPath(currentPathSegmentsForRender);
@@ -223,7 +306,8 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
                     <div key={`col-${i}`} style={{
                         width: '200px',
                         borderRight: '1px solid #303030',
-                        height: '400px',
+                        height: 'auto',
+                        maxHeight: '300px',
                         overflowY: 'auto'
                     }}>
                         {Object.keys(currentLevelData).map(key => {
@@ -270,9 +354,8 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
                 break;
             }
         }
-
         return (
-            <div style={{ display: 'flex', flexDirection: 'column', height: '400px', overflow: 'hidden' }}>
+            <>
                 <div style={{
                     padding: '12px 16px',
                     backgroundColor: '#1a1a1a',
@@ -285,10 +368,11 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
                     当前选择 ({tempSelectedPaths.length}/3): {tempSelectedPaths.map(path => path.join(' > ')).join(', ') || '未选择'}
                     {tempSelectedPaths.length > 3 && <span style={{ marginLeft: '8px', fontWeight: 'bold' }}>超出数量限制！</span>}
                 </div>
-                <div style={{ display: 'flex', flexGrow: 1, overflowX: 'auto', overflowY: 'hidden' }}>
+                <div style={{ display: 'flex', flexGrow: 1, overflowX: 'auto', overflowY: 'hidden', borderBottom: tempSelectedPaths.length >= 2 ? '1px solid #303030' : 'none', paddingBottom: tempSelectedPaths.length >= 2 ? '10px' : '0' }}>
                     {columns}
                 </div>
-            </div>
+                {renderProportionSliders()}
+            </>
         );
     };
 
@@ -329,7 +413,7 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
                     已选择 ({tempSelectedPaths.length}/3): {tempSelectedPaths.map(path => path.join(' > ')).join(', ') || '未选择'}
                     {tempSelectedPaths.length > 3 && <span style={{ marginLeft: '8px', fontWeight: 'bold' }}>超出数量限制！</span>}
                 </div>
-                <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
+                <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0', borderBottom: tempSelectedPaths.length >= 2 ? '1px solid #303030' : 'none', paddingBottom: tempSelectedPaths.length >= 2 ? '10px' : '0' }}>
                     <>
                         {currentDataToDisplay && typeof currentDataToDisplay === 'object' && !Array.isArray(currentDataToDisplay) &&
                             Object.keys(currentDataToDisplay).map(key => {
@@ -346,9 +430,9 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
                                             if (itemHasChildren && !itemIsDeepest) {
                                                 handleNavigationClick(itemFullPath);
                                             } else if (canSelectItem && !isItemSelected && tempSelectedPaths.length < 3) {
-                                                handleCheckboxChange(navigationPath, key); // Allow row click to select if checkbox not directly clicked
+                                                handleCheckboxChange(navigationPath, key);
                                             } else if (canSelectItem && isItemSelected) {
-                                                handleCheckboxChange(navigationPath, key); // Allow row click to deselect
+                                                handleCheckboxChange(navigationPath, key);
                                             }
                                         }}
                                         style={{
@@ -385,19 +469,23 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
                         )}
                     </>
                 </div>
+                {renderProportionSliders()}
             </div>
         );
     };
 
+    const modalContentHeight = tempSelectedPaths.length >= 2 ? 'auto' : '450px';
+    const drawerHeight = tempSelectedPaths.length >= 2 ? '85vh' : '70vh';
+
     if (isMobile) {
         return (
             <Drawer
-                title="选择故事类型"
+                title="选择故事类型与比例"
                 placement="bottom"
-                height="70vh"
+                height={drawerHeight}
                 onClose={handleCancel}
                 open={visible}
-                bodyStyle={{ padding: 0 }}
+                style={{ padding: 0 }}
                 footerStyle={{ padding: '16px', borderTop: '1px solid #303030' }}
                 footer={[
                     <Button key="cancel" onClick={handleCancel} style={{ marginRight: '8px' }}>
@@ -420,10 +508,12 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
 
     return (
         <Modal
-            title="选择故事类型"
+            title="选择故事类型与比例"
             open={visible}
             onCancel={handleCancel}
-            width={Math.min(220 * (activeNavigationPath.length + 2), 1000)}
+            width={Math.min(220 * (activeNavigationPath.length + 2) + (tempSelectedPaths.length >= 2 ? 50 : 0), 1000)}
+            style={{ height: modalContentHeight }}
+            style={{ overflowY: 'auto', maxHeight: tempSelectedPaths.length >= 2 ? '60vh' : '400px' }}
             footer={[
                 <Button key="cancel" onClick={handleCancel}>
                     取消

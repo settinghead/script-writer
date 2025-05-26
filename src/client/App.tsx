@@ -115,7 +115,7 @@ const AppContent: React.FC = () => {
               placement="right"
               onClose={() => setMenuVisible(false)}
               open={menuVisible}
-              bodyStyle={{ padding: 0 }}
+              style={{ padding: 0 }}
             >
               <Menu
                 mode="vertical"

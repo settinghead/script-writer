@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Input, Button, Typography, Spin, Alert, Select, Row, Col, Divider, Modal, Drawer, Checkbox, Slider } from 'antd';
 import { SendOutlined, RightOutlined, LeftOutlined } from '@ant-design/icons';
 import { jsonrepair } from 'jsonrepair';
-import GenreSelectionPopup, { GenreSelectionPopupProps as GenrePopupPropsType } from './GenreSelectionPopup';
+import GenreSelectionPopup from './GenreSelectionPopup';
 
 // Use a hardcoded template instead of importing from a file
 // The content is directly copied from src/client/ideation.txt
@@ -109,24 +109,10 @@ const IdeationTab: React.FC = () => {
         setSelectedPlatform(value);
     };
 
-    const handleMultiGenreSelection = (paths: string[][]) => {
-        setSelectedGenrePaths(paths);
-        if (paths.length > 0) {
-            const initialProportions = new Array(paths.length).fill(0);
-            if (paths.length === 1) {
-                setGenreProportions([100]);
-            } else {
-                const equalShare = 100 / paths.length;
-                setGenreProportions(paths.map(() => equalShare));
-            }
-        } else {
-            setGenreProportions([]);
-        }
-    };
-
-    const handleProportionsConfirm = (newProportions: number[]) => {
-        setGenreProportions(newProportions);
-        setProportionModalVisible(false);
+    const handleGenreSelectionConfirm = (selection: { paths: string[][]; proportions: number[] }) => {
+        setSelectedGenrePaths(selection.paths);
+        setGenreProportions(selection.proportions);
+        setGenrePopupVisible(false); // Close the main popup
     };
 
     // Handle idea card selection
@@ -372,16 +358,10 @@ const IdeationTab: React.FC = () => {
                 >
                     {selectedGenrePaths.length > 0 ? (
                         <span
-                            style={{ color: '#d9d9d9', cursor: selectedGenrePaths.length > 1 ? 'pointer' : 'default' }}
-                            onClick={() => {
-                                if (selectedGenrePaths.length > 1) {
-                                    setProportionModalVisible(true);
-                                } else {
-                                    setGenrePopupVisible(true); // If only one, or to change selection
-                                }
-                            }}
+                            style={{ color: '#d9d9d9', cursor: 'pointer' }}
+                            onClick={() => setGenrePopupVisible(true)}
                         >
-                            {buildGenreString()} {selectedGenrePaths.length > 1 && "(点击调整比例)"}
+                            {buildGenreString()} {(selectedGenrePaths.length > 1 && genreProportions.length === selectedGenrePaths.length) && ""}
                         </span>
                     ) : (
                         <span
@@ -398,19 +378,9 @@ const IdeationTab: React.FC = () => {
             <GenreSelectionPopup
                 visible={genrePopupVisible}
                 onClose={() => setGenrePopupVisible(false)}
-                onSelect={handleMultiGenreSelection}
-                currentSelection={selectedGenrePaths}
+                onSelect={handleGenreSelectionConfirm}
+                currentSelectionPaths={selectedGenrePaths}
             />
-
-            {selectedGenrePaths.length > 1 && (
-                <ProportionAdjustmentModal
-                    visible={proportionModalVisible}
-                    onClose={() => setProportionModalVisible(false)}
-                    genrePaths={selectedGenrePaths}
-                    initialProportions={genreProportions} // Pass current raw proportions
-                    onConfirm={handleProportionsConfirm}
-                />
-            )}
 
             {/* Only show subsequent elements when genre selection is complete */}
             {isGenreSelectionComplete() ? (
@@ -659,93 +629,4 @@ const IdeationTab: React.FC = () => {
     );
 };
 
-export default IdeationTab;
-
-// --- ProportionAdjustmentModal Component ---
-interface ProportionAdjustmentModalProps {
-    visible: boolean;
-    onClose: () => void;
-    genrePaths: string[][];
-    initialProportions: number[];
-    onConfirm: (newProportions: number[]) => void;
-}
-
-const ProportionAdjustmentModal: React.FC<ProportionAdjustmentModalProps> = ({
-    visible,
-    onClose,
-    genrePaths,
-    initialProportions,
-    onConfirm
-}) => {
-    const [proportions, setProportions] = useState<number[]>(initialProportions);
-
-    useEffect(() => {
-        // Sync with initialProportions when modal opens or props change
-        setProportions(initialProportions);
-    }, [initialProportions, visible]);
-
-    const handleSliderChange = (index: number, value: number | null) => {
-        if (value === null) return;
-        const newProportions = [...proportions];
-        newProportions[index] = value;
-        setProportions(newProportions);
-    };
-
-    const handleSubmit = () => {
-        // Normalize proportions to sum to 100 before confirming
-        const sum = proportions.reduce((acc, p) => acc + p, 0);
-        if (sum === 0) { // Avoid division by zero; treat as equal if all are 0
-            const equalShare = 100 / proportions.length;
-            onConfirm(proportions.map(() => equalShare));
-        } else {
-            const normalized = proportions.map(p => (p / sum) * 100);
-            onConfirm(normalized);
-        }
-        onClose();
-    };
-
-    const totalRawSum = proportions.reduce((a, b) => a + b, 0);
-
-    return (
-        <Modal
-            title="调整故事类型比例"
-            open={visible}
-            onCancel={onClose}
-            onOk={handleSubmit}
-            okText="确定"
-            cancelText="取消"
-            width={600}
-        >
-            <Paragraph type="secondary">
-                调整各类别的相对重要性。最终比例将自动归一化为总和100%。
-            </Paragraph>
-            {genrePaths.map((path, index) => {
-                const pathString = path.join(' > ');
-                const currentRawValue = proportions[index] || 0;
-                const currentPercentage = totalRawSum > 0 ? (currentRawValue / totalRawSum) * 100 : (100 / genrePaths.length);
-
-                return (
-                    <div key={index} style={{ marginBottom: '20px' }}>
-                        <Row align="middle">
-                            <Col flex="1">
-                                <Text strong>{pathString}</Text>
-                            </Col>
-                            <Col style={{ width: '80px', textAlign: 'right' }}>
-                                <Text type="secondary">{`${currentPercentage.toFixed(1)}%`}</Text>
-                            </Col>
-                        </Row>
-                        <Slider
-                            min={0}
-                            max={100} // Raw value slider
-                            step={1}
-                            value={currentRawValue}
-                            onChange={(value) => handleSliderChange(index, value)}
-                            tooltip={{ formatter: (value) => `${value}` }}
-                        />
-                    </div>
-                );
-            })}
-            {genrePaths.length === 0 && <Paragraph>没有选择任何故事类型。</Paragraph>}
-        </Modal>
-    );
-}; 
+export default IdeationTab; 
