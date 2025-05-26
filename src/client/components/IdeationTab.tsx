@@ -88,7 +88,7 @@ interface IdeationResponse {
 }
 
 const IdeationTab: React.FC = () => {
-    const [userInput, setUserInput] = useState('古早言情剧');
+    const [userInput, setUserInput] = useState('');
     const [selectedPlatform, setSelectedPlatform] = useState<string>('');
     const [selectedGenrePaths, setSelectedGenrePaths] = useState<string[][]>([]);
     const [genreProportions, setGenreProportions] = useState<number[]>([]);
