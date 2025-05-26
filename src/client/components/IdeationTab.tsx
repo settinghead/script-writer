@@ -4,6 +4,7 @@ import { Input, Button, Typography, Spin, Alert, Select, Row, Col, Divider, Moda
 import { SendOutlined, RightOutlined, LeftOutlined } from '@ant-design/icons';
 import { jsonrepair } from 'jsonrepair';
 import GenreSelectionPopup from './GenreSelectionPopup';
+import PlatformSelection from './PlatformSelection';
 
 const NUM_IDEAS_TO_GENERATE = 6; // New global constant
 
@@ -65,20 +66,6 @@ const ideaGenerationTemplate = `
 const { TextArea } = Input;
 const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
-
-// Platform options for short drama platforms
-const platformOptions = [
-    { value: '抖音', label: '抖音 (Douyin)' },
-    { value: '快手', label: '快手 (Kuaishou)' },
-    { value: '小红书', label: '小红书 (Xiaohongshu)' },
-    { value: 'B站', label: 'B站 (Bilibili)' },
-    { value: '微博', label: '微博 (Weibo)' },
-    { value: '腾讯视频', label: '腾讯视频 (Tencent Video)' },
-    { value: '爱奇艺', label: '爱奇艺 (iQiyi)' },
-    { value: '优酷', label: '优酷 (Youku)' },
-    { value: '芒果TV', label: '芒果TV (Mango TV)' },
-    { value: '西瓜视频', label: '西瓜视频 (Xigua Video)' }
-];
 
 interface IdeationResponse {
     mediaType?: string;
@@ -446,16 +433,10 @@ const IdeationTab: React.FC = () => {
                         输入你的灵感，AI将帮你构建故事情节提要。
                     </Paragraph>
 
-                    <div style={{ marginBottom: '16px' }}>
-                        <Text strong>目标平台:</Text>
-                        <Select
-                            style={{ width: '100%' }}
-                            placeholder="选择目标平台"
-                            options={platformOptions}
-                            value={selectedPlatform}
-                            onChange={handlePlatformChange}
-                        />
-                    </div>
+                    <PlatformSelection
+                        selectedPlatform={selectedPlatform}
+                        onPlatformChange={handlePlatformChange}
+                    />
 
                     <div style={{ marginBottom: '16px' }}>
                         <Text strong style={{ display: 'block', marginBottom: '8px' }}>故事类型:</Text>

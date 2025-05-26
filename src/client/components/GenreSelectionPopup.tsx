@@ -4,50 +4,50 @@ import { RightOutlined, LeftOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
 
-// Genre hierarchy (remains exported for potential use elsewhere, though primarily internal now)
+// Genre hierarchy with disabled states
 export const genreOptions = {
     '女频': {
         '爱情类': {
             '甜宠': ['浪漫甜蜜的爱情故事'],
             '虐恋': ['充满波折、痛苦和情感挣扎的爱情故事'],
-            '先婚后爱': ['闪婚', '替嫁', '错嫁', '契约婚姻'],
-            '霸总': ['高冷型', '奶狗型', '疯批型', '沙雕型']
+            '先婚后爱': ['闪婚', '替嫁', '错嫁', '契约婚姻', 'disabled'],
+            '霸总': ['高冷型', '奶狗型', '疯批型', '沙雕型', 'disabled']
         },
         '设定类': {
-            '穿越': ['身穿', '魂穿', '近穿', '远穿', '反穿', '来回穿', '双穿', '穿书', '穿系统'],
-            '重生': ['重生', '双重生', '多重生'],
-            '马甲': ['单马甲', '多马甲', '双马甲'],
-            '替身': ['双胞胎', '真假千金', '错认白月光']
+            '穿越': ['身穿', '魂穿', '近穿', '远穿', '反穿', '来回穿', '双穿', '穿书', '穿系统', 'disabled'],
+            '重生': ['重生', '双重生', '多重生', 'disabled'],
+            '马甲': ['单马甲', '多马甲', '双马甲', 'disabled'],
+            '替身': ['双胞胎', '真假千金', '错认白月光', 'disabled']
         },
         '其他类型': {
-            '复仇': ['复仇'],
-            '萌宝': ['单宝', '多宝', '龙凤胎', '双胞胎', '真假萌宝'],
-            '家庭': ['家庭伦理', '寻亲'],
-            '团宠': ['团宠'],
-            '恶女': ['恶毒女配', '双重人格'],
-            '娱乐圈': ['娱乐圈']
+            '复仇': ['复仇', 'disabled'],
+            '萌宝': ['单宝', '多宝', '龙凤胎', '双胞胎', '真假萌宝', 'disabled'],
+            '家庭': ['家庭伦理', '寻亲', 'disabled'],
+            '团宠': ['团宠', 'disabled'],
+            '恶女': ['恶毒女配', '双重人格', 'disabled'],
+            '娱乐圈': ['娱乐圈', 'disabled']
         }
     },
     '男频': {
         '设定类': {
-            '穿越': ['穿越'],
-            '重生': ['重生'],
-            '玄幻': ['修炼成仙', '升级打怪'],
-            '末世': ['天灾', '丧尸', '安全屋']
+            '穿越': ['穿越', 'disabled'],
+            '重生': ['重生', 'disabled'],
+            '玄幻': ['修炼成仙', '升级打怪', 'disabled'],
+            '末世': ['天灾', '丧尸', '安全屋', 'disabled']
         },
         '逆袭类': {
-            '战神': ['强者', '龙王', '兵王', '城主'],
-            '神豪': ['一夜暴富', '点石成金', '物价贬值', '神仙神豪'],
-            '赘婿': ['赘婿'],
-            '离婚': ['离婚'],
-            '逆袭': ['小人物', '扮猪吃老虎', '马甲大佬'],
-            '残疾大佬': ['残疾大佬'],
-            '金手指': ['超能力', '系统选中', '世界巨变'],
-            '高手下山': ['高手下山']
+            '战神': ['强者', '龙王', '兵王', '城主', 'disabled'],
+            '神豪': ['一夜暴富', '点石成金', '物价贬值', '神仙神豪', 'disabled'],
+            '赘婿': ['赘婿', 'disabled'],
+            '离婚': ['离婚', 'disabled'],
+            '逆袭': ['小人物', '扮猪吃老虎', '马甲大佬', 'disabled'],
+            '残疾大佬': ['残疾大佬', 'disabled'],
+            '金手指': ['超能力', '系统选中', '世界巨变', 'disabled'],
+            '高手下山': ['高手下山', 'disabled']
         },
         '其他类型': {
-            '神医': ['神医'],
-            '后宫': ['后宫']
+            '神医': ['神医', 'disabled'],
+            '后宫': ['后宫', 'disabled']
         }
     }
 };
@@ -57,13 +57,15 @@ export interface GenreSelectionPopupProps {
     onClose: () => void;
     onSelect: (selection: { paths: string[][]; proportions: number[] }) => void;
     currentSelectionPaths: string[][];
+    disabledOptions?: string[]; // Optional array of genre paths to disable
 }
 
 const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
     visible,
     onClose,
     onSelect,
-    currentSelectionPaths
+    currentSelectionPaths,
+    disabledOptions = [] // Default to empty array if not provided
 }) => {
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
     const [navigationPath, setNavigationPath] = useState<string[]>([]);
@@ -105,9 +107,22 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
         }
     }, [visible, currentSelectionPaths, isMobile]);
 
+    const isOptionDisabled = (path: string[]) => {
+        // Check if the path is in disabledOptions
+        if (disabledOptions.some(disabledPath =>
+            JSON.stringify(disabledPath) === JSON.stringify(path))) {
+            return true;
+        }
+
+        // Check if the path contains any disabled segments
+        const pathString = path.join(' > ');
+        return pathString.includes('disabled');
+    };
+
     const getDataAtPath = (path: string[]) => {
         let current: any = genreOptions;
         for (const segment of path) {
+            if (segment === 'disabled') continue;
             current = current[segment];
             if (!current) return null;
         }
@@ -122,13 +137,13 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
     const isDeepestLevel = (path: string[], key: string) => {
         const data = getDataAtPath([...path, key]);
         if (Array.isArray(data)) {
-            return data.length <= 1;
+            return data.length <= 1 || (data.length === 2 && data.includes('disabled'));
         }
         if (typeof data === 'object') {
             const children = Object.keys(data);
             if (children.length === 1) {
                 const childData = data[children[0]];
-                if (Array.isArray(childData) && childData.length <= 1) {
+                if (Array.isArray(childData) && (childData.length <= 1 || (childData.length === 2 && childData.includes('disabled')))) {
                     return true;
                 }
             }
@@ -146,6 +161,12 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
 
     const handleCheckboxChange = (itemPath: string[], itemName: string) => {
         const fullItemPath = [...itemPath, itemName];
+
+        // Don't allow selection if the option is disabled
+        if (isOptionDisabled(fullItemPath)) {
+            return;
+        }
+
         let newSelectedPaths: string[][] = [];
 
         setTempSelectedPaths(prevSelectedPaths => {
@@ -367,6 +388,9 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
                 }}>
                     当前选择 ({tempSelectedPaths.length}/3): {tempSelectedPaths.map(path => path.join(' > ')).join(', ') || '未选择'}
                     {tempSelectedPaths.length > 3 && <span style={{ marginLeft: '8px', fontWeight: 'bold' }}>超出数量限制！</span>}
+                    <div style={{ marginTop: '4px', fontSize: '11px', color: '#666' }}>
+                        仅开放: 甜宠, 虐恋
+                    </div>
                 </div>
                 <div style={{ display: 'flex', flexGrow: 1, overflowX: 'auto', overflowY: 'hidden', borderBottom: tempSelectedPaths.length >= 2 ? '1px solid #303030' : 'none', paddingBottom: tempSelectedPaths.length >= 2 ? '10px' : '0' }}>
                     {columns}
@@ -412,6 +436,9 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
                 }}>
                     已选择 ({tempSelectedPaths.length}/3): {tempSelectedPaths.map(path => path.join(' > ')).join(', ') || '未选择'}
                     {tempSelectedPaths.length > 3 && <span style={{ marginLeft: '8px', fontWeight: 'bold' }}>超出数量限制！</span>}
+                    <div style={{ marginTop: '4px', fontSize: '11px', color: '#666' }}>
+                        仅开放: 甜宠, 虐恋
+                    </div>
                 </div>
                 <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0', borderBottom: tempSelectedPaths.length >= 2 ? '1px solid #303030' : 'none', paddingBottom: tempSelectedPaths.length >= 2 ? '10px' : '0' }}>
                     <>
