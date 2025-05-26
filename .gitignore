@@ -8,3 +8,5 @@ dist
 dist-client
 
 *.db
+
+*.tsbuildinfo
