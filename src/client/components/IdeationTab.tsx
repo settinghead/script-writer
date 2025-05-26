@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Input, Button, Typography, Spin, Alert, Select, Row, Col, Divider, Modal, Drawer, Checkbox, Slider } from 'antd';
-import { SendOutlined, RightOutlined, LeftOutlined } from '@ant-design/icons';
+import { SendOutlined, RightOutlined, LeftOutlined, ReloadOutlined } from '@ant-design/icons';
 import { jsonrepair } from 'jsonrepair';
 import GenreSelectionPopup from './GenreSelectionPopup';
 import PlatformSelection from './PlatformSelection';
@@ -419,6 +419,21 @@ const IdeationTab: React.FC = () => {
         };
     }, []);
 
+    const handleRestart = () => {
+        // Clear all states
+        setUserInput('');
+        setSelectedPlatform('');
+        setSelectedGenrePaths([]);
+        setGenreProportions([]);
+        setGeneratedIdeas([]);
+        setSelectedIdeaIndex(null);
+        setResult(null);
+        setError(null);
+
+        // Navigate to base route
+        navigate('/ideation');
+    };
+
     return (
         <div style={{ padding: '20px', maxWidth: '600px', width: "100%", margin: '0 auto', overflow: "auto" }}>
             {isLoadingRun ? (
@@ -428,7 +443,17 @@ const IdeationTab: React.FC = () => {
                 </div>
             ) : (
                 <>
-                    <Title level={4}>灵感生成器</Title>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                        <Title level={4} style={{ margin: 0 }}>灵感生成器</Title>
+                        <Button
+                            icon={<ReloadOutlined />}
+                            onClick={handleRestart}
+                            type="text"
+                            style={{ color: '#1890ff' }}
+                        >
+                            重来
+                        </Button>
+                    </div>
                     <Paragraph>
                         输入你的灵感，AI将帮你构建故事情节提要。
                     </Paragraph>
