@@ -100,8 +100,18 @@ const IdeationTab: React.FC = () => {
     const [result, setResult] = useState<IdeationResponse | null>(null);
     const [generatedIdeas, setGeneratedIdeas] = useState<string[]>([]);
     const [selectedIdeaIndex, setSelectedIdeaIndex] = useState<number | null>(null);
+    const [isMobile, setIsMobile] = useState(window.innerWidth <= 768); // Add isMobile state
 
     const abortControllerRef = useRef<AbortController | null>(null);
+
+    // Effect to handle window resize for mobile detection
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobile(window.innerWidth <= 768);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         setUserInput(e.target.value);

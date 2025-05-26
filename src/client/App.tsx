@@ -124,7 +124,7 @@ const AppContent: React.FC = () => {
                 style={{ height: '100%' }}
               />
             </Drawer>
-            <div style={{ flexGrow: 1, overflow: 'hidden', padding: '0 10px' }}>
+            <div style={{ flexGrow: 1, overflow: 'auto', padding: '0 10px' }}>
               <Routes>
                 <Route path="/ideation" element={<IdeationTab />} />
                 <Route path="/chat" element={<ChatTab />} />
