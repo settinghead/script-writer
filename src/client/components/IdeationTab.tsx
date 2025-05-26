@@ -4,6 +4,8 @@ import { SendOutlined, RightOutlined, LeftOutlined } from '@ant-design/icons';
 import { jsonrepair } from 'jsonrepair';
 import GenreSelectionPopup from './GenreSelectionPopup';
 
+const NUM_IDEAS_TO_GENERATE = 6; // New global constant
+
 // Use a hardcoded template instead of importing from a file
 // The content is directly copied from src/client/ideation.txt
 const ideationTemplate = `
@@ -43,7 +45,7 @@ Guidelines：
 
 // Idea generation template
 const ideaGenerationTemplate = `
-你是一个创意生成器。请根据给定的故事类型，生成5个简短、具体、有趣的创意灵感句子。
+你是一个创意生成器。请根据给定的故事类型，生成${NUM_IDEAS_TO_GENERATE}个简短、具体、有趣的创意灵感句子。
 
 故事类型：{genre}
 目标平台：{platform}
@@ -54,8 +56,8 @@ const ideaGenerationTemplate = `
 - 每个创意都要有冲突或戏剧性
 - 每个创意都适合短视频/短剧格式
 
-请以JSON数组的格式返回这5个创意，例如：
-["创意1", "创意2", "创意3", "创意4", "创意5"]
+请以JSON数组的格式返回这${NUM_IDEAS_TO_GENERATE}个创意，例如：
+["创意1", "创意2", ..., "创意${NUM_IDEAS_TO_GENERATE}"]
 不要其他解释或包裹。
 `;
 
@@ -123,17 +125,40 @@ const IdeationTab: React.FC = () => {
 
     // Check if genre selection is complete (for dice button)
     const isGenreSelectionComplete = () => {
-        return selectedGenrePaths.length >= 3; // At least main > sub > detail
+        if (selectedGenrePaths.length === 0) {
+            return false; // No genre selected
+        }
+        // Check if every selected path has at least 3 levels
+        return selectedGenrePaths.every(path => path.length >= 3);
     };
 
-    // Build genre string for the prompt
-    const buildGenreString = () => {
-        if (selectedGenrePaths.length === 0) return '未指定';
-        if (selectedGenrePaths.length === 1) return selectedGenrePaths[0].join(' > ');
+    // Build genre string for the prompt and display
+    const buildGenreDisplayElements = (): (JSX.Element | string)[] => {
+        if (selectedGenrePaths.length === 0) return ["未指定"];
 
         return selectedGenrePaths.map((path, index) => {
-            const proportion = genreProportions[index] !== undefined ? genreProportions[index] : (100 / selectedGenrePaths.length);
-            return `${path.join(' > ')} (${proportion.toFixed(0)}%)`;
+            const proportion = genreProportions[index] !== undefined
+                ? genreProportions[index]
+                : (100 / selectedGenrePaths.length);
+            const pathString = path.join(' > ');
+            const displayString = selectedGenrePaths.length > 1
+                ? `- ${pathString} (${proportion.toFixed(0)}%)`
+                : `- ${pathString}`;
+            return <div key={index} style={{ lineHeight: '1.5' }}>{displayString}</div>;
+        });
+    };
+
+    // Function to build the genre string for the LLM prompt (single line)
+    const buildGenrePromptString = (): string => {
+        if (selectedGenrePaths.length === 0) return '未指定';
+        return selectedGenrePaths.map((path, index) => {
+            const proportion = genreProportions[index] !== undefined
+                ? genreProportions[index]
+                : (100 / selectedGenrePaths.length);
+            const pathString = path.join(' > ');
+            return selectedGenrePaths.length > 1
+                ? `${pathString} (${proportion.toFixed(0)}%)`
+                : pathString;
         }).join(', ');
     };
 
@@ -155,7 +180,7 @@ const IdeationTab: React.FC = () => {
         setError(null);
 
         try {
-            const genreString = buildGenreString();
+            const genreString = buildGenrePromptString();
             const prompt = ideaGenerationTemplate
                 .replace('{genre}', genreString)
                 .replace('{platform}', selectedPlatform || '通用短视频平台');
@@ -247,7 +272,7 @@ const IdeationTab: React.FC = () => {
             const fullPrompt = ideationTemplate
                 .replace('{user_input}', userInput)
                 .replace('{platform}', selectedPlatform || '未指定')
-                .replace('{genre}', buildGenreString() || '未指定');
+                .replace('{genre}', buildGenrePromptString() || '未指定');
 
             const response = await fetch('/llm-api/chat/completions', {
                 method: 'POST',
@@ -361,7 +386,10 @@ const IdeationTab: React.FC = () => {
                             style={{ color: '#d9d9d9', cursor: 'pointer' }}
                             onClick={() => setGenrePopupVisible(true)}
                         >
-                            {buildGenreString()} {(selectedGenrePaths.length > 1 && genreProportions.length === selectedGenrePaths.length) && ""}
+                            {/* Render the array of elements from buildGenreDisplayElements */}
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                                {buildGenreDisplayElements()}
+                            </div>
                         </span>
                     ) : (
                         <span
