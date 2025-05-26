@@ -98,7 +98,7 @@ const AppContent: React.FC = () => {
         alignItems: 'center',
         justifyContent: 'space-between'
       }}>
-        <Title level={3} style={{ color: 'white', margin: '16px 0' }}>AI 剧本写作助手</Title>
+        <Title level={3} style={{ color: 'white', margin: '16px 0' }}>Script Aid</Title>
         {isMobile && (
           <Button
             type="text"
