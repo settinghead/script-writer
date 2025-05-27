@@ -41,9 +41,18 @@ const IdeationsList: React.FC = () => {
     const [ideations, setIdeations] = useState<IdeationRun[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
     useEffect(() => {
         fetchIdeations();
+
+        // Handle window resize for mobile detection
+        const handleResize = () => {
+            setIsMobile(window.innerWidth <= 768);
+        };
+
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
     }, []);
 
     const fetchIdeations = async () => {
@@ -126,12 +135,14 @@ const IdeationsList: React.FC = () => {
 
     const generateTitle = (ideation: IdeationRun) => {
         // Priority: use first initial idea, then user input, then generate from platform + genre
+        const maxLength = isMobile ? 25 : 35; // Shorter titles on mobile
+
         if (ideation.initial_ideas && ideation.initial_ideas.length > 0) {
-            return truncateText(ideation.initial_ideas[0], 35);
+            return truncateText(ideation.initial_ideas[0], maxLength);
         }
 
         if (ideation.user_input && ideation.user_input.trim()) {
-            return truncateText(ideation.user_input, 35);
+            return truncateText(ideation.user_input, maxLength);
         }
 
         // Generate title from platform and genre
@@ -222,14 +233,16 @@ const IdeationsList: React.FC = () => {
     }
 
     return (
-        <div style={{ padding: '0 4px' }}>
+        <div style={{ padding: isMobile ? '0 8px' : '0 4px' }}>
             <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '20px'
+                alignItems: isMobile ? 'flex-start' : 'center',
+                marginBottom: isMobile ? '16px' : '20px',
+                flexDirection: isMobile ? 'column' : 'row',
+                gap: isMobile ? '12px' : '0'
             }}>
-                <Title level={2} style={{ margin: 0, color: '#fff' }}>
+                <Title level={isMobile ? 3 : 2} style={{ margin: 0, color: '#fff' }}>
                     <BulbOutlined style={{ marginRight: '8px' }} />
                     灵感历史
                 </Title>
@@ -237,7 +250,8 @@ const IdeationsList: React.FC = () => {
                     type="primary"
                     icon={<PlusOutlined />}
                     onClick={handleCreateNew}
-                    size="large"
+                    size={isMobile ? 'middle' : 'large'}
+                    style={isMobile ? { alignSelf: 'flex-start' } : {}}
                 >
                     新建灵感
                 </Button>
@@ -255,7 +269,7 @@ const IdeationsList: React.FC = () => {
             ) : (
                 <List
                     grid={{
-                        gutter: 16,
+                        gutter: [16, 24], // [horizontal, vertical] spacing
                         xs: 1,
                         sm: 1,
                         md: 2,
@@ -265,11 +279,12 @@ const IdeationsList: React.FC = () => {
                     }}
                     dataSource={ideations}
                     renderItem={(ideation) => (
-                        <List.Item>
+                        <List.Item style={{ marginBottom: '16px' }}>
                             <Card
                                 hoverable
                                 style={{
-                                    height: '200px',
+                                    minHeight: '220px',
+                                    height: 'auto', // Allow dynamic height
                                     display: 'flex',
                                     flexDirection: 'column'
                                 }}
@@ -277,7 +292,7 @@ const IdeationsList: React.FC = () => {
                                     flex: 1,
                                     display: 'flex',
                                     flexDirection: 'column',
-                                    padding: '16px'
+                                    padding: isMobile ? '12px' : '16px' // Smaller padding on mobile
                                 }}
                                 actions={[
                                     <Button
@@ -285,9 +300,14 @@ const IdeationsList: React.FC = () => {
                                         type="text"
                                         icon={<EyeOutlined />}
                                         onClick={() => handleViewIdeation(ideation.id)}
-                                        style={{ color: '#1890ff' }}
+                                        style={{
+                                            color: '#1890ff',
+                                            fontSize: isMobile ? '12px' : '14px',
+                                            padding: isMobile ? '4px 8px' : '4px 15px'
+                                        }}
+                                        size={isMobile ? 'small' : 'middle'}
                                     >
-                                        查看详情
+                                        {isMobile ? '查看' : '查看详情'}
                                     </Button>,
                                     <Button
                                         key="delete"
@@ -297,33 +317,59 @@ const IdeationsList: React.FC = () => {
                                             e.stopPropagation();
                                             handleDeleteIdeation(ideation.id, generateTitle(ideation));
                                         }}
-                                        style={{ color: '#ff4d4f' }}
+                                        style={{
+                                            color: '#ff4d4f',
+                                            fontSize: isMobile ? '12px' : '14px',
+                                            padding: isMobile ? '4px 8px' : '4px 15px'
+                                        }}
+                                        size={isMobile ? 'small' : 'middle'}
                                         danger
                                     >
                                         删除
                                     </Button>
                                 ]}
                             >
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ marginBottom: '12px' }}>
-                                        <Text strong style={{ fontSize: '16px', color: '#fff' }}>
+                                <div style={{
+                                    flex: 1,
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    minHeight: 0 // Prevents flex item from overflowing
+                                }}>
+                                    <div style={{ marginBottom: isMobile ? '8px' : '12px' }}>
+                                        <Text strong style={{
+                                            fontSize: isMobile ? '14px' : '16px',
+                                            color: '#fff',
+                                            lineHeight: '1.4',
+                                            wordBreak: 'break-word'
+                                        }}>
                                             {generateTitle(ideation)}
                                         </Text>
                                     </div>
 
-                                    <div style={{ marginBottom: '12px' }}>
-                                        <Text type="secondary" style={{ fontSize: '13px' }}>
+                                    <div style={{ marginBottom: isMobile ? '8px' : '12px' }}>
+                                        <Text type="secondary" style={{
+                                            fontSize: isMobile ? '12px' : '13px',
+                                            lineHeight: '1.4',
+                                            wordBreak: 'break-word'
+                                        }}>
                                             {generateDescription(ideation)}
                                         </Text>
                                     </div>
 
-                                    <div style={{ marginBottom: '8px' }}>
+                                    <div style={{
+                                        marginBottom: isMobile ? '6px' : '8px',
+                                        flex: '0 0 auto' // Don't grow or shrink
+                                    }}>
                                         <Space size={[4, 4]} wrap>
                                             {getGenreTags(ideation).map((tag, index) => (
                                                 <Tag
                                                     key={index}
                                                     color={tag.color}
-                                                    style={{ fontSize: '11px', margin: '2px 0' }}
+                                                    style={{
+                                                        fontSize: isMobile ? '10px' : '11px',
+                                                        margin: '2px 0',
+                                                        padding: isMobile ? '0 4px' : '0 6px'
+                                                    }}
                                                 >
                                                     {tag.text}
                                                 </Tag>
@@ -335,14 +381,17 @@ const IdeationsList: React.FC = () => {
                                         display: 'flex',
                                         alignItems: 'center',
                                         marginTop: 'auto',
-                                        paddingTop: '4px'
+                                        paddingTop: '4px',
+                                        flex: '0 0 auto' // Don't grow or shrink
                                     }}>
                                         <ClockCircleOutlined style={{
                                             marginRight: '4px',
-                                            fontSize: '12px',
+                                            fontSize: isMobile ? '11px' : '12px',
                                             color: '#888'
                                         }} />
-                                        <Text type="secondary" style={{ fontSize: '12px' }}>
+                                        <Text type="secondary" style={{
+                                            fontSize: isMobile ? '11px' : '12px'
+                                        }}>
                                             {formatDate(ideation.created_at)}
                                         </Text>
                                     </div>

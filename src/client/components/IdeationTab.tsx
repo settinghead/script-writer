@@ -630,7 +630,7 @@ const IdeationTab: React.FC = () => {
                                     }}
                                 >
                                     <span style={{ marginRight: '8px' }}>🎲</span>
-                                    {isGeneratingIdea ? '生成中...' : '随机故事'}
+                                    {isGeneratingIdea ? '头脑风暴中...' : '开始头脑风暴'}
                                 </Button>
                             </div>
 
