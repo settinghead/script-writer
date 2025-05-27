@@ -81,16 +81,17 @@ const OutlineTab: React.FC = () => {
         console.log('OutlineTab: Artifact ID changed from', currentArtifactId, 'to', newArtifactId);
         setCurrentArtifactId(newArtifactId);
 
-        // Update URL with new artifact ID
+        // Update URL with new artifact ID, but use replace: true to avoid navigation disruption
         if (newArtifactId) {
             const newSearchParams = new URLSearchParams();
             newSearchParams.set('artifact_id', newArtifactId);
-            navigate(`/new-outline?${newSearchParams.toString()}`, { replace: true });
+            // Use replace: true and don't trigger a full navigation to preserve focus
+            window.history.replaceState(null, '', `/new-outline?${newSearchParams.toString()}`);
         } else {
             // Clear artifact_id from URL if null
-            navigate('/new-outline', { replace: true });
+            window.history.replaceState(null, '', '/new-outline');
         }
-    }, [navigate, currentArtifactId]);
+    }, [currentArtifactId]);
 
     const handleGenerateOutline = async () => {
         if (!currentArtifactId) {
@@ -209,14 +210,14 @@ const OutlineTab: React.FC = () => {
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Button
+                    {/* <Button
                         icon={<ArrowLeftOutlined />}
                         onClick={handleBackToIdeation}
                         type="text"
                         style={{ color: '#1890ff' }}
                     >
                         返回
-                    </Button>
+                    </Button> */}
                     <Title level={4} style={{ margin: 0 }}>
                         {isCreationMode ? '设计故事大纲' : '故事大纲详情'}
                     </Title>
