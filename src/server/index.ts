@@ -432,7 +432,7 @@ app.post("/api/ideations/create_run_with_ideas",
     }
 
     try {
-      const runId = await ideationService.createRunWithIdeas(
+      const result = await ideationService.createRunWithIdeas(
         user.id,
         selectedPlatform || '',
         genrePaths || [],
@@ -441,7 +441,7 @@ app.post("/api/ideations/create_run_with_ideas",
         requirements || ''
       );
 
-      res.json({ runId });
+      res.json(result);
 
     } catch (error: any) {
       console.error('Error in create_run_with_ideas:', error);

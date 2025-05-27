@@ -28,7 +28,7 @@ export class IdeationService {
         genreProportions: number[],
         initialIdeas: string[],
         requirements: string
-    ): Promise<string> {
+    ): Promise<{ runId: string; initialIdeaArtifacts: Array<{ id: string, text: string, orderIndex: number }> }> {
         // Create ideation session artifact
         const sessionId = uuidv4();
         const sessionArtifact = await this.artifactRepo.createArtifact(
@@ -55,6 +55,7 @@ export class IdeationService {
 
         // Create individual idea artifacts
         const ideaArtifacts: Artifact[] = [];
+        const initialIdeaArtifacts: Array<{ id: string, text: string, orderIndex: number }> = [];
         for (let i = 0; i < initialIdeas.length; i++) {
             const ideaArtifact = await this.artifactRepo.createArtifact(
                 userId,
@@ -65,6 +66,11 @@ export class IdeationService {
                 } as BrainstormIdeaV1
             );
             ideaArtifacts.push(ideaArtifact);
+            initialIdeaArtifacts.push({
+                id: ideaArtifact.id,
+                text: initialIdeas[i],
+                orderIndex: i
+            });
         }
 
         // Create human transform linking the session creation
@@ -88,7 +94,7 @@ export class IdeationService {
         // Invalidate relevant caches
         this.cacheService.delete(`ideation_list:${userId}`);
 
-        return sessionId;
+        return { runId: sessionId, initialIdeaArtifacts };
     }
 
     // Create ideation run and generate plot (maps to /api/ideations/create_run_and_generate_plot)

@@ -68,9 +68,9 @@ const StoryInspirationEditor: React.FC<StoryInspirationEditorProps> = ({
             setIsLoading(false);
             setHasLoaded(true);
         }
-    }, [onValueChange]);
+    }, [onValueChange, onArtifactChange, artifactId]);
 
-    // Load content when artifact ID changes
+    // Load content when artifact ID changes or on initial mount
     useEffect(() => {
         if (currentArtifactId && currentArtifactId !== artifactId) {
             setArtifactId(currentArtifactId);
@@ -78,6 +78,14 @@ const StoryInspirationEditor: React.FC<StoryInspirationEditorProps> = ({
             loadArtifactContent(currentArtifactId);
         }
     }, [currentArtifactId, artifactId, loadArtifactContent]);
+
+    // Initial load effect for when component mounts with an artifact ID
+    useEffect(() => {
+        if (currentArtifactId && !hasLoaded && !isLoading) {
+            setArtifactId(currentArtifactId);
+            loadArtifactContent(currentArtifactId);
+        }
+    }, [currentArtifactId, hasLoaded, isLoading, loadArtifactContent]);
 
     // Sync with external value changes (e.g., from brainstorming selection)
     useEffect(() => {
