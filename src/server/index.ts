@@ -11,6 +11,19 @@ import { parseLLMResponse } from './llm-to-yjs';
 import { AuthDatabase } from './database/auth';
 import { createAuthMiddleware } from './middleware/auth';
 import { createAuthRoutes } from './routes/auth';
+import { ArtifactRepository } from './repositories/ArtifactRepository';
+import { TransformRepository } from './repositories/TransformRepository';
+import { TransformExecutor } from './services/TransformExecutor';
+import { IdeationService } from './services/IdeationService';
+import { ScriptService } from './services/ScriptService';
+import {
+  validateIdeationCreate,
+  validatePlotGeneration,
+  validateScriptCreate,
+  validateScriptUpdate
+} from './middleware/validation';
+import { ReplayService } from './services/ReplayService';
+import { CacheService } from './services/CacheService';
 
 dotenv.config();
 
@@ -34,60 +47,123 @@ const db = new sqlite3.Database('./ideations.db', (err) => {
 const authDB = new AuthDatabase(db);
 const authMiddleware = createAuthMiddleware(authDB);
 
-// Migration function to add user_id to existing tables
-const migrateIdeationTables = async () => {
-  return new Promise<void>((resolve, reject) => {
-    db.serialize(() => {
-      // Check if user_id column exists in ideation_runs
-      db.get("PRAGMA table_info(ideation_runs)", (err, result) => {
-        if (err) {
-          console.error('Error checking table schema:', err);
-          reject(err);
-          return;
-        }
+// Initialize repositories
+const artifactRepo = new ArtifactRepository(db);
+const transformRepo = new TransformRepository(db);
 
-        // Get all columns
-        db.all("PRAGMA table_info(ideation_runs)", (err, columns: any[]) => {
-          if (err) {
-            console.error('Error getting table info:', err);
-            reject(err);
-            return;
-          }
+// Initialize cache service
+const cacheService = new CacheService();
 
-          const hasUserId = columns.some(col => col.name === 'user_id');
-
-          if (!hasUserId) {
-            console.log('Migrating ideation_runs table to add user_id...');
-
-            // Add user_id column with default value (assign to first test user)
-            db.run("ALTER TABLE ideation_runs ADD COLUMN user_id TEXT DEFAULT 'test-user-xiyang'", (err) => {
-              if (err) {
-                console.error('Error adding user_id column:', err);
-                reject(err);
-                return;
-              }
-
-              // Update the column to be NOT NULL and add foreign key constraint
-              // Note: SQLite doesn't support modifying constraints, so we accept the default for existing data
-              console.log('Migration completed: Added user_id to ideation_runs');
-              resolve();
-            });
-          } else {
-            console.log('ideation_runs table already has user_id column');
-            resolve();
-          }
-        });
-      });
-    });
-  });
-};
+// Initialize services with caching
+const transformExecutor = new TransformExecutor(artifactRepo, transformRepo);
+const ideationService = new IdeationService(artifactRepo, transformRepo, transformExecutor, cacheService);
+const scriptService = new ScriptService(artifactRepo, transformExecutor);
+const replayService = new ReplayService(artifactRepo, transformRepo, transformExecutor);
 
 // Create tables if they don't exist
 const initializeDatabase = async () => {
   db.serialize(() => {
-    // Create ideation_runs table
+    // ========== NEW ARTIFACTS/TRANSFORMS TABLES ==========
+
+    // Immutable artifacts (all data entities)
     db.run(`
-      CREATE TABLE IF NOT EXISTS ideation_runs (
+      CREATE TABLE IF NOT EXISTS artifacts (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        type TEXT NOT NULL,
+        type_version TEXT NOT NULL DEFAULT 'v1',
+        data TEXT NOT NULL,
+        metadata TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id)
+      )
+    `);
+
+    // Operations that transform artifacts
+    db.run(`
+      CREATE TABLE IF NOT EXISTS transforms (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        type TEXT NOT NULL,
+        type_version TEXT NOT NULL DEFAULT 'v1',
+        status TEXT DEFAULT 'completed',
+        execution_context TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id)
+      )
+    `);
+
+    // Many-to-many: transform inputs
+    db.run(`
+      CREATE TABLE IF NOT EXISTS transform_inputs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        transform_id TEXT NOT NULL,
+        artifact_id TEXT NOT NULL,
+        input_role TEXT,
+        FOREIGN KEY (transform_id) REFERENCES transforms (id) ON DELETE CASCADE,
+        FOREIGN KEY (artifact_id) REFERENCES artifacts (id),
+        UNIQUE(transform_id, artifact_id, input_role)
+      )
+    `);
+
+    // Many-to-many: transform outputs
+    db.run(`
+      CREATE TABLE IF NOT EXISTS transform_outputs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        transform_id TEXT NOT NULL,
+        artifact_id TEXT NOT NULL,
+        output_role TEXT,
+        FOREIGN KEY (transform_id) REFERENCES transforms (id) ON DELETE CASCADE,
+        FOREIGN KEY (artifact_id) REFERENCES artifacts (id),
+        UNIQUE(transform_id, artifact_id, output_role)
+      )
+    `);
+
+    // LLM prompts (separate due to size)
+    db.run(`
+      CREATE TABLE IF NOT EXISTS llm_prompts (
+        id TEXT PRIMARY KEY,
+        transform_id TEXT NOT NULL,
+        prompt_text TEXT NOT NULL,
+        prompt_role TEXT DEFAULT 'primary',
+        FOREIGN KEY (transform_id) REFERENCES transforms (id) ON DELETE CASCADE
+      )
+    `);
+
+    // LLM-specific transform metadata
+    db.run(`
+      CREATE TABLE IF NOT EXISTS llm_transforms (
+        transform_id TEXT PRIMARY KEY,
+        model_name TEXT NOT NULL,
+        model_parameters TEXT,
+        raw_response TEXT,
+        token_usage TEXT,
+        FOREIGN KEY (transform_id) REFERENCES transforms (id) ON DELETE CASCADE
+      )
+    `);
+
+    // Human-specific transform metadata
+    db.run(`
+      CREATE TABLE IF NOT EXISTS human_transforms (
+        transform_id TEXT PRIMARY KEY,
+        action_type TEXT NOT NULL,
+        interface_context TEXT,
+        change_description TEXT,
+        FOREIGN KEY (transform_id) REFERENCES transforms (id) ON DELETE CASCADE
+      )
+    `);
+
+    // Create indexes for performance
+    db.run(`CREATE INDEX IF NOT EXISTS idx_artifacts_user_type ON artifacts (user_id, type)`);
+    db.run(`CREATE INDEX IF NOT EXISTS idx_artifacts_user_created ON artifacts (user_id, created_at)`);
+    db.run(`CREATE INDEX IF NOT EXISTS idx_transforms_user_created ON transforms (user_id, created_at)`);
+
+    // ========== LEGACY TABLES (DEPRECATED - kept for emergency fallback) ==========
+    // Note: These tables are no longer used by the application
+    // They are kept temporarily in case we need to recover data
+
+    db.run(`
+      CREATE TABLE IF NOT EXISTS legacy_ideation_runs (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,
         user_input TEXT,
@@ -104,19 +180,17 @@ const initializeDatabase = async () => {
       )
     `);
 
-    // Create generated_initial_ideas table
     db.run(`
-      CREATE TABLE IF NOT EXISTS generated_initial_ideas (
+      CREATE TABLE IF NOT EXISTS legacy_generated_initial_ideas (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         run_id TEXT,
         idea_text TEXT,
-        FOREIGN KEY (run_id) REFERENCES ideation_runs (id)
+        FOREIGN KEY (run_id) REFERENCES legacy_ideation_runs (id)
       )
     `);
 
-    // Create scripts table
     db.run(`
-      CREATE TABLE IF NOT EXISTS scripts (
+      CREATE TABLE IF NOT EXISTS legacy_scripts (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,
         name TEXT NOT NULL,
@@ -133,11 +207,9 @@ const initializeDatabase = async () => {
     await authDB.initializeAuthTables();
     await authDB.createTestUsers();
     console.log('Authentication system initialized');
-
-    // Migrate existing ideation data to include user associations
-    await migrateIdeationTables();
+    console.log('Artifacts/Transforms database schema initialized');
   } catch (error) {
-    console.error('Error initializing authentication system:', error);
+    console.error('Error initializing database:', error);
   }
 };
 
@@ -381,224 +453,91 @@ app.post("/llm-api/script/edit", authMiddleware.authenticate, async (req: any, r
   }
 });
 
-// Ideation management endpoints
-app.post("/api/ideations/create_run_with_ideas", authMiddleware.authenticate, async (req: any, res: any) => {
-  const {
-    selectedPlatform,
-    genrePaths,
-    genreProportions,
-    initialIdeas
-  } = req.body;
+// ========== UPDATED IDEATION ENDPOINTS (with validation) ==========
 
-  if (!initialIdeas || !Array.isArray(initialIdeas) || initialIdeas.length === 0) {
-    return res.status(400).json({ error: "Missing or empty 'initialIdeas' in request body" });
-  }
+app.post("/api/ideations/create_run_with_ideas",
+  authMiddleware.authenticate,
+  validateIdeationCreate,
+  async (req: any, res: any) => {
+    const {
+      selectedPlatform,
+      genrePaths,
+      genreProportions,
+      initialIdeas,
+      requirements
+    } = req.body;
 
-  const runId = uuidv4();
-  const genrePathsJson = JSON.stringify(genrePaths || []);
-  const genreProportionsJson = JSON.stringify(genreProportions || []);
+    const user = authMiddleware.getCurrentUser(req);
+    if (!user) {
+      return res.status(401).json({ error: "User not authenticated" });
+    }
 
-  // Build genre string for the prompt
-  const buildGenrePromptString = (): string => {
-    if (!genrePaths || genrePaths.length === 0) return '未指定';
-    return genrePaths.map((path: string[], index: number) => {
-      const proportion = genreProportions && genreProportions[index] !== undefined
-        ? genreProportions[index]
-        : (100 / genrePaths.length);
-      const pathString = path.join(' > ');
-      return genrePaths.length > 1
-        ? `${pathString} (${proportion.toFixed(0)}%)`
-        : pathString;
-    }).join(', ');
-  };
-
-  const genrePromptString = buildGenrePromptString();
-
-  // Get authenticated user
-  const user = authMiddleware.getCurrentUser(req);
-  if (!user) {
-    return res.status(401).json({ error: "User not authenticated" });
-  }
-
-  try {
-    // Insert initial run data
-    await new Promise<void>((resolve, reject) => {
-      db.run(
-        `INSERT INTO ideation_runs (id, user_id, user_input, selected_platform, genre_prompt_string, genre_paths_json, genre_proportions_json)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [runId, user.id, '', selectedPlatform || '', genrePromptString, genrePathsJson, genreProportionsJson],
-        function (err) {
-          if (err) reject(err);
-          else resolve();
-        }
+    try {
+      const runId = await ideationService.createRunWithIdeas(
+        user.id,
+        selectedPlatform || '',
+        genrePaths || [],
+        genreProportions || [],
+        initialIdeas,
+        requirements || ''
       );
-    });
 
-    // Insert initial ideas
-    for (const idea of initialIdeas) {
-      await new Promise<void>((resolve, reject) => {
-        db.run(
-          `INSERT INTO generated_initial_ideas (run_id, idea_text) VALUES (?, ?)`,
-          [runId, idea],
-          function (err) {
-            if (err) reject(err);
-            else resolve();
-          }
-        );
+      res.json({ runId });
+
+    } catch (error: any) {
+      console.error('Error in create_run_with_ideas:', error);
+      res.status(500).json({
+        error: "Failed to create ideation run",
+        details: error.message,
+        timestamp: new Date().toISOString()
       });
     }
-
-    // Return the run ID
-    res.json({ runId });
-
-  } catch (error: any) {
-    console.error('Error in create_run_with_ideas:', error);
-    res.status(500).json({ error: "Failed to create ideation run", details: error.message });
   }
-});
+);
 
-app.post("/api/ideations/create_run_and_generate_plot", authMiddleware.authenticate, async (req: any, res: any) => {
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  if (!apiKey) {
-    console.error('Error: DEEPSEEK_API_KEY environment variable is not set.');
-    return res.status(500).json({ error: "DEEPSEEK_API_KEY not configured" });
-  }
+app.post("/api/ideations/create_run_and_generate_plot",
+  authMiddleware.authenticate,
+  validatePlotGeneration,
+  async (req: any, res: any) => {
+    const {
+      userInput,
+      selectedPlatform,
+      genrePaths,
+      genreProportions,
+      initialIdeas,
+      ideationTemplate,
+      requirements
+    } = req.body;
 
-  const {
-    userInput,
-    selectedPlatform,
-    genrePaths,
-    genreProportions,
-    initialIdeas,
-    ideationTemplate
-  } = req.body;
-
-  if (!userInput || !ideationTemplate) {
-    return res.status(400).json({ error: "Missing 'userInput' or 'ideationTemplate' in request body" });
-  }
-
-  const runId = uuidv4();
-  const genrePathsJson = JSON.stringify(genrePaths || []);
-  const genreProportionsJson = JSON.stringify(genreProportions || []);
-
-  // Build genre string for the prompt
-  const buildGenrePromptString = (): string => {
-    if (!genrePaths || genrePaths.length === 0) return '未指定';
-    return genrePaths.map((path: string[], index: number) => {
-      const proportion = genreProportions && genreProportions[index] !== undefined
-        ? genreProportions[index]
-        : (100 / genrePaths.length);
-      const pathString = path.join(' > ');
-      return genrePaths.length > 1
-        ? `${pathString} (${proportion.toFixed(0)}%)`
-        : pathString;
-    }).join(', ');
-  };
-
-  const genrePromptString = buildGenrePromptString();
-
-  // Get authenticated user
-  const user = authMiddleware.getCurrentUser(req);
-  if (!user) {
-    return res.status(401).json({ error: "User not authenticated" });
-  }
-
-  try {
-    // Insert initial run data
-    await new Promise<void>((resolve, reject) => {
-      db.run(
-        `INSERT INTO ideation_runs (id, user_id, user_input, selected_platform, genre_prompt_string, genre_paths_json, genre_proportions_json)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [runId, user.id, userInput, selectedPlatform || '', genrePromptString, genrePathsJson, genreProportionsJson],
-        function (err) {
-          if (err) reject(err);
-          else resolve();
-        }
-      );
-    });
-
-    // Insert initial ideas if provided
-    if (initialIdeas && initialIdeas.length > 0) {
-      for (const idea of initialIdeas) {
-        await new Promise<void>((resolve, reject) => {
-          db.run(
-            `INSERT INTO generated_initial_ideas (run_id, idea_text) VALUES (?, ?)`,
-            [runId, idea],
-            function (err) {
-              if (err) reject(err);
-              else resolve();
-            }
-          );
-        });
-      }
+    const user = authMiddleware.getCurrentUser(req);
+    if (!user) {
+      return res.status(401).json({ error: "User not authenticated" });
     }
 
-    // Generate plot using LLM
-    const deepseekAI = createOpenAI({
-      apiKey: apiKey,
-      baseURL: 'https://api.deepseek.com',
-    });
-
-    const fullPrompt = ideationTemplate
-      .replace('{user_input}', userInput)
-      .replace('{platform}', selectedPlatform || '未指定')
-      .replace('{genre}', genrePromptString || '未指定');
-
-    const result = await generateText({
-      model: deepseekAI('deepseek-chat'),
-      messages: [
-        { role: 'user', content: fullPrompt }
-      ]
-    });
-
-    // Parse the LLM response
-    let llmResult: any = {};
     try {
-      llmResult = JSON.parse(result.text);
-    } catch (parseError) {
-      console.error('Failed to parse LLM response:', parseError);
-      // Try with jsonrepair if available
-      try {
-        const { jsonrepair } = await import('jsonrepair');
-        const repairedJson = jsonrepair(result.text);
-        llmResult = JSON.parse(repairedJson);
-      } catch (repairError) {
-        console.error('Failed to repair JSON:', repairError);
-        llmResult = { error: 'Failed to parse LLM response' };
-      }
-    }
-
-    // Update the run with LLM results
-    await new Promise<void>((resolve, reject) => {
-      db.run(
-        `UPDATE ideation_runs 
-         SET media_type = ?, platform_recommendation = ?, plot_outline = ?, analysis = ?
-         WHERE id = ?`,
-        [
-          llmResult.mediaType || '',
-          llmResult.platform || '',
-          llmResult.plotOutline || '',
-          llmResult.analysis || '',
-          runId
-        ],
-        function (err) {
-          if (err) reject(err);
-          else resolve();
-        }
+      const result = await ideationService.createRunAndGeneratePlot(
+        user.id,
+        userInput,
+        selectedPlatform || '',
+        genrePaths || [],
+        genreProportions || [],
+        initialIdeas || [],
+        requirements || '',
+        ideationTemplate
       );
-    });
 
-    // Return the run ID and LLM result
-    res.json({
-      runId,
-      result: llmResult
-    });
+      res.json(result);
 
-  } catch (error: any) {
-    console.error('Error in create_run_and_generate_plot:', error);
-    res.status(500).json({ error: "Failed to create ideation run", details: error.message });
+    } catch (error: any) {
+      console.error('Error in create_run_and_generate_plot:', error);
+      res.status(500).json({
+        error: "Failed to create ideation run",
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
   }
-});
+);
 
 app.get("/api/ideations/:id", authMiddleware.authenticate, async (req: any, res: any) => {
   const { id } = req.params;
@@ -610,60 +549,13 @@ app.get("/api/ideations/:id", authMiddleware.authenticate, async (req: any, res:
   }
 
   try {
-    // Get the ideation run (filtered by user)
-    const run = await new Promise<any>((resolve, reject) => {
-      db.get(
-        `SELECT * FROM ideation_runs WHERE id = ? AND user_id = ?`,
-        [id, user.id],
-        (err, row) => {
-          if (err) reject(err);
-          else resolve(row);
-        }
-      );
-    });
+    const ideationRun = await ideationService.getIdeationRun(user.id, id);
 
-    if (!run) {
+    if (!ideationRun) {
       return res.status(404).json({ error: "Ideation run not found" });
     }
 
-    // Get the initial ideas
-    const ideas = await new Promise<any[]>((resolve, reject) => {
-      db.all(
-        `SELECT idea_text FROM generated_initial_ideas WHERE run_id = ? ORDER BY id`,
-        [id],
-        (err, rows) => {
-          if (err) reject(err);
-          else resolve(rows || []);
-        }
-      );
-    });
-
-    // Parse JSON fields
-    let genrePaths: string[][] = [];
-    let genreProportions: number[] = [];
-
-    try {
-      genrePaths = JSON.parse(run.genre_paths_json || '[]');
-      genreProportions = JSON.parse(run.genre_proportions_json || '[]');
-    } catch (parseError) {
-      console.error('Error parsing genre data:', parseError);
-    }
-
-    res.json({
-      id: run.id,
-      userInput: run.user_input,
-      selectedPlatform: run.selected_platform,
-      genrePaths,
-      genreProportions,
-      initialIdeas: ideas.map(idea => idea.idea_text),
-      result: {
-        mediaType: run.media_type,
-        platform: run.platform_recommendation,
-        plotOutline: run.plot_outline,
-        analysis: run.analysis
-      },
-      createdAt: run.created_at
-    });
+    res.json(ideationRun);
 
   } catch (error: any) {
     console.error('Error fetching ideation run:', error);
@@ -679,54 +571,9 @@ app.get("/api/ideations", authMiddleware.authenticate, async (req: any, res: any
   }
 
   try {
-    const runs = await new Promise<any[]>((resolve, reject) => {
-      db.all(
-        `SELECT id, user_input, selected_platform, genre_prompt_string, genre_paths_json, genre_proportions_json, created_at FROM ideation_runs WHERE user_id = ? ORDER BY created_at DESC`,
-        [user.id],
-        (err, rows) => {
-          if (err) reject(err);
-          else resolve(rows || []);
-        }
-      );
-    });
+    const ideationRuns = await ideationService.listIdeationRuns(user.id);
+    res.json(ideationRuns);
 
-    // For each run, also get the initial ideas
-    const runsWithIdeas = await Promise.all(runs.map(async (run) => {
-      const ideas = await new Promise<any[]>((resolve, reject) => {
-        db.all(
-          `SELECT idea_text FROM generated_initial_ideas WHERE run_id = ? ORDER BY id LIMIT 3`,
-          [run.id],
-          (err, rows) => {
-            if (err) reject(err);
-            else resolve(rows || []);
-          }
-        );
-      });
-
-      // Parse JSON fields
-      let genrePaths: string[][] = [];
-      let genreProportions: number[] = [];
-
-      try {
-        genrePaths = JSON.parse(run.genre_paths_json || '[]');
-        genreProportions = JSON.parse(run.genre_proportions_json || '[]');
-      } catch (parseError) {
-        console.error('Error parsing genre data:', parseError);
-      }
-
-      return {
-        id: run.id,
-        user_input: run.user_input,
-        selected_platform: run.selected_platform,
-        genre_prompt_string: run.genre_prompt_string,
-        genre_paths: genrePaths,
-        genre_proportions: genreProportions,
-        initial_ideas: ideas.map(idea => idea.idea_text),
-        created_at: run.created_at
-      };
-    }));
-
-    res.json(runsWithIdeas);
   } catch (error: any) {
     console.error('Error fetching ideation runs:', error);
     res.status(500).json({ error: "Failed to fetch ideation runs", details: error.message });
@@ -743,82 +590,89 @@ app.delete("/api/ideations/:id", authMiddleware.authenticate, async (req: any, r
   }
 
   try {
-    // First, delete all related initial ideas
-    await new Promise<void>((resolve, reject) => {
-      db.run(
-        `DELETE FROM generated_initial_ideas WHERE run_id = ?`,
-        [id],
-        function (err) {
-          if (err) reject(err);
-          else resolve();
-        }
-      );
-    });
+    const deleted = await ideationService.deleteIdeationRun(user.id, id);
 
-    // Then delete the ideation run (filtered by user)
-    await new Promise<void>((resolve, reject) => {
-      db.run(
-        `DELETE FROM ideation_runs WHERE id = ? AND user_id = ?`,
-        [id, user.id],
-        function (err) {
-          if (err) reject(err);
-          else if (this.changes === 0) reject(new Error('Ideation run not found or unauthorized'));
-          else resolve();
-        }
-      );
-    });
+    if (!deleted) {
+      return res.status(404).json({ error: "Ideation run not found" });
+    }
 
     res.json({ success: true, message: "Ideation deleted successfully" });
 
   } catch (error: any) {
     console.error('Error deleting ideation:', error);
-    if (error.message === 'Ideation run not found or unauthorized') {
-      res.status(404).json({ error: "Ideation not found" });
-    } else {
-      res.status(500).json({ error: "Failed to delete ideation", details: error.message });
+    res.status(500).json({ error: "Failed to delete ideation", details: error.message });
+  }
+});
+
+app.post("/api/ideations/:id/generate_plot",
+  authMiddleware.authenticate,
+  validatePlotGeneration,
+  async (req: any, res: any) => {
+    const { id: runId } = req.params;
+    const { userInput, ideationTemplate } = req.body;
+
+    const user = authMiddleware.getCurrentUser(req);
+    if (!user) {
+      return res.status(401).json({ error: "User not authenticated" });
+    }
+
+    try {
+      const result = await ideationService.generatePlotForRun(
+        user.id,
+        runId,
+        userInput,
+        ideationTemplate
+      );
+
+      res.json(result);
+
+    } catch (error: any) {
+      console.error('Error in generate_plot:', error);
+
+      // Handle specific error types
+      if (error.message.includes('not found or not accessible')) {
+        return res.status(404).json({ error: "Ideation run not found" });
+      }
+      if (error.message.includes('cannot be empty')) {
+        return res.status(400).json({ error: error.message });
+      }
+
+      res.status(500).json({
+        error: "Failed to generate plot",
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
     }
   }
-});
+);
 
-// Script document management endpoints
-app.post("/api/scripts", authMiddleware.authenticate, async (req: any, res: any) => {
-  const { name = 'Untitled Script' } = req.body;
+// ========== UPDATED SCRIPT ENDPOINTS (with validation) ==========
 
-  // Get authenticated user
-  const user = authMiddleware.getCurrentUser(req);
-  if (!user) {
-    return res.status(401).json({ error: "User not authenticated" });
+app.post("/api/scripts",
+  authMiddleware.authenticate,
+  validateScriptCreate,
+  async (req: any, res: any) => {
+    const { name = 'Untitled Script' } = req.body;
+
+    const user = authMiddleware.getCurrentUser(req);
+    if (!user) {
+      return res.status(401).json({ error: "User not authenticated" });
+    }
+
+    try {
+      const script = await scriptService.createScript(user.id, name);
+      res.json(script);
+
+    } catch (error: any) {
+      console.error('Error creating script:', error);
+      res.status(500).json({
+        error: "Failed to create script",
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
   }
-
-  const scriptId = uuidv4();
-  const roomId = `script-${user.id}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-
-  try {
-    // Store script in database
-    await new Promise<void>((resolve, reject) => {
-      db.run(
-        `INSERT INTO scripts (id, user_id, name, room_id) VALUES (?, ?, ?, ?)`,
-        [scriptId, user.id, name, roomId],
-        function (err) {
-          if (err) reject(err);
-          else resolve();
-        }
-      );
-    });
-
-    // Return the script info for collaborative editing
-    res.json({
-      id: scriptId,
-      name,
-      roomId,
-      userId: user.id
-    });
-
-  } catch (error: any) {
-    console.error('Error creating script:', error);
-    res.status(500).json({ error: "Failed to create script", details: error.message });
-  }
-});
+);
 
 app.get("/api/scripts/:id", authMiddleware.authenticate, async (req: any, res: any) => {
   const { id } = req.params;
@@ -830,30 +684,13 @@ app.get("/api/scripts/:id", authMiddleware.authenticate, async (req: any, res: a
   }
 
   try {
-    // Get the script (filtered by user)
-    const script = await new Promise<any>((resolve, reject) => {
-      db.get(
-        `SELECT * FROM scripts WHERE id = ? AND user_id = ?`,
-        [id, user.id],
-        (err, row) => {
-          if (err) reject(err);
-          else resolve(row);
-        }
-      );
-    });
+    const script = await scriptService.getScript(user.id, id);
 
     if (!script) {
       return res.status(404).json({ error: "Script not found" });
     }
 
-    res.json({
-      id: script.id,
-      name: script.name,
-      roomId: script.room_id,
-      userId: script.user_id,
-      createdAt: script.created_at,
-      updatedAt: script.updated_at
-    });
+    res.json(script);
 
   } catch (error: any) {
     console.error('Error fetching script:', error);
@@ -869,24 +706,8 @@ app.get("/api/scripts", authMiddleware.authenticate, async (req: any, res: any) 
   }
 
   try {
-    const scripts = await new Promise<any[]>((resolve, reject) => {
-      db.all(
-        `SELECT id, name, room_id, created_at, updated_at FROM scripts WHERE user_id = ? ORDER BY updated_at DESC`,
-        [user.id],
-        (err, rows) => {
-          if (err) reject(err);
-          else resolve(rows || []);
-        }
-      );
-    });
-
-    res.json(scripts.map(script => ({
-      id: script.id,
-      name: script.name,
-      roomId: script.room_id,
-      createdAt: script.created_at,
-      updatedAt: script.updated_at
-    })));
+    const scripts = await scriptService.listScripts(user.id);
+    res.json(scripts);
 
   } catch (error: any) {
     console.error('Error fetching scripts:', error);
@@ -894,45 +715,37 @@ app.get("/api/scripts", authMiddleware.authenticate, async (req: any, res: any) 
   }
 });
 
-app.put("/api/scripts/:id", authMiddleware.authenticate, async (req: any, res: any) => {
-  const { id } = req.params;
-  const { name } = req.body;
+app.put("/api/scripts/:id",
+  authMiddleware.authenticate,
+  validateScriptUpdate,
+  async (req: any, res: any) => {
+    const { id } = req.params;
+    const { name } = req.body;
 
-  if (!name) {
-    return res.status(400).json({ error: "Missing 'name' in request body" });
-  }
+    const user = authMiddleware.getCurrentUser(req);
+    if (!user) {
+      return res.status(401).json({ error: "User not authenticated" });
+    }
 
-  // Get authenticated user
-  const user = authMiddleware.getCurrentUser(req);
-  if (!user) {
-    return res.status(401).json({ error: "User not authenticated" });
-  }
+    try {
+      const updated = await scriptService.updateScript(user.id, id, name);
 
-  try {
-    // Update the script (filtered by user)
-    await new Promise<void>((resolve, reject) => {
-      db.run(
-        `UPDATE scripts SET name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?`,
-        [name, id, user.id],
-        function (err) {
-          if (err) reject(err);
-          else if (this.changes === 0) reject(new Error('Script not found or unauthorized'));
-          else resolve();
-        }
-      );
-    });
+      if (!updated) {
+        return res.status(404).json({ error: "Script not found" });
+      }
 
-    res.json({ success: true, message: "Script updated successfully" });
+      res.json({ success: true, message: "Script updated successfully" });
 
-  } catch (error: any) {
-    console.error('Error updating script:', error);
-    if (error.message === 'Script not found or unauthorized') {
-      res.status(404).json({ error: "Script not found" });
-    } else {
-      res.status(500).json({ error: "Failed to update script", details: error.message });
+    } catch (error: any) {
+      console.error('Error updating script:', error);
+      res.status(500).json({
+        error: "Failed to update script",
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
     }
   }
-});
+);
 
 app.delete("/api/scripts/:id", authMiddleware.authenticate, async (req: any, res: any) => {
   const { id } = req.params;
@@ -944,28 +757,273 @@ app.delete("/api/scripts/:id", authMiddleware.authenticate, async (req: any, res
   }
 
   try {
-    // Delete the script (filtered by user)
-    await new Promise<void>((resolve, reject) => {
-      db.run(
-        `DELETE FROM scripts WHERE id = ? AND user_id = ?`,
-        [id, user.id],
-        function (err) {
-          if (err) reject(err);
-          else if (this.changes === 0) reject(new Error('Script not found or unauthorized'));
-          else resolve();
-        }
-      );
-    });
+    const deleted = await scriptService.deleteScript(user.id, id);
+
+    if (!deleted) {
+      return res.status(404).json({ error: "Script not found" });
+    }
 
     res.json({ success: true, message: "Script deleted successfully" });
 
   } catch (error: any) {
     console.error('Error deleting script:', error);
-    if (error.message === 'Script not found or unauthorized') {
-      res.status(404).json({ error: "Script not found" });
-    } else {
-      res.status(500).json({ error: "Failed to delete script", details: error.message });
+    res.status(500).json({ error: "Failed to delete script", details: error.message });
+  }
+});
+
+// ========== ENHANCED DEBUG/ADMIN ENDPOINTS ==========
+
+// Replay a specific transform
+app.post("/debug/replay/transform/:id", authMiddleware.authenticate, async (req: any, res: any) => {
+  const { id } = req.params;
+  const user = authMiddleware.getCurrentUser(req);
+  if (!user) {
+    return res.status(401).json({ error: "User not authenticated" });
+  }
+
+  try {
+    const replayResult = await replayService.replayTransform(user.id, id);
+    res.json(replayResult);
+
+  } catch (error: any) {
+    console.error('Error replaying transform:', error);
+    res.status(500).json({
+      error: "Failed to replay transform",
+      details: error.message
+    });
+  }
+});
+
+// Replay an entire workflow
+app.post("/debug/replay/workflow/:artifactId", authMiddleware.authenticate, async (req: any, res: any) => {
+  const { artifactId } = req.params;
+  const user = authMiddleware.getCurrentUser(req);
+  if (!user) {
+    return res.status(401).json({ error: "User not authenticated" });
+  }
+
+  try {
+    const workflowResult = await replayService.replayWorkflow(user.id, artifactId);
+    res.json(workflowResult);
+
+  } catch (error: any) {
+    console.error('Error replaying workflow:', error);
+    res.status(500).json({
+      error: "Failed to replay workflow",
+      details: error.message
+    });
+  }
+});
+
+// Get transform execution statistics
+app.get("/debug/stats/transforms", authMiddleware.authenticate, async (req: any, res: any) => {
+  const user = authMiddleware.getCurrentUser(req);
+  if (!user) {
+    return res.status(401).json({ error: "User not authenticated" });
+  }
+
+  try {
+    const stats = await replayService.getTransformStats(user.id);
+    res.json(stats);
+
+  } catch (error: any) {
+    console.error('Error fetching transform stats:', error);
+    res.status(500).json({
+      error: "Failed to fetch transform stats",
+      details: error.message
+    });
+  }
+});
+
+// Get cache statistics
+app.get("/debug/cache/stats", authMiddleware.authenticate, async (req: any, res: any) => {
+  try {
+    const stats = cacheService.getStats();
+    res.json(stats);
+
+  } catch (error: any) {
+    console.error('Error fetching cache stats:', error);
+    res.status(500).json({
+      error: "Failed to fetch cache stats",
+      details: error.message
+    });
+  }
+});
+
+// Clear cache
+app.post("/debug/cache/clear", authMiddleware.authenticate, async (req: any, res: any) => {
+  try {
+    cacheService.clear();
+    res.json({ success: true, message: "Cache cleared successfully" });
+
+  } catch (error: any) {
+    console.error('Error clearing cache:', error);
+    res.status(500).json({
+      error: "Failed to clear cache",
+      details: error.message
+    });
+  }
+});
+
+// Advanced artifact search
+app.get("/debug/search/artifacts", authMiddleware.authenticate, async (req: any, res: any) => {
+  const user = authMiddleware.getCurrentUser(req);
+  if (!user) {
+    return res.status(401).json({ error: "User not authenticated" });
+  }
+
+  try {
+    const {
+      type,
+      type_version,
+      content_search,
+      date_from,
+      date_to,
+      limit = 50
+    } = req.query;
+
+    let artifacts = await artifactRepo.getUserArtifacts(user.id);
+
+    // Apply filters
+    if (type) {
+      artifacts = artifacts.filter(a => a.type === type);
     }
+
+    if (type_version) {
+      artifacts = artifacts.filter(a => a.type_version === type_version);
+    }
+
+    if (content_search) {
+      const searchTerm = (content_search as string).toLowerCase();
+      artifacts = artifacts.filter(a =>
+        JSON.stringify(a.data).toLowerCase().includes(searchTerm)
+      );
+    }
+
+    if (date_from) {
+      const fromDate = new Date(date_from as string);
+      artifacts = artifacts.filter(a => new Date(a.created_at) >= fromDate);
+    }
+
+    if (date_to) {
+      const toDate = new Date(date_to as string);
+      artifacts = artifacts.filter(a => new Date(a.created_at) <= toDate);
+    }
+
+    // Limit results
+    artifacts = artifacts.slice(0, parseInt(limit as string));
+
+    res.json({
+      search_params: { type, type_version, content_search, date_from, date_to, limit },
+      total_found: artifacts.length,
+      artifacts: artifacts.map(artifact => ({
+        ...artifact,
+        data_preview: typeof artifact.data === 'object'
+          ? JSON.stringify(artifact.data).substring(0, 200) + '...'
+          : String(artifact.data).substring(0, 200) + '...'
+      }))
+    });
+
+  } catch (error: any) {
+    console.error('Error searching artifacts:', error);
+    res.status(500).json({
+      error: "Failed to search artifacts",
+      details: error.message
+    });
+  }
+});
+
+// Database health check
+app.get("/debug/health", authMiddleware.authenticate, async (req: any, res: any) => {
+  const user = authMiddleware.getCurrentUser(req);
+  if (!user) {
+    return res.status(401).json({ error: "User not authenticated" });
+  }
+
+  try {
+    // Test database connectivity
+    const artifacts = await artifactRepo.getUserArtifacts(user.id, 1);
+    const transforms = await transformRepo.getUserTransforms(user.id, 1);
+
+    // Check cache health
+    const cacheStats = cacheService.getStats();
+
+    // Basic health checks
+    const health = {
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      database: {
+        connectivity: 'ok',
+        artifacts_accessible: artifacts.length >= 0,
+        transforms_accessible: transforms.length >= 0
+      },
+      cache: {
+        status: 'ok',
+        ...cacheStats
+      },
+      user: {
+        id: user.id,
+        username: user.username
+      }
+    };
+
+    res.json(health);
+
+  } catch (error: any) {
+    console.error('Health check failed:', error);
+    res.status(500).json({
+      status: 'unhealthy',
+      timestamp: new Date().toISOString(),
+      error: error.message
+    });
+  }
+});
+
+// Performance metrics
+app.get("/debug/performance", authMiddleware.authenticate, async (req: any, res: any) => {
+  const user = authMiddleware.getCurrentUser(req);
+  if (!user) {
+    return res.status(401).json({ error: "User not authenticated" });
+  }
+
+  try {
+    const startTime = Date.now();
+
+    // Test various operations
+    const artifactFetchTime = Date.now();
+    await artifactRepo.getUserArtifacts(user.id, 10);
+    const artifactTime = Date.now() - artifactFetchTime;
+
+    const transformFetchTime = Date.now();
+    await transformRepo.getUserTransforms(user.id, 10);
+    const transformTime = Date.now() - transformFetchTime;
+
+    const cacheTestTime = Date.now();
+    cacheService.set('test_key', { test: 'data' });
+    cacheService.get('test_key');
+    cacheService.delete('test_key');
+    const cacheTime = Date.now() - cacheTestTime;
+
+    const totalTime = Date.now() - startTime;
+
+    res.json({
+      timestamp: new Date().toISOString(),
+      total_response_time_ms: totalTime,
+      breakdown: {
+        artifact_fetch_ms: artifactTime,
+        transform_fetch_ms: transformTime,
+        cache_operations_ms: cacheTime
+      },
+      cache_stats: cacheService.getStats(),
+      memory_usage: process.memoryUsage()
+    });
+
+  } catch (error: any) {
+    console.error('Performance test failed:', error);
+    res.status(500).json({
+      error: "Failed to run performance test",
+      details: error.message
+    });
   }
 });
 
@@ -975,6 +1033,7 @@ app.get(/(.*)/, (req, res, next) => {
   // Only handle routes that don't start with /api, /llm-api, or other API routes
   if (req.path.startsWith('/api') ||
     req.path.startsWith('/llm-api') ||
+    req.path.startsWith('/debug') ||
     req.path.startsWith('/yjs') ||
     req.path.includes('.')) { // Skip routes with file extensions (assets)
     return next();
@@ -983,117 +1042,4 @@ app.get(/(.*)/, (req, res, next) => {
   // For all other routes, let ViteExpress handle the client-side routing
   // ViteExpress will serve the index.html and React Router will handle the rest
   next();
-});
-
-app.post("/api/ideations/:id/generate_plot", authMiddleware.authenticate, async (req: any, res: any) => {
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  if (!apiKey) {
-    console.error('Error: DEEPSEEK_API_KEY environment variable is not set.');
-    return res.status(500).json({ error: "DEEPSEEK_API_KEY not configured" });
-  }
-
-  const { id: runId } = req.params;
-  const { userInput, ideationTemplate } = req.body;
-
-  if (!userInput || !ideationTemplate) {
-    return res.status(400).json({ error: "Missing 'userInput' or 'ideationTemplate' in request body" });
-  }
-
-  // Get authenticated user
-  const user = authMiddleware.getCurrentUser(req);
-  if (!user) {
-    return res.status(401).json({ error: "User not authenticated" });
-  }
-
-  try {
-    // Get the existing run data (filtered by user)
-    const run = await new Promise<any>((resolve, reject) => {
-      db.get(
-        `SELECT * FROM ideation_runs WHERE id = ? AND user_id = ?`,
-        [runId, user.id],
-        (err, row) => {
-          if (err) reject(err);
-          else resolve(row);
-        }
-      );
-    });
-
-    if (!run) {
-      return res.status(404).json({ error: "Ideation run not found" });
-    }
-
-    // Update the user input
-    await new Promise<void>((resolve, reject) => {
-      db.run(
-        `UPDATE ideation_runs SET user_input = ? WHERE id = ?`,
-        [userInput, runId],
-        function (err) {
-          if (err) reject(err);
-          else resolve();
-        }
-      );
-    });
-
-    // Generate plot using LLM
-    const deepseekAI = createOpenAI({
-      apiKey: apiKey,
-      baseURL: 'https://api.deepseek.com',
-    });
-
-    const fullPrompt = ideationTemplate
-      .replace('{user_input}', userInput)
-      .replace('{platform}', run.selected_platform || '未指定')
-      .replace('{genre}', run.genre_prompt_string || '未指定');
-
-    const result = await generateText({
-      model: deepseekAI('deepseek-chat'),
-      messages: [
-        { role: 'user', content: fullPrompt }
-      ]
-    });
-
-    // Parse the LLM response
-    let llmResult: any = {};
-    try {
-      llmResult = JSON.parse(result.text);
-    } catch (parseError) {
-      console.error('Failed to parse LLM response:', parseError);
-      // Try with jsonrepair if available
-      try {
-        const { jsonrepair } = await import('jsonrepair');
-        const repairedJson = jsonrepair(result.text);
-        llmResult = JSON.parse(repairedJson);
-      } catch (repairError) {
-        console.error('Failed to repair JSON:', repairError);
-        llmResult = { error: 'Failed to parse LLM response' };
-      }
-    }
-
-    // Update the run with LLM results
-    await new Promise<void>((resolve, reject) => {
-      db.run(
-        `UPDATE ideation_runs 
-         SET media_type = ?, platform_recommendation = ?, plot_outline = ?, analysis = ?
-         WHERE id = ?`,
-        [
-          llmResult.mediaType || '',
-          llmResult.platform || '',
-          llmResult.plotOutline || '',
-          llmResult.analysis || '',
-          runId
-        ],
-        function (err) {
-          if (err) reject(err);
-          else resolve();
-        }
-      );
-    });
-
-    // Return the LLM result
-    res.json({ result: llmResult });
-
-  } catch (error: any) {
-    console.error('Error in generate_plot:', error);
-    res.status(500).json({ error: "Failed to generate plot", details: error.message });
-  }
 });

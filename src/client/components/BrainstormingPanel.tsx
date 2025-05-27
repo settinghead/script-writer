@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Typography, Select, Divider, Alert } from 'antd';
+import { Button, Typography, Select, Divider, Alert, Input } from 'antd';
 import { BulbOutlined, RightOutlined } from '@ant-design/icons';
 import { jsonrepair } from 'jsonrepair';
 import GenreSelectionPopup from './GenreSelectionPopup';
@@ -14,6 +14,7 @@ const ideaGenerationTemplate = `
 
 故事类型：{genre}
 目标平台：{platform}
+{requirementsSection}
 
 要求：
 - 每个创意是一个完整的故事梗概（50-80字）
@@ -55,26 +56,32 @@ interface BrainstormingPanelProps {
         selectedGenrePaths: string[][];
         genreProportions: number[];
         generatedIdeas: string[];
+        requirements: string;
     }) => void;
+    onRunCreated?: (runId: string) => void; // New callback for when a run is created
     // Initial values for loading existing data
     initialPlatform?: string;
     initialGenrePaths?: string[][];
     initialGenreProportions?: number[];
     initialGeneratedIdeas?: string[];
+    initialRequirements?: string;
 }
 
 const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
     isCollapsed,
     onIdeaSelect,
     onDataChange,
+    onRunCreated,
     initialPlatform = '',
     initialGenrePaths = [],
     initialGenreProportions = [],
-    initialGeneratedIdeas = []
+    initialGeneratedIdeas = [],
+    initialRequirements = ''
 }) => {
     const [selectedPlatform, setSelectedPlatform] = useStorageState<string>('ideation_selectedPlatform', initialPlatform);
     const [selectedGenrePaths, setSelectedGenrePaths] = useStorageState<string[][]>('ideation_selectedGenrePaths', initialGenrePaths);
     const [genreProportions, setGenreProportions] = useStorageState<number[]>('ideation_genreProportions', initialGenreProportions);
+    const [requirements, setRequirements] = useStorageState<string>('ideation_requirements', initialRequirements);
     const [genrePopupVisible, setGenrePopupVisible] = useState(false);
     const [isGeneratingIdea, setIsGeneratingIdea] = useState(false);
     const [generatedIdeas, setGeneratedIdeas] = useState<string[]>(initialGeneratedIdeas);
@@ -97,9 +104,10 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
             selectedPlatform,
             selectedGenrePaths,
             genreProportions,
-            generatedIdeas
+            generatedIdeas,
+            requirements
         });
-    }, [selectedPlatform, selectedGenrePaths, genreProportions, generatedIdeas]);
+    }, [selectedPlatform, selectedGenrePaths, genreProportions, generatedIdeas, requirements]);
 
     const handlePlatformChange = (value: string) => {
         setSelectedPlatform(value);
@@ -166,9 +174,13 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
 
         try {
             const genreString = buildGenrePromptString();
+            const requirementsSection = requirements.trim()
+                ? `特殊要求：${requirements.trim()}`
+                : '';
             const prompt = ideaGenerationTemplate
                 .replace('{genre}', genreString)
-                .replace('{platform}', selectedPlatform || '通用短视频平台');
+                .replace('{platform}', selectedPlatform || '通用短视频平台')
+                .replace('{requirementsSection}', requirementsSection);
 
             const response = await fetch('/llm-api/chat/completions', {
                 method: 'POST',
@@ -220,6 +232,37 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
             if (ideasArray.length > 0 && ideasArray[0] && ideasArray[0].length > 0) {
                 setGeneratedIdeas(ideasArray);
                 setSelectedIdeaIndex(null); // Reset selection
+
+                // Create ideation run after successful idea generation
+                if (onRunCreated) {
+                    try {
+                        const createRunResponse = await fetch('/api/ideations/create_run_with_ideas', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                selectedPlatform,
+                                genrePaths: selectedGenrePaths,
+                                genreProportions,
+                                initialIdeas: ideasArray,
+                                requirements
+                            })
+                        });
+
+                        if (!createRunResponse.ok) {
+                            throw new Error(`Failed to create run: ${createRunResponse.status}`);
+                        }
+
+                        const runData = await createRunResponse.json();
+                        if (runData.runId) {
+                            onRunCreated(runData.runId);
+                        }
+                    } catch (runError) {
+                        console.error('Error creating ideation run:', runError);
+                        // Don't throw here - we still want to show the ideas even if run creation fails
+                    }
+                }
             } else {
                 throw new Error('生成的故事梗概内容为空或格式不正确');
             }
@@ -310,6 +353,23 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                 onSelect={handleGenreSelectionConfirm}
                 currentSelectionPaths={selectedGenrePaths}
             />
+
+            <div style={{ marginBottom: '16px' }}>
+                <Text strong style={{ display: 'block', marginBottom: '8px' }}>特殊要求:</Text>
+                <Input
+                    value={requirements}
+                    onChange={(e) => setRequirements(e.target.value)}
+                    placeholder="可以留空，或添加具体要求，例如：要狗血、要反转、要搞笑等"
+                    style={{
+                        background: '#141414',
+                        border: '1px solid #434343',
+                        borderRadius: '6px'
+                    }}
+                />
+                <Text type="secondary" style={{ fontSize: '11px', marginTop: '4px', display: 'block' }}>
+                    AI将根据您的特殊要求来生成故事梗概
+                </Text>
+            </div>
 
             {isGenreSelectionComplete() && (
                 <>

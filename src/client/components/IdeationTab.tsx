@@ -66,7 +66,8 @@ const IdeationTab: React.FC = () => {
         selectedPlatform: '',
         selectedGenrePaths: [] as string[][],
         genreProportions: [] as number[],
-        generatedIdeas: [] as string[]
+        generatedIdeas: [] as string[],
+        requirements: ''
     });
 
     const abortControllerRef = useRef<AbortController | null>(null);
@@ -98,7 +99,8 @@ const IdeationTab: React.FC = () => {
                 selectedPlatform: data.selectedPlatform || '',
                 selectedGenrePaths: data.genrePaths || [],
                 genreProportions: data.genreProportions || [],
-                generatedIdeas: data.initialIdeas || []
+                generatedIdeas: data.initialIdeas || [],
+                requirements: data.requirements || ''
             });
 
             // If there are generated ideas and user input matches one of them, collapse brainstorming
@@ -146,9 +148,15 @@ const IdeationTab: React.FC = () => {
         selectedGenrePaths: string[][];
         genreProportions: number[];
         generatedIdeas: string[];
+        requirements: string;
     }) => {
         setBrainstormingData(data);
     }, []);
+
+    const handleRunCreated = useCallback((runId: string) => {
+        // Navigate to the new ideation run
+        navigate(`/ideation/${runId}`);
+    }, [navigate]);
 
     const generateIdeation = async () => {
         if (!userInput.trim()) {
@@ -188,6 +196,7 @@ const IdeationTab: React.FC = () => {
                         genrePaths: brainstormingData.selectedGenrePaths,
                         genreProportions: brainstormingData.genreProportions,
                         initialIdeas: brainstormingData.generatedIdeas,
+                        requirements: brainstormingData.requirements,
                         ideationTemplate
                     })
                 });
@@ -264,7 +273,8 @@ const IdeationTab: React.FC = () => {
             selectedPlatform: '',
             selectedGenrePaths: [],
             genreProportions: [],
-            generatedIdeas: []
+            generatedIdeas: [],
+            requirements: ''
         });
         setBrainstormingEnabled(true);
         setBrainstormingCollapsed(false);
@@ -401,10 +411,12 @@ const IdeationTab: React.FC = () => {
                             isCollapsed={brainstormingCollapsed}
                             onIdeaSelect={handleIdeaSelect}
                             onDataChange={handleBrainstormingDataChange}
+                            onRunCreated={!ideationRunId ? handleRunCreated : undefined}
                             initialPlatform={brainstormingData.selectedPlatform}
                             initialGenrePaths={brainstormingData.selectedGenrePaths}
                             initialGenreProportions={brainstormingData.genreProportions}
                             initialGeneratedIdeas={brainstormingData.generatedIdeas}
+                            initialRequirements={brainstormingData.requirements}
                         />
                     )}
 
