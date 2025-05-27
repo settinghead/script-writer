@@ -188,15 +188,32 @@ export class OutlineService {
 
         // Convert to summary format
         const summaries: OutlineSessionSummary[] = [];
+
+        // Get all user artifacts once for efficiency
+        const allArtifacts = await this.artifactRepo.getUserArtifacts(userId);
+
         for (const [sessionId, sessionData] of sessionMap) {
-            // Get title from outline components if available
-            const titleArtifacts = await this.artifactRepo.getArtifactsByTypeForSession(
-                userId,
-                'outline_title',
-                sessionId
-            );
-            const title = titleArtifacts.length > 0 ?
-                (titleArtifacts[0].data as OutlineTitleV1).title : undefined;
+            // Get title from outline components using time-based approach
+            let title: string | undefined = undefined;
+
+            try {
+                const sessionCreationTime = new Date(sessionData.created_at).getTime();
+                const timeWindow = 5 * 60 * 1000; // 5 minutes
+
+                // Find outline title created around the same time as the session
+                const titleArtifact = allArtifacts.find(artifact => {
+                    const artifactTime = new Date(artifact.created_at).getTime();
+                    const timeDiff = Math.abs(artifactTime - sessionCreationTime);
+
+                    return timeDiff <= timeWindow && artifact.type === 'outline_title';
+                });
+
+                if (titleArtifact) {
+                    title = (titleArtifact.data as OutlineTitleV1).title;
+                }
+            } catch (error) {
+                console.error(`Error getting title for session ${sessionId}:`, error);
+            }
 
             summaries.push({
                 id: sessionId,

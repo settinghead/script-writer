@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { Button, Typography, Spin, Alert, Card, Divider } from 'antd';
+import { Button, Typography, Spin, Alert, Card, Divider, Input } from 'antd';
 import { ArrowLeftOutlined, SendOutlined, FileTextOutlined } from '@ant-design/icons';
 import StoryInspirationEditor from './StoryInspirationEditor';
 
@@ -149,16 +149,16 @@ const OutlineTab: React.FC = () => {
         const { title, genre, sellingPoints, setting, synopsis } = outlineSession.outline;
 
         const components = [
-            { label: '剧名', value: title, icon: '🎬' },
-            { label: '题材类型', value: genre, icon: '🎭' },
-            { label: '项目卖点/爽点', value: sellingPoints, icon: '⭐' },
-            { label: '故事设定', value: setting, icon: '🌍' },
-            { label: '故事梗概', value: synopsis, icon: '📖' }
+            { label: '剧名', value: title, icon: '🎬', rows: 1 },
+            { label: '题材类型', value: genre, icon: '🎭', rows: 1 },
+            { label: '项目卖点/爽点', value: sellingPoints, icon: '⭐', rows: 4 },
+            { label: '故事设定', value: setting, icon: '🌍', rows: 3 },
+            { label: '故事梗概', value: synopsis, icon: '📖', rows: 6 }
         ];
 
         return (
             <div style={{ marginTop: '24px' }}>
-                <Title level={4} style={{ color: '#d9d9d9', marginBottom: '24px' }}>
+                <Title level={4} style={{ color: '#ffffff', marginBottom: '24px', fontSize: '20px' }}>
                     故事大纲
                 </Title>
 
@@ -168,25 +168,33 @@ const OutlineTab: React.FC = () => {
                             key={index}
                             size="small"
                             style={{
-                                background: '#1a1a1a',
-                                border: '1px solid #303030',
+                                background: '#0f0f0f',
+                                border: '1px solid #404040',
                                 borderRadius: '8px'
                             }}
-                            bodyStyle={{ padding: '16px' }}
+                            bodyStyle={{ padding: '20px' }}
                         >
-                            <div style={{ marginBottom: '8px' }}>
-                                <Text strong style={{ fontSize: '16px', color: '#d9d9d9' }}>
+                            <div style={{ marginBottom: '12px' }}>
+                                <Text strong style={{ fontSize: '18px', color: '#ffffff' }}>
                                     {component.icon} {component.label}
                                 </Text>
                             </div>
-                            <Paragraph style={{
-                                margin: 0,
-                                color: '#bfbfbf',
-                                lineHeight: '1.6',
-                                fontSize: '14px'
-                            }}>
-                                {component.value}
-                            </Paragraph>
+                            <Input.TextArea
+                                value={component.value}
+                                readOnly
+                                rows={component.rows}
+                                style={{
+                                    backgroundColor: '#1a1a1a',
+                                    border: '1px solid #505050',
+                                    color: '#e8e8e8',
+                                    fontSize: '16px',
+                                    lineHeight: '1.7',
+                                    resize: 'none',
+                                    cursor: 'default',
+                                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+                                }}
+                                autoSize={{ minRows: component.rows, maxRows: component.rows + 2 }}
+                            />
                         </Card>
                     ))}
                 </div>
@@ -218,13 +226,13 @@ const OutlineTab: React.FC = () => {
                     >
                         返回
                     </Button> */}
-                    <Title level={4} style={{ margin: 0 }}>
+                    <Title level={4} style={{ margin: 0, color: '#ffffff', fontSize: '20px' }}>
                         {isCreationMode ? '设计故事大纲' : '故事大纲详情'}
                     </Title>
                 </div>
             </div>
 
-            <Paragraph style={{ color: '#bfbfbf', marginBottom: '24px' }}>
+            <Paragraph style={{ color: '#d0d0d0', marginBottom: '24px', fontSize: '16px', lineHeight: '1.6' }}>
                 {isCreationMode
                     ? '基于你的故事灵感，AI将生成完整的故事大纲，包含剧名、题材类型、项目卖点、故事设定和故事梗概。'
                     : '这是根据故事灵感生成的完整大纲，包含了故事的核心要素。'
@@ -242,15 +250,18 @@ const OutlineTab: React.FC = () => {
                 />
             ) : (
                 <div style={{ marginBottom: '24px' }}>
-                    <Text strong style={{ display: 'block', marginBottom: '12px', fontSize: '16px' }}>
+                    <Text strong style={{ display: 'block', marginBottom: '12px', fontSize: '18px', color: '#ffffff' }}>
                         故事灵感
                     </Text>
                     <div style={{
-                        padding: '16px',
-                        background: '#1a1a1a',
-                        border: '1px solid #434343',
+                        padding: '20px',
+                        background: '#0f0f0f',
+                        border: '1px solid #505050',
                         borderRadius: '8px',
-                        color: '#bfbfbf'
+                        color: '#e8e8e8',
+                        fontSize: '16px',
+                        lineHeight: '1.7',
+                        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
                     }}>
                         {outlineSession?.userInput || '无故事灵感数据'}
                     </div>
@@ -310,8 +321,8 @@ const OutlineTab: React.FC = () => {
 
             {/* Status Info */}
             {isViewingMode && outlineSession && (
-                <div style={{ marginTop: '32px', padding: '16px', background: '#1a1a1a', borderRadius: '8px', border: '1px solid #303030' }}>
-                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                <div style={{ marginTop: '32px', padding: '20px', background: '#0f0f0f', borderRadius: '8px', border: '1px solid #505050' }}>
+                    <Text type="secondary" style={{ fontSize: '14px', color: '#c0c0c0' }}>
                         大纲状态: {outlineSession.status === 'completed' ? '已完成' : '进行中'} |
                         创建时间: {new Date(outlineSession.createdAt).toLocaleString('zh-CN')}
                     </Text>

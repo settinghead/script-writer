@@ -130,20 +130,27 @@ const OutlinesList: React.FC = () => {
     };
 
     const generateTitle = (outline: OutlineSessionSummary) => {
-        const maxLength = isMobile ? 25 : 35;
+        const maxLength = isMobile ? 30 : 40;
 
         // Use outline title if available
-        if (outline.title) {
+        if (outline.title && outline.title.trim()) {
             return truncateText(outline.title, maxLength);
         }
 
-        return '故事大纲';
+        // Fallback to a more descriptive title with session ID
+        return `故事大纲 (${outline.id.slice(0, 8)}...)`;
     };
 
     const generateDescription = (outline: OutlineSessionSummary) => {
-        // For summary view, we don't have detailed outline data
-        // Just show basic info
-        return `创建于 ${formatDate(outline.createdAt)}`;
+        // Show status and creation time
+        const statusText = outline.status === 'completed' ? '已完成' : '进行中';
+        const timeText = formatDate(outline.createdAt);
+
+        if (outline.title && outline.title.trim()) {
+            return `${statusText} · ${timeText}`;
+        } else {
+            return `${statusText} · ${timeText} · 无标题`;
+        }
     };
 
     const getOutlineTags = (outline: OutlineSessionSummary) => {
