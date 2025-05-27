@@ -9,8 +9,10 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './components/LoginPage';
 import IdeationTab from './components/IdeationTab';
+import IdeationsList from './components/IdeationsList';
 import ChatTab from './components/ChatTab';
 import ScriptTab from './components/ScriptTab';
+import Breadcrumb from './components/Breadcrumb';
 import StagewiseToolbar from './components/StagewiseToolbar';
 
 // Import CSS for any custom styling needed
@@ -51,25 +53,16 @@ const AppContent: React.FC = () => {
     navigate('/login');
   };
 
-  // Get current route key for menu selection
-  const getCurrentKey = () => {
-    switch (location.pathname) {
-      case '/ideation':
-        return 'ideation';
-      case '/chat':
-        return 'chat';
-      case '/script':
-        return 'script';
-      default:
-        return 'script'; // Default selection
-    }
-  };
-
   // Mobile menu items
   const menuItems = [
     {
+      key: 'ideations',
+      label: '灵感历史',
+      onClick: () => handleMenuClick('/ideations')
+    },
+    {
       key: 'ideation',
-      label: '灵感',
+      label: '新建灵感',
       onClick: () => handleMenuClick('/ideation')
     },
     {
@@ -81,25 +74,6 @@ const AppContent: React.FC = () => {
       key: 'script',
       label: '剧本编辑',
       onClick: () => handleMenuClick('/script')
-    }
-  ];
-
-  // Desktop tab items for navigation
-  const tabItems = [
-    {
-      key: 'ideation',
-      label: '灵感',
-      path: '/ideation'
-    },
-    {
-      key: 'chat',
-      label: '对话',
-      path: '/chat'
-    },
-    {
-      key: 'script',
-      label: '剧本编辑',
-      path: '/script'
     }
   ];
 
@@ -203,13 +177,18 @@ const AppContent: React.FC = () => {
             >
               <Menu
                 mode="vertical"
-                selectedKeys={[getCurrentKey()]}
                 items={menuItems}
                 style={{ height: '100%' }}
               />
             </Drawer>
             <div style={{ flexGrow: 1, overflow: 'auto', padding: '0 10px' }}>
+              <Breadcrumb />
               <Routes>
+                <Route path="/ideations" element={
+                  <ProtectedRoute>
+                    <IdeationsList />
+                  </ProtectedRoute>
+                } />
                 <Route path="/ideation/:id" element={
                   <ProtectedRoute>
                     <IdeationTab />
@@ -230,54 +209,13 @@ const AppContent: React.FC = () => {
                     <ScriptTab />
                   </ProtectedRoute>
                 } />
-                <Route path="/" element={<Navigate to="/script" replace />} />
+                <Route path="/" element={<Navigate to="/ideations" replace />} />
               </Routes>
             </div>
           </>
         ) : (
           <div style={{ flexGrow: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-            {/* Desktop Navigation Bar */}
-            <div style={{
-              borderBottom: '1px solid #434343',
-              padding: '0 20px',
-              flexShrink: 0
-            }}>
-              <div style={{
-                display: 'flex',
-                gap: '0',
-                borderBottom: '1px solid transparent'
-              }}>
-                {tabItems.map(item => (
-                  <button
-                    key={item.key}
-                    onClick={() => navigate(item.path)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      padding: '12px 16px',
-                      color: getCurrentKey() === item.key ? '#1890ff' : '#d9d9d9',
-                      cursor: 'pointer',
-                      borderBottom: getCurrentKey() === item.key ? '2px solid #1890ff' : '2px solid transparent',
-                      fontSize: '14px',
-                      transition: 'all 0.3s'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (getCurrentKey() !== item.key) {
-                        e.currentTarget.style.color = '#40a9ff';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (getCurrentKey() !== item.key) {
-                        e.currentTarget.style.color = '#d9d9d9';
-                      }
-                    }}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {/* Content Area */}
+            {/* Content Area with Breadcrumbs */}
             <div style={{
               flexGrow: 1,
               overflow: 'hidden',
@@ -285,7 +223,13 @@ const AppContent: React.FC = () => {
               display: 'flex',
               flexDirection: 'column'
             }}>
+              <Breadcrumb />
               <Routes>
+                <Route path="/ideations" element={
+                  <ProtectedRoute>
+                    <IdeationsList />
+                  </ProtectedRoute>
+                } />
                 <Route path="/ideation/:id" element={
                   <ProtectedRoute>
                     <IdeationTab />
@@ -306,7 +250,7 @@ const AppContent: React.FC = () => {
                     <ScriptTab />
                   </ProtectedRoute>
                 } />
-                <Route path="/" element={<Navigate to="/script" replace />} />
+                <Route path="/" element={<Navigate to="/ideations" replace />} />
               </Routes>
             </div>
           </div>

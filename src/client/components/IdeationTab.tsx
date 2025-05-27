@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Input, Button, Typography, Spin, Alert, Select, Row, Col, Divider, Modal, Drawer, Checkbox, Slider } from 'antd';
-import { SendOutlined, RightOutlined, LeftOutlined, ReloadOutlined } from '@ant-design/icons';
+import { SendOutlined, RightOutlined, LeftOutlined, ReloadOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { jsonrepair } from 'jsonrepair';
 import GenreSelectionPopup from './GenreSelectionPopup';
 import PlatformSelection from './PlatformSelection';
@@ -445,7 +445,21 @@ const IdeationTab: React.FC = () => {
             ) : (
                 <>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                        <Title level={4} style={{ margin: 0 }}>灵感生成器</Title>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            {ideationRunId && (
+                                <Button
+                                    icon={<ArrowLeftOutlined />}
+                                    onClick={() => navigate('/ideations')}
+                                    type="text"
+                                    style={{ color: '#1890ff' }}
+                                >
+                                    返回
+                                </Button>
+                            )}
+                            <Title level={4} style={{ margin: 0 }}>
+                                {ideationRunId ? '灵感详情' : '灵感生成器'}
+                            </Title>
+                        </div>
                         <Button
                             icon={<ReloadOutlined />}
                             onClick={handleRestart}
