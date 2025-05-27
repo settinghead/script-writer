@@ -5,6 +5,7 @@ import { SendOutlined, RightOutlined, LeftOutlined, ReloadOutlined } from '@ant-
 import { jsonrepair } from 'jsonrepair';
 import GenreSelectionPopup from './GenreSelectionPopup';
 import PlatformSelection from './PlatformSelection';
+import { useStorageState } from '../hooks/useStorageState';
 
 const NUM_IDEAS_TO_GENERATE = 6; // New global constant
 
@@ -79,9 +80,9 @@ const IdeationTab: React.FC = () => {
     const { id: ideationRunId } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const [userInput, setUserInput] = useState('');
-    const [selectedPlatform, setSelectedPlatform] = useState<string>('');
-    const [selectedGenrePaths, setSelectedGenrePaths] = useState<string[][]>([]);
-    const [genreProportions, setGenreProportions] = useState<number[]>([]);
+    const [selectedPlatform, setSelectedPlatform] = useStorageState<string>('ideation_selectedPlatform', '');
+    const [selectedGenrePaths, setSelectedGenrePaths] = useStorageState<string[][]>('ideation_selectedGenrePaths', []);
+    const [genreProportions, setGenreProportions] = useStorageState<number[]>('ideation_genreProportions', []);
     const [proportionModalVisible, setProportionModalVisible] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [isGeneratingIdea, setIsGeneratingIdea] = useState(false);
