@@ -38,7 +38,7 @@ const Breadcrumb: React.FC = () => {
             const ideationId = location.pathname.split('/')[2];
             if (ideationId) {
                 items.push({
-                    title: '灵感详情',
+                    title: `灵感详情 (${ideationId.slice(0, 8)}...)`,
                     icon: <BulbOutlined />
                 });
             } else {
