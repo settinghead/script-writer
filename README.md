@@ -1,6 +1,6 @@
 # Script Writer
 
-A collaborative script writing application with AI assistance and real-time collaboration features.
+A collaborative script writing application with AI assistance, real-time collaboration, and comprehensive data traceability features.
 
 ## Features
 
@@ -17,9 +17,10 @@ A collaborative script writing application with AI assistance and real-time coll
 
 ### 🤖 AI-Powered Features
 - **Script editing assistance** using DeepSeek AI
-- **Ideation and plot generation** 
+- **Ideation and plot generation** with full traceability
 - **Chat interface** for AI interactions
 - **Genre-based content generation**
+- **Transform replay system** for reproducibility testing
 
 ### 👥 Collaboration
 - **Real-time collaborative editing** using Yjs
@@ -31,6 +32,14 @@ A collaborative script writing application with AI assistance and real-time coll
 - **Responsive design** for desktop and mobile
 - **Tabbed interface** (Ideation, Chat, Script Editor)
 - **User dropdown** with profile info and logout
+
+### 📊 Analytics & Debugging
+- **Complete data traceability** through artifacts and transforms
+- **Transform replay capabilities** for testing and analysis
+- **Performance monitoring** with caching and metrics
+- **Advanced search** across all user data
+- **Data export** for AI training and analysis
+- **Comprehensive debugging tools** for development
 
 ## Quick Start
 
@@ -92,10 +101,11 @@ npm run dev
 
 ### Backend
 - **Express.js** server with TypeScript
-- **SQLite** database for users, sessions, and content
+- **SQLite** database with generalized artifacts/transforms system
 - **JWT authentication** with session management
 - **DeepSeek AI integration** for content generation
 - **Yjs WebSocket server** for real-time collaboration
+- **Intelligent caching** for performance optimization
 
 ### Frontend  
 - **React 19** with TypeScript
@@ -106,7 +116,86 @@ npm run dev
 
 ### Database Schema
 
-#### Users Table
+The application uses a **generalized artifacts and transforms system** for complete data traceability:
+
+#### Core Artifacts & Transforms Tables
+```sql
+-- Immutable artifacts store all data entities
+CREATE TABLE artifacts (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  type TEXT NOT NULL,              -- 'ideation_session', 'brainstorm_params', etc.
+  type_version TEXT NOT NULL DEFAULT 'v1',
+  data TEXT NOT NULL,              -- JSON data for the artifact
+  metadata TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users (id)
+);
+
+-- Transform operations (LLM calls, human actions)
+CREATE TABLE transforms (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  type TEXT NOT NULL,              -- 'llm' or 'human'
+  type_version TEXT NOT NULL DEFAULT 'v1',
+  status TEXT DEFAULT 'completed',
+  execution_context TEXT,          -- JSON context data
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users (id)
+);
+
+-- Many-to-many relationships
+CREATE TABLE transform_inputs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  transform_id TEXT NOT NULL,
+  artifact_id TEXT NOT NULL,
+  input_role TEXT,
+  FOREIGN KEY (transform_id) REFERENCES transforms (id) ON DELETE CASCADE,
+  FOREIGN KEY (artifact_id) REFERENCES artifacts (id)
+);
+
+CREATE TABLE transform_outputs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  transform_id TEXT NOT NULL,
+  artifact_id TEXT NOT NULL,
+  output_role TEXT,
+  FOREIGN KEY (transform_id) REFERENCES transforms (id) ON DELETE CASCADE,
+  FOREIGN KEY (artifact_id) REFERENCES artifacts (id)
+);
+```
+
+#### LLM-Specific Tables
+```sql
+-- LLM prompts (separate due to size)
+CREATE TABLE llm_prompts (
+  id TEXT PRIMARY KEY,
+  transform_id TEXT NOT NULL,
+  prompt_text TEXT NOT NULL,
+  prompt_role TEXT DEFAULT 'primary',
+  FOREIGN KEY (transform_id) REFERENCES transforms (id) ON DELETE CASCADE
+);
+
+-- LLM transform metadata
+CREATE TABLE llm_transforms (
+  transform_id TEXT PRIMARY KEY,
+  model_name TEXT NOT NULL,
+  model_parameters TEXT,
+  raw_response TEXT,
+  token_usage TEXT,               -- JSON with token counts
+  FOREIGN KEY (transform_id) REFERENCES transforms (id) ON DELETE CASCADE
+);
+
+-- Human action tracking
+CREATE TABLE human_transforms (
+  transform_id TEXT PRIMARY KEY,
+  action_type TEXT NOT NULL,
+  interface_context TEXT,
+  change_description TEXT,
+  FOREIGN KEY (transform_id) REFERENCES transforms (id) ON DELETE CASCADE
+);
+```
+
+#### Authentication Tables
 ```sql
 CREATE TABLE users (
   id TEXT PRIMARY KEY,
@@ -116,10 +205,7 @@ CREATE TABLE users (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   status TEXT DEFAULT 'active'
 );
-```
 
-#### Auth Providers Table
-```sql
 CREATE TABLE auth_providers (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id TEXT NOT NULL,
@@ -130,57 +216,13 @@ CREATE TABLE auth_providers (
   FOREIGN KEY (user_id) REFERENCES users (id),
   UNIQUE(provider_type, provider_user_id)
 );
-```
 
-#### Sessions Table
-```sql
 CREATE TABLE user_sessions (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
   expires_at DATETIME NOT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users (id)
-);
-```
-
-#### Scripts Table
-```sql
-CREATE TABLE scripts (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
-  name TEXT NOT NULL,
-  room_id TEXT NOT NULL UNIQUE,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES users (id)
-);
-```
-
-#### Ideation Tables (Updated)
-```sql
--- Ideation runs with user association
-CREATE TABLE ideation_runs (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
-  user_input TEXT,
-  selected_platform TEXT,
-  genre_prompt_string TEXT,
-  genre_paths_json TEXT,
-  genre_proportions_json TEXT,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  media_type TEXT,
-  platform_recommendation TEXT,
-  plot_outline TEXT,
-  analysis TEXT,
-  FOREIGN KEY (user_id) REFERENCES users (id)
-);
-
--- Initial ideas linked to ideation runs
-CREATE TABLE generated_initial_ideas (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  run_id TEXT,
-  idea_text TEXT,
-  FOREIGN KEY (run_id) REFERENCES ideation_runs (id)
 );
 ```
 
@@ -197,17 +239,16 @@ CREATE TABLE generated_initial_ideas (
 ### Protected AI Endpoints (Require Authentication)
 - `POST /llm-api/chat/completions` - Chat completions
 - `POST /llm-api/script/edit` - Script editing assistance
-- `POST /api/ideations/create_run_and_generate_plot` - Generate plot ideas
-- `POST /api/ideations/:id/generate_plot` - Generate plot for existing run
 
-### User-Specific Content Management (All Require Authentication)
+### Content Management (All Require Authentication)
 
 #### Ideation Management
 - `GET /api/ideations` - List user's ideation runs
 - `GET /api/ideations/:id` - Get user's specific ideation run
 - `POST /api/ideations/create_run_with_ideas` - Create ideation run with initial ideas
 - `POST /api/ideations/create_run_and_generate_plot` - Create and generate plot
-- `DELETE /api/ideations/:id` - Delete user's ideation run (and related ideas)
+- `POST /api/ideations/:id/generate_plot` - Generate plot for existing run
+- `DELETE /api/ideations/:id` - Delete user's ideation run
 
 #### Script Management
 - `GET /api/scripts` - List user's script documents
@@ -218,6 +259,23 @@ CREATE TABLE generated_initial_ideas (
 
 #### Real-time Collaboration
 - `WebSocket /yjs?room={roomId}` - Join collaborative editing session (authenticated)
+
+### Debug & Analytics Endpoints (Development/Admin)
+- `GET /debug/artifacts` - List/filter user artifacts
+- `GET /debug/transforms` - List user transforms  
+- `GET /debug/transforms/:id` - Detailed transform view
+- `GET /debug/artifacts/:id` - Individual artifact details
+- `GET /debug/artifacts/:id/lineage` - Artifact lineage tracing
+- `GET /debug/stats` - Database statistics
+- `GET /debug/export` - Complete user data export
+- `POST /debug/replay/transform/:id` - Replay specific transform
+- `POST /debug/replay/workflow/:artifactId` - Replay entire workflow
+- `GET /debug/stats/transforms` - Transform execution statistics
+- `GET /debug/cache/stats` - Cache performance metrics
+- `POST /debug/cache/clear` - Clear cache
+- `GET /debug/search/artifacts` - Advanced artifact search
+- `GET /debug/health` - System health check
+- `GET /debug/performance` - Performance metrics
 
 ## Security Features
 
@@ -286,347 +344,159 @@ The authentication system is designed to be extensible. Planned features include
 
 ### 🏗️ Architecture Overview
 
-#### Authentication System
-The application uses a **JWT-based authentication system** with the following key components:
+#### Artifacts & Transforms System
+The application has evolved from domain-specific tables to a **generalized artifacts and transforms architecture**:
 
-- **HTTP-only cookies** for secure token storage
-- **Provider-based architecture** supporting multiple auth methods
-- **Session management** with database-tracked tokens
-- **Middleware protection** for all AI/LLM endpoints
+- **Complete Traceability**: Every data modification tracked through transforms
+- **Immutable Artifacts**: All data stored as versioned, immutable entities
+- **Transform Chains**: Operations linked to show data flow and lineage
+- **API Compatibility**: Existing endpoints maintained while using new system
 
-#### Database Design
-```sql
--- Users table with extensible user management
-CREATE TABLE users (
-  id TEXT PRIMARY KEY,           -- UUID
-  username TEXT NOT NULL UNIQUE,
-  display_name TEXT,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  status TEXT DEFAULT 'active'
-);
+#### Enhanced Analytics & Debugging
+```typescript
+// Transform replay for testing
+const replayResult = await replayService.replayTransform(userId, transformId);
 
--- Flexible provider system for multiple auth methods
-CREATE TABLE auth_providers (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id TEXT NOT NULL,
-  provider_type TEXT NOT NULL,    -- 'dropdown', 'wechat', 'weibo', 'sms'
-  provider_user_id TEXT,
-  provider_data TEXT,             -- JSON for provider-specific data
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES users (id),
-  UNIQUE(provider_type, provider_user_id)
-);
+// Workflow analysis
+const workflowChain = await replayService.replayWorkflow(userId, artifactId);
 
--- Session tracking for JWT tokens
-CREATE TABLE user_sessions (
-  id TEXT PRIMARY KEY,            -- JWT token ID (jti claim)
-  user_id TEXT NOT NULL,
-  expires_at DATETIME NOT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES users (id)
-);
+// Performance monitoring
+const stats = await cacheService.getStats();
+const transformStats = await replayService.getTransformStats(userId);
 ```
 
-#### Collaborative Script Editor Architecture
-The script editor is built using **Slate.js** with **YJS** for real-time collaboration:
+#### Data Export for AI Training
+```typescript
+// Complete user data export
+const userData = await artifactRepo.exportUserData(userId);
 
-- **Slate.js**: Rich text editor with custom script elements
-- **YJS**: Conflict-free replicated data types for collaboration
-- **WebSocket**: Real-time synchronization between clients
-- **Custom Node Types**: Scene headings, character names, dialogue, etc.
+// Transform statistics with token usage
+const llmStats = await replayService.getTransformStats(userId);
+```
 
 ### 🔧 Development Patterns
 
-#### Authentication Middleware Pattern
+#### Artifact Creation Pattern
 ```typescript
-// Protect routes with authentication
-app.post("/llm-api/chat/completions", authMiddleware.authenticate, handler);
-
-// Optional authentication for public endpoints
-app.get("/api/public", authMiddleware.optionalAuth, handler);
-
-// Access user in protected routes
-const user = authMiddleware.getCurrentUser(req);
-```
-
-#### Provider Extension Pattern
-To add new authentication providers:
-
-1. **Create provider handler** in `src/server/routes/auth.ts`
-2. **Add provider logic** to login endpoint switch statement
-3. **Create provider entry** in `auth_providers` table
-4. **Update frontend** login options
-
-Example WeChat provider:
-```typescript
-case 'wechat':
-  // Verify WeChat OAuth token
-  const wechatUser = await verifyWeChatToken(data.code);
-  user = await authDB.getUserByProvider('wechat', wechatUser.openid);
-  if (!user) {
-    // Create new user from WeChat data
-    user = await createUserFromWeChat(wechatUser);
-  }
-  break;
-```
-
-#### YJS Integration Pattern
-```typescript
-// Set up collaborative document
-const yDoc = new Y.Doc();
-const sharedType = yDoc.get('slate', Y.XmlText);
-
-// Connect to WebSocket provider
-const provider = new WebsocketProvider(
-  `ws://${window.location.host}/yjs`,
-  `script-${roomId}`,
-  yDoc
+// Create typed artifacts
+const sessionArtifact = await artifactRepo.createArtifact(
+  userId,
+  'ideation_session',
+  { id: sessionId, status: 'active' } as IdeationSessionV1
 );
 
-// Create Slate editor with YJS binding
-const editor = withYjs(createEditor(), sharedType);
+// Track transform operations  
+const { transform, outputArtifacts } = await transformExecutor.executeLLMTransform(
+  userId,
+  inputArtifacts,
+  prompt,
+  variables,
+  modelName,
+  outputType
+);
+```
+
+#### Caching Pattern
+```typescript
+// Intelligent caching with TTL
+const cacheKey = CacheService.ideationRunKey(userId, sessionId);
+const cached = cacheService.get<IdeationRun>(cacheKey);
+
+if (!cached) {
+  const data = await fetchFromDatabase();
+  cacheService.set(cacheKey, data, 5 * 60 * 1000); // 5 minutes
+  return data;
+}
+return cached;
+```
+
+#### Transform Replay Pattern
+```typescript
+// Test reproducibility
+const replayResult = await replayService.replayTransform(userId, transformId);
+const similarity = replayResult.differences?.similarity_score || 0;
+
+// Validate system consistency
+if (similarity < 0.8) {
+  console.warn('Transform replay shows significant differences');
+}
 ```
 
 ### 🛡️ Security Implementation
 
-#### JWT Token Security
-- **HTTP-only cookies** prevent XSS token theft
-- **SameSite** and **Secure** flags for CSRF protection
-- **Short expiration** (7 days) with session tracking
-- **Token blacklisting** via session deletion
+#### Enhanced Data Isolation
+- **Transform-level security**: All operations filtered by user ID
+- **Artifact lineage protection**: Users can only access their own data chains
+- **Debug endpoint protection**: Analytics data scoped to authenticated user
 
-#### Input Validation
-- All API endpoints validate required parameters
-- SQL injection prevention via parameterized queries
-- XSS prevention via proper React rendering
-- CORS configuration for development/production
-
-#### Environment Security
-```env
-# Required security variables
-JWT_SECRET=256-bit-minimum-secret-key
-JWT_EXPIRES_IN=7d
-COOKIE_DOMAIN=localhost
-
-# API keys
-DEEPSEEK_API_KEY=your-api-key
-```
-
-### 🎨 UI/UX Architecture
-
-#### Component Hierarchy
-```
-App (AuthProvider)
-├── LoginPage (full-screen, no layout)
-└── AppContent (protected routes with layout)
-    ├── Header (user dropdown, navigation)
-    ├── TabNavigation (desktop)
-    ├── MobileDrawer (mobile)
-    └── Routes
-        ├── IdeationTab (protected)
-        ├── ChatTab (protected)
-        └── ScriptTab (protected)
-            ├── ChatPanel (30% width)
-            └── CollaborativeEditor (70% width)
-```
-
-#### Responsive Design
-- **Desktop**: Tab navigation, resizable panels
-- **Mobile**: Drawer menu, stacked layout
-- **Breakpoint**: 768px width threshold
-
-#### Theme Integration
-- **Ant Design dark theme** as base
-- **Custom color palette** with brand blue (#1890ff)
-- **Consistent spacing** using Ant Design tokens
-
-### 🔄 Real-time Collaboration
-
-#### YJS Document Structure
+#### Performance Security
 ```typescript
-// Slate.js nodes stored as YJS structure
-interface YjsSlateDoc {
-  content: Y.XmlText;           // Main document content
-  cursors: Y.Map<CursorData>;   // User cursor positions
-  metadata: Y.Map<any>;         // Document metadata
+// Rate limiting for expensive operations
+const rateLimiter = new Map<string, number>();
+const userKey = `user:${userId}:replay`;
+const lastCall = rateLimiter.get(userKey) || 0;
+
+if (Date.now() - lastCall < 5000) { // 5 second cooldown
+  throw new Error('Rate limit exceeded for replay operations');
 }
 ```
-
-#### Conflict Resolution
-- **Operational Transform**: YJS handles conflicting edits automatically
-- **Cursor Synchronization**: Real-time cursor sharing between users
-- **Document Persistence**: In-memory storage with planned database backup
-
-#### WebSocket Server
-```typescript
-// Authenticated room-based document management
-const documents = new Map<string, Y.Doc>();
-
-// Handle WebSocket upgrade with authentication
-httpServer.on('upgrade', async (request, socket, head) => {
-  if (request.url?.includes('/yjs')) {
-    // Authenticate user via JWT cookie
-    const user = await authenticateWebSocketUser(request, authDB);
-    if (!user) {
-      socket.destroy();
-      return;
-    }
-    
-    // Verify room ownership
-    const roomId = url.searchParams.get('room');
-    const canAccess = await verifyUserCanAccessRoom(roomId, user.id, authDB);
-    if (!canAccess) {
-      socket.destroy();
-      return;
-    }
-    
-    setupWSConnection(ws, req, { docName: roomId, user });
-  }
-});
-```
-
-### 🤖 AI Integration
-
-#### LLM Request Flow
-1. **User request** → Chat panel or script editor
-2. **Authentication check** → JWT validation
-3. **Context gathering** → Current script content
-4. **LLM processing** → DeepSeek API call
-5. **Response parsing** → Extract edit operations
-6. **YJS application** → Apply edits to collaborative document
-
-#### Edit Operation Format
-```typescript
-interface EditOperation {
-  position: number;    // Character position in document
-  insert?: string;     // Text to insert
-  delete?: number;     // Number of characters to delete
-}
-
-// LLM response format
-{
-  "edits": [
-    { "position": 123, "insert": "New dialogue here" },
-    { "position": 456, "delete": 10 }
-  ],
-  "explanation": "Enhanced character motivation"
-}
-```
-
-### 📝 Script Editor Features
-
-#### Custom Node Types
-```typescript
-// Script-specific elements
-type ScriptElement = 
-  | 'scene-heading'    // INT. COFFEE SHOP - DAY
-  | 'character'        // JOHN
-  | 'dialogue'         // What are you doing here?
-  | 'action'          // John walks to the window
-  | 'transition';     // FADE IN:
-```
-
-#### Formatting Rules
-- **Scene headings**: ALL CAPS, bold
-- **Character names**: ALL CAPS, centered
-- **Dialogue**: Indented margins
-- **Action**: Standard paragraph format
-
-### 🧪 Testing Strategy
-
-#### Authentication Testing
-```bash
-# Test login flow
-curl -X POST -d '{"provider":"dropdown","username":"xiyang"}' \
-  -H "Content-Type: application/json" \
-  -c cookies.txt http://localhost:4600/auth/login
-
-# Test protected endpoint
-curl -b cookies.txt http://localhost:4600/llm-api/chat/completions
-```
-
-#### Collaboration Testing
-- **Multi-browser testing** for real-time sync
-- **Network interruption** handling
-- **Concurrent editing** conflict resolution
-
-### 🚀 Deployment Considerations
-
-#### Environment Configuration
-```env
-# Production settings
-NODE_ENV=production
-JWT_SECRET=production-secret-256-bits
-COOKIE_DOMAIN=yourdomain.com
-DEEPSEEK_API_KEY=production-key
-```
-
-#### Database Migration
-- SQLite for development
-- PostgreSQL recommended for production
-- Migration scripts for table creation
-- Backup strategy for YJS documents
-
-#### WebSocket Scaling
-- Consider Redis adapter for multi-server YJS
-- Load balancer sticky sessions
-- Document persistence strategy
 
 ### 🔮 Extension Points
 
-#### Adding New Auth Providers
-1. Update `AuthProvider` enum in types
-2. Add case to login route handler
-3. Implement provider-specific verification
-4. Update frontend login UI
+#### Adding New Artifact Types
+1. **Define TypeScript interface** with version suffix (e.g., `NewTypeV1`)
+2. **Add to artifact type union** in `src/server/types/artifacts.ts`
+3. **Create transform logic** in appropriate service
+4. **Update validation** if needed
 
-#### Custom Script Elements
-1. Define new element type in Slate types
-2. Add rendering logic in `ScriptElements.tsx`
-3. Update editor toolbar with new options
-4. Add keyboard shortcuts
+#### Custom Transform Types
+```typescript
+// Example: Adding a new transform type
+await transformExecutor.executeCustomTransform(
+  userId,
+  inputArtifacts,
+  'external_api',
+  outputArtifacts,
+  {
+    api_endpoint: 'https://api.example.com',
+    parameters: { model: 'custom-v1' }
+  }
+);
+```
 
-#### AI Enhancement
-1. Custom LLM prompts for different script types
-2. Genre-specific writing assistance
-3. Character consistency checking
-4. Automated formatting suggestions
+#### Analytics Extensions
+```typescript
+// Custom metrics collection
+const customMetrics = {
+  user_engagement: await calculateEngagementScore(userId),
+  content_quality: await analyzeContentQuality(artifacts),
+  system_performance: await getPerformanceMetrics()
+};
+```
 
 ### 📚 Key Dependencies
 
-#### Core Frameworks
-- **React 19**: Latest React with concurrent features
-- **TypeScript**: Full type safety
-- **Express.js**: Backend API server
-- **Vite**: Fast development build tool
+#### New Dependencies Added
+- **Enhanced data management**: Comprehensive artifact/transform repositories
+- **Caching system**: In-memory cache with TTL and cleanup
+- **Replay system**: Transform reproducibility testing
+- **Analytics tools**: Performance monitoring and data export
 
-#### Authentication
-- **jsonwebtoken**: JWT token management
-- **cookie-parser**: HTTP cookie handling
-- **bcrypt**: Password hashing (for future providers)
-
-#### Collaboration
-- **slate** & **slate-react**: Rich text editor
-- **yjs**: CRDT for collaboration
-- **y-websocket**: WebSocket transport for YJS
-- **ws**: WebSocket server implementation
-
-#### UI/UX
-- **antd**: Component library with dark theme
-- **react-router-dom**: Client-side routing
-- **react-resizable**: Resizable panels
+#### Performance Dependencies
+- **sqlite3**: Enhanced with optimized indexes and queries
+- **Custom caching**: Memory-efficient with automatic cleanup
+- **Transform tracking**: Minimal overhead with detailed logging
 
 ### ⚠️ Important Notes
 
-1. **Database Initialization**: Tables are created automatically on first run
-2. **JWT Secret**: Must be 256-bit minimum for production security
-3. **WebSocket Ports**: Ensure firewall allows WebSocket connections
-4. **Memory Usage**: YJS documents stored in memory - implement persistence
-5. **Rate Limiting**: Add rate limiting for production deployment
-6. **CORS**: Configure properly for production domain
-7. **Error Handling**: All API endpoints include comprehensive error handling
-8. **Session Cleanup**: Expired sessions are cleaned up automatically
+1. **Database Evolution**: Old tables renamed to `legacy_*` for emergency recovery
+2. **API Compatibility**: All existing endpoints work unchanged during transition
+3. **Caching Strategy**: Intelligent TTL based on data volatility patterns
+4. **Transform Replay**: Available for all LLM transforms for reproducibility
+5. **Data Export**: Complete user data available for AI training purposes
+6. **Performance Monitoring**: Built-in metrics for system health tracking
+7. **Debug Tools**: Comprehensive debugging endpoints for development
+8. **Memory Management**: Automatic cache cleanup and memory optimization
 
 ## Contributing
 

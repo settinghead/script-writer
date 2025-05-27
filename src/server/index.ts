@@ -63,7 +63,7 @@ const replayService = new ReplayService(artifactRepo, transformRepo, transformEx
 // Create tables if they don't exist
 const initializeDatabase = async () => {
   db.serialize(() => {
-    // ========== NEW ARTIFACTS/TRANSFORMS TABLES ==========
+    // ========== ARTIFACTS/TRANSFORMS TABLES ==========
 
     // Immutable artifacts (all data entities)
     db.run(`
@@ -157,49 +157,6 @@ const initializeDatabase = async () => {
     db.run(`CREATE INDEX IF NOT EXISTS idx_artifacts_user_type ON artifacts (user_id, type)`);
     db.run(`CREATE INDEX IF NOT EXISTS idx_artifacts_user_created ON artifacts (user_id, created_at)`);
     db.run(`CREATE INDEX IF NOT EXISTS idx_transforms_user_created ON transforms (user_id, created_at)`);
-
-    // ========== LEGACY TABLES (DEPRECATED - kept for emergency fallback) ==========
-    // Note: These tables are no longer used by the application
-    // They are kept temporarily in case we need to recover data
-
-    db.run(`
-      CREATE TABLE IF NOT EXISTS legacy_ideation_runs (
-        id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL,
-        user_input TEXT,
-        selected_platform TEXT,
-        genre_prompt_string TEXT,
-        genre_paths_json TEXT,
-        genre_proportions_json TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        media_type TEXT,
-        platform_recommendation TEXT,
-        plot_outline TEXT,
-        analysis TEXT,
-        FOREIGN KEY (user_id) REFERENCES users (id)
-      )
-    `);
-
-    db.run(`
-      CREATE TABLE IF NOT EXISTS legacy_generated_initial_ideas (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        run_id TEXT,
-        idea_text TEXT,
-        FOREIGN KEY (run_id) REFERENCES legacy_ideation_runs (id)
-      )
-    `);
-
-    db.run(`
-      CREATE TABLE IF NOT EXISTS legacy_scripts (
-        id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL,
-        name TEXT NOT NULL,
-        room_id TEXT NOT NULL UNIQUE,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users (id)
-      )
-    `);
   });
 
   // Initialize authentication tables and test users
