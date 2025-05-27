@@ -340,10 +340,16 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
                             return (
                                 <div
                                     key={key}
-                                    onClick={() => { if (hasChildren(currentPathSegmentsForRender, key) && !isDeepestLevel(currentPathSegmentsForRender, key)) handleNavigationClick(itemPath); }}
+                                    onClick={() => {
+                                        if (hasChildren(currentPathSegmentsForRender, key) && !isDeepestLevel(currentPathSegmentsForRender, key)) {
+                                            handleNavigationClick(itemPath);
+                                        } else if (canSelectItem) {
+                                            handleCheckboxChange(currentPathSegmentsForRender, key);
+                                        }
+                                    }}
                                     style={{
                                         padding: '8px 12px',
-                                        cursor: (hasChildren(currentPathSegmentsForRender, key) && !isDeepestLevel(currentPathSegmentsForRender, key)) ? 'pointer' : 'default',
+                                        cursor: 'pointer',
                                         backgroundColor: isActiveNavBranch ? '#1890ff20' : (isEffectivelySelected ? '#1890ff10' : 'transparent'),
                                         borderLeft: isActiveNavBranch ? '3px solid #1890ff' : (isEffectivelySelected ? '3px solid #1890ff80' : '3px solid transparent'),
                                         display: 'flex',
