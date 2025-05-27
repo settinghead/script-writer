@@ -34,6 +34,54 @@ const db = new sqlite3.Database('./ideations.db', (err) => {
 const authDB = new AuthDatabase(db);
 const authMiddleware = createAuthMiddleware(authDB);
 
+// Migration function to add user_id to existing tables
+const migrateIdeationTables = async () => {
+  return new Promise<void>((resolve, reject) => {
+    db.serialize(() => {
+      // Check if user_id column exists in ideation_runs
+      db.get("PRAGMA table_info(ideation_runs)", (err, result) => {
+        if (err) {
+          console.error('Error checking table schema:', err);
+          reject(err);
+          return;
+        }
+
+        // Get all columns
+        db.all("PRAGMA table_info(ideation_runs)", (err, columns: any[]) => {
+          if (err) {
+            console.error('Error getting table info:', err);
+            reject(err);
+            return;
+          }
+
+          const hasUserId = columns.some(col => col.name === 'user_id');
+
+          if (!hasUserId) {
+            console.log('Migrating ideation_runs table to add user_id...');
+
+            // Add user_id column with default value (assign to first test user)
+            db.run("ALTER TABLE ideation_runs ADD COLUMN user_id TEXT DEFAULT 'test-user-xiyang'", (err) => {
+              if (err) {
+                console.error('Error adding user_id column:', err);
+                reject(err);
+                return;
+              }
+
+              // Update the column to be NOT NULL and add foreign key constraint
+              // Note: SQLite doesn't support modifying constraints, so we accept the default for existing data
+              console.log('Migration completed: Added user_id to ideation_runs');
+              resolve();
+            });
+          } else {
+            console.log('ideation_runs table already has user_id column');
+            resolve();
+          }
+        });
+      });
+    });
+  });
+};
+
 // Create tables if they don't exist
 const initializeDatabase = async () => {
   db.serialize(() => {
@@ -41,6 +89,7 @@ const initializeDatabase = async () => {
     db.run(`
       CREATE TABLE IF NOT EXISTS ideation_runs (
         id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
         user_input TEXT,
         selected_platform TEXT,
         genre_prompt_string TEXT,
@@ -50,7 +99,8 @@ const initializeDatabase = async () => {
         media_type TEXT,
         platform_recommendation TEXT,
         plot_outline TEXT,
-        analysis TEXT
+        analysis TEXT,
+        FOREIGN KEY (user_id) REFERENCES users (id)
       )
     `);
 
@@ -70,6 +120,9 @@ const initializeDatabase = async () => {
     await authDB.initializeAuthTables();
     await authDB.createTestUsers();
     console.log('Authentication system initialized');
+
+    // Migrate existing ideation data to include user associations
+    await migrateIdeationTables();
   } catch (error) {
     console.error('Error initializing authentication system:', error);
   }
@@ -316,7 +369,7 @@ app.post("/llm-api/script/edit", authMiddleware.authenticate, async (req: any, r
 });
 
 // Ideation management endpoints
-app.post("/api/ideations/create_run_with_ideas", async (req: any, res: any) => {
+app.post("/api/ideations/create_run_with_ideas", authMiddleware.authenticate, async (req: any, res: any) => {
   const {
     selectedPlatform,
     genrePaths,
@@ -348,13 +401,19 @@ app.post("/api/ideations/create_run_with_ideas", async (req: any, res: any) => {
 
   const genrePromptString = buildGenrePromptString();
 
+  // Get authenticated user
+  const user = authMiddleware.getCurrentUser(req);
+  if (!user) {
+    return res.status(401).json({ error: "User not authenticated" });
+  }
+
   try {
     // Insert initial run data
     await new Promise<void>((resolve, reject) => {
       db.run(
-        `INSERT INTO ideation_runs (id, user_input, selected_platform, genre_prompt_string, genre_paths_json, genre_proportions_json)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [runId, '', selectedPlatform || '', genrePromptString, genrePathsJson, genreProportionsJson],
+        `INSERT INTO ideation_runs (id, user_id, user_input, selected_platform, genre_prompt_string, genre_paths_json, genre_proportions_json)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [runId, user.id, '', selectedPlatform || '', genrePromptString, genrePathsJson, genreProportionsJson],
         function (err) {
           if (err) reject(err);
           else resolve();
@@ -425,13 +484,19 @@ app.post("/api/ideations/create_run_and_generate_plot", authMiddleware.authentic
 
   const genrePromptString = buildGenrePromptString();
 
+  // Get authenticated user
+  const user = authMiddleware.getCurrentUser(req);
+  if (!user) {
+    return res.status(401).json({ error: "User not authenticated" });
+  }
+
   try {
     // Insert initial run data
     await new Promise<void>((resolve, reject) => {
       db.run(
-        `INSERT INTO ideation_runs (id, user_input, selected_platform, genre_prompt_string, genre_paths_json, genre_proportions_json)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [runId, userInput, selectedPlatform || '', genrePromptString, genrePathsJson, genreProportionsJson],
+        `INSERT INTO ideation_runs (id, user_id, user_input, selected_platform, genre_prompt_string, genre_paths_json, genre_proportions_json)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [runId, user.id, userInput, selectedPlatform || '', genrePromptString, genrePathsJson, genreProportionsJson],
         function (err) {
           if (err) reject(err);
           else resolve();
@@ -522,15 +587,21 @@ app.post("/api/ideations/create_run_and_generate_plot", authMiddleware.authentic
   }
 });
 
-app.get("/api/ideations/:id", async (req: any, res: any) => {
+app.get("/api/ideations/:id", authMiddleware.authenticate, async (req: any, res: any) => {
   const { id } = req.params;
 
+  // Get authenticated user
+  const user = authMiddleware.getCurrentUser(req);
+  if (!user) {
+    return res.status(401).json({ error: "User not authenticated" });
+  }
+
   try {
-    // Get the ideation run
+    // Get the ideation run (filtered by user)
     const run = await new Promise<any>((resolve, reject) => {
       db.get(
-        `SELECT * FROM ideation_runs WHERE id = ?`,
-        [id],
+        `SELECT * FROM ideation_runs WHERE id = ? AND user_id = ?`,
+        [id, user.id],
         (err, row) => {
           if (err) reject(err);
           else resolve(row);
@@ -587,11 +658,18 @@ app.get("/api/ideations/:id", async (req: any, res: any) => {
   }
 });
 
-app.get("/api/ideations", async (req: any, res: any) => {
+app.get("/api/ideations", authMiddleware.authenticate, async (req: any, res: any) => {
+  // Get authenticated user
+  const user = authMiddleware.getCurrentUser(req);
+  if (!user) {
+    return res.status(401).json({ error: "User not authenticated" });
+  }
+
   try {
     const runs = await new Promise<any[]>((resolve, reject) => {
       db.all(
-        `SELECT id, user_input, selected_platform, created_at FROM ideation_runs ORDER BY created_at DESC`,
+        `SELECT id, user_input, selected_platform, created_at FROM ideation_runs WHERE user_id = ? ORDER BY created_at DESC`,
+        [user.id],
         (err, rows) => {
           if (err) reject(err);
           else resolve(rows || []);
@@ -607,7 +685,7 @@ app.get("/api/ideations", async (req: any, res: any) => {
 });
 
 // Script document management endpoints
-app.post("/api/scripts", (req, res) => {
+app.post("/api/scripts", authMiddleware.authenticate, (req, res) => {
   const { name = 'Untitled Script' } = req.body;
   const roomId = `script-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
@@ -615,7 +693,7 @@ app.post("/api/scripts", (req, res) => {
   res.json({ id: roomId, name });
 });
 
-app.get("/api/scripts/:id", (req, res) => {
+app.get("/api/scripts/:id", authMiddleware.authenticate, (req, res) => {
   const { id } = req.params;
 
   // In a real implementation, you'd retrieve the script from a database
@@ -653,12 +731,18 @@ app.post("/api/ideations/:id/generate_plot", authMiddleware.authenticate, async 
     return res.status(400).json({ error: "Missing 'userInput' or 'ideationTemplate' in request body" });
   }
 
+  // Get authenticated user
+  const user = authMiddleware.getCurrentUser(req);
+  if (!user) {
+    return res.status(401).json({ error: "User not authenticated" });
+  }
+
   try {
-    // Get the existing run data
+    // Get the existing run data (filtered by user)
     const run = await new Promise<any>((resolve, reject) => {
       db.get(
-        `SELECT * FROM ideation_runs WHERE id = ?`,
-        [runId],
+        `SELECT * FROM ideation_runs WHERE id = ? AND user_id = ?`,
+        [runId, user.id],
         (err, row) => {
           if (err) reject(err);
           else resolve(row);
