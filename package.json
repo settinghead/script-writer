@@ -65,6 +65,7 @@
     "yjs": "^13.6.27"
   },
   "devDependencies": {
+    "@stagewise/toolbar-react": "^0.1.2",
     "@types/node": "^22.15.19",
     "less": "^4.3.0",
     "rimraf": "^6.0.1",

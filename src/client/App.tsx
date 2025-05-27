@@ -8,6 +8,7 @@ import { MenuOutlined } from '@ant-design/icons';
 import IdeationTab from './components/IdeationTab';
 import ChatTab from './components/ChatTab';
 import ScriptTab from './components/ScriptTab';
+import StagewiseToolbar from './components/StagewiseToolbar';
 
 // Import CSS for any custom styling needed
 import "./index.css";
@@ -214,6 +215,7 @@ const App: React.FC = () => {
       <Router>
         <AppContent />
       </Router>
+      <StagewiseToolbar />
     </ConfigProvider>
   );
 };
