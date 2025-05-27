@@ -709,17 +709,41 @@ app.put("/api/artifacts/:artifactId",
         return res.status(400).json({ error: "Can only update user_input artifacts" });
       }
 
-      // Update the artifact
+      // Update the artifact in place (for user_input artifacts only)
       const updatedData = {
         ...existingArtifact.data,
         text: text.trim()
       };
 
-      const updatedArtifact = await artifactRepo.createArtifact(
-        user.id,
-        'user_input',
-        updatedData
-      );
+      // Update the artifact directly in the database
+      await new Promise<void>((resolve, reject) => {
+        const stmt = db.prepare(`
+          UPDATE artifacts 
+          SET data = ?, metadata = ?
+          WHERE id = ? AND user_id = ?
+        `);
+
+        stmt.run([
+          JSON.stringify(updatedData),
+          JSON.stringify(existingArtifact.metadata),
+          artifactId,
+          user.id
+        ], function (err) {
+          if (err) {
+            reject(err);
+            return;
+          }
+          resolve();
+        });
+
+        stmt.finalize();
+      });
+
+      // Return the updated artifact with the same ID
+      const updatedArtifact = {
+        ...existingArtifact,
+        data: updatedData
+      };
 
       res.json(updatedArtifact);
 

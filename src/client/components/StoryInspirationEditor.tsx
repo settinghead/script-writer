@@ -159,13 +159,9 @@ const StoryInspirationEditor: React.FC<StoryInspirationEditorProps> = ({
 
                     if (response.ok) {
                         const updatedArtifact = await response.json();
-                        newArtifactId = updatedArtifact.id;
-                        setArtifactId(newArtifactId);
-
-                        // Notify parent of artifact change (ID might change due to versioning)
-                        if (onArtifactChange && newArtifactId !== artifactId) {
-                            onArtifactChange(newArtifactId);
-                        }
+                        // The artifact ID should remain the same for updates
+                        console.log('StoryInspirationEditor: Updated existing user_input artifact:', updatedArtifact.id);
+                        // No need to call onArtifactChange since the ID doesn't change
                     }
                 } else if (!artifactId) {
                     // Create new user_input artifact for manual input
