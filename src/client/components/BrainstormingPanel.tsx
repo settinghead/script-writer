@@ -99,7 +99,7 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
             genreProportions,
             generatedIdeas
         });
-    }, [selectedPlatform, selectedGenrePaths, genreProportions, generatedIdeas, onDataChange]);
+    }, [selectedPlatform, selectedGenrePaths, genreProportions, generatedIdeas]);
 
     const handlePlatformChange = (value: string) => {
         setSelectedPlatform(value);

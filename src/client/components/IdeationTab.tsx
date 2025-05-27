@@ -141,14 +141,14 @@ const IdeationTab: React.FC = () => {
         setBrainstormingCollapsed(true);
     };
 
-    const handleBrainstormingDataChange = (data: {
+    const handleBrainstormingDataChange = useCallback((data: {
         selectedPlatform: string;
         selectedGenrePaths: string[][];
         genreProportions: number[];
         generatedIdeas: string[];
     }) => {
         setBrainstormingData(data);
-    };
+    }, []);
 
     const generateIdeation = async () => {
         if (!userInput.trim()) {
