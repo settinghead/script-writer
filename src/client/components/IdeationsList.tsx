@@ -170,7 +170,7 @@ const IdeationsList: React.FC = () => {
         }
 
         if (ideation.initial_ideas && ideation.initial_ideas.length > 1) {
-            return `包含 ${ideation.initial_ideas.length} 个故事梗概`;
+            return `包含 ${ideation.initial_ideas.length} 个故事灵感`;
         }
 
         if (ideation.selected_platform) {

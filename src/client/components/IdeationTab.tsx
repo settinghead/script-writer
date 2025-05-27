@@ -423,7 +423,7 @@ const IdeationTab: React.FC = () => {
                     {/* Central Textarea */}
                     <div style={{ marginBottom: '24px' }}>
                         <Text strong style={{ display: 'block', marginBottom: '12px', fontSize: '16px' }}>
-                            故事梗概
+                            故事灵感
                         </Text>
                         <TextArea
                             rows={8}

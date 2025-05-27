@@ -10,19 +10,19 @@ const NUM_IDEAS_TO_GENERATE = 6;
 
 // Idea generation template with few-shot examples for complete plot summaries
 const ideaGenerationTemplate = `
-你是一个故事创意生成器。请根据给定的故事类型，生成${NUM_IDEAS_TO_GENERATE}个完整的故事情节梗概，而不是简单的一句话场景。
+你是一个故事创意生成器。请根据给定的故事类型，生成${NUM_IDEAS_TO_GENERATE}个完整的故事情节梗概灵感。
 
 故事类型：{genre}
 目标平台：{platform}
 {requirementsSection}
 
 要求：
-- 每个创意是一个完整的故事梗概（50-80字）
+- 每个创意是一个完整的故事梗概灵感（50-80字）
 - 包含完整的起承转合结构
 - 有明确的主角、冲突、发展和结局
 - 适合短视频/短剧格式
 
-参考示例（注意这些是完整的故事梗概，不只是场景）：
+参考示例（注意灵感应该是一个完整但是高度概括的故事梗概，而不是简单的一句话场景）：
 
 浪漫类示例：
 - 失恋女孩收到前男友寄来的神秘包裹，里面是一本日记记录着他们从相识到分手的点点滴滴。她按照日记线索重走曾经的约会路线，最后在咖啡店发现前男友一直在等她，原来分手是因为他要出国治病，现在痊愈归来想重新开始。
@@ -41,8 +41,8 @@ const ideaGenerationTemplate = `
 
 现在请为指定类型生成${NUM_IDEAS_TO_GENERATE}个类似完整度的故事创意：
 
-请以JSON数组的格式返回这${NUM_IDEAS_TO_GENERATE}个完整故事梗概，例如：
-["故事梗概1", "故事梗概2", ..., "故事梗概${NUM_IDEAS_TO_GENERATE}"]
+请以JSON数组的格式返回这${NUM_IDEAS_TO_GENERATE}个灵感，例如：
+["故事灵感1", "故事灵感2", ..., "故事灵感${NUM_IDEAS_TO_GENERATE}"]
 不要其他解释或包裹。
 `;
 
@@ -222,7 +222,7 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                         }
                     } catch (repairError) {
                         console.error('Failed to parse ideas JSON even after repair:', repairError);
-                        throw new Error('无法解析生成的故事梗概为JSON数组');
+                        throw new Error('无法解析生成的故事灵感为JSON数组');
                     }
                 }
             } else {
@@ -285,7 +285,7 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                 marginBottom: '16px'
             }}>
                 <Text type="secondary" style={{ fontSize: '12px' }}>
-                    💡 已选择故事梗概 {selectedIdeaIndex !== null ? `#${selectedIdeaIndex + 1}` : ''}
+                    💡 已选择故事灵感 {selectedIdeaIndex !== null ? `#${selectedIdeaIndex + 1}` : ''}
                 </Text>
             </div>
         );
@@ -304,7 +304,7 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                     💡 头脑风暴
                 </Text>
                 <Text type="secondary" style={{ display: 'block', fontSize: '12px', marginTop: '4px' }}>
-                    选择平台和类型，生成故事梗概
+                    选择平台和类型，生成故灵感
                 </Text>
             </div>
 
@@ -367,7 +367,7 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                     }}
                 />
                 <Text type="secondary" style={{ fontSize: '11px', marginTop: '4px', display: 'block' }}>
-                    AI将根据您的特殊要求来生成故事梗概
+                    AI将根据您的特殊要求来生成故事灵感
                 </Text>
             </div>
 
@@ -405,7 +405,7 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                     {generatedIdeas.length > 0 && (
                         <div>
                             <Text type="secondary" style={{ display: 'block', marginBottom: '8px', fontSize: '12px' }}>
-                                选择一个故事梗概（点击卡片选择）:
+                                选择一个故事灵感（点击卡片选择）:
                             </Text>
                             <div style={{
                                 display: 'grid',
