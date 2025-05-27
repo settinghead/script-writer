@@ -207,6 +207,7 @@ CREATE TABLE generated_initial_ideas (
 - `GET /api/ideations/:id` - Get user's specific ideation run
 - `POST /api/ideations/create_run_with_ideas` - Create ideation run with initial ideas
 - `POST /api/ideations/create_run_and_generate_plot` - Create and generate plot
+- `DELETE /api/ideations/:id` - Delete user's ideation run (and related ideas)
 
 #### Script Management
 - `GET /api/scripts` - List user's script documents

@@ -733,6 +733,53 @@ app.get("/api/ideations", authMiddleware.authenticate, async (req: any, res: any
   }
 });
 
+app.delete("/api/ideations/:id", authMiddleware.authenticate, async (req: any, res: any) => {
+  const { id } = req.params;
+
+  // Get authenticated user
+  const user = authMiddleware.getCurrentUser(req);
+  if (!user) {
+    return res.status(401).json({ error: "User not authenticated" });
+  }
+
+  try {
+    // First, delete all related initial ideas
+    await new Promise<void>((resolve, reject) => {
+      db.run(
+        `DELETE FROM generated_initial_ideas WHERE run_id = ?`,
+        [id],
+        function (err) {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
+
+    // Then delete the ideation run (filtered by user)
+    await new Promise<void>((resolve, reject) => {
+      db.run(
+        `DELETE FROM ideation_runs WHERE id = ? AND user_id = ?`,
+        [id, user.id],
+        function (err) {
+          if (err) reject(err);
+          else if (this.changes === 0) reject(new Error('Ideation run not found or unauthorized'));
+          else resolve();
+        }
+      );
+    });
+
+    res.json({ success: true, message: "Ideation deleted successfully" });
+
+  } catch (error: any) {
+    console.error('Error deleting ideation:', error);
+    if (error.message === 'Ideation run not found or unauthorized') {
+      res.status(404).json({ error: "Ideation not found" });
+    } else {
+      res.status(500).json({ error: "Failed to delete ideation", details: error.message });
+    }
+  }
+});
+
 // Script document management endpoints
 app.post("/api/scripts", authMiddleware.authenticate, async (req: any, res: any) => {
   const { name = 'Untitled Script' } = req.body;

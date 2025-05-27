@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Input, Button, Typography, Spin, Alert, Select, Row, Col, Divider, Modal, Drawer, Checkbox, Slider } from 'antd';
-import { SendOutlined, RightOutlined, LeftOutlined, ReloadOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import { SendOutlined, RightOutlined, LeftOutlined, ReloadOutlined, ArrowLeftOutlined, DeleteOutlined } from '@ant-design/icons';
 import { jsonrepair } from 'jsonrepair';
 import GenreSelectionPopup from './GenreSelectionPopup';
 import PlatformSelection from './PlatformSelection';
@@ -454,6 +454,44 @@ const IdeationTab: React.FC = () => {
         navigate('/ideation');
     };
 
+    const handleDeleteIdeation = async () => {
+        if (!ideationRunId) return;
+
+        Modal.confirm({
+            title: '确认删除',
+            content: '确定要删除这个灵感吗？此操作无法撤销。',
+            okText: '删除',
+            okType: 'danger',
+            cancelText: '取消',
+            onOk: async () => {
+                try {
+                    const response = await fetch(`/api/ideations/${ideationRunId}`, {
+                        method: 'DELETE'
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Failed to delete ideation: ${response.status}`);
+                    }
+
+                    // Show success message and navigate back
+                    Modal.success({
+                        title: '删除成功',
+                        content: '灵感已成功删除',
+                        onOk: () => {
+                            navigate('/ideations');
+                        }
+                    });
+                } catch (err) {
+                    console.error('Error deleting ideation:', err);
+                    Modal.error({
+                        title: '删除失败',
+                        content: '删除失败，请重试。',
+                    });
+                }
+            }
+        });
+    };
+
     return (
         <div style={{ padding: '20px', maxWidth: '600px', width: "100%", margin: '0 auto', overflow: "auto" }}>
             {isLoadingRun ? (
@@ -479,14 +517,27 @@ const IdeationTab: React.FC = () => {
                                 {ideationRunId ? '灵感详情' : '灵感生成器'}
                             </Title>
                         </div>
-                        <Button
-                            icon={<ReloadOutlined />}
-                            onClick={handleRestart}
-                            type="text"
-                            style={{ color: '#1890ff' }}
-                        >
-                            重来
-                        </Button>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                            {ideationRunId && (
+                                <Button
+                                    icon={<DeleteOutlined />}
+                                    onClick={handleDeleteIdeation}
+                                    type="text"
+                                    style={{ color: '#ff4d4f' }}
+                                    danger
+                                >
+                                    删除
+                                </Button>
+                            )}
+                            <Button
+                                icon={<ReloadOutlined />}
+                                onClick={handleRestart}
+                                type="text"
+                                style={{ color: '#1890ff' }}
+                            >
+                                重来
+                            </Button>
+                        </div>
                     </div>
                     <Paragraph>
                         输入你的灵感，AI将帮你构建故事情节提要。

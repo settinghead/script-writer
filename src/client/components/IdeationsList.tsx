@@ -10,13 +10,15 @@ import {
     Alert,
     Empty,
     Space,
-    Descriptions
+    Descriptions,
+    Modal
 } from 'antd';
 import {
     EyeOutlined,
     PlusOutlined,
     ClockCircleOutlined,
-    BulbOutlined
+    BulbOutlined,
+    DeleteOutlined
 } from '@ant-design/icons';
 import { formatDistanceToNow } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
@@ -67,6 +69,42 @@ const IdeationsList: React.FC = () => {
 
     const handleCreateNew = () => {
         navigate('/ideation');
+    };
+
+    const handleDeleteIdeation = async (id: string, title: string) => {
+        Modal.confirm({
+            title: '确认删除',
+            content: `确定要删除灵感 "${title}" 吗？此操作无法撤销。`,
+            okText: '删除',
+            okType: 'danger',
+            cancelText: '取消',
+            onOk: async () => {
+                try {
+                    const response = await fetch(`/api/ideations/${id}`, {
+                        method: 'DELETE'
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Failed to delete ideation: ${response.status}`);
+                    }
+
+                    // Remove from local state to update UI immediately
+                    setIdeations(prevIdeations => prevIdeations.filter(ideation => ideation.id !== id));
+
+                    // Show success message
+                    Modal.success({
+                        title: '删除成功',
+                        content: '灵感已成功删除',
+                    });
+                } catch (err) {
+                    console.error('Error deleting ideation:', err);
+                    Modal.error({
+                        title: '删除失败',
+                        content: '删除失败，请重试。',
+                    });
+                }
+            }
+        });
     };
 
     const formatDate = (dateString: string) => {
@@ -250,6 +288,19 @@ const IdeationsList: React.FC = () => {
                                         style={{ color: '#1890ff' }}
                                     >
                                         查看详情
+                                    </Button>,
+                                    <Button
+                                        key="delete"
+                                        type="text"
+                                        icon={<DeleteOutlined />}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteIdeation(ideation.id, generateTitle(ideation));
+                                        }}
+                                        style={{ color: '#ff4d4f' }}
+                                        danger
+                                    >
+                                        删除
                                     </Button>
                                 ]}
                             >
