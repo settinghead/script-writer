@@ -145,6 +145,7 @@ const StoryInspirationEditor: React.FC<StoryInspirationEditorProps> = ({
 
                         // Notify parent of artifact change
                         if (onArtifactChange) {
+                            console.log('StoryInspirationEditor: Created new user_input artifact from brainstorm_idea:', newArtifactId);
                             onArtifactChange(newArtifactId);
                         }
                     }
@@ -185,6 +186,7 @@ const StoryInspirationEditor: React.FC<StoryInspirationEditorProps> = ({
 
                         // Notify parent of artifact creation
                         if (onArtifactChange) {
+                            console.log('StoryInspirationEditor: Created new user_input artifact for manual input:', newArtifactId);
                             onArtifactChange(newArtifactId);
                         }
                     }

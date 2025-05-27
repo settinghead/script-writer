@@ -77,14 +77,20 @@ const OutlineTab: React.FC = () => {
         setCurrentUserInput(value);
     }, []);
 
-    const handleArtifactChange = useCallback((newArtifactId: string) => {
+    const handleArtifactChange = useCallback((newArtifactId: string | null) => {
+        console.log('OutlineTab: Artifact ID changed from', currentArtifactId, 'to', newArtifactId);
         setCurrentArtifactId(newArtifactId);
 
         // Update URL with new artifact ID
-        const newSearchParams = new URLSearchParams();
-        newSearchParams.set('artifact_id', newArtifactId);
-        navigate(`/new-outline?${newSearchParams.toString()}`, { replace: true });
-    }, [navigate]);
+        if (newArtifactId) {
+            const newSearchParams = new URLSearchParams();
+            newSearchParams.set('artifact_id', newArtifactId);
+            navigate(`/new-outline?${newSearchParams.toString()}`, { replace: true });
+        } else {
+            // Clear artifact_id from URL if null
+            navigate('/new-outline', { replace: true });
+        }
+    }, [navigate, currentArtifactId]);
 
     const handleGenerateOutline = async () => {
         if (!currentArtifactId) {
