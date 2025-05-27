@@ -97,16 +97,11 @@ export class TransformExecutor {
                     if (!components || typeof components !== 'object') {
                         throw new Error('Expected object with outline components');
                     }
-                    // Validate required fields and ensure they are strings
+                    // Validate required fields exist (but don't convert yet - let safeTrim handle it)
                     const requiredFields = ['title', 'genre', 'selling_points', 'setting', 'synopsis'];
                     for (const field of requiredFields) {
-                        if (!components[field]) {
+                        if (components[field] === undefined || components[field] === null) {
                             throw new Error(`Missing field: ${field}`);
-                        }
-                        // Convert to string if not already
-                        components[field] = String(components[field]);
-                        if (typeof components[field] !== 'string') {
-                            throw new Error(`Field ${field} could not be converted to string`);
                         }
                     }
                     parsedData = components;
@@ -145,12 +140,25 @@ export class TransformExecutor {
                 }
             } else if (outputArtifactType === 'outline_components') {
                 // Create individual outline component artifacts with safe string conversion
-                const safeTrim = (str: any): string => {
-                    if (typeof str !== 'string') {
-                        console.warn(`Non-string value encountered: ${str}, converting to string`);
-                        str = String(str);
+                const safeTrim = (value: any): string => {
+                    if (typeof value === 'string') {
+                        return value.trim();
+                    } else if (Array.isArray(value)) {
+                        // If it's an array, join with newlines or appropriate separator
+                        console.warn(`Array value encountered for outline field: ${JSON.stringify(value)}, joining as string`);
+                        return value.map(item => String(item).trim()).join('\n');
+                    } else if (typeof value === 'object' && value !== null) {
+                        // If it's an object, try to extract meaningful text
+                        console.warn(`Object value encountered for outline field: ${JSON.stringify(value)}, extracting text`);
+                        if (value.text) return String(value.text).trim();
+                        if (value.content) return String(value.content).trim();
+                        if (value.value) return String(value.value).trim();
+                        // Fallback: stringify the object in a readable way
+                        return JSON.stringify(value, null, 2);
+                    } else {
+                        console.warn(`Non-string value encountered: ${value}, converting to string`);
+                        return String(value).trim();
                     }
-                    return str.trim();
                 };
 
                 const titleArtifact = await this.artifactRepo.createArtifact(
