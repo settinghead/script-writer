@@ -3,8 +3,11 @@ import '@ant-design/v5-patch-for-react-19';
 
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { Layout, Typography, ConfigProvider, theme, Button, Drawer, Menu } from 'antd';
-import { MenuOutlined } from '@ant-design/icons';
+import { Layout, Typography, ConfigProvider, theme, Button, Drawer, Menu, Dropdown, Avatar } from 'antd';
+import { MenuOutlined, UserOutlined, LogoutOutlined, LoginOutlined } from '@ant-design/icons';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
+import LoginPage from './components/LoginPage';
 import IdeationTab from './components/IdeationTab';
 import ChatTab from './components/ChatTab';
 import ScriptTab from './components/ScriptTab';
@@ -21,6 +24,7 @@ const AppContent: React.FC = () => {
   const navigate = useNavigate();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [menuVisible, setMenuVisible] = useState(false);
+  const { isAuthenticated, user, logout } = useAuth();
 
   useEffect(() => {
     const handleResize = () => {
@@ -36,6 +40,15 @@ const AppContent: React.FC = () => {
     if (isMobile) {
       setMenuVisible(false); // Close menu drawer after selection on mobile
     }
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
+
+  const handleLogin = () => {
+    navigate('/login');
   };
 
   // Get current route key for menu selection
@@ -90,6 +103,8 @@ const AppContent: React.FC = () => {
     }
   ];
 
+
+
   return (
     <Layout style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Header style={{
@@ -100,13 +115,81 @@ const AppContent: React.FC = () => {
         justifyContent: 'space-between'
       }}>
         <Title level={3} style={{ color: 'white', margin: '16px 0' }}>Script Aid</Title>
-        {isMobile && (
-          <Button
-            type="text"
-            icon={<MenuOutlined style={{ color: 'white', fontSize: '20px' }} />}
-            onClick={() => setMenuVisible(true)}
-          />
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {/* User Authentication Section */}
+          {isAuthenticated && user ? (
+            <Dropdown
+              menu={{
+                items: [
+                  {
+                    key: 'user-info',
+                    label: (
+                      <div style={{ padding: '8px 12px' }}>
+                        <div style={{ fontWeight: 500 }}>{user.display_name || user.username}</div>
+                        <div style={{ fontSize: '12px', color: '#666' }}>@{user.username}</div>
+                      </div>
+                    ),
+                    disabled: true,
+                  },
+                  { type: 'divider' },
+                  {
+                    key: 'logout',
+                    label: '退出登录',
+                    icon: <LogoutOutlined />,
+                    onClick: handleLogout,
+                  },
+                ],
+              }}
+              placement="bottomRight"
+              trigger={['click']}
+            >
+              <Button
+                type="text"
+                style={{
+                  height: 'auto',
+                  padding: '4px 8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  color: 'white',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  borderRadius: '6px'
+                }}
+              >
+                <Avatar
+                  size="small"
+                  icon={<UserOutlined />}
+                  style={{ backgroundColor: '#1890ff' }}
+                />
+                <span style={{ fontSize: '14px' }}>
+                  {user.display_name || user.username}
+                </span>
+              </Button>
+            </Dropdown>
+          ) : (
+            <Button
+              type="primary"
+              icon={<LoginOutlined />}
+              onClick={handleLogin}
+              style={{
+                background: 'linear-gradient(135deg, #1890ff, #40a9ff)',
+                border: 'none',
+                borderRadius: '6px'
+              }}
+            >
+              登录
+            </Button>
+          )}
+
+          {/* Mobile Menu Button */}
+          {isMobile && (
+            <Button
+              type="text"
+              icon={<MenuOutlined style={{ color: 'white', fontSize: '20px' }} />}
+              onClick={() => setMenuVisible(true)}
+            />
+          )}
+        </div>
       </Header>
       <Content style={{ flexGrow: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         {isMobile ? (
@@ -127,10 +210,26 @@ const AppContent: React.FC = () => {
             </Drawer>
             <div style={{ flexGrow: 1, overflow: 'auto', padding: '0 10px' }}>
               <Routes>
-                <Route path="/ideation/:id" element={<IdeationTab />} />
-                <Route path="/ideation" element={<IdeationTab />} />
-                <Route path="/chat" element={<ChatTab />} />
-                <Route path="/script" element={<ScriptTab />} />
+                <Route path="/ideation/:id" element={
+                  <ProtectedRoute>
+                    <IdeationTab />
+                  </ProtectedRoute>
+                } />
+                <Route path="/ideation" element={
+                  <ProtectedRoute>
+                    <IdeationTab />
+                  </ProtectedRoute>
+                } />
+                <Route path="/chat" element={
+                  <ProtectedRoute>
+                    <ChatTab />
+                  </ProtectedRoute>
+                } />
+                <Route path="/script" element={
+                  <ProtectedRoute>
+                    <ScriptTab />
+                  </ProtectedRoute>
+                } />
                 <Route path="/" element={<Navigate to="/script" replace />} />
               </Routes>
             </div>
@@ -187,10 +286,26 @@ const AppContent: React.FC = () => {
               flexDirection: 'column'
             }}>
               <Routes>
-                <Route path="/ideation/:id" element={<IdeationTab />} />
-                <Route path="/ideation" element={<IdeationTab />} />
-                <Route path="/chat" element={<ChatTab />} />
-                <Route path="/script" element={<ScriptTab />} />
+                <Route path="/ideation/:id" element={
+                  <ProtectedRoute>
+                    <IdeationTab />
+                  </ProtectedRoute>
+                } />
+                <Route path="/ideation" element={
+                  <ProtectedRoute>
+                    <IdeationTab />
+                  </ProtectedRoute>
+                } />
+                <Route path="/chat" element={
+                  <ProtectedRoute>
+                    <ChatTab />
+                  </ProtectedRoute>
+                } />
+                <Route path="/script" element={
+                  <ProtectedRoute>
+                    <ScriptTab />
+                  </ProtectedRoute>
+                } />
                 <Route path="/" element={<Navigate to="/script" replace />} />
               </Routes>
             </div>
@@ -213,7 +328,12 @@ const App: React.FC = () => {
       }}
     >
       <Router>
-        <AppContent />
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/*" element={<AppContent />} />
+          </Routes>
+        </AuthProvider>
       </Router>
       <StagewiseToolbar />
     </ConfigProvider>
