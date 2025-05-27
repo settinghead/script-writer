@@ -15,6 +15,7 @@ import { ArtifactRepository } from './repositories/ArtifactRepository';
 import { TransformRepository } from './repositories/TransformRepository';
 import { TransformExecutor } from './services/TransformExecutor';
 import { IdeationService } from './services/IdeationService';
+import { OutlineService } from './services/OutlineService';
 import { ScriptService } from './services/ScriptService';
 import {
   validateIdeationCreate,
@@ -57,6 +58,7 @@ const cacheService = new CacheService();
 // Initialize services with caching
 const transformExecutor = new TransformExecutor(artifactRepo, transformRepo);
 const ideationService = new IdeationService(artifactRepo, transformRepo, transformExecutor, cacheService);
+const outlineService = new OutlineService(artifactRepo, transformExecutor, cacheService);
 const scriptService = new ScriptService(artifactRepo, transformExecutor);
 const replayService = new ReplayService(artifactRepo, transformRepo, transformExecutor);
 
@@ -602,6 +604,137 @@ app.post("/api/ideations/:id/generate_plot",
     }
   }
 );
+
+// ========== OUTLINE ENDPOINTS ==========
+
+app.post("/api/outlines/from-ideation/:ideationId",
+  authMiddleware.authenticate,
+  async (req: any, res: any) => {
+    const { ideationId } = req.params;
+    const { userInput } = req.body;
+
+    const user = authMiddleware.getCurrentUser(req);
+    if (!user) {
+      return res.status(401).json({ error: "User not authenticated" });
+    }
+
+    // Validate required fields
+    if (!userInput || typeof userInput !== 'string' || !userInput.trim()) {
+      return res.status(400).json({
+        error: "Missing or empty userInput",
+        details: "userInput must be a non-empty string"
+      });
+    }
+
+    try {
+      const result = await outlineService.generateOutlineFromIdeation(
+        user.id,
+        ideationId,
+        userInput.trim()
+      );
+
+      res.json(result);
+
+    } catch (error: any) {
+      console.error('Error generating outline:', error);
+
+      if (error.message.includes('not found or access denied')) {
+        return res.status(404).json({ error: "Ideation session not found" });
+      }
+
+      res.status(500).json({
+        error: "Failed to generate outline",
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+);
+
+app.get("/api/outlines/:outlineId", authMiddleware.authenticate, async (req: any, res: any) => {
+  const { outlineId } = req.params;
+
+  const user = authMiddleware.getCurrentUser(req);
+  if (!user) {
+    return res.status(401).json({ error: "User not authenticated" });
+  }
+
+  try {
+    const outlineSession = await outlineService.getOutlineSession(user.id, outlineId);
+
+    if (!outlineSession) {
+      return res.status(404).json({ error: "Outline session not found" });
+    }
+
+    res.json(outlineSession);
+
+  } catch (error: any) {
+    console.error('Error fetching outline session:', error);
+    res.status(500).json({
+      error: "Failed to fetch outline session",
+      details: error.message
+    });
+  }
+});
+
+app.get("/api/outlines", authMiddleware.authenticate, async (req: any, res: any) => {
+  const user = authMiddleware.getCurrentUser(req);
+  if (!user) {
+    return res.status(401).json({ error: "User not authenticated" });
+  }
+
+  try {
+    const outlineSessions = await outlineService.listOutlineSessions(user.id);
+    res.json(outlineSessions);
+
+  } catch (error: any) {
+    console.error('Error fetching outline sessions:', error);
+    res.status(500).json({
+      error: "Failed to fetch outline sessions",
+      details: error.message
+    });
+  }
+});
+
+app.delete("/api/outlines/:outlineId", authMiddleware.authenticate, async (req: any, res: any) => {
+  const { outlineId } = req.params;
+
+  const user = authMiddleware.getCurrentUser(req);
+  if (!user) {
+    return res.status(401).json({ error: "User not authenticated" });
+  }
+
+  try {
+    // For now, we'll implement a simple deletion by removing the outline session
+    // In a production system, we might want to mark as deleted rather than actually delete
+    const sessionArtifacts = await artifactRepo.getArtifactsByTypeForSession(
+      user.id,
+      'outline_session',
+      outlineId
+    );
+
+    if (sessionArtifacts.length === 0) {
+      return res.status(404).json({ error: "Outline session not found" });
+    }
+
+    // Delete the latest session artifact
+    const latestSession = sessionArtifacts[0];
+    const deleted = await artifactRepo.deleteArtifact(latestSession.id, user.id);
+
+    if (!deleted) {
+      return res.status(404).json({ error: "Outline session not found" });
+    }
+
+    res.json({ success: true, message: "Outline session deleted successfully" });
+
+  } catch (error: any) {
+    console.error('Error deleting outline session:', error);
+    res.status(500).json({
+      error: "Failed to delete outline session",
+      details: error.message
+    });
+  }
+});
 
 // ========== UPDATED SCRIPT ENDPOINTS (with validation) ==========
 

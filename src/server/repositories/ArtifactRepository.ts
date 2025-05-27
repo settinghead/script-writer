@@ -177,6 +177,93 @@ export class ArtifactRepository {
         });
     }
 
+    // Get artifacts by type for a specific session
+    async getArtifactsByTypeForSession(
+        userId: string,
+        type: string,
+        sessionId: string,
+        typeVersion?: string
+    ): Promise<Artifact[]> {
+        return new Promise((resolve, reject) => {
+            let query = `
+                SELECT a.* FROM artifacts a
+                WHERE a.user_id = ? AND a.type = ?
+                AND (
+                    JSON_EXTRACT(a.data, '$.id') = ? OR
+                    JSON_EXTRACT(a.data, '$.ideation_session_id') = ? OR
+                    JSON_EXTRACT(a.data, '$.outline_session_id') = ?
+                )
+            `;
+            let params = [userId, type, sessionId, sessionId, sessionId];
+
+            if (typeVersion) {
+                query += ' AND a.type_version = ?';
+                params.push(typeVersion);
+            }
+
+            query += ' ORDER BY a.created_at DESC';
+
+            this.db.all(query, params, (err, rows: any[]) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+
+                const artifacts = rows.map(row => ({
+                    ...row,
+                    data: JSON.parse(row.data),
+                    metadata: row.metadata ? JSON.parse(row.metadata) : null
+                }));
+
+                resolve(artifacts);
+            });
+        });
+    }
+
+    // Get latest user input for a session (ideation or outline)
+    async getLatestUserInputForSession(
+        userId: string,
+        sessionId: string
+    ): Promise<Artifact | null> {
+        return new Promise((resolve, reject) => {
+            // First get all transforms related to this session
+            const query = `
+                SELECT DISTINCT a.*
+                FROM artifacts a
+                JOIN transform_inputs ti ON a.id = ti.artifact_id
+                JOIN transforms t ON ti.transform_id = t.id
+                JOIN transform_inputs ti2 ON t.id = ti2.transform_id
+                JOIN artifacts session_a ON ti2.artifact_id = session_a.id
+                WHERE a.user_id = ? 
+                AND a.type = 'user_input'
+                AND (
+                    JSON_EXTRACT(session_a.data, '$.id') = ? OR
+                    JSON_EXTRACT(session_a.data, '$.ideation_session_id') = ?
+                )
+                ORDER BY a.created_at DESC
+                LIMIT 1
+            `;
+
+            this.db.get(query, [userId, sessionId, sessionId], (err, row: any) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+
+                if (!row) {
+                    resolve(null);
+                    return;
+                }
+
+                resolve({
+                    ...row,
+                    data: JSON.parse(row.data),
+                    metadata: row.metadata ? JSON.parse(row.metadata) : null
+                });
+            });
+        });
+    }
+
     // Delete artifact (should be rare since artifacts are immutable)
     async deleteArtifact(artifactId: string, userId: string): Promise<boolean> {
         return new Promise((resolve, reject) => {

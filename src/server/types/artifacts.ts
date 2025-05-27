@@ -105,6 +105,35 @@ export interface ScriptDocumentV1 {
     content_snapshot?: string; // YJS document state
 }
 
+// Outline session container
+export interface OutlineSessionV1 {
+    id: string;
+    ideation_session_id: string;  // Link back to original ideation
+    status: 'active' | 'completed';
+    created_at: string;
+}
+
+// Outline component artifacts
+export interface OutlineTitleV1 {
+    title: string;
+}
+
+export interface OutlineGenreV1 {
+    genre: string;
+}
+
+export interface OutlineSellingPointsV1 {
+    selling_points: string;
+}
+
+export interface OutlineSettingV1 {
+    setting: string;
+}
+
+export interface OutlineSynopsisV1 {
+    synopsis: string;
+}
+
 // Type guards for artifact data validation
 export function validateArtifactData(type: string, typeVersion: string, data: any): boolean {
     switch (`${type}:${typeVersion}`) {
@@ -120,6 +149,18 @@ export function validateArtifactData(type: string, typeVersion: string, data: an
             return isPlotOutlineV1(data);
         case 'script_document:v1':
             return isScriptDocumentV1(data);
+        case 'outline_session:v1':
+            return isOutlineSessionV1(data);
+        case 'outline_title:v1':
+            return isOutlineTitleV1(data);
+        case 'outline_genre:v1':
+            return isOutlineGenreV1(data);
+        case 'outline_selling_points:v1':
+            return isOutlineSellingPointsV1(data);
+        case 'outline_setting:v1':
+            return isOutlineSettingV1(data);
+        case 'outline_synopsis:v1':
+            return isOutlineSynopsisV1(data);
         default:
             return false;
     }
@@ -165,4 +206,37 @@ function isScriptDocumentV1(data: any): data is ScriptDocumentV1 {
     return typeof data === 'object' &&
         typeof data.name === 'string' &&
         typeof data.room_id === 'string';
+}
+
+function isOutlineSessionV1(data: any): data is OutlineSessionV1 {
+    return typeof data === 'object' &&
+        typeof data.id === 'string' &&
+        typeof data.ideation_session_id === 'string' &&
+        ['active', 'completed'].includes(data.status) &&
+        typeof data.created_at === 'string';
+}
+
+function isOutlineTitleV1(data: any): data is OutlineTitleV1 {
+    return typeof data === 'object' &&
+        typeof data.title === 'string';
+}
+
+function isOutlineGenreV1(data: any): data is OutlineGenreV1 {
+    return typeof data === 'object' &&
+        typeof data.genre === 'string';
+}
+
+function isOutlineSellingPointsV1(data: any): data is OutlineSellingPointsV1 {
+    return typeof data === 'object' &&
+        typeof data.selling_points === 'string';
+}
+
+function isOutlineSettingV1(data: any): data is OutlineSettingV1 {
+    return typeof data === 'object' &&
+        typeof data.setting === 'string';
+}
+
+function isOutlineSynopsisV1(data: any): data is OutlineSynopsisV1 {
+    return typeof data === 'object' &&
+        typeof data.synopsis === 'string';
 } 
