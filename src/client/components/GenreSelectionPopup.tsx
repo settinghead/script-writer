@@ -519,7 +519,7 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
                 onClose={handleCancel}
                 open={visible}
                 style={{ padding: 0 }}
-                footerStyle={{ padding: '16px', borderTop: '1px solid #303030' }}
+                styles={{ footer: { padding: '16px', borderTop: '1px solid #303030' } }}
                 footer={[
                     <Button key="cancel" onClick={handleCancel} style={{ marginRight: '8px' }}>
                         取消
