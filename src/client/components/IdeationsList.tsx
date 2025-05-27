@@ -27,8 +27,11 @@ interface IdeationRun {
     id: string;
     user_input: string;
     selected_platform: string;
+    genre_prompt_string: string;
+    genre_paths: string[][];
+    genre_proportions: number[];
+    initial_ideas: string[];
     created_at: string;
-    // Add other fields as needed
 }
 
 const IdeationsList: React.FC = () => {
@@ -79,8 +82,80 @@ const IdeationsList: React.FC = () => {
     };
 
     const truncateText = (text: string, maxLength: number = 60) => {
-        if (!text) return '未设置';
+        if (!text) return '';
         return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
+    };
+
+    const generateTitle = (ideation: IdeationRun) => {
+        // Priority: use first initial idea, then user input, then generate from platform + genre
+        if (ideation.initial_ideas && ideation.initial_ideas.length > 0) {
+            return truncateText(ideation.initial_ideas[0], 35);
+        }
+
+        if (ideation.user_input && ideation.user_input.trim()) {
+            return truncateText(ideation.user_input, 35);
+        }
+
+        // Generate title from platform and genre
+        const parts = [];
+        if (ideation.selected_platform) {
+            parts.push(ideation.selected_platform);
+        }
+
+        if (ideation.genre_paths && ideation.genre_paths.length > 0) {
+            const primaryGenre = ideation.genre_paths[0];
+            if (primaryGenre && primaryGenre.length > 0) {
+                // Use the most specific genre (last element)
+                const specificGenre = primaryGenre[primaryGenre.length - 1];
+                parts.push(specificGenre);
+            }
+        }
+
+        return parts.length > 0 ? parts.join(' · ') : '灵感创作';
+    };
+
+    const generateDescription = (ideation: IdeationRun) => {
+        // Priority: show genre combination, then initial ideas preview, then platform info
+        if (ideation.genre_prompt_string && ideation.genre_prompt_string !== '未指定') {
+            return ideation.genre_prompt_string;
+        }
+
+        if (ideation.initial_ideas && ideation.initial_ideas.length > 1) {
+            return `包含 ${ideation.initial_ideas.length} 个故事梗概`;
+        }
+
+        if (ideation.selected_platform) {
+            return `${ideation.selected_platform} 平台内容`;
+        }
+
+        return '创意灵感记录';
+    };
+
+    const getGenreTags = (ideation: IdeationRun) => {
+        const tags = [];
+
+        if (ideation.selected_platform) {
+            tags.push({ text: ideation.selected_platform, color: 'blue' });
+        }
+
+        if (ideation.genre_paths && ideation.genre_paths.length > 0) {
+            ideation.genre_paths.forEach((path, index) => {
+                if (path && path.length > 0) {
+                    const genreText = path.length > 1 ? path[path.length - 1] : path[0];
+                    const proportion = ideation.genre_proportions && ideation.genre_proportions[index];
+                    const displayText = ideation.genre_paths.length > 1 && proportion
+                        ? `${genreText} ${proportion}%`
+                        : genreText;
+                    tags.push({ text: displayText, color: 'purple' });
+                }
+            });
+        }
+
+        if (ideation.initial_ideas && ideation.initial_ideas.length > 0) {
+            tags.push({ text: `${ideation.initial_ideas.length} 个故事`, color: 'green' });
+        }
+
+        return tags;
     };
 
     if (loading) {
@@ -181,41 +256,45 @@ const IdeationsList: React.FC = () => {
                                 <div style={{ flex: 1 }}>
                                     <div style={{ marginBottom: '12px' }}>
                                         <Text strong style={{ fontSize: '16px', color: '#fff' }}>
-                                            {truncateText(ideation.user_input, 40) || '未命名灵感'}
+                                            {generateTitle(ideation)}
+                                        </Text>
+                                    </div>
+
+                                    <div style={{ marginBottom: '12px' }}>
+                                        <Text type="secondary" style={{ fontSize: '13px' }}>
+                                            {generateDescription(ideation)}
                                         </Text>
                                     </div>
 
                                     <div style={{ marginBottom: '8px' }}>
-                                        <Text type="secondary" style={{ fontSize: '13px' }}>
-                                            {truncateText(ideation.user_input, 80)}
-                                        </Text>
+                                        <Space size={[4, 4]} wrap>
+                                            {getGenreTags(ideation).map((tag, index) => (
+                                                <Tag
+                                                    key={index}
+                                                    color={tag.color}
+                                                    style={{ fontSize: '11px', margin: '2px 0' }}
+                                                >
+                                                    {tag.text}
+                                                </Tag>
+                                            ))}
+                                        </Space>
                                     </div>
 
-                                    <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                                        {ideation.selected_platform && (
-                                            <div>
-                                                <Tag color="blue" style={{ fontSize: '12px' }}>
-                                                    {ideation.selected_platform}
-                                                </Tag>
-                                            </div>
-                                        )}
-
-                                        <div style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            marginTop: 'auto',
-                                            paddingTop: '8px'
-                                        }}>
-                                            <ClockCircleOutlined style={{
-                                                marginRight: '4px',
-                                                fontSize: '12px',
-                                                color: '#888'
-                                            }} />
-                                            <Text type="secondary" style={{ fontSize: '12px' }}>
-                                                {formatDate(ideation.created_at)}
-                                            </Text>
-                                        </div>
-                                    </Space>
+                                    <div style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        marginTop: 'auto',
+                                        paddingTop: '4px'
+                                    }}>
+                                        <ClockCircleOutlined style={{
+                                            marginRight: '4px',
+                                            fontSize: '12px',
+                                            color: '#888'
+                                        }} />
+                                        <Text type="secondary" style={{ fontSize: '12px' }}>
+                                            {formatDate(ideation.created_at)}
+                                        </Text>
+                                    </div>
                                 </div>
                             </Card>
                         </List.Item>

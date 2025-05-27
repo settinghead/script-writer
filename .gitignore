@@ -10,3 +10,5 @@ dist-client
 *.db
 
 *.tsbuildinfo
+
+cookies.txt

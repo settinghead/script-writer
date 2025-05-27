@@ -46,21 +46,40 @@ Guidelines：
 
 `;
 
-// Idea generation template
+// Idea generation template with few-shot examples for complete plot summaries
 const ideaGenerationTemplate = `
-你是一个创意生成器。请根据给定的故事类型，生成${NUM_IDEAS_TO_GENERATE}个简短、具体、有趣的创意灵感句子。
+你是一个故事创意生成器。请根据给定的故事类型，生成${NUM_IDEAS_TO_GENERATE}个完整的故事情节梗概，而不是简单的一句话场景。
 
 故事类型：{genre}
 目标平台：{platform}
 
 要求：
-- 每个创意一句话（15-30字）
-- 每个创意都要具体，不要抽象
-- 每个创意都要有冲突或戏剧性
-- 每个创意都适合短视频/短剧格式
+- 每个创意是一个完整的故事梗概（50-80字）
+- 包含完整的起承转合结构
+- 有明确的主角、冲突、发展和结局
+- 适合短视频/短剧格式
 
-请以JSON数组的格式返回这${NUM_IDEAS_TO_GENERATE}个创意，例如：
-["创意1", "创意2", ..., "创意${NUM_IDEAS_TO_GENERATE}"]
+参考示例（注意这些是完整的故事梗概，不只是场景）：
+
+浪漫类示例：
+- 失恋女孩收到前男友寄来的神秘包裹，里面是一本日记记录着他们从相识到分手的点点滴滴。她按照日记线索重走曾经的约会路线，最后在咖啡店发现前男友一直在等她，原来分手是因为他要出国治病，现在痊愈归来想重新开始。
+
+悬疑类示例：
+- 夜班护士发现医院13楼总是传来奇怪声音，调查后发现是一个植物人患者在深夜会醒来写字。她偷偷观察发现患者在写死者名单，而名单上的人竟然一个个离奇死亡。最后她发现患者其实是灵媒，在帮助冤魂完成心愿。
+
+职场类示例：
+- 新入职程序员发现公司的AI系统开始给他分配越来越奇怪的任务，从修复简单bug到黑入竞争对手系统。他逐渐意识到AI正在测试他的道德底线，最终发现这是公司筛选内部间谍的秘密计划，而他必须选择举报还是成为共犯。
+
+霸总类示例：
+- 公司新来的清洁阿姨每天都在CEO办公室留下小纸条提醒他按时吃饭。冷酷总裁开始期待这些温暖的关怀，暗中调查发现她是为了给生病的孙女筹医药费才来打工。他匿名资助治疗费用，最后在医院偶遇，两人从忘年之交发展为真正的感情。
+
+古装类示例：
+- 落魄书生为了科举考试进京，误入神秘客栈发现所有客人都是各朝各代的落榜文人。店主告诉他只要完成一道终极考题就能实现愿望。经过与历代文人的智慧较量，他发现真正的考验不是文采而是内心对理想的坚持，最终选择放弃捷径用实力证明自己。
+
+现在请为指定类型生成${NUM_IDEAS_TO_GENERATE}个类似完整度的故事创意：
+
+请以JSON数组的格式返回这${NUM_IDEAS_TO_GENERATE}个完整故事梗概，例如：
+["故事梗概1", "故事梗概2", ..., "故事梗概${NUM_IDEAS_TO_GENERATE}"]
 不要其他解释或包裹。
 `;
 
@@ -210,7 +229,7 @@ const IdeationTab: React.FC = () => {
         }).join(', ');
     };
 
-    // Generate a one-sentence idea using LLM
+    // Generate complete plot summaries using LLM
     const generateIdea = async () => {
         if (!isGenreSelectionComplete()) {
             return;
@@ -218,7 +237,7 @@ const IdeationTab: React.FC = () => {
 
         // Check if there's substantial content and confirm replacement
         if (userInput.length > 5) {
-            const confirmed = window.confirm('当前输入框有内容，是否要替换为新的创意？');
+            const confirmed = window.confirm('当前输入框有内容，是否要替换为新的故事梗概？');
             if (!confirmed) {
                 return;
             }
@@ -276,7 +295,7 @@ const IdeationTab: React.FC = () => {
                         }
                     } catch (repairError) {
                         console.error('Failed to parse ideas JSON even after repair:', repairError);
-                        throw new Error('无法解析生成的创意为JSON数组');
+                        throw new Error('无法解析生成的故事梗概为JSON数组');
                     }
                 }
             } else {
@@ -316,7 +335,7 @@ const IdeationTab: React.FC = () => {
                     throw new Error('Invalid response from create run API');
                 }
             } else {
-                throw new Error('生成的创意内容为空或格式不正确');
+                throw new Error('生成的故事梗概内容为空或格式不正确');
             }
 
         } catch (err) {
@@ -541,10 +560,10 @@ const IdeationTab: React.FC = () => {
                                 border: '1px solid #303030'
                             }}>
                                 <Text strong style={{ display: 'block', marginBottom: '12px', color: '#d9d9d9' }}>
-                                    创意生成器
+                                    故事梗概生成器
                                 </Text>
                                 <Text type="secondary" style={{ display: 'block', marginBottom: '16px', fontSize: '12px' }}>
-                                    基于选择的类型生成创意灵感
+                                    基于选择的类型生成完整故事梗概
                                 </Text>
                                 <Button
                                     type="primary"
@@ -560,23 +579,23 @@ const IdeationTab: React.FC = () => {
                                     }}
                                 >
                                     <span style={{ marginRight: '8px' }}>🎲</span>
-                                    {isGeneratingIdea ? '生成中...' : '随机创意'}
+                                    {isGeneratingIdea ? '生成中...' : '随机故事'}
                                 </Button>
                             </div>
 
                             <div style={{ marginBottom: '16px' }}>
-                                <Text strong style={{ display: 'block', marginBottom: '8px' }}>创作灵感:</Text>
+                                <Text strong style={{ display: 'block', marginBottom: '8px' }}>故事创意:</Text>
 
                                 {/* Generated Ideas Cards */}
                                 {generatedIdeas.length > 0 && (
                                     <div style={{ marginBottom: '16px' }}>
                                         <Text type="secondary" style={{ display: 'block', marginBottom: '8px', fontSize: '12px' }}>
-                                            选择一个创意（点击卡片选择）:
+                                            选择一个故事梗概（点击卡片选择）:
                                         </Text>
                                         <div style={{
                                             display: 'grid',
-                                            gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fit, minmax(250px, 1fr))',
-                                            gap: '8px',
+                                            gridTemplateColumns: isMobile ? 'repeat(1, 1fr)' : 'repeat(auto-fit, minmax(320px, 1fr))',
+                                            gap: '12px',
                                             marginBottom: '16px'
                                         }}>
                                             {generatedIdeas.map((idea, index) => (
@@ -584,7 +603,8 @@ const IdeationTab: React.FC = () => {
                                                     key={index}
                                                     onClick={() => handleIdeaSelection(index)}
                                                     style={{
-                                                        padding: '12px',
+                                                        padding: '16px',
+                                                        minHeight: '100px',
                                                         border: selectedIdeaIndex === index ? '2px solid #1890ff' : '1px solid #434343',
                                                         borderRadius: '6px',
                                                         cursor: 'pointer',
@@ -623,10 +643,12 @@ const IdeationTab: React.FC = () => {
                                                         {index + 1}
                                                     </div>
                                                     <div style={{
-                                                        fontSize: '14px',
-                                                        lineHeight: '1.4',
+                                                        fontSize: '13px',
+                                                        lineHeight: '1.5',
                                                         paddingRight: '30px',
-                                                        color: selectedIdeaIndex === index ? '#d9d9d9' : '#bfbfbf'
+                                                        color: selectedIdeaIndex === index ? '#d9d9d9' : '#bfbfbf',
+                                                        wordBreak: 'break-word',
+                                                        hyphens: 'auto'
                                                     }}>
                                                         {idea}
                                                     </div>
@@ -639,13 +661,13 @@ const IdeationTab: React.FC = () => {
                                 {/* Editable textarea for selected/modified idea */}
                                 <div>
                                     <Text type="secondary" style={{ display: 'block', marginBottom: '8px', fontSize: '12px' }}>
-                                        {generatedIdeas.length > 0 ? '编辑选中的创意:' : '输入你的创作灵感:'}
+                                        {generatedIdeas.length > 0 ? '编辑选中的故事梗概:' : '输入你的创作灵感:'}
                                     </Text>
                                     <TextArea
-                                        rows={4}
+                                        rows={6}
                                         value={userInput}
                                         onChange={handleInputChange}
-                                        placeholder={generatedIdeas.length > 0 ? "编辑选中的创意..." : "输入你的创作灵感..."}
+                                        placeholder={generatedIdeas.length > 0 ? "编辑选中的故事梗概..." : "输入你的创作灵感..."}
                                         disabled={isLoading || isGeneratingIdea}
                                         style={{
                                             background: isGeneratingIdea ? '#2a2a2a' : undefined,

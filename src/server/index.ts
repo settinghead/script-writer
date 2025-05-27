@@ -681,7 +681,7 @@ app.get("/api/ideations", authMiddleware.authenticate, async (req: any, res: any
   try {
     const runs = await new Promise<any[]>((resolve, reject) => {
       db.all(
-        `SELECT id, user_input, selected_platform, created_at FROM ideation_runs WHERE user_id = ? ORDER BY created_at DESC`,
+        `SELECT id, user_input, selected_platform, genre_prompt_string, genre_paths_json, genre_proportions_json, created_at FROM ideation_runs WHERE user_id = ? ORDER BY created_at DESC`,
         [user.id],
         (err, rows) => {
           if (err) reject(err);
@@ -690,7 +690,43 @@ app.get("/api/ideations", authMiddleware.authenticate, async (req: any, res: any
       );
     });
 
-    res.json(runs);
+    // For each run, also get the initial ideas
+    const runsWithIdeas = await Promise.all(runs.map(async (run) => {
+      const ideas = await new Promise<any[]>((resolve, reject) => {
+        db.all(
+          `SELECT idea_text FROM generated_initial_ideas WHERE run_id = ? ORDER BY id LIMIT 3`,
+          [run.id],
+          (err, rows) => {
+            if (err) reject(err);
+            else resolve(rows || []);
+          }
+        );
+      });
+
+      // Parse JSON fields
+      let genrePaths: string[][] = [];
+      let genreProportions: number[] = [];
+
+      try {
+        genrePaths = JSON.parse(run.genre_paths_json || '[]');
+        genreProportions = JSON.parse(run.genre_proportions_json || '[]');
+      } catch (parseError) {
+        console.error('Error parsing genre data:', parseError);
+      }
+
+      return {
+        id: run.id,
+        user_input: run.user_input,
+        selected_platform: run.selected_platform,
+        genre_prompt_string: run.genre_prompt_string,
+        genre_paths: genrePaths,
+        genre_proportions: genreProportions,
+        initial_ideas: ideas.map(idea => idea.idea_text),
+        created_at: run.created_at
+      };
+    }));
+
+    res.json(runsWithIdeas);
   } catch (error: any) {
     console.error('Error fetching ideation runs:', error);
     res.status(500).json({ error: "Failed to fetch ideation runs", details: error.message });
