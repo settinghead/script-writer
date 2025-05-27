@@ -91,6 +91,25 @@ export class TransformExecutor {
                         throw new Error('Expected array of ideas');
                     }
                     parsedData = ideas;
+                } else if (outputArtifactType === 'outline_components') {
+                    // For outline components, parse into individual components
+                    const components = JSON.parse(result.text);
+                    if (!components || typeof components !== 'object') {
+                        throw new Error('Expected object with outline components');
+                    }
+                    // Validate required fields and ensure they are strings
+                    const requiredFields = ['title', 'genre', 'selling_points', 'setting', 'synopsis'];
+                    for (const field of requiredFields) {
+                        if (!components[field]) {
+                            throw new Error(`Missing field: ${field}`);
+                        }
+                        // Convert to string if not already
+                        components[field] = String(components[field]);
+                        if (typeof components[field] !== 'string') {
+                            throw new Error(`Field ${field} could not be converted to string`);
+                        }
+                    }
+                    parsedData = components;
                 } else {
                     parsedData = { content: result.text };
                 }
@@ -124,6 +143,55 @@ export class TransformExecutor {
                     );
                     outputArtifacts.push(ideaArtifact);
                 }
+            } else if (outputArtifactType === 'outline_components') {
+                // Create individual outline component artifacts with safe string conversion
+                const safeTrim = (str: any): string => {
+                    if (typeof str !== 'string') {
+                        console.warn(`Non-string value encountered: ${str}, converting to string`);
+                        str = String(str);
+                    }
+                    return str.trim();
+                };
+
+                const titleArtifact = await this.artifactRepo.createArtifact(
+                    userId,
+                    'outline_title',
+                    { title: safeTrim(parsedData.title) },
+                    'v1'
+                );
+                outputArtifacts.push(titleArtifact);
+
+                const genreArtifact = await this.artifactRepo.createArtifact(
+                    userId,
+                    'outline_genre',
+                    { genre: safeTrim(parsedData.genre) },
+                    'v1'
+                );
+                outputArtifacts.push(genreArtifact);
+
+                const sellingPointsArtifact = await this.artifactRepo.createArtifact(
+                    userId,
+                    'outline_selling_points',
+                    { selling_points: safeTrim(parsedData.selling_points) },
+                    'v1'
+                );
+                outputArtifacts.push(sellingPointsArtifact);
+
+                const settingArtifact = await this.artifactRepo.createArtifact(
+                    userId,
+                    'outline_setting',
+                    { setting: safeTrim(parsedData.setting) },
+                    'v1'
+                );
+                outputArtifacts.push(settingArtifact);
+
+                const synopsisArtifact = await this.artifactRepo.createArtifact(
+                    userId,
+                    'outline_synopsis',
+                    { synopsis: safeTrim(parsedData.synopsis) },
+                    'v1'
+                );
+                outputArtifacts.push(synopsisArtifact);
             } else {
                 // Create single output artifact
                 const outputArtifact = await this.artifactRepo.createArtifact(

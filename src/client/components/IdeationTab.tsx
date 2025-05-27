@@ -190,11 +190,11 @@ const IdeationTab: React.FC = () => {
         selectedGenrePaths: string[][];
         genreProportions: number[];
         generatedIdeas: string[];
+        generatedIdeaArtifacts: Array<{ id: string, text: string, orderIndex: number }>;
         requirements: string;
     }) => {
         setBrainstormingData({
-            ...data,
-            generatedIdeaArtifacts: [] // BrainstormingPanel doesn't provide this yet
+            ...data
         });
     }, []);
 

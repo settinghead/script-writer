@@ -56,6 +56,7 @@ interface BrainstormingPanelProps {
         selectedGenrePaths: string[][];
         genreProportions: number[];
         generatedIdeas: string[];
+        generatedIdeaArtifacts: Array<{ id: string, text: string, orderIndex: number }>;
         requirements: string;
     }) => void;
     onRunCreated?: (runId: string) => void; // New callback for when a run is created
@@ -85,6 +86,7 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
     const [genrePopupVisible, setGenrePopupVisible] = useState(false);
     const [isGeneratingIdea, setIsGeneratingIdea] = useState(false);
     const [generatedIdeas, setGeneratedIdeas] = useState<string[]>(initialGeneratedIdeas);
+    const [generatedIdeaArtifacts, setGeneratedIdeaArtifacts] = useState<Array<{ id: string, text: string, orderIndex: number }>>([]);
     const [selectedIdeaIndex, setSelectedIdeaIndex] = useState<number | null>(null);
     const [error, setError] = useState<Error | null>(null);
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -105,9 +107,10 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
             selectedGenrePaths,
             genreProportions,
             generatedIdeas,
+            generatedIdeaArtifacts,
             requirements
         });
-    }, [selectedPlatform, selectedGenrePaths, genreProportions, generatedIdeas, requirements]);
+    }, [selectedPlatform, selectedGenrePaths, genreProportions, generatedIdeas, generatedIdeaArtifacts, requirements]);
 
     const handlePlatformChange = (value: string) => {
         setSelectedPlatform(value);
@@ -256,6 +259,10 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
 
                         const runData = await createRunResponse.json();
                         if (runData.runId) {
+                            // Store the artifact data from the response
+                            if (runData.initialIdeaArtifacts && Array.isArray(runData.initialIdeaArtifacts)) {
+                                setGeneratedIdeaArtifacts(runData.initialIdeaArtifacts);
+                            }
                             onRunCreated(runData.runId);
                         }
                     } catch (runError) {

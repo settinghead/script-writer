@@ -98,42 +98,8 @@ export class OutlineService {
             'outline_components'
         );
 
-        // Parse and create the 5 outline artifacts
-        const llmResponse = outputArtifacts[0];
-        const outlineData = this.parseOutlineResponse(llmResponse.data);
-
-        // Create individual outline component artifacts
-        const titleArtifact = await this.artifactRepo.createArtifact(
-            userId,
-            'outline_title',
-            { title: outlineData.title } as OutlineTitleV1
-        );
-
-        const genreArtifact = await this.artifactRepo.createArtifact(
-            userId,
-            'outline_genre',
-            { genre: outlineData.genre } as OutlineGenreV1
-        );
-
-        const sellingPointsArtifact = await this.artifactRepo.createArtifact(
-            userId,
-            'outline_selling_points',
-            { selling_points: outlineData.selling_points } as OutlineSellingPointsV1
-        );
-
-        const settingArtifact = await this.artifactRepo.createArtifact(
-            userId,
-            'outline_setting',
-            { setting: outlineData.setting } as OutlineSettingV1
-        );
-
-        const synopsisArtifact = await this.artifactRepo.createArtifact(
-            userId,
-            'outline_synopsis',
-            { synopsis: outlineData.synopsis } as OutlineSynopsisV1
-        );
-
-        // Update outline session status to completed
+        // The transform executor now creates individual component artifacts
+        // We just need to update the outline session status to completed
         await this.artifactRepo.createArtifact(
             userId,
             'outline_session',
@@ -147,13 +113,7 @@ export class OutlineService {
 
         return {
             outlineSessionId,
-            artifacts: [
-                titleArtifact,
-                genreArtifact,
-                sellingPointsArtifact,
-                settingArtifact,
-                synopsisArtifact
-            ]
+            artifacts: outputArtifacts
         };
     }
 
@@ -186,7 +146,7 @@ export class OutlineService {
         const sessionData = sessionArtifact.data as OutlineSessionV1;
 
         // Get user input for this session
-        const userInputArtifacts = await this.artifactRepo.getLatestUserInputForSession(
+        const userInputArtifacts = await this.getLatestUserInputForSession(
             userId,
             outlineSessionId
         );
@@ -251,6 +211,57 @@ export class OutlineService {
         return summaries.sort((a, b) =>
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
+    }
+
+    // Helper method to get user input for outline session
+    private async getLatestUserInputForSession(
+        userId: string,
+        outlineSessionId: string
+    ): Promise<{ data: { text: string } } | null> {
+        try {
+            // Get the outline session artifact to find the creation time
+            const sessionArtifacts = await this.artifactRepo.getArtifactsByTypeForSession(
+                userId,
+                'outline_session',
+                outlineSessionId
+            );
+
+            if (sessionArtifacts.length === 0) {
+                return null;
+            }
+
+            // Get all user artifacts and find user_input or brainstorm_idea artifacts
+            // created around the same time as the session
+            const allArtifacts = await this.artifactRepo.getUserArtifacts(userId);
+            const sessionCreationTime = new Date(sessionArtifacts[0].created_at).getTime();
+            const timeWindow = 5 * 60 * 1000; // 5 minutes
+
+            const inputArtifacts = allArtifacts.filter(artifact => {
+                const artifactTime = new Date(artifact.created_at).getTime();
+                const timeDiff = Math.abs(artifactTime - sessionCreationTime);
+
+                return timeDiff <= timeWindow &&
+                    (artifact.type === 'user_input' || artifact.type === 'brainstorm_idea');
+            });
+
+            // Sort by creation time and get the most recent
+            inputArtifacts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+            if (inputArtifacts.length === 0) {
+                return null;
+            }
+
+            const inputArtifact = inputArtifacts[0];
+
+            // Extract text based on artifact type
+            const text = inputArtifact.data.text || inputArtifact.data.idea_text;
+
+            return text ? { data: { text } } : null;
+
+        } catch (error) {
+            console.error('Error getting user input for session:', error);
+            return null;
+        }
     }
 
     // Private helper methods
@@ -328,25 +339,63 @@ export class OutlineService {
         synopsis: string;
     } | undefined> {
         try {
-            const [titleArtifacts, genreArtifacts, sellingPointsArtifacts, settingArtifacts, synopsisArtifacts] =
-                await Promise.all([
-                    this.artifactRepo.getArtifactsByTypeForSession(userId, 'outline_title', outlineSessionId),
-                    this.artifactRepo.getArtifactsByTypeForSession(userId, 'outline_genre', outlineSessionId),
-                    this.artifactRepo.getArtifactsByTypeForSession(userId, 'outline_selling_points', outlineSessionId),
-                    this.artifactRepo.getArtifactsByTypeForSession(userId, 'outline_setting', outlineSessionId),
-                    this.artifactRepo.getArtifactsByTypeForSession(userId, 'outline_synopsis', outlineSessionId)
-                ]);
+            // Find outline components by looking at transforms that have the outline session as input
+            // and produced outline component artifacts as output
 
-            if (titleArtifacts.length === 0) {
-                return undefined; // Outline not generated yet
+            // First, get the outline session artifact
+            const sessionArtifacts = await this.artifactRepo.getArtifactsByTypeForSession(
+                userId,
+                'outline_session',
+                outlineSessionId
+            );
+
+            if (sessionArtifacts.length === 0) {
+                return undefined;
+            }
+
+            // Get all user artifacts and filter for outline components created around the same time
+            const allArtifacts = await this.artifactRepo.getUserArtifacts(userId);
+
+            // Find the session creation time
+            const sessionCreationTime = new Date(sessionArtifacts[0].created_at).getTime();
+
+            // Look for outline components created within a reasonable time window (5 minutes)
+            const timeWindow = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+            const outlineComponents = allArtifacts.filter(artifact => {
+                const artifactTime = new Date(artifact.created_at).getTime();
+                const timeDiff = Math.abs(artifactTime - sessionCreationTime);
+
+                return timeDiff <= timeWindow && [
+                    'outline_title',
+                    'outline_genre',
+                    'outline_selling_points',
+                    'outline_setting',
+                    'outline_synopsis'
+                ].includes(artifact.type);
+            });
+
+            // Group by type
+            const componentsByType = outlineComponents.reduce((acc, artifact) => {
+                acc[artifact.type] = artifact;
+                return acc;
+            }, {} as Record<string, any>);
+
+            // Check if we have all required components
+            const requiredTypes = ['outline_title', 'outline_genre', 'outline_selling_points', 'outline_setting', 'outline_synopsis'];
+            const hasAllComponents = requiredTypes.every(type => componentsByType[type]);
+
+            if (!hasAllComponents) {
+                console.log('Missing outline components:', requiredTypes.filter(type => !componentsByType[type]));
+                return undefined;
             }
 
             return {
-                title: (titleArtifacts[0].data as OutlineTitleV1).title,
-                genre: (genreArtifacts[0].data as OutlineGenreV1).genre,
-                sellingPoints: (sellingPointsArtifacts[0].data as OutlineSellingPointsV1).selling_points,
-                setting: (settingArtifacts[0].data as OutlineSettingV1).setting,
-                synopsis: (synopsisArtifacts[0].data as OutlineSynopsisV1).synopsis
+                title: (componentsByType['outline_title'].data as OutlineTitleV1).title,
+                genre: (componentsByType['outline_genre'].data as OutlineGenreV1).genre,
+                sellingPoints: (componentsByType['outline_selling_points'].data as OutlineSellingPointsV1).selling_points,
+                setting: (componentsByType['outline_setting'].data as OutlineSettingV1).setting,
+                synopsis: (componentsByType['outline_synopsis'].data as OutlineSynopsisV1).synopsis
             };
         } catch (error) {
             console.error('Error fetching outline components:', error);
