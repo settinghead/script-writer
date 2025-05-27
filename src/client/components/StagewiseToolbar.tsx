@@ -29,10 +29,17 @@ const StagewiseToolbar: React.FC = () => {
 
             // Cleanup function
             return () => {
-                toolbarRoot.unmount();
-                if (toolbarContainer && toolbarContainer.parentNode) {
-                    toolbarContainer.parentNode.removeChild(toolbarContainer);
-                }
+                // Use setTimeout to defer the unmount to avoid race condition
+                setTimeout(() => {
+                    try {
+                        toolbarRoot.unmount();
+                        if (toolbarContainer && toolbarContainer.parentNode) {
+                            toolbarContainer.parentNode.removeChild(toolbarContainer);
+                        }
+                    } catch (error) {
+                        console.warn('StagewiseToolbar cleanup error:', error);
+                    }
+                }, 0);
             };
         }
     }, []);
