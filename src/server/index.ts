@@ -5,8 +5,12 @@ import { streamText, generateText } from 'ai';
 import * as dotenv from 'dotenv';
 import * as sqlite3 from 'sqlite3';
 import { v4 as uuidv4 } from 'uuid';
+import cookieParser from 'cookie-parser';
 import { setupYjsWebSocketServer, applyEditsToYDoc } from './yjs-server';
 import { parseLLMResponse } from './llm-to-yjs';
+import { AuthDatabase } from './database/auth';
+import { createAuthMiddleware } from './middleware/auth';
+import { createAuthRoutes } from './routes/auth';
 
 dotenv.config();
 
@@ -14,6 +18,7 @@ const PORT = parseInt(process.env.PORT || "4600");
 const app = express();
 
 app.use(express.json()); // Middleware to parse JSON bodies
+app.use(cookieParser()); // Middleware to parse cookies
 
 // Initialize SQLite database
 const db = new sqlite3.Database('./ideations.db', (err) => {
@@ -25,8 +30,12 @@ const db = new sqlite3.Database('./ideations.db', (err) => {
   }
 });
 
+// Initialize authentication system
+const authDB = new AuthDatabase(db);
+const authMiddleware = createAuthMiddleware(authDB);
+
 // Create tables if they don't exist
-const initializeDatabase = () => {
+const initializeDatabase = async () => {
   db.serialize(() => {
     // Create ideation_runs table
     db.run(`
@@ -55,6 +64,15 @@ const initializeDatabase = () => {
       )
     `);
   });
+
+  // Initialize authentication tables and test users
+  try {
+    await authDB.initializeAuthTables();
+    await authDB.createTestUsers();
+    console.log('Authentication system initialized');
+  } catch (error) {
+    console.error('Error initializing authentication system:', error);
+  }
 };
 
 // Create the server with ViteExpress
@@ -65,13 +83,19 @@ const server = ViteExpress.listen(app, PORT, () => {
 // Set up YJS WebSocket server
 const yjs = setupYjsWebSocketServer(server);
 
+// Mount authentication routes
+app.use('/auth', createAuthRoutes(authDB, authMiddleware));
+
+// Attach authDB to all requests
+app.use(authMiddleware.attachAuthDB);
+
 // Original message endpoint
 app.get("/message", (_req, res) => {
   res.send("Hello from Express!");
 });
 
-// Original chat completions endpoint
-app.post("/llm-api/chat/completions", async (req: any, res: any) => {
+// Original chat completions endpoint - Protected by authentication
+app.post("/llm-api/chat/completions", authMiddleware.authenticate, async (req: any, res: any) => {
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
     console.error('Error: DEEPSEEK_API_KEY environment variable is not set.');
@@ -165,8 +189,8 @@ app.post("/llm-api/chat/completions", async (req: any, res: any) => {
   }
 });
 
-// New endpoint for script editing using LLM
-app.post("/llm-api/script/edit", async (req: any, res: any) => {
+// New endpoint for script editing using LLM - Protected by authentication
+app.post("/llm-api/script/edit", authMiddleware.authenticate, async (req: any, res: any) => {
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
     console.error('Error: DEEPSEEK_API_KEY environment variable is not set.');
@@ -361,7 +385,7 @@ app.post("/api/ideations/create_run_with_ideas", async (req: any, res: any) => {
   }
 });
 
-app.post("/api/ideations/create_run_and_generate_plot", async (req: any, res: any) => {
+app.post("/api/ideations/create_run_and_generate_plot", authMiddleware.authenticate, async (req: any, res: any) => {
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
     console.error('Error: DEEPSEEK_API_KEY environment variable is not set.');
@@ -615,7 +639,7 @@ app.get(/(.*)/, (req, res, next) => {
   next();
 });
 
-app.post("/api/ideations/:id/generate_plot", async (req: any, res: any) => {
+app.post("/api/ideations/:id/generate_plot", authMiddleware.authenticate, async (req: any, res: any) => {
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
     console.error('Error: DEEPSEEK_API_KEY environment variable is not set.');
