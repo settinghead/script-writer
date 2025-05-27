@@ -44,21 +44,27 @@ export class OutlineService {
         private cacheService: CacheService
     ) { }
 
-    // Generate outline from ideation session
-    async generateOutlineFromIdeation(
+    // Generate outline from story inspiration artifact
+    async generateOutlineFromArtifact(
         userId: string,
-        ideationSessionId: string,
-        userInput: string
+        sourceArtifactId: string
     ): Promise<{ outlineSessionId: string; artifacts: Artifact[] }> {
-        // Validate ideation session exists and belongs to user
-        const ideationSession = await this.artifactRepo.getArtifactsByTypeForSession(
-            userId,
-            'ideation_session',
-            ideationSessionId
-        );
+        // Get and validate source artifact (either brainstorm_idea or user_input)
+        const sourceArtifact = await this.artifactRepo.getArtifact(sourceArtifactId, userId);
 
-        if (!ideationSession || ideationSession.length === 0) {
-            throw new Error('Ideation session not found or access denied');
+        if (!sourceArtifact) {
+            throw new Error('Source artifact not found or access denied');
+        }
+
+        // Validate artifact type
+        if (!['brainstorm_idea', 'user_input'].includes(sourceArtifact.type)) {
+            throw new Error('Invalid source artifact type. Must be brainstorm_idea or user_input');
+        }
+
+        // Extract user input text from artifact
+        const userInput = sourceArtifact.data.text || sourceArtifact.data.idea_text;
+        if (!userInput || !userInput.trim()) {
+            throw new Error('Source artifact contains no text content');
         }
 
         // Create outline session
@@ -68,21 +74,13 @@ export class OutlineService {
             'outline_session',
             {
                 id: outlineSessionId,
-                ideation_session_id: ideationSessionId,
+                ideation_session_id: 'artifact-based', // Legacy field, not used in new flow
                 status: 'active',
                 created_at: new Date().toISOString()
             } as OutlineSessionV1
         );
 
-        // Create or get user input artifact for this user input
-        const userInputArtifact = await this.artifactRepo.createArtifact(
-            userId,
-            'user_input',
-            {
-                text: userInput,
-                source: 'manual'
-            } as UserInputV1
-        );
+        // Use the source artifact directly as input for the transform
 
         // Design LLM prompt for outline generation
         const outlinePrompt = this.buildOutlinePrompt(userInput);
@@ -90,11 +88,11 @@ export class OutlineService {
         // Execute LLM transform to generate outline
         const { outputArtifacts } = await this.transformExecutor.executeLLMTransform(
             userId,
-            [outlineSessionArtifact, userInputArtifact],
+            [outlineSessionArtifact, sourceArtifact],
             outlinePrompt,
             {
                 user_input: userInput,
-                ideation_session_id: ideationSessionId
+                source_artifact_id: sourceArtifactId
             },
             'deepseek-chat',
             'outline_components'
@@ -141,7 +139,7 @@ export class OutlineService {
             'outline_session',
             {
                 id: outlineSessionId,
-                ideation_session_id: ideationSessionId,
+                ideation_session_id: 'artifact-based', // Legacy field, not used in new flow
                 status: 'completed',
                 created_at: new Date().toISOString()
             } as OutlineSessionV1

@@ -13,19 +13,23 @@ const { Title, Text, Paragraph } = Typography;
 const IdeationTab: React.FC = () => {
     const { id: ideationRunId } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const searchParams = new URLSearchParams(window.location.search);
+    const initialArtifactId = searchParams.get('artifact_id');
+
     const [userInput, setUserInput] = useState('');
-    const [storyInspirationChanged, setStoryInspirationChanged] = useState(false);
+    const [currentArtifactId, setCurrentArtifactId] = useState<string | null>(initialArtifactId);
     const [brainstormingEnabled, setBrainstormingEnabled] = useState(true);
     const [brainstormingCollapsed, setBrainstormingCollapsed] = useState(false);
     const [isLoadingRun, setIsLoadingRun] = useState(false);
     const [error, setError] = useState<Error | null>(null);
 
-    // Brainstorming data
+    // Brainstorming data  
     const [brainstormingData, setBrainstormingData] = useState({
         selectedPlatform: '',
         selectedGenrePaths: [] as string[][],
         genreProportions: [] as number[],
         generatedIdeas: [] as string[],
+        generatedIdeaArtifacts: [] as Array<{ id: string, text: string, orderIndex: number }>,
         requirements: ''
     });
 
@@ -59,6 +63,7 @@ const IdeationTab: React.FC = () => {
                 selectedGenrePaths: data.genrePaths || [],
                 genreProportions: data.genreProportions || [],
                 generatedIdeas: data.initialIdeas || [],
+                generatedIdeaArtifacts: data.initialIdeaArtifacts || [],
                 requirements: data.requirements || ''
             });
 
@@ -85,21 +90,63 @@ const IdeationTab: React.FC = () => {
         // If user manually edits and it no longer matches a brainstormed idea, keep collapsed state
     };
 
-    const handleStoryInspirationChange = useCallback((value: string, hasChanged: boolean) => {
+    const handleStoryInspirationValueChange = useCallback((value: string) => {
         setUserInput(value);
-        setStoryInspirationChanged(hasChanged);
     }, []);
 
-    const handleStartOutlineDesign = useCallback(() => {
-        if (!ideationRunId) {
-            // If no ideation run exists, we can't proceed to outline design
-            console.warn('No ideation run ID available for outline design');
+    const handleArtifactChange = useCallback((artifactId: string | null) => {
+        setCurrentArtifactId(artifactId);
+
+        // Update URL with new artifact ID
+        if (ideationRunId) {
+            if (artifactId) {
+                const newSearchParams = new URLSearchParams();
+                newSearchParams.set('artifact_id', artifactId);
+                navigate(`/ideation/${ideationRunId}?${newSearchParams.toString()}`, { replace: true });
+            } else {
+                // Clear artifact_id from URL 
+                navigate(`/ideation/${ideationRunId}`, { replace: true });
+            }
+        }
+    }, [ideationRunId, navigate]);
+
+    const handleStartOutlineDesign = useCallback(async () => {
+        if (!userInput.trim()) {
+            console.warn('No user input available for outline design');
             return;
         }
 
-        // Navigate to outline design page
-        navigate(`/new-outline?ideation=${ideationRunId}`);
-    }, [ideationRunId, navigate]);
+        let artifactIdToUse = currentArtifactId;
+
+        // If we don't have an artifact ID yet, create a user_input artifact
+        if (!artifactIdToUse) {
+            try {
+                const response = await fetch('/api/artifacts/user-input', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        text: userInput.trim(),
+                        sourceArtifactId: null // This is manual input
+                    })
+                });
+
+                if (response.ok) {
+                    const artifact = await response.json();
+                    artifactIdToUse = artifact.id;
+                } else {
+                    console.error('Failed to create user input artifact');
+                    return;
+                }
+            } catch (error) {
+                console.error('Error creating user input artifact:', error);
+                return;
+            }
+        }
+
+        // Navigate to outline design page with the current artifact ID
+        // This will be either a brainstorm_idea artifact or a user_input artifact
+        navigate(`/new-outline?artifact_id=${artifactIdToUse}`);
+    }, [currentArtifactId, userInput, navigate]);
 
     const handleBrainstormingToggle = (checked: boolean) => {
         setBrainstormingEnabled(checked);
@@ -113,6 +160,29 @@ const IdeationTab: React.FC = () => {
     const handleIdeaSelect = (idea: string) => {
         setUserInput(idea);
         setBrainstormingCollapsed(true);
+
+        // Find the artifact ID for this idea
+        const selectedArtifact = brainstormingData.generatedIdeaArtifacts.find(
+            artifact => artifact.text === idea
+        );
+
+        if (selectedArtifact) {
+            // Use the brainstorm_idea artifact ID
+            setCurrentArtifactId(selectedArtifact.id);
+
+            // Update URL with artifact ID
+            if (ideationRunId) {
+                const newSearchParams = new URLSearchParams();
+                newSearchParams.set('artifact_id', selectedArtifact.id);
+                navigate(`/ideation/${ideationRunId}?${newSearchParams.toString()}`, { replace: true });
+            }
+        } else {
+            // Fallback: clear artifact ID for manual input
+            setCurrentArtifactId(null);
+            if (ideationRunId) {
+                navigate(`/ideation/${ideationRunId}`, { replace: true });
+            }
+        }
     };
 
     const handleBrainstormingDataChange = useCallback((data: {
@@ -122,7 +192,10 @@ const IdeationTab: React.FC = () => {
         generatedIdeas: string[];
         requirements: string;
     }) => {
-        setBrainstormingData(data);
+        setBrainstormingData({
+            ...data,
+            generatedIdeaArtifacts: [] // BrainstormingPanel doesn't provide this yet
+        });
     }, []);
 
     const handleRunCreated = useCallback((runId: string) => {
@@ -149,6 +222,7 @@ const IdeationTab: React.FC = () => {
             selectedGenrePaths: [],
             genreProportions: [],
             generatedIdeas: [],
+            generatedIdeaArtifacts: [],
             requirements: ''
         });
         setBrainstormingEnabled(true);
@@ -246,7 +320,7 @@ const IdeationTab: React.FC = () => {
                     </div>
 
                     <Paragraph>
-                        输入你的灵感，AI将帮你构建故事情节提要。
+                        输入你的故事灵感，然后点击"开始设计大纲"生成完整的故事大纲。
                     </Paragraph>
 
                     {/* Brainstorming Toggle */}
@@ -297,13 +371,14 @@ const IdeationTab: React.FC = () => {
                     {/* Story Inspiration Editor */}
                     {ideationRunId ? (
                         <StoryInspirationEditor
-                            ideationSessionId={ideationRunId}
-                            onInputChange={handleStoryInspirationChange}
+                            currentArtifactId={currentArtifactId || undefined}
+                            onValueChange={handleStoryInspirationValueChange}
+                            onArtifactChange={handleArtifactChange}
+                            externalValue={userInput}
                             placeholder={brainstormingEnabled && !brainstormingCollapsed
                                 ? '可以直接输入，或使用上方头脑风暴功能生成创意'
                                 : '输入完整的故事梗概，包含起承转合结构'
                             }
-                            externalValue={userInput}
                         />
                     ) : (
                         // Fallback for new ideation (no ID yet)
@@ -337,7 +412,7 @@ const IdeationTab: React.FC = () => {
                     )}
 
                     {/* Action Buttons */}
-                    {userInput.trim() && ideationRunId && (
+                    {userInput.trim() && (
                         <Button
                             type="primary"
                             icon={<DesktopOutlined />}

@@ -83,11 +83,11 @@ export interface BrainstormIdeaV1 {
     confidence_score?: number;
 }
 
-// User input/selection
+// User input/selection (for user-modified or manually entered content)
 export interface UserInputV1 {
     text: string;
-    source: 'manual' | 'selected_idea';
-    selected_idea_id?: string;
+    source: 'manual' | 'modified_brainstorm';
+    source_artifact_id?: string; // ID of the original artifact this was derived from
 }
 
 // LLM-generated plot outline

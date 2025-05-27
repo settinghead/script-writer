@@ -263,6 +263,11 @@ export class IdeationService {
                 genrePaths: brainstormParams?.data.genre_paths || [],
                 genreProportions: brainstormParams?.data.genre_proportions || [],
                 initialIdeas: brainstormIdeas.map(idea => idea.data.idea_text),
+                initialIdeaArtifacts: brainstormIdeas.map(idea => ({
+                    id: idea.id,
+                    text: idea.data.idea_text,
+                    orderIndex: idea.data.order_index
+                })),
                 requirements: brainstormParams?.data.requirements || '',
                 result: plotOutline ? {
                     mediaType: plotOutline.data.media_type,

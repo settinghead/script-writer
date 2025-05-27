@@ -29,18 +29,18 @@ const OutlineTab: React.FC = () => {
     const navigate = useNavigate();
 
     // URL parameters
-    const ideationId = searchParams.get('ideation');
+    const artifactId = searchParams.get('artifact_id');
 
     // State management
     const [currentUserInput, setCurrentUserInput] = useState('');
-    const [userInputChanged, setUserInputChanged] = useState(false);
+    const [currentArtifactId, setCurrentArtifactId] = useState<string | null>(artifactId);
     const [isLoading, setIsLoading] = useState(false);
     const [isLoadingSession, setIsLoadingSession] = useState(false);
     const [error, setError] = useState<Error | null>(null);
     const [outlineSession, setOutlineSession] = useState<OutlineSessionData | null>(null);
 
     // Determine if we're in creation mode or viewing mode
-    const isCreationMode = !outlineId && ideationId;
+    const isCreationMode = !outlineId && artifactId;
     const isViewingMode = !!outlineId;
 
     // Load existing outline session if in viewing mode
@@ -73,13 +73,21 @@ const OutlineTab: React.FC = () => {
         }
     };
 
-    const handleStoryInspirationChange = useCallback((value: string, hasChanged: boolean) => {
+    const handleStoryInspirationValueChange = useCallback((value: string) => {
         setCurrentUserInput(value);
-        setUserInputChanged(hasChanged);
     }, []);
 
+    const handleArtifactChange = useCallback((newArtifactId: string) => {
+        setCurrentArtifactId(newArtifactId);
+
+        // Update URL with new artifact ID
+        const newSearchParams = new URLSearchParams();
+        newSearchParams.set('artifact_id', newArtifactId);
+        navigate(`/new-outline?${newSearchParams.toString()}`, { replace: true });
+    }, [navigate]);
+
     const handleGenerateOutline = async () => {
-        if (!ideationId || !currentUserInput.trim()) {
+        if (!currentArtifactId) {
             return;
         }
 
@@ -87,14 +95,11 @@ const OutlineTab: React.FC = () => {
         setError(null);
 
         try {
-            const response = await fetch(`/api/outlines/from-ideation/${ideationId}`, {
+            const response = await fetch(`/api/outlines/from-artifact/${currentArtifactId}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    userInput: currentUserInput.trim()
-                })
+                }
             });
 
             if (!response.ok) {
@@ -119,8 +124,9 @@ const OutlineTab: React.FC = () => {
     };
 
     const handleBackToIdeation = () => {
-        if (isCreationMode && ideationId) {
-            navigate(`/ideation/${ideationId}`);
+        if (isCreationMode && currentArtifactId) {
+            // Navigate back to ideation with artifact ID
+            navigate(`/ideation?artifact_id=${currentArtifactId}`);
         } else if (isViewingMode && outlineSession) {
             navigate(`/ideation/${outlineSession.ideationSessionId}`);
         } else {
@@ -219,13 +225,13 @@ const OutlineTab: React.FC = () => {
             </Paragraph>
 
             {/* Story Inspiration Section */}
-            {ideationId ? (
+            {isCreationMode ? (
                 <StoryInspirationEditor
-                    ideationSessionId={ideationId}
-                    onInputChange={handleStoryInspirationChange}
+                    currentArtifactId={currentArtifactId || undefined}
+                    onValueChange={handleStoryInspirationValueChange}
+                    onArtifactChange={handleArtifactChange}
                     readOnly={isViewingMode}
                     placeholder="编辑你的故事灵感，然后生成大纲"
-                    initialValue={isViewingMode ? outlineSession?.userInput : undefined}
                 />
             ) : (
                 <div style={{ marginBottom: '24px' }}>
@@ -245,7 +251,7 @@ const OutlineTab: React.FC = () => {
             )}
 
             {/* Generate Button (Creation Mode Only) */}
-            {isCreationMode && currentUserInput.trim() && (
+            {isCreationMode && currentUserInput.trim() && currentArtifactId && (
                 <Button
                     type="primary"
                     icon={<FileTextOutlined />}

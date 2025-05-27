@@ -605,13 +605,42 @@ app.post("/api/ideations/:id/generate_plot",
   }
 );
 
-// ========== OUTLINE ENDPOINTS ==========
+// ========== ARTIFACT ENDPOINTS ==========
 
-app.post("/api/outlines/from-ideation/:ideationId",
+app.get("/api/artifacts/:artifactId",
   authMiddleware.authenticate,
   async (req: any, res: any) => {
-    const { ideationId } = req.params;
-    const { userInput } = req.body;
+    const { artifactId } = req.params;
+
+    const user = authMiddleware.getCurrentUser(req);
+    if (!user) {
+      return res.status(401).json({ error: "User not authenticated" });
+    }
+
+    try {
+      const artifact = await artifactRepo.getArtifact(artifactId, user.id);
+
+      if (!artifact) {
+        return res.status(404).json({ error: "Artifact not found" });
+      }
+
+      res.json(artifact);
+
+    } catch (error: any) {
+      console.error('Error fetching artifact:', error);
+      res.status(500).json({
+        error: "Failed to fetch artifact",
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+);
+
+app.post("/api/artifacts/user-input",
+  authMiddleware.authenticate,
+  async (req: any, res: any) => {
+    const { text, sourceArtifactId } = req.body;
 
     const user = authMiddleware.getCurrentUser(req);
     if (!user) {
@@ -619,18 +648,108 @@ app.post("/api/outlines/from-ideation/:ideationId",
     }
 
     // Validate required fields
-    if (!userInput || typeof userInput !== 'string' || !userInput.trim()) {
+    if (!text || typeof text !== 'string' || !text.trim()) {
       return res.status(400).json({
-        error: "Missing or empty userInput",
-        details: "userInput must be a non-empty string"
+        error: "Missing or empty text",
+        details: "text must be a non-empty string"
       });
     }
 
     try {
-      const result = await outlineService.generateOutlineFromIdeation(
+      const artifact = await artifactRepo.createArtifact(
         user.id,
-        ideationId,
-        userInput.trim()
+        'user_input',
+        {
+          text: text.trim(),
+          source: sourceArtifactId ? 'modified_brainstorm' : 'manual',
+          source_artifact_id: sourceArtifactId
+        }
+      );
+
+      res.json(artifact);
+
+    } catch (error: any) {
+      console.error('Error creating user input artifact:', error);
+      res.status(500).json({
+        error: "Failed to create user input artifact",
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+);
+
+app.put("/api/artifacts/:artifactId",
+  authMiddleware.authenticate,
+  async (req: any, res: any) => {
+    const { artifactId } = req.params;
+    const { text } = req.body;
+
+    const user = authMiddleware.getCurrentUser(req);
+    if (!user) {
+      return res.status(401).json({ error: "User not authenticated" });
+    }
+
+    // Validate required fields
+    if (!text || typeof text !== 'string' || !text.trim()) {
+      return res.status(400).json({
+        error: "Missing or empty text",
+        details: "text must be a non-empty string"
+      });
+    }
+
+    try {
+      // Get existing artifact to validate ownership and type
+      const existingArtifact = await artifactRepo.getArtifact(artifactId, user.id);
+      if (!existingArtifact) {
+        return res.status(404).json({ error: "Artifact not found" });
+      }
+
+      if (existingArtifact.type !== 'user_input') {
+        return res.status(400).json({ error: "Can only update user_input artifacts" });
+      }
+
+      // Update the artifact
+      const updatedData = {
+        ...existingArtifact.data,
+        text: text.trim()
+      };
+
+      const updatedArtifact = await artifactRepo.createArtifact(
+        user.id,
+        'user_input',
+        updatedData
+      );
+
+      res.json(updatedArtifact);
+
+    } catch (error: any) {
+      console.error('Error updating user input artifact:', error);
+      res.status(500).json({
+        error: "Failed to update user input artifact",
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+);
+
+// ========== OUTLINE ENDPOINTS ==========
+
+app.post("/api/outlines/from-artifact/:artifactId",
+  authMiddleware.authenticate,
+  async (req: any, res: any) => {
+    const { artifactId } = req.params;
+
+    const user = authMiddleware.getCurrentUser(req);
+    if (!user) {
+      return res.status(401).json({ error: "User not authenticated" });
+    }
+
+    try {
+      const result = await outlineService.generateOutlineFromArtifact(
+        user.id,
+        artifactId
       );
 
       res.json(result);
@@ -639,7 +758,7 @@ app.post("/api/outlines/from-ideation/:ideationId",
       console.error('Error generating outline:', error);
 
       if (error.message.includes('not found or access denied')) {
-        return res.status(404).json({ error: "Ideation session not found" });
+        return res.status(404).json({ error: "Source artifact not found" });
       }
 
       res.status(500).json({
