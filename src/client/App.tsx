@@ -10,6 +10,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './components/LoginPage';
 import IdeationTab from './components/IdeationTab';
 import IdeationsList from './components/IdeationsList';
+import HomePage from './components/HomePage';
 import OutlineTab from './components/OutlineTab';
 import ChatTab from './components/ChatTab';
 import ScriptTab from './components/ScriptTab';
@@ -58,7 +59,7 @@ const AppContent: React.FC = () => {
   const menuItems = [
     {
       key: 'ideations',
-      label: '灵感历史',
+      label: '创作工作台',
       onClick: () => handleMenuClick('/ideations')
     },
     {
@@ -187,7 +188,7 @@ const AppContent: React.FC = () => {
               <Routes>
                 <Route path="/ideations" element={
                   <ProtectedRoute>
-                    <IdeationsList />
+                    <HomePage />
                   </ProtectedRoute>
                 } />
                 <Route path="/ideation/:id" element={
@@ -238,7 +239,7 @@ const AppContent: React.FC = () => {
               <Routes>
                 <Route path="/ideations" element={
                   <ProtectedRoute>
-                    <IdeationsList />
+                    <HomePage />
                   </ProtectedRoute>
                 } />
                 <Route path="/ideation/:id" element={

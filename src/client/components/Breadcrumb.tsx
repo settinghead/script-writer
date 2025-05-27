@@ -1,7 +1,7 @@
 import React from 'react';
 import { Breadcrumb as AntBreadcrumb } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { HomeOutlined, BulbOutlined, MessageOutlined, EditOutlined, HistoryOutlined } from '@ant-design/icons';
+import { HomeOutlined, BulbOutlined, MessageOutlined, EditOutlined, HistoryOutlined, FileTextOutlined } from '@ant-design/icons';
 
 interface BreadcrumbItem {
     title: string;
@@ -25,12 +25,12 @@ const Breadcrumb: React.FC = () => {
 
         if (location.pathname === '/ideations') {
             items.push({
-                title: '灵感历史',
+                title: '创作工作台',
                 icon: <HistoryOutlined />
             });
         } else if (location.pathname.startsWith('/ideation')) {
             items.push({
-                title: '灵感历史',
+                title: '创作工作台',
                 icon: <HistoryOutlined />,
                 onClick: () => navigate('/ideations')
             });
@@ -45,6 +45,29 @@ const Breadcrumb: React.FC = () => {
                 items.push({
                     title: '新建灵感',
                     icon: <BulbOutlined />
+                });
+            }
+        } else if (location.pathname.startsWith('/new-outline')) {
+            items.push({
+                title: '创作工作台',
+                icon: <HistoryOutlined />,
+                onClick: () => navigate('/ideations')
+            });
+            items.push({
+                title: '设计故事大纲',
+                icon: <FileTextOutlined />
+            });
+        } else if (location.pathname.startsWith('/outlines')) {
+            items.push({
+                title: '创作工作台',
+                icon: <HistoryOutlined />,
+                onClick: () => navigate('/ideations')
+            });
+            const outlineId = location.pathname.split('/')[2];
+            if (outlineId) {
+                items.push({
+                    title: `大纲详情 (${outlineId.slice(0, 8)}...)`,
+                    icon: <FileTextOutlined />
                 });
             }
         } else if (location.pathname === '/chat') {

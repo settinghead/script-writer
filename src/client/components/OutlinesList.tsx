@@ -10,40 +10,37 @@ import {
     Alert,
     Empty,
     Space,
-    Descriptions,
     Modal
 } from 'antd';
 import {
     EyeOutlined,
     PlusOutlined,
     ClockCircleOutlined,
+    FileTextOutlined,
     DeleteOutlined
 } from '@ant-design/icons';
 import { formatDistanceToNow } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 
-const { Title, Text, Paragraph } = Typography;
+const { Title, Text } = Typography;
 
-interface IdeationRun {
+interface OutlineSessionSummary {
     id: string;
-    user_input: string;
-    selected_platform: string;
-    genre_prompt_string: string;
-    genre_paths: string[][];
-    genre_proportions: number[];
-    initial_ideas: string[];
-    created_at: string;
+    ideationSessionId: string;
+    status: 'active' | 'completed';
+    title?: string;
+    createdAt: string;
 }
 
-const IdeationsList: React.FC = () => {
+const OutlinesList: React.FC = () => {
     const navigate = useNavigate();
-    const [ideations, setIdeations] = useState<IdeationRun[]>([]);
+    const [outlines, setOutlines] = useState<OutlineSessionSummary[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
     useEffect(() => {
-        fetchIdeations();
+        fetchOutlines();
 
         // Handle window resize for mobile detection
         const handleResize = () => {
@@ -54,58 +51,58 @@ const IdeationsList: React.FC = () => {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    const fetchIdeations = async () => {
+    const fetchOutlines = async () => {
         try {
-            const response = await fetch('/api/ideations');
+            const response = await fetch('/api/outlines');
             if (!response.ok) {
-                throw new Error(`Failed to fetch ideations: ${response.status}`);
+                throw new Error(`Failed to fetch outlines: ${response.status}`);
             }
 
             const data = await response.json();
-            setIdeations(data);
+            setOutlines(data);
         } catch (err) {
-            console.error('Error fetching ideations:', err);
-            setError(err instanceof Error ? err.message : 'Failed to load ideations');
+            console.error('Error fetching outlines:', err);
+            setError(err instanceof Error ? err.message : 'Failed to load outlines');
         } finally {
             setLoading(false);
         }
     };
 
-    const handleViewIdeation = (id: string) => {
-        navigate(`/ideation/${id}`);
+    const handleViewOutline = (id: string) => {
+        navigate(`/outlines/${id}`);
     };
 
     const handleCreateNew = () => {
         navigate('/ideation');
     };
 
-    const handleDeleteIdeation = async (id: string, title: string) => {
+    const handleDeleteOutline = async (id: string, title: string) => {
         Modal.confirm({
             title: '确认删除',
-            content: `确定要删除灵感 "${title}" 吗？此操作无法撤销。`,
+            content: `确定要删除大纲 "${title}" 吗？此操作无法撤销。`,
             okText: '删除',
             okType: 'danger',
             cancelText: '取消',
             onOk: async () => {
                 try {
-                    const response = await fetch(`/api/ideations/${id}`, {
+                    const response = await fetch(`/api/outlines/${id}`, {
                         method: 'DELETE'
                     });
 
                     if (!response.ok) {
-                        throw new Error(`Failed to delete ideation: ${response.status}`);
+                        throw new Error(`Failed to delete outline: ${response.status}`);
                     }
 
                     // Remove from local state to update UI immediately
-                    setIdeations(prevIdeations => prevIdeations.filter(ideation => ideation.id !== id));
+                    setOutlines(prevOutlines => prevOutlines.filter(outline => outline.id !== id));
 
                     // Show success message
                     Modal.success({
                         title: '删除成功',
-                        content: '灵感已成功删除',
+                        content: '大纲已成功删除',
                     });
                 } catch (err) {
-                    console.error('Error deleting ideation:', err);
+                    console.error('Error deleting outline:', err);
                     Modal.error({
                         title: '删除失败',
                         content: '删除失败，请重试。',
@@ -132,75 +129,30 @@ const IdeationsList: React.FC = () => {
         return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
     };
 
-    const generateTitle = (ideation: IdeationRun) => {
-        // Priority: use first initial idea, then user input, then generate from platform + genre
-        const maxLength = isMobile ? 25 : 35; // Shorter titles on mobile
+    const generateTitle = (outline: OutlineSessionSummary) => {
+        const maxLength = isMobile ? 25 : 35;
 
-        if (ideation.initial_ideas && ideation.initial_ideas.length > 0) {
-            return truncateText(ideation.initial_ideas[0], maxLength);
+        // Use outline title if available
+        if (outline.title) {
+            return truncateText(outline.title, maxLength);
         }
 
-        if (ideation.user_input && ideation.user_input.trim()) {
-            return truncateText(ideation.user_input, maxLength);
-        }
-
-        // Generate title from platform and genre
-        const parts = [];
-        if (ideation.selected_platform) {
-            parts.push(ideation.selected_platform);
-        }
-
-        if (ideation.genre_paths && ideation.genre_paths.length > 0) {
-            const primaryGenre = ideation.genre_paths[0];
-            if (primaryGenre && primaryGenre.length > 0) {
-                // Use the most specific genre (last element)
-                const specificGenre = primaryGenre[primaryGenre.length - 1];
-                parts.push(specificGenre);
-            }
-        }
-
-        return parts.length > 0 ? parts.join(' · ') : '灵感创作';
+        return '故事大纲';
     };
 
-    const generateDescription = (ideation: IdeationRun) => {
-        // Priority: show genre combination, then initial ideas preview, then platform info
-        if (ideation.genre_prompt_string && ideation.genre_prompt_string !== '未指定') {
-            return ideation.genre_prompt_string;
-        }
-
-        if (ideation.initial_ideas && ideation.initial_ideas.length > 1) {
-            return `包含 ${ideation.initial_ideas.length} 个故事灵感`;
-        }
-
-        if (ideation.selected_platform) {
-            return `${ideation.selected_platform} 平台内容`;
-        }
-
-        return '创意灵感记录';
+    const generateDescription = (outline: OutlineSessionSummary) => {
+        // For summary view, we don't have detailed outline data
+        // Just show basic info
+        return `创建于 ${formatDate(outline.createdAt)}`;
     };
 
-    const getGenreTags = (ideation: IdeationRun) => {
+    const getOutlineTags = (outline: OutlineSessionSummary) => {
         const tags = [];
 
-        if (ideation.selected_platform) {
-            tags.push({ text: ideation.selected_platform, color: 'blue' });
-        }
-
-        if (ideation.genre_paths && ideation.genre_paths.length > 0) {
-            ideation.genre_paths.forEach((path, index) => {
-                if (path && path.length > 0) {
-                    const genreText = path.length > 1 ? path[path.length - 1] : path[0];
-                    const proportion = ideation.genre_proportions && ideation.genre_proportions[index];
-                    const displayText = ideation.genre_paths.length > 1 && proportion
-                        ? `${genreText} ${proportion}%`
-                        : genreText;
-                    tags.push({ text: displayText, color: 'purple' });
-                }
-            });
-        }
-
-        if (ideation.initial_ideas && ideation.initial_ideas.length > 0) {
-            tags.push({ text: `${ideation.initial_ideas.length} 个故事`, color: 'green' });
+        if (outline.status === 'completed') {
+            tags.push({ text: '已完成', color: 'green' });
+        } else {
+            tags.push({ text: '进行中', color: 'orange' });
         }
 
         return tags;
@@ -233,10 +185,9 @@ const IdeationsList: React.FC = () => {
 
     return (
         <div style={{ padding: isMobile ? '0 8px' : '0 4px' }}>
-
-            {ideations.length === 0 ? (
+            {outlines.length === 0 ? (
                 <Empty
-                    description="还没有创建过灵感"
+                    description="还没有创建过大纲"
                     style={{ margin: '60px 0' }}
                 >
                     <Button type="primary" icon={<PlusOutlined />} onClick={handleCreateNew}>
@@ -246,7 +197,7 @@ const IdeationsList: React.FC = () => {
             ) : (
                 <List
                     grid={{
-                        gutter: [16, 24], // [horizontal, vertical] spacing
+                        gutter: [16, 24],
                         xs: 1,
                         sm: 1,
                         md: 2,
@@ -254,14 +205,14 @@ const IdeationsList: React.FC = () => {
                         xl: 3,
                         xxl: 3,
                     }}
-                    dataSource={ideations}
-                    renderItem={(ideation) => (
+                    dataSource={outlines}
+                    renderItem={(outline) => (
                         <List.Item style={{ marginBottom: '16px' }}>
                             <Card
                                 hoverable
                                 style={{
                                     minHeight: '220px',
-                                    height: 'auto', // Allow dynamic height
+                                    height: 'auto',
                                     display: 'flex',
                                     flexDirection: 'column'
                                 }}
@@ -269,14 +220,14 @@ const IdeationsList: React.FC = () => {
                                     flex: 1,
                                     display: 'flex',
                                     flexDirection: 'column',
-                                    padding: isMobile ? '12px' : '16px' // Smaller padding on mobile
+                                    padding: isMobile ? '12px' : '16px'
                                 }}
                                 actions={[
                                     <Button
                                         key="view"
                                         type="text"
                                         icon={<EyeOutlined />}
-                                        onClick={() => handleViewIdeation(ideation.id)}
+                                        onClick={() => handleViewOutline(outline.id)}
                                         style={{
                                             color: '#1890ff',
                                             fontSize: isMobile ? '12px' : '14px',
@@ -292,7 +243,7 @@ const IdeationsList: React.FC = () => {
                                         icon={<DeleteOutlined />}
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            handleDeleteIdeation(ideation.id, generateTitle(ideation));
+                                            handleDeleteOutline(outline.id, generateTitle(outline));
                                         }}
                                         style={{
                                             color: '#ff4d4f',
@@ -310,7 +261,7 @@ const IdeationsList: React.FC = () => {
                                     flex: 1,
                                     display: 'flex',
                                     flexDirection: 'column',
-                                    minHeight: 0 // Prevents flex item from overflowing
+                                    minHeight: 0
                                 }}>
                                     <div style={{ marginBottom: isMobile ? '8px' : '12px' }}>
                                         <Text strong style={{
@@ -319,7 +270,7 @@ const IdeationsList: React.FC = () => {
                                             lineHeight: '1.4',
                                             wordBreak: 'break-word'
                                         }}>
-                                            {generateTitle(ideation)}
+                                            {generateTitle(outline)}
                                         </Text>
                                     </div>
 
@@ -329,16 +280,16 @@ const IdeationsList: React.FC = () => {
                                             lineHeight: '1.4',
                                             wordBreak: 'break-word'
                                         }}>
-                                            {generateDescription(ideation)}
+                                            {generateDescription(outline)}
                                         </Text>
                                     </div>
 
                                     <div style={{
                                         marginBottom: isMobile ? '6px' : '8px',
-                                        flex: '0 0 auto' // Don't grow or shrink
+                                        flex: '0 0 auto'
                                     }}>
                                         <Space size={[4, 4]} wrap>
-                                            {getGenreTags(ideation).map((tag, index) => (
+                                            {getOutlineTags(outline).map((tag, index) => (
                                                 <Tag
                                                     key={index}
                                                     color={tag.color}
@@ -359,7 +310,7 @@ const IdeationsList: React.FC = () => {
                                         alignItems: 'center',
                                         marginTop: 'auto',
                                         paddingTop: '4px',
-                                        flex: '0 0 auto' // Don't grow or shrink
+                                        flex: '0 0 auto'
                                     }}>
                                         <ClockCircleOutlined style={{
                                             marginRight: '4px',
@@ -369,7 +320,7 @@ const IdeationsList: React.FC = () => {
                                         <Text type="secondary" style={{
                                             fontSize: isMobile ? '11px' : '12px'
                                         }}>
-                                            {formatDate(ideation.created_at)}
+                                            {formatDate(outline.createdAt)}
                                         </Text>
                                     </div>
                                 </div>
@@ -382,4 +333,4 @@ const IdeationsList: React.FC = () => {
     );
 };
 
-export default IdeationsList; 
+export default OutlinesList; 
