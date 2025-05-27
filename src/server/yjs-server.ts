@@ -4,6 +4,9 @@ import { WebSocketServer, WebSocket } from 'ws';
 import * as awarenessProtocol from 'y-protocols/awareness';
 import fs from 'fs';
 import path from 'path';
+import { parse as parseCookie } from 'cookie';
+import * as jwt from 'jsonwebtoken';
+import { AuthDatabase } from './database/auth';
 
 const DOC_STORAGE_PATH = path.join('data', 'yjs-docs');
 fs.mkdirSync(DOC_STORAGE_PATH, { recursive: true });
@@ -145,10 +148,77 @@ const setupWSConnection = (ws: WebSocket, req: any, roomName: string) => {
 
 const wssConnections = new Map<string, Set<WebSocket>>(); // Track connections per room
 
-export const setupYjsWebSocketServer = (httpServer: HttpServer) => {
+interface AuthenticatedRequest {
+    user?: { id: string; username: string; display_name: string };
+}
+
+const authenticateWebSocketUser = async (req: any, authDB: AuthDatabase): Promise<{ id: string; username: string; display_name: string } | null> => {
+    try {
+        const cookies = req.headers.cookie ? parseCookie(req.headers.cookie) : {};
+        const token = cookies.auth_token;
+
+        if (!token) {
+            console.log('No auth token in WebSocket cookies');
+            return null;
+        }
+
+        const JWT_SECRET = process.env.JWT_SECRET;
+        if (!JWT_SECRET) {
+            console.error('JWT_SECRET not configured');
+            return null;
+        }
+
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        const sessionId = decoded.jti;
+
+        if (!sessionId) {
+            console.log('No session ID in JWT token');
+            return null;
+        }
+
+        // Verify session is still valid
+        const session = await authDB.getSession(sessionId);
+        if (!session) {
+            console.log('Session not found or expired');
+            return null;
+        }
+
+        // Get user data
+        const user = await authDB.getUserById(session.user_id);
+        if (!user) {
+            console.log('User not found for session');
+            return null;
+        }
+
+        return user;
+    } catch (error) {
+        console.error('Error authenticating WebSocket user:', error);
+        return null;
+    }
+};
+
+const verifyUserCanAccessRoom = async (roomId: string, userId: string, authDB: AuthDatabase): Promise<boolean> => {
+    return new Promise((resolve) => {
+        // Check if the room belongs to the user
+        authDB.db.get(
+            `SELECT id FROM scripts WHERE room_id = ? AND user_id = ?`,
+            [roomId, userId],
+            (err, row) => {
+                if (err) {
+                    console.error('Error verifying room access:', err);
+                    resolve(false);
+                } else {
+                    resolve(!!row);
+                }
+            }
+        );
+    });
+};
+
+export const setupYjsWebSocketServer = (httpServer: HttpServer, authDB: AuthDatabase) => {
     const wss = new WebSocketServer({ noServer: true });
 
-    wss.on('connection', (ws, req) => {
+    wss.on('connection', async (ws, req) => {
         const url = new URL(req.url!, `http://${req.headers.host}`);
         const roomName = url.searchParams.get('room'); // Assuming room is passed as a query param e.g., /yjs?room=myRoom
 
@@ -157,7 +227,24 @@ export const setupYjsWebSocketServer = (httpServer: HttpServer) => {
             ws.close();
             return;
         }
-        console.log(`New YJS connection attempt for room: ${roomName}`);
+
+        // Authenticate the user
+        const user = await authenticateWebSocketUser(req, authDB);
+        if (!user) {
+            console.error(`Unauthenticated WebSocket connection attempt for room: ${roomName}`);
+            ws.close();
+            return;
+        }
+
+        // Verify user can access this room
+        const canAccess = await verifyUserCanAccessRoom(roomName, user.id, authDB);
+        if (!canAccess) {
+            console.error(`User ${user.username} attempted to access unauthorized room: ${roomName}`);
+            ws.close();
+            return;
+        }
+
+        console.log(`Authenticated YJS connection for user ${user.username} to room: ${roomName}`);
 
         let docDetail = documents.get(roomName);
 

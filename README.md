@@ -143,6 +143,47 @@ CREATE TABLE user_sessions (
 );
 ```
 
+#### Scripts Table
+```sql
+CREATE TABLE scripts (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  room_id TEXT NOT NULL UNIQUE,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users (id)
+);
+```
+
+#### Ideation Tables (Updated)
+```sql
+-- Ideation runs with user association
+CREATE TABLE ideation_runs (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  user_input TEXT,
+  selected_platform TEXT,
+  genre_prompt_string TEXT,
+  genre_paths_json TEXT,
+  genre_proportions_json TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  media_type TEXT,
+  platform_recommendation TEXT,
+  plot_outline TEXT,
+  analysis TEXT,
+  FOREIGN KEY (user_id) REFERENCES users (id)
+);
+
+-- Initial ideas linked to ideation runs
+CREATE TABLE generated_initial_ideas (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  run_id TEXT,
+  idea_text TEXT,
+  FOREIGN KEY (run_id) REFERENCES ideation_runs (id)
+);
+```
+
 ## API Endpoints
 
 ### Authentication
@@ -159,11 +200,23 @@ CREATE TABLE user_sessions (
 - `POST /api/ideations/create_run_and_generate_plot` - Generate plot ideas
 - `POST /api/ideations/:id/generate_plot` - Generate plot for existing run
 
-### Content Management
-- `GET /api/ideations` - List ideation runs
-- `GET /api/ideations/:id` - Get specific ideation run
+### User-Specific Content Management (All Require Authentication)
+
+#### Ideation Management
+- `GET /api/ideations` - List user's ideation runs
+- `GET /api/ideations/:id` - Get user's specific ideation run
+- `POST /api/ideations/create_run_with_ideas` - Create ideation run with initial ideas
+- `POST /api/ideations/create_run_and_generate_plot` - Create and generate plot
+
+#### Script Management
+- `GET /api/scripts` - List user's script documents
+- `GET /api/scripts/:id` - Get user's specific script document
 - `POST /api/scripts` - Create new script document
-- `GET /api/scripts/:id` - Get script document
+- `PUT /api/scripts/:id` - Update script name
+- `DELETE /api/scripts/:id` - Delete script document
+
+#### Real-time Collaboration
+- `WebSocket /yjs?room={roomId}` - Join collaborative editing session (authenticated)
 
 ## Security Features
 
@@ -173,6 +226,25 @@ CREATE TABLE user_sessions (
 - **Input validation** on all endpoints
 - **Session cleanup** for expired tokens
 - **Provider-based architecture** for secure auth extensibility
+
+## User Data Isolation
+
+### Complete User Separation
+- **Scripts**: Each user can only access their own script documents
+- **Ideations**: Each user can only see their own ideation runs and generated content
+- **WebSocket Connections**: Real-time editing sessions are protected by user authentication
+- **Room Access Control**: Users can only join collaborative editing rooms for their own scripts
+
+### Database-Level Security
+- All content tables include `user_id` foreign key constraints
+- API endpoints filter all queries by authenticated user ID
+- WebSocket connections verify room ownership before allowing access
+- No cross-user data leakage possible through any endpoint
+
+### Room ID Generation
+- Script room IDs include user ID: `script-{user_id}-{timestamp}-{random}`
+- Prevents guessing other users' room IDs
+- Enables quick ownership verification for WebSocket connections
 
 ## Development
 
@@ -387,14 +459,28 @@ interface YjsSlateDoc {
 
 #### WebSocket Server
 ```typescript
-// Room-based document management
+// Authenticated room-based document management
 const documents = new Map<string, Y.Doc>();
 
-// Handle WebSocket upgrade for YJS
-httpServer.on('upgrade', (request, socket, head) => {
-  if (request.url?.startsWith('/yjs')) {
-    const roomId = request.url.slice(5);
-    setupWSConnection(ws, req, { docName: roomId });
+// Handle WebSocket upgrade with authentication
+httpServer.on('upgrade', async (request, socket, head) => {
+  if (request.url?.includes('/yjs')) {
+    // Authenticate user via JWT cookie
+    const user = await authenticateWebSocketUser(request, authDB);
+    if (!user) {
+      socket.destroy();
+      return;
+    }
+    
+    // Verify room ownership
+    const roomId = url.searchParams.get('room');
+    const canAccess = await verifyUserCanAccessRoom(roomId, user.id, authDB);
+    if (!canAccess) {
+      socket.destroy();
+      return;
+    }
+    
+    setupWSConnection(ws, req, { docName: roomId, user });
   }
 });
 ```

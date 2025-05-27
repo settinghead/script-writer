@@ -113,6 +113,19 @@ const initializeDatabase = async () => {
         FOREIGN KEY (run_id) REFERENCES ideation_runs (id)
       )
     `);
+
+    // Create scripts table
+    db.run(`
+      CREATE TABLE IF NOT EXISTS scripts (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        room_id TEXT NOT NULL UNIQUE,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id)
+      )
+    `);
   });
 
   // Initialize authentication tables and test users
@@ -134,7 +147,7 @@ const server = ViteExpress.listen(app, PORT, () => {
 });
 
 // Set up YJS WebSocket server
-const yjs = setupYjsWebSocketServer(server);
+const yjs = setupYjsWebSocketServer(server, authDB);
 
 // Mount authentication routes
 app.use('/auth', createAuthRoutes(authDB, authMiddleware));
@@ -685,20 +698,192 @@ app.get("/api/ideations", authMiddleware.authenticate, async (req: any, res: any
 });
 
 // Script document management endpoints
-app.post("/api/scripts", authMiddleware.authenticate, (req, res) => {
+app.post("/api/scripts", authMiddleware.authenticate, async (req: any, res: any) => {
   const { name = 'Untitled Script' } = req.body;
-  const roomId = `script-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
-  // Return the room ID for collaborative editing
-  res.json({ id: roomId, name });
+  // Get authenticated user
+  const user = authMiddleware.getCurrentUser(req);
+  if (!user) {
+    return res.status(401).json({ error: "User not authenticated" });
+  }
+
+  const scriptId = uuidv4();
+  const roomId = `script-${user.id}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
+  try {
+    // Store script in database
+    await new Promise<void>((resolve, reject) => {
+      db.run(
+        `INSERT INTO scripts (id, user_id, name, room_id) VALUES (?, ?, ?, ?)`,
+        [scriptId, user.id, name, roomId],
+        function (err) {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
+
+    // Return the script info for collaborative editing
+    res.json({
+      id: scriptId,
+      name,
+      roomId,
+      userId: user.id
+    });
+
+  } catch (error: any) {
+    console.error('Error creating script:', error);
+    res.status(500).json({ error: "Failed to create script", details: error.message });
+  }
 });
 
-app.get("/api/scripts/:id", authMiddleware.authenticate, (req, res) => {
+app.get("/api/scripts/:id", authMiddleware.authenticate, async (req: any, res: any) => {
   const { id } = req.params;
 
-  // In a real implementation, you'd retrieve the script from a database
-  // For now, just return a basic response
-  res.json({ id, exists: true });
+  // Get authenticated user
+  const user = authMiddleware.getCurrentUser(req);
+  if (!user) {
+    return res.status(401).json({ error: "User not authenticated" });
+  }
+
+  try {
+    // Get the script (filtered by user)
+    const script = await new Promise<any>((resolve, reject) => {
+      db.get(
+        `SELECT * FROM scripts WHERE id = ? AND user_id = ?`,
+        [id, user.id],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        }
+      );
+    });
+
+    if (!script) {
+      return res.status(404).json({ error: "Script not found" });
+    }
+
+    res.json({
+      id: script.id,
+      name: script.name,
+      roomId: script.room_id,
+      userId: script.user_id,
+      createdAt: script.created_at,
+      updatedAt: script.updated_at
+    });
+
+  } catch (error: any) {
+    console.error('Error fetching script:', error);
+    res.status(500).json({ error: "Failed to fetch script", details: error.message });
+  }
+});
+
+app.get("/api/scripts", authMiddleware.authenticate, async (req: any, res: any) => {
+  // Get authenticated user
+  const user = authMiddleware.getCurrentUser(req);
+  if (!user) {
+    return res.status(401).json({ error: "User not authenticated" });
+  }
+
+  try {
+    const scripts = await new Promise<any[]>((resolve, reject) => {
+      db.all(
+        `SELECT id, name, room_id, created_at, updated_at FROM scripts WHERE user_id = ? ORDER BY updated_at DESC`,
+        [user.id],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows || []);
+        }
+      );
+    });
+
+    res.json(scripts.map(script => ({
+      id: script.id,
+      name: script.name,
+      roomId: script.room_id,
+      createdAt: script.created_at,
+      updatedAt: script.updated_at
+    })));
+
+  } catch (error: any) {
+    console.error('Error fetching scripts:', error);
+    res.status(500).json({ error: "Failed to fetch scripts", details: error.message });
+  }
+});
+
+app.put("/api/scripts/:id", authMiddleware.authenticate, async (req: any, res: any) => {
+  const { id } = req.params;
+  const { name } = req.body;
+
+  if (!name) {
+    return res.status(400).json({ error: "Missing 'name' in request body" });
+  }
+
+  // Get authenticated user
+  const user = authMiddleware.getCurrentUser(req);
+  if (!user) {
+    return res.status(401).json({ error: "User not authenticated" });
+  }
+
+  try {
+    // Update the script (filtered by user)
+    await new Promise<void>((resolve, reject) => {
+      db.run(
+        `UPDATE scripts SET name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?`,
+        [name, id, user.id],
+        function (err) {
+          if (err) reject(err);
+          else if (this.changes === 0) reject(new Error('Script not found or unauthorized'));
+          else resolve();
+        }
+      );
+    });
+
+    res.json({ success: true, message: "Script updated successfully" });
+
+  } catch (error: any) {
+    console.error('Error updating script:', error);
+    if (error.message === 'Script not found or unauthorized') {
+      res.status(404).json({ error: "Script not found" });
+    } else {
+      res.status(500).json({ error: "Failed to update script", details: error.message });
+    }
+  }
+});
+
+app.delete("/api/scripts/:id", authMiddleware.authenticate, async (req: any, res: any) => {
+  const { id } = req.params;
+
+  // Get authenticated user
+  const user = authMiddleware.getCurrentUser(req);
+  if (!user) {
+    return res.status(401).json({ error: "User not authenticated" });
+  }
+
+  try {
+    // Delete the script (filtered by user)
+    await new Promise<void>((resolve, reject) => {
+      db.run(
+        `DELETE FROM scripts WHERE id = ? AND user_id = ?`,
+        [id, user.id],
+        function (err) {
+          if (err) reject(err);
+          else if (this.changes === 0) reject(new Error('Script not found or unauthorized'));
+          else resolve();
+        }
+      );
+    });
+
+    res.json({ success: true, message: "Script deleted successfully" });
+
+  } catch (error: any) {
+    console.error('Error deleting script:', error);
+    if (error.message === 'Script not found or unauthorized') {
+      res.status(404).json({ error: "Script not found" });
+    } else {
+      res.status(500).json({ error: "Failed to delete script", details: error.message });
+    }
+  }
 });
 
 // Handle client-side routing fallback
