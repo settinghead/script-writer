@@ -128,17 +128,45 @@ const LoginPage: React.FC = () => {
                             loading={loadingUsers}
                             style={{ width: '100%' }}
                             suffixIcon={loadingUsers ? <Spin size="small" /> : undefined}
+                            dropdownStyle={{
+                                maxWidth: '100%'
+                            }}
+                            optionLabelProp="label"
                         >
                             {testUsers.map(user => (
                                 <Option key={user.username} value={user.username}>
-                                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                                        <UserOutlined style={{ marginRight: '8px', color: '#1890ff' }} />
-                                        <div>
-                                            <div style={{ fontWeight: 500 }}>
+                                    <div style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        width: '100%',
+                                        overflow: 'hidden'
+                                    }}>
+                                        <UserOutlined style={{
+                                            marginRight: '8px',
+                                            color: '#1890ff',
+                                            flexShrink: 0
+                                        }} />
+                                        <div style={{
+                                            flex: 1,
+                                            minWidth: 0,
+                                            overflow: 'hidden'
+                                        }}>
+                                            <div style={{
+                                                fontWeight: 500,
+                                                whiteSpace: 'nowrap',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis'
+                                            }}>
                                                 {user.display_name || user.username}
                                             </div>
                                             {user.display_name && (
-                                                <div style={{ fontSize: '12px', color: '#666' }}>
+                                                <div style={{
+                                                    fontSize: '12px',
+                                                    color: '#666',
+                                                    whiteSpace: 'nowrap',
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis'
+                                                }}>
                                                     @{user.username}
                                                 </div>
                                             )}
