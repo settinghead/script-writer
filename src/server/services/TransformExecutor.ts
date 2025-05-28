@@ -241,6 +241,18 @@ export class TransformExecutor {
                     'v1'
                 );
                 outputArtifacts.push(synopsisArtifact);
+
+                // Create main_characters artifact if data is available
+                if (parsedData.main_characters && Array.isArray(parsedData.main_characters)) {
+                    const charactersArtifact = await this.artifactRepo.createArtifact(
+                        userId,
+                        'outline_characters', // New artifact type
+                        { characters: parsedData.main_characters }, // Data conforms to OutlineCharactersV1
+                        'v1'
+                    );
+                    outputArtifacts.push(charactersArtifact);
+                }
+
             } else {
                 // Create single output artifact
                 const outputArtifact = await this.artifactRepo.createArtifact(

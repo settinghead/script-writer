@@ -12,6 +12,7 @@ interface OutlineData {
     sellingPoints: string;
     setting: string;
     synopsis: string;
+    characters: Array<{ name: string; description: string }>;
 }
 
 interface OutlineSessionData {
@@ -111,8 +112,11 @@ const OutlineTab: React.FC = () => {
 
     const handleGenerateOutline = async () => {
         if (!currentArtifactId) {
+            console.warn('handleGenerateOutline: No currentArtifactId, cannot generate.');
             return;
         }
+
+        console.log('handleGenerateOutline: Generating outline for artifactId:', currentArtifactId, 'with totalEpisodes:', totalEpisodes, 'episodeDuration:', episodeDuration);
 
         setIsLoading(true);
         setError(null);
@@ -166,9 +170,9 @@ const OutlineTab: React.FC = () => {
             return null;
         }
 
-        const { title, genre, sellingPoints, setting, synopsis } = outlineSession.outline;
+        const { title, genre, sellingPoints, setting, synopsis, characters } = outlineSession.outline;
 
-        const components = [
+        const baseComponents = [
             { label: '剧名', value: title, icon: '🎬', rows: 1 },
             { label: '题材类型', value: genre, icon: '🎭', rows: 1 },
             { label: '项目卖点/爽点', value: sellingPoints, icon: '⭐', rows: 4 },
@@ -183,9 +187,9 @@ const OutlineTab: React.FC = () => {
                 </Title>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {components.map((component, index) => (
+                    {baseComponents.map((component, index) => (
                         <Card
-                            key={index}
+                            key={`base-${index}`}
                             size="small"
                             style={{
                                 background: '#0f0f0f',
@@ -217,6 +221,49 @@ const OutlineTab: React.FC = () => {
                             />
                         </Card>
                     ))}
+
+                    {characters && characters.length > 0 && (
+                        <>
+                            <Divider style={{ borderColor: '#404040', margin: '24px 0' }} />
+                            <Title level={5} style={{ color: '#ffffff', marginBottom: '16px', fontSize: '18px' }}>
+                                主要人物
+                            </Title>
+                            {characters.map((character, index) => (
+                                <Card
+                                    key={`char-${index}`}
+                                    size="small"
+                                    style={{
+                                        background: '#0f0f0f',
+                                        border: '1px solid #404040',
+                                        borderRadius: '8px',
+                                        padding: '20px'
+                                    }}
+                                >
+                                    <div style={{ marginBottom: '12px' }}>
+                                        <Text strong style={{ fontSize: '18px', color: '#ffffff' }}>
+                                            👤 {character.name}
+                                        </Text>
+                                    </div>
+                                    <Input.TextArea
+                                        value={character.description}
+                                        readOnly
+                                        rows={3} // Default rows for character description
+                                        style={{
+                                            backgroundColor: '#1a1a1a',
+                                            border: '1px solid #505050',
+                                            color: '#e8e8e8',
+                                            fontSize: '16px',
+                                            lineHeight: '1.7',
+                                            resize: 'none',
+                                            cursor: 'default',
+                                            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+                                        }}
+                                        autoSize={{ minRows: 2, maxRows: 5 }}
+                                    />
+                                </Card>
+                            ))}
+                        </>
+                    )}
                 </div>
             </div>
         );

@@ -10,7 +10,9 @@ import {
     OutlineSellingPointsV1,
     OutlineSettingV1,
     OutlineSynopsisV1,
-    UserInputV1
+    UserInputV1,
+    OutlineCharacter,
+    OutlineCharactersV1
 } from '../types/artifacts';
 
 // Response interfaces
@@ -25,6 +27,7 @@ export interface OutlineSessionData {
         sellingPoints: string;
         setting: string;
         synopsis: string;
+        characters: OutlineCharacter[];
     };
     createdAt: string;
 }
@@ -302,10 +305,9 @@ export class OutlineService {
 4.  **故事设定 (setting)**:
     *   **一句话核心设定**: 用一句话概括故事发生的核心背景和主要人物关系。
     *   **关键场景**: 2-3个推动剧情发展的核心场景。
-5.  **主要人物 (main_characters)**:
-    *   **主角**: 姓名，一句话性格特征及核心目标/困境。
-    *   **核心对手/情感对象**: 姓名，一句话性格特征及与主角的关系。
-    *   *(可选) 其他关键配角 (1名以内)*: 姓名，及其对剧情的关键作用。
+5.  **主要人物 (main_characters)**: **一个包含主要人物的数组**，每个人物对象包含以下字段：
+    *   **name**: [string] 人物姓名
+    *   **description**: [string] 人物的一句话性格特征及核心目标/困境
 6.  **完整故事梗概 (synopsis)**: **一个详细且连贯的故事梗概**，描述主要情节、关键事件、核心冲突的发展，以及故事的最终结局。请用自然流畅的段落撰写，体现故事的吸引力。
 
 **短剧创作核心要求 (非常重要！):**
@@ -327,11 +329,10 @@ export class OutlineService {
     "core_setting_summary": "[string] 一句话核心设定",
     "key_scenes": ["[string] 关键场景1", "[string] 关键场景2"]
   },
-  "main_characters": {
-    "protagonist": { "name": "[string]", "description": "[string] 性格特征及核心目标/困境" },
-    "antagonist_or_love_interest": { "name": "[string]", "description": "[string] 性格特征及与主角的关系" },
-    "other_key_character": { "name": "[string, 可选]", "role": "[string, 可选]" }
-  },
+  "main_characters": [
+    { "name": "[string] 人物1姓名", "description": "[string] 人物1描述..." },
+    { "name": "[string] 人物2姓名", "description": "[string] 人物2描述..." }
+  ],
   "synopsis": "[string] 详细的、包含主要情节/关键事件/核心冲突发展和结局的故事梗概。"
 }`;
     }
@@ -364,60 +365,15 @@ export class OutlineService {
             throw new Error('Missing or invalid field: setting');
         }
 
-        // Validate main_characters object and its primary fields
-        if (!outlineData.main_characters || typeof outlineData.main_characters !== 'object' ||
-            !outlineData.main_characters.protagonist || typeof outlineData.main_characters.protagonist !== 'object' ||
-            !outlineData.main_characters.protagonist.name || typeof outlineData.main_characters.protagonist.name !== 'string' ||
-            !outlineData.main_characters.protagonist.description || typeof outlineData.main_characters.protagonist.description !== 'string' ||
-            !outlineData.main_characters.antagonist_or_love_interest || typeof outlineData.main_characters.antagonist_or_love_interest !== 'object' ||
-            !outlineData.main_characters.antagonist_or_love_interest.name || typeof outlineData.main_characters.antagonist_or_love_interest.name !== 'string' ||
-            !outlineData.main_characters.antagonist_or_love_interest.description || typeof outlineData.main_characters.antagonist_or_love_interest.description !== 'string') {
-            throw new Error('Missing or invalid field in main_characters: protagonist or antagonist_or_love_interest structure is invalid.');
+        // Validate main_characters as an array of objects
+        if (!outlineData.main_characters || !Array.isArray(outlineData.main_characters) || outlineData.main_characters.length === 0) {
+            throw new Error('Missing or invalid field: main_characters must be a non-empty array.');
         }
-
-        // Validate optional other_key_character if it exists
-        if (outlineData.main_characters.other_key_character) {
-            const otherChar = outlineData.main_characters.other_key_character;
-
-            // It must be an object if it exists
-            if (typeof otherChar !== 'object' || otherChar === null) {
-                throw new Error('Invalid field: main_characters.other_key_character must be an object if present.');
-            }
-
-            const hasName = otherChar.hasOwnProperty('name');
-            const hasRole = otherChar.hasOwnProperty('role');
-
-            // If name or role is undefined (but key exists), or if they are not strings, and not the placeholder/null values, it's an error.
-            const nameIsPlaceholder = otherChar.name === '[string, 可选]';
-            const roleIsPlaceholder = otherChar.role === '[string, 可选]';
-            const nameIsNull = otherChar.name === null;
-            const roleIsNull = otherChar.role === null;
-
-            const nameIsValidString = typeof otherChar.name === 'string';
-            const roleIsValidString = typeof otherChar.role === 'string';
-
-            // Valid states for otherChar: 
-            // 1. name and role are valid strings.
-            // 2. name/role are the placeholder strings.
-            // 3. name/role are explicitly null.
-            // 4. The entire other_key_character field is absent (handled by the outer if).
-
-            let isValidOtherChar = false;
-            if (nameIsValidString && roleIsValidString && !nameIsPlaceholder && !roleIsPlaceholder && !nameIsNull && !roleIsNull) {
-                isValidOtherChar = true; // Actual values provided
-            } else if (nameIsPlaceholder && roleIsPlaceholder) {
-                isValidOtherChar = true; // Both are placeholders
-            } else if (nameIsNull && roleIsNull) {
-                isValidOtherChar = true; // Both are null
-            }
-
-            if (!isValidOtherChar) {
-                // This will catch cases like: one is placeholder/null and other is not, or types are wrong and not placeholder/null.
-                // Or if one property is missing entirely.
-                if (!hasName || !hasRole) {
-                    throw new Error('Invalid field: main_characters.other_key_character must have both name and role properties if the object exists.');
-                }
-                throw new Error('Invalid field: main_characters.other_key_character has invalid name/role. They must be strings, or both be placeholder values, or both be null.');
+        for (const character of outlineData.main_characters) {
+            if (!character || typeof character !== 'object' ||
+                !character.name || typeof character.name !== 'string' || !character.name.trim() ||
+                !character.description || typeof character.description !== 'string' || !character.description.trim()) {
+                throw new Error('Invalid structure in main_characters array: each character must have a non-empty name and description.');
             }
         }
 
@@ -438,6 +394,7 @@ export class OutlineService {
         sellingPoints: string;
         setting: string;
         synopsis: string;
+        characters: OutlineCharacter[];
     } | undefined> {
         try {
             // Find outline components by looking at transforms that have the outline session as input
@@ -472,7 +429,8 @@ export class OutlineService {
                     'outline_genre',
                     'outline_selling_points',
                     'outline_setting',
-                    'outline_synopsis'
+                    'outline_synopsis',
+                    'outline_characters'
                 ].includes(artifact.type);
             });
 
@@ -483,7 +441,14 @@ export class OutlineService {
             }, {} as Record<string, any>);
 
             // Check if we have all required components
-            const requiredTypes = ['outline_title', 'outline_genre', 'outline_selling_points', 'outline_setting', 'outline_synopsis'];
+            const requiredTypes = [
+                'outline_title',
+                'outline_genre',
+                'outline_selling_points',
+                'outline_setting',
+                'outline_synopsis',
+                'outline_characters'
+            ];
             const hasAllComponents = requiredTypes.every(type => componentsByType[type]);
 
             if (!hasAllComponents) {
@@ -496,7 +461,8 @@ export class OutlineService {
                 genre: (componentsByType['outline_genre'].data as OutlineGenreV1).genre,
                 sellingPoints: (componentsByType['outline_selling_points'].data as OutlineSellingPointsV1).selling_points,
                 setting: (componentsByType['outline_setting'].data as OutlineSettingV1).setting,
-                synopsis: (componentsByType['outline_synopsis'].data as OutlineSynopsisV1).synopsis
+                synopsis: (componentsByType['outline_synopsis'].data as OutlineSynopsisV1).synopsis,
+                characters: (componentsByType['outline_characters'].data as OutlineCharactersV1).characters
             };
         } catch (error) {
             console.error('Error fetching outline components:', error);
