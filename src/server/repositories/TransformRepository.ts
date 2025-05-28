@@ -74,7 +74,7 @@ export class TransformRepository {
         await this.db('transform_outputs').insert(outputData);
     }
 
-    // Add or Update LLM-specific data (Upsert)
+    // Add LLM-specific data
     async addLLMTransform(llmTransform: LLMTransform): Promise<void> {
         const llmData = {
             transform_id: llmTransform.transform_id,
@@ -84,17 +84,7 @@ export class TransformRepository {
             token_usage: JSON.stringify(llmTransform.token_usage)
         };
 
-        // Knex syntax for INSERT ... ON CONFLICT ... UPDATE for SQLite
-        await this.db.raw(
-            `INSERT INTO llm_transforms (transform_id, model_name, model_parameters, raw_response, token_usage)
-             VALUES (?, ?, ?, ?, ?)
-             ON CONFLICT(transform_id) DO UPDATE SET
-                model_name = excluded.model_name,
-                model_parameters = excluded.model_parameters,
-                raw_response = excluded.raw_response,
-                token_usage = excluded.token_usage`,
-            [llmData.transform_id, llmData.model_name, llmData.model_parameters, llmData.raw_response, llmData.token_usage]
-        );
+        await this.db('llm_transforms').insert(llmData);
     }
 
     // Add LLM prompts
@@ -250,12 +240,5 @@ export class TransformRepository {
         await this.db('transforms')
             .where('id', transformId)
             .update({ status });
-    }
-
-    // Update transform execution context
-    async updateTransformExecutionContext(transformId: string, context: any): Promise<void> {
-        await this.db('transforms')
-            .where('id', transformId)
-            .update({ execution_context: JSON.stringify(context) });
     }
 } 

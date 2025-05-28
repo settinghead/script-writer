@@ -16,7 +16,6 @@ import { TransformExecutor } from './services/TransformExecutor';
 import { IdeationService } from './services/IdeationService';
 import { OutlineService } from './services/OutlineService';
 import { ScriptService } from './services/ScriptService';
-import { StreamingService } from './services/StreamingService';
 import {
   validateIdeationCreate,
   validatePlotGeneration,
@@ -49,11 +48,8 @@ const transformRepo = new TransformRepository(db);
 // Initialize cache service
 const cacheService = new CacheService();
 
-// Initialize StreamingService
-const streamingService = new StreamingService(artifactRepo, transformRepo);
-
-// Initialize services with caching and streaming
-const transformExecutor = new TransformExecutor(artifactRepo, transformRepo, streamingService);
+// Initialize services with caching
+const transformExecutor = new TransformExecutor(artifactRepo, transformRepo);
 const ideationService = new IdeationService(artifactRepo, transformRepo, transformExecutor, cacheService);
 const outlineService = new OutlineService(artifactRepo, transformExecutor, cacheService);
 const scriptService = new ScriptService(artifactRepo, transformExecutor);
@@ -1138,73 +1134,6 @@ app.get("/debug/performance", authMiddleware.authenticate, async (req: any, res:
     });
   }
 });
-
-// ========== PROTECTED STREAMING ENDPOINT ==========
-app.get("/api/transforms/:transformId/stream", authMiddleware.authenticate, async (req: any, res: any) => {
-  const { transformId } = req.params;
-  const user = authMiddleware.getCurrentUser(req);
-
-  if (!user) {
-    return res.status(401).json({ error: "User not authenticated" });
-  }
-
-  // Validate transform ownership (optional but recommended)
-  // const transform = await transformRepo.getTransform(transformId, user.id);
-  // if (!transform) {
-  //   return res.status(404).json({ error: "Transform not found or access denied" });
-  // }
-
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.flushHeaders(); // Flush the headers to establish the connection immediately
-
-  const sendEvent = (data: string) => {
-    // SSE format: data: {JSON_STRING}\n\n
-    res.write(`data: ${data}\n\n`);
-  };
-
-  const subscribed = streamingService.subscribeToStream(transformId, sendEvent);
-
-  if (!subscribed) {
-    // Stream might have already finished or never existed
-    // Check if transform completed and send final data if available, or send an error/end event.
-    const transformDetails = await transformRepo.getTransform(transformId, user.id);
-    if (transformDetails && transformDetails.status === 'completed') {
-      // Attempt to find the output artifact
-      if (transformDetails.outputs && transformDetails.outputs.length > 0) {
-        const outputArtifactId = transformDetails.outputs[0].artifact_id; // Assuming one primary output
-        const artifact = await artifactRepo.getArtifact(outputArtifactId, user.id);
-        if (artifact) {
-          sendEvent(JSON.stringify({ type: 'final', data: artifact.data }));
-        } else {
-          sendEvent(JSON.stringify({ type: 'error', message: 'Transform completed but output artifact not found.' }));
-        }
-      } else {
-        sendEvent(JSON.stringify({ type: 'error', message: 'Transform completed but no output artifacts linked.' }));
-      }
-    } else if (transformDetails && (transformDetails.status === 'failed' || transformDetails.status === 'failed_parsing' || transformDetails.status === 'failed_streaming')) {
-      sendEvent(JSON.stringify({ type: 'error', message: `Transform failed with status: ${transformDetails.status}`, details: transformDetails.execution_context }));
-    } else if (!transformDetails) {
-      sendEvent(JSON.stringify({ type: 'error', message: 'Transform not found.' }));
-    } else {
-      sendEvent(JSON.stringify({ type: 'error', message: 'Stream not available and transform not completed.', details: `Status: ${transformDetails.status}` }));
-    }
-    res.write(`event: stream_end\ndata: ${JSON.stringify({ message: "Stream ended or was not found." })}\n\n`);
-    res.end();
-    return;
-  }
-
-  req.on('close', () => {
-    // Client closed connection, cleanup if necessary (StreamingService handles its own cleanup)
-    console.log(`Client disconnected from stream ${transformId}`);
-    // Unsubscribe or notify StreamingService if needed, though current design auto-cleans.
-    res.end();
-  });
-});
-
-// ========== EXISTING PROTECTED API ENDPOINTS (Require Authentication) ==========
-// ... existing code ...
 
 // Handle client-side routing fallback
 // This must be the last route to catch all unmatched routes
