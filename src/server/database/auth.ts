@@ -1,4 +1,4 @@
-import * as sqlite3 from 'sqlite3';
+import { Knex } from 'knex';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface User {
@@ -27,286 +27,139 @@ export interface UserSession {
 }
 
 export class AuthDatabase {
-    constructor(private db: sqlite3.Database) { }
+    constructor(private db: Knex) { }
 
-    // Initialize authentication tables
-    initializeAuthTables(): Promise<void> {
-        return new Promise((resolve, reject) => {
-            this.db.serialize(() => {
-                // Create users table
-                this.db.run(`
-          CREATE TABLE IF NOT EXISTS users (
-            id TEXT PRIMARY KEY,
-            username TEXT NOT NULL UNIQUE,
-            display_name TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            status TEXT DEFAULT 'active'
-          )
-        `, (err) => {
-                    if (err) {
-                        console.error('Error creating users table:', err);
-                        reject(err);
-                        return;
-                    }
-                });
-
-                // Create auth_providers table
-                this.db.run(`
-          CREATE TABLE IF NOT EXISTS auth_providers (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id TEXT NOT NULL,
-            provider_type TEXT NOT NULL,
-            provider_user_id TEXT,
-            provider_data TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users (id),
-            UNIQUE(provider_type, provider_user_id)
-          )
-        `, (err) => {
-                    if (err) {
-                        console.error('Error creating auth_providers table:', err);
-                        reject(err);
-                        return;
-                    }
-                });
-
-                // Create user_sessions table
-                this.db.run(`
-          CREATE TABLE IF NOT EXISTS user_sessions (
-            id TEXT PRIMARY KEY,
-            user_id TEXT NOT NULL,
-            expires_at DATETIME NOT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users (id)
-          )
-        `, (err) => {
-                    if (err) {
-                        console.error('Error creating user_sessions table:', err);
-                        reject(err);
-                        return;
-                    }
-                    resolve();
-                });
-            });
-        });
+    // Initialize authentication tables (now handled by migrations)
+    async initializeAuthTables(): Promise<void> {
+        // Tables are now created via migrations
+        // This method is kept for compatibility but does nothing
+        console.log('Authentication tables initialized via migrations');
     }
 
-    // Create test users
+    // Create test users (now handled by seeds)
     async createTestUsers(): Promise<void> {
-        const testUsers = [
-            { id: 'test-user-xiyang', username: 'xiyang', display_name: 'Xi Yang' },
-            { id: 'test-user-xiaolin', username: 'xiaolin', display_name: 'Xiao Lin' },
-            { id: 'test-user-giselle', username: 'giselle', display_name: 'Giselle' }
-        ];
-
-        for (const user of testUsers) {
-            try {
-                await this.createUser(user.id, user.username, user.display_name);
-                await this.createAuthProvider(user.id, 'dropdown', user.username);
-            } catch (error) {
-                // Ignore if user already exists
-                if (!(error as Error).message.includes('UNIQUE constraint failed')) {
-                    console.error(`Error creating test user ${user.username}:`, error);
-                }
-            }
-        }
+        // Test users are now created via seeds
+        // This method is kept for compatibility but does nothing
+        console.log('Test users initialized via seeds');
     }
 
     // User management
-    createUser(id: string, username: string, displayName?: string): Promise<User> {
-        return new Promise((resolve, reject) => {
-            const stmt = this.db.prepare(`
-        INSERT INTO users (id, username, display_name)
-        VALUES (?, ?, ?)
-      `);
+    async createUser(id: string, username: string, displayName?: string): Promise<User> {
+        const now = new Date().toISOString();
 
-            stmt.run([id, username, displayName], function (err) {
-                if (err) {
-                    reject(err);
-                    return;
-                }
+        const userData = {
+            id,
+            username,
+            display_name: displayName,
+            created_at: now,
+            updated_at: now,
+            status: 'active'
+        };
 
-                // Return the created user
-                resolve({
-                    id,
-                    username,
-                    display_name: displayName,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
-                    status: 'active'
-                });
-            });
+        await this.db('users').insert(userData);
 
-            stmt.finalize();
-        });
+        return userData;
     }
 
-    getUserById(id: string): Promise<User | null> {
-        return new Promise((resolve, reject) => {
-            this.db.get(
-                'SELECT * FROM users WHERE id = ?',
-                [id],
-                (err, row: any) => {
-                    if (err) {
-                        reject(err);
-                        return;
-                    }
-                    resolve(row || null);
-                }
-            );
-        });
+    async getUserById(id: string): Promise<User | null> {
+        const user = await this.db('users')
+            .where({ id })
+            .first();
+
+        return user || null;
     }
 
-    getUserByUsername(username: string): Promise<User | null> {
-        return new Promise((resolve, reject) => {
-            this.db.get(
-                'SELECT * FROM users WHERE username = ?',
-                [username],
-                (err, row: any) => {
-                    if (err) {
-                        reject(err);
-                        return;
-                    }
-                    resolve(row || null);
-                }
-            );
-        });
+    async getUserByUsername(username: string): Promise<User | null> {
+        const user = await this.db('users')
+            .where({ username })
+            .first();
+
+        return user || null;
     }
 
     // Auth provider management
-    createAuthProvider(userId: string, providerType: string, providerUserId?: string, providerData?: any): Promise<AuthProvider> {
-        return new Promise((resolve, reject) => {
-            const stmt = this.db.prepare(`
-        INSERT INTO auth_providers (user_id, provider_type, provider_user_id, provider_data)
-        VALUES (?, ?, ?, ?)
-      `);
+    async createAuthProvider(userId: string, providerType: string, providerUserId?: string, providerData?: any): Promise<AuthProvider> {
+        const now = new Date().toISOString();
 
-            stmt.run([userId, providerType, providerUserId, JSON.stringify(providerData)], function (err) {
-                if (err) {
-                    reject(err);
-                    return;
-                }
+        const providerDataToInsert = {
+            user_id: userId,
+            provider_type: providerType,
+            provider_user_id: providerUserId,
+            provider_data: JSON.stringify(providerData),
+            created_at: now
+        };
 
-                resolve({
-                    id: this.lastID,
-                    user_id: userId,
-                    provider_type: providerType,
-                    provider_user_id: providerUserId,
-                    provider_data: providerData,
-                    created_at: new Date().toISOString()
-                });
-            });
+        const [id] = await this.db('auth_providers').insert(providerDataToInsert);
 
-            stmt.finalize();
-        });
+        return {
+            id,
+            user_id: userId,
+            provider_type: providerType,
+            provider_user_id: providerUserId,
+            provider_data: providerData,
+            created_at: now
+        };
     }
 
-    getUserByProvider(providerType: string, providerUserId: string): Promise<User | null> {
-        return new Promise((resolve, reject) => {
-            this.db.get(`
-        SELECT u.* FROM users u
-        JOIN auth_providers ap ON u.id = ap.user_id
-        WHERE ap.provider_type = ? AND ap.provider_user_id = ?
-      `, [providerType, providerUserId], (err, row: any) => {
-                if (err) {
-                    reject(err);
-                    return;
-                }
-                resolve(row || null);
-            });
-        });
+    async getUserByProvider(providerType: string, providerUserId: string): Promise<User | null> {
+        const user = await this.db('users as u')
+            .join('auth_providers as ap', 'u.id', 'ap.user_id')
+            .where({
+                'ap.provider_type': providerType,
+                'ap.provider_user_id': providerUserId
+            })
+            .select('u.*')
+            .first();
+
+        return user || null;
     }
 
     // Session management
-    createSession(sessionId: string, userId: string, expiresAt: Date): Promise<UserSession> {
-        return new Promise((resolve, reject) => {
-            const stmt = this.db.prepare(`
-        INSERT INTO user_sessions (id, user_id, expires_at)
-        VALUES (?, ?, ?)
-      `);
+    async createSession(sessionId: string, userId: string, expiresAt: Date): Promise<UserSession> {
+        const now = new Date().toISOString();
 
-            stmt.run([sessionId, userId, expiresAt.toISOString()], function (err) {
-                if (err) {
-                    reject(err);
-                    return;
-                }
+        const sessionData = {
+            id: sessionId,
+            user_id: userId,
+            expires_at: expiresAt.toISOString(),
+            created_at: now
+        };
 
-                resolve({
-                    id: sessionId,
-                    user_id: userId,
-                    expires_at: expiresAt.toISOString(),
-                    created_at: new Date().toISOString()
-                });
-            });
+        await this.db('user_sessions').insert(sessionData);
 
-            stmt.finalize();
-        });
+        return sessionData;
     }
 
-    getSession(sessionId: string): Promise<UserSession | null> {
-        return new Promise((resolve, reject) => {
-            this.db.get(
-                'SELECT * FROM user_sessions WHERE id = ? AND expires_at > datetime("now")',
-                [sessionId],
-                (err, row: any) => {
-                    if (err) {
-                        reject(err);
-                        return;
-                    }
-                    resolve(row || null);
-                }
-            );
-        });
+    async getSession(sessionId: string): Promise<UserSession | null> {
+        const session = await this.db('user_sessions')
+            .where('id', sessionId)
+            .where('expires_at', '>', this.db.fn.now())
+            .first();
+
+        return session || null;
     }
 
-    deleteSession(sessionId: string): Promise<void> {
-        return new Promise((resolve, reject) => {
-            this.db.run(
-                'DELETE FROM user_sessions WHERE id = ?',
-                [sessionId],
-                (err) => {
-                    if (err) {
-                        reject(err);
-                        return;
-                    }
-                    resolve();
-                }
-            );
-        });
+    async deleteSession(sessionId: string): Promise<void> {
+        await this.db('user_sessions')
+            .where({ id: sessionId })
+            .del();
     }
 
     // Get all test users for dropdown
-    getTestUsers(): Promise<User[]> {
-        return new Promise((resolve, reject) => {
-            this.db.all(`
-        SELECT u.* FROM users u
-        JOIN auth_providers ap ON u.id = ap.user_id
-        WHERE ap.provider_type = 'dropdown'
-        ORDER BY u.username
-      `, (err, rows: any[]) => {
-                if (err) {
-                    reject(err);
-                    return;
-                }
-                resolve(rows || []);
-            });
-        });
+    async getTestUsers(): Promise<User[]> {
+        const users = await this.db('users as u')
+            .join('auth_providers as ap', 'u.id', 'ap.user_id')
+            .where('ap.provider_type', 'dropdown')
+            .select('u.*')
+            .orderBy('u.username');
+
+        return users || [];
     }
 
     // Clean up expired sessions
-    cleanupExpiredSessions(): Promise<void> {
-        return new Promise((resolve, reject) => {
-            this.db.run(
-                'DELETE FROM user_sessions WHERE expires_at <= datetime("now")',
-                (err) => {
-                    if (err) {
-                        reject(err);
-                        return;
-                    }
-                    resolve();
-                }
-            );
-        });
+    async cleanupExpiredSessions(): Promise<void> {
+        await this.db('user_sessions')
+            .where('expires_at', '<=', this.db.fn.now())
+            .del();
     }
 } 

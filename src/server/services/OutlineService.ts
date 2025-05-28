@@ -298,24 +298,24 @@ export class OutlineService {
 - 内容要具体、详细，避免空洞的描述
 - 每个部分都要紧密围绕原始灵感展开
 - 故事要有完整的逻辑链条和情感弧线
-- 适合短视频/短剧的制作需求
+- 适合短视频/短剧的制作、拍摄、剪辑需求
 
 请以JSON格式返回，字段如下：
 {
-  "title": "剧名",
-  "genre": "题材类型",
-  "selling_points": "项目卖点/爽点",
-  "setting": "故事设定", 
-  "synopsis": "故事梗概"
+  "title": "[string] 剧名",
+  "genre": "[string] 题材类型",
+    "setting": "[string] 故事设定", 
+ "selling_points": ["[string] 卖点/爽点1", "[string] 卖点/爽点2", "[string] 卖点/爽点3"],
+  "synopsis": ["[string] 起", "[string] 承", "[string] 转", "[string] 合"]
 }`;
     }
 
     private parseOutlineResponse(rawData: any): {
         title: string;
         genre: string;
-        selling_points: string;
+        selling_points: string[];
         setting: string;
-        synopsis: string;
+        synopsis: string[];
     } {
         // Handle both direct JSON response and nested response formats
         let outlineData = rawData;

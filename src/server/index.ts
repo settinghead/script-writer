@@ -3,7 +3,6 @@ import ViteExpress from "vite-express";
 import { createOpenAI } from '@ai-sdk/openai';
 import { streamText, generateText } from 'ai';
 import * as dotenv from 'dotenv';
-import * as sqlite3 from 'sqlite3';
 import { v4 as uuidv4 } from 'uuid';
 import cookieParser from 'cookie-parser';
 import { setupYjsWebSocketServer, applyEditsToYDoc } from './yjs-server';
@@ -25,6 +24,7 @@ import {
 } from './middleware/validation';
 import { ReplayService } from './services/ReplayService';
 import { CacheService } from './services/CacheService';
+import { db, initializeDatabase } from './database/connection';
 
 dotenv.config();
 
@@ -34,15 +34,8 @@ const app = express();
 app.use(express.json()); // Middleware to parse JSON bodies
 app.use(cookieParser()); // Middleware to parse cookies
 
-// Initialize SQLite database
-const db = new sqlite3.Database('./ideations.db', (err) => {
-  if (err) {
-    console.error('Error opening database:', err.message);
-  } else {
-    console.log('Connected to SQLite database');
-    initializeDatabase();
-  }
-});
+// Initialize database with Knex
+initializeDatabase().catch(console.error);
 
 // Initialize authentication system
 const authDB = new AuthDatabase(db);
@@ -62,115 +55,7 @@ const outlineService = new OutlineService(artifactRepo, transformExecutor, cache
 const scriptService = new ScriptService(artifactRepo, transformExecutor);
 const replayService = new ReplayService(artifactRepo, transformRepo, transformExecutor);
 
-// Create tables if they don't exist
-const initializeDatabase = async () => {
-  db.serialize(() => {
-    // ========== ARTIFACTS/TRANSFORMS TABLES ==========
-
-    // Immutable artifacts (all data entities)
-    db.run(`
-      CREATE TABLE IF NOT EXISTS artifacts (
-        id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL,
-        type TEXT NOT NULL,
-        type_version TEXT NOT NULL DEFAULT 'v1',
-        data TEXT NOT NULL,
-        metadata TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users (id)
-      )
-    `);
-
-    // Operations that transform artifacts
-    db.run(`
-      CREATE TABLE IF NOT EXISTS transforms (
-        id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL,
-        type TEXT NOT NULL,
-        type_version TEXT NOT NULL DEFAULT 'v1',
-        status TEXT DEFAULT 'completed',
-        execution_context TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users (id)
-      )
-    `);
-
-    // Many-to-many: transform inputs
-    db.run(`
-      CREATE TABLE IF NOT EXISTS transform_inputs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        transform_id TEXT NOT NULL,
-        artifact_id TEXT NOT NULL,
-        input_role TEXT,
-        FOREIGN KEY (transform_id) REFERENCES transforms (id) ON DELETE CASCADE,
-        FOREIGN KEY (artifact_id) REFERENCES artifacts (id),
-        UNIQUE(transform_id, artifact_id, input_role)
-      )
-    `);
-
-    // Many-to-many: transform outputs
-    db.run(`
-      CREATE TABLE IF NOT EXISTS transform_outputs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        transform_id TEXT NOT NULL,
-        artifact_id TEXT NOT NULL,
-        output_role TEXT,
-        FOREIGN KEY (transform_id) REFERENCES transforms (id) ON DELETE CASCADE,
-        FOREIGN KEY (artifact_id) REFERENCES artifacts (id),
-        UNIQUE(transform_id, artifact_id, output_role)
-      )
-    `);
-
-    // LLM prompts (separate due to size)
-    db.run(`
-      CREATE TABLE IF NOT EXISTS llm_prompts (
-        id TEXT PRIMARY KEY,
-        transform_id TEXT NOT NULL,
-        prompt_text TEXT NOT NULL,
-        prompt_role TEXT DEFAULT 'primary',
-        FOREIGN KEY (transform_id) REFERENCES transforms (id) ON DELETE CASCADE
-      )
-    `);
-
-    // LLM-specific transform metadata
-    db.run(`
-      CREATE TABLE IF NOT EXISTS llm_transforms (
-        transform_id TEXT PRIMARY KEY,
-        model_name TEXT NOT NULL,
-        model_parameters TEXT,
-        raw_response TEXT,
-        token_usage TEXT,
-        FOREIGN KEY (transform_id) REFERENCES transforms (id) ON DELETE CASCADE
-      )
-    `);
-
-    // Human-specific transform metadata
-    db.run(`
-      CREATE TABLE IF NOT EXISTS human_transforms (
-        transform_id TEXT PRIMARY KEY,
-        action_type TEXT NOT NULL,
-        interface_context TEXT,
-        change_description TEXT,
-        FOREIGN KEY (transform_id) REFERENCES transforms (id) ON DELETE CASCADE
-      )
-    `);
-
-    // Create indexes for performance
-    db.run(`CREATE INDEX IF NOT EXISTS idx_artifacts_user_type ON artifacts (user_id, type)`);
-    db.run(`CREATE INDEX IF NOT EXISTS idx_artifacts_user_created ON artifacts (user_id, created_at)`);
-    db.run(`CREATE INDEX IF NOT EXISTS idx_transforms_user_created ON transforms (user_id, created_at)`);
-  });
-
-  // Initialize authentication tables and test users
-  try {
-    await authDB.initializeAuthTables();
-    await authDB.createTestUsers();
-    console.log('Authentication system initialized');
-    console.log('Artifacts/Transforms database schema initialized');
-  } catch (error) {
-    console.error('Error initializing database:', error);
-  }
-};
+// Database initialization is now handled by migrations and seeds
 
 // Create the server with ViteExpress
 const server = ViteExpress.listen(app, PORT, () => {
@@ -716,28 +601,13 @@ app.put("/api/artifacts/:artifactId",
       };
 
       // Update the artifact directly in the database
-      await new Promise<void>((resolve, reject) => {
-        const stmt = db.prepare(`
-          UPDATE artifacts 
-          SET data = ?, metadata = ?
-          WHERE id = ? AND user_id = ?
-        `);
-
-        stmt.run([
-          JSON.stringify(updatedData),
-          JSON.stringify(existingArtifact.metadata),
-          artifactId,
-          user.id
-        ], function (err) {
-          if (err) {
-            reject(err);
-            return;
-          }
-          resolve();
+      await db('artifacts')
+        .where('id', artifactId)
+        .where('user_id', user.id)
+        .update({
+          data: JSON.stringify(updatedData),
+          metadata: JSON.stringify(existingArtifact.metadata)
         });
-
-        stmt.finalize();
-      });
 
       // Return the updated artifact with the same ID
       const updatedArtifact = {
