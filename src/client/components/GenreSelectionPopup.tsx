@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Drawer, Button, Checkbox, Typography, Slider, Row, Col } from 'antd';
-import { RightOutlined, LeftOutlined } from '@ant-design/icons';
+import { RightOutlined, LeftOutlined, CloseOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
 
@@ -99,8 +99,10 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
             setNavigationPath([]);
             if (!isMobile) {
                 if (currentSelectionPaths.length > 0 && currentSelectionPaths[0].length > 0) {
+                    console.log('[GenreSelectionPopup] useEffect (visible): Initializing activeNavigationPath based on currentSelectionPaths[0]. Path:', currentSelectionPaths[0].slice(0, -1));
                     setActiveNavigationPath(currentSelectionPaths[0].slice(0, -1));
                 } else {
+                    console.log('[GenreSelectionPopup] useEffect (visible): Initializing activeNavigationPath to empty array (no current selection).');
                     setActiveNavigationPath([]);
                 }
             }
@@ -139,7 +141,7 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
         if (Array.isArray(data)) {
             return data.length <= 1 || (data.length === 2 && data.includes('disabled'));
         }
-        if (typeof data === 'object') {
+        if (data && typeof data === 'object') {
             const children = Object.keys(data);
             if (children.length === 1) {
                 const childData = data[children[0]];
@@ -152,6 +154,7 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
     };
 
     const handleNavigationClick = (pathForNextColumn: string[]) => {
+        console.log('[GenreSelectionPopup] handleNavigationClick: pathForNextColumn:', JSON.stringify(pathForNextColumn), 'isMobile:', isMobile);
         if (isMobile) {
             setNavigationPath(pathForNextColumn);
         } else {
@@ -183,6 +186,12 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
             initializeProportions(newSelectedPaths);
             return newSelectedPaths;
         });
+    };
+
+    const handleRemoveSelectedItem = (indexToRemove: number) => {
+        const newSelectedPaths = tempSelectedPaths.filter((_, index) => index !== indexToRemove);
+        setTempSelectedPaths(newSelectedPaths);
+        initializeProportions(newSelectedPaths);
     };
 
     const handleProportionSliderChange = (index: number, value: number | null) => {
@@ -224,9 +233,10 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
     };
 
     const renderProportionSliders = () => {
-        if (tempSelectedPaths.length < 2) return null;
+        if (tempSelectedPaths.length === 0) return null;
 
         const totalRawSum = tempProportions.reduce((a, b) => a + b, 0);
+        const isSingleItem = tempSelectedPaths.length === 1;
 
         return (
             <div style={{ marginTop: '20px', padding: '0 16px' }}>
@@ -241,21 +251,33 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
 
                     return (
                         <div key={`slider-${index}`} style={{ marginBottom: '15px' }}>
-                            <Row align="middle" gutter={16}>
+                            <Row align="middle" gutter={8}>
                                 <Col flex="1">
                                     <Text ellipsis={{ tooltip: pathString }}>{pathString}</Text>
                                 </Col>
                                 <Col style={{ width: '70px', textAlign: 'right' }}>
-                                    <Text type="secondary">{`${currentPercentage.toFixed(0)}%`}</Text>
+                                    <Text type="secondary">
+                                        {isSingleItem ? '100%' : `${currentPercentage.toFixed(0)}%`}
+                                    </Text>
+                                </Col>
+                                <Col>
+                                    <Button
+                                        type="text"
+                                        icon={<CloseOutlined />}
+                                        onClick={() => handleRemoveSelectedItem(index)}
+                                        size="small"
+                                        danger
+                                    />
                                 </Col>
                             </Row>
                             <Slider
                                 min={0}
                                 max={100}
                                 step={1}
-                                value={displayValue}
+                                value={isSingleItem ? 100 : displayValue}
                                 onChange={(value) => handleProportionSliderChange(index, value)}
                                 tooltip={{ formatter: (value) => `${value}` }}
+                                disabled={isSingleItem}
                             />
                         </div>
                     );
@@ -268,6 +290,8 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
         const columns = [];
         let currentLevelData: any = genreOptions;
         let currentPathSegmentsForRender: string[] = [];
+
+        console.log('[GenreSelectionPopup] renderMillerColumns START. activeNavigationPath:', JSON.stringify(activeNavigationPath), 'tempSelectedPaths:', JSON.stringify(tempSelectedPaths));
 
         columns.push(
             <div key="col-root" style={{
@@ -286,7 +310,10 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
                     return (
                         <div
                             key={key}
-                            onClick={() => { if (hasChildren([], key) && !isDeepestLevel([], key)) handleNavigationClick(itemPath); }}
+                            onClick={() => {
+                                console.log('[GenreSelectionPopup] renderMillerColumns (root): onClick for key:', key, 'itemPath:', JSON.stringify(itemPath), 'hasChildren:', hasChildren([], key), 'isDeepestLevel:', isDeepestLevel([], key));
+                                if (hasChildren([], key) && !isDeepestLevel([], key)) handleNavigationClick(itemPath);
+                            }}
                             style={{
                                 padding: '8px 12px',
                                 cursor: (hasChildren([], key) && !isDeepestLevel([], key)) ? 'pointer' : 'default',
@@ -322,6 +349,18 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
             currentPathSegmentsForRender = activeNavigationPath.slice(0, i + 1);
             currentLevelData = getDataAtPath(currentPathSegmentsForRender);
 
+            console.log(`[GenreSelectionPopup] renderMillerColumns (loop ${i}): currentPathSegmentsForRender FOR THIS ITERATION:`, JSON.stringify(currentPathSegmentsForRender), 'Raw currentLevelData exists:', !!currentLevelData);
+
+            if (i === 1) { // This iteration generates the THIRD visual column
+                console.log(`[GenreSelectionPopup] Generating THIRD visual column (i=${i}). activeNavigationPath at this point:`, JSON.stringify(activeNavigationPath));
+                console.log(`[GenreSelectionPopup] Path used for getDataAtPath for Col 3:`, JSON.stringify(currentPathSegmentsForRender));
+                if (currentLevelData && typeof currentLevelData === 'object') {
+                    console.log(`[GenreSelectionPopup] Children for Col 3:`, JSON.stringify(Object.keys(currentLevelData)));
+                } else {
+                    console.log(`[GenreSelectionPopup] No children object for Col 3, currentLevelData:`, currentLevelData);
+                }
+            }
+
             if (currentLevelData && typeof currentLevelData === 'object' && !Array.isArray(currentLevelData)) {
                 columns.push(
                     <div key={`col-${i}`} style={{
@@ -337,13 +376,20 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
                             const canSelectItem = !hasChildren(currentPathSegmentsForRender, key) || isDeepestLevel(currentPathSegmentsForRender, key);
                             const isActiveNavBranch = activeNavigationPath[i + 1] === key;
 
+                            const itemHasChildren = hasChildren(currentPathSegmentsForRender, key);
+                            const itemIsDeepest = isDeepestLevel(currentPathSegmentsForRender, key);
+                            console.log(`[GenreSelectionPopup] renderMillerColumns (column ${i}): onClick for key:`, key, 'itemPath:', JSON.stringify(itemPath));
+                            console.log(`    Args for nav decision: itemHasChildren: ${itemHasChildren}, itemIsDeepest: ${itemIsDeepest}`);
+
                             return (
                                 <div
                                     key={key}
                                     onClick={() => {
-                                        if (hasChildren(currentPathSegmentsForRender, key) && !isDeepestLevel(currentPathSegmentsForRender, key)) {
+                                        if (itemHasChildren && !itemIsDeepest) {
+                                            console.log(`    Navigating due to itemHasChildren && !itemIsDeepest.`);
                                             handleNavigationClick(itemPath);
                                         } else if (canSelectItem) {
+                                            console.log(`    Checkbox change due to canSelectItem: ${canSelectItem}.`);
                                             handleCheckboxChange(currentPathSegmentsForRender, key);
                                         }
                                     }}
@@ -507,8 +553,13 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
         );
     };
 
-    const modalContentHeight = tempSelectedPaths.length >= 2 ? 'auto' : '450px';
     const drawerHeight = tempSelectedPaths.length >= 2 ? '85vh' : '70vh';
+
+    const modalBodyStyle: React.CSSProperties = {
+        height: 'auto',
+        maxHeight: 'calc(100vh - 180px)', // Account for modal header, footer, and body padding
+        overflowY: 'auto',
+    };
 
     if (isMobile) {
         return (
@@ -545,11 +596,8 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
             open={visible}
             onCancel={handleCancel}
             width={Math.min(220 * (activeNavigationPath.length + 2) + (tempSelectedPaths.length >= 2 ? 50 : 0), 1000)}
-            style={{
-                height: modalContentHeight,
-                overflowY: 'auto',
-                maxHeight: tempSelectedPaths.length >= 2 ? '60vh' : '400px'
-            }}
+            bodyStyle={modalBodyStyle}
+            centered
             footer={[
                 <Button key="cancel" onClick={handleCancel}>
                     取消
