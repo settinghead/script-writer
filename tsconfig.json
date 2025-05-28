@@ -25,6 +25,7 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "resolveJsonModule": true,
+    "downlevelIteration": true,
     "isolatedModules": true,
     "incremental": true,
     "baseUrl": ".",
