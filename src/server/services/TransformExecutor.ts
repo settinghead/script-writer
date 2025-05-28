@@ -145,21 +145,29 @@ export class TransformExecutor {
                         return value.trim();
                     } else if (Array.isArray(value)) {
                         // If it's an array, join with newlines or appropriate separator
-                        console.warn(`Array value encountered for outline field: ${JSON.stringify(value)}, joining as string`);
-                        return value.map(item => String(item).trim()).join('\n');
+                        // For selling_points, this is okay as the artifact expects a string.
+                        return value.map(item => String(item).trim()).join('\\n');
                     } else if (typeof value === 'object' && value !== null) {
-                        // If it's an object, try to extract meaningful text
-                        console.warn(`Object value encountered for outline field: ${JSON.stringify(value)}, extracting text`);
+                        // This case might be hit for parts of setting or synopsis if not handled specifically
+                        console.warn(`Object value encountered for outline field: ${JSON.stringify(value)}, attempting to extract meaningful text or stringify.`);
                         if (value.text) return String(value.text).trim();
                         if (value.content) return String(value.content).trim();
                         if (value.value) return String(value.value).trim();
-                        // Fallback: stringify the object in a readable way
-                        return JSON.stringify(value, null, 2);
+                        return JSON.stringify(value, null, 2); // Fallback
+                    } else if (value === undefined || value === null) {
+                        return ''; // Return empty string for undefined/null
                     } else {
-                        console.warn(`Non-string value encountered: ${value}, converting to string`);
                         return String(value).trim();
                     }
                 };
+
+                // parsedData is the rich object from the new prompt
+                // e.g., parsedData.title, parsedData.genre
+                // parsedData.setting = { core_setting_summary: string, key_scenes: string[] }
+                // parsedData.synopsis = { opening: string, development: string, turn_climax: string, resolution: string }
+                // parsedData.selling_points = string[]
+                // parsedData.main_characters = { protagonist: {...}, antagonist_or_love_interest: {...}, other_key_character?: {...}} (not directly used for individual artifacts here)
+
 
                 const titleArtifact = await this.artifactRepo.createArtifact(
                     userId,
@@ -177,26 +185,59 @@ export class TransformExecutor {
                 );
                 outputArtifacts.push(genreArtifact);
 
+                // selling_points is an array of strings, safeTrim will join them with newline.
+                // OutlineSellingPointsV1 expects a single string.
                 const sellingPointsArtifact = await this.artifactRepo.createArtifact(
                     userId,
                     'outline_selling_points',
-                    { selling_points: safeTrim(parsedData.selling_points) },
+                    { selling_points: safeTrim(parsedData.selling_points) }, // safeTrim joins array elements
                     'v1'
                 );
                 outputArtifacts.push(sellingPointsArtifact);
 
+                // Construct setting string from parsedData.setting object
+                let settingString = '';
+                if (parsedData.setting && typeof parsedData.setting === 'object') {
+                    const summary = safeTrim(parsedData.setting.core_setting_summary);
+                    const scenes = Array.isArray(parsedData.setting.key_scenes)
+                        ? parsedData.setting.key_scenes.map((s: string) => safeTrim(s))
+                        : [];
+                    settingString = `核心设定： ${summary}`;
+                    if (scenes.length > 0) {
+                        settingString += `\\n关键场景：\\n- ${scenes.join('\\n- ')}`;
+                    }
+                } else {
+                    // Fallback if structure is not as expected, though validation should catch this.
+                    settingString = safeTrim(parsedData.setting);
+                }
                 const settingArtifact = await this.artifactRepo.createArtifact(
                     userId,
                     'outline_setting',
-                    { setting: safeTrim(parsedData.setting) },
+                    { setting: settingString },
                     'v1'
                 );
                 outputArtifacts.push(settingArtifact);
 
+                // Construct synopsis string from parsedData.synopsis object - NOW IT'S A STRING
+                // let synopsisString = '';
+                // if (parsedData.synopsis && typeof parsedData.synopsis === 'object') {
+                //     const opening = safeTrim(parsedData.synopsis.opening);
+                //     const development = safeTrim(parsedData.synopsis.development);
+                //     const turnClimax = safeTrim(parsedData.synopsis.turn_climax);
+                //     const resolution = safeTrim(parsedData.synopsis.resolution);
+                //     synopsisString = `起： ${opening}\n承： ${development}\n转/高潮： ${turnClimax}\n合： ${resolution}`;
+                // } else {
+                //     // Fallback
+                //     synopsisString = safeTrim(parsedData.synopsis);
+                // }
+
+                // Synopsis is now expected to be a string directly from parsedData
+                const synopsisString = safeTrim(parsedData.synopsis);
+
                 const synopsisArtifact = await this.artifactRepo.createArtifact(
                     userId,
                     'outline_synopsis',
-                    { synopsis: safeTrim(parsedData.synopsis) },
+                    { synopsis: synopsisString },
                     'v1'
                 );
                 outputArtifacts.push(synopsisArtifact);

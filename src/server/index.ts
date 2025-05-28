@@ -636,6 +636,7 @@ app.post("/api/outlines/from-artifact/:artifactId",
   authMiddleware.authenticate,
   async (req: any, res: any) => {
     const { artifactId } = req.params;
+    const { totalEpisodes, episodeDuration } = req.body;
 
     const user = authMiddleware.getCurrentUser(req);
     if (!user) {
@@ -645,7 +646,9 @@ app.post("/api/outlines/from-artifact/:artifactId",
     try {
       const result = await outlineService.generateOutlineFromArtifact(
         user.id,
-        artifactId
+        artifactId,
+        totalEpisodes,
+        episodeDuration
       );
 
       res.json(result);

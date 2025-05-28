@@ -47,7 +47,9 @@ export class OutlineService {
     // Generate outline from story inspiration artifact
     async generateOutlineFromArtifact(
         userId: string,
-        sourceArtifactId: string
+        sourceArtifactId: string,
+        totalEpisodes?: number,
+        episodeDuration?: number
     ): Promise<{ outlineSessionId: string; artifacts: Artifact[] }> {
         // Get and validate source artifact (either brainstorm_idea or user_input)
         const sourceArtifact = await this.artifactRepo.getArtifact(sourceArtifactId, userId);
@@ -83,7 +85,7 @@ export class OutlineService {
         // Use the source artifact directly as input for the transform
 
         // Design LLM prompt for outline generation
-        const outlinePrompt = this.buildOutlinePrompt(userInput);
+        const outlinePrompt = this.buildOutlinePrompt(userInput, totalEpisodes, episodeDuration);
 
         // Execute LLM transform to generate outline
         const { outputArtifacts } = await this.transformExecutor.executeLLMTransform(
@@ -282,41 +284,59 @@ export class OutlineService {
     }
 
     // Private helper methods
-    private buildOutlinePrompt(userInput: string): string {
-        return `你是一个专业的编剧和故事开发专家。根据用户提供的故事灵感，请生成一个完整的故事大纲，包含以下5个组成部分：
+    private buildOutlinePrompt(userInput: string, totalEpisodes?: number, episodeDuration?: number): string {
+        const episodeInfo = (totalEpisodes && episodeDuration)
+            ? `\n\n剧集信息：\n- 总集数：${totalEpisodes}集\n- 每集时长：约${episodeDuration}分钟`
+            : '';
+
+        return `你是一位深耕短剧创作的资深编剧，尤其擅长创作引人入胜、节奏明快、反转强烈的爆款短剧。
+根据用户提供的故事灵感，请创作一个**单集完结**的短剧大纲。${episodeInfo}
 
 故事灵感：${userInput}
 
-请生成以下内容：
-1. 剧名：一个吸引人的标题，体现故事的核心主题
-2. 题材类型：明确的类型分类（如悬疑、爱情、职场、古装等）
-3. 项目卖点/爽点：这个故事最吸引观众的地方，能让人产生情感共鸣的核心卖点
-4. 故事设定：时间、地点、背景环境等基本设定
-5. 故事梗概：完整的故事梗概，包含起承转合，主要人物，核心冲突和结局
+请严格按照以下要求和JSON格式输出：
 
-要求：
-- 内容要具体、详细，避免空洞的描述
-- 每个部分都要紧密围绕原始灵感展开
-- 故事要有完整的逻辑链条和情感弧线
-- 适合短视频/短剧的制作、拍摄、剪辑需求
+1.  **剧名 (title)**: 一个极具吸引力、能瞬间抓住眼球的短剧标题，精准概括核心看点。
+2.  **题材类型 (genre)**: 明确的短剧类型（例如：都市爽文、逆袭复仇、甜宠虐恋、战神归来、古装宫斗等常见短剧热门题材）。
+3.  **核心看点/爽点 (selling_points)**: 列出3-5个最能激发观众情绪、构成"爽点"的核心情节或元素。例如：身份反转、打脸虐渣、绝境逢生、意外获得超能力、关键时刻英雄救美/美救英雄等。
+4.  **故事设定 (setting)**:
+    *   **一句话核心设定**: 用一句话概括故事发生的核心背景和主要人物关系。
+    *   **关键场景**: 2-3个推动剧情发展的核心场景。
+5.  **主要人物 (main_characters)**:
+    *   **主角**: 姓名，一句话性格特征及核心目标/困境。
+    *   **核心对手/情感对象**: 姓名，一句话性格特征及与主角的关系。
+    *   *(可选) 其他关键配角 (1名以内)*: 姓名，及其对剧情的关键作用。
+6.  **完整故事梗概 (synopsis)**: **一个详细且连贯的故事梗概**，描述主要情节、关键事件、核心冲突的发展，以及故事的最终结局。请用自然流畅的段落撰写，体现故事的吸引力。
+
+**短剧创作核心要求 (非常重要！):**
+-   **节奏极快**: 剧情推进迅速，不拖沓，每一分钟都要有信息量或情绪点。
+-   **冲突强烈**: 核心矛盾要直接、尖锐，能迅速抓住观众。
+-   **反转惊人**: 设计至少1-2个出人意料的情节反转。
+-   **情绪到位**: 准确拿捏观众的情绪，如愤怒、喜悦、紧张、同情等，并快速给予满足（如"打脸"情节）。
+-   **人物鲜明**: 主角和核心对手的人物性格和动机要清晰、极致。
+-   **结局爽快**: 结局要干脆利落，给观众明确的情感释放。
+-   **紧扣灵感**: 所有设计必须围绕原始故事灵感展开，并将其特点放大。
+-   **避免"电影感"**: 不要追求复杂的叙事结构、过多的角色内心戏或宏大的世界观。专注于简单直接、冲击力强的单集故事。
 
 请以JSON格式返回，字段如下：
 {
   "title": "[string] 剧名",
   "genre": "[string] 题材类型",
-    "setting": "[string] 故事设定", 
- "selling_points": ["[string] 卖点/爽点1", "[string] 卖点/爽点2", "[string] 卖点/爽点3"],
-  "synopsis": ["[string] 起", "[string] 承", "[string] 转", "[string] 合"]
+  "selling_points": ["[string] 核心看点1", "[string] 核心看点2", "[string] 核心看点3"],
+  "setting": {
+    "core_setting_summary": "[string] 一句话核心设定",
+    "key_scenes": ["[string] 关键场景1", "[string] 关键场景2"]
+  },
+  "main_characters": {
+    "protagonist": { "name": "[string]", "description": "[string] 性格特征及核心目标/困境" },
+    "antagonist_or_love_interest": { "name": "[string]", "description": "[string] 性格特征及与主角的关系" },
+    "other_key_character": { "name": "[string, 可选]", "role": "[string, 可选]" }
+  },
+  "synopsis": "[string] 详细的、包含主要情节/关键事件/核心冲突发展和结局的故事梗概。"
 }`;
     }
 
-    private parseOutlineResponse(rawData: any): {
-        title: string;
-        genre: string;
-        selling_points: string[];
-        setting: string;
-        synopsis: string[];
-    } {
+    private parseOutlineResponse(rawData: any): any {
         // Handle both direct JSON response and nested response formats
         let outlineData = rawData;
 
@@ -328,21 +348,85 @@ export class OutlineService {
             }
         }
 
-        // Validate required fields
-        const requiredFields = ['title', 'genre', 'selling_points', 'setting', 'synopsis'];
-        for (const field of requiredFields) {
-            if (!outlineData[field] || typeof outlineData[field] !== 'string') {
-                throw new Error(`Missing or invalid field: ${field}`);
+        // Validate required fields based on the new structure
+        if (!outlineData.title || typeof outlineData.title !== 'string') {
+            throw new Error('Missing or invalid field: title');
+        }
+        if (!outlineData.genre || typeof outlineData.genre !== 'string') {
+            throw new Error('Missing or invalid field: genre');
+        }
+        if (!outlineData.selling_points || !Array.isArray(outlineData.selling_points) || !outlineData.selling_points.every((sp: any) => typeof sp === 'string')) {
+            throw new Error('Missing or invalid field: selling_points');
+        }
+        if (!outlineData.setting || typeof outlineData.setting !== 'object' ||
+            !outlineData.setting.core_setting_summary || typeof outlineData.setting.core_setting_summary !== 'string' ||
+            !outlineData.setting.key_scenes || !Array.isArray(outlineData.setting.key_scenes) || !outlineData.setting.key_scenes.every((ks: any) => typeof ks === 'string')) {
+            throw new Error('Missing or invalid field: setting');
+        }
+
+        // Validate main_characters object and its primary fields
+        if (!outlineData.main_characters || typeof outlineData.main_characters !== 'object' ||
+            !outlineData.main_characters.protagonist || typeof outlineData.main_characters.protagonist !== 'object' ||
+            !outlineData.main_characters.protagonist.name || typeof outlineData.main_characters.protagonist.name !== 'string' ||
+            !outlineData.main_characters.protagonist.description || typeof outlineData.main_characters.protagonist.description !== 'string' ||
+            !outlineData.main_characters.antagonist_or_love_interest || typeof outlineData.main_characters.antagonist_or_love_interest !== 'object' ||
+            !outlineData.main_characters.antagonist_or_love_interest.name || typeof outlineData.main_characters.antagonist_or_love_interest.name !== 'string' ||
+            !outlineData.main_characters.antagonist_or_love_interest.description || typeof outlineData.main_characters.antagonist_or_love_interest.description !== 'string') {
+            throw new Error('Missing or invalid field in main_characters: protagonist or antagonist_or_love_interest structure is invalid.');
+        }
+
+        // Validate optional other_key_character if it exists
+        if (outlineData.main_characters.other_key_character) {
+            const otherChar = outlineData.main_characters.other_key_character;
+
+            // It must be an object if it exists
+            if (typeof otherChar !== 'object' || otherChar === null) {
+                throw new Error('Invalid field: main_characters.other_key_character must be an object if present.');
+            }
+
+            const hasName = otherChar.hasOwnProperty('name');
+            const hasRole = otherChar.hasOwnProperty('role');
+
+            // If name or role is undefined (but key exists), or if they are not strings, and not the placeholder/null values, it's an error.
+            const nameIsPlaceholder = otherChar.name === '[string, 可选]';
+            const roleIsPlaceholder = otherChar.role === '[string, 可选]';
+            const nameIsNull = otherChar.name === null;
+            const roleIsNull = otherChar.role === null;
+
+            const nameIsValidString = typeof otherChar.name === 'string';
+            const roleIsValidString = typeof otherChar.role === 'string';
+
+            // Valid states for otherChar: 
+            // 1. name and role are valid strings.
+            // 2. name/role are the placeholder strings.
+            // 3. name/role are explicitly null.
+            // 4. The entire other_key_character field is absent (handled by the outer if).
+
+            let isValidOtherChar = false;
+            if (nameIsValidString && roleIsValidString && !nameIsPlaceholder && !roleIsPlaceholder && !nameIsNull && !roleIsNull) {
+                isValidOtherChar = true; // Actual values provided
+            } else if (nameIsPlaceholder && roleIsPlaceholder) {
+                isValidOtherChar = true; // Both are placeholders
+            } else if (nameIsNull && roleIsNull) {
+                isValidOtherChar = true; // Both are null
+            }
+
+            if (!isValidOtherChar) {
+                // This will catch cases like: one is placeholder/null and other is not, or types are wrong and not placeholder/null.
+                // Or if one property is missing entirely.
+                if (!hasName || !hasRole) {
+                    throw new Error('Invalid field: main_characters.other_key_character must have both name and role properties if the object exists.');
+                }
+                throw new Error('Invalid field: main_characters.other_key_character has invalid name/role. They must be strings, or both be placeholder values, or both be null.');
             }
         }
 
-        return {
-            title: outlineData.title.trim(),
-            genre: outlineData.genre.trim(),
-            selling_points: outlineData.selling_points.trim(),
-            setting: outlineData.setting.trim(),
-            synopsis: outlineData.synopsis.trim()
-        };
+        if (!outlineData.synopsis || typeof outlineData.synopsis !== 'string' || !outlineData.synopsis.trim()) {
+            throw new Error('Missing or invalid field: synopsis must be a non-empty string.');
+        }
+
+        // Return the structured data directly. Consumers will adapt.
+        return outlineData;
     }
 
     private async getOutlineComponents(
