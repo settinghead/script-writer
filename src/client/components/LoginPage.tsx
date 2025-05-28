@@ -86,11 +86,10 @@ const LoginPage: React.FC = () => {
                     maxWidth: '400px',
                     boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
                     borderRadius: '12px',
-                    border: '1px solid #333'
-                }}
-                bodyStyle={{
+                    border: '1px solid #333',
                     padding: '40px 32px'
                 }}
+
             >
                 <div style={{ textAlign: 'center', marginBottom: '32px' }}>
                     <div style={{

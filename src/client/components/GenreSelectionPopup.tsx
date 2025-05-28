@@ -550,7 +550,7 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
             open={visible}
             onCancel={handleCancel}
             width={Math.min(220 * (activeNavigationPath.length + 2) + (tempSelectedPaths.length >= 2 ? 50 : 0), 1000)}
-            bodyStyle={modalBodyStyle}
+            style={modalBodyStyle}
             centered
             footer={[
                 <Button key="cancel" onClick={handleCancel}>

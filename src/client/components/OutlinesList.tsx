@@ -220,10 +220,6 @@ const OutlinesList: React.FC = () => {
                                 style={{
                                     minHeight: '220px',
                                     height: 'auto',
-                                    display: 'flex',
-                                    flexDirection: 'column'
-                                }}
-                                bodyStyle={{
                                     flex: 1,
                                     display: 'flex',
                                     flexDirection: 'column',

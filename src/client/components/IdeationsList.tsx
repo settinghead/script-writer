@@ -274,12 +274,8 @@ const IdeationsList: React.FC = () => {
                                     minHeight: '220px',
                                     height: 'auto', // Allow dynamic height
                                     display: 'flex',
-                                    flexDirection: 'column'
-                                }}
-                                bodyStyle={{
-                                    flex: 1,
-                                    display: 'flex',
                                     flexDirection: 'column',
+                                    flex: 1,
                                     padding: isMobile ? '12px' : '16px' // Smaller padding on mobile
                                 }}
                                 actions={[

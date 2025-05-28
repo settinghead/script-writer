@@ -180,9 +180,9 @@ const OutlineTab: React.FC = () => {
                             style={{
                                 background: '#0f0f0f',
                                 border: '1px solid #404040',
-                                borderRadius: '8px'
+                                borderRadius: '8px',
+                                padding: '20px'
                             }}
-                            bodyStyle={{ padding: '20px' }}
                         >
                             <div style={{ marginBottom: '12px' }}>
                                 <Text strong style={{ fontSize: '18px', color: '#ffffff' }}>
