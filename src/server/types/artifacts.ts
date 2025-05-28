@@ -79,6 +79,7 @@ export interface BrainstormParamsV1 {
 // Individual brainstorm ideas  
 export interface BrainstormIdeaV1 {
     idea_text: string;
+    idea_title?: string; // Optional title field (3-7 characters)
     order_index: number;
     confidence_score?: number;
 }
@@ -185,7 +186,8 @@ function isBrainstormParamsV1(data: any): data is BrainstormParamsV1 {
 function isBrainstormIdeaV1(data: any): data is BrainstormIdeaV1 {
     return typeof data === 'object' &&
         typeof data.idea_text === 'string' &&
-        typeof data.order_index === 'number';
+        typeof data.order_index === 'number' &&
+        (data.idea_title === undefined || typeof data.idea_title === 'string');
 }
 
 function isUserInputV1(data: any): data is UserInputV1 {

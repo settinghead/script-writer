@@ -308,6 +308,7 @@ app.post("/api/ideations/create_run_with_ideas",
       genrePaths,
       genreProportions,
       initialIdeas,
+      initialIdeaTitles,
       requirements
     } = req.body;
 
@@ -323,6 +324,7 @@ app.post("/api/ideations/create_run_with_ideas",
         genrePaths || [],
         genreProportions || [],
         initialIdeas,
+        initialIdeaTitles || [],
         requirements || ''
       );
 

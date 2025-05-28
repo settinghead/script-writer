@@ -27,8 +27,9 @@ export class IdeationService {
         genrePaths: string[][],
         genreProportions: number[],
         initialIdeas: string[],
+        initialIdeaTitles: string[] = [],
         requirements: string
-    ): Promise<{ runId: string; initialIdeaArtifacts: Array<{ id: string, text: string, orderIndex: number }> }> {
+    ): Promise<{ runId: string; initialIdeaArtifacts: Array<{ id: string, text: string, title?: string, orderIndex: number }> }> {
         // Create ideation session artifact
         const sessionId = uuidv4();
         const sessionArtifact = await this.artifactRepo.createArtifact(
@@ -55,13 +56,14 @@ export class IdeationService {
 
         // Create individual idea artifacts
         const ideaArtifacts: Artifact[] = [];
-        const initialIdeaArtifacts: Array<{ id: string, text: string, orderIndex: number }> = [];
+        const initialIdeaArtifacts: Array<{ id: string, text: string, title?: string, orderIndex: number }> = [];
         for (let i = 0; i < initialIdeas.length; i++) {
             const ideaArtifact = await this.artifactRepo.createArtifact(
                 userId,
                 'brainstorm_idea',
                 {
                     idea_text: initialIdeas[i],
+                    idea_title: initialIdeaTitles[i] || undefined,
                     order_index: i
                 } as BrainstormIdeaV1
             );
@@ -69,6 +71,7 @@ export class IdeationService {
             initialIdeaArtifacts.push({
                 id: ideaArtifact.id,
                 text: initialIdeas[i],
+                title: initialIdeaTitles[i] || undefined,
                 orderIndex: i
             });
         }
@@ -268,10 +271,14 @@ export class IdeationService {
                 selectedPlatform: brainstormParams?.data.platform || '',
                 genrePaths: brainstormParams?.data.genre_paths || [],
                 genreProportions: brainstormParams?.data.genre_proportions || [],
-                initialIdeas: brainstormIdeas.map(idea => idea.data.idea_text),
+                initialIdeas: brainstormIdeas.map(idea => ({
+                    title: idea.data.idea_title || '',
+                    body: idea.data.idea_text
+                })),
                 initialIdeaArtifacts: brainstormIdeas.map(idea => ({
                     id: idea.id,
                     text: idea.data.idea_text,
+                    title: idea.data.idea_title,
                     orderIndex: idea.data.order_index
                 })),
                 requirements: brainstormParams?.data.requirements || '',
@@ -360,6 +367,7 @@ export class IdeationService {
                 genre_paths: brainstormParams?.data.genre_paths || [],
                 genre_proportions: brainstormParams?.data.genre_proportions || [],
                 initial_ideas: brainstormIdeas.map(idea => idea.data.idea_text),
+                initial_idea_titles: brainstormIdeas.map(idea => idea.data.idea_title || ''),
                 created_at: sessionArtifact.created_at
             });
         }

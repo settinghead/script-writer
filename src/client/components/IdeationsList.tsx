@@ -32,6 +32,7 @@ interface IdeationRun {
     genre_paths: string[][];
     genre_proportions: number[];
     initial_ideas: string[];
+    initial_idea_titles?: string[];
     created_at: string;
 }
 
@@ -133,9 +134,19 @@ const IdeationsList: React.FC = () => {
     };
 
     const generateTitle = (ideation: IdeationRun) => {
-        // Priority: use first initial idea, then user input, then generate from platform + genre
+        // Priority: use comma-separated idea titles, then user input, then generate from platform + genre
         const maxLength = isMobile ? 25 : 35; // Shorter titles on mobile
 
+        if (ideation.initial_idea_titles && ideation.initial_idea_titles.length > 0) {
+            // Filter out empty titles and join with commas
+            const validTitles = ideation.initial_idea_titles.filter(title => title && title.trim());
+            if (validTitles.length > 0) {
+                const titleString = validTitles.join('，');
+                return truncateText(titleString, maxLength);
+            }
+        }
+
+        // Fallback to first initial idea if no titles available
         if (ideation.initial_ideas && ideation.initial_ideas.length > 0) {
             return truncateText(ideation.initial_ideas[0], maxLength);
         }

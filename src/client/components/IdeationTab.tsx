@@ -28,8 +28,8 @@ const IdeationTab: React.FC = () => {
         selectedPlatform: '',
         selectedGenrePaths: [] as string[][],
         genreProportions: [] as number[],
-        generatedIdeas: [] as string[],
-        generatedIdeaArtifacts: [] as Array<{ id: string, text: string, orderIndex: number }>,
+        generatedIdeas: [] as Array<{ title: string, body: string }>,
+        generatedIdeaArtifacts: [] as Array<{ id: string, text: string, title?: string, orderIndex: number }>,
         requirements: ''
     });
 
@@ -69,7 +69,9 @@ const IdeationTab: React.FC = () => {
 
             // If there are generated ideas and user input matches one of them, collapse brainstorming
             if (data.initialIdeas && data.initialIdeas.length > 0 && data.userInput) {
-                const ideaIndex = data.initialIdeas.findIndex((idea: string) => idea === data.userInput);
+                const ideaIndex = data.initialIdeas.findIndex((idea: any) =>
+                    (typeof idea === 'string' ? idea : idea.body) === data.userInput
+                );
                 if (ideaIndex !== -1) {
                     setBrainstormingCollapsed(true);
                 }
@@ -157,13 +159,13 @@ const IdeationTab: React.FC = () => {
         }
     };
 
-    const handleIdeaSelect = (idea: string) => {
-        setUserInput(idea);
+    const handleIdeaSelect = (ideaBody: string) => {
+        setUserInput(ideaBody);
         setBrainstormingCollapsed(true);
 
         // Find the artifact ID for this idea
         const selectedArtifact = brainstormingData.generatedIdeaArtifacts.find(
-            artifact => artifact.text === idea
+            artifact => artifact.text === ideaBody
         );
 
         if (selectedArtifact) {
@@ -189,8 +191,8 @@ const IdeationTab: React.FC = () => {
         selectedPlatform: string;
         selectedGenrePaths: string[][];
         genreProportions: number[];
-        generatedIdeas: string[];
-        generatedIdeaArtifacts: Array<{ id: string, text: string, orderIndex: number }>;
+        generatedIdeas: Array<{ title: string, body: string }>;
+        generatedIdeaArtifacts: Array<{ id: string, text: string, title?: string, orderIndex: number }>;
         requirements: string;
     }) => {
         setBrainstormingData({

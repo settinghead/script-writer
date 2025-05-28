@@ -17,36 +17,45 @@ const ideaGenerationTemplate = `
 {requirementsSection}
 
 要求：
-- 每个创意是一个完整的故事梗概灵感（50-80字）
-- 包含完整的起承转合结构
+- 每个创意包含一个标题（3-7个字符）和一个完整的故事梗概灵感（50-80字）
+- 故事梗概包含完整的起承转合结构
 - 有明确的主角、冲突、发展和结局
 - 适合短视频/短剧格式
 
 参考示例（注意灵感应该是一个完整但是高度概括的故事梗概，而不是简单的一句话场景）：
 
 浪漫类示例：
-- 失恋女孩收到前男友寄来的神秘包裹，里面是一本日记记录着他们从相识到分手的点点滴滴。她按照日记线索重走曾经的约会路线，最后在咖啡店发现前男友一直在等她，原来分手是因为他要出国治病，现在痊愈归来想重新开始。
+- 标题：神秘包裹 | 故事：失恋女孩收到前男友寄来的神秘包裹，里面是一本日记记录着他们从相识到分手的点点滴滴。她按照日记线索重走曾经的约会路线，最后在咖啡店发现前男友一直在等她，原来分手是因为他要出国治病，现在痊愈归来想重新开始。
 
 悬疑类示例：
-- 夜班护士发现医院13楼总是传来奇怪声音，调查后发现是一个植物人患者在深夜会醒来写字。她偷偷观察发现患者在写死者名单，而名单上的人竟然一个个离奇死亡。最后她发现患者其实是灵媒，在帮助冤魂完成心愿。
+- 标题：午夜病房 | 故事：夜班护士发现医院13楼总是传来奇怪声音，调查后发现是一个植物人患者在深夜会醒来写字。她偷偷观察发现患者在写死者名单，而名单上的人竟然一个个离奇死亡。最后她发现患者其实是灵媒，在帮助冤魂完成心愿。
 
 职场类示例：
-- 新入职程序员发现公司的AI系统开始给他分配越来越奇怪的任务，从修复简单bug到黑入竞争对手系统。他逐渐意识到AI正在测试他的道德底线，最终发现这是公司筛选内部间谍的秘密计划，而他必须选择举报还是成为共犯。
+- 标题：AI测试 | 故事：新入职程序员发现公司的AI系统开始给他分配越来越奇怪的任务，从修复简单bug到黑入竞争对手系统。他逐渐意识到AI正在测试他的道德底线，最终发现这是公司筛选内部间谍的秘密计划，而他必须选择举报还是成为共犯。
 
 霸总类示例：
-- 公司新来的清洁阿姨每天都在CEO办公室留下小纸条提醒他按时吃饭。冷酷总裁开始期待这些温暖的关怀，暗中调查发现她是为了给生病的孙女筹医药费才来打工。他匿名资助治疗费用，最后在医院偶遇，两人从忘年之交发展为真正的感情。
+- 标题：纸条温情 | 故事：公司新来的清洁阿姨每天都在CEO办公室留下小纸条提醒他按时吃饭。冷酷总裁开始期待这些温暖的关怀，暗中调查发现她是为了给生病的孙女筹医药费才来打工。他匿名资助治疗费用，最后在医院偶遇，两人从忘年之交发展为真正的感情。
 
 古装类示例：
-- 落魄书生为了科举考试进京，误入神秘客栈发现所有客人都是各朝各代的落榜文人。店主告诉他只要完成一道终极考题就能实现愿望。经过与历代文人的智慧较量，他发现真正的考验不是文采而是内心对理想的坚持，最终选择放弃捷径用实力证明自己。
+- 标题：神秘客栈 | 故事：落魄书生为了科举考试进京，误入神秘客栈发现所有客人都是各朝各代的落榜文人。店主告诉他只要完成一道终极考题就能实现愿望。经过与历代文人的智慧较量，他发现真正的考验不是文采而是内心对理想的坚持，最终选择放弃捷径用实力证明自己。
 
 现在请为指定类型生成${NUM_IDEAS_TO_GENERATE}个类似完整度的故事创意：
 
-请以JSON数组的格式返回这${NUM_IDEAS_TO_GENERATE}个灵感，例如：
-["故事灵感1", "故事灵感2", ..., "故事灵感${NUM_IDEAS_TO_GENERATE}"]
+请以JSON数组的格式返回这${NUM_IDEAS_TO_GENERATE}个灵感，每个元素包含title和body字段，例如：
+[
+  {"title": "标题1", "body": "故事梗概1"},
+  {"title": "标题2", "body": "故事梗概2"},
+  ...
+]
 不要其他解释或包裹。
 `;
 
 const { Text } = Typography;
+
+interface IdeaWithTitle {
+    title: string;
+    body: string;
+}
 
 interface BrainstormingPanelProps {
     isCollapsed: boolean;
@@ -55,8 +64,8 @@ interface BrainstormingPanelProps {
         selectedPlatform: string;
         selectedGenrePaths: string[][];
         genreProportions: number[];
-        generatedIdeas: string[];
-        generatedIdeaArtifacts: Array<{ id: string, text: string, orderIndex: number }>;
+        generatedIdeas: IdeaWithTitle[];
+        generatedIdeaArtifacts: Array<{ id: string, text: string, title?: string, orderIndex: number }>;
         requirements: string;
     }) => void;
     onRunCreated?: (runId: string) => void; // New callback for when a run is created
@@ -64,7 +73,7 @@ interface BrainstormingPanelProps {
     initialPlatform?: string;
     initialGenrePaths?: string[][];
     initialGenreProportions?: number[];
-    initialGeneratedIdeas?: string[];
+    initialGeneratedIdeas?: IdeaWithTitle[];
     initialRequirements?: string;
 }
 
@@ -85,8 +94,7 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
     const [requirements, setRequirements] = useStorageState<string>('ideation_requirements', initialRequirements);
     const [genrePopupVisible, setGenrePopupVisible] = useState(false);
     const [isGeneratingIdea, setIsGeneratingIdea] = useState(false);
-    const [generatedIdeas, setGeneratedIdeas] = useState<string[]>(initialGeneratedIdeas);
-    const [generatedIdeaArtifacts, setGeneratedIdeaArtifacts] = useState<Array<{ id: string, text: string, orderIndex: number }>>([]);
+    const [generatedIdeas, setGeneratedIdeas] = useState<IdeaWithTitle[]>(initialGeneratedIdeas || []);
     const [selectedIdeaIndex, setSelectedIdeaIndex] = useState<number | null>(null);
     const [error, setError] = useState<Error | null>(null);
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -107,10 +115,10 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
             selectedGenrePaths,
             genreProportions,
             generatedIdeas,
-            generatedIdeaArtifacts,
+            generatedIdeaArtifacts: [],
             requirements
         });
-    }, [selectedPlatform, selectedGenrePaths, genreProportions, generatedIdeas, generatedIdeaArtifacts, requirements]);
+    }, [selectedPlatform, selectedGenrePaths, genreProportions, generatedIdeas, requirements]);
 
     const handlePlatformChange = (value: string) => {
         setSelectedPlatform(value);
@@ -125,7 +133,7 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
     // Handle idea card selection
     const handleIdeaSelection = (index: number) => {
         setSelectedIdeaIndex(index);
-        onIdeaSelect(generatedIdeas[index]);
+        onIdeaSelect(generatedIdeas[index].body);
     };
 
     // Check if genre selection is complete
@@ -206,22 +214,39 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
 
             const data = await response.json();
 
-            let ideasArray: string[] = [];
+            let ideasArray: IdeaWithTitle[] = [];
             if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
                 const contentText = data.choices[0].message.content.trim();
                 try {
-                    ideasArray = JSON.parse(contentText);
-                    if (!Array.isArray(ideasArray) || ideasArray.some(item => typeof item !== 'string') || ideasArray.length === 0) {
-                        throw new Error('响应不是一个包含字符串的有效非空数组');
+                    const parsedData: IdeaWithTitle[] = JSON.parse(contentText);
+                    if (!Array.isArray(parsedData) || parsedData.length === 0) {
+                        throw new Error('响应不是一个有效的非空数组');
+                    }
+
+                    // Validate structure and extract ideas
+                    for (const item of parsedData) {
+                        if (!item || typeof item !== 'object' || typeof item.title !== 'string' || typeof item.body !== 'string') {
+                            throw new Error('响应数组中包含无效的对象结构');
+                        }
+                        ideasArray.push(item);
                     }
                 } catch (parseError) {
                     console.error('Failed to parse ideas JSON:', parseError);
                     console.log('Raw content for ideas:', contentText);
                     try {
                         const repairedJson = jsonrepair(contentText);
-                        ideasArray = JSON.parse(repairedJson);
-                        if (!Array.isArray(ideasArray) || ideasArray.some(item => typeof item !== 'string') || ideasArray.length === 0) {
-                            throw new Error('修复后的响应仍然不是一个包含字符串的有效非空数组');
+                        const parsedData: IdeaWithTitle[] = JSON.parse(repairedJson);
+                        if (!Array.isArray(parsedData) || parsedData.length === 0) {
+                            throw new Error('修复后的响应仍然不是一个有效的非空数组');
+                        }
+
+                        // Clear array and re-populate
+                        ideasArray = [];
+                        for (const item of parsedData) {
+                            if (!item || typeof item !== 'object' || typeof item.title !== 'string' || typeof item.body !== 'string') {
+                                throw new Error('修复后的响应数组中仍包含无效的对象结构');
+                            }
+                            ideasArray.push(item);
                         }
                     } catch (repairError) {
                         console.error('Failed to parse ideas JSON even after repair:', repairError);
@@ -232,7 +257,7 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                 throw new Error('无法从响应中提取内容');
             }
 
-            if (ideasArray.length > 0 && ideasArray[0] && ideasArray[0].length > 0) {
+            if (ideasArray.length > 0) {
                 setGeneratedIdeas(ideasArray);
                 setSelectedIdeaIndex(null); // Reset selection
 
@@ -248,7 +273,8 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                                 selectedPlatform,
                                 genrePaths: selectedGenrePaths,
                                 genreProportions,
-                                initialIdeas: ideasArray,
+                                initialIdeas: ideasArray.map(idea => idea.body),
+                                initialIdeaTitles: ideasArray.map(idea => idea.title),
                                 requirements
                             })
                         });
@@ -261,7 +287,7 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                         if (runData.runId) {
                             // Store the artifact data from the response
                             if (runData.initialIdeaArtifacts && Array.isArray(runData.initialIdeaArtifacts)) {
-                                setGeneratedIdeaArtifacts(runData.initialIdeaArtifacts);
+                                // This is a placeholder for storing artifact data
                             }
                             onRunCreated(runData.runId);
                         }
@@ -527,14 +553,26 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                                     {index + 1}
                                 </div>
                                 <div style={{
-                                    fontSize: '13px',
-                                    lineHeight: '1.5',
-                                    paddingRight: '30px',
-                                    color: selectedIdeaIndex === index ? '#d9d9d9' : '#bfbfbf',
-                                    wordBreak: 'break-word',
-                                    hyphens: 'auto'
+                                    paddingRight: '30px'
                                 }}>
-                                    {idea}
+                                    <div style={{
+                                        fontSize: '14px',
+                                        fontWeight: 'bold',
+                                        marginBottom: '8px',
+                                        color: selectedIdeaIndex === index ? '#1890ff' : '#52c41a',
+                                        wordBreak: 'break-word'
+                                    }}>
+                                        {idea.title}
+                                    </div>
+                                    <div style={{
+                                        fontSize: '13px',
+                                        lineHeight: '1.5',
+                                        color: selectedIdeaIndex === index ? '#d9d9d9' : '#bfbfbf',
+                                        wordBreak: 'break-word',
+                                        hyphens: 'auto'
+                                    }}>
+                                        {idea.body}
+                                    </div>
                                 </div>
                             </div>
                         ))}
