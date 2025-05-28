@@ -5,6 +5,8 @@ import { ReloadOutlined, ArrowLeftOutlined, DeleteOutlined, BulbOutlined, Deskto
 import BrainstormingPanel from './BrainstormingPanel';
 import StoryInspirationEditor from './StoryInspirationEditor';
 
+
+
 const { TextArea } = Input;
 const { Title, Text, Paragraph } = Typography;
 
@@ -21,13 +23,15 @@ const IdeationTab: React.FC = () => {
     const [isLoadingRun, setIsLoadingRun] = useState(false);
     const [error, setError] = useState<Error | null>(null);
 
-    // Brainstorming state
-    const [selectedPlatform, setSelectedPlatform] = useState('');
-    const [selectedGenrePaths, setSelectedGenrePaths] = useState<string[][]>([]);
-    const [genreProportions, setGenreProportions] = useState<number[]>([]);
-    const [requirements, setRequirements] = useState('');
-    const [generatedIdeas, setGeneratedIdeas] = useState<Array<{ title: string, body: string }>>([]);
-    const [selectedIdeaIndex, setSelectedIdeaIndex] = useState<number | null>(null);
+    // Brainstorming data  
+    const [brainstormingData, setBrainstormingData] = useState({
+        selectedPlatform: '',
+        selectedGenrePaths: [] as string[][],
+        genreProportions: [] as number[],
+        generatedIdeas: [] as Array<{ title: string, body: string }>,
+        generatedIdeaArtifacts: [] as Array<{ id: string, text: string, title?: string, orderIndex: number }>,
+        requirements: ''
+    });
 
     const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -54,26 +58,26 @@ const IdeationTab: React.FC = () => {
 
             // Populate the component state with loaded data
             setUserInput(data.userInput || '');
-            setSelectedPlatform(data.selectedPlatform || '');
-            setSelectedGenrePaths(data.genrePaths || []);
-            setGenreProportions(data.genreProportions || []);
-            setRequirements(data.requirements || '');
-
-            // Convert legacy format to new format
-            const ideas = (data.initialIdeas || []).map((idea: any) => ({
-                title: typeof idea === 'object' ? idea.title : `想法 ${Math.floor(Math.random() * 1000)}`,
-                body: typeof idea === 'object' ? idea.body : idea
-            }));
-            setGeneratedIdeas(ideas);
+            setBrainstormingData({
+                selectedPlatform: data.selectedPlatform || '',
+                selectedGenrePaths: data.genrePaths || [],
+                genreProportions: data.genreProportions || [],
+                generatedIdeas: data.initialIdeas || [],
+                generatedIdeaArtifacts: data.initialIdeaArtifacts || [],
+                requirements: data.requirements || ''
+            });
 
             // If there are generated ideas and user input matches one of them, collapse brainstorming
-            if (ideas.length > 0 && data.userInput) {
-                const ideaIndex = ideas.findIndex((idea: any) => idea.body === data.userInput);
+            if (data.initialIdeas && data.initialIdeas.length > 0 && data.userInput) {
+                const ideaIndex = data.initialIdeas.findIndex((idea: any) =>
+                    (typeof idea === 'string' ? idea : idea.body) === data.userInput
+                );
                 if (ideaIndex !== -1) {
-                    setSelectedIdeaIndex(ideaIndex);
                     setBrainstormingCollapsed(true);
                 }
             }
+
+            // Note: plot generation is now handled by the outline feature
 
         } catch (err) {
             console.error('Error loading ideation run:', err);
@@ -85,23 +89,12 @@ const IdeationTab: React.FC = () => {
 
     const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         setUserInput(e.target.value);
-        // If user manually edits and it no longer matches a brainstormed idea, clear selection
-        if (selectedIdeaIndex !== null) {
-            const selectedIdea = generatedIdeas[selectedIdeaIndex];
-            if (selectedIdea && e.target.value !== selectedIdea.body) {
-                setSelectedIdeaIndex(null);
-            }
-        }
+        // If user manually edits and it no longer matches a brainstormed idea, keep collapsed state
     };
 
     const handleStoryInspirationValueChange = useCallback((value: string) => {
         setUserInput(value);
-        // Check if this matches any generated idea
-        if (generatedIdeas.length > 0) {
-            const ideaIndex = generatedIdeas.findIndex(idea => idea.body === value);
-            setSelectedIdeaIndex(ideaIndex !== -1 ? ideaIndex : null);
-        }
-    }, [generatedIdeas]);
+    }, []);
 
     const handleArtifactChange = useCallback((artifactId: string | null) => {
         setCurrentArtifactId(artifactId);
@@ -166,24 +159,53 @@ const IdeationTab: React.FC = () => {
         }
     };
 
-    const handleIdeaSelect = (index: number) => {
-        const selectedIdea = generatedIdeas[index];
-        if (selectedIdea) {
-            setUserInput(selectedIdea.body);
-            setSelectedIdeaIndex(index);
-            setBrainstormingCollapsed(true);
+    const handleIdeaSelect = (ideaBody: string) => {
+        setUserInput(ideaBody);
+        setBrainstormingCollapsed(true);
 
-            // For now, we'll create a user_input artifact when an idea is selected
-            // In the future, we might want to use the actual brainstorm_idea artifact ID
-            setCurrentArtifactId(null); // This will trigger creation of a new user_input artifact
+        // Find the artifact ID for this idea
+        const selectedArtifact = brainstormingData.generatedIdeaArtifacts.find(
+            artifact => artifact.text === ideaBody
+        );
+
+        if (selectedArtifact) {
+            // Use the brainstorm_idea artifact ID
+            setCurrentArtifactId(selectedArtifact.id);
+
+            // Update URL with artifact ID
+            if (ideationRunId) {
+                const newSearchParams = new URLSearchParams();
+                newSearchParams.set('artifact_id', selectedArtifact.id);
+                navigate(`/ideation/${ideationRunId}?${newSearchParams.toString()}`, { replace: true });
+            }
+        } else {
+            // Fallback: clear artifact ID for manual input
+            setCurrentArtifactId(null);
+            if (ideationRunId) {
+                navigate(`/ideation/${ideationRunId}`, { replace: true });
+            }
         }
     };
 
+    const handleBrainstormingDataChange = useCallback((data: {
+        selectedPlatform: string;
+        selectedGenrePaths: string[][];
+        genreProportions: number[];
+        generatedIdeas: Array<{ title: string, body: string }>;
+        generatedIdeaArtifacts: Array<{ id: string, text: string, title?: string, orderIndex: number }>;
+        requirements: string;
+    }) => {
+        setBrainstormingData({
+            ...data
+        });
+    }, []);
+
     const handleRunCreated = useCallback((runId: string) => {
-        console.log('Ideation run created:', runId);
-        // Navigate to the new run
+        // Navigate to the new ideation run
         navigate(`/ideation/${runId}`);
     }, [navigate]);
+
+
 
     // Cleanup function to abort any ongoing fetch when component unmounts
     useEffect(() => {
@@ -197,12 +219,14 @@ const IdeationTab: React.FC = () => {
     const handleRestart = () => {
         // Clear all states
         setUserInput('');
-        setSelectedPlatform('');
-        setSelectedGenrePaths([]);
-        setGenreProportions([]);
-        setRequirements('');
-        setGeneratedIdeas([]);
-        setSelectedIdeaIndex(null);
+        setBrainstormingData({
+            selectedPlatform: '',
+            selectedGenrePaths: [],
+            genreProportions: [],
+            generatedIdeas: [],
+            generatedIdeaArtifacts: [],
+            requirements: ''
+        });
         setBrainstormingEnabled(true);
         setBrainstormingCollapsed(false);
         setError(null);
@@ -336,19 +360,13 @@ const IdeationTab: React.FC = () => {
                         <BrainstormingPanel
                             isCollapsed={brainstormingCollapsed}
                             onIdeaSelect={handleIdeaSelect}
-                            onDataChange={(data) => {
-                                setSelectedPlatform(data.selectedPlatform);
-                                setSelectedGenrePaths(data.selectedGenrePaths);
-                                setGenreProportions(data.genreProportions);
-                                setRequirements(data.requirements);
-                                setGeneratedIdeas(data.generatedIdeas);
-                            }}
+                            onDataChange={handleBrainstormingDataChange}
                             onRunCreated={!ideationRunId ? handleRunCreated : undefined}
-                            initialPlatform={selectedPlatform}
-                            initialGenrePaths={selectedGenrePaths}
-                            initialGenreProportions={genreProportions}
-                            initialGeneratedIdeas={generatedIdeas}
-                            initialRequirements={requirements}
+                            initialPlatform={brainstormingData.selectedPlatform}
+                            initialGenrePaths={brainstormingData.selectedGenrePaths}
+                            initialGenreProportions={brainstormingData.genreProportions}
+                            initialGeneratedIdeas={brainstormingData.generatedIdeas}
+                            initialRequirements={brainstormingData.requirements}
                         />
                     )}
 

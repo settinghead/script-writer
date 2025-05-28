@@ -11,6 +11,7 @@ import {
     PlotOutlineV1
 } from '../types/artifacts';
 import { CacheService } from './CacheService';
+import { jsonrepair } from 'jsonrepair';
 
 export class IdeationService {
     constructor(
@@ -110,7 +111,7 @@ export class IdeationService {
         initialIdeas: string[],
         requirements: string,
         ideationTemplate: string
-    ): Promise<{ runId: string; result: any }> {
+    ): Promise<{ runId: string; llmStream: ReadableStream<Uint8Array>; completionPromise: Promise<any> }> {
         // Create ideation session and brainstorm params
         const sessionId = uuidv4();
         const sessionArtifact = await this.artifactRepo.createArtifact(
@@ -177,9 +178,9 @@ export class IdeationService {
         const genrePromptString = buildGenrePromptString();
 
         // Execute LLM transform to generate plot
-        const { outputArtifacts } = await this.transformExecutor.executeLLMTransform(
+        const { llmStream, completionPromise, transform } = await this.transformExecutor.executeLLMTransform(
             userId,
-            [paramsArtifact, userInputArtifact],
+            [paramsArtifact, userInputArtifact, ...ideaArtifacts, sessionArtifact],
             ideationTemplate,
             {
                 user_input: userInput,
@@ -187,21 +188,27 @@ export class IdeationService {
                 genre: genrePromptString || '未指定'
             },
             'deepseek-chat',
-            'plot_outline'
+            'plot_outline',
+            'v1',
+            { type: "json_object" }
         );
 
-        const plotArtifact = outputArtifacts[0];
-        const plotData = plotArtifact.data as PlotOutlineV1;
-
-        return {
-            runId: sessionId,
-            result: {
-                mediaType: plotData.media_type,
-                platform: plotData.platform,
-                plotOutline: plotData.plot_outline,
-                analysis: plotData.analysis
+        completionPromise.then(({ outputArtifacts, rawResponse }) => {
+            console.log(`Ideation run ${sessionId} plot generation completed. Transform ID: ${transform.id}`);
+            const plotArtifact = outputArtifacts.find(a => a.type === 'plot_outline');
+            if (plotArtifact) {
+                const plotData = plotArtifact.data as PlotOutlineV1;
+                this.cacheService.set(CacheService.ideationRunKey(userId, sessionId), {
+                    runId: sessionId,
+                    result: { ...plotData }
+                }, 3600 * 1000);
             }
-        };
+            this.cacheService.delete(`ideation_list:${userId}`);
+        }).catch(error => {
+            console.error(`Error during completion of ideation run ${sessionId}, Transform ID: ${transform.id}:`, error);
+        });
+
+        return { runId: sessionId, llmStream, completionPromise };
     }
 
     // Validate session ownership helper
@@ -395,89 +402,95 @@ export class IdeationService {
         return await this.artifactRepo.deleteArtifact(sessionArtifact.id, userId);
     }
 
-    // Generate plot for existing run (maps to /api/ideations/:id/generate_plot)
+    // Generate plot for an existing run - THIS WILL ALSO NEED STREAMING
     async generatePlotForRun(
         userId: string,
         sessionId: string,
         userInput: string,
         ideationTemplate: string
-    ): Promise<any> {
+    ): Promise<{ llmStream: ReadableStream<Uint8Array>; completionPromise: Promise<any> }> {
         // Validate inputs
-        if (!userInput.trim()) {
-            throw new Error('User input cannot be empty');
+        if (!userInput || userInput.trim() === '') {
+            throw new Error('User input cannot be empty.');
         }
-        if (!ideationTemplate.trim()) {
-            throw new Error('Ideation template cannot be empty');
+        if (!ideationTemplate || ideationTemplate.trim() === '') {
+            throw new Error('Ideation template cannot be empty.');
         }
 
-        try {
-            // Validate session ownership
-            const sessionArtifact = await this.validateSessionOwnership(userId, sessionId);
+        // Retrieve existing ideation session and brainstorm parameters artifacts
+        const sessionArtifact = await this.validateSessionOwnership(userId, sessionId);
+        if (!sessionArtifact) {
+            throw new Error(`Ideation session ${sessionId} not found or not accessible.`);
+        }
 
-            // Get related artifacts to find brainstorm params
-            const relatedArtifacts = await this.getSessionRelatedArtifacts(userId, sessionArtifact);
-            const brainstormParams = relatedArtifacts.find(a => a.type === 'brainstorm_params');
+        const allUserArtifacts = await this.artifactRepo.getAllUserArtifacts(userId);
+        const brainstormParamsArtifact = allUserArtifacts.find(a =>
+            a.type === 'brainstorm_params' &&
+            // This is a simplified check; ideally, link params to session via transforms
+            a.created_at < sessionArtifact.created_at
+            // TODO: Need a more robust way to link params to a session if multiple exist
+            // For now, picking the latest one before session creation or one linked via a transform
+        );
 
-            if (!brainstormParams) {
-                throw new Error('Brainstorm parameters not found for this session');
+        if (!brainstormParamsArtifact) {
+            throw new Error(`Brainstorm parameters for session ${sessionId} not found.`);
+        }
+        const paramsData = brainstormParamsArtifact.data as BrainstormParamsV1;
+
+        // Create user input artifact
+        const userInputArtifact = await this.artifactRepo.createArtifact(
+            userId,
+            'user_input',
+            { text: userInput, source: 'manual_regenerate' } as UserInputV1
+        );
+
+        // Build genre string for prompt
+        const buildGenrePromptString = (): string => {
+            if (!paramsData.genre_paths || paramsData.genre_paths.length === 0) return '未指定';
+            return paramsData.genre_paths.map((path: string[], index: number) => {
+                const proportion = paramsData.genre_proportions && paramsData.genre_proportions[index] !== undefined
+                    ? paramsData.genre_proportions[index]
+                    : (100 / (paramsData.genre_paths?.length || 1));
+                const pathString = path.join(' > ');
+                return (paramsData.genre_paths?.length || 0) > 1
+                    ? `${pathString} (${proportion.toFixed(0)}%)`
+                    : pathString;
+            }).join(', ');
+        };
+
+        const genrePromptString = buildGenrePromptString();
+
+        // Execute LLM transform to generate plot
+        const { llmStream, completionPromise, transform } = await this.transformExecutor.executeLLMTransform(
+            userId,
+            [brainstormParamsArtifact, userInputArtifact, sessionArtifact], // Inputs
+            ideationTemplate,
+            {
+                user_input: userInput,
+                platform: paramsData.platform || '未指定',
+                genre: genrePromptString || '未指定'
+            },
+            'deepseek-chat',
+            'plot_outline',
+            'v1',
+            { type: "json_object" } // Request JSON output
+        );
+
+        completionPromise.then(({ outputArtifacts, rawResponse }) => {
+            console.log(`Plot regeneration for run ${sessionId} completed. Transform ID: ${transform.id}`);
+            const plotArtifact = outputArtifacts.find(a => a.type === 'plot_outline');
+            if (plotArtifact) {
+                const plotData = plotArtifact.data as PlotOutlineV1;
+                this.cacheService.set(CacheService.ideationRunKey(userId, sessionId), {
+                    runId: sessionId,
+                    result: { ...plotData }
+                }, 3600 * 1000);
             }
+            this.cacheService.delete(`ideation_list:${userId}`);
+        }).catch(error => {
+            console.error(`Error during completion of plot regeneration for ${sessionId}, Transform ID: ${transform.id}:`, error);
+        });
 
-            // Create new user input artifact
-            const userInputArtifact = await this.artifactRepo.createArtifact(
-                userId,
-                'user_input',
-                {
-                    text: userInput,
-                    source: 'manual'
-                } as UserInputV1
-            );
-
-            // Build genre string for prompt
-            const buildGenrePromptString = (): string => {
-                const params = brainstormParams.data;
-                if (!params.genre_paths || params.genre_paths.length === 0) return '未指定';
-                return params.genre_paths.map((path: string[], index: number) => {
-                    const proportion = params.genre_proportions && params.genre_proportions[index] !== undefined
-                        ? params.genre_proportions[index]
-                        : (100 / params.genre_paths.length);
-                    const pathString = path.join(' > ');
-                    return params.genre_paths.length > 1
-                        ? `${pathString} (${proportion.toFixed(0)}%)`
-                        : pathString;
-                }).join(', ');
-            };
-
-            const genrePromptString = buildGenrePromptString();
-
-            // Execute LLM transform to generate plot
-            const { outputArtifacts } = await this.transformExecutor.executeLLMTransform(
-                userId,
-                [brainstormParams, userInputArtifact],
-                ideationTemplate,
-                {
-                    user_input: userInput,
-                    platform: brainstormParams.data.platform || '未指定',
-                    genre: genrePromptString || '未指定'
-                },
-                'deepseek-chat',
-                'plot_outline'
-            );
-
-            const plotArtifact = outputArtifacts[0];
-            const plotData = plotArtifact.data as PlotOutlineV1;
-
-            return {
-                result: {
-                    mediaType: plotData.media_type,
-                    platform: plotData.platform,
-                    plotOutline: plotData.plot_outline,
-                    analysis: plotData.analysis
-                }
-            };
-
-        } catch (error) {
-            console.error(`Error generating plot for session ${sessionId}:`, error);
-            throw error;
-        }
+        return { llmStream, completionPromise };
     }
 } 
