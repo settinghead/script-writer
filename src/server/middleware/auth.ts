@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import * as jwt from 'jsonwebtoken';
 import { AuthDatabase, User } from '../database/auth';
 import * as sqlite3 from 'sqlite3';
 
@@ -31,21 +31,23 @@ export class AuthMiddleware {
     };
 
     // Main authentication middleware
-    authenticate = async (req: Request, res: Response, next: NextFunction) => {
+    authenticate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const token = this.extractTokenFromCookies(req);
 
             if (!token) {
-                return res.status(401).json({
+                res.status(401).json({
                     error: 'Authentication required',
                     code: 'NO_TOKEN'
                 });
+                return;
             }
 
             const jwtSecret = process.env.JWT_SECRET;
             if (!jwtSecret) {
                 console.error('JWT_SECRET not configured');
-                return res.status(500).json({ error: 'Authentication configuration error' });
+                res.status(500).json({ error: 'Authentication configuration error' });
+                return;
             }
 
             // Verify JWT token
@@ -54,26 +56,29 @@ export class AuthMiddleware {
             // Check if session exists and is valid
             const session = await this.authDB.getSession(decoded.jti);
             if (!session) {
-                return res.status(401).json({
+                res.status(401).json({
                     error: 'Invalid or expired session',
                     code: 'INVALID_SESSION'
                 });
+                return;
             }
 
             // Get user from database
             const user = await this.authDB.getUserById(decoded.sub);
             if (!user) {
-                return res.status(401).json({
+                res.status(401).json({
                     error: 'User not found',
                     code: 'USER_NOT_FOUND'
                 });
+                return;
             }
 
             if (user.status !== 'active') {
-                return res.status(401).json({
+                res.status(401).json({
                     error: 'User account is not active',
                     code: 'USER_INACTIVE'
                 });
+                return;
             }
 
             // Attach user to request
@@ -81,35 +86,40 @@ export class AuthMiddleware {
             next();
         } catch (error) {
             if (error instanceof jwt.JsonWebTokenError) {
-                return res.status(401).json({
+                res.status(401).json({
                     error: 'Invalid token',
                     code: 'INVALID_TOKEN'
                 });
+                return;
             }
             if (error instanceof jwt.TokenExpiredError) {
-                return res.status(401).json({
+                res.status(401).json({
                     error: 'Token expired',
                     code: 'TOKEN_EXPIRED'
                 });
+                return;
             }
 
             console.error('Authentication error:', error);
-            return res.status(500).json({ error: 'Authentication error' });
+            res.status(500).json({ error: 'Authentication error' });
+            return;
         }
     };
 
     // Optional authentication - doesn't fail if no token, but attaches user if valid token
-    optionalAuth = async (req: Request, res: Response, next: NextFunction) => {
+    optionalAuth = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
             const token = this.extractTokenFromCookies(req);
 
             if (!token) {
-                return next(); // Continue without user
+                next(); // Continue without user
+                return;
             }
 
             const jwtSecret = process.env.JWT_SECRET;
             if (!jwtSecret) {
-                return next(); // Continue without user
+                next(); // Continue without user
+                return;
             }
 
             const decoded = jwt.verify(token, jwtSecret) as JWTPayload;
@@ -157,7 +167,7 @@ export class AuthMiddleware {
             jti: sessionId
         };
 
-        return jwt.sign(payload, jwtSecret, { expiresIn });
+        return jwt.sign(payload, jwtSecret, { expiresIn } as jwt.SignOptions);
     }
 
     // Set authentication cookie

@@ -162,4 +162,19 @@ export class AuthDatabase {
             .where('expires_at', '<=', this.db.fn.now())
             .del();
     }
+
+    // Check if user can access a room (for YJS WebSocket connections)
+    async canUserAccessRoom(roomId: string, userId: string): Promise<boolean> {
+        try {
+            const result = await this.db('scripts')
+                .where({ room_id: roomId, user_id: userId })
+                .select('id')
+                .first();
+
+            return !!result;
+        } catch (error) {
+            console.error('Error checking room access:', error);
+            return false;
+        }
+    }
 } 

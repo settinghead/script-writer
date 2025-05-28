@@ -2,8 +2,8 @@ import * as Y from 'yjs';
 import { Server as HttpServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import * as awarenessProtocol from 'y-protocols/awareness';
-import fs from 'fs';
-import path from 'path';
+import * as fs from 'fs';
+import * as path from 'path';
 import { parse as parseCookie } from 'cookie';
 import * as jwt from 'jsonwebtoken';
 import { AuthDatabase } from './database/auth';
@@ -190,7 +190,11 @@ const authenticateWebSocketUser = async (req: any, authDB: AuthDatabase): Promis
             return null;
         }
 
-        return user;
+        return {
+            id: user.id,
+            username: user.username,
+            display_name: user.display_name || user.username
+        };
     } catch (error) {
         console.error('Error authenticating WebSocket user:', error);
         return null;
@@ -198,21 +202,7 @@ const authenticateWebSocketUser = async (req: any, authDB: AuthDatabase): Promis
 };
 
 const verifyUserCanAccessRoom = async (roomId: string, userId: string, authDB: AuthDatabase): Promise<boolean> => {
-    return new Promise((resolve) => {
-        // Check if the room belongs to the user
-        authDB.db.get(
-            `SELECT id FROM scripts WHERE room_id = ? AND user_id = ?`,
-            [roomId, userId],
-            (err, row) => {
-                if (err) {
-                    console.error('Error verifying room access:', err);
-                    resolve(false);
-                } else {
-                    resolve(!!row);
-                }
-            }
-        );
-    });
+    return await authDB.canUserAccessRoom(roomId, userId);
 };
 
 export const setupYjsWebSocketServer = (httpServer: HttpServer, authDB: AuthDatabase) => {

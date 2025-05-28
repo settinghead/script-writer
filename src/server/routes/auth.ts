@@ -7,15 +7,16 @@ export const createAuthRoutes = (authDB: AuthDatabase, authMiddleware: AuthMiddl
     const router = express.Router();
 
     // POST /auth/login - Handle login for different providers
-    router.post('/login', async (req: Request, res: Response) => {
+    router.post('/login', async (req: Request, res: Response): Promise<void> => {
         try {
             const { provider, username, data } = req.body;
 
             if (!provider || !username) {
-                return res.status(400).json({
+                res.status(400).json({
                     error: 'Provider and username are required',
                     code: 'MISSING_CREDENTIALS'
                 });
+                return;
             }
 
             let user;
@@ -26,26 +27,29 @@ export const createAuthRoutes = (authDB: AuthDatabase, authMiddleware: AuthMiddl
                     // For dropdown (test) login, find user by username
                     user = await authDB.getUserByProvider('dropdown', username);
                     if (!user) {
-                        return res.status(401).json({
+                        res.status(401).json({
                             error: 'Invalid test user',
                             code: 'INVALID_TEST_USER'
                         });
+                        return;
                     }
                     break;
 
                 default:
-                    return res.status(400).json({
+                    res.status(400).json({
                         error: `Unsupported provider: ${provider}`,
                         code: 'UNSUPPORTED_PROVIDER'
                     });
+                    return;
             }
 
             // Check if user is active
             if (user.status !== 'active') {
-                return res.status(401).json({
+                res.status(401).json({
                     error: 'User account is not active',
                     code: 'USER_INACTIVE'
                 });
+                return;
             }
 
             // Create session
@@ -85,7 +89,7 @@ export const createAuthRoutes = (authDB: AuthDatabase, authMiddleware: AuthMiddl
     });
 
     // POST /auth/logout - Invalidate JWT token
-    router.post('/logout', authMiddleware.authenticate, async (req: Request, res: Response) => {
+    router.post('/logout', authMiddleware.authenticate, async (req: Request, res: Response): Promise<void> => {
         try {
             // Extract session ID from the request (it should be in the token)
             const cookies = req.headers.cookie;
@@ -133,15 +137,16 @@ export const createAuthRoutes = (authDB: AuthDatabase, authMiddleware: AuthMiddl
     });
 
     // GET /auth/me - Get current user info
-    router.get('/me', authMiddleware.authenticate, async (req: Request, res: Response) => {
+    router.get('/me', authMiddleware.authenticate, async (req: Request, res: Response): Promise<void> => {
         try {
             const user = authMiddleware.getCurrentUser(req);
 
             if (!user) {
-                return res.status(401).json({
+                res.status(401).json({
                     error: 'User not found',
                     code: 'USER_NOT_FOUND'
                 });
+                return;
             }
 
             // Return safe user object
@@ -168,7 +173,7 @@ export const createAuthRoutes = (authDB: AuthDatabase, authMiddleware: AuthMiddl
     });
 
     // GET /auth/test-users - Get list of test users for dropdown
-    router.get('/test-users', async (req: Request, res: Response) => {
+    router.get('/test-users', async (req: Request, res: Response): Promise<void> => {
         try {
             const testUsers = await authDB.getTestUsers();
 
@@ -193,7 +198,7 @@ export const createAuthRoutes = (authDB: AuthDatabase, authMiddleware: AuthMiddl
     });
 
     // GET /auth/status - Check authentication status (optional auth)
-    router.get('/status', authMiddleware.optionalAuth, async (req: Request, res: Response) => {
+    router.get('/status', authMiddleware.optionalAuth, async (req: Request, res: Response): Promise<void> => {
         try {
             const user = authMiddleware.getCurrentUser(req);
             const isAuthenticated = authMiddleware.isAuthenticated(req);
@@ -227,15 +232,16 @@ export const createAuthRoutes = (authDB: AuthDatabase, authMiddleware: AuthMiddl
     });
 
     // POST /auth/refresh - Refresh authentication (extend session)
-    router.post('/refresh', authMiddleware.authenticate, async (req: Request, res: Response) => {
+    router.post('/refresh', authMiddleware.authenticate, async (req: Request, res: Response): Promise<void> => {
         try {
             const user = authMiddleware.getCurrentUser(req);
 
             if (!user) {
-                return res.status(401).json({
+                res.status(401).json({
                     error: 'User not found',
                     code: 'USER_NOT_FOUND'
                 });
+                return;
             }
 
             // Create new session
