@@ -134,28 +134,37 @@ const LoginPage: React.FC = () => {
                             optionLabelProp="label"
                         >
                             {testUsers.map(user => (
-                                <Option key={user.username} value={user.username}>
+                                <Option
+                                    key={user.username}
+                                    value={user.username}
+                                    label={user.display_name || user.username}
+                                >
                                     <div style={{
                                         display: 'flex',
                                         alignItems: 'center',
-                                        width: '100%',
-                                        overflow: 'hidden'
+                                        maxWidth: '100%',
+                                        overflow: 'hidden',
+                                        padding: '4px 0'
                                     }}>
                                         <UserOutlined style={{
                                             marginRight: '8px',
                                             color: '#1890ff',
-                                            flexShrink: 0
+                                            flexShrink: 0,
+                                            fontSize: '14px'
                                         }} />
                                         <div style={{
                                             flex: 1,
                                             minWidth: 0,
-                                            overflow: 'hidden'
+                                            overflow: 'hidden',
+                                            lineHeight: '1.2'
                                         }}>
                                             <div style={{
                                                 fontWeight: 500,
                                                 whiteSpace: 'nowrap',
                                                 overflow: 'hidden',
-                                                textOverflow: 'ellipsis'
+                                                textOverflow: 'ellipsis',
+                                                fontSize: '14px',
+                                                marginBottom: user.display_name ? '2px' : '0'
                                             }}>
                                                 {user.display_name || user.username}
                                             </div>
@@ -165,7 +174,8 @@ const LoginPage: React.FC = () => {
                                                     color: '#666',
                                                     whiteSpace: 'nowrap',
                                                     overflow: 'hidden',
-                                                    textOverflow: 'ellipsis'
+                                                    textOverflow: 'ellipsis',
+                                                    lineHeight: '1'
                                                 }}>
                                                     @{user.username}
                                                 </div>
