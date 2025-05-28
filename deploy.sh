@@ -38,6 +38,14 @@ npm run test
 cp /var/www/.env.prod $DEPLOY_DIR/.env
 npm run build
 
+# Run database migrations
+echo "Running database migrations..."
+NODE_ENV=production npx knex migrate:latest --knexfile dist-server/knexfile.js
+
+# Run database seeds (only if needed - typically not in production)
+# Uncomment the next line if you want to run seeds in production
+# NODE_ENV=production npx knex seed:run --knexfile dist-server/knexfile.js
+
 # Create symlink for new deployment
 ln -sfn $DEPLOY_DIR /var/www/$PROJECT_NAME-current
 
