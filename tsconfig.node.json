@@ -23,7 +23,8 @@
   },
   "include": [
     "src/server/**/*.ts",
-    "src/server/**/*.tsx"
+    "src/server/**/*.tsx",
+    "src/knexfile.ts"
   ],
   "exclude": [
     "src/server/**/*.spec.ts"
