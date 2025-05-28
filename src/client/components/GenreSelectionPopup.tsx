@@ -429,21 +429,7 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
         }
         return (
             <>
-                <div style={{
-                    padding: '12px 16px',
-                    backgroundColor: '#1a1a1a',
-                    borderBottom: '1px solid #303030',
-                    fontSize: '12px',
-                    color: tempSelectedPaths.length > 3 ? '#ff4d4f' : (tempSelectedPaths.length > 0 ? '#52c41a' : '#666'),
-                    marginBottom: '8px',
-                    flexShrink: 0
-                }}>
-                    当前选择 ({tempSelectedPaths.length}/3): {tempSelectedPaths.map(path => path.join(' > ')).join(', ') || '未选择'}
-                    {tempSelectedPaths.length > 3 && <span style={{ marginLeft: '8px', fontWeight: 'bold' }}>超出数量限制！</span>}
-                    <div style={{ marginTop: '4px', fontSize: '11px', color: '#666' }}>
-                        仅开放: 甜宠, 虐恋
-                    </div>
-                </div>
+
                 <div style={{ display: 'flex', flexGrow: 1, overflowX: 'auto', overflowY: 'hidden', borderBottom: tempSelectedPaths.length >= 2 ? '1px solid #303030' : 'none', paddingBottom: tempSelectedPaths.length >= 2 ? '10px' : '0' }}>
                     {columns}
                 </div>
@@ -458,40 +444,8 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
 
         return (
             <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                <div style={{
-                    padding: '12px 16px',
-                    borderBottom: '1px solid #303030',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    flexShrink: 0
-                }}>
-                    {navigationPath.length > 0 && (
-                        <Button
-                            type="text"
-                            icon={<LeftOutlined />}
-                            onClick={() => setNavigationPath(navigationPath.slice(0, -1))}
-                            style={{ padding: '4px 8px', height: 'auto' }}
-                        />
-                    )}
-                    <div style={{ fontSize: '14px', color: '#1890ff' }}>
-                        {breadcrumbs.join(' > ')}
-                    </div>
-                </div>
-                <div style={{
-                    padding: '8px 16px',
-                    backgroundColor: '#1a1a1a',
-                    borderBottom: '1px solid #303030',
-                    fontSize: '12px',
-                    color: tempSelectedPaths.length > 3 ? '#ff4d4f' : (tempSelectedPaths.length > 0 ? '#52c41a' : '#666'),
-                    flexShrink: 0
-                }}>
-                    已选择 ({tempSelectedPaths.length}/3): {tempSelectedPaths.map(path => path.join(' > ')).join(', ') || '未选择'}
-                    {tempSelectedPaths.length > 3 && <span style={{ marginLeft: '8px', fontWeight: 'bold' }}>超出数量限制！</span>}
-                    <div style={{ marginTop: '4px', fontSize: '11px', color: '#666' }}>
-                        仅开放: 甜宠, 虐恋
-                    </div>
-                </div>
+
+
                 <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0', borderBottom: tempSelectedPaths.length >= 2 ? '1px solid #303030' : 'none', paddingBottom: tempSelectedPaths.length >= 2 ? '10px' : '0' }}>
                     <>
                         {currentDataToDisplay && typeof currentDataToDisplay === 'object' && !Array.isArray(currentDataToDisplay) &&
