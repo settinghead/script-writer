@@ -53,7 +53,7 @@ export class OutlineService {
         sourceArtifactId: string,
         totalEpisodes?: number,
         episodeDuration?: number
-    ): Promise<{ outlineSessionId: string; llmStream: ReadableStream<Uint8Array>; completionPromise: Promise<any> }> {
+    ): Promise<{ outlineSessionId: string; artifacts: Artifact[] }> {
         // Get and validate source artifact (either brainstorm_idea or user_input)
         const sourceArtifact = await this.artifactRepo.getArtifact(sourceArtifactId, userId);
 
@@ -79,73 +79,46 @@ export class OutlineService {
             'outline_session',
             {
                 id: outlineSessionId,
-                ideation_session_id: sourceArtifact.id,
+                ideation_session_id: 'artifact-based', // Legacy field, not used in new flow
                 status: 'active',
                 created_at: new Date().toISOString()
             } as OutlineSessionV1
         );
 
+        // Use the source artifact directly as input for the transform
+
         // Design LLM prompt for outline generation
         const outlinePrompt = this.buildOutlinePrompt(userInput, totalEpisodes, episodeDuration);
 
         // Execute LLM transform to generate outline
-        const { llmStream, completionPromise, transform } = await this.transformExecutor.executeLLMTransform(
+        const { outputArtifacts } = await this.transformExecutor.executeLLMTransform(
             userId,
             [outlineSessionArtifact, sourceArtifact],
             outlinePrompt,
             {
                 user_input: userInput,
-                source_artifact_id: sourceArtifactId,
-                total_episodes: totalEpisodes?.toString() || 'N/A',
-                episode_duration: episodeDuration?.toString() || 'N/A'
+                source_artifact_id: sourceArtifactId
             },
             'deepseek-chat',
-            'outline_components',
-            'v1',
-            { type: "json_object" }
+            'outline_components'
         );
 
-        // The completionPromise will handle creating component artifacts and updating session status
-        completionPromise.then(async ({ outputArtifacts, rawResponse }) => {
-            console.log(`Outline generation for session ${outlineSessionId} completed. Transform ID: ${transform.id}`);
-            // Update the outline session status to completed
-            // Ensure this uses the same outlineSessionId for update or creates a new version if immutable
-            await this.artifactRepo.updateArtifactData(outlineSessionArtifact.id, userId, {
-                ...outlineSessionArtifact.data,
+        // The transform executor now creates individual component artifacts
+        // We just need to update the outline session status to completed
+        await this.artifactRepo.createArtifact(
+            userId,
+            'outline_session',
+            {
+                id: outlineSessionId,
+                ideation_session_id: 'artifact-based', // Legacy field, not used in new flow
                 status: 'completed',
-                updated_at: new Date().toISOString()
-            });
-
-            // Optionally, cache the final assembled outline data
-            const outlineComponents = await this.getOutlineComponents(userId, outlineSessionId);
-            if (outlineComponents) {
-                const finalSessionData: OutlineSessionData = {
-                    sessionId: outlineSessionId,
-                    ideationSessionId: sourceArtifact.id,
-                    status: 'completed',
-                    userInput: userInput,
-                    outline: outlineComponents,
-                    createdAt: outlineSessionArtifact.data.created_at
-                };
-                this.cacheService.set(`outline_session:${userId}:${outlineSessionId}`, finalSessionData, 5 * 60 * 1000);
-            }
-            this.cacheService.delete(`outline_list:${userId}`);
-
-        }).catch(error => {
-            console.error(`Error during completion of outline generation for ${outlineSessionId}, Transform ID: ${transform.id}:`, error);
-            // Update outline session to failed if an error occurs during completion
-            this.artifactRepo.updateArtifactData(outlineSessionArtifact.id, userId, {
-                ...outlineSessionArtifact.data,
-                status: 'failed',
-                error_message: error.message,
-                updated_at: new Date().toISOString()
-            }).catch(updateError => console.error("Failed to update outline session to failed status:", updateError));
-        });
+                created_at: new Date().toISOString()
+            } as OutlineSessionV1
+        );
 
         return {
             outlineSessionId,
-            llmStream,
-            completionPromise
+            artifacts: outputArtifacts
         };
     }
 

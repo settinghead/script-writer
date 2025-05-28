@@ -1,7 +1,7 @@
 import express from "express";
 import ViteExpress from "vite-express";
 import { createOpenAI } from '@ai-sdk/openai';
-import { streamText, generateText, StreamData, readableFromAsyncIterable } from 'ai';
+import { streamText, generateText } from 'ai';
 import * as dotenv from 'dotenv';
 import { v4 as uuidv4 } from 'uuid';
 import cookieParser from 'cookie-parser';
@@ -16,6 +16,7 @@ import { TransformExecutor } from './services/TransformExecutor';
 import { IdeationService } from './services/IdeationService';
 import { OutlineService } from './services/OutlineService';
 import { ScriptService } from './services/ScriptService';
+import { StreamingService } from './services/StreamingService';
 import {
   validateIdeationCreate,
   validatePlotGeneration,
@@ -25,8 +26,6 @@ import {
 import { ReplayService } from './services/ReplayService';
 import { CacheService } from './services/CacheService';
 import { db, initializeDatabase } from './database/connection';
-import { jsonrepair } from 'jsonrepair';
-import { Transform } from 'node:stream';
 
 dotenv.config();
 
@@ -50,8 +49,11 @@ const transformRepo = new TransformRepository(db);
 // Initialize cache service
 const cacheService = new CacheService();
 
-// Initialize services with caching
-const transformExecutor = new TransformExecutor(artifactRepo, transformRepo);
+// Initialize StreamingService
+const streamingService = new StreamingService(artifactRepo, transformRepo);
+
+// Initialize services with caching and streaming
+const transformExecutor = new TransformExecutor(artifactRepo, transformRepo, streamingService);
 const ideationService = new IdeationService(artifactRepo, transformRepo, transformExecutor, cacheService);
 const outlineService = new OutlineService(artifactRepo, transformExecutor, cacheService);
 const scriptService = new ScriptService(artifactRepo, transformExecutor);
@@ -363,7 +365,7 @@ app.post("/api/ideations/create_run_and_generate_plot",
     }
 
     try {
-      const { runId, llmStream, completionPromise } = await ideationService.createRunAndGeneratePlot(
+      const result = await ideationService.createRunAndGeneratePlot(
         user.id,
         userInput,
         selectedPlatform || '',
@@ -374,90 +376,15 @@ app.post("/api/ideations/create_run_and_generate_plot",
         ideationTemplate
       );
 
-      // Set headers for SSE
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Connection', 'keep-alive');
-      res.flushHeaders(); // Flush the headers to establish the connection
-
-      // Send initial data like runId
-      res.write(`event: metadata\ndata: ${JSON.stringify({ runId })}\n\n`);
-
-      let accumulatedJson = '';
-      const decoder = new TextDecoder();
-      const repairAndSend = async (chunk: Uint8Array | undefined) => {
-        if (chunk) {
-          accumulatedJson += decoder.decode(chunk, { stream: true });
-        }
-        try {
-          // Try to repair the accumulated JSON so far.
-          // This might throw if it's too incomplete.
-          const repaired = jsonrepair(accumulatedJson);
-          // If repair is successful and it's different from what we last sent (or if it's the end),
-          // we might decide to send it. For simplicity, we'll send if it parses.
-          // More sophisticated logic could be added to send only valid partial structures.
-          JSON.parse(repaired); // Check if it's valid JSON
-          res.write(`data: ${repaired}\n\n`);
-          // If we send a successfully repaired part, we could reset accumulatedJson
-          // or just keep appending. Keeping it simple for now by not resetting.
-        } catch (e) {
-          // Not a fully formed JSON object yet, or unrepairable
-          // If it's the end of the stream and still fails, it's a problem.
-          if (!chunk && accumulatedJson.trim().length > 0) {
-            console.warn("Stream ended, but accumulated JSON is still not fully parsable after repair attempt:", accumulatedJson);
-            // Optionally send an error event to the client
-            res.write(`event: stream_error\ndata: ${JSON.stringify({ message: "Partial JSON at end of stream", content: accumulatedJson })}\n\n`);
-          }
-        }
-      };
-
-      const reader = llmStream.getReader();
-      const pump = async () => {
-        try {
-          const { done, value } = await reader.read();
-          if (done) {
-            await repairAndSend(undefined); // Final attempt to repair and send
-            res.write(`event: stream_end\ndata: ${JSON.stringify({ message: "Stream finished" })}\n\n`);
-            res.end();
-            return;
-          }
-          await repairAndSend(value);
-          await pump(); // Continue pumping
-        } catch (streamError: any) {
-          console.error('Error during SSE stream pump:', streamError);
-          if (!res.writableEnded) {
-            res.write(`event: stream_error\ndata: ${JSON.stringify({ message: "Error processing stream", error: streamError.message })}\n\n`);
-            res.status(500).end();
-          }
-        }
-      };
-
-      pump();
-
-      // Await the completion promise in the background to handle DB updates
-      completionPromise.then(() => {
-        console.log(`Background completion for runId ${runId} successful.`);
-      }).catch(err => {
-        console.error(`Background completion for runId ${runId} failed:`, err);
-        // If the stream hasn't ended, we might want to signal an error.
-        if (!res.writableEnded) {
-          res.write(`event: processing_error\ndata: ${JSON.stringify({ message: "Error during final processing", error: err.message })}\n\n`);
-          res.end();
-        }
-      });
+      res.json(result);
 
     } catch (error: any) {
-      console.error('Error in create_run_and_generate_plot streaming endpoint:', error);
-      if (!res.headersSent) {
-        res.status(500).json({
-          error: "Failed to create ideation run and stream plot",
-          details: error.message,
-          timestamp: new Date().toISOString()
-        });
-      } else if (!res.writableEnded) {
-        res.write(`event: critical_error\ndata: ${JSON.stringify({ message: "Critical error starting stream", error: error.message })}\n\n`);
-        res.end();
-      }
+      console.error('Error in create_run_and_generate_plot:', error);
+      res.status(500).json({
+        error: "Failed to create ideation run",
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
     }
   }
 );
@@ -540,90 +467,31 @@ app.post("/api/ideations/:id/generate_plot",
     }
 
     try {
-      const { llmStream, completionPromise } = await ideationService.generatePlotForRun(
+      const result = await ideationService.generatePlotForRun(
         user.id,
         runId,
         userInput,
         ideationTemplate
       );
 
-      // Set headers for SSE
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Connection', 'keep-alive');
-      res.flushHeaders(); // Flush the headers to establish the connection
-
-      res.write(`event: metadata\ndata: ${JSON.stringify({ runId })}\n\n`);
-
-      let accumulatedJson = '';
-      const decoder = new TextDecoder();
-      const repairAndSend = async (chunk: Uint8Array | undefined) => {
-        if (chunk) {
-          accumulatedJson += decoder.decode(chunk, { stream: true });
-        }
-        try {
-          const repaired = jsonrepair(accumulatedJson);
-          JSON.parse(repaired); // Check if it's valid JSON
-          res.write(`data: ${repaired}\n\n`);
-        } catch (e) {
-          if (!chunk && accumulatedJson.trim().length > 0) {
-            console.warn("Stream ended, but accumulated JSON is still not fully parsable after repair attempt:", accumulatedJson);
-            res.write(`event: stream_error\ndata: ${JSON.stringify({ message: "Partial JSON at end of stream", content: accumulatedJson })}\n\n`);
-          }
-        }
-      };
-
-      const reader = llmStream.getReader();
-      const pump = async () => {
-        try {
-          const { done, value } = await reader.read();
-          if (done) {
-            await repairAndSend(undefined); // Final attempt
-            res.write(`event: stream_end\ndata: ${JSON.stringify({ message: "Stream finished" })}\n\n`);
-            res.end();
-            return;
-          }
-          await repairAndSend(value);
-          await pump();
-        } catch (streamError: any) {
-          console.error('Error during SSE stream pump (generatePlotForRun):', streamError);
-          if (!res.writableEnded) {
-            res.write(`event: stream_error\ndata: ${JSON.stringify({ message: "Error processing stream", error: streamError.message })}\n\n`);
-            res.status(500).end();
-          }
-        }
-      };
-
-      pump();
-
-      completionPromise.then(() => {
-        console.log(`Background completion for regenerated plot for runId ${runId} successful.`);
-      }).catch(err => {
-        console.error(`Background completion for regenerated plot for runId ${runId} failed:`, err);
-        if (!res.writableEnded) {
-          res.write(`event: processing_error\ndata: ${JSON.stringify({ message: "Error during final processing", error: err.message })}\n\n`);
-          res.end();
-        }
-      });
+      res.json(result);
 
     } catch (error: any) {
-      console.error('Error in generate_plot streaming endpoint:', error);
-      if (!res.headersSent) {
-        if (error.message.includes('not found or not accessible')) {
-          return res.status(404).json({ error: "Ideation run not found" });
-        }
-        if (error.message.includes('cannot be empty')) {
-          return res.status(400).json({ error: error.message });
-        }
-        res.status(500).json({
-          error: "Failed to generate plot and stream",
-          details: error.message,
-          timestamp: new Date().toISOString()
-        });
-      } else if (!res.writableEnded) {
-        res.write(`event: critical_error\ndata: ${JSON.stringify({ message: "Critical error starting stream for plot regeneration", error: error.message })}\n\n`);
-        res.end();
+      console.error('Error in generate_plot:', error);
+
+      // Handle specific error types
+      if (error.message.includes('not found or not accessible')) {
+        return res.status(404).json({ error: "Ideation run not found" });
       }
+      if (error.message.includes('cannot be empty')) {
+        return res.status(400).json({ error: error.message });
+      }
+
+      res.status(500).json({
+        error: "Failed to generate plot",
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
     }
   }
 );
@@ -780,89 +648,27 @@ app.post("/api/outlines/from-artifact/:artifactId",
     }
 
     try {
-      const { outlineSessionId, llmStream, completionPromise } = await outlineService.generateOutlineFromArtifact(
+      const result = await outlineService.generateOutlineFromArtifact(
         user.id,
         artifactId,
         totalEpisodes,
         episodeDuration
       );
 
-      // Set headers for SSE
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Connection', 'keep-alive');
-      res.flushHeaders(); // Flush the headers to establish the connection
-
-      // Send initial data like outlineSessionId
-      res.write(`event: metadata\ndata: ${JSON.stringify({ outlineSessionId })}\n\n`);
-
-      let accumulatedJson = '';
-      const decoder = new TextDecoder();
-      const repairAndSend = async (chunk: Uint8Array | undefined) => {
-        if (chunk) {
-          accumulatedJson += decoder.decode(chunk, { stream: true });
-        }
-        try {
-          const repaired = jsonrepair(accumulatedJson);
-          JSON.parse(repaired); // Check if it's valid JSON
-          res.write(`data: ${repaired}\n\n`);
-        } catch (e) {
-          if (!chunk && accumulatedJson.trim().length > 0) {
-            console.warn("Stream ended (outline), but accumulated JSON is still not fully parsable after repair attempt:", accumulatedJson);
-            res.write(`event: stream_error\ndata: ${JSON.stringify({ message: "Partial JSON at end of stream for outline", content: accumulatedJson })}\n\n`);
-          }
-        }
-      };
-
-      const reader = llmStream.getReader();
-      const pump = async () => {
-        try {
-          const { done, value } = await reader.read();
-          if (done) {
-            await repairAndSend(undefined); // Final attempt
-            res.write(`event: stream_end\ndata: ${JSON.stringify({ message: "Outline stream finished" })}\n\n`);
-            res.end();
-            return;
-          }
-          await repairAndSend(value);
-          await pump();
-        } catch (streamError: any) {
-          console.error('Error during SSE stream pump (outline generation):', streamError);
-          if (!res.writableEnded) {
-            res.write(`event: stream_error\ndata: ${JSON.stringify({ message: "Error processing outline stream", error: streamError.message })}\n\n`);
-            res.status(500).end();
-          }
-        }
-      };
-
-      pump();
-
-      // Await the completion promise in the background
-      completionPromise.then(() => {
-        console.log(`Background completion for outlineSessionId ${outlineSessionId} successful.`);
-      }).catch(err => {
-        console.error(`Background completion for outlineSessionId ${outlineSessionId} failed:`, err);
-        if (!res.writableEnded) {
-          res.write(`event: processing_error\ndata: ${JSON.stringify({ message: "Error during final outline processing", error: err.message })}\n\n`);
-          res.end();
-        }
-      });
+      res.json(result);
 
     } catch (error: any) {
-      console.error('Error in generateOutlineFromArtifact streaming endpoint:', error);
-      if (!res.headersSent) {
-        if (error.message.includes('not found or access denied')) {
-          return res.status(404).json({ error: "Source artifact not found" });
-        }
-        res.status(500).json({
-          error: "Failed to generate outline and stream",
-          details: error.message,
-          timestamp: new Date().toISOString()
-        });
-      } else if (!res.writableEnded) {
-        res.write(`event: critical_error\ndata: ${JSON.stringify({ message: "Critical error starting outline stream", error: error.message })}\n\n`);
-        res.end();
+      console.error('Error generating outline:', error);
+
+      if (error.message.includes('not found or access denied')) {
+        return res.status(404).json({ error: "Source artifact not found" });
       }
+
+      res.status(500).json({
+        error: "Failed to generate outline",
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
     }
   }
 );
@@ -1332,6 +1138,73 @@ app.get("/debug/performance", authMiddleware.authenticate, async (req: any, res:
     });
   }
 });
+
+// ========== PROTECTED STREAMING ENDPOINT ==========
+app.get("/api/transforms/:transformId/stream", authMiddleware.authenticate, async (req: any, res: any) => {
+  const { transformId } = req.params;
+  const user = authMiddleware.getCurrentUser(req);
+
+  if (!user) {
+    return res.status(401).json({ error: "User not authenticated" });
+  }
+
+  // Validate transform ownership (optional but recommended)
+  // const transform = await transformRepo.getTransform(transformId, user.id);
+  // if (!transform) {
+  //   return res.status(404).json({ error: "Transform not found or access denied" });
+  // }
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders(); // Flush the headers to establish the connection immediately
+
+  const sendEvent = (data: string) => {
+    // SSE format: data: {JSON_STRING}\n\n
+    res.write(`data: ${data}\n\n`);
+  };
+
+  const subscribed = streamingService.subscribeToStream(transformId, sendEvent);
+
+  if (!subscribed) {
+    // Stream might have already finished or never existed
+    // Check if transform completed and send final data if available, or send an error/end event.
+    const transformDetails = await transformRepo.getTransform(transformId, user.id);
+    if (transformDetails && transformDetails.status === 'completed') {
+      // Attempt to find the output artifact
+      if (transformDetails.outputs && transformDetails.outputs.length > 0) {
+        const outputArtifactId = transformDetails.outputs[0].artifact_id; // Assuming one primary output
+        const artifact = await artifactRepo.getArtifact(outputArtifactId, user.id);
+        if (artifact) {
+          sendEvent(JSON.stringify({ type: 'final', data: artifact.data }));
+        } else {
+          sendEvent(JSON.stringify({ type: 'error', message: 'Transform completed but output artifact not found.' }));
+        }
+      } else {
+        sendEvent(JSON.stringify({ type: 'error', message: 'Transform completed but no output artifacts linked.' }));
+      }
+    } else if (transformDetails && (transformDetails.status === 'failed' || transformDetails.status === 'failed_parsing' || transformDetails.status === 'failed_streaming')) {
+      sendEvent(JSON.stringify({ type: 'error', message: `Transform failed with status: ${transformDetails.status}`, details: transformDetails.execution_context }));
+    } else if (!transformDetails) {
+      sendEvent(JSON.stringify({ type: 'error', message: 'Transform not found.' }));
+    } else {
+      sendEvent(JSON.stringify({ type: 'error', message: 'Stream not available and transform not completed.', details: `Status: ${transformDetails.status}` }));
+    }
+    res.write(`event: stream_end\ndata: ${JSON.stringify({ message: "Stream ended or was not found." })}\n\n`);
+    res.end();
+    return;
+  }
+
+  req.on('close', () => {
+    // Client closed connection, cleanup if necessary (StreamingService handles its own cleanup)
+    console.log(`Client disconnected from stream ${transformId}`);
+    // Unsubscribe or notify StreamingService if needed, though current design auto-cleans.
+    res.end();
+  });
+});
+
+// ========== EXISTING PROTECTED API ENDPOINTS (Require Authentication) ==========
+// ... existing code ...
 
 // Handle client-side routing fallback
 // This must be the last route to catch all unmatched routes
