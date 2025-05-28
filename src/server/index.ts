@@ -25,6 +25,7 @@ import {
 import { ReplayService } from './services/ReplayService';
 import { CacheService } from './services/CacheService';
 import { db, initializeDatabase } from './database/connection';
+import { StreamingTransformExecutor } from './services/StreamingTransformExecutor';
 
 dotenv.config();
 
@@ -50,6 +51,7 @@ const cacheService = new CacheService();
 
 // Initialize services with caching
 const transformExecutor = new TransformExecutor(artifactRepo, transformRepo);
+const streamingTransformExecutor = new StreamingTransformExecutor(artifactRepo, transformRepo);
 const ideationService = new IdeationService(artifactRepo, transformRepo, transformExecutor, cacheService);
 const outlineService = new OutlineService(artifactRepo, transformExecutor, cacheService);
 const scriptService = new ScriptService(artifactRepo, transformExecutor);
@@ -1134,6 +1136,253 @@ app.get("/debug/performance", authMiddleware.authenticate, async (req: any, res:
     });
   }
 });
+
+// ========== STREAMING ENDPOINTS ==========
+
+// Streaming brainstorm idea generation
+app.post("/api/streaming/brainstorm",
+  authMiddleware.authenticate,
+  async (req: any, res: any) => {
+    const user = authMiddleware.getCurrentUser(req);
+    if (!user) {
+      return res.status(401).json({ error: "User not authenticated" });
+    }
+
+    const {
+      selectedPlatform,
+      genrePaths,
+      genreProportions,
+      requirements,
+      ideationTemplate
+    } = req.body;
+
+    // Set up Server-Sent Events
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'Cache-Control');
+
+    try {
+      // Create brainstorm parameters artifact
+      const paramsArtifact = await artifactRepo.createArtifact(
+        user.id,
+        'brainstorm_params',
+        {
+          platform: selectedPlatform,
+          genre_paths: genrePaths,
+          genre_proportions: genreProportions,
+          requirements
+        }
+      );
+
+      // Build genre string for prompt
+      const buildGenrePromptString = (): string => {
+        if (!genrePaths || genrePaths.length === 0) return '未指定';
+        return genrePaths.map((path: string[], index: number) => {
+          const proportion = genreProportions && genreProportions[index] !== undefined
+            ? genreProportions[index]
+            : (100 / genrePaths.length);
+          const pathString = path.join(' > ');
+          return genrePaths.length > 1
+            ? `${pathString} (${proportion.toFixed(0)}%)`
+            : pathString;
+        }).join(', ');
+      };
+
+      const genreString = buildGenrePromptString();
+      const requirementsSection = requirements.trim()
+        ? `特殊要求：${requirements.trim()}`
+        : '';
+
+      const prompt = ideationTemplate
+        .replace('{genre}', genreString)
+        .replace('{platform}', selectedPlatform || '通用短视频平台')
+        .replace('{requirementsSection}', requirementsSection);
+
+      // Execute streaming transform
+      const result = await streamingTransformExecutor.executeStreamingLLMTransform(
+        user.id,
+        [paramsArtifact],
+        prompt,
+        {
+          genre: genreString,
+          platform: selectedPlatform || '通用短视频平台',
+          requirements: requirements || ''
+        },
+        'brainstorm_idea',
+        (update) => {
+          // Send update to client via SSE
+          res.write(`data: ${JSON.stringify(update)}\n\n`);
+        }
+      );
+
+      // Send final result
+      res.write(`data: ${JSON.stringify({
+        type: 'final_result',
+        transformId: result.transformId,
+        artifactIds: result.outputArtifacts.map(a => a.id)
+      })}\n\n`);
+
+      res.end();
+
+    } catch (error: any) {
+      console.error('Error in streaming brainstorm:', error);
+      res.write(`data: ${JSON.stringify({
+        type: 'error',
+        error: error.message || 'Unknown error occurred'
+      })}\n\n`);
+      res.end();
+    }
+  }
+);
+
+// Streaming outline generation
+app.post("/api/streaming/outlines/from-artifact/:artifactId",
+  authMiddleware.authenticate,
+  async (req: any, res: any) => {
+    const { artifactId } = req.params;
+    const { totalEpisodes, episodeDuration } = req.body;
+
+    const user = authMiddleware.getCurrentUser(req);
+    if (!user) {
+      return res.status(401).json({ error: "User not authenticated" });
+    }
+
+    // Set up Server-Sent Events
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'Cache-Control');
+
+    try {
+      // Get and validate source artifact
+      const sourceArtifact = await artifactRepo.getArtifact(artifactId, user.id);
+      if (!sourceArtifact) {
+        throw new Error('Source artifact not found or access denied');
+      }
+
+      if (!['brainstorm_idea', 'user_input'].includes(sourceArtifact.type)) {
+        throw new Error('Invalid source artifact type. Must be brainstorm_idea or user_input');
+      }
+
+      // Extract user input text from artifact
+      const userInput = sourceArtifact.data.text || sourceArtifact.data.idea_text;
+      if (!userInput || !userInput.trim()) {
+        throw new Error('Source artifact contains no text content');
+      }
+
+      // Create outline session
+      const outlineSessionId = uuidv4();
+      const outlineSessionArtifact = await artifactRepo.createArtifact(
+        user.id,
+        'outline_session',
+        {
+          id: outlineSessionId,
+          ideation_session_id: 'artifact-based',
+          status: 'active',
+          created_at: new Date().toISOString()
+        }
+      );
+
+      // Build outline prompt
+      const episodeInfo = (totalEpisodes && episodeDuration)
+        ? `\n\n剧集信息：\n- 总集数：${totalEpisodes}集\n- 每集时长：约${episodeDuration}分钟`
+        : '';
+
+      const outlinePrompt = `你是一位深耕短剧创作的资深编剧，尤其擅长创作引人入胜、节奏明快、反转强烈的爆款短剧。
+根据用户提供的故事灵感，请创作一个**单集完结**的短剧大纲。${episodeInfo}
+
+故事灵感：${userInput}
+
+请严格按照以下要求和JSON格式输出：
+
+1.  **剧名 (title)**: 一个极具吸引力、能瞬间抓住眼球的短剧标题，精准概括核心看点。
+2.  **题材类型 (genre)**: 明确的短剧类型（例如：都市爽文、逆袭复仇、甜宠虐恋、战神归来、古装宫斗等常见短剧热门题材）。
+3.  **核心看点/爽点 (selling_points)**: 列出3-5个最能激发观众情绪、构成"爽点"的核心情节或元素。例如：身份反转、打脸虐渣、绝境逢生、意外获得超能力、关键时刻英雄救美/美救英雄等。
+4.  **故事设定 (setting)**:
+    *   **一句话核心设定**: 用一句话概括故事发生的核心背景和主要人物关系。
+    *   **关键场景**: 2-3个推动剧情发展的核心场景。
+5.  **主要人物 (main_characters)**: **一个包含主要人物的数组**，每个人物对象包含以下字段：
+    *   **name**: [string] 人物姓名
+    *   **description**: [string] 人物的一句话性格特征及核心目标/困境
+6.  **完整故事梗概 (synopsis)**: **一个详细且连贯的故事梗概**，描述主要情节、关键事件、核心冲突的发展，以及故事的最终结局。请用自然流畅的段落撰写，体现故事的吸引力。
+
+**短剧创作核心要求 (非常重要！):**
+-   **节奏极快**: 剧情推进迅速，不拖沓，每一分钟都要有信息量或情绪点。
+-   **冲突强烈**: 核心矛盾要直接、尖锐，能迅速抓住观众。
+-   **反转惊人**: 设计至少1-2个出人意料的情节反转。
+-   **情绪到位**: 准确拿捏观众的情绪，如愤怒、喜悦、紧张、同情等，并快速给予满足（如"打脸"情节）。
+-   **人物鲜明**: 主角和核心对手的人物性格和动机要清晰、极致。
+-   **结局爽快**: 结局要干脆利落，给观众明确的情感释放。
+-   **紧扣灵感**: 所有设计必须围绕原始故事灵感展开，并将其特点放大。
+-   **避免"电影感"**: 不要追求复杂的叙事结构、过多的角色内心戏或宏大的世界观。专注于简单直接、冲击力强的单集故事。
+
+请以JSON格式返回，字段如下：
+{
+  "title": "[string] 剧名",
+  "genre": "[string] 题材类型",
+  "selling_points": ["[string] 核心看点1", "[string] 核心看点2", "[string] 核心看点3"],
+  "setting": {
+    "core_setting_summary": "[string] 一句话核心设定",
+    "key_scenes": ["[string] 关键场景1", "[string] 关键场景2"]
+  },
+  "main_characters": [
+    { "name": "[string] 人物1姓名", "description": "[string] 人物1描述..." },
+    { "name": "[string] 人物2姓名", "description": "[string] 人物2描述..." }
+  ],
+  "synopsis": "[string] 详细的、包含主要情节/关键事件/核心冲突发展和结局的故事梗概。"
+}`;
+
+      // Execute streaming transform
+      const result = await streamingTransformExecutor.executeStreamingLLMTransform(
+        user.id,
+        [outlineSessionArtifact, sourceArtifact],
+        outlinePrompt,
+        {
+          user_input: userInput,
+          source_artifact_id: artifactId
+        },
+        'outline_components',
+        (update) => {
+          // Send update to client via SSE
+          res.write(`data: ${JSON.stringify(update)}\n\n`);
+        }
+      );
+
+      // Update outline session status to completed
+      await artifactRepo.createArtifact(
+        user.id,
+        'outline_session',
+        {
+          id: outlineSessionId,
+          ideation_session_id: 'artifact-based',
+          status: 'completed',
+          created_at: new Date().toISOString()
+        }
+      );
+
+      // Send final result
+      res.write(`data: ${JSON.stringify({
+        type: 'final_result',
+        transformId: result.transformId,
+        outlineSessionId,
+        artifactIds: result.outputArtifacts.map(a => a.id)
+      })}\n\n`);
+
+      res.end();
+
+    } catch (error: any) {
+      console.error('Error in streaming outline generation:', error);
+      res.write(`data: ${JSON.stringify({
+        type: 'error',
+        error: error.message || 'Unknown error occurred'
+      })}\n\n`);
+      res.end();
+    }
+  }
+);
 
 // Handle client-side routing fallback
 // This must be the last route to catch all unmatched routes
