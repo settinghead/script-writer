@@ -141,18 +141,21 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
             this.eventSource.onmessage = (event) => {
                 try {
                     messageCount++;
+                    console.log(`[LLMStreamingService] Message ${messageCount}:`, event.data.substring(0, 100));
 
                     // Check message format
                     if (event.data.startsWith('0:')) {
                         // Text chunk
                         const chunk = JSON.parse(event.data.substring(2));
                         accumulatedContent += chunk;
+                        console.log('[LLMStreamingService] Accumulated content length:', accumulatedContent.length);
 
                         // Emit to content$ subject to trigger the parsing pipeline
                         this.content$.next(accumulatedContent);
                     } else if (event.data.startsWith('e:')) {
                         // Completion event
                         const completionData = JSON.parse(event.data.substring(2));
+                        console.log('[LLMStreamingService] Completion event:', completionData);
 
                         // Emit final content and completion
                         this.content$.next(accumulatedContent);
@@ -162,18 +165,22 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
                     } else if (event.data.startsWith('error:')) {
                         // Error event
                         const errorData = JSON.parse(event.data.substring(6));
+                        console.log('[LLMStreamingService] Error event:', errorData);
                         this.error$.next(new Error(errorData.error || 'Stream error'));
                         this.eventSource?.close();
                     } else {
                         // Other data format (like status messages)
                         try {
                             const data = JSON.parse(event.data);
+                            console.log('[LLMStreamingService] Other data:', data);
                         } catch {
                             // Non-JSON data, ignore
+                            console.log('[LLMStreamingService] Non-JSON data:', event.data);
                         }
                     }
                 } catch (error) {
                     // Error processing message, ignore
+                    console.error('[LLMStreamingService] Error processing message:', error);
                 }
             };
 

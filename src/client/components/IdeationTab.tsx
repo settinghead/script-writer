@@ -198,8 +198,8 @@ const IdeationTab: React.FC = () => {
             artifact => artifact.text === ideaBody
         );
 
-        if (selectedArtifact) {
-            // Use the brainstorm_idea artifact ID
+        if (selectedArtifact && selectedArtifact.id && !selectedArtifact.id.startsWith('temp-idea-')) {
+            // Use the brainstorm_idea artifact ID only if it's a real UUID, not a temporary ID
             setCurrentArtifactId(selectedArtifact.id);
 
             // Update URL with artifact ID
@@ -209,7 +209,7 @@ const IdeationTab: React.FC = () => {
                 navigate(`/ideation/${ideationRunId}?${newSearchParams.toString()}`, { replace: true });
             }
         } else {
-            // Fallback: clear artifact ID for manual input
+            // Fallback: clear artifact ID for manual input or temporary IDs
             setCurrentArtifactId(null);
             if (ideationRunId) {
                 navigate(`/ideation/${ideationRunId}`, { replace: true });

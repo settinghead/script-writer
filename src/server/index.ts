@@ -29,6 +29,7 @@ import { db, initializeDatabase } from './database/connection';
 import { TemplateService } from './services/templates/TemplateService';
 import { StreamingTransformExecutor } from './services/streaming/StreamingTransformExecutor';
 import { createIdeationRoutes } from './routes/ideations';
+import { BrainstormingJobParamsV1, OutlineJobParamsV1 } from './types/artifacts';
 
 dotenv.config();
 
@@ -1433,6 +1434,98 @@ app.get("/debug/performance", authMiddleware.authenticate, async (req: any, res:
     });
   }
 });
+
+// ========== JOB-BASED ENDPOINTS ==========
+
+// Create brainstorming job
+app.post("/api/ideations/create-brainstorming-job",
+  authMiddleware.authenticate,
+  async (req: any, res: any) => {
+    const { platform, genrePaths, genreProportions, requirements } = req.body;
+
+    const user = authMiddleware.getCurrentUser(req);
+    if (!user) {
+      return res.status(401).json({ error: "User not authenticated" });
+    }
+
+    try {
+      const jobParams: BrainstormingJobParamsV1 = {
+        platform: platform || '通用短视频平台',
+        genrePaths: genrePaths || [],
+        genreProportions: genreProportions || [],
+        requirements: requirements || '',
+        requestedAt: new Date().toISOString()
+      };
+
+      const result = await streamingTransformExecutor.startBrainstormingJob(
+        user.id,
+        jobParams
+      );
+
+      res.json(result);
+
+    } catch (error: any) {
+      console.error('Error creating brainstorming job:', error);
+      res.status(500).json({
+        error: "Failed to create brainstorming job",
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+);
+
+// Create outline job
+app.post("/api/outlines/create-job",
+  authMiddleware.authenticate,
+  async (req: any, res: any) => {
+    const { sourceArtifactId, totalEpisodes, episodeDuration } = req.body;
+
+    const user = authMiddleware.getCurrentUser(req);
+    if (!user) {
+      return res.status(401).json({ error: "User not authenticated" });
+    }
+
+    // Validate required fields
+    if (!sourceArtifactId) {
+      return res.status(400).json({
+        error: "Missing sourceArtifactId",
+        details: "sourceArtifactId is required"
+      });
+    }
+
+    try {
+      const jobParams: OutlineJobParamsV1 = {
+        sourceArtifactId,
+        totalEpisodes: totalEpisodes || undefined,
+        episodeDuration: episodeDuration || undefined,
+        requestedAt: new Date().toISOString()
+      };
+
+      const result = await streamingTransformExecutor.startOutlineJob(
+        user.id,
+        jobParams
+      );
+
+      res.json(result);
+
+    } catch (error: any) {
+      console.error('Error creating outline job:', error);
+
+      if (error.message.includes('not found or access denied')) {
+        return res.status(404).json({ error: "Source artifact not found" });
+      }
+
+      res.status(500).json({
+        error: "Failed to create outline job",
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+);
+
+// ========== ARTIFACT ENDPOINTS ===========
 
 // Handle client-side routing fallback
 // This must be the last route to catch all unmatched routes

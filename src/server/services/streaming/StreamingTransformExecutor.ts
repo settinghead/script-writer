@@ -5,10 +5,11 @@ import { jsonrepair } from 'jsonrepair';
 import { ArtifactRepository } from '../../repositories/ArtifactRepository';
 import { TransformRepository } from '../../repositories/TransformRepository';
 import { TemplateService } from '../templates/TemplateService';
-import { Artifact, BrainstormingJobParamsV1 } from '../../types/artifacts';
+import { Artifact, BrainstormingJobParamsV1, OutlineJobParamsV1, OutlineSessionV1 } from '../../types/artifacts';
 import { IdeationService } from '../IdeationService';
 import { JobBroadcaster } from './JobBroadcaster';
 import { StreamingCache } from './StreamingCache';
+import { v4 as uuidv4 } from 'uuid';
 
 // Define StreamingRequest interface locally to avoid path issues
 interface StreamingRequest {
@@ -235,8 +236,8 @@ export class StreamingTransformExecutor {
                         });
                     }
 
-                    // Parse and create output artifacts
-                    let jsonData: any[] = [];
+                    // Parse and create output artifacts based on outputFormat
+                    let parsedData: any = null;
 
                     try {
                         // Clean the text content
@@ -250,40 +251,52 @@ export class StreamingTransformExecutor {
                         // Use jsonrepair for more robust parsing
                         const { jsonrepair } = await import('jsonrepair');
                         const repairedJson = jsonrepair(cleanContent);
-                        jsonData = JSON.parse(repairedJson);
+                        parsedData = JSON.parse(repairedJson);
 
-                        if (!Array.isArray(jsonData)) {
+                        // Validate based on output format
+                        if (outputFormat === 'json_array' && !Array.isArray(parsedData)) {
                             throw new Error('Response is not a JSON array');
+                        } else if (outputFormat === 'outline_components' && typeof parsedData !== 'object') {
+                            throw new Error('Response is not a JSON object');
                         }
 
                     } catch (parseError) {
-                        // Try a more aggressive cleaning approach
-                        try {
-                            let fallbackContent = text.trim();
-                            // Remove any trailing incomplete JSON
-                            const lastBracket = fallbackContent.lastIndexOf('}');
-                            if (lastBracket > 0) {
-                                fallbackContent = fallbackContent.substring(0, lastBracket + 1) + ']';
-                            }
+                        // Try a more aggressive cleaning approach for arrays
+                        if (outputFormat === 'json_array') {
+                            try {
+                                let fallbackContent = text.trim();
+                                // Remove any trailing incomplete JSON
+                                const lastBracket = fallbackContent.lastIndexOf('}');
+                                if (lastBracket > 0) {
+                                    fallbackContent = fallbackContent.substring(0, lastBracket + 1) + ']';
+                                }
 
-                            const { jsonrepair } = await import('jsonrepair');
-                            const repairedFallback = jsonrepair(fallbackContent);
-                            jsonData = JSON.parse(repairedFallback);
+                                const { jsonrepair } = await import('jsonrepair');
+                                const repairedFallback = jsonrepair(fallbackContent);
+                                parsedData = JSON.parse(repairedFallback);
 
-                            if (!Array.isArray(jsonData)) {
-                                throw new Error('Fallback parsing failed - not an array');
+                                if (!Array.isArray(parsedData)) {
+                                    throw new Error('Fallback parsing failed - not an array');
+                                }
+                            } catch (fallbackError) {
+                                throw parseError; // Throw original error
                             }
-                        } catch (fallbackError) {
-                            throw parseError; // Throw original error
+                        } else {
+                            throw parseError;
                         }
                     }
 
-                    // Create output artifacts
-                    if (jsonData.length > 0) {
-                        await this.createOutputArtifacts(userId, transform, jsonData, text);
+                    // Create output artifacts based on output format
+                    if (parsedData) {
+                        if (outputFormat === 'outline_components') {
+                            await this.createOutlineArtifacts(userId, transform, parsedData);
+                        } else {
+                            // Default to array handling (brainstorming)
+                            await this.createOutputArtifacts(userId, transform, parsedData, text);
+                        }
 
                         // Store parsed results in cache
-                        cache.setResults(transform.id, jsonData);
+                        cache.setResults(transform.id, parsedData);
                     }
 
                     // Mark cache as complete
@@ -450,9 +463,20 @@ export class StreamingTransformExecutor {
             return;
         }
 
-        // Just start the job - no complex checks
+        // Determine job type based on template_id
+        const templateId = transform.execution_context?.template_id;
+
         try {
-            await this.executeStreamingLLM(transform, res);
+            switch (templateId) {
+                case 'brainstorming':
+                    await this.executeStreamingLLM(transform, res);
+                    break;
+                case 'outline':
+                    await this.executeStreamingOutline(transform, res);
+                    break;
+                default:
+                    throw new Error(`Unknown template_id: ${templateId}`);
+            }
             await this.updateTransformStatus(transformId, 'completed');
         } catch (error) {
             await this.handleJobFailure(transformId, error as Error);
@@ -557,5 +581,278 @@ export class StreamingTransformExecutor {
                 ? `${pathString} (${proportion.toFixed(0)}%)`
                 : pathString;
         }).join(', ');
+    }
+
+    // Job-based outline generation methods
+    async startOutlineJob(
+        userId: string,
+        jobParams: OutlineJobParamsV1
+    ): Promise<{ outlineSessionId: string; transformId: string }> {
+        // 1. Get and validate source artifact
+        const sourceArtifact = await this.artifactRepo.getArtifact(userId, jobParams.sourceArtifactId);
+        if (!sourceArtifact) {
+            throw new Error('Source artifact not found or access denied');
+        }
+
+        // Validate artifact type
+        if (!['brainstorm_idea', 'user_input'].includes(sourceArtifact.type)) {
+            throw new Error('Invalid source artifact type. Must be brainstorm_idea or user_input');
+        }
+
+        // 2. Create outline session
+        const outlineSessionId = uuidv4();
+        const outlineSessionArtifact = await this.artifactRepo.createArtifact(
+            userId,
+            'outline_session',
+            {
+                id: outlineSessionId,
+                ideation_session_id: 'job-based',
+                status: 'active',
+                created_at: new Date().toISOString()
+            } as OutlineSessionV1
+        );
+
+        // 3. Create job parameters artifact
+        const paramsArtifact = await this.artifactRepo.createArtifact(
+            userId,
+            'outline_job_params',
+            jobParams,
+            'v1'
+        );
+
+        // 4. Create transform with 'running' status
+        const transform = await this.transformRepo.createTransform(
+            userId,
+            'llm',
+            'v1',
+            'running',
+            {
+                started_at: new Date().toISOString(),
+                template_id: 'outline',
+                model_name: 'deepseek-chat',
+                outline_session_id: outlineSessionId,
+                max_retries: 2
+            }
+        );
+
+        // 5. Link transform inputs
+        await this.transformRepo.addTransformInputs(
+            transform.id,
+            [
+                { artifactId: paramsArtifact.id, inputRole: 'job_params' },
+                { artifactId: sourceArtifact.id, inputRole: 'source_artifact' },
+                { artifactId: outlineSessionArtifact.id, inputRole: 'outline_session' }
+            ]
+        );
+
+        return {
+            outlineSessionId,
+            transformId: transform.id
+        };
+    }
+
+    async executeOutlineJobWithRetries(
+        transformId: string,
+        res?: Response
+    ): Promise<void> {
+        const transform = await this.transformRepo.getTransform(transformId);
+        if (!transform) {
+            throw new Error(`Transform ${transformId} not found`);
+        }
+
+        // Simple check: if completed, don't restart
+        if (transform.status === 'completed') {
+            return;
+        }
+
+        // Check if we already have LLM data (job finished but status not updated)
+        const llmData = await this.transformRepo.getLLMTransformData(transformId);
+        if (llmData) {
+            await this.updateTransformStatus(transformId, 'completed');
+            return;
+        }
+
+        // Just start the job - no complex checks
+        try {
+            await this.executeStreamingOutline(transform, res);
+            await this.updateTransformStatus(transformId, 'completed');
+        } catch (error) {
+            await this.handleJobFailure(transformId, error as Error);
+        }
+    }
+
+    private async executeStreamingOutline(transform: any, res?: Response): Promise<void> {
+        // Get job parameters and source artifact
+        const inputs = await this.transformRepo.getTransformInputs(transform.id);
+        const paramsInput = inputs.find(input => input.input_role === 'job_params');
+        const sourceInput = inputs.find(input => input.input_role === 'source_artifact');
+
+        if (!paramsInput || !sourceInput) {
+            throw new Error('Job parameters or source artifact not found for transform');
+        }
+
+        const paramsArtifact = await this.artifactRepo.getArtifact(paramsInput.artifact_id);
+        const sourceArtifact = await this.artifactRepo.getArtifact(sourceInput.artifact_id);
+
+        if (!paramsArtifact || !sourceArtifact) {
+            throw new Error('Job parameters or source artifact not found');
+        }
+
+        const jobParams = paramsArtifact.data as OutlineJobParamsV1;
+
+        // Extract user input text from source artifact
+        const userInput = sourceArtifact.data.text || sourceArtifact.data.idea_text;
+        if (!userInput || !userInput.trim()) {
+            throw new Error('Source artifact contains no text content');
+        }
+
+        // Get and render template
+        const template = this.templateService.getTemplate('outline');
+        if (!template) {
+            throw new Error('Outline template not found');
+        }
+
+        // Build episode info string if provided
+        const episodeInfo = (jobParams.totalEpisodes && jobParams.episodeDuration)
+            ? `\n\n剧集信息：\n- 总集数：${jobParams.totalEpisodes}集\n- 每集时长：约${jobParams.episodeDuration}分钟`
+            : '';
+
+        const prompt = await this.templateService.renderTemplate(template, {
+            artifacts: {},
+            params: {
+                episodeInfo,
+                userInput
+            }
+        });
+
+        // Stream LLM response with outline_components output format
+        await this.streamLLMResponse(
+            prompt,
+            'deepseek-chat',
+            'outline_components',
+            transform,
+            res,
+            transform.user_id
+        );
+    }
+
+    private async createOutlineArtifacts(
+        userId: string,
+        transform: any,
+        outlineData: any
+    ): Promise<void> {
+        try {
+            // Create individual outline component artifacts based on the JSON structure
+
+            // 1. Title
+            if (outlineData.title) {
+                const titleArtifact = await this.artifactRepo.createArtifact(
+                    userId,
+                    'outline_title',
+                    { title: outlineData.title },
+                    'v1',
+                    { transform_id: transform.id }
+                );
+                await this.transformRepo.addTransformOutputs(transform.id, [
+                    { artifactId: titleArtifact.id, outputRole: 'title' }
+                ]);
+            }
+
+            // 2. Genre
+            if (outlineData.genre) {
+                const genreArtifact = await this.artifactRepo.createArtifact(
+                    userId,
+                    'outline_genre',
+                    { genre: outlineData.genre },
+                    'v1',
+                    { transform_id: transform.id }
+                );
+                await this.transformRepo.addTransformOutputs(transform.id, [
+                    { artifactId: genreArtifact.id, outputRole: 'genre' }
+                ]);
+            }
+
+            // 3. Selling Points
+            if (outlineData.selling_points && Array.isArray(outlineData.selling_points)) {
+                const sellingPointsArtifact = await this.artifactRepo.createArtifact(
+                    userId,
+                    'outline_selling_points',
+                    { selling_points: outlineData.selling_points.join('\n') },
+                    'v1',
+                    { transform_id: transform.id }
+                );
+                await this.transformRepo.addTransformOutputs(transform.id, [
+                    { artifactId: sellingPointsArtifact.id, outputRole: 'selling_points' }
+                ]);
+            }
+
+            // 4. Setting
+            if (outlineData.setting) {
+                const settingData = typeof outlineData.setting === 'object'
+                    ? `${outlineData.setting.core_setting_summary || ''}\n\n关键场景：\n${(outlineData.setting.key_scenes || []).map((scene: string) => `- ${scene}`).join('\n')}`
+                    : String(outlineData.setting);
+
+                const settingArtifact = await this.artifactRepo.createArtifact(
+                    userId,
+                    'outline_setting',
+                    { setting: settingData },
+                    'v1',
+                    { transform_id: transform.id }
+                );
+                await this.transformRepo.addTransformOutputs(transform.id, [
+                    { artifactId: settingArtifact.id, outputRole: 'setting' }
+                ]);
+            }
+
+            // 5. Synopsis
+            if (outlineData.synopsis) {
+                const synopsisArtifact = await this.artifactRepo.createArtifact(
+                    userId,
+                    'outline_synopsis',
+                    { synopsis: outlineData.synopsis },
+                    'v1',
+                    { transform_id: transform.id }
+                );
+                await this.transformRepo.addTransformOutputs(transform.id, [
+                    { artifactId: synopsisArtifact.id, outputRole: 'synopsis' }
+                ]);
+            }
+
+            // 6. Characters
+            if (outlineData.main_characters && Array.isArray(outlineData.main_characters)) {
+                const charactersArtifact = await this.artifactRepo.createArtifact(
+                    userId,
+                    'outline_characters',
+                    {
+                        characters: outlineData.main_characters.map((char: any) => ({
+                            name: char.name || '',
+                            description: char.description || ''
+                        }))
+                    },
+                    'v1',
+                    { transform_id: transform.id }
+                );
+                await this.transformRepo.addTransformOutputs(transform.id, [
+                    { artifactId: charactersArtifact.id, outputRole: 'characters' }
+                ]);
+            }
+
+            // Update outline session status to completed
+            if (transform.execution_context?.outline_session_id) {
+                await this.artifactRepo.createArtifact(
+                    userId,
+                    'outline_session',
+                    {
+                        id: transform.execution_context.outline_session_id,
+                        ideation_session_id: 'job-based',
+                        status: 'completed',
+                        created_at: new Date().toISOString()
+                    } as OutlineSessionV1
+                );
+            }
+
+        } catch (error) {
+            throw error;
+        }
     }
 } 

@@ -4,17 +4,132 @@ import { LLMStreamingService } from '../streaming/LLMStreamingService';
 export interface IdeaWithTitle {
     title: string;
     body: string;
+    artifactId?: string; // Add artifact ID to track real database IDs
 }
 
 export class BrainstormingStreamingService extends LLMStreamingService<IdeaWithTitle> {
+    private artifactIdMap = new Map<string, string>(); // Map idea text to artifact ID
+
     validate(item: any): item is IdeaWithTitle {
-        return (
-            typeof item === 'object' &&
+        return typeof item === 'object' &&
             typeof item.title === 'string' &&
-            typeof item.body === 'string' &&
-            item.title.trim() !== '' &&
-            item.body.trim() !== ''
-        );
+            typeof item.body === 'string';
+    }
+
+    parsePartial(content: string): IdeaWithTitle[] {
+        if (!content.trim()) return [];
+
+        try {
+            // Clean the content first
+            const cleaned = this.cleanContent(content);
+
+            // Debug logging
+            console.log('[BrainstormingStreamingService] Parsing content:', cleaned.substring(0, 200) + '...');
+
+            const parsed = JSON.parse(cleaned);
+
+            if (Array.isArray(parsed)) {
+                const ideas = parsed.map(item => ({
+                    title: item.title || '无标题',
+                    body: item.body || item.text || String(item)
+                }));
+                console.log('[BrainstormingStreamingService] Parsed ideas:', ideas.length);
+                return ideas;
+            }
+
+            return [];
+        } catch (error) {
+            console.log('[BrainstormingStreamingService] Parse error, trying regex extraction:', error);
+            // Try to extract valid JSON objects using regex
+            return this.extractValidObjects(content);
+        }
+    }
+
+    private extractValidObjects(content: string): IdeaWithTitle[] {
+        const items: IdeaWithTitle[] = [];
+
+        // Match complete JSON objects in the content
+        const jsonPattern = /\{[^{}]*"title"\s*:\s*"[^"]*"[^{}]*"body"\s*:\s*"[^"]*"[^{}]*\}/g;
+        const matches = content.match(jsonPattern);
+
+        if (matches) {
+            for (const match of matches) {
+                try {
+                    const parsed = JSON.parse(match);
+                    if (this.validate(parsed)) {
+                        items.push(parsed);
+                    }
+                } catch (e) {
+                    // Skip invalid JSON
+                }
+            }
+        }
+
+        return items;
+    }
+
+    cleanContent(content: string): string {
+        return content
+            .replace(/^```json\s*/m, '')
+            .replace(/\s*```$/m, '')
+            .trim();
+    }
+
+    // Override to handle completed transforms and extract artifact IDs
+    async connectToTransform(transformId: string): Promise<void> {
+        // First, establish the SSE connection through the parent class
+        // This ensures we don't miss any streaming data
+        await super.connectToTransform(transformId);
+
+        // The parent class will handle:
+        // 1. Setting up the EventSource connection
+        // 2. Parsing streaming chunks
+        // 3. Emitting content through the observables
+        // 4. Handling completion events
+
+        // Note: We can't fetch completed results here because it would interfere
+        // with the SSE connection. The artifact IDs will be available after
+        // the transform completes through the transform outputs.
+    }
+
+    // Parse completed transform results to extract artifact IDs
+    private parseCompletedResults(results: any[]): IdeaWithTitle[] {
+        const items: IdeaWithTitle[] = [];
+
+        for (const result of results) {
+            try {
+                if (result.artifact && result.artifact.data && result.artifact.type === 'brainstorm_idea') {
+                    const artifactData = result.artifact.data;
+                    const idea: IdeaWithTitle = {
+                        title: artifactData.idea_title || '无标题',
+                        body: artifactData.idea_text || '',
+                        artifactId: result.artifact.id // Use the real artifact ID
+                    };
+
+                    if (this.validate(idea)) {
+                        // Store the mapping for future reference
+                        this.artifactIdMap.set(idea.body, result.artifact.id);
+                        items.push(idea);
+                    }
+                }
+            } catch (error) {
+                console.warn('Failed to parse completed result:', result, error);
+            }
+        }
+
+        // Sort by order_index if available
+        items.sort((a, b) => {
+            const aOrderIndex = results.find(r => r.artifact?.id === a.artifactId)?.artifact?.data?.order_index || 0;
+            const bOrderIndex = results.find(r => r.artifact?.id === b.artifactId)?.artifact?.data?.order_index || 0;
+            return aOrderIndex - bOrderIndex;
+        });
+
+        return items;
+    }
+
+    // Get artifact ID for a given idea text
+    getArtifactId(ideaText: string): string | undefined {
+        return this.artifactIdMap.get(ideaText);
     }
 
     // NEW: Convert artifact data to IdeaWithTitle format
@@ -24,7 +139,8 @@ export class BrainstormingStreamingService extends LLMStreamingService<IdeaWithT
             if (artifactData.idea_text) {
                 return {
                     title: artifactData.idea_title || '无标题',
-                    body: artifactData.idea_text
+                    body: artifactData.idea_text,
+                    artifactId: artifactData.id // Include artifact ID if available
                 };
             }
 
@@ -32,7 +148,8 @@ export class BrainstormingStreamingService extends LLMStreamingService<IdeaWithT
             if (artifactData.title && artifactData.body) {
                 return {
                     title: artifactData.title,
-                    body: artifactData.body
+                    body: artifactData.body,
+                    artifactId: artifactData.id
                 };
             }
 
@@ -41,39 +158,5 @@ export class BrainstormingStreamingService extends LLMStreamingService<IdeaWithT
             console.warn('Failed to convert artifact to idea:', artifactData, error);
             return null;
         }
-    }
-
-    cleanContent(content: string): string {
-        let cleaned = content.trim();
-        if (cleaned.startsWith('```json')) {
-            cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-        } else if (cleaned.startsWith('```')) {
-            cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
-        }
-        return cleaned;
-    }
-
-    parsePartial(content: string): IdeaWithTitle[] {
-        if (!content.trim()) return [];
-
-        const cleaned = this.cleanContent(content);
-        if (!cleaned.trim()) return [];
-
-        // Simple approach: try to parse with jsonrepair
-        try {
-            const repaired = jsonrepair(cleaned);
-            const parsed = JSON.parse(repaired);
-
-            if (Array.isArray(parsed)) {
-                const validItems = parsed.filter(item => this.validate(item));
-                console.log(`[BrainstormingStreamingService] Parsed ${validItems.length} valid items`);
-                return validItems;
-            }
-        } catch (error) {
-            // If full parse fails, accumulate until we get valid JSON
-            console.log('[BrainstormingStreamingService] Partial content, waiting for more data');
-        }
-
-        return [];
     }
 } 

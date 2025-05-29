@@ -3,7 +3,8 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button, Typography, Spin, Alert, Card, Divider, Input, InputNumber, Form, Space, Progress } from 'antd';
 import { ArrowLeftOutlined, SendOutlined, FileTextOutlined, StopOutlined } from '@ant-design/icons';
 import StoryInspirationEditor from './StoryInspirationEditor';
-import { useStreamingLLM } from '../hooks/useStreamingLLM';
+import { useStreamingOutline } from '../hooks/useStreamingOutline';
+import { OutlineSection } from '../services/implementations/OutlineStreamingService';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -45,26 +46,31 @@ const OutlineTab: React.FC = () => {
     // New state for outline generation options
     const [totalEpisodes, setTotalEpisodes] = useState<number | null>(50);
     const [episodeDuration, setEpisodeDuration] = useState<number | null>(2);
+    const [transformId, setTransformId] = useState<string | undefined>();
 
     // Streaming hook for outline generation
-    const { status: streamingStatus, startStreaming, cancelStreaming, reset: resetStreaming } = useStreamingLLM();
+    const { status, items, error: streamingError, stop } = useStreamingOutline(transformId);
 
-    // Update loading state based on streaming status
-    const isStreamingActive = streamingStatus.isStreaming;
-    const streamedContent = streamingStatus.fullContent;
-    const streamingProgress = streamingStatus.progress;
-    const streamingError = streamingStatus.error;
-    const streamingArtifacts = streamingStatus.artifacts;
+    // Extract the latest outline data from streaming items
+    const streamingOutline = items && items.length > 0 ? items[0] : null;
+    const isStreaming = status === 'streaming';
+    const isCompleted = status === 'completed';
 
     // Handle streaming completion
     useEffect(() => {
-        if (streamingStatus.isComplete && streamingStatus.outlineSessionId) {
-            // Navigate to the completed outline page after a short delay
-            setTimeout(() => {
-                navigate(`/outlines/${streamingStatus.outlineSessionId}`);
-            }, 1000);
+        if (isCompleted && transformId && !outlineId) {
+            // Get the outline session ID from session storage
+            const outlineSessionId = sessionStorage.getItem(`transform_${transformId}_session`);
+            if (outlineSessionId) {
+                // Navigate to the completed outline page after a short delay
+                setTimeout(() => {
+                    navigate(`/outlines/${outlineSessionId}`);
+                    // Clean up session storage
+                    sessionStorage.removeItem(`transform_${transformId}_session`);
+                }, 1000);
+            }
         }
-    }, [streamingStatus.isComplete, streamingStatus.outlineSessionId, navigate]);
+    }, [isCompleted, transformId, outlineId, navigate]);
 
     // Determine if we're in creation mode or viewing mode
     const isCreationMode = !outlineId && artifactId;
@@ -137,22 +143,42 @@ const OutlineTab: React.FC = () => {
             return;
         }
 
-        console.log('handleGenerateOutline: Generating outline for artifactId:', currentArtifactId, 'with totalEpisodes:', totalEpisodes, 'episodeDuration:', episodeDuration);
+        console.log('handleGenerateOutline: Creating outline job for artifactId:', currentArtifactId, 'with totalEpisodes:', totalEpisodes, 'episodeDuration:', episodeDuration);
 
         setError(null);
-        resetStreaming();
+        setIsLoading(true);
 
         try {
-            await startStreaming(`/api/outlines/from-artifact/${currentArtifactId}/stream`, {
-                body: {
-                    totalEpisodes,
-                    episodeDuration,
+            // Create outline job
+            const response = await fetch('/api/outlines/create-job', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
                 },
+                body: JSON.stringify({
+                    sourceArtifactId: currentArtifactId,
+                    totalEpisodes: totalEpisodes || undefined,
+                    episodeDuration: episodeDuration || undefined
+                })
             });
 
+            if (!response.ok) {
+                throw new Error(`Failed to create outline job: ${response.status}`);
+            }
+
+            const { outlineSessionId, transformId: newTransformId } = await response.json();
+
+            // Set transform ID to start streaming
+            setTransformId(newTransformId);
+
+            // Store the outline session ID for navigation after completion
+            sessionStorage.setItem(`transform_${newTransformId}_session`, outlineSessionId);
+
         } catch (err) {
-            console.error('Error generating outline:', err);
+            console.error('Error creating outline job:', err);
             setError(err instanceof Error ? err : new Error(String(err)));
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -290,6 +316,10 @@ const OutlineTab: React.FC = () => {
                         0%, 50% { opacity: 1; }
                         51%, 100% { opacity: 0; }
                     }
+                    @keyframes fadeIn {
+                        from { opacity: 0; transform: translateY(10px); }
+                        to { opacity: 1; transform: translateY(0); }
+                    }
                 `}
             </style>
             {/* Header */}
@@ -382,34 +412,29 @@ const OutlineTab: React.FC = () => {
                 <div style={{ marginBottom: '24px' }}>
                     <Button
                         type="primary"
-                        icon={isStreamingActive ? <StopOutlined /> : <FileTextOutlined />}
-                        onClick={isStreamingActive ? cancelStreaming : handleGenerateOutline}
+                        icon={isStreaming ? <StopOutlined /> : <FileTextOutlined />}
+                        onClick={isStreaming ? stop : handleGenerateOutline}
                         loading={false}
                         size="large"
                         style={{
                             height: '44px',
                             fontSize: '16px',
                             fontWeight: '500',
-                            background: isStreamingActive ? '#ff4d4f' : '#52c41a',
-                            borderColor: isStreamingActive ? '#ff4d4f' : '#52c41a',
+                            background: isStreaming ? '#ff4d4f' : '#52c41a',
+                            borderColor: isStreaming ? '#ff4d4f' : '#52c41a',
                             marginRight: '12px'
                         }}
                     >
-                        {isStreamingActive ? '停止生成' : '生成故事大纲'}
+                        {isStreaming ? '停止生成' : '生成故事大纲'}
                     </Button>
 
                     {/* Streaming Progress */}
-                    {isStreamingActive && streamingProgress && (
+                    {isStreaming && (
                         <div style={{ marginTop: '16px' }}>
                             <div style={{ marginBottom: '8px' }}>
                                 <Text style={{ color: '#1890ff' }}>
-                                    {streamingProgress.message}
+                                    正在生成故事大纲...
                                 </Text>
-                                {streamingProgress.tokens > 0 && (
-                                    <Text type="secondary" style={{ marginLeft: '8px' }}>
-                                        ({streamingProgress.tokens} tokens)
-                                    </Text>
-                                )}
                             </div>
                             <Progress
                                 percent={undefined}
@@ -433,43 +458,202 @@ const OutlineTab: React.FC = () => {
                 />
             )}
 
-            {/* Streaming Content Display */}
-            {isCreationMode && isStreamingActive && streamedContent && (
+            {/* Streaming Content Display - Progressive Outline */}
+            {isCreationMode && (isStreaming || (streamingOutline && !isCompleted)) && streamingOutline && (
                 <div style={{ marginBottom: '24px' }}>
-                    <Card
-                        title="AI正在生成大纲内容..."
-                        size="small"
-                        style={{
-                            background: '#0f0f0f',
-                            border: '1px solid #1890ff',
-                            borderRadius: '8px'
-                        }}
-                        headStyle={{ background: '#1890ff20', color: '#1890ff' }}
-                    >
-                        <div style={{
-                            maxHeight: '400px',
-                            overflowY: 'auto',
-                            whiteSpace: 'pre-wrap',
-                            fontFamily: 'monospace',
-                            fontSize: '14px',
-                            lineHeight: '1.5',
-                            color: '#e8e8e8',
-                            background: '#1a1a1a',
-                            padding: '12px',
-                            borderRadius: '6px'
-                        }}>
-                            {streamedContent}
-                            <span style={{
+                    <Title level={4} style={{ color: '#ffffff', marginBottom: '24px', fontSize: '20px' }}>
+                        {isStreaming ? '正在生成故事大纲...' : '故事大纲'}
+                    </Title>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        {/* Title */}
+                        {streamingOutline.title && (
+                            <Card
+                                size="small"
+                                style={{
+                                    background: '#0f0f0f',
+                                    border: '1px solid #404040',
+                                    borderRadius: '8px',
+                                    padding: '20px',
+                                    animation: 'fadeIn 0.5s ease-in-out'
+                                }}
+                            >
+                                <div style={{ marginBottom: '12px' }}>
+                                    <Text strong style={{ fontSize: '18px', color: '#ffffff' }}>
+                                        🎬 剧名
+                                    </Text>
+                                </div>
+                                <Text style={{ fontSize: '16px', color: '#e8e8e8' }}>
+                                    {streamingOutline.title}
+                                </Text>
+                            </Card>
+                        )}
+
+                        {/* Genre */}
+                        {streamingOutline.genre && (
+                            <Card
+                                size="small"
+                                style={{
+                                    background: '#0f0f0f',
+                                    border: '1px solid #404040',
+                                    borderRadius: '8px',
+                                    padding: '20px',
+                                    animation: 'fadeIn 0.5s ease-in-out'
+                                }}
+                            >
+                                <div style={{ marginBottom: '12px' }}>
+                                    <Text strong style={{ fontSize: '18px', color: '#ffffff' }}>
+                                        🎭 题材类型
+                                    </Text>
+                                </div>
+                                <Text style={{ fontSize: '16px', color: '#e8e8e8' }}>
+                                    {streamingOutline.genre}
+                                </Text>
+                            </Card>
+                        )}
+
+                        {/* Selling Points */}
+                        {streamingOutline.selling_points && streamingOutline.selling_points.length > 0 && (
+                            <Card
+                                size="small"
+                                style={{
+                                    background: '#0f0f0f',
+                                    border: '1px solid #404040',
+                                    borderRadius: '8px',
+                                    padding: '20px',
+                                    animation: 'fadeIn 0.5s ease-in-out'
+                                }}
+                            >
+                                <div style={{ marginBottom: '12px' }}>
+                                    <Text strong style={{ fontSize: '18px', color: '#ffffff' }}>
+                                        ⭐ 项目卖点/爽点
+                                    </Text>
+                                </div>
+                                <div>
+                                    {streamingOutline.selling_points.map((point, index) => (
+                                        <div key={index} style={{ marginBottom: '8px' }}>
+                                            <Text style={{ fontSize: '16px', color: '#e8e8e8' }}>
+                                                • {point}
+                                            </Text>
+                                        </div>
+                                    ))}
+                                </div>
+                            </Card>
+                        )}
+
+                        {/* Setting */}
+                        {streamingOutline.setting && (
+                            <Card
+                                size="small"
+                                style={{
+                                    background: '#0f0f0f',
+                                    border: '1px solid #404040',
+                                    borderRadius: '8px',
+                                    padding: '20px',
+                                    animation: 'fadeIn 0.5s ease-in-out'
+                                }}
+                            >
+                                <div style={{ marginBottom: '12px' }}>
+                                    <Text strong style={{ fontSize: '18px', color: '#ffffff' }}>
+                                        🌍 故事设定
+                                    </Text>
+                                </div>
+                                {streamingOutline.setting.core_setting_summary && (
+                                    <div style={{ marginBottom: '12px' }}>
+                                        <Text style={{ fontSize: '16px', color: '#e8e8e8' }}>
+                                            {streamingOutline.setting.core_setting_summary}
+                                        </Text>
+                                    </div>
+                                )}
+                                {streamingOutline.setting.key_scenes && streamingOutline.setting.key_scenes.length > 0 && (
+                                    <div>
+                                        <Text strong style={{ fontSize: '14px', color: '#d0d0d0', display: 'block', marginBottom: '8px' }}>
+                                            关键场景：
+                                        </Text>
+                                        {streamingOutline.setting.key_scenes.map((scene, index) => (
+                                            <div key={index} style={{ marginBottom: '4px' }}>
+                                                <Text style={{ fontSize: '14px', color: '#bfbfbf' }}>
+                                                    • {scene}
+                                                </Text>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </Card>
+                        )}
+
+                        {/* Characters */}
+                        {streamingOutline.main_characters && streamingOutline.main_characters.length > 0 && (
+                            <div>
+                                <Title level={5} style={{ color: '#ffffff', marginBottom: '16px', fontSize: '18px' }}>
+                                    主要人物
+                                </Title>
+                                {streamingOutline.main_characters.map((character, index) => (
+                                    <Card
+                                        key={index}
+                                        size="small"
+                                        style={{
+                                            background: '#0f0f0f',
+                                            border: '1px solid #404040',
+                                            borderRadius: '8px',
+                                            padding: '20px',
+                                            marginBottom: '12px',
+                                            animation: 'fadeIn 0.5s ease-in-out'
+                                        }}
+                                    >
+                                        <div style={{ marginBottom: '8px' }}>
+                                            <Text strong style={{ fontSize: '16px', color: '#ffffff' }}>
+                                                👤 {character.name}
+                                            </Text>
+                                        </div>
+                                        <Text style={{ fontSize: '14px', color: '#e8e8e8' }}>
+                                            {character.description}
+                                        </Text>
+                                    </Card>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Synopsis */}
+                        {streamingOutline.synopsis && (
+                            <Card
+                                size="small"
+                                style={{
+                                    background: '#0f0f0f',
+                                    border: '1px solid #404040',
+                                    borderRadius: '8px',
+                                    padding: '20px',
+                                    animation: 'fadeIn 0.5s ease-in-out'
+                                }}
+                            >
+                                <div style={{ marginBottom: '12px' }}>
+                                    <Text strong style={{ fontSize: '18px', color: '#ffffff' }}>
+                                        📖 故事梗概
+                                    </Text>
+                                </div>
+                                <Text style={{ fontSize: '16px', color: '#e8e8e8', lineHeight: '1.7', whiteSpace: 'pre-wrap' }}>
+                                    {streamingOutline.synopsis}
+                                </Text>
+                            </Card>
+                        )}
+
+                        {/* Blinking cursor while still streaming */}
+                        {isStreaming && (
+                            <div style={{
+                                padding: '8px',
                                 color: '#1890ff',
-                                animation: 'blink 1s infinite'
-                            }}>|</span>
-                        </div>
-                    </Card>
+                                fontSize: '18px',
+                                textAlign: 'center'
+                            }}>
+                                <span style={{ animation: 'blink 1s infinite' }}>▋</span>
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
 
             {/* Loading State - only show when not streaming */}
-            {isLoading && !isStreamingActive && (
+            {isLoading && !isStreaming && (
                 <div style={{
                     textAlign: 'center',
                     padding: '40px',

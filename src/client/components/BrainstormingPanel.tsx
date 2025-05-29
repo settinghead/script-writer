@@ -102,6 +102,16 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
     // Use the new RxJS-based streaming hook with optional transform ID
     const { status, items, error, start, stop } = useStreamingBrainstorm(activeTransformId);
 
+    // DEBUG: Log status changes
+    useEffect(() => {
+        console.log('[BrainstormingPanel] Status changed:', status);
+    }, [status]);
+
+    // DEBUG: Log items changes
+    useEffect(() => {
+        console.log('[BrainstormingPanel] Items changed:', items);
+    }, [items]);
+
     // DEBUG: Log activeTransformId changes
     useEffect(() => {
         console.log('[BrainstormingPanel] activeTransformId changed:', activeTransformId);
@@ -150,7 +160,7 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
             genreProportions,
             generatedIdeas,
             generatedIdeaArtifacts: generatedIdeas.map((idea, index) => ({
-                id: `idea-${index}`,
+                id: idea.artifactId || `temp-idea-${index}`, // Use real artifact ID if available, fallback to temp ID
                 text: typeof idea === 'string' ? idea : `${idea.title}: ${idea.body}`,
                 title: typeof idea === 'object' ? idea.title : undefined,
                 orderIndex: index
@@ -414,125 +424,130 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                 </div>
 
                 <div className="brainstorm-content">
-                    {/* Show interactive controls only if no ideas have been generated */}
-                    {!hasGeneratedIdeas && (
-                        <>
-                            <PlatformSelection
-                                selectedPlatform={selectedPlatform}
-                                onPlatformChange={handlePlatformChange}
-                            />
+                    {/* Determine if we're in generation mode */}
+                    {(() => {
+                        const isGenerationMode = activeTransformId || hasGeneratedIdeas || isStreaming;
 
-                            <div style={{ marginBottom: '16px' }}>
-                                <Text strong style={{ display: 'block', marginBottom: '8px' }}>故事类型:</Text>
-                                <div
-                                    onClick={() => setGenrePopupVisible(true)}
-                                    style={{
-                                        border: '1px solid #434343',
-                                        borderRadius: '6px',
-                                        padding: '8px 12px',
-                                        minHeight: '32px',
-                                        cursor: 'pointer',
-                                        background: '#141414',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
-                                        transition: 'all 0.3s'
-                                    }}
-                                    onMouseEnter={(e) => e.currentTarget.style.borderColor = '#1890ff'}
-                                    onMouseLeave={(e) => e.currentTarget.style.borderColor = '#434343'}
-                                >
-                                    {selectedGenrePaths.length > 0 ? (
-                                        <span style={{ color: '#d9d9d9', cursor: 'pointer' }}>
-                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                                                {buildGenreDisplayElements()}
-                                            </div>
-                                        </span>
-                                    ) : (
-                                        <span style={{ color: '#666', cursor: 'pointer' }}>
-                                            点击选择故事类型 (可多选, 最多3个)
-                                        </span>
-                                    )}
-                                    <RightOutlined style={{ fontSize: '12px', color: '#666' }} />
-                                </div>
-                            </div>
-
-                            <GenreSelectionPopup
-                                visible={genrePopupVisible}
-                                onClose={() => setGenrePopupVisible(false)}
-                                onSelect={handleGenreSelectionConfirm}
-                                currentSelectionPaths={selectedGenrePaths}
-                            />
-
-                            <div style={{ marginBottom: '16px' }}>
-                                <Text strong style={{ display: 'block', marginBottom: '8px' }}>特殊要求:</Text>
-                                <Input
-                                    value={requirements}
-                                    onChange={(e) => setRequirements(e.target.value)}
-                                    placeholder="可以留空，或添加具体要求，例如：要狗血、要反转、要搞笑等"
-                                    style={{
-                                        background: '#141414',
-                                        border: '1px solid #434343',
-                                        borderRadius: '6px'
-                                    }}
-                                />
-                                <Text type="secondary" style={{ fontSize: '11px', marginTop: '4px', display: 'block' }}>
-                                    AI将根据您的特殊要求来生成故事灵感
-                                </Text>
-                            </div>
-                        </>
-                    )}
-
-                    {/* Show read-only display if ideas have been generated */}
-                    {hasGeneratedIdeas && (
-                        <div style={{ minWidth: '400px', maxWidth: '600px' }}>
-                            <div style={{ marginBottom: '16px' }}>
-                                <Text strong style={{ display: 'block', marginBottom: '8px', color: '#d9d9d9' }}>平台:</Text>
+                        // If in generation mode, show compact summary
+                        if (isGenerationMode) {
+                            return (
                                 <div style={{
-                                    padding: '8px 12px',
+                                    padding: '12px 16px',
                                     background: '#262626',
                                     border: '1px solid #404040',
-                                    borderRadius: '6px',
-                                    color: '#bfbfbf'
+                                    borderRadius: '8px',
+                                    marginBottom: '16px'
                                 }}>
-                                    {selectedPlatform || '未指定'}
-                                </div>
-                            </div>
-
-                            <div style={{ marginBottom: '16px' }}>
-                                <Text strong style={{ display: 'block', marginBottom: '8px', color: '#d9d9d9' }}>故事类型:</Text>
-                                <div style={{
-                                    padding: '8px 12px',
-                                    background: '#262626',
-                                    border: '1px solid #404040',
-                                    borderRadius: '6px',
-                                    color: '#bfbfbf'
-                                }}>
-                                    {selectedGenrePaths.length > 0 ? (
-                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                                            {buildGenreDisplayElements()}
-                                        </div>
-                                    ) : (
-                                        '未指定'
-                                    )}
-                                </div>
-                            </div>
-
-                            {requirements && (
-                                <div style={{ marginBottom: '16px' }}>
-                                    <Text strong style={{ display: 'block', marginBottom: '8px', color: '#d9d9d9' }}>特殊要求:</Text>
                                     <div style={{
-                                        padding: '8px 12px',
-                                        background: '#262626',
-                                        border: '1px solid #404040',
-                                        borderRadius: '6px',
-                                        color: '#bfbfbf'
+                                        display: 'flex',
+                                        flexWrap: 'wrap',
+                                        gap: '12px',
+                                        alignItems: 'center',
+                                        fontSize: '13px'
                                     }}>
-                                        {requirements}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <Text type="secondary" style={{ fontSize: '12px' }}>平台:</Text>
+                                            <Text style={{ color: '#d9d9d9', fontSize: '12px' }}>
+                                                {selectedPlatform || '通用'}
+                                            </Text>
+                                        </div>
+
+                                        <Divider type="vertical" style={{ background: '#404040', margin: '0' }} />
+
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <Text type="secondary" style={{ fontSize: '12px' }}>类型:</Text>
+                                            <Text style={{ color: '#d9d9d9', fontSize: '12px' }}>
+                                                {selectedGenrePaths.length > 0
+                                                    ? buildGenrePromptString()
+                                                    : '未指定'
+                                                }
+                                            </Text>
+                                        </div>
+
+                                        {requirements && (
+                                            <>
+                                                <Divider type="vertical" style={{ background: '#404040', margin: '0' }} />
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                    <Text type="secondary" style={{ fontSize: '12px' }}>要求:</Text>
+                                                    <Text style={{ color: '#d9d9d9', fontSize: '12px' }}>
+                                                        {requirements}
+                                                    </Text>
+                                                </div>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
-                            )}
-                        </div>
-                    )}
+                            );
+                        }
+
+                        // Otherwise show the full interactive form
+                        return (
+                            <>
+                                <PlatformSelection
+                                    selectedPlatform={selectedPlatform}
+                                    onPlatformChange={handlePlatformChange}
+                                />
+
+                                <div style={{ marginBottom: '16px' }}>
+                                    <Text strong style={{ display: 'block', marginBottom: '8px' }}>故事类型:</Text>
+                                    <div
+                                        onClick={() => setGenrePopupVisible(true)}
+                                        style={{
+                                            border: '1px solid #434343',
+                                            borderRadius: '6px',
+                                            padding: '8px 12px',
+                                            minHeight: '32px',
+                                            cursor: 'pointer',
+                                            background: '#141414',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
+                                            transition: 'all 0.3s'
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.borderColor = '#1890ff'}
+                                        onMouseLeave={(e) => e.currentTarget.style.borderColor = '#434343'}
+                                    >
+                                        {selectedGenrePaths.length > 0 ? (
+                                            <span style={{ color: '#d9d9d9', cursor: 'pointer' }}>
+                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                                                    {buildGenreDisplayElements()}
+                                                </div>
+                                            </span>
+                                        ) : (
+                                            <span style={{ color: '#666', cursor: 'pointer' }}>
+                                                点击选择故事类型 (可多选, 最多3个)
+                                            </span>
+                                        )}
+                                        <RightOutlined style={{ fontSize: '12px', color: '#666' }} />
+                                    </div>
+                                </div>
+
+                                <GenreSelectionPopup
+                                    visible={genrePopupVisible}
+                                    onClose={() => setGenrePopupVisible(false)}
+                                    onSelect={handleGenreSelectionConfirm}
+                                    currentSelectionPaths={selectedGenrePaths}
+                                />
+
+                                <div style={{ marginBottom: '16px' }}>
+                                    <Text strong style={{ display: 'block', marginBottom: '8px' }}>特殊要求:</Text>
+                                    <Input
+                                        value={requirements}
+                                        onChange={(e) => setRequirements(e.target.value)}
+                                        placeholder="可以留空，或添加具体要求，例如：要狗血、要反转、要搞笑等"
+                                        style={{
+                                            background: '#141414',
+                                            border: '1px solid #434343',
+                                            borderRadius: '6px'
+                                        }}
+                                    />
+                                    <Text type="secondary" style={{ fontSize: '11px', marginTop: '4px', display: 'block' }}>
+                                        AI将根据您的特殊要求来生成故事灵感
+                                    </Text>
+                                </div>
+                            </>
+                        );
+                    })()}
 
                     {/* Error display */}
                     {error && (
@@ -545,7 +560,7 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                     )}
 
                     {/* Generate button or streaming display */}
-                    {!hasGeneratedIdeas && !isStreaming && (
+                    {!hasGeneratedIdeas && !isStreaming && !activeTransformId && (
                         <Button
                             type="primary"
                             icon={<BulbOutlined />}
@@ -563,7 +578,7 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                     )}
 
                     {/* Show disabled generate button during streaming if no ideas yet */}
-                    {!hasGeneratedIdeas && isStreaming && (
+                    {((!hasGeneratedIdeas && isStreaming) || activeTransformId) && (
                         <Button
                             type="primary"
                             icon={<BulbOutlined />}
@@ -576,15 +591,17 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                                 marginBottom: '16px'
                             }}
                         >
-                            正在生成故事灵感...
+                            {activeTransformId ? '连接中...' : '正在生成故事灵感...'}
                         </Button>
                     )}
 
                     {/* Streaming progress */}
-                    {isStreaming && (
+                    {(isStreaming || activeTransformId) && (
                         <div style={{ marginBottom: '16px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                <Text style={{ color: '#1890ff' }}>正在生成故事灵感...</Text>
+                                <Text style={{ color: '#1890ff' }}>
+                                    {activeTransformId ? '连接到正在进行的任务...' : '正在生成故事灵感...'}
+                                </Text>
                                 <Button
                                     size="small"
                                     icon={<StopOutlined />}

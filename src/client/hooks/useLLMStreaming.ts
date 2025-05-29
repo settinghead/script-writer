@@ -4,7 +4,7 @@ import { StreamingResponse } from '../../common/streaming/types';
 import { LLMStreamingService } from '../services/streaming/LLMStreamingService';
 
 export function useLLMStreaming<T>(
-    service: LLMStreamingService<T>,
+    service: LLMStreamingService<T> | undefined,
     config: {
         transformId?: string;
     } = {}
@@ -14,7 +14,7 @@ export function useLLMStreaming<T>(
 
     // Subscribe to the response stream
     const response = useObservableState<StreamingResponse<T>>(
-        service.response$,
+        service?.response$,
         {
             status: 'idle',
             items: [],
@@ -24,6 +24,8 @@ export function useLLMStreaming<T>(
 
     // Handle errors by converting them to a status
     useEffect(() => {
+        if (!service) return;
+
         const subscription = service.response$.subscribe({
             error: (err) => {
                 // Error already handled in response stream
@@ -35,14 +37,16 @@ export function useLLMStreaming<T>(
 
     // Auto-connect when transformId changes
     useEffect(() => {
-        if (transformId && transformId !== currentTransformIdRef.current) {
-            currentTransformIdRef.current = transformId;
-
-            // Connect to the transform stream
-            service.connectToTransform(transformId).catch((error) => {
-                // Error handled in service
-            });
+        if (!service || !transformId || transformId === currentTransformIdRef.current) {
+            return;
         }
+
+        currentTransformIdRef.current = transformId;
+
+        // Connect to the transform stream
+        service.connectToTransform(transformId).catch((error) => {
+            // Error handled in service
+        });
 
         return () => {
             if (currentTransformIdRef.current === transformId) {
@@ -53,6 +57,6 @@ export function useLLMStreaming<T>(
 
     return {
         ...response,
-        stop: () => service.stop()
+        stop: () => service?.stop()
     };
 } 

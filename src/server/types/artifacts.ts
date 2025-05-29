@@ -95,6 +95,14 @@ export interface BrainstormingJobParamsV1 {
     requestedAt: string; // ISO timestamp
 }
 
+// Job parameters for outline generation (persistent across refreshes)
+export interface OutlineJobParamsV1 {
+    sourceArtifactId: string;
+    totalEpisodes?: number;
+    episodeDuration?: number;
+    requestedAt: string; // ISO timestamp
+}
+
 // User input/selection (for user-modified or manually entered content)
 export interface UserInputV1 {
     text: string;
@@ -167,6 +175,8 @@ export function validateArtifactData(type: string, typeVersion: string, data: an
             return isBrainstormIdeaV1(data);
         case 'brainstorming_job_params:v1':
             return isBrainstormingJobParamsV1(data);
+        case 'outline_job_params:v1':
+            return isOutlineJobParamsV1(data);
         case 'user_input:v1':
             return isUserInputV1(data);
         case 'plot_outline:v1':
@@ -223,6 +233,14 @@ function isBrainstormingJobParamsV1(data: any): data is BrainstormingJobParamsV1
         Array.isArray(data.genrePaths) &&
         Array.isArray(data.genreProportions) &&
         typeof data.requirements === 'string' &&
+        typeof data.requestedAt === 'string';
+}
+
+function isOutlineJobParamsV1(data: any): data is OutlineJobParamsV1 {
+    return typeof data === 'object' &&
+        typeof data.sourceArtifactId === 'string' &&
+        (typeof data.totalEpisodes === 'number' || data.totalEpisodes === undefined) &&
+        (typeof data.episodeDuration === 'number' || data.episodeDuration === undefined) &&
         typeof data.requestedAt === 'string';
 }
 
