@@ -256,7 +256,10 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                 }}
             >
                 <Text type="secondary" style={{ fontSize: '12px' }}>
-                    💡 已选择故事灵感 {selectedIdeaIndex !== null ? `#${selectedIdeaIndex + 1}` : ''}
+                    💡 已选择故事灵感 {selectedIdeaIndex !== null && generatedIdeas[selectedIdeaIndex]
+                        ? `「${generatedIdeas[selectedIdeaIndex].title}」`
+                        : ''
+                    }
                 </Text>
                 {onExpand && (
                     <Button
