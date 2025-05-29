@@ -248,19 +248,19 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
             <div style={{ display: 'flex', flexDirection: 'column', minWidth: '400px', maxWidth: '600px', }}>
                 <style>
                     {`
-                        @keyframes blink {
-                            0%, 50% { opacity: 1; }
-                            51%, 100% { opacity: 0; }
-                        }
-                        @keyframes fadeIn {
-                            from { opacity: 0; transform: translateY(10px); }
-                            to { opacity: 1; transform: translateY(0); }
-                        }
-                        @keyframes pulse {
-                            0%, 100% { opacity: 0.4; }
-                            50% { opacity: 1; }
-                        }
-                    `}
+                    @keyframes blink {
+                        0%, 50% { opacity: 1; }
+                        51%, 100% { opacity: 0; }
+                    }
+                    @keyframes fadeIn {
+                        from { opacity: 0; transform: translateY(10px); }
+                        to { opacity: 1; transform: translateY(0); }
+                    }
+                    @keyframes pulse {
+                        0%, 100% { opacity: 0.4; }
+                        50% { opacity: 1; }
+                    }
+                `}
                 </style>
                 <div style={{ marginBottom: '16px' }}>
                     <Text strong style={{ fontSize: '16px', color: '#d9d9d9' }}>
@@ -341,7 +341,7 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
 
                 {/* Show read-only display if ideas have been generated */}
                 {hasGeneratedIdeas && (
-                    <>
+                    <div style={{ minWidth: '400px', maxWidth: '600px' }}>
                         <div style={{ marginBottom: '16px' }}>
                             <Text strong style={{ display: 'block', marginBottom: '8px', color: '#d9d9d9' }}>平台:</Text>
                             <div style={{
@@ -388,7 +388,7 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                                 </div>
                             </div>
                         )}
-                    </>
+                    </div>
                 )}
 
                 {/* Error display */}
@@ -458,11 +458,34 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                         <Progress percent={30} showInfo={false} strokeColor="#1890ff" />
                     </div>
                 )}
+
+                {/* Show regenerate button after completion */}
+                {hasGeneratedIdeas && (status === 'completed' || status === 'error') && (
+                    <div style={{ marginTop: '16px' }}>
+                        <Button
+                            type="default"
+                            icon={<BulbOutlined />}
+                            onClick={() => {
+                                setGeneratedIdeas([]);
+                                generateIdea();
+                            }}
+                            style={{
+                                width: '100%',
+                                height: '40px',
+                                background: '#434343',
+                                borderColor: '#434343',
+                                color: '#d9d9d9'
+                            }}
+                        >
+                            重新生成
+                        </Button>
+                    </div>
+                )}
             </div>
 
-            {/* Display streaming ideas as they arrive */}
+            {/* Display streaming ideas as they arrive - full width for multi-column */}
             {generatedIdeas.length > 0 && (
-                <div style={{ marginTop: '16px' }}>
+                <div style={{ marginTop: '16px', width: '100%' }}>
                     <Text strong style={{ display: 'block', marginBottom: '12px', color: '#d9d9d9' }}>
                         生成的故事灵感:
                     </Text>
@@ -522,29 +545,6 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                             </div>
                         )}
                     </div>
-                </div>
-            )}
-
-            {/* Show regenerate button after completion */}
-            {hasGeneratedIdeas && (status === 'completed' || status === 'error') && (
-                <div style={{ marginTop: '16px' }}>
-                    <Button
-                        type="default"
-                        icon={<BulbOutlined />}
-                        onClick={() => {
-                            setGeneratedIdeas([]);
-                            generateIdea();
-                        }}
-                        style={{
-                            width: '100%',
-                            height: '40px',
-                            background: '#434343',
-                            borderColor: '#434343',
-                            color: '#d9d9d9'
-                        }}
-                    >
-                        重新生成
-                    </Button>
                 </div>
             )}
         </div>
