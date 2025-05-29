@@ -1,84 +1,120 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Card, Button, Radio, InputNumber, Alert, Typography, Space, Row, Col, Empty, Spin } from 'antd';
-import { FileTextOutlined, PlusOutlined, BulbOutlined } from '@ant-design/icons';
+import { Card, Button, InputNumber, Alert, Typography, Space, Row, Col, Input, Spin } from 'antd';
+import { FileTextOutlined, SaveOutlined } from '@ant-design/icons';
 import { apiService } from '../services/apiService';
 import { Artifact } from '../../server/types/artifacts';
 
-const { Title, Text, Paragraph } = Typography;
+const { Title, Text } = Typography;
+const { TextArea } = Input;
 
 export const OutlineInputForm: React.FC = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const [isLoading, setIsLoading] = useState(false);
-    const [ideasLoading, setIdeasLoading] = useState(true);
-    const [ideas, setIdeas] = useState<Artifact[]>([]);
-    const [selectedIdeaId, setSelectedIdeaId] = useState<string>('');
+    const [artifactLoading, setArtifactLoading] = useState(true);
+    const [sourceArtifact, setSourceArtifact] = useState<Artifact | null>(null);
+    const [ideaTitle, setIdeaTitle] = useState<string>('');
+    const [ideaText, setIdeaText] = useState<string>('');
     const [totalEpisodes, setTotalEpisodes] = useState<number>(12);
     const [episodeDuration, setEpisodeDuration] = useState<number>(45);
     const [error, setError] = useState<string>('');
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
     // Check if there's a specific artifact_id in the URL
     const artifactId = searchParams.get('artifact_id');
 
-    // Load user's brainstorm ideas on component mount
+    // Load artifact on component mount
     useEffect(() => {
         if (artifactId) {
-            // Load specific artifact
-            loadSpecificArtifact(artifactId);
+            loadArtifact(artifactId);
         } else {
-            // Load all available ideas
-            loadIdeas();
+            // No artifact specified, start with empty form
+            setArtifactLoading(false);
+            setIdeaTitle('');
+            setIdeaText('');
         }
     }, [artifactId]);
 
-    const loadSpecificArtifact = async (id: string) => {
+    const loadArtifact = async (id: string) => {
         try {
-            setIdeasLoading(true);
+            setArtifactLoading(true);
             setError('');
 
-            // Use the existing artifact endpoint
             const response = await fetch(`/api/artifacts/${id}`);
             if (!response.ok) {
                 throw new Error(`Failed to fetch artifact: ${response.status}`);
             }
             const artifact = await response.json();
 
-            // Set this single artifact as the only option
-            setIdeas([artifact]);
-            setSelectedIdeaId(artifact.id);
+            setSourceArtifact(artifact);
+            setIdeaTitle(artifact.data.idea_title || artifact.data.title || '');
+            setIdeaText(artifact.data.idea_text || artifact.data.text || '');
 
         } catch (error) {
-            console.error('Error loading specific artifact:', error);
-            setError('Failed to load the specified story idea. Please try selecting from available ideas.');
-            // Fall back to loading all ideas
-            loadIdeas();
+            console.error('Error loading artifact:', error);
+            setError('Failed to load the specified story idea.');
         } finally {
-            setIdeasLoading(false);
+            setArtifactLoading(false);
         }
     };
 
-    const loadIdeas = async () => {
-        try {
-            setIdeasLoading(true);
-            const userIdeas = await apiService.getUserIdeas();
-            setIdeas(userIdeas);
+    const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setIdeaTitle(e.target.value);
+        setHasUnsavedChanges(true);
+    };
 
-            // Auto-select the first idea if available
-            if (userIdeas.length > 0) {
-                setSelectedIdeaId(userIdeas[0].id);
+    const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        setIdeaText(e.target.value);
+        setHasUnsavedChanges(true);
+    };
+
+    const handleSaveChanges = async () => {
+        if (!hasUnsavedChanges || (!ideaTitle.trim() && !ideaText.trim())) {
+            return;
+        }
+
+        try {
+            setIsLoading(true);
+            setError('');
+
+            // Create new user_input artifact with the edited content
+            const response = await fetch('/api/artifacts/user-input', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    text: ideaText.trim(),
+                    title: ideaTitle.trim(),
+                    sourceArtifactId: sourceArtifact?.id
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to save changes: ${response.status}`);
             }
+
+            const newArtifact = await response.json();
+            setSourceArtifact(newArtifact);
+            setHasUnsavedChanges(false);
+
         } catch (error) {
-            console.error('Error loading ideas:', error);
-            setError('Failed to load story ideas');
+            console.error('Error saving changes:', error);
+            setError('Failed to save changes. Please try again.');
         } finally {
-            setIdeasLoading(false);
+            setIsLoading(false);
         }
     };
 
     const handleGenerate = async () => {
-        if (!selectedIdeaId) {
-            setError('请选择一个故事灵感');
+        // Save changes first if there are any
+        if (hasUnsavedChanges) {
+            await handleSaveChanges();
+        }
+
+        if (!ideaText.trim()) {
+            setError('请输入故事内容');
             return;
         }
 
@@ -96,9 +132,14 @@ export const OutlineInputForm: React.FC = () => {
         setError('');
 
         try {
-            // Start outline generation
+            // Use the current source artifact (either original or newly created user_input)
+            const artifactIdToUse = sourceArtifact?.id;
+            if (!artifactIdToUse) {
+                throw new Error('No source artifact available');
+            }
+
             const response = await apiService.generateOutline({
-                sourceArtifactId: selectedIdeaId,
+                sourceArtifactId: artifactIdToUse,
                 totalEpisodes,
                 episodeDuration
             });
@@ -113,33 +154,34 @@ export const OutlineInputForm: React.FC = () => {
         }
     };
 
-    const selectedIdea = ideas.find(idea => idea.id === selectedIdeaId);
-
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString('zh-CN');
-    };
+    if (artifactLoading) {
+        return (
+            <div style={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                minHeight: '400px'
+            }}>
+                <Spin size="large" />
+                <Text style={{ marginLeft: '12px', color: '#fff' }}>
+                    加载故事内容...
+                </Text>
+            </div>
+        );
+    }
 
     return (
         <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px' }}>
-            <Card>
+            <Card style={{ backgroundColor: '#1f1f1f', border: '1px solid #303030' }}>
                 <Space direction="vertical" size="large" style={{ width: '100%' }}>
                     {/* Header */}
                     <div>
                         <Title level={2} style={{ color: '#fff', margin: '0 0 8px 0' }}>
                             生成剧本大纲
                         </Title>
-                        <Text type="secondary">
-                            基于您的故事灵感，生成详细的剧本大纲，包括故事结构、角色设定等。
+                        <Text style={{ color: '#aaa' }}>
+                            编辑您的故事灵感，设置剧集参数，然后生成详细的剧本大纲。
                         </Text>
-                        {artifactId && (
-                            <Alert
-                                message="使用指定故事灵感"
-                                description="您正在基于特定的故事灵感生成大纲。"
-                                type="info"
-                                showIcon
-                                style={{ marginTop: '12px' }}
-                            />
-                        )}
                     </div>
 
                     {/* Error Display */}
@@ -151,85 +193,61 @@ export const OutlineInputForm: React.FC = () => {
                             showIcon
                             closable
                             onClose={() => setError('')}
+                            style={{ backgroundColor: '#2a1a1a', border: '1px solid #ff4d4f' }}
                         />
                     )}
 
-                    {/* Source Idea Selection */}
+                    {/* Story Content Editor */}
                     <div>
                         <Title level={4} style={{ color: '#fff', margin: '0 0 12px 0' }}>
-                            选择故事灵感 *
+                            故事内容
                         </Title>
 
-                        {ideasLoading ? (
-                            <div style={{ textAlign: 'center', padding: '40px 0' }}>
-                                <Spin size="large" />
-                                <Text style={{ display: 'block', marginTop: '12px', color: '#fff' }}>
-                                    {artifactId ? '加载指定故事灵感...' : '加载故事灵感...'}
+                        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                            <div>
+                                <Text style={{ color: '#fff', marginBottom: '8px', display: 'block' }}>
+                                    标题
                                 </Text>
+                                <Input
+                                    value={ideaTitle}
+                                    onChange={handleTitleChange}
+                                    placeholder="输入故事标题..."
+                                    style={{
+                                        backgroundColor: '#2a2a2a',
+                                        border: '1px solid #404040',
+                                        color: '#fff'
+                                    }}
+                                />
                             </div>
-                        ) : ideas.length === 0 ? (
-                            <Empty
-                                image={<BulbOutlined style={{ fontSize: '64px', color: '#999' }} />}
-                                description="还没有故事灵感？"
-                                style={{ padding: '40px 20px' }}
-                            >
-                                <Button
-                                    type="primary"
-                                    icon={<PlusOutlined />}
-                                    onClick={() => navigate('/new-ideation')}
-                                >
-                                    先去创建一些故事灵感
-                                </Button>
-                            </Empty>
-                        ) : (
-                            <Radio.Group
-                                value={selectedIdeaId}
-                                onChange={(e) => setSelectedIdeaId(e.target.value)}
-                                style={{ width: '100%' }}
-                            >
-                                <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                                    {ideas.map((idea) => (
-                                        <Radio.Button
-                                            key={idea.id}
-                                            value={idea.id}
-                                            style={{
-                                                width: '100%',
-                                                height: 'auto',
-                                                padding: '16px',
-                                                textAlign: 'left'
-                                            }}
-                                        >
-                                            <div>
-                                                <Title level={5} style={{ margin: '0 0 8px 0', color: '#000' }}>
-                                                    {idea.data.idea_title || idea.data.title || '无标题'}
-                                                </Title>
-                                                <Paragraph
-                                                    ellipsis={{ rows: 2, expandable: false }}
-                                                    style={{ margin: '0 0 8px 0', color: '#666' }}
-                                                >
-                                                    {idea.data.idea_text || idea.data.text}
-                                                </Paragraph>
-                                                <Text type="secondary" style={{ fontSize: '12px' }}>
-                                                    创建时间: {formatDate(idea.created_at)}
-                                                </Text>
-                                            </div>
-                                        </Radio.Button>
-                                    ))}
-                                </Space>
-                            </Radio.Group>
-                        )}
 
-                        {/* Option to browse all ideas when coming from specific artifact */}
-                        {artifactId && ideas.length > 0 && (
-                            <div style={{ marginTop: '12px', textAlign: 'center' }}>
-                                <Button
-                                    type="link"
-                                    onClick={() => navigate('/new-outline')}
-                                >
-                                    或者浏览所有故事灵感
-                                </Button>
+                            <div>
+                                <Text style={{ color: '#fff', marginBottom: '8px', display: 'block' }}>
+                                    故事内容 *
+                                </Text>
+                                <TextArea
+                                    value={ideaText}
+                                    onChange={handleTextChange}
+                                    placeholder="输入或编辑您的故事内容..."
+                                    rows={8}
+                                    style={{
+                                        backgroundColor: '#2a2a2a',
+                                        border: '1px solid #404040',
+                                        color: '#fff'
+                                    }}
+                                />
                             </div>
-                        )}
+
+                            {hasUnsavedChanges && (
+                                <Button
+                                    icon={<SaveOutlined />}
+                                    onClick={handleSaveChanges}
+                                    loading={isLoading}
+                                    style={{ alignSelf: 'flex-start' }}
+                                >
+                                    保存修改
+                                </Button>
+                            )}
+                        </Space>
                     </div>
 
                     {/* Episode Configuration */}
@@ -239,8 +257,11 @@ export const OutlineInputForm: React.FC = () => {
                         </Title>
                         <Row gutter={16}>
                             <Col span={12}>
-                                <Card size="small" style={{ backgroundColor: '#f5f5f5' }}>
-                                    <Text strong style={{ display: 'block', marginBottom: '8px', color: '#000' }}>
+                                <Card
+                                    size="small"
+                                    style={{ backgroundColor: '#2a2a2a', border: '1px solid #404040' }}
+                                >
+                                    <Text strong style={{ display: 'block', marginBottom: '8px', color: '#fff' }}>
                                         总集数 *
                                     </Text>
                                     <InputNumber
@@ -248,17 +269,24 @@ export const OutlineInputForm: React.FC = () => {
                                         max={100}
                                         value={totalEpisodes}
                                         onChange={(value) => setTotalEpisodes(value || 1)}
-                                        style={{ width: '100%' }}
+                                        style={{
+                                            width: '100%',
+                                            backgroundColor: '#1a1a1a',
+                                            border: '1px solid #404040'
+                                        }}
                                         placeholder="例如: 12"
                                     />
-                                    <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginTop: '4px' }}>
+                                    <Text style={{ fontSize: '12px', display: 'block', marginTop: '4px', color: '#aaa' }}>
                                         建议: 电视剧12-24集，网剧6-12集
                                     </Text>
                                 </Card>
                             </Col>
                             <Col span={12}>
-                                <Card size="small" style={{ backgroundColor: '#f5f5f5' }}>
-                                    <Text strong style={{ display: 'block', marginBottom: '8px', color: '#000' }}>
+                                <Card
+                                    size="small"
+                                    style={{ backgroundColor: '#2a2a2a', border: '1px solid #404040' }}
+                                >
+                                    <Text strong style={{ display: 'block', marginBottom: '8px', color: '#fff' }}>
                                         每集时长 (分钟) *
                                     </Text>
                                     <InputNumber
@@ -266,10 +294,14 @@ export const OutlineInputForm: React.FC = () => {
                                         max={180}
                                         value={episodeDuration}
                                         onChange={(value) => setEpisodeDuration(value || 45)}
-                                        style={{ width: '100%' }}
+                                        style={{
+                                            width: '100%',
+                                            backgroundColor: '#1a1a1a',
+                                            border: '1px solid #404040'
+                                        }}
                                         placeholder="例如: 45"
                                     />
-                                    <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginTop: '4px' }}>
+                                    <Text style={{ fontSize: '12px', display: 'block', marginTop: '4px', color: '#aaa' }}>
                                         建议: 网剧20-30分钟，电视剧40-50分钟
                                     </Text>
                                 </Card>
@@ -277,34 +309,14 @@ export const OutlineInputForm: React.FC = () => {
                         </Row>
                     </div>
 
-                    {/* Selected Idea Preview */}
-                    {selectedIdea && (
-                        <Card
-                            title={
-                                <Text strong style={{ color: '#000' }}>选中的故事灵感</Text>
-                            }
-                            size="small"
-                            style={{ backgroundColor: '#f9f9f9' }}
-                        >
-                            <Space direction="vertical" size="small">
-                                <Text strong style={{ color: '#1890ff' }}>
-                                    {selectedIdea.data.idea_title || selectedIdea.data.title || '无标题'}
-                                </Text>
-                                <Paragraph style={{ margin: 0, color: '#333' }}>
-                                    {selectedIdea.data.idea_text || selectedIdea.data.text}
-                                </Paragraph>
-                            </Space>
-                        </Card>
-                    )}
-
                     {/* Generate Button */}
-                    <div style={{ textAlign: 'right' }}>
+                    <div style={{ textAlign: 'right', paddingTop: '20px', borderTop: '1px solid #404040' }}>
                         <Button
                             type="primary"
                             size="large"
                             icon={<FileTextOutlined />}
                             onClick={handleGenerate}
-                            disabled={isLoading || !selectedIdeaId || ideas.length === 0}
+                            disabled={isLoading || !ideaText.trim()}
                             loading={isLoading}
                         >
                             {isLoading ? '正在生成...' : '开始生成大纲'}

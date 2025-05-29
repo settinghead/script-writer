@@ -598,7 +598,7 @@ app.get("/api/artifacts/:artifactId",
 app.post("/api/artifacts/user-input",
   authMiddleware.authenticate,
   async (req: any, res: any) => {
-    const { text, sourceArtifactId } = req.body;
+    const { text, title, sourceArtifactId } = req.body;
 
     const user = authMiddleware.getCurrentUser(req);
     if (!user) {
@@ -619,6 +619,7 @@ app.post("/api/artifacts/user-input",
         'user_input',
         {
           text: text.trim(),
+          title: title?.trim() || undefined,
           source: sourceArtifactId ? 'modified_brainstorm' : 'manual',
           source_artifact_id: sourceArtifactId
         }
