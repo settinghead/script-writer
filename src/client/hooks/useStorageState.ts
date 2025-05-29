@@ -6,26 +6,30 @@ import { useState, useEffect } from 'react';
  * @param defaultValue - Default value if nothing is stored
  * @returns [state, setState] tuple similar to useState
  */
-export function useStorageState<T>(key: string, defaultValue: T): [T, (value: T) => void] {
-    // Initialize state with value from localStorage or default
+export function useStorageState<T>(
+    key: string,
+    initialValue: T,
+    storage: Storage = localStorage
+): [T, (value: T | ((prev: T) => T)) => void] {
     const [state, setState] = useState<T>(() => {
         try {
-            const stored = localStorage.getItem(key);
-            return stored ? JSON.parse(stored) : defaultValue;
+            const item = storage.getItem(key);
+            if (item === null) return initialValue;
+            return JSON.parse(item);
         } catch (error) {
-            console.warn(`Failed to parse localStorage key "${key}":`, error);
-            return defaultValue;
+            return initialValue;
         }
     });
 
-    // Update localStorage whenever state changes
-    useEffect(() => {
+    const setValue = (value: T | ((prev: T) => T)) => {
         try {
-            localStorage.setItem(key, JSON.stringify(state));
+            const valueToStore = value instanceof Function ? value(state) : value;
+            setState(valueToStore);
+            storage.setItem(key, JSON.stringify(valueToStore));
         } catch (error) {
-            console.warn(`Failed to save to localStorage key "${key}":`, error);
+            // Failed to save to storage, silently continue
         }
-    }, [key, state]);
+    };
 
-    return [state, setState];
+    return [state, setValue];
 } 
