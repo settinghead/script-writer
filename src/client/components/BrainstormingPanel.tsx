@@ -7,11 +7,9 @@ import PlatformSelection from './PlatformSelection';
 import { useStorageState } from '../hooks/useStorageState';
 import { useStreamingLLM } from '../hooks/useStreamingLLM';
 
-const NUM_IDEAS_TO_GENERATE = 6;
-
 // Idea generation template with few-shot examples for complete plot summaries
 const ideaGenerationTemplate = `
-你是一个故事创意生成器。请根据给定的故事类型，生成${NUM_IDEAS_TO_GENERATE}个完整的故事情节梗概灵感。
+你是一个故事创意生成器。请根据给定的故事类型，生成多个完整的故事情节梗概灵感。
 
 故事类型：{genre}
 目标平台：{platform}
@@ -40,9 +38,9 @@ const ideaGenerationTemplate = `
 古装类示例：
 - 标题：神秘客栈 | 故事：落魄书生为了科举考试进京，误入神秘客栈发现所有客人都是各朝各代的落榜文人。店主告诉他只要完成一道终极考题就能实现愿望。经过与历代文人的智慧较量，他发现真正的考验不是文采而是内心对理想的坚持，最终选择放弃捷径用实力证明自己。
 
-现在请为指定类型生成${NUM_IDEAS_TO_GENERATE}个类似完整度的故事创意：
+现在请为指定类型生成多个类似完整度的故事创意：
 
-请以JSON数组的格式返回这${NUM_IDEAS_TO_GENERATE}个灵感，每个元素包含title和body字段，例如：
+请以JSON数组的格式返回这些灵感，每个元素包含title和body字段，例如：
 [
   {"title": "标题1", "body": "故事梗概1"},
   {"title": "标题2", "body": "故事梗概2"},
@@ -203,7 +201,7 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
             // Don't show errors for partial parsing - it's expected
             console.debug('Partial JSON parsing (expected):', error);
         }
-    }, [lastParsedLength]);
+    }, [lastParsedLength, selectedPlatform, selectedGenrePaths, genreProportions, requirements, onRunCreated, resetStreaming]);
 
     // Debounced version of parsePartialJson
     useEffect(() => {
@@ -224,7 +222,7 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
 
         const timeoutId = setTimeout(() => {
             parsePartialJson(streamedContent);
-        }, 100); // Reduced to 100ms for faster response
+        }, 50); // Reduced to 50ms for smoother, more fluid updates
 
         return () => clearTimeout(timeoutId);
     }, [streamedContent, isStreamingActive, parsePartialJson]);
@@ -261,14 +259,25 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
 
     // Handle streaming completion for idea generation
     useEffect(() => {
+        console.debug('Completion effect triggered:', {
+            isComplete: streamingStatus.isComplete,
+            hasContent: !!streamedContent,
+            streamingIdeasCount: streamingIdeas.length,
+            isStreaming: streamingStatus.isStreaming
+        });
+
         if (streamingStatus.isComplete && streamedContent) {
+            console.debug('Processing completion with', streamingIdeas.length, 'streaming ideas');
+
             try {
                 // If we already have streaming ideas, use those
                 if (streamingIdeas.length > 0) {
+                    console.debug('Using streaming ideas for completion');
                     setGeneratedIdeas(streamingIdeas);
                     setSelectedIdeaIndex(null); // Reset selection
 
                     // Reset streaming status
+                    console.debug('Calling resetStreaming()');
                     resetStreaming();
 
                     // Create ideation run after successful idea generation
@@ -411,6 +420,50 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
             }
         }
     }, [streamingStatus.isComplete, streamedContent, streamingIdeas, selectedPlatform, selectedGenrePaths, genreProportions, requirements, onRunCreated, resetStreaming]);
+
+    // Fallback completion detection - if streaming stops but isComplete isn't set
+    useEffect(() => {
+        // If we were streaming, but now we're not, and we have ideas, and no completion was detected
+        if (!isStreamingActive && streamingIdeas.length > 0 && !streamingStatus.isComplete && generatedIdeas.length === 0) {
+            console.debug('Fallback completion triggered - streaming stopped with', streamingIdeas.length, 'ideas');
+            setGeneratedIdeas(streamingIdeas);
+            setSelectedIdeaIndex(null);
+            resetStreaming();
+
+            // Create ideation run
+            if (onRunCreated) {
+                (async () => {
+                    try {
+                        const createRunResponse = await fetch('/api/ideations/create_run_with_ideas', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                selectedPlatform,
+                                genrePaths: selectedGenrePaths,
+                                genreProportions,
+                                initialIdeas: streamingIdeas.map(idea => idea.body),
+                                initialIdeaTitles: streamingIdeas.map(idea => idea.title),
+                                requirements
+                            })
+                        });
+
+                        if (!createRunResponse.ok) {
+                            throw new Error(`Failed to create run: ${createRunResponse.status}`);
+                        }
+
+                        const runData = await createRunResponse.json();
+                        if (runData.runId) {
+                            onRunCreated(runData.runId);
+                        }
+                    } catch (runError) {
+                        console.error('Error creating ideation run:', runError);
+                    }
+                })();
+            }
+        }
+    }, [isStreamingActive, streamingIdeas, streamingStatus.isComplete, generatedIdeas.length, selectedPlatform, selectedGenrePaths, genreProportions, requirements, onRunCreated, resetStreaming]);
 
     const handlePlatformChange = (value: string) => {
         setSelectedPlatform(value);
@@ -725,7 +778,7 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                 <div style={{ marginBottom: '16px' }}>
                     <div style={{ marginBottom: '12px' }}>
                         <Text style={{ color: '#1890ff', fontSize: '14px', fontWeight: 'bold' }}>
-                            🤖 正在生成故事灵感... ({streamingIdeas.length}/{NUM_IDEAS_TO_GENERATE})
+                            🤖 正在生成故事灵感... ({streamingIdeas.length} 个)
                         </Text>
                     </div>
                     <div style={{
@@ -787,57 +840,6 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                                 </div>
                             </div>
                         ))}
-
-                        {/* Loading placeholder for remaining ideas */}
-                        {streamingIdeas.length < NUM_IDEAS_TO_GENERATE && Array.from(
-                            { length: NUM_IDEAS_TO_GENERATE - streamingIdeas.length },
-                            (_, index) => (
-                                <div
-                                    key={`placeholder-${streamingIdeas.length + index}`}
-                                    style={{
-                                        padding: '16px',
-                                        minHeight: '100px',
-                                        border: '1px dashed #666',
-                                        borderRadius: '6px',
-                                        backgroundColor: '#2a2a2a20',
-                                        position: 'relative',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center'
-                                    }}
-                                >
-                                    <div style={{
-                                        position: 'absolute',
-                                        top: '8px',
-                                        right: '8px',
-                                        width: '20px',
-                                        height: '20px',
-                                        borderRadius: '50%',
-                                        backgroundColor: '#666',
-                                        color: 'white',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        fontSize: '12px',
-                                        fontWeight: 'bold'
-                                    }}>
-                                        {streamingIdeas.length + index + 1}
-                                    </div>
-                                    <div style={{
-                                        color: '#666',
-                                        fontSize: '12px',
-                                        textAlign: 'center'
-                                    }}>
-                                        <div style={{
-                                            animation: 'pulse 1.5s infinite',
-                                            fontSize: '16px',
-                                            marginBottom: '4px'
-                                        }}>⏳</div>
-                                        正在生成...
-                                    </div>
-                                </div>
-                            )
-                        )}
                     </div>
                 </div>
             )}

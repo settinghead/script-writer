@@ -99,10 +99,8 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
             setNavigationPath([]);
             if (!isMobile) {
                 if (currentSelectionPaths.length > 0 && currentSelectionPaths[0].length > 0) {
-                    console.log('[GenreSelectionPopup] useEffect (visible): Initializing activeNavigationPath based on currentSelectionPaths[0]. Path:', currentSelectionPaths[0].slice(0, -1));
                     setActiveNavigationPath(currentSelectionPaths[0].slice(0, -1));
                 } else {
-                    console.log('[GenreSelectionPopup] useEffect (visible): Initializing activeNavigationPath to empty array (no current selection).');
                     setActiveNavigationPath([]);
                 }
             }
@@ -154,7 +152,6 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
     };
 
     const handleNavigationClick = (pathForNextColumn: string[]) => {
-        console.log('[GenreSelectionPopup] handleNavigationClick: pathForNextColumn:', JSON.stringify(pathForNextColumn), 'isMobile:', isMobile);
         if (isMobile) {
             setNavigationPath(pathForNextColumn);
         } else {
@@ -291,7 +288,6 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
         let currentLevelData: any = genreOptions;
         let currentPathSegmentsForRender: string[] = [];
 
-        console.log('[GenreSelectionPopup] renderMillerColumns START. activeNavigationPath:', JSON.stringify(activeNavigationPath), 'tempSelectedPaths:', JSON.stringify(tempSelectedPaths));
 
         columns.push(
             <div key="col-root" style={{
@@ -311,7 +307,6 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
                         <div
                             key={key}
                             onClick={() => {
-                                console.log('[GenreSelectionPopup] renderMillerColumns (root): onClick for key:', key, 'itemPath:', JSON.stringify(itemPath), 'hasChildren:', hasChildren([], key), 'isDeepestLevel:', isDeepestLevel([], key));
                                 if (hasChildren([], key) && !isDeepestLevel([], key)) handleNavigationClick(itemPath);
                             }}
                             style={{
@@ -349,17 +344,7 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
             currentPathSegmentsForRender = activeNavigationPath.slice(0, i + 1);
             currentLevelData = getDataAtPath(currentPathSegmentsForRender);
 
-            console.log(`[GenreSelectionPopup] renderMillerColumns (loop ${i}): currentPathSegmentsForRender FOR THIS ITERATION:`, JSON.stringify(currentPathSegmentsForRender), 'Raw currentLevelData exists:', !!currentLevelData);
 
-            if (i === 1) { // This iteration generates the THIRD visual column
-                console.log(`[GenreSelectionPopup] Generating THIRD visual column (i=${i}). activeNavigationPath at this point:`, JSON.stringify(activeNavigationPath));
-                console.log(`[GenreSelectionPopup] Path used for getDataAtPath for Col 3:`, JSON.stringify(currentPathSegmentsForRender));
-                if (currentLevelData && typeof currentLevelData === 'object') {
-                    console.log(`[GenreSelectionPopup] Children for Col 3:`, JSON.stringify(Object.keys(currentLevelData)));
-                } else {
-                    console.log(`[GenreSelectionPopup] No children object for Col 3, currentLevelData:`, currentLevelData);
-                }
-            }
 
             if (currentLevelData && typeof currentLevelData === 'object' && !Array.isArray(currentLevelData)) {
                 columns.push(
@@ -378,8 +363,6 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
 
                             const itemHasChildren = hasChildren(currentPathSegmentsForRender, key);
                             const itemIsDeepest = isDeepestLevel(currentPathSegmentsForRender, key);
-                            console.log(`[GenreSelectionPopup] renderMillerColumns (column ${i}): onClick for key:`, key, 'itemPath:', JSON.stringify(itemPath));
-                            console.log(`    Args for nav decision: itemHasChildren: ${itemHasChildren}, itemIsDeepest: ${itemIsDeepest}`);
 
                             return (
                                 <div
