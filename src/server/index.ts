@@ -1002,10 +1002,21 @@ app.get("/api/streaming/transform/:transformId", authMiddleware.authenticate, as
       try {
         const partialOutputs = await transformRepo.getTransformOutputs(transformId);
         if (partialOutputs.length > 0) {
+          // Load the actual artifact data for each output
+          const outputsWithArtifacts = await Promise.all(
+            partialOutputs.map(async (output) => {
+              const artifact = await artifactRepo.getArtifact(output.artifact_id, user.id);
+              return {
+                ...output,
+                artifact: artifact
+              };
+            })
+          );
+
           res.write(`data: ${JSON.stringify({
             status: 'partial_results',
-            results: partialOutputs,
-            message: `已加载 ${partialOutputs.length} 个现有结果`
+            results: outputsWithArtifacts,
+            message: `已加载 ${outputsWithArtifacts.length} 个现有结果`
           })}\n\n`);
         }
       } catch (partialError) {

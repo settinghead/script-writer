@@ -425,10 +425,24 @@ export class StreamingTransformExecutor {
             const runningTimeMs = now.getTime() - startedAt.getTime();
             const maxRunningTimeMs = 5 * 60 * 1000; // 5 minutes
 
-            if (runningTimeMs > maxRunningTimeMs) {
-                console.log(`[StreamingTransformExecutor] Transform ${transformId} has been running for ${Math.floor(runningTimeMs / 1000)}s, marking as stalled`);
-                await this.updateTransformStatus(transformId, 'stalled');
-                // Continue to restart the job
+            // Also check if the job has outputs but is still marked as running
+            const outputs = await this.transformRepo.getTransformOutputs(transformId);
+            const hasCompleteOutputs = outputs.length >= 5; // Assume 5+ outputs means job likely completed
+
+            if (runningTimeMs > maxRunningTimeMs || hasCompleteOutputs) {
+                console.log(`[StreamingTransformExecutor] Transform ${transformId} appears to be stalled (running for ${Math.floor(runningTimeMs / 1000)}s, ${outputs.length} outputs), marking as completed`);
+
+                if (hasCompleteOutputs) {
+                    // If we have outputs, mark as completed rather than stalled
+                    await this.updateTransformStatus(transformId, 'completed');
+                    return;
+                } else {
+                    await this.updateTransformStatus(transformId, 'stalled');
+                }
+                // Continue to restart the job if no outputs
+            } else if (runningTimeMs < 1000) {
+                // If just started (less than 1 second), allow restart
+                console.log(`[StreamingTransformExecutor] Transform ${transformId} just started, allowing restart`);
             } else {
                 console.log(`[StreamingTransformExecutor] Transform ${transformId} is already running (${Math.floor(runningTimeMs / 1000)}s), skipping restart`);
                 return;
