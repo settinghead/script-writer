@@ -60,7 +60,6 @@ export class StreamingTransformExecutor {
             );
 
         } catch (error) {
-            console.error('Error in streaming transform:', error);
             if (!res.headersSent) {
                 res.status(500).json({
                     error: 'Streaming failed',
@@ -155,15 +154,12 @@ export class StreamingTransformExecutor {
                 res.setHeader('Transfer-Encoding', 'chunked');
                 isDirectConnection = true;
             } catch (error: any) {
-                console.warn('Failed to set response headers:', error.message);
                 isDirectConnection = false;
             }
         }
 
         const pump = async () => {
             try {
-                console.log(`[StreamingTransformExecutor] Starting pump for transform ${transform.id}`);
-
                 // Initialize cache for this transform
                 const cache = StreamingCache.getInstance();
                 cache.initializeTransform(transform.id);
@@ -183,8 +179,6 @@ export class StreamingTransformExecutor {
                         // Format batched chunks for streaming
                         const batchedMessage = `0:${JSON.stringify(batchedChunks.join(''))}\n`;
 
-                        console.log(`[StreamingTransformExecutor] Broadcasting batch of ${batchedChunks.length} chunks (${chunkCount} total) for transform ${transform.id}`);
-
                         // Add to cache
                         cache.addChunk(transform.id, batchedMessage);
 
@@ -196,7 +190,6 @@ export class StreamingTransformExecutor {
                             try {
                                 res.write(`data: ${batchedMessage}`);
                             } catch (writeError: any) {
-                                console.warn('Failed to write to direct connection:', writeError.message);
                                 isDirectConnection = false;
                             }
                         }
@@ -209,7 +202,6 @@ export class StreamingTransformExecutor {
                 // Send any remaining chunks
                 if (batchedChunks.length > 0) {
                     const batchedMessage = `0:${JSON.stringify(batchedChunks.join(''))}\n`;
-                    console.log(`[StreamingTransformExecutor] Broadcasting final batch of ${batchedChunks.length} chunks for transform ${transform.id}`);
                     cache.addChunk(transform.id, batchedMessage);
                     broadcaster.broadcast(transform.id, batchedMessage);
 
@@ -217,12 +209,10 @@ export class StreamingTransformExecutor {
                         try {
                             res.write(`data: ${batchedMessage}`);
                         } catch (writeError: any) {
-                            console.warn('Failed to write to direct connection:', writeError.message);
+                            // Silent fail
                         }
                     }
                 }
-
-                console.log(`[StreamingTransformExecutor] Finished streaming ${chunkCount} chunks for transform ${transform.id}`);
 
                 // Handle completion
                 const finalResult = await result;
@@ -243,8 +233,6 @@ export class StreamingTransformExecutor {
                             raw_response: text,
                             token_usage: usage
                         });
-                    } else {
-                        console.log(`LLM transform data already exists for transform ${transform.id}, skipping insertion`);
                     }
 
                     // Parse and create output artifacts
@@ -268,12 +256,7 @@ export class StreamingTransformExecutor {
                             throw new Error('Response is not a JSON array');
                         }
 
-                        console.log(`Parsed ${jsonData.length} items from LLM response`);
                     } catch (parseError) {
-                        console.error('Error parsing JSON response:', parseError);
-                        console.error('Raw content:', text);
-                        console.error('Content length:', text.length);
-
                         // Try a more aggressive cleaning approach
                         try {
                             let fallbackContent = text.trim();
@@ -287,13 +270,10 @@ export class StreamingTransformExecutor {
                             const repairedFallback = jsonrepair(fallbackContent);
                             jsonData = JSON.parse(repairedFallback);
 
-                            if (Array.isArray(jsonData)) {
-                                console.log(`Fallback parsing succeeded with ${jsonData.length} items`);
-                            } else {
+                            if (!Array.isArray(jsonData)) {
                                 throw new Error('Fallback parsing failed - not an array');
                             }
                         } catch (fallbackError) {
-                            console.error('Fallback parsing also failed:', fallbackError);
                             throw parseError; // Throw original error
                         }
                     }
@@ -309,9 +289,7 @@ export class StreamingTransformExecutor {
                     // Mark cache as complete
                     cache.markComplete(transform.id);
 
-                    console.log(`Transform ${transform.id} completed successfully`);
                 } catch (error) {
-                    console.error('Error in completion handler:', error);
                     await this.transformRepo.updateTransformStatus(transform.id, 'failed');
                     throw error;
                 }
@@ -332,12 +310,11 @@ export class StreamingTransformExecutor {
                         res.write(`data: d:${completionData.d}\n\n`);
                         res.end();
                     } catch (endError: any) {
-                        console.warn('Failed to end direct connection:', endError.message);
+                        // Silent fail
                     }
                 }
 
             } catch (error: any) {
-                console.error('Streaming error:', error);
                 await this.transformRepo.updateTransformStatus(transform.id, 'failed');
 
                 // Broadcast error to all connected clients
@@ -350,7 +327,7 @@ export class StreamingTransformExecutor {
                         res.write(`data: ${errorMessage}\n`);
                         res.end();
                     } catch (errorWriteError: any) {
-                        console.warn('Failed to send error to direct connection:', errorWriteError.message);
+                        // Silent fail
                     }
                 }
                 throw error; // Re-throw for background job retry handling
@@ -392,9 +369,7 @@ export class StreamingTransformExecutor {
                 ]);
             }
 
-            console.log(`Created ${jsonData.length} brainstorm idea artifacts for transform ${transform.id}`);
         } catch (error) {
-            console.error('Error creating brainstorm idea artifacts:', error);
             throw error;
         }
     }
@@ -465,26 +440,21 @@ export class StreamingTransformExecutor {
 
         // Simple check: if completed, don't restart
         if (transform.status === 'completed') {
-            console.log(`[StreamingTransformExecutor] Transform ${transformId} already completed`);
             return;
         }
 
         // Check if we already have LLM data (job finished but status not updated)
         const llmData = await this.transformRepo.getLLMTransformData(transformId);
         if (llmData) {
-            console.log(`[StreamingTransformExecutor] Transform ${transformId} already has LLM data, marking as completed`);
             await this.updateTransformStatus(transformId, 'completed');
             return;
         }
 
         // Just start the job - no complex checks
-        console.log(`[StreamingTransformExecutor] Starting streaming for transform ${transformId}`);
-
         try {
             await this.executeStreamingLLM(transform, res);
             await this.updateTransformStatus(transformId, 'completed');
         } catch (error) {
-            console.error(`Error in streaming job ${transformId}:`, error);
             await this.handleJobFailure(transformId, error as Error);
         }
     }
@@ -507,7 +477,6 @@ export class StreamingTransformExecutor {
 
             // Schedule retry with exponential backoff
             const delay = 1000 * Math.pow(2, transform.retry_count);
-            console.log(`Retrying transform ${transformId} in ${delay}ms (attempt ${transform.retry_count + 1}/${transform.max_retries})`);
 
             setTimeout(() => {
                 this.retryStreamingJob(transformId);
@@ -515,7 +484,6 @@ export class StreamingTransformExecutor {
         } else {
             // Mark as failed
             await this.updateTransformStatus(transformId, 'failed');
-            console.error(`Transform ${transformId} failed after ${transform.max_retries} retries`);
         }
     }
 
@@ -524,7 +492,7 @@ export class StreamingTransformExecutor {
             // Important: Don't pass response object to retries since the original connection may be closed
             await this.executeStreamingJobWithRetries(transformId, undefined);
         } catch (error) {
-            console.error(`Retry failed for transform ${transformId}:`, error);
+            // Silent fail for retries
         }
     }
 
