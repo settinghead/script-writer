@@ -98,6 +98,11 @@ export const OutlineResults: React.FC<OutlineResultsProps> = ({
                     type="error"
                     showIcon
                     icon={<ExclamationCircleOutlined />}
+                    style={{
+                        backgroundColor: '#2d1b1b',
+                        border: '1px solid #d32f2f',
+                        color: '#fff'
+                    }}
                 />
             )}
 
@@ -177,7 +182,15 @@ export const OutlineResults: React.FC<OutlineResultsProps> = ({
                         {components.characters && components.characters.length > 0 ? (
                             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                                 {components.characters.map((character, index) => (
-                                    <Card key={index} size="small" style={{ backgroundColor: '#f5f5f5' }}>
+                                    <Card
+                                        key={index}
+                                        size="small"
+                                        style={{
+                                            backgroundColor: '#1f1f1f',
+                                            border: '1px solid #404040'
+                                        }}
+                                        bodyStyle={{ backgroundColor: '#1f1f1f' }}
+                                    >
                                         <Space direction="vertical" size="small" style={{ width: '100%' }}>
                                             <EditableTextField
                                                 value={character.name}
@@ -213,8 +226,16 @@ export const OutlineResults: React.FC<OutlineResultsProps> = ({
                                 ))}
                             </Space>
                         ) : (
-                            <Card style={{ textAlign: 'center', padding: '40px 20px' }}>
-                                <Text type="secondary">角色设定将在这里显示...</Text>
+                            <Card
+                                style={{
+                                    textAlign: 'center',
+                                    padding: '40px 20px',
+                                    backgroundColor: '#1f1f1f',
+                                    border: '1px solid #404040'
+                                }}
+                                bodyStyle={{ backgroundColor: '#1f1f1f' }}
+                            >
+                                <Text type="secondary" style={{ color: '#888' }}>角色设定将在这里显示...</Text>
                             </Card>
                         )}
                     </div>
@@ -244,6 +265,11 @@ export const OutlineResults: React.FC<OutlineResultsProps> = ({
                     type="success"
                     showIcon
                     icon={<CheckCircleOutlined />}
+                    style={{
+                        backgroundColor: '#1b2d1b',
+                        border: '1px solid #4caf50',
+                        color: '#fff'
+                    }}
                 />
             )}
         </Space>

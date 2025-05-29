@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { Spin, Alert, Button, Typography, Breadcrumb, Space, Card } from 'antd';
 import { HomeOutlined, FileTextOutlined, PlusOutlined } from '@ant-design/icons';
@@ -8,7 +8,9 @@ import { OutlineResults } from './OutlineResults';
 import { OutlinesList } from './OutlinesList';
 import { apiService } from '../services/apiService';
 import { OutlineStreamingService } from '../services/implementations/OutlineStreamingService';
+import { useLLMStreaming } from '../hooks/useLLMStreaming';
 import type { OutlineSessionData } from '../../server/services/OutlineService';
+import type { OutlineSection } from '../services/implementations/OutlineStreamingService';
 
 const { Title, Text } = Typography;
 
@@ -21,10 +23,21 @@ export const OutlineTab: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string>('');
 
-    // Streaming state
-    const [isStreaming, setIsStreaming] = useState(false);
-    const [isConnecting, setIsConnecting] = useState(false);
-    const [streamingService, setStreamingService] = useState<OutlineStreamingService | null>(null);
+    // Get transform ID from URL parameters
+    const transformId = searchParams.get('transform');
+
+    // Create streaming service instance
+    const streamingService = useMemo(() => new OutlineStreamingService(), []);
+
+    // Use the LLM streaming hook
+    const { status: streamingStatus, items: outlineItems, stop: stopStreaming } = useLLMStreaming(
+        streamingService,
+        { transformId: transformId || undefined }
+    );
+
+    // Derived streaming state
+    const isStreaming = streamingStatus === 'streaming';
+    const isConnecting = streamingStatus === 'idle' && transformId;
 
     // Load session data when ID changes
     useEffect(() => {
@@ -33,13 +46,28 @@ export const OutlineTab: React.FC = () => {
         }
     }, [id]);
 
-    // Set up streaming if transform ID is provided
+    // Update session data when streaming provides new outline data
     useEffect(() => {
-        const transformId = searchParams.get('transform');
-        if (transformId && id) {
-            startStreaming(transformId);
+        if (outlineItems.length > 0) {
+            const latestOutline = outlineItems[outlineItems.length - 1];
+            updateSessionComponents(latestOutline);
         }
-    }, [searchParams, id]);
+    }, [outlineItems]);
+
+    // Handle streaming completion
+    useEffect(() => {
+        if (streamingStatus === 'completed' && id) {
+            // Reload session to get final state
+            loadSession(id);
+        }
+    }, [streamingStatus, id]);
+
+    // Handle streaming errors
+    useEffect(() => {
+        if (streamingStatus === 'error') {
+            setError('Streaming error occurred');
+        }
+    }, [streamingStatus]);
 
     const loadSession = async (sessionId: string) => {
         try {
@@ -49,15 +77,18 @@ export const OutlineTab: React.FC = () => {
             const data = await apiService.getOutlineSession(sessionId);
             setSessionData(data);
 
-            // Check if there's an active streaming job
-            try {
-                const activeJob = await apiService.checkActiveStreamingJob(sessionId);
-                if (activeJob) {
-                    startStreaming(activeJob.transformId);
+            // Check if there's an active streaming job (only if no transform ID in URL)
+            if (!transformId) {
+                try {
+                    const activeJob = await apiService.checkActiveStreamingJob(sessionId);
+                    if (activeJob) {
+                        // Navigate to the streaming URL to trigger streaming
+                        navigate(`/outlines/${sessionId}?transform=${activeJob.transformId}`, { replace: true });
+                    }
+                } catch (error) {
+                    // Expected for completed sessions
+                    console.log('No active streaming job found (this is normal for completed outlines)');
                 }
-            } catch (error) {
-                // Expected for completed sessions
-                console.log('No active streaming job found (this is normal for completed outlines)');
             }
 
         } catch (error) {
@@ -68,49 +99,7 @@ export const OutlineTab: React.FC = () => {
         }
     };
 
-    const startStreaming = async (transformId: string) => {
-        try {
-            setIsConnecting(true);
-
-            const service = new OutlineStreamingService();
-            setStreamingService(service);
-
-            const streamResponse = await service.startStreaming(transformId);
-
-            setIsConnecting(false);
-            setIsStreaming(true);
-
-            // Listen for streaming updates
-            service.on('item', (outline) => {
-                updateSessionComponents(outline);
-            });
-
-            service.on('error', (error) => {
-                console.error('Streaming error:', error);
-                setError('Streaming error occurred');
-                setIsStreaming(false);
-                setIsConnecting(false);
-            });
-
-            service.on('complete', () => {
-                console.log('Streaming completed');
-                setIsStreaming(false);
-                setIsConnecting(false);
-                // Reload session to get final state
-                if (id) {
-                    loadSession(id);
-                }
-            });
-
-        } catch (error) {
-            console.error('Error starting streaming:', error);
-            setError('Failed to start streaming');
-            setIsConnecting(false);
-            setIsStreaming(false);
-        }
-    };
-
-    const updateSessionComponents = (outline: any) => {
+    const updateSessionComponents = (outline: OutlineSection) => {
         setSessionData(prev => {
             if (!prev) return prev;
 
@@ -131,14 +120,10 @@ export const OutlineTab: React.FC = () => {
     };
 
     const handleStopStreaming = async () => {
-        if (streamingService) {
-            try {
-                streamingService.stop();
-                setIsStreaming(false);
-                setIsConnecting(false);
-            } catch (error) {
-                console.error('Error stopping streaming:', error);
-            }
+        try {
+            stopStreaming();
+        } catch (error) {
+            console.error('Error stopping streaming:', error);
         }
     };
 
@@ -247,7 +232,7 @@ export const OutlineTab: React.FC = () => {
 
     // Main outline view
     return (
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', overflowY: 'auto', padding: '20px' }}>
             {/* Header */}
             <div style={{ marginBottom: '20px' }}>
                 <div style={{

@@ -30,6 +30,7 @@ import { TemplateService } from './services/templates/TemplateService';
 import { StreamingTransformExecutor } from './services/streaming/StreamingTransformExecutor';
 import { createIdeationRoutes } from './routes/ideations';
 import { BrainstormingJobParamsV1, OutlineJobParamsV1 } from './types/artifacts';
+import { OutlineGenerateRequest, OutlineGenerateResponse } from '../common/streaming/types';
 // Import and mount outline routes
 import { createOutlineRoutes } from './routes/outlineRoutes';
 
@@ -704,8 +705,6 @@ app.put("/api/artifacts/:artifactId",
 
 // ========== OUTLINE ENDPOINTS ==========
 
-// Import and mount outline routes
-import { createOutlineRoutes } from './routes/outlineRoutes';
 app.use('/api', createOutlineRoutes(authMiddleware, cacheService, artifactRepo, transformRepo));
 
 // ========== STREAMING ENDPOINTS ==========
@@ -870,10 +869,41 @@ app.get("/api/streaming/transform/:transformId", authMiddleware.authenticate, as
       return res.status(403).json({ error: 'Transform not found or unauthorized' });
     }
 
-    // If job is already completed, send cached results
+    // If job is already completed, send cached results in SSE format
     if (transform.status === 'completed') {
-      const outputs = await transformRepo.getTransformOutputs(transformId);
-      return res.json({ status: 'completed', results: outputs });
+      // Setup SSE connection even for completed jobs
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Cache-Control'
+      });
+
+      // Send initial status
+      res.write(`data: ${JSON.stringify({ status: 'connected', transformId })}\n\n`);
+
+      // Get streaming cache to send completed data
+      const StreamingCache = (await import('./services/streaming/StreamingCache')).StreamingCache;
+      const cache = StreamingCache.getInstance();
+
+      // Check if transform has cached data
+      const cachedChunks = cache.getChunks(transformId);
+      if (cachedChunks.length > 0) {
+        console.log(`[SSE Endpoint] Sending ${cachedChunks.length} cached chunks for completed transform ${transformId}`);
+
+        // Send all cached chunks
+        for (const chunk of cachedChunks) {
+          res.write(`data: ${chunk}`);
+        }
+      }
+
+      // Send completion events
+      console.log(`[SSE Endpoint] Transform ${transformId} already completed, sending completion events`);
+      res.write(`data: e:${JSON.stringify({ finishReason: 'stop' })}\n\n`);
+      res.write(`data: d:${JSON.stringify({ finishReason: 'stop' })}\n\n`);
+      res.end();
+      return;
     }
 
     // If job is running, connect to stream
@@ -933,8 +963,18 @@ app.get("/api/streaming/transform/:transformId", authMiddleware.authenticate, as
         console.log(`[SSE Endpoint] Additional client connected to transform ${transformId}, total clients: ${clientCount}`);
       }
     } else {
-      // Job failed or cancelled
-      res.json({ status: transform.status, error: 'Job not active' });
+      // Job failed or cancelled - send error in SSE format
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Cache-Control'
+      });
+
+      res.write(`data: ${JSON.stringify({ status: 'connected', transformId })}\n\n`);
+      res.write(`data: error:${JSON.stringify({ error: `Job not active, status: ${transform.status}` })}\n\n`);
+      res.end();
     }
   } catch (error: any) {
     console.error('Error in transform streaming endpoint:', error);
@@ -1373,7 +1413,7 @@ app.post("/api/ideations/create-brainstorming-job",
 app.post("/api/outlines/create-job",
   authMiddleware.authenticate,
   async (req: any, res: any) => {
-    const { sourceArtifactId, totalEpisodes, episodeDuration } = req.body;
+    const { sourceArtifactId, totalEpisodes, episodeDuration }: OutlineGenerateRequest = req.body;
 
     const user = authMiddleware.getCurrentUser(req);
     if (!user) {
@@ -1401,7 +1441,13 @@ app.post("/api/outlines/create-job",
         jobParams
       );
 
-      res.json(result);
+      // Return response that matches the common interface
+      const response: OutlineGenerateResponse = {
+        sessionId: result.outlineSessionId,  // Map outlineSessionId to sessionId
+        transformId: result.transformId
+      };
+
+      res.json(response);
 
     } catch (error: any) {
       console.error('Error creating outline job:', error);
@@ -1437,3 +1483,41 @@ app.get(/(.*)/, (req, res, next) => {
   // ViteExpress will serve the index.html and React Router will handle the rest
   next();
 });
+
+// Check for active ideation job
+app.get("/api/ideations/:id/active-job",
+  authMiddleware.authenticate,
+  async (req: any, res: any) => {
+    const user = authMiddleware.getCurrentUser(req);
+    if (!user) {
+      return res.status(401).json({ error: "User not authenticated" });
+    }
+
+    const ideationRunId = req.params.id;
+
+    try {
+      // Find the most recent running transform for this ideation run
+      const transforms = await transformRepo.getUserTransforms(user.id);
+      const activeTransform = transforms.find(t =>
+        t.execution_context?.ideation_run_id === ideationRunId &&
+        t.status === 'running'
+      );
+
+      if (activeTransform) {
+        res.json({
+          transformId: activeTransform.id,
+          status: activeTransform.status,
+          retryCount: activeTransform.retry_count || 0
+        });
+      } else {
+        res.status(404).json({ message: 'No active job' });
+      }
+    } catch (error: any) {
+      console.error('Error checking active job:', error);
+      res.status(500).json({
+        error: 'Failed to check active job',
+        details: error.message
+      });
+    }
+  }
+);

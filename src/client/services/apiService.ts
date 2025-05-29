@@ -1,15 +1,5 @@
 import { OutlineSessionSummary, OutlineSessionData } from '../../server/services/OutlineService';
-
-interface OutlineGenerateRequest {
-    sourceArtifactId: string;
-    totalEpisodes: number;
-    episodeDuration: number;
-}
-
-interface OutlineGenerateResponse {
-    sessionId: string;
-    transformId: string;
-}
+import { OutlineGenerateRequest, OutlineGenerateResponse } from '../../common/streaming/types';
 
 class ApiService {
     private baseUrl = '/api';

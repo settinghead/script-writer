@@ -22,4 +22,29 @@ export interface StreamingResponse<T> {
         startTime?: number;
         endTime?: number;
     };
+}
+
+// Outline generation types
+export interface OutlineGenerateRequest {
+    sourceArtifactId: string;
+    totalEpisodes?: number;
+    episodeDuration?: number;
+}
+
+export interface OutlineGenerateResponse {
+    sessionId: string;
+    transformId: string;
+}
+
+// Brainstorming generation types
+export interface BrainstormingGenerateRequest {
+    platform: string;
+    genrePaths: string[];
+    genreProportions: number[];
+    requirements?: string;
+}
+
+export interface BrainstormingGenerateResponse {
+    ideationRunId: string;
+    transformId: string;
 } 

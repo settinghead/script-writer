@@ -1,4 +1,6 @@
 import React from 'react';
+import { Button, Space, Spin } from 'antd';
+import { StopOutlined } from '@ant-design/icons';
 
 interface StreamingProgressProps {
     isStreaming: boolean;
@@ -20,30 +22,36 @@ export const StreamingProgress: React.FC<StreamingProgressProps> = ({
     }
 
     return (
-        <div className="streaming-progress bg-blue-50 p-4 rounded-lg border border-blue-200">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                    <div className="flex space-x-1">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                    </div>
-                    <div className="text-blue-700">
+        <div
+            style={{
+                backgroundColor: '#1a3c5a',
+                padding: '16px',
+                borderRadius: '8px',
+                border: '1px solid #2563eb',
+                marginBottom: '16px'
+            }}
+        >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Space size="middle">
+                    <Spin size="small" />
+                    <span style={{ color: '#fff' }}>
                         {isConnecting ? (
                             <span>正在连接...</span>
                         ) : (
                             <span>正在生成 {itemLabel}... ({itemCount} 已完成)</span>
                         )}
-                    </div>
-                </div>
+                    </span>
+                </Space>
 
-                <button
+                <Button
                     onClick={onStop}
-                    className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
+                    danger
+                    icon={<StopOutlined />}
                     disabled={isConnecting}
+                    size="small"
                 >
                     停止生成
-                </button>
+                </Button>
             </div>
         </div>
     );

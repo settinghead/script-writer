@@ -1,5 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { Button, Input, Typography } from 'antd';
+import { EditOutlined } from '@ant-design/icons';
 import { v4 as uuidv4 } from 'uuid';
+
+const { TextArea } = Input;
+const { Text } = Typography;
 
 interface EditableTextFieldProps {
     value: string;
@@ -89,86 +94,119 @@ export const EditableTextField: React.FC<EditableTextFieldProps> = ({
         }
     }, [isEditing]);
 
-    const baseClassName = `w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${className}`;
-
     if (isEditing) {
         return (
-            <div className="space-y-2">
+            <div style={{ marginBottom: '16px' }}>
                 {label && (
-                    <label className="block text-sm font-medium text-gray-700">
+                    <Text strong style={{ color: '#fff', marginBottom: '8px', display: 'block' }}>
                         {label}
-                    </label>
+                    </Text>
                 )}
+
                 {multiline ? (
-                    <textarea
+                    <TextArea
                         ref={inputRef as React.RefObject<HTMLTextAreaElement>}
                         value={editValue}
                         onChange={(e) => setEditValue(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder={placeholder}
-                        className={`${baseClassName} min-h-[100px] resize-vertical`}
                         disabled={isSaving}
                         rows={4}
+                        style={{
+                            backgroundColor: '#1f1f1f',
+                            borderColor: '#404040',
+                            color: '#fff'
+                        }}
                     />
                 ) : (
-                    <input
+                    <Input
                         ref={inputRef as React.RefObject<HTMLInputElement>}
-                        type="text"
                         value={editValue}
                         onChange={(e) => setEditValue(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder={placeholder}
-                        className={baseClassName}
                         disabled={isSaving}
+                        style={{
+                            backgroundColor: '#1f1f1f',
+                            borderColor: '#404040',
+                            color: '#fff'
+                        }}
                     />
                 )}
 
-                <div className="flex justify-end space-x-2">
-                    <button
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px' }}>
+                    <Button
                         onClick={handleCancel}
-                        className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors"
                         disabled={isSaving}
+                        size="small"
                     >
                         取消
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                        type="primary"
                         onClick={handleSave}
-                        className="px-3 py-1 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors disabled:opacity-50"
                         disabled={isSaving || editValue.trim() === ''}
+                        loading={isSaving}
+                        size="small"
                     >
-                        {isSaving ? '保存中...' : '保存'}
-                    </button>
+                        保存
+                    </Button>
                 </div>
 
                 {multiline && (
-                    <div className="text-xs text-gray-500">
+                    <Text type="secondary" style={{ fontSize: '12px', color: '#888' }}>
                         按 Ctrl+Enter 保存，Esc 取消
-                    </div>
+                    </Text>
                 )}
             </div>
         );
     }
 
     return (
-        <div className="group relative">
+        <div>
             {label && (
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <Text strong style={{ color: '#fff', marginBottom: '8px', display: 'block' }}>
                     {label}
-                </label>
+                </Text>
             )}
             <div
                 onClick={handleEdit}
-                className={`cursor-pointer p-3 border border-gray-200 rounded-md hover:border-gray-300 hover:bg-gray-50 transition-colors group-hover:shadow-sm ${value ? 'text-gray-900' : 'text-gray-500'
-                    }`}
+                style={{
+                    cursor: 'pointer',
+                    padding: '12px',
+                    border: '1px solid #404040',
+                    borderRadius: '6px',
+                    backgroundColor: '#1f1f1f',
+                    color: value ? '#fff' : '#888',
+                    transition: 'all 0.2s',
+                    position: 'relative',
+                    minHeight: multiline ? '80px' : '40px',
+                    display: 'flex',
+                    alignItems: multiline ? 'flex-start' : 'center'
+                }}
+                onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = '#606060';
+                    e.currentTarget.style.backgroundColor = '#2a2a2a';
+                }}
+                onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = '#404040';
+                    e.currentTarget.style.backgroundColor = '#1f1f1f';
+                }}
             >
-                {value || placeholder || '点击编辑...'}
+                <span style={{ wordBreak: 'break-word', whiteSpace: multiline ? 'pre-wrap' : 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>
+                    {value || placeholder || '点击编辑...'}
+                </span>
 
                 {/* Edit icon */}
-                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                </div>
+                <EditOutlined
+                    style={{
+                        position: 'absolute',
+                        top: '8px',
+                        right: '8px',
+                        color: '#666',
+                        opacity: 0.6
+                    }}
+                />
             </div>
         </div>
     );
