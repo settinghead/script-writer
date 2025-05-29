@@ -17,14 +17,12 @@ export function useLLMStreaming<T>(
     const subscriptionRef = useRef<Subscription>();
 
     useEffect(() => {
-        console.log('[useLLMStreaming] Creating new service instance');
         // Create service instance
         serviceRef.current = new ServiceClass(config);
 
         // Subscribe to response stream
         subscriptionRef.current = serviceRef.current.response$.subscribe({
             next: (res) => {
-                console.log('[useLLMStreaming] Response received:', res);
                 setResponse(res);
             },
             error: (err) => {
@@ -39,7 +37,6 @@ export function useLLMStreaming<T>(
         });
 
         return () => {
-            console.log('[useLLMStreaming] Cleanup - unsubscribing and stopping service');
             subscriptionRef.current?.unsubscribe();
             serviceRef.current?.stop();
         };

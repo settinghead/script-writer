@@ -274,7 +274,7 @@ const IdeationTab: React.FC = () => {
     };
 
     return (
-        <div style={{ padding: '20px', maxWidth: '600px', width: "100%", margin: '0 auto', overflow: "auto" }}>
+        <div style={{ padding: '20px', width: "100%", margin: '0 auto', overflow: "auto" }}>
             {isLoadingRun ? (
                 <div style={{ textAlign: 'center', padding: '40px' }}>
                     <Spin size="large" />

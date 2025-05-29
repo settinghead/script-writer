@@ -102,6 +102,17 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
         }
     }, [items]);
 
+    // Handle completion - ensure ideas persist when streaming finishes
+    useEffect(() => {
+        if (status === 'completed' && items.length === 0 && generatedIdeas.length > 0) {
+            // Ideas were cleared from streaming but we have them in state - keep them
+            // This handles the case where the streaming service resets items on completion
+        } else if (status === 'completed' && items.length > 0) {
+            // Final update on completion
+            setGeneratedIdeas(items);
+        }
+    }, [status, items, generatedIdeas.length]);
+
     // Update data change callback when relevant state changes
     useEffect(() => {
         onDataChange({
@@ -229,139 +240,110 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
             background: '#1a1a1a',
             borderRadius: '8px',
             border: '1px solid #303030',
-            marginBottom: '24px'
+            marginBottom: '24px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center'
         }}>
-            <style>
-                {`
-                    @keyframes blink {
-                        0%, 50% { opacity: 1; }
-                        51%, 100% { opacity: 0; }
-                    }
-                    @keyframes fadeIn {
-                        from { opacity: 0; transform: translateY(10px); }
-                        to { opacity: 1; transform: translateY(0); }
-                    }
-                    @keyframes pulse {
-                        0%, 100% { opacity: 0.4; }
-                        50% { opacity: 1; }
-                    }
-                `}
-            </style>
-            <div style={{ marginBottom: '16px' }}>
-                <Text strong style={{ fontSize: '16px', color: '#d9d9d9' }}>
-                    💡 头脑风暴
-                </Text>
-                <Text type="secondary" style={{ display: 'block', fontSize: '12px', marginTop: '4px' }}>
-                    {hasGeneratedIdeas ? '已生成故事灵感' : '选择平台和类型，生成故事灵感'}
-                </Text>
-            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', minWidth: '400px', maxWidth: '600px', }}>
+                <style>
+                    {`
+                        @keyframes blink {
+                            0%, 50% { opacity: 1; }
+                            51%, 100% { opacity: 0; }
+                        }
+                        @keyframes fadeIn {
+                            from { opacity: 0; transform: translateY(10px); }
+                            to { opacity: 1; transform: translateY(0); }
+                        }
+                        @keyframes pulse {
+                            0%, 100% { opacity: 0.4; }
+                            50% { opacity: 1; }
+                        }
+                    `}
+                </style>
+                <div style={{ marginBottom: '16px' }}>
+                    <Text strong style={{ fontSize: '16px', color: '#d9d9d9' }}>
+                        💡 头脑风暴
+                    </Text>
+                    <Text type="secondary" style={{ display: 'block', fontSize: '12px', marginTop: '4px' }}>
+                        {hasGeneratedIdeas ? '已生成故事灵感' : '选择平台和类型，生成故事灵感'}
+                    </Text>
+                </div>
 
-            {/* Show interactive controls only if no ideas have been generated */}
-            {!hasGeneratedIdeas && (
-                <>
-                    <PlatformSelection
-                        selectedPlatform={selectedPlatform}
-                        onPlatformChange={handlePlatformChange}
-                    />
-
-                    <div style={{ marginBottom: '16px' }}>
-                        <Text strong style={{ display: 'block', marginBottom: '8px' }}>故事类型:</Text>
-                        <div
-                            onClick={() => setGenrePopupVisible(true)}
-                            style={{
-                                border: '1px solid #434343',
-                                borderRadius: '6px',
-                                padding: '8px 12px',
-                                minHeight: '32px',
-                                cursor: 'pointer',
-                                background: '#141414',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                transition: 'all 0.3s'
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.borderColor = '#1890ff'}
-                            onMouseLeave={(e) => e.currentTarget.style.borderColor = '#434343'}
-                        >
-                            {selectedGenrePaths.length > 0 ? (
-                                <span style={{ color: '#d9d9d9', cursor: 'pointer' }}>
-                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                                        {buildGenreDisplayElements()}
-                                    </div>
-                                </span>
-                            ) : (
-                                <span style={{ color: '#666', cursor: 'pointer' }}>
-                                    点击选择故事类型 (可多选, 最多3个)
-                                </span>
-                            )}
-                            <RightOutlined style={{ fontSize: '12px', color: '#666' }} />
-                        </div>
-                    </div>
-
-                    <GenreSelectionPopup
-                        visible={genrePopupVisible}
-                        onClose={() => setGenrePopupVisible(false)}
-                        onSelect={handleGenreSelectionConfirm}
-                        currentSelectionPaths={selectedGenrePaths}
-                    />
-
-                    <div style={{ marginBottom: '16px' }}>
-                        <Text strong style={{ display: 'block', marginBottom: '8px' }}>特殊要求:</Text>
-                        <Input
-                            value={requirements}
-                            onChange={(e) => setRequirements(e.target.value)}
-                            placeholder="可以留空，或添加具体要求，例如：要狗血、要反转、要搞笑等"
-                            style={{
-                                background: '#141414',
-                                border: '1px solid #434343',
-                                borderRadius: '6px'
-                            }}
+                {/* Show interactive controls only if no ideas have been generated */}
+                {!hasGeneratedIdeas && (
+                    <>
+                        <PlatformSelection
+                            selectedPlatform={selectedPlatform}
+                            onPlatformChange={handlePlatformChange}
                         />
-                        <Text type="secondary" style={{ fontSize: '11px', marginTop: '4px', display: 'block' }}>
-                            AI将根据您的特殊要求来生成故事灵感
-                        </Text>
-                    </div>
-                </>
-            )}
 
-            {/* Show read-only display if ideas have been generated */}
-            {hasGeneratedIdeas && (
-                <>
-                    <div style={{ marginBottom: '16px' }}>
-                        <Text strong style={{ display: 'block', marginBottom: '8px', color: '#d9d9d9' }}>平台:</Text>
-                        <div style={{
-                            padding: '8px 12px',
-                            background: '#262626',
-                            border: '1px solid #404040',
-                            borderRadius: '6px',
-                            color: '#bfbfbf'
-                        }}>
-                            {selectedPlatform || '未指定'}
-                        </div>
-                    </div>
-
-                    <div style={{ marginBottom: '16px' }}>
-                        <Text strong style={{ display: 'block', marginBottom: '8px', color: '#d9d9d9' }}>故事类型:</Text>
-                        <div style={{
-                            padding: '8px 12px',
-                            background: '#262626',
-                            border: '1px solid #404040',
-                            borderRadius: '6px',
-                            color: '#bfbfbf'
-                        }}>
-                            {selectedGenrePaths.length > 0 ? (
-                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                                    {buildGenreDisplayElements()}
-                                </div>
-                            ) : (
-                                '未指定'
-                            )}
-                        </div>
-                    </div>
-
-                    {requirements && (
                         <div style={{ marginBottom: '16px' }}>
-                            <Text strong style={{ display: 'block', marginBottom: '8px', color: '#d9d9d9' }}>特殊要求:</Text>
+                            <Text strong style={{ display: 'block', marginBottom: '8px' }}>故事类型:</Text>
+                            <div
+                                onClick={() => setGenrePopupVisible(true)}
+                                style={{
+                                    border: '1px solid #434343',
+                                    borderRadius: '6px',
+                                    padding: '8px 12px',
+                                    minHeight: '32px',
+                                    cursor: 'pointer',
+                                    background: '#141414',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    transition: 'all 0.3s'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.borderColor = '#1890ff'}
+                                onMouseLeave={(e) => e.currentTarget.style.borderColor = '#434343'}
+                            >
+                                {selectedGenrePaths.length > 0 ? (
+                                    <span style={{ color: '#d9d9d9', cursor: 'pointer' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                                            {buildGenreDisplayElements()}
+                                        </div>
+                                    </span>
+                                ) : (
+                                    <span style={{ color: '#666', cursor: 'pointer' }}>
+                                        点击选择故事类型 (可多选, 最多3个)
+                                    </span>
+                                )}
+                                <RightOutlined style={{ fontSize: '12px', color: '#666' }} />
+                            </div>
+                        </div>
+
+                        <GenreSelectionPopup
+                            visible={genrePopupVisible}
+                            onClose={() => setGenrePopupVisible(false)}
+                            onSelect={handleGenreSelectionConfirm}
+                            currentSelectionPaths={selectedGenrePaths}
+                        />
+
+                        <div style={{ marginBottom: '16px' }}>
+                            <Text strong style={{ display: 'block', marginBottom: '8px' }}>特殊要求:</Text>
+                            <Input
+                                value={requirements}
+                                onChange={(e) => setRequirements(e.target.value)}
+                                placeholder="可以留空，或添加具体要求，例如：要狗血、要反转、要搞笑等"
+                                style={{
+                                    background: '#141414',
+                                    border: '1px solid #434343',
+                                    borderRadius: '6px'
+                                }}
+                            />
+                            <Text type="secondary" style={{ fontSize: '11px', marginTop: '4px', display: 'block' }}>
+                                AI将根据您的特殊要求来生成故事灵感
+                            </Text>
+                        </div>
+                    </>
+                )}
+
+                {/* Show read-only display if ideas have been generated */}
+                {hasGeneratedIdeas && (
+                    <>
+                        <div style={{ marginBottom: '16px' }}>
+                            <Text strong style={{ display: 'block', marginBottom: '8px', color: '#d9d9d9' }}>平台:</Text>
                             <div style={{
                                 padding: '8px 12px',
                                 background: '#262626',
@@ -369,71 +351,129 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                                 borderRadius: '6px',
                                 color: '#bfbfbf'
                             }}>
-                                {requirements}
+                                {selectedPlatform || '未指定'}
                             </div>
                         </div>
-                    )}
-                </>
-            )}
 
-            {/* Error display */}
-            {error && (
-                <Alert
-                    message="生成失败"
-                    description={error.message}
-                    type="error"
-                    style={{ marginBottom: '16px' }}
-                />
-            )}
+                        <div style={{ marginBottom: '16px' }}>
+                            <Text strong style={{ display: 'block', marginBottom: '8px', color: '#d9d9d9' }}>故事类型:</Text>
+                            <div style={{
+                                padding: '8px 12px',
+                                background: '#262626',
+                                border: '1px solid #404040',
+                                borderRadius: '6px',
+                                color: '#bfbfbf'
+                            }}>
+                                {selectedGenrePaths.length > 0 ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                                        {buildGenreDisplayElements()}
+                                    </div>
+                                ) : (
+                                    '未指定'
+                                )}
+                            </div>
+                        </div>
 
-            {/* Generate button or streaming display */}
-            {!hasGeneratedIdeas && !isStreaming && (
-                <Button
-                    type="primary"
-                    icon={<BulbOutlined />}
-                    onClick={generateIdea}
-                    disabled={!isGenreSelectionComplete()}
-                    style={{
-                        width: '100%',
-                        height: '40px',
-                        background: isGenreSelectionComplete() ? '#1890ff' : '#434343',
-                        borderColor: isGenreSelectionComplete() ? '#1890ff' : '#434343'
-                    }}
-                >
-                    生成故事灵感
-                </Button>
-            )}
+                        {requirements && (
+                            <div style={{ marginBottom: '16px' }}>
+                                <Text strong style={{ display: 'block', marginBottom: '8px', color: '#d9d9d9' }}>特殊要求:</Text>
+                                <div style={{
+                                    padding: '8px 12px',
+                                    background: '#262626',
+                                    border: '1px solid #404040',
+                                    borderRadius: '6px',
+                                    color: '#bfbfbf'
+                                }}>
+                                    {requirements}
+                                </div>
+                            </div>
+                        )}
+                    </>
+                )}
 
-            {/* Streaming progress */}
-            {isStreaming && (
-                <div style={{ marginBottom: '16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                        <Text style={{ color: '#1890ff' }}>正在生成故事灵感...</Text>
-                        <Button
-                            size="small"
-                            icon={<StopOutlined />}
-                            onClick={stop}
-                            style={{
-                                background: '#ff4d4f',
-                                borderColor: '#ff4d4f',
-                                color: 'white'
-                            }}
-                        >
-                            停止
-                        </Button>
+                {/* Error display */}
+                {error && (
+                    <Alert
+                        message="生成失败"
+                        description={error.message}
+                        type="error"
+                        style={{ marginBottom: '16px' }}
+                    />
+                )}
+
+                {/* Generate button or streaming display */}
+                {!hasGeneratedIdeas && !isStreaming && (
+                    <Button
+                        type="primary"
+                        icon={<BulbOutlined />}
+                        onClick={generateIdea}
+                        disabled={!isGenreSelectionComplete()}
+                        style={{
+                            width: '100%',
+                            height: '40px',
+                            background: isGenreSelectionComplete() ? '#1890ff' : '#434343',
+                            borderColor: isGenreSelectionComplete() ? '#1890ff' : '#434343'
+                        }}
+                    >
+                        生成故事灵感
+                    </Button>
+                )}
+
+                {/* Show disabled generate button during streaming if no ideas yet */}
+                {!hasGeneratedIdeas && isStreaming && (
+                    <Button
+                        type="primary"
+                        icon={<BulbOutlined />}
+                        disabled={true}
+                        style={{
+                            width: '100%',
+                            height: '40px',
+                            background: '#434343',
+                            borderColor: '#434343',
+                            marginBottom: '16px'
+                        }}
+                    >
+                        正在生成故事灵感...
+                    </Button>
+                )}
+
+                {/* Streaming progress */}
+                {isStreaming && (
+                    <div style={{ marginBottom: '16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                            <Text style={{ color: '#1890ff' }}>正在生成故事灵感...</Text>
+                            <Button
+                                size="small"
+                                icon={<StopOutlined />}
+                                onClick={stop}
+                                style={{
+                                    background: '#ff4d4f',
+                                    borderColor: '#ff4d4f',
+                                    color: 'white'
+                                }}
+                            >
+                                停止
+                            </Button>
+                        </div>
+                        <Progress percent={30} showInfo={false} strokeColor="#1890ff" />
                     </div>
-                    <Progress percent={30} showInfo={false} strokeColor="#1890ff" />
-                </div>
-            )}
+                )}
+            </div>
 
             {/* Display streaming ideas as they arrive */}
-            {items.length > 0 && (
+            {generatedIdeas.length > 0 && (
                 <div style={{ marginTop: '16px' }}>
                     <Text strong style={{ display: 'block', marginBottom: '12px', color: '#d9d9d9' }}>
                         生成的故事灵感:
                     </Text>
-                    <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                        {items.map((idea, index) => (
+                    <div style={{
+                        maxHeight: '400px',
+                        overflowY: 'auto',
+                        display: 'grid',
+                        gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(280px, 1fr))',
+                        gap: '12px'
+                    }}>
+                        {generatedIdeas.map((idea, index) => (
                             <div
                                 key={index}
                                 onClick={() => handleIdeaSelection(index)}
@@ -442,10 +482,12 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                                     background: selectedIdeaIndex === index ? '#1890ff20' : '#262626',
                                     border: selectedIdeaIndex === index ? '1px solid #1890ff' : '1px solid #404040',
                                     borderRadius: '6px',
-                                    marginBottom: '8px',
                                     cursor: 'pointer',
                                     transition: 'all 0.3s',
-                                    animation: 'fadeIn 0.5s ease-in'
+                                    animation: 'fadeIn 0.5s ease-in',
+                                    minHeight: '80px',
+                                    display: 'flex',
+                                    flexDirection: 'column'
                                 }}
                                 onMouseEnter={(e) => {
                                     if (selectedIdeaIndex !== index) {
@@ -461,7 +503,7 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                                 <Text strong style={{ color: '#d9d9d9', display: 'block', marginBottom: '4px' }}>
                                     {idea.title}
                                 </Text>
-                                <Text style={{ color: '#bfbfbf', fontSize: '13px', lineHeight: '1.4' }}>
+                                <Text style={{ color: '#bfbfbf', fontSize: '13px', lineHeight: '1.4', flex: 1 }}>
                                     {idea.body}
                                 </Text>
                             </div>
@@ -472,7 +514,9 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                             <div style={{
                                 padding: '8px',
                                 color: '#666',
-                                fontSize: '14px'
+                                fontSize: '14px',
+                                gridColumn: '1 / -1',
+                                textAlign: 'center'
                             }}>
                                 <span style={{ animation: 'blink 1s infinite' }}>▋</span>
                             </div>
@@ -482,7 +526,7 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
             )}
 
             {/* Show regenerate button after completion */}
-            {hasGeneratedIdeas && status === 'completed' && (
+            {hasGeneratedIdeas && (status === 'completed' || status === 'error') && (
                 <div style={{ marginTop: '16px' }}>
                     <Button
                         type="default"
