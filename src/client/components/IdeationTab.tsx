@@ -1,15 +1,16 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Input, Button, Typography, Spin, Alert, Switch, Modal } from 'antd';
-import { ReloadOutlined, ArrowLeftOutlined, DeleteOutlined, BulbOutlined, DesktopOutlined } from '@ant-design/icons';
+import { Input, Button, Typography, Spin, Alert, Switch, Modal, Card, Space, Breadcrumb } from 'antd';
+import { ReloadOutlined, ArrowLeftOutlined, DeleteOutlined, BulbOutlined, DesktopOutlined, HomeOutlined, FileTextOutlined, PlusOutlined } from '@ant-design/icons';
 import BrainstormingInputForm from './BrainstormingInputForm';
 import BrainstormingParameterSummary from './BrainstormingParameterSummary';
-import BrainstormingResults from './BrainstormingResults';
 import StoryInspirationEditor from './StoryInspirationEditor';
+import BrainstormingResults from './BrainstormingResults';
 import { useStreamingBrainstorm } from '../hooks/useStreamingBrainstorm';
 import { IdeaWithTitle } from '../services/implementations/BrainstormingStreamingService';
+import TextareaAutosize from 'react-textarea-autosize';
+import { BrainstormingParameterInput } from './BrainstormingParameterInput';
 
-const { TextArea } = Input;
 const { Title, Text, Paragraph } = Typography;
 
 const IdeationTab: React.FC = () => {
@@ -588,8 +589,9 @@ const IdeationTab: React.FC = () => {
                             <Text strong style={{ display: 'block', marginBottom: '12px', fontSize: '16px' }}>
                                 故事灵感
                             </Text>
-                            <TextArea
-                                rows={8}
+                            <TextareaAutosize
+                                minRows={8}
+                                maxRows={20}
                                 value={userInput}
                                 onChange={handleInputChange}
                                 placeholder={brainstormingEnabled && !brainstormingCollapsed
@@ -597,11 +599,16 @@ const IdeationTab: React.FC = () => {
                                     : '输入完整的故事梗概，包含起承转合结构'
                                 }
                                 style={{
+                                    width: '100%',
                                     fontSize: '14px',
                                     lineHeight: '1.6',
                                     background: '#141414',
                                     border: '1px solid #434343',
-                                    borderRadius: '8px'
+                                    borderRadius: '8px',
+                                    padding: '8px 12px',
+                                    color: '#fff',
+                                    resize: 'none',
+                                    outline: 'none'
                                 }}
                             />
                             <Text type="secondary" style={{ display: 'block', marginTop: '8px', fontSize: '12px' }}>

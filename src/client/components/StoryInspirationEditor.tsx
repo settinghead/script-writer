@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Input, Typography, Spin } from 'antd';
+import { Input, Typography, Spin, Card, Button, message } from 'antd';
+import TextareaAutosize from 'react-textarea-autosize';
+import { SaveOutlined } from '@ant-design/icons';
+import { apiService } from '../services/apiService';
 
-const { TextArea } = Input;
 const { Text } = Typography;
 
 interface StoryInspirationEditorProps {
@@ -231,18 +233,24 @@ const StoryInspirationEditor: React.FC<StoryInspirationEditorProps> = ({
             </Text>
 
             <div style={{ position: 'relative' }}>
-                <TextArea
-                    rows={8}
+                <TextareaAutosize
+                    minRows={8}
+                    maxRows={20}
                     value={value}
                     onChange={handleTextChange}
                     placeholder={placeholder}
                     disabled={readOnly || isLoading}
                     style={{
+                        width: '100%',
                         fontSize: '14px',
                         lineHeight: '1.6',
                         background: readOnly ? '#1a1a1a' : '#141414',
                         border: '1px solid #434343',
                         borderRadius: '8px',
+                        padding: '8px 12px',
+                        color: '#fff',
+                        resize: 'none',
+                        outline: 'none',
                         opacity: isLoading ? 0.6 : 1
                     }}
                 />

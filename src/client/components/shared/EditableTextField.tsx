@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button, Input, Typography } from 'antd';
 import { EditOutlined } from '@ant-design/icons';
+import TextareaAutosize from 'react-textarea-autosize';
 import { v4 as uuidv4 } from 'uuid';
 
-const { TextArea } = Input;
 const { Text } = Typography;
 
 interface EditableTextFieldProps {
@@ -104,18 +104,26 @@ export const EditableTextField: React.FC<EditableTextFieldProps> = ({
                 )}
 
                 {multiline ? (
-                    <TextArea
+                    <TextareaAutosize
                         ref={inputRef as React.RefObject<HTMLTextAreaElement>}
                         value={editValue}
                         onChange={(e) => setEditValue(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder={placeholder}
                         disabled={isSaving}
-                        rows={4}
+                        minRows={3}
+                        maxRows={20}
                         style={{
+                            width: '100%',
                             backgroundColor: '#1f1f1f',
-                            borderColor: '#404040',
-                            color: '#fff'
+                            border: '1px solid #404040',
+                            borderRadius: '6px',
+                            color: '#fff',
+                            padding: '8px 12px',
+                            fontSize: '14px',
+                            lineHeight: '1.5715',
+                            resize: 'none',
+                            outline: 'none'
                         }}
                     />
                 ) : (

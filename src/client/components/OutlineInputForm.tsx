@@ -1,297 +1,302 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Card, Button, InputNumber, Alert, Typography, Space, Row, Col, Input, Spin } from 'antd';
-import { FileTextOutlined, SaveOutlined } from '@ant-design/icons';
+import { Button, Card, Typography, Alert, Space, message } from 'antd';
+import { SaveOutlined, FileTextOutlined } from '@ant-design/icons';
+import TextareaAutosize from 'react-textarea-autosize';
 import { apiService } from '../services/apiService';
-import { Artifact } from '../../server/types/artifacts';
 
 const { Title, Text } = Typography;
-const { TextArea } = Input;
+
+interface Artifact {
+    id: string;
+    text: string;
+    title?: string;
+    type: string;
+    data: any;
+}
 
 export const OutlineInputForm: React.FC = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const [isLoading, setIsLoading] = useState(false);
-    const [artifactLoading, setArtifactLoading] = useState(true);
-    const [sourceArtifact, setSourceArtifact] = useState<Artifact | null>(null);
-    const [ideaText, setIdeaText] = useState<string>('');
-    const [totalEpisodes, setTotalEpisodes] = useState<number>(12);
-    const [episodeDuration, setEpisodeDuration] = useState<number>(45);
-    const [error, setError] = useState<string>('');
+    const artifact_id = searchParams.get('artifact_id');
+
+    const [text, setText] = useState('');
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [sourceArtifact, setSourceArtifact] = useState<Artifact | null>(null);
 
-    // Check if there's a specific artifact_id in the URL
-    const artifactId = searchParams.get('artifact_id');
-
-    // Load artifact on component mount
+    // Debug text state changes
     useEffect(() => {
-        if (artifactId) {
-            loadArtifact(artifactId);
-        } else {
-            // No artifact specified, start with empty form
-            setArtifactLoading(false);
-            setIdeaText('');
+        console.log('OutlineInputForm: Text state changed to:', text);
+    }, [text]);
+
+    // Load artifact if artifact_id is provided
+    useEffect(() => {
+        if (artifact_id) {
+            loadArtifact(artifact_id);
         }
-    }, [artifactId]);
+    }, [artifact_id]);
 
-    const loadArtifact = async (id: string) => {
-        try {
-            setArtifactLoading(true);
-            setError('');
-
-            const response = await fetch(`/api/artifacts/${id}`);
-            if (!response.ok) {
-                throw new Error(`Failed to fetch artifact: ${response.status}`);
-            }
-            const artifact = await response.json();
-
-            setSourceArtifact(artifact);
-            setIdeaText(artifact.data.idea_text || artifact.data.text || '');
-
-        } catch (error) {
-            console.error('Error loading artifact:', error);
-            setError('Failed to load the specified story idea.');
-        } finally {
-            setArtifactLoading(false);
-        }
-    };
-
-    const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        setIdeaText(e.target.value);
-        setHasUnsavedChanges(true);
-    };
-
-    const handleSaveChanges = async () => {
-        if (!hasUnsavedChanges || !ideaText.trim()) {
-            return;
-        }
-
+    const loadArtifact = async (artifactId: string) => {
         try {
             setIsLoading(true);
             setError('');
 
-            // Create new user_input artifact with the edited content
-            const response = await fetch('/api/artifacts/user-input', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    text: ideaText.trim(),
-                    sourceArtifactId: sourceArtifact?.id
-                })
-            });
-
+            console.log('OutlineInputForm: Loading artifact', artifactId);
+            const response = await fetch(`/api/artifacts/${artifactId}`);
             if (!response.ok) {
-                throw new Error(`Failed to save changes: ${response.status}`);
+                throw new Error(`Failed to fetch artifact: ${response.status}`);
+            }
+            const artifact = await response.json();
+            console.log('OutlineInputForm: Artifact loaded', artifact);
+            console.log('OutlineInputForm: Artifact data structure:', JSON.stringify(artifact.data, null, 2));
+            setSourceArtifact(artifact);
+
+            // Set the text based on artifact type
+            let textToSet = '';
+            if (artifact.type === 'brainstorm_idea') {
+                console.log('OutlineInputForm: Processing brainstorm_idea type');
+                console.log('OutlineInputForm: artifact.data.text =', artifact.data.text);
+                console.log('OutlineInputForm: artifact.data.idea_text =', artifact.data.idea_text);
+                console.log('OutlineInputForm: artifact.data.body =', artifact.data.body);
+                console.log('OutlineInputForm: artifact.data.content =', artifact.data.content);
+                textToSet = artifact.data.text || artifact.data.idea_text || artifact.data.body || artifact.data.content || '';
+            } else if (artifact.type === 'user_input') {
+                textToSet = artifact.data.text || '';
+            } else {
+                textToSet = JSON.stringify(artifact.data, null, 2);
             }
 
-            const newArtifact = await response.json();
-            setSourceArtifact(newArtifact);
-            setHasUnsavedChanges(false);
+            console.log('OutlineInputForm: Setting text to:', textToSet);
+            setText(textToSet);
 
-        } catch (error) {
-            console.error('Error saving changes:', error);
-            setError('Failed to save changes. Please try again.');
+            // Force a small delay to ensure TextareaAutosize picks up the value
+            setTimeout(() => {
+                console.log('OutlineInputForm: Text state after delay:', text);
+                if (text !== textToSet) {
+                    console.log('OutlineInputForm: Re-setting text due to mismatch');
+                    setText(textToSet);
+                }
+            }, 100);
+
+        } catch (error: any) {
+            console.error('Error loading artifact:', error);
+            setError(`加载失败: ${error.message}`);
         } finally {
             setIsLoading(false);
         }
     };
 
-    const handleGenerate = async () => {
-        // Save changes first if there are any
-        if (hasUnsavedChanges) {
-            await handleSaveChanges();
-        }
+    const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        setText(e.target.value);
+        setHasUnsavedChanges(true);
+    };
 
-        if (!ideaText.trim()) {
-            setError('请输入主题或灵感');
+    const saveChanges = async () => {
+        if (!text.trim()) {
+            message.error('内容不能为空');
             return;
         }
-
-        if (totalEpisodes < 1 || totalEpisodes > 100) {
-            setError('集数必须在1-100之间');
-            return;
-        }
-
-        if (episodeDuration < 10 || episodeDuration > 180) {
-            setError('每集时长必须在10-180分钟之间');
-            return;
-        }
-
-        setIsLoading(true);
-        setError('');
 
         try {
-            // Use the current source artifact (either original or newly created user_input)
-            const artifactIdToUse = sourceArtifact?.id;
-            if (!artifactIdToUse) {
-                throw new Error('No source artifact available');
+            if (sourceArtifact) {
+                // Create a new user_input artifact when editing an existing artifact
+                const response = await fetch('/api/artifacts/user-input', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        text: text.trim(),
+                        sourceArtifactId: sourceArtifact.id
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to save: ${response.status}`);
+                }
             }
 
-            const response = await apiService.generateOutline({
-                sourceArtifactId: artifactIdToUse,
-                totalEpisodes,
-                episodeDuration
-            });
+            setHasUnsavedChanges(false);
+            message.success('保存成功');
 
-            // Navigate to the streaming outline page
-            navigate(`/outlines/${response.sessionId}?transform=${response.transformId}`);
-
-        } catch (error) {
-            console.error('Error generating outline:', error);
-            setError('生成大纲时出错，请重试');
-            setIsLoading(false);
+        } catch (error: any) {
+            console.error('Error saving changes:', error);
+            message.error(`保存失败: ${error.message}`);
         }
     };
 
-    if (artifactLoading) {
+    const generateOutline = async () => {
+        if (!text.trim()) {
+            message.error('请输入主题/灵感内容');
+            return;
+        }
+
+        try {
+            setIsGenerating(true);
+            setError('');
+
+            let artifactToUse: Artifact;
+
+            if (hasUnsavedChanges || !sourceArtifact) {
+                // Create or update user_input artifact
+                const response = await fetch('/api/artifacts/user-input', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        text: text.trim(),
+                        sourceArtifactId: sourceArtifact?.id
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to create artifact: ${response.status}`);
+                }
+
+                artifactToUse = await response.json();
+                setHasUnsavedChanges(false);
+            } else {
+                // Use existing artifact
+                artifactToUse = sourceArtifact;
+            }
+
+            // Generate outline using the common interface
+            const result = await apiService.generateOutline({
+                sourceArtifactId: artifactToUse.id,
+                totalEpisodes: 10, // Default values
+                episodeDuration: 30
+            });
+
+            // Navigate to the streaming outline page
+            navigate(`/outlines/${result.sessionId}?transform=${result.transformId}`);
+
+        } catch (error: any) {
+            console.error('Error generating outline:', error);
+            setError(`生成失败: ${error.message}`);
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    if (isLoading) {
         return (
             <div style={{
                 display: 'flex',
                 justifyContent: 'center',
                 alignItems: 'center',
-                minHeight: '400px'
+                minHeight: '200px'
             }}>
-                <Spin size="large" />
-                <Text style={{ marginLeft: '12px', color: '#fff' }}>
-                    加载内容...
-                </Text>
+                <Space direction="vertical" align="center">
+                    <FileTextOutlined style={{ fontSize: '48px', color: '#1890ff' }} />
+                    <Text style={{ color: '#fff' }}>加载中...</Text>
+                </Space>
             </div>
         );
     }
 
     return (
         <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px' }}>
-            <Card style={{ backgroundColor: '#1f1f1f', border: '1px solid #303030' }}>
+            <Card
+                style={{
+                    backgroundColor: '#2a2a2a',
+                    border: '1px solid #404040'
+                }}
+                headStyle={{
+                    backgroundColor: '#1f1f1f',
+                    borderBottom: '1px solid #404040'
+                }}
+                bodyStyle={{ backgroundColor: '#2a2a2a' }}
+            >
                 <Space direction="vertical" size="large" style={{ width: '100%' }}>
-                    {/* Header */}
-                    <div>
-                        <Title level={2} style={{ color: '#fff', margin: '0 0 8px 0' }}>
-                            生成剧本大纲
+                    <div style={{ textAlign: 'center' }}>
+                        <Title level={2} style={{ color: '#fff', marginBottom: '8px' }}>
+                            创建大纲
                         </Title>
-                        <Text style={{ color: '#aaa' }}>
-                            输入您的故事主题或灵感，设置剧集参数，然后生成详细的剧本大纲。
+                        <Text type="secondary" style={{ color: '#b0b0b0' }}>
+                            输入故事主题和灵感，AI将为您生成详细的剧本大纲
                         </Text>
                     </div>
 
-                    {/* Error Display */}
                     {error && (
                         <Alert
                             message="错误"
                             description={error}
                             type="error"
                             showIcon
-                            closable
-                            onClose={() => setError('')}
-                            style={{ backgroundColor: '#2a1a1a', border: '1px solid #ff4d4f' }}
+                            style={{
+                                backgroundColor: '#2d1b1b',
+                                border: '1px solid #d32f2f',
+                                color: '#fff'
+                            }}
                         />
                     )}
 
-                    {/* Story Theme/Inspiration Editor */}
                     <div>
-                        <Title level={4} style={{ color: '#fff', margin: '0 0 12px 0' }}>
+                        <Text strong style={{ color: '#fff', marginBottom: '8px', display: 'block' }}>
                             主题/灵感 *
-                        </Title>
+                        </Text>
+                        <TextareaAutosize
+                            key={text ? 'with-content' : 'empty'}
+                            value={text}
+                            onChange={handleTextChange}
+                            placeholder="请输入您的故事主题、灵感或想法..."
+                            minRows={8}
+                            maxRows={25}
+                            style={{
+                                width: '100%',
+                                backgroundColor: '#1f1f1f',
+                                border: '1px solid #404040',
+                                borderRadius: '6px',
+                                color: '#fff',
+                                padding: '12px',
+                                fontSize: '14px',
+                                lineHeight: '1.6',
+                                resize: 'none',
+                                outline: 'none'
+                            }}
+                        />
+                        <Text type="secondary" style={{ fontSize: '12px', color: '#888', marginTop: '4px', display: 'block' }}>
+                            详细描述您的故事设定、角色、情节等，内容越丰富生成的大纲越精确
+                        </Text>
+                    </div>
 
-                        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                            <div>
-                                <TextArea
-                                    value={ideaText}
-                                    onChange={handleTextChange}
-                                    placeholder="输入您的故事主题或灵感..."
-                                    rows={8}
-                                    style={{
-                                        backgroundColor: '#2a2a2a',
-                                        border: '1px solid #404040',
-                                        color: '#fff'
-                                    }}
-                                />
-                            </div>
-
+                    <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        borderTop: '1px solid #404040',
+                        paddingTop: '20px'
+                    }}>
+                        <Space>
                             {hasUnsavedChanges && (
-                                <Button
-                                    icon={<SaveOutlined />}
-                                    onClick={handleSaveChanges}
-                                    loading={isLoading}
-                                    style={{ alignSelf: 'flex-start' }}
-                                >
-                                    保存修改
-                                </Button>
+                                <>
+                                    <Text style={{ color: '#ff9800', fontSize: '12px' }}>
+                                        有未保存的更改
+                                    </Text>
+                                    <Button
+                                        icon={<SaveOutlined />}
+                                        onClick={saveChanges}
+                                        size="small"
+                                    >
+                                        保存
+                                    </Button>
+                                </>
                             )}
                         </Space>
-                    </div>
 
-                    {/* Episode Configuration */}
-                    <div>
-                        <Title level={4} style={{ color: '#fff', margin: '0 0 12px 0' }}>
-                            剧集配置
-                        </Title>
-                        <Row gutter={16}>
-                            <Col span={12}>
-                                <Card
-                                    size="small"
-                                    style={{ backgroundColor: '#2a2a2a', border: '1px solid #404040' }}
-                                >
-                                    <Text strong style={{ display: 'block', marginBottom: '8px', color: '#fff' }}>
-                                        总集数 *
-                                    </Text>
-                                    <InputNumber
-                                        min={1}
-                                        max={100}
-                                        value={totalEpisodes}
-                                        onChange={(value) => setTotalEpisodes(value || 1)}
-                                        style={{
-                                            width: '100%',
-                                            backgroundColor: '#1a1a1a',
-                                            border: '1px solid #404040'
-                                        }}
-                                        placeholder="例如: 12"
-                                    />
-                                    <Text style={{ fontSize: '12px', display: 'block', marginTop: '4px', color: '#aaa' }}>
-                                        建议: 电视剧12-24集，网剧6-12集
-                                    </Text>
-                                </Card>
-                            </Col>
-                            <Col span={12}>
-                                <Card
-                                    size="small"
-                                    style={{ backgroundColor: '#2a2a2a', border: '1px solid #404040' }}
-                                >
-                                    <Text strong style={{ display: 'block', marginBottom: '8px', color: '#fff' }}>
-                                        每集时长 (分钟) *
-                                    </Text>
-                                    <InputNumber
-                                        min={10}
-                                        max={180}
-                                        value={episodeDuration}
-                                        onChange={(value) => setEpisodeDuration(value || 45)}
-                                        style={{
-                                            width: '100%',
-                                            backgroundColor: '#1a1a1a',
-                                            border: '1px solid #404040'
-                                        }}
-                                        placeholder="例如: 45"
-                                    />
-                                    <Text style={{ fontSize: '12px', display: 'block', marginTop: '4px', color: '#aaa' }}>
-                                        建议: 网剧20-30分钟，电视剧40-50分钟
-                                    </Text>
-                                </Card>
-                            </Col>
-                        </Row>
-                    </div>
-
-                    {/* Generate Button */}
-                    <div style={{ textAlign: 'right', paddingTop: '20px', borderTop: '1px solid #404040' }}>
                         <Button
                             type="primary"
                             size="large"
+                            loading={isGenerating}
+                            disabled={!text.trim() || isGenerating}
+                            onClick={generateOutline}
                             icon={<FileTextOutlined />}
-                            onClick={handleGenerate}
-                            disabled={isLoading || !ideaText.trim()}
-                            loading={isLoading}
                         >
-                            {isLoading ? '正在生成...' : '开始生成大纲'}
+                            {isGenerating ? '生成中...' : '生成大纲'}
                         </Button>
                     </div>
                 </Space>

@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { useChat } from '@ai-sdk/react';
-import { Button, Input, Typography, Spin, Alert, Space } from 'antd';
+import { Button, Typography, Spin, Alert, Space } from 'antd';
 import { SendOutlined, UserOutlined, RobotOutlined } from '@ant-design/icons';
+import TextareaAutosize from 'react-textarea-autosize';
 
 const { Text, Paragraph } = Typography;
-const { TextArea } = Input;
 
 interface ChatPanelProps {
     onScriptEdit?: (content: string) => void;
@@ -17,6 +17,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onScriptEdit }) => {
 
     // Default model name
     const MODEL_NAME = 'deepseek-chat';
+    const inputRef = useRef<HTMLTextAreaElement>(null);
 
     const handleLocalInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         setInput(e.target.value);
@@ -45,6 +46,12 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onScriptEdit }) => {
         e.preventDefault();
         attemptSubmit(e.currentTarget);
     };
+
+    useEffect(() => {
+        if (inputRef.current && !isLoading) {
+            inputRef.current.focus();
+        }
+    }, [isLoading]);
 
     return (
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '12px' }}>
@@ -121,31 +128,41 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onScriptEdit }) => {
                 )}
             </div>
 
-            <form onSubmit={handleFormSubmit} style={{ display: 'flex', alignItems: 'flex-end' }}>
-                <Space.Compact style={{ display: 'flex', width: '100%' }}>
-                    <TextArea
-                        placeholder="输入你的问题... (Ctrl+Enter 或 Shift+Enter 发送)"
+            <form onSubmit={handleFormSubmit} style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
+                <div style={{ flex: 1 }}>
+                    <TextareaAutosize
+                        ref={inputRef}
                         value={input}
                         onChange={handleLocalInputChange}
                         onKeyDown={handleKeyDown}
+                        placeholder="输入你的问题... (Ctrl+Enter 或 Shift+Enter 发送)"
                         disabled={isLoading}
-                        autoSize={{ minRows: 1, maxRows: 5 }}
+                        minRows={1}
+                        maxRows={5}
                         style={{
-                            flexGrow: 1,
+                            width: '100%',
                             resize: 'none',
+                            backgroundColor: '#262626',
+                            border: '1px solid #404040',
+                            borderRadius: '6px',
+                            color: '#fff',
+                            padding: '8px 12px',
+                            fontSize: '14px',
+                            lineHeight: '1.5',
+                            outline: 'none'
                         }}
                     />
-                    <Button
-                        type="primary"
-                        htmlType="submit"
-                        disabled={isLoading || !input.trim()}
-                        icon={<SendOutlined />}
-                        style={{
-                            height: 'auto',
-                            alignSelf: 'stretch'
-                        }}
-                    />
-                </Space.Compact>
+                </div>
+                <Button
+                    type="primary"
+                    htmlType="submit"
+                    disabled={isLoading || !input.trim()}
+                    icon={<SendOutlined />}
+                    style={{
+                        height: 'auto',
+                        minHeight: '36px'
+                    }}
+                />
             </form>
         </div>
     );
