@@ -16,36 +16,45 @@ export function useLLMStreaming<T>(
 
     const serviceRef = useRef<LLMStreamingService<T>>();
     const subscriptionRef = useRef<Subscription>();
+    const currentTransformIdRef = useRef<string | undefined>();
 
+    // Initialize service only once
     useEffect(() => {
-        // Create service instance
-        serviceRef.current = new ServiceClass(config);
+        if (!serviceRef.current) {
+            serviceRef.current = new ServiceClass(config);
 
-        // Subscribe to response stream
-        subscriptionRef.current = serviceRef.current.response$.subscribe({
-            next: (res) => {
-                setResponse(res);
-            },
-            error: (err) => {
-                console.error('[useLLMStreaming] Error:', err);
-                setResponse({
-                    status: 'error',
-                    items: [],
-                    rawContent: '',
-                    error: err
-                });
-            }
-        });
-
-        // If transformId is provided, connect to it immediately
-        if (transformId && serviceRef.current) {
-            serviceRef.current.connectToTransform(transformId);
+            // Subscribe to response stream
+            subscriptionRef.current = serviceRef.current.response$.subscribe({
+                next: (res) => {
+                    setResponse(res);
+                },
+                error: (err) => {
+                    console.error('[useLLMStreaming] Error:', err);
+                    setResponse({
+                        status: 'error',
+                        items: [],
+                        rawContent: '',
+                        error: err
+                    });
+                }
+            });
         }
 
+        // Cleanup only on unmount
         return () => {
             subscriptionRef.current?.unsubscribe();
             serviceRef.current?.stop();
+            serviceRef.current = undefined;
+            currentTransformIdRef.current = undefined;
         };
+    }, []); // Empty deps - only run once
+
+    // Handle transform ID changes separately
+    useEffect(() => {
+        if (transformId && transformId !== currentTransformIdRef.current && serviceRef.current) {
+            currentTransformIdRef.current = transformId;
+            serviceRef.current.connectToTransform(transformId);
+        }
     }, [transformId]);
 
     const start = useCallback(async (request: StreamingRequest) => {

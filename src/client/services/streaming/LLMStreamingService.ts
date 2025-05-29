@@ -1,4 +1,4 @@
-import { Observable, Subject, merge, of } from 'rxjs';
+import { Observable, Subject, merge, of, combineLatest } from 'rxjs';
 import {
     debounceTime,
     map,
@@ -16,6 +16,7 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
     protected abort$ = new Subject<void>();
     protected content$ = new Subject<string>();
     protected error$ = new Subject<Error>();
+    protected completion$ = new Subject<void>();
     protected eventSource?: EventSource;
 
     // Observable streams
@@ -27,7 +28,9 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
         this.items$ = this.content$.pipe(
             debounceTime(this.config.debounceMs || 50),
             map(content => {
+                console.log('[LLMStreamingService] Processing content for parsing, length:', content.length);
                 const parsed = this.parsePartial(this.cleanContent(content));
+                console.log('[LLMStreamingService] Parsed items:', parsed.length, parsed);
                 return parsed;
             }),
             filter(items => items.length > 0),
@@ -41,9 +44,12 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
 
     private createStatusStream(): Observable<StreamingResponse<T>['status']> {
         const streaming$ = this.content$.pipe(mapTo('streaming' as const));
-        const completed$ = this.content$.pipe(
-            debounceTime(this.config.completionTimeoutMs || 2000),
-            mapTo('completed' as const)
+        const completed$ = merge(
+            this.content$.pipe(
+                debounceTime(this.config.completionTimeoutMs || 2000),
+                mapTo('completed' as const)
+            ),
+            this.completion$.pipe(mapTo('completed' as const))
         );
         const error$ = this.error$.pipe(mapTo('error' as const));
 
@@ -59,50 +65,35 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
     }
 
     private createResponseStream(): Observable<StreamingResponse<T>> {
+        // Combine latest status with latest items to avoid race conditions
+        const mainStream = combineLatest([
+            this.status$.pipe(startWith('idle' as const)),
+            this.items$.pipe(startWith([] as T[]))
+        ]).pipe(
+            map(([status, items]) => ({
+                status,
+                items,
+                rawContent: ''
+            }))
+        );
+
+        // Merge main stream with error stream
         return merge(
-            // Status changes
-            this.status$.pipe(
-                map(status => {
-                    return {
-                        status,
-                        items: [] as T[],
-                        rawContent: ''
-                    };
-                })
-            ),
-            // Items updates - emit items with streaming status
-            this.items$.pipe(
-                map(items => {
-                    return {
-                        status: 'streaming' as const,
-                        items,
-                        rawContent: ''
-                    };
-                })
-            ),
-            // Error handling
+            mainStream,
             this.error$.pipe(
-                map(error => {
-                    return {
-                        status: 'error' as const,
-                        items: [] as T[],
-                        rawContent: '',
-                        error
-                    };
-                })
+                map(error => ({
+                    status: 'error' as const,
+                    items: [] as T[],
+                    rawContent: '',
+                    error
+                }))
             )
         ).pipe(
-            // Combine latest status with latest items
             distinctUntilChanged((a, b) =>
                 a.status === b.status &&
                 a.items.length === b.items.length &&
                 JSON.stringify(a.items) === JSON.stringify(b.items)
             ),
-            startWith({
-                status: 'idle' as const,
-                items: [] as T[],
-                rawContent: ''
-            }),
             takeUntil(this.abort$),
             shareReplay(1)
         );
@@ -147,27 +138,35 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
             };
 
             this.eventSource.onmessage = (event) => {
+                console.log('[LLMStreamingService] Received message:', event.data.substring(0, 200) + '...');
                 try {
                     // First, try to parse as JSON (for status messages)
                     try {
                         const data = JSON.parse(event.data);
+                        console.log('[LLMStreamingService] Parsed JSON message:', data);
 
                         // Handle different event types from the streaming endpoint
                         if (data.status === 'connected') {
                             console.log('Connected to transform:', transformId);
                         } else if (data.status === 'partial_results' && data.results) {
                             // Load existing partial results
+                            console.log('[LLMStreamingService] Loading partial results:', data.results.length, 'items');
                             const existingItems = this.parsePartialResults(data.results);
                             if (existingItems.length > 0) {
                                 // Emit the partial results as properly formatted JSON
                                 accumulatedContent = JSON.stringify(existingItems);
+                                console.log('[LLMStreamingService] Emitting partial results:', accumulatedContent);
                                 this.content$.next(accumulatedContent);
                             }
                         } else if (data.status === 'completed' && data.results) {
                             // Handle completed job results
+                            console.log('[LLMStreamingService] Job completed, loading results:', data.results.length, 'items');
                             const completedItems = this.parsePartialResults(data.results);
                             const content = JSON.stringify(completedItems);
+                            console.log('[LLMStreamingService] Emitting completed results:', content);
                             this.content$.next(content);
+                            // Emit completion status
+                            this.completion$.next();
                             // Close the connection since job is done
                             this.eventSource?.close();
                         }
@@ -180,6 +179,7 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
                                 const textData = JSON.parse(event.data.substring(2));
                                 if (typeof textData === 'string') {
                                     accumulatedContent += textData;
+                                    console.log('[LLMStreamingService] Accumulated content length:', accumulatedContent.length, 'sample:', accumulatedContent.substring(0, 100) + '...');
                                     this.content$.next(accumulatedContent);
                                 }
                             } catch (chunkError) {
@@ -187,9 +187,12 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
                             }
                         } else if (event.data.startsWith('e:') || event.data.startsWith('d:')) {
                             // End/Done events - trigger final content update
+                            console.log('[LLMStreamingService] Received completion event, final content length:', accumulatedContent.length);
                             if (accumulatedContent.trim()) {
                                 this.content$.next(accumulatedContent);
                             }
+                            // Emit completion event before closing
+                            this.completion$.next();
                             this.eventSource?.close();
                         } else if (event.data.startsWith('error:')) {
                             // Error event
@@ -204,7 +207,10 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
 
             this.eventSource.onerror = (error) => {
                 console.error('Transform stream error:', error);
-                this.error$.next(new Error('Connection to transform stream failed'));
+                // Try to fetch completed results if EventSource fails
+                this.fetchCompletedTransform(transformId).catch(fetchError => {
+                    this.error$.next(new Error('Connection to transform stream failed'));
+                });
                 this.eventSource?.close();
             };
 
@@ -234,6 +240,30 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
         }
 
         return items;
+    }
+
+    // Fetch completed transform results via regular HTTP
+    private async fetchCompletedTransform(transformId: string): Promise<void> {
+        try {
+            const response = await fetch(`/api/streaming/transform/${transformId}`);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch transform: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            if (data.status === 'completed' && data.results) {
+                // Parse and emit the completed results
+                const completedItems = this.parsePartialResults(data.results);
+                const content = JSON.stringify(completedItems);
+                this.content$.next(content);
+                this.completion$.next();
+            } else if (data.error) {
+                throw new Error(data.error);
+            }
+        } catch (error) {
+            console.error('Failed to fetch completed transform:', error);
+            throw error;
+        }
     }
 
     // Abstract method for converting artifact data to expected item format
@@ -271,6 +301,8 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
                             if (accumulatedContent.trim()) {
                                 this.content$.next(accumulatedContent);
                             }
+                            // Emit completion event
+                            this.completion$.next();
                         }
                         // Ignore other line types (f:, etc.)
                     } catch (parseError) {
@@ -285,6 +317,7 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
 
     stop(): void {
         this.abort$.next();
+        this.completion$.complete();
         // Clean up EventSource if exists
         if (this.eventSource) {
             this.eventSource.close();

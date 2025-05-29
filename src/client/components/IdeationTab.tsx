@@ -207,20 +207,9 @@ const IdeationTab: React.FC = () => {
             ...data
         });
 
-        // If we were streaming and now have completed ideas, reset streaming state
-        if (isStreamingJob && data.generatedIdeas.length > 0) {
-            // Check if streaming has likely completed (could be more sophisticated)
-            const hasCompleteIdeas = data.generatedIdeas.every(idea =>
-                idea.title && idea.body && idea.title !== '无标题'
-            );
-
-            if (hasCompleteIdeas) {
-                setIsStreamingJob(false);
-                setStreamingBrainstormPanel(false);
-                setActiveTransformId(null);
-            }
-        }
-    }, [isStreamingJob]);
+        // Remove the automatic resetting of streaming state - let the streaming
+        // service handle its own lifecycle
+    }, []);
 
     // NEW: Handle job creation and immediate redirect
     const handleRunCreated = (runId: string, transformId?: string) => {
@@ -423,6 +412,12 @@ const IdeationTab: React.FC = () => {
                             initialGeneratedIdeas={brainstormingData.generatedIdeas}
                             initialRequirements={brainstormingData.requirements}
                             activeTransformId={streamingBrainstormPanel ? activeTransformId : undefined}
+                            onStreamingComplete={() => {
+                                // Handle streaming completion
+                                setIsStreamingJob(false);
+                                setStreamingBrainstormPanel(false);
+                                setActiveTransformId(null);
+                            }}
                         />
                     )}
 

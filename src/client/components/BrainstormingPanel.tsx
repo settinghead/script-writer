@@ -65,6 +65,7 @@ interface BrainstormingPanelProps {
     }) => void;
     onRunCreated?: (runId: string, transformId?: string) => void; // Updated to include transformId
     onExpand?: () => void; // New callback for expanding the panel
+    onStreamingComplete?: () => void; // New callback for when streaming completes
     // Initial values for loading existing data
     initialPlatform?: string;
     initialGenrePaths?: string[][];
@@ -80,6 +81,7 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
     onDataChange,
     onRunCreated,
     onExpand,
+    onStreamingComplete,
     initialPlatform = '',
     initialGenrePaths = [],
     initialGenreProportions = [],
@@ -102,10 +104,20 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
 
     // Update generated ideas when streaming items change
     useEffect(() => {
+        // Only log when there's an actual change in items
         if (items.length > 0) {
+            console.log('[BrainstormingPanel] Setting generated ideas:', items.length, 'items');
             setGeneratedIdeas(items);
         }
     }, [items]);
+
+    // Watch for streaming completion
+    useEffect(() => {
+        if (status === 'completed' && onStreamingComplete) {
+            console.log('[BrainstormingPanel] Streaming completed');
+            onStreamingComplete();
+        }
+    }, [status, onStreamingComplete]);
 
     // NEW: Sync external initial ideas (for partial results)
     useEffect(() => {

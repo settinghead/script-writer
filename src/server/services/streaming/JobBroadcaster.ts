@@ -41,16 +41,26 @@ export class JobBroadcaster {
 
         console.log(`[JobBroadcaster] Broadcasting to ${clients.length} clients for transform ${transformId}`);
 
-        // Format as SSE data if not already formatted
         let message = typeof data === 'string' ? data : JSON.stringify(data);
 
-        // If the message doesn't start with "data: " and doesn't look like a streaming format (0:, e:, etc.)
-        // then wrap it as SSE data
-        if (!message.startsWith('data: ') && !message.match(/^[0-9a-z]+:/)) {
-            message = `data: ${message}\n\n`;
-        } else if (!message.endsWith('\n\n') && !message.endsWith('\n')) {
-            // Ensure proper line endings for SSE
-            message = message + '\n';
+        // Check if the message is already in streaming format (0:, e:, d:, error:)
+        const isStreamingFormat = message.match(/^(0|e|d|error):/);
+
+        if (isStreamingFormat) {
+            // Already in streaming format, just ensure proper SSE formatting
+            if (!message.startsWith('data: ')) {
+                message = `data: ${message}`;
+            }
+            if (!message.endsWith('\n\n')) {
+                message = message.replace(/\n*$/, '\n\n');
+            }
+        } else {
+            // Regular JSON data, wrap as SSE
+            if (!message.startsWith('data: ')) {
+                message = `data: ${message}\n\n`;
+            } else if (!message.endsWith('\n\n')) {
+                message = message + '\n\n';
+            }
         }
 
         // Send to all connected clients
