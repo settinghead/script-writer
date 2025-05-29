@@ -2,10 +2,12 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Input, Button, Typography, Spin, Alert, Switch, Modal } from 'antd';
 import { ReloadOutlined, ArrowLeftOutlined, DeleteOutlined, BulbOutlined, DesktopOutlined } from '@ant-design/icons';
-import BrainstormingPanel from './BrainstormingPanel';
+import BrainstormingInputForm from './BrainstormingInputForm';
+import BrainstormingParameterSummary from './BrainstormingParameterSummary';
+import BrainstormingResults from './BrainstormingResults';
 import StoryInspirationEditor from './StoryInspirationEditor';
-
-
+import { useStreamingBrainstorm } from '../hooks/useStreamingBrainstorm';
+import { IdeaWithTitle } from '../services/implementations/BrainstormingStreamingService';
 
 const { TextArea } = Input;
 const { Title, Text, Paragraph } = Typography;
@@ -23,54 +25,58 @@ const IdeationTab: React.FC = () => {
     const [brainstormingCollapsed, setBrainstormingCollapsed] = useState(false);
     const [isLoadingRun, setIsLoadingRun] = useState(false);
     const [error, setError] = useState<Error | null>(null);
+    const [selectedIdeaIndex, setSelectedIdeaIndex] = useState<number | null>(null);
 
     // NEW: Streaming job state
     const [isStreamingJob, setIsStreamingJob] = useState(false);
-    const [streamingProgress, setStreamingProgress] = useState('');
     const [activeTransformId, setActiveTransformId] = useState<string | null>(initialTransformId);
-    const [streamingBrainstormPanel, setStreamingBrainstormPanel] = useState(!!initialTransformId);
 
     // Brainstorming data  
     const [brainstormingData, setBrainstormingData] = useState({
         selectedPlatform: '',
         selectedGenrePaths: [] as string[][],
         genreProportions: [] as number[],
-        generatedIdeas: [] as Array<{ title: string, body: string }>,
+        generatedIdeas: [] as IdeaWithTitle[],
         generatedIdeaArtifacts: [] as Array<{ id: string, text: string, title?: string, orderIndex: number }>,
         requirements: ''
     });
 
-    // DEBUG: Log activeTransformId changes
-    useEffect(() => {
-        console.log('[IdeationTab] activeTransformId changed:', activeTransformId);
-    }, [activeTransformId]);
+    // Use streaming hook when we have an active transform ID
+    const { status, items, error: streamingError, start, stop } = useStreamingBrainstorm(activeTransformId || undefined);
 
-    // DEBUG: Log streamingBrainstormPanel changes
+    // Update generated ideas when streaming items change
     useEffect(() => {
-        console.log('[IdeationTab] streamingBrainstormPanel changed:', streamingBrainstormPanel);
-    }, [streamingBrainstormPanel]);
+        if (items.length > 0) {
+            setBrainstormingData(prev => ({
+                ...prev,
+                generatedIdeas: items
+            }));
+        }
+    }, [items]);
+
+    // Watch for streaming completion
+    useEffect(() => {
+        if (status === 'completed' && activeTransformId) {
+            handleStreamingComplete();
+        }
+    }, [status, activeTransformId]);
 
     const abortControllerRef = useRef<AbortController | null>(null);
 
     // Effect to load existing ideation run if ID is present
     useEffect(() => {
-        console.log('[IdeationTab] useEffect triggered with:', { ideationRunId, initialTransformId });
         if (ideationRunId) {
             loadIdeationRun(ideationRunId);
             // If we have a transform ID from URL, set streaming state immediately
             if (initialTransformId) {
-                console.log('[IdeationTab] Setting streaming state for transform:', initialTransformId);
                 setIsStreamingJob(true);
-                setActiveTransformId(initialTransformId);  // Set the transform ID
-                setStreamingBrainstormPanel(true);         // Enable streaming panel
-                setBrainstormingEnabled(true);
-                setBrainstormingCollapsed(false);
+                setActiveTransformId(initialTransformId);
             } else {
                 // Otherwise check if there's an active streaming job for this run
                 checkActiveStreamingJob(ideationRunId);
             }
         }
-    }, [ideationRunId]); // Note: Don't include initialTransformId in deps to avoid re-running
+    }, [ideationRunId]);
 
     // Function to load an existing ideation run
     const loadIdeationRun = async (runId: string) => {
@@ -100,14 +106,13 @@ const IdeationTab: React.FC = () => {
             // If there are generated ideas and user input matches one of them, collapse brainstorming
             if (data.initialIdeas && data.initialIdeas.length > 0 && data.userInput) {
                 const ideaIndex = data.initialIdeas.findIndex((idea: any) =>
-                    (typeof idea === 'string' ? idea : idea.body) === data.userInput
+                    `${idea.title}: ${idea.body}` === data.userInput
                 );
                 if (ideaIndex !== -1) {
                     setBrainstormingCollapsed(true);
+                    setSelectedIdeaIndex(ideaIndex);
                 }
             }
-
-            // Note: plot generation is now handled by the outline feature
 
         } catch (err) {
             console.error('Error loading ideation run:', err);
@@ -119,7 +124,6 @@ const IdeationTab: React.FC = () => {
 
     const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         setUserInput(e.target.value);
-        // If user manually edits and it no longer matches a brainstormed idea, keep collapsed state
     };
 
     const handleStoryInspirationValueChange = useCallback((value: string) => {
@@ -136,7 +140,6 @@ const IdeationTab: React.FC = () => {
                 newSearchParams.set('artifact_id', artifactId);
                 navigate(`/ideation/${ideationRunId}?${newSearchParams.toString()}`, { replace: true });
             } else {
-                // Clear artifact_id from URL 
                 navigate(`/ideation/${ideationRunId}`, { replace: true });
             }
         }
@@ -158,7 +161,7 @@ const IdeationTab: React.FC = () => {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         text: userInput.trim(),
-                        sourceArtifactId: null // This is manual input
+                        sourceArtifactId: null
                     })
                 });
 
@@ -175,8 +178,6 @@ const IdeationTab: React.FC = () => {
             }
         }
 
-        // Navigate to outline design page with the current artifact ID
-        // This will be either a brainstorm_idea artifact or a user_input artifact
         navigate(`/new-outline?artifact_id=${artifactIdToUse}`);
     }, [currentArtifactId, userInput, navigate]);
 
@@ -194,46 +195,34 @@ const IdeationTab: React.FC = () => {
         setBrainstormingCollapsed(true);
 
         // Find the artifact ID for this idea
-        const selectedArtifact = brainstormingData.generatedIdeaArtifacts.find(
-            artifact => artifact.text === ideaBody
+        const selectedIndex = brainstormingData.generatedIdeas.findIndex(
+            idea => `${idea.title}: ${idea.body}` === ideaBody
         );
 
-        if (selectedArtifact && selectedArtifact.id && !selectedArtifact.id.startsWith('temp-idea-')) {
-            // Use the brainstorm_idea artifact ID only if it's a real UUID, not a temporary ID
-            setCurrentArtifactId(selectedArtifact.id);
+        if (selectedIndex !== -1) {
+            setSelectedIdeaIndex(selectedIndex);
+            const selectedArtifact = brainstormingData.generatedIdeaArtifacts[selectedIndex];
 
-            // Update URL with artifact ID
-            if (ideationRunId) {
-                const newSearchParams = new URLSearchParams();
-                newSearchParams.set('artifact_id', selectedArtifact.id);
-                navigate(`/ideation/${ideationRunId}?${newSearchParams.toString()}`, { replace: true });
-            }
-        } else {
-            // Fallback: clear artifact ID for manual input or temporary IDs
-            setCurrentArtifactId(null);
-            if (ideationRunId) {
-                navigate(`/ideation/${ideationRunId}`, { replace: true });
+            if (selectedArtifact && selectedArtifact.id && !selectedArtifact.id.startsWith('temp-idea-')) {
+                setCurrentArtifactId(selectedArtifact.id);
+
+                // Update URL with artifact ID
+                if (ideationRunId) {
+                    const newSearchParams = new URLSearchParams();
+                    newSearchParams.set('artifact_id', selectedArtifact.id);
+                    navigate(`/ideation/${ideationRunId}?${newSearchParams.toString()}`, { replace: true });
+                }
+            } else {
+                setCurrentArtifactId(null);
+                if (ideationRunId) {
+                    navigate(`/ideation/${ideationRunId}`, { replace: true });
+                }
             }
         }
     };
 
-    const handleBrainstormingDataChange = useCallback((data: {
-        selectedPlatform: string;
-        selectedGenrePaths: string[][];
-        genreProportions: number[];
-        generatedIdeas: Array<{ title: string, body: string }>;
-        generatedIdeaArtifacts: Array<{ id: string, text: string, title?: string, orderIndex: number }>;
-        requirements: string;
-    }) => {
-        setBrainstormingData({
-            ...data
-        });
-    }, []);
-
-    // NEW: Handle streaming completion
     const handleStreamingComplete = useCallback(() => {
         setIsStreamingJob(false);
-        setStreamingBrainstormPanel(false);
         setActiveTransformId(null);
 
         // Clear transform ID from URL
@@ -247,31 +236,65 @@ const IdeationTab: React.FC = () => {
         }
     }, [ideationRunId, navigate]);
 
-    // NEW: Handle job creation and immediate redirect
-    const handleRunCreated = (runId: string, transformId?: string) => {
-        // Navigate immediately to the new run with transform ID if available
-        if (transformId) {
-            navigate(`/ideation/${runId}?transform=${transformId}`);
-        } else {
-            navigate(`/ideation/${runId}`);
+    const generateIdeas = async () => {
+        // Clear previous ideas
+        setBrainstormingData(prev => ({
+            ...prev,
+            generatedIdeas: []
+        }));
+        setSelectedIdeaIndex(null);
+
+        try {
+            // Create brainstorming job
+            const response = await fetch('/api/ideations/create-brainstorming-job', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    platform: brainstormingData.selectedPlatform || '通用短视频平台',
+                    genrePaths: brainstormingData.selectedGenrePaths,
+                    genreProportions: brainstormingData.genreProportions,
+                    requirements: brainstormingData.requirements.trim()
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to create brainstorming job: ${response.status}`);
+            }
+
+            const { ideationRunId: newRunId, transformId } = await response.json();
+
+            // Navigate immediately to the new run with transform ID
+            if (transformId) {
+                navigate(`/ideation/${newRunId}?transform=${transformId}`);
+            } else {
+                navigate(`/ideation/${newRunId}`);
+            }
+
+        } catch (err) {
+            console.error('Error creating brainstorming job:', err);
+            setError(err instanceof Error ? err : new Error('Failed to generate ideas'));
         }
     };
 
-    // NEW: Check for active streaming jobs on page load
+    const handleRegenerate = () => {
+        setBrainstormingData(prev => ({
+            ...prev,
+            generatedIdeas: []
+        }));
+        setSelectedIdeaIndex(null);
+        generateIdeas();
+    };
+
     const checkActiveStreamingJob = async (runId: string) => {
         try {
             const response = await fetch(`/api/ideations/${runId}/active-job`);
             if (response.ok) {
                 const jobData = await response.json();
                 if (jobData.status === 'running') {
-                    // Set streaming state and show brainstorming panel with streaming
                     setIsStreamingJob(true);
                     setActiveTransformId(jobData.transformId);
-                    setStreamingBrainstormPanel(true);
-                    setBrainstormingEnabled(true);
-                    setBrainstormingCollapsed(false);
-
-                    // BrainstormingPanel will handle the streaming connection via activeTransformId
                 }
             }
         } catch (error) {
@@ -279,7 +302,7 @@ const IdeationTab: React.FC = () => {
         }
     };
 
-    // Cleanup function to abort any ongoing fetch and close event sources when component unmounts
+    // Cleanup function
     useEffect(() => {
         return () => {
             if (abortControllerRef.current) {
@@ -302,6 +325,7 @@ const IdeationTab: React.FC = () => {
         setBrainstormingEnabled(true);
         setBrainstormingCollapsed(false);
         setError(null);
+        setSelectedIdeaIndex(null);
 
         // Navigate to base route
         navigate('/ideation');
@@ -326,7 +350,6 @@ const IdeationTab: React.FC = () => {
                         throw new Error(`Failed to delete ideation: ${response.status}`);
                     }
 
-                    // Show success message and navigate back
                     Modal.success({
                         title: '删除成功',
                         content: '灵感已成功删除',
@@ -344,6 +367,19 @@ const IdeationTab: React.FC = () => {
             }
         });
     };
+
+    // Update artifacts when ideas change
+    useEffect(() => {
+        setBrainstormingData(prev => ({
+            ...prev,
+            generatedIdeaArtifacts: prev.generatedIdeas.map((idea, index) => ({
+                id: idea.artifactId || `temp-idea-${index}`,
+                text: `${idea.title}: ${idea.body}`,
+                title: idea.title,
+                orderIndex: index
+            }))
+        }));
+    }, [brainstormingData.generatedIdeas]);
 
     return (
         <div style={{ padding: '20px', maxWidth: "800px", margin: '0 auto', width: "100%", overflow: "auto" }}>
@@ -412,55 +448,122 @@ const IdeationTab: React.FC = () => {
                         输入你的故事灵感，然后点击"开始设计大纲"生成完整的故事大纲。
                     </Paragraph>
 
-                    {/* Brainstorming Toggle - disabled during streaming */}
-                    <div style={{
-                        marginBottom: '16px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '12px',
-                        background: '#1a1a1a',
-                        borderRadius: '6px',
-                        border: '1px solid #303030'
-                    }}>
-                        <BulbOutlined style={{ color: '#52c41a' }} />
-                        <Text style={{ color: '#d9d9d9' }}>启用头脑风暴</Text>
-                        <Switch
-                            checked={brainstormingEnabled}
-                            onChange={handleBrainstormingToggle}
-                            size="small"
-                            disabled={isStreamingJob}
-                        />
-                        {isStreamingJob && (
-                            <Text style={{ color: '#8c8c8c', fontSize: '12px', marginLeft: '8px' }}>
-                                生成中不可更改
-                            </Text>
-                        )}
-                    </div>
+                    {/* Brainstorming Section */}
+                    {ideationRunId ? (
+                        // For existing ideation runs, show parameter summary and results
+                        <>
+                            {/* Show parameter summary if we have brainstorming data */}
+                            {brainstormingData.selectedPlatform && (
+                                <BrainstormingParameterSummary
+                                    selectedPlatform={brainstormingData.selectedPlatform}
+                                    selectedGenrePaths={brainstormingData.selectedGenrePaths}
+                                    genreProportions={brainstormingData.genreProportions}
+                                    requirements={brainstormingData.requirements}
+                                />
+                            )}
 
-                    {/* Brainstorming Panel - Show during streaming OR when normally enabled */}
-                    {(brainstormingEnabled || streamingBrainstormPanel) && (
-                        <BrainstormingPanel
-                            isCollapsed={brainstormingCollapsed && !streamingBrainstormPanel}
-                            onIdeaSelect={handleIdeaSelect}
-                            onDataChange={handleBrainstormingDataChange}
-                            onRunCreated={!ideationRunId ? handleRunCreated : undefined}
-                            onExpand={() => setBrainstormingCollapsed(false)}
-                            onStreamingComplete={handleStreamingComplete}
-                            initialPlatform={brainstormingData.selectedPlatform}
-                            initialGenrePaths={brainstormingData.selectedGenrePaths}
-                            initialGenreProportions={brainstormingData.genreProportions}
-                            initialGeneratedIdeas={brainstormingData.generatedIdeas}
-                            initialRequirements={brainstormingData.requirements}
-                            activeTransformId={streamingBrainstormPanel ? activeTransformId : undefined}
-                        />
+                            {/* Show results if we have ideas or are streaming */}
+                            {(brainstormingData.generatedIdeas.length > 0 || activeTransformId || status === 'streaming') && !brainstormingCollapsed && (
+                                <BrainstormingResults
+                                    ideas={brainstormingData.generatedIdeas}
+                                    onIdeaSelect={handleIdeaSelect}
+                                    isStreaming={status === 'streaming'}
+                                    isConnecting={!!activeTransformId && status === 'idle'}
+                                    onStop={stop}
+                                    onRegenerate={handleRegenerate}
+                                    error={streamingError}
+                                    selectedIdeaIndex={selectedIdeaIndex}
+                                    canRegenerate={!isStreamingJob}
+                                />
+                            )}
+
+                            {/* Show collapsed state if an idea was selected */}
+                            {brainstormingCollapsed && selectedIdeaIndex !== null && brainstormingData.generatedIdeas[selectedIdeaIndex] && (
+                                <div
+                                    onClick={() => setBrainstormingCollapsed(false)}
+                                    style={{
+                                        padding: '8px 12px',
+                                        background: '#1a1a1a',
+                                        borderRadius: '6px',
+                                        border: '1px solid #303030',
+                                        marginBottom: '16px',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.background = '#262626';
+                                        e.currentTarget.style.borderColor = '#1890ff';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = '#1a1a1a';
+                                        e.currentTarget.style.borderColor = '#303030';
+                                    }}
+                                >
+                                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                                        💡 已选择故事灵感「{brainstormingData.generatedIdeas[selectedIdeaIndex].title}」
+                                    </Text>
+                                    <Button
+                                        type="link"
+                                        size="small"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setBrainstormingCollapsed(false);
+                                        }}
+                                        style={{
+                                            color: '#1890ff',
+                                            fontSize: '12px',
+                                            padding: '0 4px',
+                                            height: 'auto',
+                                            lineHeight: '1'
+                                        }}
+                                    >
+                                        重新选择
+                                    </Button>
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        // For new ideation, show input form with toggle
+                        <>
+                            <div style={{
+                                marginBottom: '16px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '12px',
+                                background: '#1a1a1a',
+                                borderRadius: '6px',
+                                border: '1px solid #303030'
+                            }}>
+                                <BulbOutlined style={{ color: '#52c41a' }} />
+                                <Text style={{ color: '#d9d9d9' }}>启用头脑风暴</Text>
+                                <Switch
+                                    checked={brainstormingEnabled}
+                                    onChange={handleBrainstormingToggle}
+                                    size="small"
+                                />
+                            </div>
+
+                            {brainstormingEnabled && (
+                                <BrainstormingInputForm
+                                    selectedPlatform={brainstormingData.selectedPlatform}
+                                    selectedGenrePaths={brainstormingData.selectedGenrePaths}
+                                    genreProportions={brainstormingData.genreProportions}
+                                    requirements={brainstormingData.requirements}
+                                    onPlatformChange={(value) => setBrainstormingData(prev => ({ ...prev, selectedPlatform: value }))}
+                                    onGenreSelectionChange={(paths, proportions) => setBrainstormingData(prev => ({
+                                        ...prev,
+                                        selectedGenrePaths: paths,
+                                        genreProportions: proportions
+                                    }))}
+                                    onRequirementsChange={(value) => setBrainstormingData(prev => ({ ...prev, requirements: value }))}
+                                    onGenerate={generateIdeas}
+                                />
+                            )}
+                        </>
                     )}
-                    {/* DEBUG: Log what we're passing to BrainstormingPanel */}
-                    {console.log('[IdeationTab] Rendering BrainstormingPanel with:', {
-                        streamingBrainstormPanel,
-                        activeTransformId,
-                        finalTransformId: streamingBrainstormPanel ? activeTransformId : undefined
-                    })}
 
                     {/* Story Inspiration Editor */}
                     {ideationRunId ? (

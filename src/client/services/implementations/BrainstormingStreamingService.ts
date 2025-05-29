@@ -23,9 +23,6 @@ export class BrainstormingStreamingService extends LLMStreamingService<IdeaWithT
             // Clean the content first
             const cleaned = this.cleanContent(content);
 
-            // Debug logging
-            console.log('[BrainstormingStreamingService] Parsing content:', cleaned.substring(0, 200) + '...');
-
             const parsed = JSON.parse(cleaned);
 
             if (Array.isArray(parsed)) {
@@ -33,13 +30,11 @@ export class BrainstormingStreamingService extends LLMStreamingService<IdeaWithT
                     title: item.title || '无标题',
                     body: item.body || item.text || String(item)
                 }));
-                console.log('[BrainstormingStreamingService] Parsed ideas:', ideas.length);
                 return ideas;
             }
 
             return [];
         } catch (error) {
-            console.log('[BrainstormingStreamingService] Parse error, trying regex extraction:', error);
             // Try to extract valid JSON objects using regex
             return this.extractValidObjects(content);
         }
@@ -90,6 +85,37 @@ export class BrainstormingStreamingService extends LLMStreamingService<IdeaWithT
         // Note: We can't fetch completed results here because it would interfere
         // with the SSE connection. The artifact IDs will be available after
         // the transform completes through the transform outputs.
+    }
+
+    // Fetch real artifact IDs after streaming completes
+    async fetchArtifactIds(transformId: string): Promise<Map<string, string>> {
+        const idMap = new Map<string, string>();
+
+        try {
+            const response = await fetch(`/api/streaming/transform/${transformId}`);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.status === 'completed' && data.results) {
+                    // Extract artifact IDs from completed results
+                    for (const result of data.results) {
+                        if (result.artifact && result.artifact.data && result.artifact.type === 'brainstorm_idea') {
+                            const artifactData = result.artifact.data;
+                            const ideaText = artifactData.idea_text || '';
+                            const artifactId = result.artifact.id;
+
+                            if (ideaText && artifactId) {
+                                idMap.set(ideaText, artifactId);
+                                this.artifactIdMap.set(ideaText, artifactId);
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.warn('Failed to fetch artifact IDs:', error);
+        }
+
+        return idMap;
     }
 
     // Parse completed transform results to extract artifact IDs

@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { useLLMStreaming } from './useLLMStreaming';
-import { BrainstormingStreamingService } from '../services/implementations/BrainstormingStreamingService';
+import { BrainstormingStreamingService, IdeaWithTitle } from '../services/implementations/BrainstormingStreamingService';
 
 export function useStreamingBrainstorm(transformId?: string) {
     const service = useMemo(() => {
@@ -10,5 +10,32 @@ export function useStreamingBrainstorm(transformId?: string) {
         });
     }, []);
 
-    return useLLMStreaming(service, { transformId });
+    const streamingResult = useLLMStreaming(service, { transformId });
+    const [itemsWithArtifactIds, setItemsWithArtifactIds] = useState<IdeaWithTitle[]>([]);
+
+    // When streaming completes, fetch the real artifact IDs
+    useEffect(() => {
+        if (streamingResult.status === 'completed' && transformId && service) {
+            // Fetch real artifact IDs from the server
+            service.fetchArtifactIds(transformId).then(idMap => {
+                // Update items with real artifact IDs
+                const updatedItems = streamingResult.items.map(item => {
+                    const artifactId = idMap.get(item.body);
+                    return {
+                        ...item,
+                        artifactId: artifactId || item.artifactId
+                    };
+                });
+                setItemsWithArtifactIds(updatedItems);
+            });
+        } else if (streamingResult.status === 'streaming') {
+            // During streaming, use items without artifact IDs
+            setItemsWithArtifactIds(streamingResult.items);
+        }
+    }, [streamingResult.status, streamingResult.items, transformId, service]);
+
+    return {
+        ...streamingResult,
+        items: itemsWithArtifactIds.length > 0 ? itemsWithArtifactIds : streamingResult.items
+    };
 } 
