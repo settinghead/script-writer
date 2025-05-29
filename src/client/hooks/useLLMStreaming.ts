@@ -17,11 +17,17 @@ export function useLLMStreaming<T>(
     const serviceRef = useRef<LLMStreamingService<T>>();
     const subscriptionRef = useRef<Subscription>();
     const currentTransformIdRef = useRef<string | undefined>();
+    const ServiceClassRef = useRef(ServiceClass);
+    const configRef = useRef(config);
+
+    // Update refs when props change
+    ServiceClassRef.current = ServiceClass;
+    configRef.current = config;
 
     // Initialize service only once
     useEffect(() => {
         if (!serviceRef.current) {
-            serviceRef.current = new ServiceClass(config);
+            serviceRef.current = new ServiceClassRef.current(configRef.current);
 
             // Subscribe to response stream
             subscriptionRef.current = serviceRef.current.response$.subscribe({
