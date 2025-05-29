@@ -14,7 +14,6 @@ export const OutlineInputForm: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [artifactLoading, setArtifactLoading] = useState(true);
     const [sourceArtifact, setSourceArtifact] = useState<Artifact | null>(null);
-    const [ideaTitle, setIdeaTitle] = useState<string>('');
     const [ideaText, setIdeaText] = useState<string>('');
     const [totalEpisodes, setTotalEpisodes] = useState<number>(12);
     const [episodeDuration, setEpisodeDuration] = useState<number>(45);
@@ -31,7 +30,6 @@ export const OutlineInputForm: React.FC = () => {
         } else {
             // No artifact specified, start with empty form
             setArtifactLoading(false);
-            setIdeaTitle('');
             setIdeaText('');
         }
     }, [artifactId]);
@@ -48,7 +46,6 @@ export const OutlineInputForm: React.FC = () => {
             const artifact = await response.json();
 
             setSourceArtifact(artifact);
-            setIdeaTitle(artifact.data.idea_title || artifact.data.title || '');
             setIdeaText(artifact.data.idea_text || artifact.data.text || '');
 
         } catch (error) {
@@ -59,18 +56,13 @@ export const OutlineInputForm: React.FC = () => {
         }
     };
 
-    const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setIdeaTitle(e.target.value);
-        setHasUnsavedChanges(true);
-    };
-
     const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         setIdeaText(e.target.value);
         setHasUnsavedChanges(true);
     };
 
     const handleSaveChanges = async () => {
-        if (!hasUnsavedChanges || (!ideaTitle.trim() && !ideaText.trim())) {
+        if (!hasUnsavedChanges || !ideaText.trim()) {
             return;
         }
 
@@ -86,7 +78,6 @@ export const OutlineInputForm: React.FC = () => {
                 },
                 body: JSON.stringify({
                     text: ideaText.trim(),
-                    title: ideaTitle.trim(),
                     sourceArtifactId: sourceArtifact?.id
                 })
             });
@@ -114,7 +105,7 @@ export const OutlineInputForm: React.FC = () => {
         }
 
         if (!ideaText.trim()) {
-            setError('请输入故事内容');
+            setError('请输入主题或灵感');
             return;
         }
 
@@ -164,7 +155,7 @@ export const OutlineInputForm: React.FC = () => {
             }}>
                 <Spin size="large" />
                 <Text style={{ marginLeft: '12px', color: '#fff' }}>
-                    加载故事内容...
+                    加载内容...
                 </Text>
             </div>
         );
@@ -180,7 +171,7 @@ export const OutlineInputForm: React.FC = () => {
                             生成剧本大纲
                         </Title>
                         <Text style={{ color: '#aaa' }}>
-                            编辑您的故事灵感，设置剧集参数，然后生成详细的剧本大纲。
+                            输入您的故事主题或灵感，设置剧集参数，然后生成详细的剧本大纲。
                         </Text>
                     </div>
 
@@ -204,22 +195,6 @@ export const OutlineInputForm: React.FC = () => {
                         </Title>
 
                         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                            <div>
-                                <Text style={{ color: '#fff', marginBottom: '8px', display: 'block' }}>
-                                    标题
-                                </Text>
-                                <Input
-                                    value={ideaTitle}
-                                    onChange={handleTitleChange}
-                                    placeholder="输入故事标题..."
-                                    style={{
-                                        backgroundColor: '#2a2a2a',
-                                        border: '1px solid #404040',
-                                        color: '#fff'
-                                    }}
-                                />
-                            </div>
-
                             <div>
                                 <Text style={{ color: '#fff', marginBottom: '8px', display: 'block' }}>
                                     故事内容 *
