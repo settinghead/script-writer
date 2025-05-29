@@ -188,21 +188,18 @@ export const OutlineInputForm: React.FC = () => {
                         />
                     )}
 
-                    {/* Story Content Editor */}
+                    {/* Story Theme/Inspiration Editor */}
                     <div>
                         <Title level={4} style={{ color: '#fff', margin: '0 0 12px 0' }}>
-                            故事内容
+                            主题/灵感 *
                         </Title>
 
                         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                             <div>
-                                <Text style={{ color: '#fff', marginBottom: '8px', display: 'block' }}>
-                                    故事内容 *
-                                </Text>
                                 <TextArea
                                     value={ideaText}
                                     onChange={handleTextChange}
-                                    placeholder="输入或编辑您的故事内容..."
+                                    placeholder="输入您的故事主题或灵感..."
                                     rows={8}
                                     style={{
                                         backgroundColor: '#2a2a2a',
