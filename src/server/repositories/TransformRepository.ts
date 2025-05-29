@@ -17,7 +17,7 @@ export class TransformRepository {
         userId: string,
         type: 'llm' | 'human',
         typeVersion: string = 'v1',
-        status: string = 'completed',
+        status: string = 'running',
         executionContext?: any
     ): Promise<Transform> {
         const id = uuidv4();
@@ -29,6 +29,8 @@ export class TransformRepository {
             type,
             type_version: typeVersion,
             status,
+            retry_count: 0,
+            max_retries: executionContext?.max_retries || 2,
             execution_context: JSON.stringify(executionContext),
             created_at: now
         };
@@ -41,6 +43,8 @@ export class TransformRepository {
             type,
             type_version: typeVersion,
             status: status as any,
+            retry_count: 0,
+            max_retries: executionContext?.max_retries || 2,
             execution_context: executionContext,
             created_at: now
         };
@@ -241,4 +245,33 @@ export class TransformRepository {
             .where('id', transformId)
             .update({ status });
     }
-} 
+
+    // Update transform with any fields
+    async updateTransform(transformId: string, updates: any): Promise<void> {
+        await this.db('transforms')
+            .where('id', transformId)
+            .update({
+                ...updates,
+                updated_at: new Date().toISOString()
+            });
+    }
+
+    // Get active transform for an ideation run
+    async getActiveTransformForRun(userId: string, ideationRunId: string): Promise<Transform | null> {
+        const row = await this.db('transforms')
+            .where('user_id', userId)
+            .where('status', 'running')
+            .whereRaw("JSON_EXTRACT(execution_context, '$.ideation_run_id') = ?", [ideationRunId])
+            .orderBy('created_at', 'desc')
+            .first();
+
+        if (!row) {
+            return null;
+        }
+
+        return {
+            ...row,
+            execution_context: row.execution_context ? JSON.parse(row.execution_context) : null
+        };
+    }
+}

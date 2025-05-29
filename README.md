@@ -574,6 +574,9 @@ const customMetrics = {
 6. **Performance Monitoring**: Built-in metrics for system health tracking
 7. **Debug Tools**: Comprehensive debugging endpoints for development
 8. **Memory Management**: Automatic cache cleanup and memory optimization
+9. **Streaming Architecture**: RxJS-based services provide consistent streaming patterns across all LLM features
+10. **JSON Parsing**: Robust error recovery with multiple parsing strategies and `jsonrepair` integration
+11. **UI Animations**: Smooth transitions with proper cleanup to prevent memory leaks and infinite loops
 
 ## Contributing
 

@@ -28,6 +28,7 @@ import { db, initializeDatabase } from './database/connection';
 // New streaming framework imports
 import { TemplateService } from './services/templates/TemplateService';
 import { StreamingTransformExecutor } from './services/streaming/StreamingTransformExecutor';
+import { createIdeationRoutes } from './routes/ideations';
 
 dotenv.config();
 
@@ -63,8 +64,13 @@ const templateService = new TemplateService();
 const streamingTransformExecutor = new StreamingTransformExecutor(
   artifactRepo,
   transformRepo,
-  templateService
+  templateService,
+  ideationService  // Add ideation service for job creation
 );
+
+// Make services available to routes via app.locals
+app.locals.streamingExecutor = streamingTransformExecutor;
+app.locals.transformRepo = transformRepo;
 
 // Database initialization is now handled by migrations and seeds
 
@@ -78,6 +84,9 @@ const yjs = setupYjsWebSocketServer(server, authDB);
 
 // Mount authentication routes
 app.use('/auth', createAuthRoutes(authDB, authMiddleware));
+
+// Mount ideation routes
+app.use('/api/ideations', createIdeationRoutes(authMiddleware));
 
 // Attach authDB to all requests
 app.use(authMiddleware.attachAuthDB);
@@ -945,6 +954,60 @@ app.post("/api/streaming/llm",
     }
   }
 );
+
+// Transform-based streaming endpoint (for resumable jobs)
+app.get("/api/streaming/transform/:transformId", authMiddleware.authenticate, async (req: any, res: any) => {
+  const user = authMiddleware.getCurrentUser(req);
+  if (!user) {
+    return res.status(401).json({ error: "User not authenticated" });
+  }
+
+  const { transformId } = req.params;
+
+  try {
+    // Verify ownership
+    const transform = await transformRepo.getTransform(transformId, user.id);
+    if (!transform) {
+      return res.status(403).json({ error: 'Transform not found or unauthorized' });
+    }
+
+    // If job is already completed, send cached results
+    if (transform.status === 'completed') {
+      const outputs = await transformRepo.getTransformOutputs(transformId);
+      return res.json({ status: 'completed', results: outputs });
+    }
+
+    // If job is running, connect to stream
+    if (transform.status === 'running') {
+      // Setup SSE connection
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Cache-Control'
+      });
+
+      // Send initial status
+      res.write(`data: ${JSON.stringify({ status: 'connected', transformId })}\n\n`);
+
+      // Connect to or start the streaming job
+      await streamingTransformExecutor.executeStreamingJobWithRetries(transformId, res);
+    } else {
+      // Job failed or cancelled
+      res.json({ status: transform.status, error: 'Job not active' });
+    }
+  } catch (error: any) {
+    console.error('Error in transform streaming endpoint:', error);
+    if (!res.headersSent) {
+      return res.status(500).json({
+        error: "Failed to connect to transform stream",
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+});
 
 // ========== SCRIPT ENDPOINTS (with validation) ==========
 

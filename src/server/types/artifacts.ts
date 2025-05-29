@@ -15,7 +15,9 @@ export interface Transform {
     user_id: string;
     type: 'llm' | 'human';
     type_version: string;
-    status: 'pending' | 'running' | 'completed' | 'failed';
+    status: 'running' | 'completed' | 'failed' | 'cancelled';
+    retry_count: number;
+    max_retries: number;
     execution_context?: any;
     created_at: string;
 }
@@ -82,6 +84,15 @@ export interface BrainstormIdeaV1 {
     idea_title?: string; // Optional title field (3-7 characters)
     order_index: number;
     confidence_score?: number;
+}
+
+// Job parameters for brainstorming (persistent across refreshes)
+export interface BrainstormingJobParamsV1 {
+    platform: string;
+    genrePaths: string[][];
+    genreProportions: number[];
+    requirements: string;
+    requestedAt: string; // ISO timestamp
 }
 
 // User input/selection (for user-modified or manually entered content)
@@ -154,6 +165,8 @@ export function validateArtifactData(type: string, typeVersion: string, data: an
             return isBrainstormParamsV1(data);
         case 'brainstorm_idea:v1':
             return isBrainstormIdeaV1(data);
+        case 'brainstorming_job_params:v1':
+            return isBrainstormingJobParamsV1(data);
         case 'user_input:v1':
             return isUserInputV1(data);
         case 'plot_outline:v1':
@@ -202,6 +215,15 @@ function isBrainstormIdeaV1(data: any): data is BrainstormIdeaV1 {
         typeof data.idea_text === 'string' &&
         typeof data.order_index === 'number' &&
         (data.idea_title === undefined || typeof data.idea_title === 'string');
+}
+
+function isBrainstormingJobParamsV1(data: any): data is BrainstormingJobParamsV1 {
+    return typeof data === 'object' &&
+        typeof data.platform === 'string' &&
+        Array.isArray(data.genrePaths) &&
+        Array.isArray(data.genreProportions) &&
+        typeof data.requirements === 'string' &&
+        typeof data.requestedAt === 'string';
 }
 
 function isUserInputV1(data: any): data is UserInputV1 {

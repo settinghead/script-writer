@@ -6,13 +6,15 @@ import { ArtifactRepository } from '../../repositories/ArtifactRepository';
 import { TransformRepository } from '../../repositories/TransformRepository';
 import { TemplateService } from '../templates/TemplateService';
 import { StreamingRequest } from '../../../common/streaming/types';
-import { Artifact } from '../../types/artifacts';
+import { Artifact, BrainstormingJobParamsV1 } from '../../types/artifacts';
+import { IdeationService } from '../IdeationService';
 
 export class StreamingTransformExecutor {
     constructor(
         private artifactRepo: ArtifactRepository,
         private transformRepo: TransformRepository,
-        private templateService: TemplateService
+        private templateService: TemplateService,
+        private ideationService?: IdeationService
     ) { }
 
     async executeStreamingTransform(
@@ -109,7 +111,7 @@ export class StreamingTransformExecutor {
         modelName: string,
         outputFormat: string,
         transform: any,
-        res: Response,
+        res: Response | undefined,
         userId: string
     ): Promise<void> {
         const apiKey = process.env.DEEPSEEK_API_KEY;
@@ -132,14 +134,19 @@ export class StreamingTransformExecutor {
             messages: [{ role: 'user', content: prompt }]
         });
 
-        // Set up the data stream response
-        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-        res.setHeader('Transfer-Encoding', 'chunked');
+        // Set up the data stream response only if res is provided
+        if (res) {
+            res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+            res.setHeader('Transfer-Encoding', 'chunked');
+        }
 
         const pump = async () => {
             try {
                 for await (const chunk of result.textStream) {
-                    res.write(`0:${JSON.stringify(chunk)}\n`);
+                    if (res) {
+                        res.write(`0:${JSON.stringify(chunk)}\n`);
+                    }
+                    // For background jobs, we could log progress or store chunks if needed
                 }
 
                 // Handle completion
@@ -220,19 +227,24 @@ export class StreamingTransformExecutor {
                     throw error;
                 }
 
-                // Send completion events
-                res.write(`e:${JSON.stringify({ finishReason: finalResult.finishReason, usage })}\n`);
-                res.write(`d:${JSON.stringify({ finishReason: finalResult.finishReason, usage })}\n`);
-                res.end();
+                // Send completion events only if res is provided
+                if (res) {
+                    res.write(`e:${JSON.stringify({ finishReason: finalResult.finishReason, usage })}\n`);
+                    res.write(`d:${JSON.stringify({ finishReason: finalResult.finishReason, usage })}\n`);
+                    res.end();
+                }
 
             } catch (error) {
                 console.error('Streaming error:', error);
                 await this.transformRepo.updateTransformStatus(transform.id, 'failed');
-                res.write(`error:${JSON.stringify({ error: error.message })}\n`);
-                res.end();
+                if (res) {
+                    res.write(`error:${JSON.stringify({ error: error.message })}\n`);
+                    res.end();
+                }
+                throw error; // Re-throw for background job retry handling
             }
         };
-        pump();
+        await pump();
     }
 
     private async createOutputArtifacts(
@@ -273,5 +285,179 @@ export class StreamingTransformExecutor {
             console.error('Error creating brainstorm idea artifacts:', error);
             throw error;
         }
+    }
+
+    // Job-based brainstorming methods
+    async startBrainstormingJob(
+        userId: string,
+        jobParams: BrainstormingJobParamsV1
+    ): Promise<{ ideationRunId: string; transformId: string }> {
+        if (!this.ideationService) {
+            throw new Error('IdeationService not available for job creation');
+        }
+
+        // 1. Create ideation run using existing service
+        const { runId: ideationRunId } = await this.ideationService.createRunWithIdeas(
+            userId,
+            jobParams.platform,
+            jobParams.genrePaths,
+            jobParams.genreProportions,
+            [], // No initial ideas for brainstorming job
+            [], // No initial idea titles
+            jobParams.requirements
+        );
+
+        // 2. Create job parameters artifact
+        const paramsArtifact = await this.artifactRepo.createArtifact(
+            userId,
+            'brainstorming_job_params',
+            jobParams,
+            'v1'
+        );
+
+        // 3. Create transform with 'running' status
+        const transform = await this.transformRepo.createTransform(
+            userId,
+            'llm',
+            'v1',
+            'running',
+            {
+                started_at: new Date().toISOString(),
+                template_id: 'brainstorming',
+                model_name: 'deepseek-chat',
+                ideation_run_id: ideationRunId,
+                max_retries: 2
+            }
+        );
+
+        // 4. Link transform inputs
+        await this.transformRepo.addTransformInputs(
+            transform.id,
+            [{ artifactId: paramsArtifact.id, inputRole: 'job_params' }]
+        );
+
+        return {
+            ideationRunId,
+            transformId: transform.id
+        };
+    }
+
+    async executeStreamingJobWithRetries(
+        transformId: string,
+        res?: Response
+    ): Promise<void> {
+        const transform = await this.transformRepo.getTransform(transformId);
+        if (!transform) {
+            throw new Error(`Transform ${transformId} not found`);
+        }
+
+        try {
+            await this.executeStreamingLLM(transform, res);
+            await this.updateTransformStatus(transformId, 'completed');
+        } catch (error) {
+            console.error(`Error in streaming job ${transformId}:`, error);
+            await this.handleJobFailure(transformId, error as Error);
+        }
+    }
+
+    private async handleJobFailure(
+        transformId: string,
+        error: Error
+    ): Promise<void> {
+        const transform = await this.transformRepo.getTransform(transformId);
+        if (!transform) {
+            throw new Error(`Transform ${transformId} not found`);
+        }
+
+        if (transform.retry_count < transform.max_retries) {
+            // Increment retry count and retry
+            await this.transformRepo.updateTransform(transformId, {
+                retry_count: transform.retry_count + 1,
+                status: 'running'
+            });
+
+            // Schedule retry with exponential backoff
+            const delay = 1000 * Math.pow(2, transform.retry_count);
+            console.log(`Retrying transform ${transformId} in ${delay}ms (attempt ${transform.retry_count + 1}/${transform.max_retries})`);
+
+            setTimeout(() => {
+                this.retryStreamingJob(transformId);
+            }, delay);
+        } else {
+            // Mark as failed
+            await this.updateTransformStatus(transformId, 'failed');
+            console.error(`Transform ${transformId} failed after ${transform.max_retries} retries`);
+        }
+    }
+
+    private async retryStreamingJob(transformId: string): Promise<void> {
+        try {
+            await this.executeStreamingJobWithRetries(transformId);
+        } catch (error) {
+            console.error(`Retry failed for transform ${transformId}:`, error);
+        }
+    }
+
+    private async updateTransformStatus(transformId: string, status: string): Promise<void> {
+        await this.transformRepo.updateTransform(transformId, {
+            status,
+            updated_at: new Date().toISOString()
+        });
+    }
+
+    private async executeStreamingLLM(transform: any, res?: Response): Promise<void> {
+        // Get job parameters
+        const inputs = await this.transformRepo.getTransformInputs(transform.id);
+        const paramsInput = inputs.find(input => input.input_role === 'job_params');
+
+        if (!paramsInput) {
+            throw new Error('Job parameters not found for transform');
+        }
+
+        const paramsArtifact = await this.artifactRepo.getArtifact(paramsInput.artifact_id);
+        if (!paramsArtifact) {
+            throw new Error('Job parameters artifact not found');
+        }
+
+        const jobParams = paramsArtifact.data as BrainstormingJobParamsV1;
+
+        // Get and render template
+        const template = this.templateService.getTemplate('brainstorming');
+        if (!template) {
+            throw new Error('Brainstorming template not found');
+        }
+
+        const prompt = await this.templateService.renderTemplate(template, {
+            artifacts: {},
+            params: {
+                platform: jobParams.platform,
+                genre: this.buildGenrePromptString(jobParams.genrePaths, jobParams.genreProportions),
+                requirements: jobParams.requirements
+            }
+        });
+
+        // Stream LLM response
+        await this.streamLLMResponse(
+            prompt,
+            'deepseek-chat',
+            template.outputFormat,
+            transform,
+            res,
+            transform.user_id
+        );
+    }
+
+    private buildGenrePromptString(genrePaths: string[][], genreProportions: number[]): string {
+        if (!genrePaths || genrePaths.length === 0) return '未指定';
+
+        return genrePaths.map((path: string[], index: number) => {
+            const proportion = genreProportions && genreProportions[index] !== undefined
+                ? genreProportions[index]
+                : (100 / genrePaths.length);
+            const pathString = path.join(' > ');
+            return genrePaths.length > 1
+                ? `${pathString} (${proportion.toFixed(0)}%)`
+                : pathString;
+        }).join(', ');
     }
 } 
