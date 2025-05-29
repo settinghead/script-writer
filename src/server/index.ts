@@ -25,6 +25,9 @@ import {
 import { ReplayService } from './services/ReplayService';
 import { CacheService } from './services/CacheService';
 import { db, initializeDatabase } from './database/connection';
+// New streaming framework imports
+import { TemplateService } from './services/templates/TemplateService';
+import { StreamingTransformExecutor } from './services/streaming/StreamingTransformExecutor';
 
 dotenv.config();
 
@@ -54,6 +57,14 @@ const ideationService = new IdeationService(artifactRepo, transformRepo, transfo
 const outlineService = new OutlineService(artifactRepo, transformExecutor, cacheService);
 const scriptService = new ScriptService(artifactRepo, transformExecutor);
 const replayService = new ReplayService(artifactRepo, transformRepo, transformExecutor);
+
+// Initialize new streaming framework services
+const templateService = new TemplateService();
+const streamingTransformExecutor = new StreamingTransformExecutor(
+  artifactRepo,
+  transformRepo,
+  templateService
+);
 
 // Database initialization is now handled by migrations and seeds
 
@@ -899,6 +910,34 @@ app.post("/api/brainstorm/generate/stream",
       if (!res.headersSent) {
         return res.status(500).json({
           error: "Failed to generate ideas",
+          details: error.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  }
+);
+
+// New generic streaming LLM endpoint using the RxJS framework
+app.post("/api/streaming/llm",
+  authMiddleware.authenticate,
+  async (req: any, res: any) => {
+    const user = authMiddleware.getCurrentUser(req);
+    if (!user) {
+      return res.status(401).json({ error: "User not authenticated" });
+    }
+
+    try {
+      await streamingTransformExecutor.executeStreamingTransform(
+        user.id,
+        req.body,
+        res
+      );
+    } catch (error: any) {
+      console.error('Error in generic streaming LLM endpoint:', error);
+      if (!res.headersSent) {
+        return res.status(500).json({
+          error: "Failed to execute streaming transform",
           details: error.message,
           timestamp: new Date().toISOString()
         });

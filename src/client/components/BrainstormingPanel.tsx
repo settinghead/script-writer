@@ -5,7 +5,8 @@ import { jsonrepair } from 'jsonrepair';
 import GenreSelectionPopup from './GenreSelectionPopup';
 import PlatformSelection from './PlatformSelection';
 import { useStorageState } from '../hooks/useStorageState';
-import { useStreamingLLM } from '../hooks/useStreamingLLM';
+import { useStreamingBrainstorm } from '../hooks/useStreamingBrainstorm';
+import { IdeaWithTitle } from '../services/implementations/BrainstormingStreamingService';
 
 // Idea generation template with few-shot examples for complete plot summaries
 const ideaGenerationTemplate = `
@@ -51,11 +52,6 @@ const ideaGenerationTemplate = `
 
 const { Text } = Typography;
 
-interface IdeaWithTitle {
-    title: string;
-    body: string;
-}
-
 interface BrainstormingPanelProps {
     isCollapsed: boolean;
     onIdeaSelect: (idea: string) => void;
@@ -94,376 +90,59 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
     const [genrePopupVisible, setGenrePopupVisible] = useState(false);
     const [generatedIdeas, setGeneratedIdeas] = useState<IdeaWithTitle[]>(initialGeneratedIdeas || []);
     const [selectedIdeaIndex, setSelectedIdeaIndex] = useState<number | null>(null);
-    const [error, setError] = useState<Error | null>(null);
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
-    // State for streaming ideas - progressive display
-    const [streamingIdeas, setStreamingIdeas] = useState<IdeaWithTitle[]>([]);
-    const [lastParsedLength, setLastParsedLength] = useState(0);
+    // Use the new RxJS-based streaming hook
+    const { status, items, error, start, stop } = useStreamingBrainstorm();
 
-    // Streaming hook for idea generation
-    const { status: streamingStatus, startStreaming, cancelStreaming, reset: resetStreaming } = useStreamingLLM();
-
-    // Update loading state based on streaming status
-    const isStreamingActive = streamingStatus.isStreaming;
-    const streamedContent = streamingStatus.fullContent;
-    const streamingProgress = streamingStatus.progress;
-    const streamingError = streamingStatus.error;
-
-    // Debounced function to parse partial JSON and extract ideas
-    const parsePartialJson = useCallback((content: string) => {
-        if (!content.trim() || content.length <= lastParsedLength) return;
-
-        console.debug('Parsing partial JSON, content length:', content.length, 'last parsed:', lastParsedLength);
-
-        try {
-            // Clean the content (handle ```json wrapper)
-            let cleanedContent = content.trim();
-            if (cleanedContent.startsWith('```json')) {
-                cleanedContent = cleanedContent.replace(/^```json\s*/, '');
-            } else if (cleanedContent.startsWith('```')) {
-                cleanedContent = cleanedContent.replace(/^```\s*/, '');
-            }
-
-            console.debug('Cleaned content preview:', cleanedContent.substring(0, 200));
-
-            // Try to find and extract a partial JSON array
-            let extractedIdeas: IdeaWithTitle[] = [];
-
-            // Look for opening bracket
-            const arrayStart = cleanedContent.indexOf('[');
-            if (arrayStart !== -1) {
-                let workingContent = cleanedContent.substring(arrayStart);
-
-                console.debug('Working with array content:', workingContent.substring(0, 300));
-
-                // Try to repair/complete the JSON
-                try {
-                    const repairedJson = jsonrepair(workingContent);
-                    console.debug('Repaired JSON preview:', repairedJson.substring(0, 200));
-                    const parsed = JSON.parse(repairedJson);
-
-                    if (Array.isArray(parsed)) {
-                        extractedIdeas = parsed.filter(item =>
-                            item &&
-                            typeof item === 'object' &&
-                            typeof item.title === 'string' &&
-                            typeof item.body === 'string' &&
-                            item.title.trim() &&
-                            item.body.trim()
-                        );
-                        console.debug('Extracted from array repair:', extractedIdeas.length, 'ideas');
-                    }
-                } catch (repairError) {
-                    console.debug('Array repair failed, trying individual object extraction:', repairError.message);
-
-                    // If repair fails, try to extract individual complete objects with more flexible regex
-                    const objectPatterns = [
-                        // Pattern 1: Complete objects with title and body
-                        /\{\s*"title"\s*:\s*"[^"]*"\s*,\s*"body"\s*:\s*"[^"]*"\s*\}/g,
-                        // Pattern 2: Objects with any order of title/body
-                        /\{\s*"(?:title|body)"\s*:\s*"[^"]*"\s*,\s*"(?:title|body)"\s*:\s*"[^"]*"\s*\}/g,
-                        // Pattern 3: More flexible matching for incomplete strings
-                        /\{\s*"title"\s*:\s*"[^"]*",?\s*"body"\s*:\s*"[^"]*"[^}]*\}/g
-                    ];
-
-                    for (const pattern of objectPatterns) {
-                        const matches = workingContent.match(pattern);
-                        if (matches) {
-                            console.debug(`Found ${matches.length} matches with pattern`, pattern);
-                            for (const match of matches) {
-                                try {
-                                    const obj = JSON.parse(match);
-                                    if (obj.title && obj.body && typeof obj.title === 'string' && typeof obj.body === 'string') {
-                                        extractedIdeas.push(obj);
-                                        console.debug('Successfully parsed object:', obj.title);
-                                    }
-                                } catch (e) {
-                                    console.debug('Failed to parse individual object:', match.substring(0, 100));
-                                }
-                            }
-                            if (extractedIdeas.length > 0) break; // Use first successful pattern
-                        }
-                    }
-                }
-            }
-
-            // Update streaming ideas if we found new ones
-            if (extractedIdeas.length > 0) {
-                console.debug('Setting streaming ideas:', extractedIdeas.length, 'total ideas');
-                setStreamingIdeas(extractedIdeas);
-                setLastParsedLength(content.length);
-            } else {
-                console.debug('No ideas extracted from content');
-            }
-
-        } catch (error) {
-            // Don't show errors for partial parsing - it's expected
-            console.debug('Partial JSON parsing (expected):', error);
-        }
-    }, [lastParsedLength, selectedPlatform, selectedGenrePaths, genreProportions, requirements, onRunCreated, resetStreaming]);
-
-    // Debounced version of parsePartialJson
+    // Debug logging for streaming state changes
     useEffect(() => {
-        if (!isStreamingActive || !streamedContent) {
-            // Reset when not streaming
-            setStreamingIdeas([]);
-            setLastParsedLength(0);
-            return;
-        }
+        console.log('Streaming status changed:', status);
+    }, [status]);
 
-        console.debug('Streaming content updated, length:', streamedContent.length, 'current streaming ideas:', streamingIdeas.length);
-
-        // Try immediate parsing if we see obvious complete objects (no debounce)
-        if (streamedContent.includes('"title"') && streamedContent.includes('"body"') && streamingIdeas.length === 0) {
-            console.debug('Detected title/body content, attempting immediate parse');
-            parsePartialJson(streamedContent);
-        }
-
-        const timeoutId = setTimeout(() => {
-            parsePartialJson(streamedContent);
-        }, 50); // Reduced to 50ms for smoother, more fluid updates
-
-        return () => clearTimeout(timeoutId);
-    }, [streamedContent, isStreamingActive, parsePartialJson]);
-
-    // Reset streaming status when streaming error occurs
     useEffect(() => {
-        if (streamingError) {
-            // Reset streaming ideas state on error
-            setStreamingIdeas([]);
-            setLastParsedLength(0);
-        }
-    }, [streamingError]);
+        console.log('Streaming items changed:', items);
+    }, [items]);
 
-    // Effect to handle window resize for mobile detection
     useEffect(() => {
-        const handleResize = () => {
-            setIsMobile(window.innerWidth <= 768);
-        };
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
+        if (error) {
+            console.log('Streaming error changed:', error);
+        }
+    }, [error]);
 
-    // Notify parent of data changes
+    // Update generated ideas when streaming items change
+    useEffect(() => {
+        if (items.length > 0) {
+            setGeneratedIdeas(items);
+        }
+    }, [items]);
+
+    // Update data change callback when relevant state changes
     useEffect(() => {
         onDataChange({
             selectedPlatform,
             selectedGenrePaths,
             genreProportions,
             generatedIdeas,
-            generatedIdeaArtifacts: [],
+            generatedIdeaArtifacts: generatedIdeas.map((idea, index) => ({
+                id: `idea-${index}`,
+                text: typeof idea === 'string' ? idea : `${idea.title}: ${idea.body}`,
+                title: typeof idea === 'object' ? idea.title : undefined,
+                orderIndex: index
+            })),
             requirements
         });
-    }, [selectedPlatform, selectedGenrePaths, genreProportions, generatedIdeas, requirements]);
+    }, [selectedPlatform, selectedGenrePaths, genreProportions, generatedIdeas, requirements, onDataChange]);
 
-    // Handle streaming completion for idea generation
+    // Handle window resize
     useEffect(() => {
-        console.debug('Completion effect triggered:', {
-            isComplete: streamingStatus.isComplete,
-            hasContent: !!streamedContent,
-            streamingIdeasCount: streamingIdeas.length,
-            isStreaming: streamingStatus.isStreaming
-        });
+        const handleResize = () => {
+            setIsMobile(window.innerWidth <= 768);
+        };
 
-        if (streamingStatus.isComplete && streamedContent) {
-            console.debug('Processing completion with', streamingIdeas.length, 'streaming ideas');
-
-            try {
-                // If we already have streaming ideas, use those
-                if (streamingIdeas.length > 0) {
-                    console.debug('Using streaming ideas for completion');
-                    setGeneratedIdeas(streamingIdeas);
-                    setSelectedIdeaIndex(null); // Reset selection
-
-                    // Reset streaming status
-                    console.debug('Calling resetStreaming()');
-                    resetStreaming();
-
-                    // Create ideation run after successful idea generation
-                    if (onRunCreated) {
-                        (async () => {
-                            try {
-                                const createRunResponse = await fetch('/api/ideations/create_run_with_ideas', {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                    },
-                                    body: JSON.stringify({
-                                        selectedPlatform,
-                                        genrePaths: selectedGenrePaths,
-                                        genreProportions,
-                                        initialIdeas: streamingIdeas.map(idea => idea.body),
-                                        initialIdeaTitles: streamingIdeas.map(idea => idea.title),
-                                        requirements
-                                    })
-                                });
-
-                                if (!createRunResponse.ok) {
-                                    throw new Error(`Failed to create run: ${createRunResponse.status}`);
-                                }
-
-                                const runData = await createRunResponse.json();
-                                if (runData.runId) {
-                                    onRunCreated(runData.runId);
-                                }
-                            } catch (runError) {
-                                console.error('Error creating ideation run:', runError);
-                                // Don't set error here - we still want to show the ideas
-                            }
-                        })();
-                    }
-                    return; // Early return if we already have streaming ideas
-                }
-
-                // Fallback: Parse the final content if no streaming ideas were extracted
-                // Clean the content (handle ```json wrapper)
-                let cleanedContent = streamedContent.trim();
-                if (cleanedContent.startsWith('```json')) {
-                    cleanedContent = cleanedContent.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-                } else if (cleanedContent.startsWith('```')) {
-                    cleanedContent = cleanedContent.replace(/^```\s*/, '').replace(/\s*```$/, '');
-                }
-
-                let ideasArray: IdeaWithTitle[] = [];
-                try {
-                    const parsedData: IdeaWithTitle[] = JSON.parse(cleanedContent);
-                    if (!Array.isArray(parsedData) || parsedData.length === 0) {
-                        throw new Error('响应不是一个有效的非空数组');
-                    }
-
-                    // Validate structure and extract ideas
-                    for (const item of parsedData) {
-                        if (!item || typeof item !== 'object' || typeof item.title !== 'string' || typeof item.body !== 'string') {
-                            throw new Error('响应数组中包含无效的对象结构');
-                        }
-                        ideasArray.push(item);
-                    }
-                } catch (parseError) {
-                    console.error('Failed to parse ideas JSON:', parseError);
-                    console.log('Raw content for ideas:', cleanedContent);
-                    try {
-                        const repairedJson = jsonrepair(cleanedContent);
-                        const parsedData: IdeaWithTitle[] = JSON.parse(repairedJson);
-                        if (!Array.isArray(parsedData) || parsedData.length === 0) {
-                            throw new Error('修复后的响应仍然不是一个有效的非空数组');
-                        }
-
-                        // Clear array and re-populate
-                        ideasArray = [];
-                        for (const item of parsedData) {
-                            if (!item || typeof item !== 'object' || typeof item.title !== 'string' || typeof item.body !== 'string') {
-                                throw new Error('修复后的响应数组中仍包含无效的对象结构');
-                            }
-                            ideasArray.push(item);
-                        }
-                    } catch (repairError) {
-                        console.error('Failed to parse ideas JSON even after repair:', repairError);
-                        setError(new Error('无法解析生成的故事灵感为JSON数组'));
-                        // Reset streaming status even on error
-                        resetStreaming();
-                        return;
-                    }
-                }
-
-                if (ideasArray.length > 0) {
-                    setGeneratedIdeas(ideasArray);
-                    setSelectedIdeaIndex(null); // Reset selection
-
-                    // Reset streaming status
-                    resetStreaming();
-
-                    // Create ideation run after successful idea generation
-                    if (onRunCreated) {
-                        (async () => {
-                            try {
-                                const createRunResponse = await fetch('/api/ideations/create_run_with_ideas', {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                    },
-                                    body: JSON.stringify({
-                                        selectedPlatform,
-                                        genrePaths: selectedGenrePaths,
-                                        genreProportions,
-                                        initialIdeas: ideasArray.map(idea => idea.body),
-                                        initialIdeaTitles: ideasArray.map(idea => idea.title),
-                                        requirements
-                                    })
-                                });
-
-                                if (!createRunResponse.ok) {
-                                    throw new Error(`Failed to create run: ${createRunResponse.status}`);
-                                }
-
-                                const runData = await createRunResponse.json();
-                                if (runData.runId) {
-                                    onRunCreated(runData.runId);
-                                }
-                            } catch (runError) {
-                                console.error('Error creating ideation run:', runError);
-                                // Don't set error here - we still want to show the ideas
-                            }
-                        })();
-                    }
-                } else {
-                    setError(new Error('生成的故事梗概内容为空或格式不正确'));
-                    // Reset streaming status even if no ideas
-                    resetStreaming();
-                }
-
-            } catch (err) {
-                console.error('Error processing streamed ideas:', err);
-                setError(err instanceof Error ? err : new Error(String(err)));
-                // Reset streaming status on error
-                resetStreaming();
-            }
-        }
-    }, [streamingStatus.isComplete, streamedContent, streamingIdeas, selectedPlatform, selectedGenrePaths, genreProportions, requirements, onRunCreated, resetStreaming]);
-
-    // Fallback completion detection - if streaming stops but isComplete isn't set
-    useEffect(() => {
-        // If we were streaming, but now we're not, and we have ideas, and no completion was detected
-        if (!isStreamingActive && streamingIdeas.length > 0 && !streamingStatus.isComplete && generatedIdeas.length === 0) {
-            console.debug('Fallback completion triggered - streaming stopped with', streamingIdeas.length, 'ideas');
-            setGeneratedIdeas(streamingIdeas);
-            setSelectedIdeaIndex(null);
-            resetStreaming();
-
-            // Create ideation run
-            if (onRunCreated) {
-                (async () => {
-                    try {
-                        const createRunResponse = await fetch('/api/ideations/create_run_with_ideas', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                selectedPlatform,
-                                genrePaths: selectedGenrePaths,
-                                genreProportions,
-                                initialIdeas: streamingIdeas.map(idea => idea.body),
-                                initialIdeaTitles: streamingIdeas.map(idea => idea.title),
-                                requirements
-                            })
-                        });
-
-                        if (!createRunResponse.ok) {
-                            throw new Error(`Failed to create run: ${createRunResponse.status}`);
-                        }
-
-                        const runData = await createRunResponse.json();
-                        if (runData.runId) {
-                            onRunCreated(runData.runId);
-                        }
-                    } catch (runError) {
-                        console.error('Error creating ideation run:', runError);
-                    }
-                })();
-            }
-        }
-    }, [isStreamingActive, streamingIdeas, streamingStatus.isComplete, generatedIdeas.length, selectedPlatform, selectedGenrePaths, genreProportions, requirements, onRunCreated, resetStreaming]);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     const handlePlatformChange = (value: string) => {
         setSelectedPlatform(value);
@@ -475,85 +154,78 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
         setGenrePopupVisible(false);
     };
 
-    // Handle idea card selection
     const handleIdeaSelection = (index: number) => {
         setSelectedIdeaIndex(index);
-        onIdeaSelect(generatedIdeas[index].body);
+        const idea = generatedIdeas[index];
+        const ideaText = typeof idea === 'string' ? idea : `${idea.title}: ${idea.body}`;
+        onIdeaSelect(ideaText);
     };
 
-    // Check if genre selection is complete
     const isGenreSelectionComplete = () => {
-        if (selectedGenrePaths.length === 0) {
-            return false;
-        }
-        return selectedGenrePaths.every(path => path.length >= 3);
+        return selectedGenrePaths.length > 0 && selectedGenrePaths.every(path => path.length > 0);
     };
 
-    // Build genre string for display
     const buildGenreDisplayElements = (): (JSX.Element | string)[] => {
-        if (selectedGenrePaths.length === 0) return ["未指定"];
-
         return selectedGenrePaths.map((path, index) => {
-            const proportion = genreProportions[index] !== undefined
-                ? genreProportions[index]
-                : (100 / selectedGenrePaths.length);
-            const pathString = path.join(' > ');
-            const displayString = selectedGenrePaths.length > 1
-                ? `- ${pathString} (${proportion.toFixed(0)}%)`
-                : `- ${pathString}`;
-            return <div key={index} style={{ lineHeight: '1.5' }}>{displayString}</div>;
+            const genreText = path.join(' > ');
+            const proportion = genreProportions[index];
+            const proportionText = proportion ? ` (${proportion}%)` : '';
+
+            return (
+                <span key={index} style={{ marginRight: '8px', marginBottom: '4px', display: 'inline-block' }}>
+                    {genreText}{proportionText}
+                    {index < selectedGenrePaths.length - 1 && ', '}
+                </span>
+            );
         });
     };
 
-    // Function to build the genre string for the LLM prompt
     const buildGenrePromptString = (): string => {
-        if (selectedGenrePaths.length === 0) return '未指定';
         return selectedGenrePaths.map((path, index) => {
-            const proportion = genreProportions[index] !== undefined
-                ? genreProportions[index]
-                : (100 / selectedGenrePaths.length);
-            const pathString = path.join(' > ');
-            return selectedGenrePaths.length > 1
-                ? `${pathString} (${proportion.toFixed(0)}%)`
-                : pathString;
+            const genreText = path.join(' > ');
+            const proportion = genreProportions[index];
+            return proportion ? `${genreText} (${proportion}%)` : genreText;
         }).join(', ');
     };
 
-    // Generate complete plot summaries using LLM with streaming
     const generateIdea = async () => {
+        console.log('generateIdea called');
         if (!isGenreSelectionComplete()) {
+            console.log('Genre selection not complete, returning early');
             return;
         }
 
-        setError(null);
-        resetStreaming();
-        // Reset streaming ideas state
-        setStreamingIdeas([]);
-        setLastParsedLength(0);
+        // Clear previous ideas
+        setGeneratedIdeas([]);
+        console.log('Cleared previous ideas');
 
         try {
             const genreString = buildGenrePromptString();
             const requirementsSection = requirements.trim()
                 ? `特殊要求：${requirements.trim()}`
                 : '';
-            const prompt = ideaGenerationTemplate
-                .replace('{genre}', genreString)
-                .replace('{platform}', selectedPlatform || '通用短视频平台')
-                .replace('{requirementsSection}', requirementsSection);
 
-            await startStreaming('/api/brainstorm/generate/stream', {
-                body: {
-                    selectedPlatform,
-                    selectedGenrePaths,
-                    genreProportions,
-                    requirements,
-                    prompt
-                }
+            console.log('About to start streaming with params:', {
+                genreString,
+                platform: selectedPlatform,
+                requirementsSection
             });
+
+            await start({
+                artifactIds: [],
+                templateId: 'brainstorming',
+                templateParams: {
+                    genre: genreString,
+                    platform: selectedPlatform || '通用短视频平台',
+                    requirementsSection
+                },
+                modelName: 'deepseek-chat'
+            });
+
+            console.log('Streaming start call completed');
 
         } catch (err) {
             console.error('Error generating idea:', err);
-            setError(err instanceof Error ? err : new Error(String(err)));
         }
     };
 
@@ -575,6 +247,7 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
 
     // Check if ideas have been generated
     const hasGeneratedIdeas = generatedIdeas.length > 0;
+    const isStreaming = status === 'streaming';
 
     return (
         <div style={{
@@ -605,7 +278,7 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                     💡 头脑风暴
                 </Text>
                 <Text type="secondary" style={{ display: 'block', fontSize: '12px', marginTop: '4px' }}>
-                    {hasGeneratedIdeas ? '已生成故事灵感' : '选择平台和类型，生成故灵感'}
+                    {hasGeneratedIdeas ? '已生成故事灵感' : '选择平台和类型，生成故事灵感'}
                 </Text>
             </div>
 
@@ -729,269 +402,131 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                 </>
             )}
 
-            {/* Show generate button and controls only if no ideas generated */}
-            {!hasGeneratedIdeas && isGenreSelectionComplete() && (
-                <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-                    <Button
-                        type="primary"
-                        size="large"
-                        onClick={isStreamingActive ? cancelStreaming : generateIdea}
-                        loading={false}
-                        icon={isStreamingActive ? <StopOutlined /> : <BulbOutlined />}
-                        style={{
-                            background: isStreamingActive ? '#ff4d4f' : '#52c41a',
-                            borderColor: isStreamingActive ? '#ff4d4f' : '#52c41a',
-                            fontSize: '16px',
-                            height: '40px',
-                            minWidth: '120px'
-                        }}
-                    >
-                        {isStreamingActive ? '停止生成' : '开始头脑风暴'}
-                    </Button>
-
-                    {/* Streaming Progress */}
-                    {isStreamingActive && streamingProgress && (
-                        <div style={{ marginTop: '16px', textAlign: 'left' }}>
-                            <div style={{ marginBottom: '8px' }}>
-                                <Text style={{ color: '#1890ff' }}>
-                                    {streamingProgress.message}
-                                </Text>
-                                {streamingProgress.tokens > 0 && (
-                                    <Text type="secondary" style={{ marginLeft: '8px' }}>
-                                        ({streamingProgress.tokens} tokens)
-                                    </Text>
-                                )}
-                            </div>
-                            <Progress
-                                percent={undefined}
-                                status="active"
-                                showInfo={false}
-                                style={{ marginBottom: '8px' }}
-                            />
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {/* Streaming Content Display */}
-            {!hasGeneratedIdeas && isStreamingActive && streamingIdeas.length > 0 && (
-                <div style={{ marginBottom: '16px' }}>
-                    <div style={{ marginBottom: '12px' }}>
-                        <Text style={{ color: '#1890ff', fontSize: '14px', fontWeight: 'bold' }}>
-                            🤖 正在生成故事灵感... ({streamingIdeas.length} 个)
-                        </Text>
-                    </div>
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: isMobile ? 'repeat(1, 1fr)' : 'repeat(auto-fit, minmax(320px, 1fr))',
-                        gap: '12px'
-                    }}>
-                        {streamingIdeas.map((idea, index) => (
-                            <div
-                                key={`streaming-${index}`}
-                                style={{
-                                    padding: '16px',
-                                    minHeight: '100px',
-                                    border: '1px solid #1890ff',
-                                    borderRadius: '6px',
-                                    backgroundColor: '#1890ff10',
-                                    position: 'relative',
-                                    animation: 'fadeIn 0.5s ease-in'
-                                }}
-                            >
-                                <div style={{
-                                    position: 'absolute',
-                                    top: '8px',
-                                    right: '8px',
-                                    width: '20px',
-                                    height: '20px',
-                                    borderRadius: '50%',
-                                    backgroundColor: '#1890ff',
-                                    color: 'white',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontSize: '12px',
-                                    fontWeight: 'bold'
-                                }}>
-                                    {index + 1}
-                                </div>
-                                <div style={{
-                                    paddingRight: '30px'
-                                }}>
-                                    <div style={{
-                                        fontSize: '14px',
-                                        fontWeight: 'bold',
-                                        marginBottom: '8px',
-                                        color: '#1890ff',
-                                        wordBreak: 'break-word'
-                                    }}>
-                                        {idea.title}
-                                    </div>
-                                    <div style={{
-                                        fontSize: '13px',
-                                        lineHeight: '1.5',
-                                        color: '#d9d9d9',
-                                        wordBreak: 'break-word',
-                                        hyphens: 'auto'
-                                    }}>
-                                        {idea.body}
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* Raw JSON display (only when no ideas parsed yet) */}
-            {!hasGeneratedIdeas && isStreamingActive && streamedContent && streamingIdeas.length === 0 && (
-                <div style={{ marginBottom: '16px' }}>
-                    <div style={{
-                        padding: '16px',
-                        background: '#0f0f0f',
-                        border: '1px solid #1890ff',
-                        borderRadius: '8px'
-                    }}>
-                        <div style={{ marginBottom: '12px' }}>
-                            <Text style={{ color: '#1890ff', fontSize: '14px', fontWeight: 'bold' }}>
-                                🤖 AI正在准备故事灵感...
-                            </Text>
-                        </div>
-                        <div style={{
-                            maxHeight: '100px',
-                            overflowY: 'auto',
-                            whiteSpace: 'pre-wrap',
-                            fontFamily: 'monospace',
-                            fontSize: '11px',
-                            lineHeight: '1.3',
-                            color: '#888',
-                            background: '#1a1a1a',
-                            padding: '8px',
-                            borderRadius: '4px',
-                            border: '1px solid #333'
-                        }}>
-                            {streamedContent.substring(0, 200)}...
-                            <span style={{
-                                color: '#1890ff',
-                                animation: 'blink 1s infinite'
-                            }}>|</span>
-                        </div>
-                    </div>
-                </div>
-            )}
-
             {/* Error display */}
-            {(error || streamingError) && (
+            {error && (
                 <Alert
                     message="生成失败"
-                    description={(error || streamingError)?.message}
+                    description={error.message}
                     type="error"
-                    showIcon
                     style={{ marginBottom: '16px' }}
-                    onClose={() => {
-                        setError(null);
-                        // Reset streaming status when error is dismissed
-                        if (streamingError) {
-                            resetStreaming();
-                        }
-                    }}
-                    closable
                 />
             )}
 
-            {/* Generated ideas display */}
-            {hasGeneratedIdeas && (
-                <div>
-                    <Text type="secondary" style={{ display: 'block', marginBottom: '8px', fontSize: '12px' }}>
-                        选择一个故事灵感（点击卡片选择）:
+            {/* Generate button or streaming display */}
+            {!hasGeneratedIdeas && !isStreaming && (
+                <Button
+                    type="primary"
+                    icon={<BulbOutlined />}
+                    onClick={generateIdea}
+                    disabled={!isGenreSelectionComplete()}
+                    style={{
+                        width: '100%',
+                        height: '40px',
+                        background: isGenreSelectionComplete() ? '#1890ff' : '#434343',
+                        borderColor: isGenreSelectionComplete() ? '#1890ff' : '#434343'
+                    }}
+                >
+                    生成故事灵感
+                </Button>
+            )}
+
+            {/* Streaming progress */}
+            {isStreaming && (
+                <div style={{ marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <Text style={{ color: '#1890ff' }}>正在生成故事灵感...</Text>
+                        <Button
+                            size="small"
+                            icon={<StopOutlined />}
+                            onClick={stop}
+                            style={{
+                                background: '#ff4d4f',
+                                borderColor: '#ff4d4f',
+                                color: 'white'
+                            }}
+                        >
+                            停止
+                        </Button>
+                    </div>
+                    <Progress percent={30} showInfo={false} strokeColor="#1890ff" />
+                </div>
+            )}
+
+            {/* Display streaming ideas as they arrive */}
+            {items.length > 0 && (
+                <div style={{ marginTop: '16px' }}>
+                    <Text strong style={{ display: 'block', marginBottom: '12px', color: '#d9d9d9' }}>
+                        生成的故事灵感:
                     </Text>
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: isMobile ? 'repeat(1, 1fr)' : 'repeat(auto-fit, minmax(320px, 1fr))',
-                        gap: '12px'
-                    }}>
-                        {generatedIdeas.map((idea, index) => (
+                    <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                        {items.map((idea, index) => (
                             <div
                                 key={index}
                                 onClick={() => handleIdeaSelection(index)}
                                 style={{
-                                    padding: '16px',
-                                    minHeight: '100px',
-                                    border: selectedIdeaIndex === index ? '2px solid #1890ff' : '1px solid #434343',
+                                    padding: '12px',
+                                    background: selectedIdeaIndex === index ? '#1890ff20' : '#262626',
+                                    border: selectedIdeaIndex === index ? '1px solid #1890ff' : '1px solid #404040',
                                     borderRadius: '6px',
+                                    marginBottom: '8px',
                                     cursor: 'pointer',
-                                    backgroundColor: selectedIdeaIndex === index ? '#1890ff10' : '#2a2a2a',
                                     transition: 'all 0.3s',
-                                    position: 'relative'
+                                    animation: 'fadeIn 0.5s ease-in'
                                 }}
                                 onMouseEnter={(e) => {
                                     if (selectedIdeaIndex !== index) {
-                                        e.currentTarget.style.backgroundColor = '#333';
-                                        e.currentTarget.style.borderColor = '#666';
+                                        e.currentTarget.style.background = '#333333';
                                     }
                                 }}
                                 onMouseLeave={(e) => {
                                     if (selectedIdeaIndex !== index) {
-                                        e.currentTarget.style.backgroundColor = '#2a2a2a';
-                                        e.currentTarget.style.borderColor = '#434343';
+                                        e.currentTarget.style.background = '#262626';
                                     }
                                 }}
                             >
-                                <div style={{
-                                    position: 'absolute',
-                                    top: '8px',
-                                    right: '8px',
-                                    width: '20px',
-                                    height: '20px',
-                                    borderRadius: '50%',
-                                    backgroundColor: selectedIdeaIndex === index ? '#1890ff' : '#666',
-                                    color: 'white',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontSize: '12px',
-                                    fontWeight: 'bold'
-                                }}>
-                                    {index + 1}
-                                </div>
-                                <div style={{
-                                    paddingRight: '30px'
-                                }}>
-                                    <div style={{
-                                        fontSize: '14px',
-                                        fontWeight: 'bold',
-                                        marginBottom: '8px',
-                                        color: selectedIdeaIndex === index ? '#1890ff' : '#52c41a',
-                                        wordBreak: 'break-word'
-                                    }}>
-                                        {idea.title}
-                                    </div>
-                                    <div style={{
-                                        fontSize: '13px',
-                                        lineHeight: '1.5',
-                                        color: selectedIdeaIndex === index ? '#d9d9d9' : '#bfbfbf',
-                                        wordBreak: 'break-word',
-                                        hyphens: 'auto'
-                                    }}>
-                                        {idea.body}
-                                    </div>
-                                </div>
+                                <Text strong style={{ color: '#d9d9d9', display: 'block', marginBottom: '4px' }}>
+                                    {idea.title}
+                                </Text>
+                                <Text style={{ color: '#bfbfbf', fontSize: '13px', lineHeight: '1.4' }}>
+                                    {idea.body}
+                                </Text>
                             </div>
                         ))}
+
+                        {/* Show blinking cursor while streaming */}
+                        {isStreaming && (
+                            <div style={{
+                                padding: '8px',
+                                color: '#666',
+                                fontSize: '14px'
+                            }}>
+                                <span style={{ animation: 'blink 1s infinite' }}>▋</span>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
 
-            {/* Show completion prompt only if no ideas generated and genre selection incomplete */}
-            {!hasGeneratedIdeas && !isGenreSelectionComplete() && (
-                <div style={{
-                    textAlign: 'center',
-                    padding: '20px',
-                    color: '#666',
-                    fontSize: '14px'
-                }}>
-                    请先完成故事类型选择以开始头脑风暴
+            {/* Show regenerate button after completion */}
+            {hasGeneratedIdeas && status === 'completed' && (
+                <div style={{ marginTop: '16px' }}>
+                    <Button
+                        type="default"
+                        icon={<BulbOutlined />}
+                        onClick={() => {
+                            setGeneratedIdeas([]);
+                            generateIdea();
+                        }}
+                        style={{
+                            width: '100%',
+                            height: '40px',
+                            background: '#434343',
+                            borderColor: '#434343',
+                            color: '#d9d9d9'
+                        }}
+                    >
+                        重新生成
+                    </Button>
                 </div>
             )}
         </div>
