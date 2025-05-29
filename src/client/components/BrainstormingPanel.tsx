@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Typography, Select, Divider, Alert, Input } from 'antd';
-import { BulbOutlined, RightOutlined } from '@ant-design/icons';
+import { Button, Typography, Select, Divider, Alert, Input, Progress } from 'antd';
+import { BulbOutlined, RightOutlined, StopOutlined } from '@ant-design/icons';
 import { jsonrepair } from 'jsonrepair';
 import GenreSelectionPopup from './GenreSelectionPopup';
 import PlatformSelection from './PlatformSelection';
 import { useStorageState } from '../hooks/useStorageState';
+import { useStreamingLLM } from '../hooks/useStreamingLLM';
 
 const NUM_IDEAS_TO_GENERATE = 6;
 
@@ -93,11 +94,23 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
     const [genreProportions, setGenreProportions] = useStorageState<number[]>('ideation_genreProportions', initialGenreProportions);
     const [requirements, setRequirements] = useStorageState<string>('ideation_requirements', initialRequirements);
     const [genrePopupVisible, setGenrePopupVisible] = useState(false);
-    const [isGeneratingIdea, setIsGeneratingIdea] = useState(false);
     const [generatedIdeas, setGeneratedIdeas] = useState<IdeaWithTitle[]>(initialGeneratedIdeas || []);
     const [selectedIdeaIndex, setSelectedIdeaIndex] = useState<number | null>(null);
     const [error, setError] = useState<Error | null>(null);
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+    // State for streaming ideas - progressive display
+    const [streamingIdeas, setStreamingIdeas] = useState<IdeaWithTitle[]>([]);
+    const [lastParsedLength, setLastParsedLength] = useState(0);
+
+    // Streaming hook for idea generation
+    const { status: streamingStatus, startStreaming, cancelStreaming, reset: resetStreaming } = useStreamingLLM();
+
+    // Update loading state based on streaming status
+    const isStreamingActive = streamingStatus.isStreaming;
+    const streamedContent = streamingStatus.fullContent;
+    const streamingProgress = streamingStatus.progress;
+    const streamingError = streamingStatus.error;
 
     // Effect to handle window resize for mobile detection
     useEffect(() => {
@@ -119,6 +132,105 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
             requirements
         });
     }, [selectedPlatform, selectedGenrePaths, genreProportions, generatedIdeas, requirements]);
+
+    // Handle streaming completion for idea generation
+    useEffect(() => {
+        if (streamingStatus.isComplete && streamedContent) {
+            try {
+                // Clean the content (handle ```json wrapper)
+                let cleanedContent = streamedContent.trim();
+                if (cleanedContent.startsWith('```json')) {
+                    cleanedContent = cleanedContent.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+                } else if (cleanedContent.startsWith('```')) {
+                    cleanedContent = cleanedContent.replace(/^```\s*/, '').replace(/\s*```$/, '');
+                }
+
+                let ideasArray: IdeaWithTitle[] = [];
+                try {
+                    const parsedData: IdeaWithTitle[] = JSON.parse(cleanedContent);
+                    if (!Array.isArray(parsedData) || parsedData.length === 0) {
+                        throw new Error('响应不是一个有效的非空数组');
+                    }
+
+                    // Validate structure and extract ideas
+                    for (const item of parsedData) {
+                        if (!item || typeof item !== 'object' || typeof item.title !== 'string' || typeof item.body !== 'string') {
+                            throw new Error('响应数组中包含无效的对象结构');
+                        }
+                        ideasArray.push(item);
+                    }
+                } catch (parseError) {
+                    console.error('Failed to parse ideas JSON:', parseError);
+                    console.log('Raw content for ideas:', cleanedContent);
+                    try {
+                        const repairedJson = jsonrepair(cleanedContent);
+                        const parsedData: IdeaWithTitle[] = JSON.parse(repairedJson);
+                        if (!Array.isArray(parsedData) || parsedData.length === 0) {
+                            throw new Error('修复后的响应仍然不是一个有效的非空数组');
+                        }
+
+                        // Clear array and re-populate
+                        ideasArray = [];
+                        for (const item of parsedData) {
+                            if (!item || typeof item !== 'object' || typeof item.title !== 'string' || typeof item.body !== 'string') {
+                                throw new Error('修复后的响应数组中仍包含无效的对象结构');
+                            }
+                            ideasArray.push(item);
+                        }
+                    } catch (repairError) {
+                        console.error('Failed to parse ideas JSON even after repair:', repairError);
+                        setError(new Error('无法解析生成的故事灵感为JSON数组'));
+                        return;
+                    }
+                }
+
+                if (ideasArray.length > 0) {
+                    setGeneratedIdeas(ideasArray);
+                    setSelectedIdeaIndex(null); // Reset selection
+
+                    // Create ideation run after successful idea generation
+                    if (onRunCreated) {
+                        (async () => {
+                            try {
+                                const createRunResponse = await fetch('/api/ideations/create_run_with_ideas', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify({
+                                        selectedPlatform,
+                                        genrePaths: selectedGenrePaths,
+                                        genreProportions,
+                                        initialIdeas: ideasArray.map(idea => idea.body),
+                                        initialIdeaTitles: ideasArray.map(idea => idea.title),
+                                        requirements
+                                    })
+                                });
+
+                                if (!createRunResponse.ok) {
+                                    throw new Error(`Failed to create run: ${createRunResponse.status}`);
+                                }
+
+                                const runData = await createRunResponse.json();
+                                if (runData.runId) {
+                                    onRunCreated(runData.runId);
+                                }
+                            } catch (runError) {
+                                console.error('Error creating ideation run:', runError);
+                                // Don't set error here - we still want to show the ideas
+                            }
+                        })();
+                    }
+                } else {
+                    setError(new Error('生成的故事梗概内容为空或格式不正确'));
+                }
+
+            } catch (err) {
+                console.error('Error processing streamed ideas:', err);
+                setError(err instanceof Error ? err : new Error(String(err)));
+            }
+        }
+    }, [streamingStatus.isComplete, streamedContent, selectedPlatform, selectedGenrePaths, genreProportions, requirements, onRunCreated]);
 
     const handlePlatformChange = (value: string) => {
         setSelectedPlatform(value);
@@ -174,14 +286,14 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
         }).join(', ');
     };
 
-    // Generate complete plot summaries using LLM
+    // Generate complete plot summaries using LLM with streaming
     const generateIdea = async () => {
         if (!isGenreSelectionComplete()) {
             return;
         }
 
-        setIsGeneratingIdea(true);
         setError(null);
+        resetStreaming();
 
         try {
             const genreString = buildGenrePromptString();
@@ -193,118 +305,19 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                 .replace('{platform}', selectedPlatform || '通用短视频平台')
                 .replace('{requirementsSection}', requirementsSection);
 
-            const response = await fetch('/llm-api/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    model: 'deepseek-chat',
-                    messages: [
-                        { role: 'user', content: prompt }
-                    ],
-                    stream: false,
-                    response_format: { type: 'json_object' }
-                })
+            await startStreaming('/api/brainstorm/generate/stream', {
+                body: {
+                    selectedPlatform,
+                    selectedGenrePaths,
+                    genreProportions,
+                    requirements,
+                    prompt
+                }
             });
-
-            if (!response.ok) {
-                throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
-            }
-
-            const data = await response.json();
-
-            let ideasArray: IdeaWithTitle[] = [];
-            if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
-                const contentText = data.choices[0].message.content.trim();
-                try {
-                    const parsedData: IdeaWithTitle[] = JSON.parse(contentText);
-                    if (!Array.isArray(parsedData) || parsedData.length === 0) {
-                        throw new Error('响应不是一个有效的非空数组');
-                    }
-
-                    // Validate structure and extract ideas
-                    for (const item of parsedData) {
-                        if (!item || typeof item !== 'object' || typeof item.title !== 'string' || typeof item.body !== 'string') {
-                            throw new Error('响应数组中包含无效的对象结构');
-                        }
-                        ideasArray.push(item);
-                    }
-                } catch (parseError) {
-                    console.error('Failed to parse ideas JSON:', parseError);
-                    console.log('Raw content for ideas:', contentText);
-                    try {
-                        const repairedJson = jsonrepair(contentText);
-                        const parsedData: IdeaWithTitle[] = JSON.parse(repairedJson);
-                        if (!Array.isArray(parsedData) || parsedData.length === 0) {
-                            throw new Error('修复后的响应仍然不是一个有效的非空数组');
-                        }
-
-                        // Clear array and re-populate
-                        ideasArray = [];
-                        for (const item of parsedData) {
-                            if (!item || typeof item !== 'object' || typeof item.title !== 'string' || typeof item.body !== 'string') {
-                                throw new Error('修复后的响应数组中仍包含无效的对象结构');
-                            }
-                            ideasArray.push(item);
-                        }
-                    } catch (repairError) {
-                        console.error('Failed to parse ideas JSON even after repair:', repairError);
-                        throw new Error('无法解析生成的故事灵感为JSON数组');
-                    }
-                }
-            } else {
-                throw new Error('无法从响应中提取内容');
-            }
-
-            if (ideasArray.length > 0) {
-                setGeneratedIdeas(ideasArray);
-                setSelectedIdeaIndex(null); // Reset selection
-
-                // Create ideation run after successful idea generation
-                if (onRunCreated) {
-                    try {
-                        const createRunResponse = await fetch('/api/ideations/create_run_with_ideas', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                selectedPlatform,
-                                genrePaths: selectedGenrePaths,
-                                genreProportions,
-                                initialIdeas: ideasArray.map(idea => idea.body),
-                                initialIdeaTitles: ideasArray.map(idea => idea.title),
-                                requirements
-                            })
-                        });
-
-                        if (!createRunResponse.ok) {
-                            throw new Error(`Failed to create run: ${createRunResponse.status}`);
-                        }
-
-                        const runData = await createRunResponse.json();
-                        if (runData.runId) {
-                            // Store the artifact data from the response
-                            if (runData.initialIdeaArtifacts && Array.isArray(runData.initialIdeaArtifacts)) {
-                                // This is a placeholder for storing artifact data
-                            }
-                            onRunCreated(runData.runId);
-                        }
-                    } catch (runError) {
-                        console.error('Error creating ideation run:', runError);
-                        // Don't throw here - we still want to show the ideas even if run creation fails
-                    }
-                }
-            } else {
-                throw new Error('生成的故事梗概内容为空或格式不正确');
-            }
 
         } catch (err) {
             console.error('Error generating idea:', err);
             setError(err instanceof Error ? err : new Error(String(err)));
-        } finally {
-            setIsGeneratingIdea(false);
         }
     };
 
@@ -335,6 +348,14 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
             border: '1px solid #303030',
             marginBottom: '24px'
         }}>
+            <style>
+                {`
+                    @keyframes blink {
+                        0%, 50% { opacity: 1; }
+                        51%, 100% { opacity: 0; }
+                    }
+                `}
+            </style>
             <div style={{ marginBottom: '16px' }}>
                 <Text strong style={{ fontSize: '16px', color: '#d9d9d9' }}>
                     💡 头脑风暴
@@ -470,27 +491,86 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                     <Button
                         type="primary"
                         size="large"
-                        onClick={generateIdea}
-                        loading={isGeneratingIdea}
+                        onClick={isStreamingActive ? cancelStreaming : generateIdea}
+                        loading={false}
+                        icon={isStreamingActive ? <StopOutlined /> : <BulbOutlined />}
                         style={{
-                            background: '#52c41a',
-                            borderColor: '#52c41a',
+                            background: isStreamingActive ? '#ff4d4f' : '#52c41a',
+                            borderColor: isStreamingActive ? '#ff4d4f' : '#52c41a',
                             fontSize: '16px',
                             height: '40px',
                             minWidth: '120px'
                         }}
                     >
-                        <span style={{ marginRight: '8px' }}>💡</span>
-                        {isGeneratingIdea ? '头脑风暴中...' : '开始头脑风暴'}
+                        {isStreamingActive ? '停止生成' : '开始头脑风暴'}
                     </Button>
+
+                    {/* Streaming Progress */}
+                    {isStreamingActive && streamingProgress && (
+                        <div style={{ marginTop: '16px', textAlign: 'left' }}>
+                            <div style={{ marginBottom: '8px' }}>
+                                <Text style={{ color: '#1890ff' }}>
+                                    {streamingProgress.message}
+                                </Text>
+                                {streamingProgress.tokens > 0 && (
+                                    <Text type="secondary" style={{ marginLeft: '8px' }}>
+                                        ({streamingProgress.tokens} tokens)
+                                    </Text>
+                                )}
+                            </div>
+                            <Progress
+                                percent={undefined}
+                                status="active"
+                                showInfo={false}
+                                style={{ marginBottom: '8px' }}
+                            />
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Streaming Content Display */}
+            {!hasGeneratedIdeas && isStreamingActive && streamedContent && (
+                <div style={{ marginBottom: '16px' }}>
+                    <div style={{
+                        padding: '16px',
+                        background: '#0f0f0f',
+                        border: '1px solid #1890ff',
+                        borderRadius: '8px'
+                    }}>
+                        <div style={{ marginBottom: '12px' }}>
+                            <Text style={{ color: '#1890ff', fontSize: '14px', fontWeight: 'bold' }}>
+                                🤖 AI正在生成故事灵感...
+                            </Text>
+                        </div>
+                        <div style={{
+                            maxHeight: '300px',
+                            overflowY: 'auto',
+                            whiteSpace: 'pre-wrap',
+                            fontFamily: 'monospace',
+                            fontSize: '12px',
+                            lineHeight: '1.4',
+                            color: '#e8e8e8',
+                            background: '#1a1a1a',
+                            padding: '12px',
+                            borderRadius: '6px',
+                            border: '1px solid #333'
+                        }}>
+                            {streamedContent}
+                            <span style={{
+                                color: '#1890ff',
+                                animation: 'blink 1s infinite'
+                            }}>|</span>
+                        </div>
+                    </div>
                 </div>
             )}
 
             {/* Error display */}
-            {error && (
+            {(error || streamingError) && (
                 <Alert
                     message="生成失败"
-                    description={error.message}
+                    description={(error || streamingError)?.message}
                     type="error"
                     showIcon
                     style={{ marginBottom: '16px' }}

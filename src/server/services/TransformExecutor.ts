@@ -1,5 +1,5 @@
 import { createOpenAI } from '@ai-sdk/openai';
-import { generateText } from 'ai';
+import { generateText, streamText, createDataStreamResponse } from 'ai';
 import { ArtifactRepository } from '../repositories/ArtifactRepository';
 import { TransformRepository } from '../repositories/TransformRepository';
 import { Artifact } from '../types/artifacts';
@@ -280,6 +280,292 @@ export class TransformExecutor {
             await this.transformRepo.updateTransformStatus(transform.id, 'failed');
             throw error;
         }
+    }
+
+    // Execute a streaming LLM transform - returns a data stream response
+    async executeLLMTransformStream(
+        userId: string,
+        inputArtifacts: Artifact[],
+        promptTemplate: string,
+        promptVariables: Record<string, string>,
+        modelName: string = 'deepseek-chat',
+        outputArtifactType: string,
+        outputArtifactTypeVersion: string = 'v1'
+    ) {
+        return createDataStreamResponse({
+            execute: async (dataStream) => {
+                // Create the transform record immediately
+                const transform = await this.transformRepo.createTransform(
+                    userId,
+                    'llm',
+                    'v1',
+                    'running',
+                    {
+                        started_at: new Date().toISOString(),
+                        model_name: modelName,
+                        prompt_variables: promptVariables
+                    }
+                );
+
+                try {
+                    // Link input artifacts
+                    await this.transformRepo.addTransformInputs(
+                        transform.id,
+                        inputArtifacts.map(artifact => ({ artifactId: artifact.id }))
+                    );
+
+                    // Build the final prompt
+                    let finalPrompt = promptTemplate;
+                    for (const [key, value] of Object.entries(promptVariables)) {
+                        finalPrompt = finalPrompt.replace(`{${key}}`, value);
+                    }
+
+                    // Store the prompt
+                    await this.transformRepo.addLLMPrompts(transform.id, [
+                        { promptText: finalPrompt, promptRole: 'primary' }
+                    ]);
+
+                    // Send initial status
+                    dataStream.writeData({
+                        type: 'status',
+                        message: 'Starting AI generation...',
+                        transformId: transform.id
+                    });
+
+                    // Execute the streaming LLM call
+                    const apiKey = process.env.DEEPSEEK_API_KEY;
+                    if (!apiKey) {
+                        throw new Error('DEEPSEEK_API_KEY not configured');
+                    }
+
+                    const deepseekAI = createOpenAI({
+                        apiKey,
+                        baseURL: 'https://api.deepseek.com',
+                    });
+
+                    const result = await streamText({
+                        model: deepseekAI(modelName),
+                        messages: [{ role: 'user', content: finalPrompt }]
+                    });
+
+                    // Set up content accumulation and streaming
+                    let accumulatedContent = '';
+                    let tokenCount = 0;
+
+                    // Stream the content as it arrives
+                    for await (const textPart of result.textStream) {
+                        accumulatedContent += textPart;
+                        tokenCount++;
+
+                        // Send streaming content to client
+                        dataStream.writeData({
+                            type: 'content',
+                            content: textPart,
+                            accumulated: accumulatedContent
+                        });
+
+                        // Send periodic progress updates
+                        if (tokenCount % 10 === 0) {
+                            dataStream.writeData({
+                                type: 'progress',
+                                tokens: tokenCount,
+                                message: 'Generating content...'
+                            });
+                        }
+                    }
+
+                    // Wait for final result
+                    const finalResult = await result;
+
+                    // Handle the ```json wrapper issue - clean the response
+                    let cleanedContent = accumulatedContent.trim();
+
+                    // Remove ```json and ``` wrappers if present
+                    if (cleanedContent.startsWith('```json')) {
+                        cleanedContent = cleanedContent.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+                    } else if (cleanedContent.startsWith('```')) {
+                        cleanedContent = cleanedContent.replace(/^```\s*/, '').replace(/\s*```$/, '');
+                    }
+
+                    // Store LLM metadata
+                    await this.transformRepo.addLLMTransform({
+                        transform_id: transform.id,
+                        model_name: modelName,
+                        raw_response: cleanedContent,
+                        token_usage: finalResult.usage ? {
+                            prompt_tokens: (await finalResult.usage).promptTokens,
+                            completion_tokens: (await finalResult.usage).completionTokens,
+                            total_tokens: (await finalResult.usage).totalTokens
+                        } : null
+                    });
+
+                    dataStream.writeData({
+                        type: 'status',
+                        message: 'Processing response...'
+                    });
+
+                    // Parse the cleaned response
+                    let parsedData: any;
+                    try {
+                        parsedData = JSON.parse(cleanedContent);
+                    } catch (parseError) {
+                        // Try with jsonrepair if available
+                        try {
+                            const { jsonrepair } = await import('jsonrepair');
+                            const repairedJson = jsonrepair(cleanedContent);
+                            parsedData = JSON.parse(repairedJson);
+                        } catch (repairError) {
+                            // Fallback: treat as plain text
+                            parsedData = { content: cleanedContent, parse_error: true };
+                        }
+                    }
+
+                    // Create output artifacts (same logic as non-streaming)
+                    const outputArtifacts: Artifact[] = [];
+
+                    if (outputArtifactType === 'brainstorm_idea' && Array.isArray(parsedData)) {
+                        for (let i = 0; i < parsedData.length; i++) {
+                            const ideaArtifact = await this.artifactRepo.createArtifact(
+                                userId,
+                                'brainstorm_idea',
+                                {
+                                    idea_text: parsedData[i],
+                                    order_index: i,
+                                    confidence_score: null
+                                },
+                                outputArtifactTypeVersion
+                            );
+                            outputArtifacts.push(ideaArtifact);
+                        }
+                    } else if (outputArtifactType === 'plot_outline') {
+                        const plotArtifact = await this.artifactRepo.createArtifact(
+                            userId,
+                            'plot_outline',
+                            parsedData,
+                            outputArtifactTypeVersion
+                        );
+                        outputArtifacts.push(plotArtifact);
+                    } else if (outputArtifactType === 'outline_components') {
+                        // Use the same outline parsing logic from the regular method
+                        const safeTrim = (value: any): string => {
+                            if (typeof value === 'string') {
+                                return value.trim();
+                            } else if (Array.isArray(value)) {
+                                return value.map(item => String(item).trim()).join('\\n');
+                            } else if (typeof value === 'object' && value !== null) {
+                                if (value.text) return String(value.text).trim();
+                                if (value.content) return String(value.content).trim();
+                                if (value.value) return String(value.value).trim();
+                                return JSON.stringify(value, null, 2);
+                            } else if (value === undefined || value === null) {
+                                return '';
+                            } else {
+                                return String(value).trim();
+                            }
+                        };
+
+                        // Create individual component artifacts
+                        const titleArtifact = await this.artifactRepo.createArtifact(
+                            userId, 'outline_title', { title: safeTrim(parsedData.title) }, 'v1'
+                        );
+                        outputArtifacts.push(titleArtifact);
+
+                        const genreArtifact = await this.artifactRepo.createArtifact(
+                            userId, 'outline_genre', { genre: safeTrim(parsedData.genre) }, 'v1'
+                        );
+                        outputArtifacts.push(genreArtifact);
+
+                        const sellingPointsArtifact = await this.artifactRepo.createArtifact(
+                            userId, 'outline_selling_points', { selling_points: safeTrim(parsedData.selling_points) }, 'v1'
+                        );
+                        outputArtifacts.push(sellingPointsArtifact);
+
+                        // Setting handling
+                        let settingString = '';
+                        if (parsedData.setting && typeof parsedData.setting === 'object') {
+                            const summary = safeTrim(parsedData.setting.core_setting_summary);
+                            const scenes = Array.isArray(parsedData.setting.key_scenes)
+                                ? parsedData.setting.key_scenes.map((s: string) => safeTrim(s))
+                                : [];
+                            settingString = `核心设定： ${summary}`;
+                            if (scenes.length > 0) {
+                                settingString += `\\n关键场景：\\n- ${scenes.join('\\n- ')}`;
+                            }
+                        } else {
+                            settingString = safeTrim(parsedData.setting);
+                        }
+                        const settingArtifact = await this.artifactRepo.createArtifact(
+                            userId, 'outline_setting', { setting: settingString }, 'v1'
+                        );
+                        outputArtifacts.push(settingArtifact);
+
+                        const synopsisArtifact = await this.artifactRepo.createArtifact(
+                            userId, 'outline_synopsis', { synopsis: safeTrim(parsedData.synopsis) }, 'v1'
+                        );
+                        outputArtifacts.push(synopsisArtifact);
+
+                        // Characters if available
+                        if (parsedData.main_characters && Array.isArray(parsedData.main_characters)) {
+                            const charactersArtifact = await this.artifactRepo.createArtifact(
+                                userId, 'outline_characters', { characters: parsedData.main_characters }, 'v1'
+                            );
+                            outputArtifacts.push(charactersArtifact);
+                        }
+                    } else {
+                        // Create single output artifact
+                        const outputArtifact = await this.artifactRepo.createArtifact(
+                            userId,
+                            outputArtifactType,
+                            parsedData,
+                            outputArtifactTypeVersion
+                        );
+                        outputArtifacts.push(outputArtifact);
+                    }
+
+                    // Link output artifacts
+                    await this.transformRepo.addTransformOutputs(
+                        transform.id,
+                        outputArtifacts.map(artifact => ({ artifactId: artifact.id }))
+                    );
+
+                    // Update transform status
+                    await this.transformRepo.updateTransformStatus(transform.id, 'completed');
+
+                    // Send completion data
+                    dataStream.writeData({
+                        type: 'complete',
+                        transformId: transform.id,
+                        artifacts: outputArtifacts.map(a => ({
+                            id: a.id,
+                            type: a.type,
+                            data: a.data
+                        })),
+                        message: 'Generation completed successfully!',
+                        // Include outline session info if available
+                        ...(promptVariables.outline_session_id && {
+                            outlineSessionId: promptVariables.outline_session_id
+                        })
+                    });
+
+                } catch (error) {
+                    // Update transform status to failed
+                    await this.transformRepo.updateTransformStatus(transform.id, 'failed');
+
+                    // Send error to stream
+                    dataStream.writeData({
+                        type: 'error',
+                        message: error instanceof Error ? error.message : String(error),
+                        transformId: transform.id
+                    });
+
+                    throw error;
+                }
+            },
+            onError: (error) => {
+                console.error('Stream error:', error);
+                return error instanceof Error ? error.message : String(error);
+            }
+        });
     }
 
     // Execute a human transform (for user inputs, selections, etc.)

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { Button, Typography, Spin, Alert, Card, Divider, Input, InputNumber, Form, Space } from 'antd';
-import { ArrowLeftOutlined, SendOutlined, FileTextOutlined } from '@ant-design/icons';
+import { Button, Typography, Spin, Alert, Card, Divider, Input, InputNumber, Form, Space, Progress } from 'antd';
+import { ArrowLeftOutlined, SendOutlined, FileTextOutlined, StopOutlined } from '@ant-design/icons';
 import StoryInspirationEditor from './StoryInspirationEditor';
+import { useStreamingLLM } from '../hooks/useStreamingLLM';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -44,6 +45,26 @@ const OutlineTab: React.FC = () => {
     // New state for outline generation options
     const [totalEpisodes, setTotalEpisodes] = useState<number | null>(50);
     const [episodeDuration, setEpisodeDuration] = useState<number | null>(2);
+
+    // Streaming hook for outline generation
+    const { status: streamingStatus, startStreaming, cancelStreaming, reset: resetStreaming } = useStreamingLLM();
+
+    // Update loading state based on streaming status
+    const isStreamingActive = streamingStatus.isStreaming;
+    const streamedContent = streamingStatus.fullContent;
+    const streamingProgress = streamingStatus.progress;
+    const streamingError = streamingStatus.error;
+    const streamingArtifacts = streamingStatus.artifacts;
+
+    // Handle streaming completion
+    useEffect(() => {
+        if (streamingStatus.isComplete && streamingStatus.outlineSessionId) {
+            // Navigate to the completed outline page after a short delay
+            setTimeout(() => {
+                navigate(`/outlines/${streamingStatus.outlineSessionId}`);
+            }, 1000);
+        }
+    }, [streamingStatus.isComplete, streamingStatus.outlineSessionId, navigate]);
 
     // Determine if we're in creation mode or viewing mode
     const isCreationMode = !outlineId && artifactId;
@@ -118,39 +139,20 @@ const OutlineTab: React.FC = () => {
 
         console.log('handleGenerateOutline: Generating outline for artifactId:', currentArtifactId, 'with totalEpisodes:', totalEpisodes, 'episodeDuration:', episodeDuration);
 
-        setIsLoading(true);
         setError(null);
+        resetStreaming();
 
         try {
-            const response = await fetch(`/api/outlines/from-artifact/${currentArtifactId}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ // Add new options to the request body
+            await startStreaming(`/api/outlines/from-artifact/${currentArtifactId}/stream`, {
+                body: {
                     totalEpisodes,
                     episodeDuration,
-                }),
+                },
             });
-
-            if (!response.ok) {
-                throw new Error(`Failed to generate outline: ${response.status}`);
-            }
-
-            const result = await response.json();
-
-            if (result.outlineSessionId) {
-                // Navigate to the completed outline page
-                navigate(`/outlines/${result.outlineSessionId}`);
-            } else {
-                throw new Error('Invalid response from server');
-            }
 
         } catch (err) {
             console.error('Error generating outline:', err);
             setError(err instanceof Error ? err : new Error(String(err)));
-        } finally {
-            setIsLoading(false);
         }
     };
 
@@ -282,6 +284,14 @@ const OutlineTab: React.FC = () => {
 
     return (
         <div style={{ padding: '20px', maxWidth: '800px', width: "100%", margin: '0 auto', overflow: "auto" }}>
+            <style>
+                {`
+                    @keyframes blink {
+                        0%, 50% { opacity: 1; }
+                        51%, 100% { opacity: 0; }
+                    }
+                `}
+            </style>
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -369,38 +379,97 @@ const OutlineTab: React.FC = () => {
 
             {/* Generate Button (Creation Mode Only) */}
             {isCreationMode && currentUserInput.trim() && currentArtifactId && (
-                <Button
-                    type="primary"
-                    icon={<FileTextOutlined />}
-                    onClick={handleGenerateOutline}
-                    loading={isLoading}
-                    size="large"
-                    style={{
-                        marginBottom: '24px',
-                        height: '44px',
-                        fontSize: '16px',
-                        fontWeight: '500',
-                        background: '#52c41a',
-                        borderColor: '#52c41a'
-                    }}
-                >
-                    {isLoading ? '生成大纲中...' : '生成故事大纲'}
-                </Button>
+                <div style={{ marginBottom: '24px' }}>
+                    <Button
+                        type="primary"
+                        icon={isStreamingActive ? <StopOutlined /> : <FileTextOutlined />}
+                        onClick={isStreamingActive ? cancelStreaming : handleGenerateOutline}
+                        loading={false}
+                        size="large"
+                        style={{
+                            height: '44px',
+                            fontSize: '16px',
+                            fontWeight: '500',
+                            background: isStreamingActive ? '#ff4d4f' : '#52c41a',
+                            borderColor: isStreamingActive ? '#ff4d4f' : '#52c41a',
+                            marginRight: '12px'
+                        }}
+                    >
+                        {isStreamingActive ? '停止生成' : '生成故事大纲'}
+                    </Button>
+
+                    {/* Streaming Progress */}
+                    {isStreamingActive && streamingProgress && (
+                        <div style={{ marginTop: '16px' }}>
+                            <div style={{ marginBottom: '8px' }}>
+                                <Text style={{ color: '#1890ff' }}>
+                                    {streamingProgress.message}
+                                </Text>
+                                {streamingProgress.tokens > 0 && (
+                                    <Text type="secondary" style={{ marginLeft: '8px' }}>
+                                        ({streamingProgress.tokens} tokens)
+                                    </Text>
+                                )}
+                            </div>
+                            <Progress
+                                percent={undefined}
+                                status="active"
+                                showInfo={false}
+                                style={{ marginBottom: '8px' }}
+                            />
+                        </div>
+                    )}
+                </div>
             )}
 
             {/* Error Display */}
-            {error && (
+            {(error || streamingError) && (
                 <Alert
                     message="生成失败"
-                    description={error.message}
+                    description={(error || streamingError)?.message}
                     type="error"
                     showIcon
                     style={{ marginBottom: '16px' }}
                 />
             )}
 
-            {/* Loading State */}
-            {isLoading && (
+            {/* Streaming Content Display */}
+            {isCreationMode && isStreamingActive && streamedContent && (
+                <div style={{ marginBottom: '24px' }}>
+                    <Card
+                        title="AI正在生成大纲内容..."
+                        size="small"
+                        style={{
+                            background: '#0f0f0f',
+                            border: '1px solid #1890ff',
+                            borderRadius: '8px'
+                        }}
+                        headStyle={{ background: '#1890ff20', color: '#1890ff' }}
+                    >
+                        <div style={{
+                            maxHeight: '400px',
+                            overflowY: 'auto',
+                            whiteSpace: 'pre-wrap',
+                            fontFamily: 'monospace',
+                            fontSize: '14px',
+                            lineHeight: '1.5',
+                            color: '#e8e8e8',
+                            background: '#1a1a1a',
+                            padding: '12px',
+                            borderRadius: '6px'
+                        }}>
+                            {streamedContent}
+                            <span style={{
+                                color: '#1890ff',
+                                animation: 'blink 1s infinite'
+                            }}>|</span>
+                        </div>
+                    </Card>
+                </div>
+            )}
+
+            {/* Loading State - only show when not streaming */}
+            {isLoading && !isStreamingActive && (
                 <div style={{
                     textAlign: 'center',
                     padding: '40px',

@@ -317,7 +317,7 @@ export class IdeationService {
         // Get all session artifacts for the user
         const sessionArtifacts = await this.artifactRepo.getArtifactsByType(userId, 'ideation_session');
 
-        const runs = [];
+        const runs: any[] = [];
 
         for (const sessionArtifact of sessionArtifacts) {
             const sessionId = sessionArtifact.data.id;
@@ -479,5 +479,73 @@ export class IdeationService {
             console.error(`Error generating plot for session ${sessionId}:`, error);
             throw error;
         }
+    }
+
+    // Streaming version for plot generation
+    async generatePlotForRunStream(
+        userId: string,
+        sessionId: string,
+        userInput: string,
+        ideationTemplate: string
+    ) {
+        // Validate inputs
+        if (!userInput.trim()) {
+            throw new Error('User input cannot be empty');
+        }
+        if (!ideationTemplate.trim()) {
+            throw new Error('Ideation template cannot be empty');
+        }
+
+        // Validate session ownership
+        const sessionArtifact = await this.validateSessionOwnership(userId, sessionId);
+
+        // Get related artifacts to find brainstorm params
+        const relatedArtifacts = await this.getSessionRelatedArtifacts(userId, sessionArtifact);
+        const brainstormParams = relatedArtifacts.find(a => a.type === 'brainstorm_params');
+
+        if (!brainstormParams) {
+            throw new Error('Brainstorm parameters not found for this session');
+        }
+
+        // Create new user input artifact
+        const userInputArtifact = await this.artifactRepo.createArtifact(
+            userId,
+            'user_input',
+            {
+                text: userInput,
+                source: 'manual'
+            } as UserInputV1
+        );
+
+        // Build genre string for prompt
+        const buildGenrePromptString = (): string => {
+            const params = brainstormParams.data;
+            if (!params.genre_paths || params.genre_paths.length === 0) return '未指定';
+            return params.genre_paths.map((path: string[], index: number) => {
+                const proportion = params.genre_proportions && params.genre_proportions[index] !== undefined
+                    ? params.genre_proportions[index]
+                    : (100 / params.genre_paths.length);
+                const pathString = path.join(' > ');
+                return params.genre_paths.length > 1
+                    ? `${pathString} (${proportion.toFixed(0)}%)`
+                    : pathString;
+            }).join(', ');
+        };
+
+        const genrePromptString = buildGenrePromptString();
+
+        // Execute streaming LLM transform to generate plot
+        return this.transformExecutor.executeLLMTransformStream(
+            userId,
+            [brainstormParams, userInputArtifact],
+            ideationTemplate,
+            {
+                user_input: userInput,
+                platform: brainstormParams.data.platform || '未指定',
+                genre: genrePromptString || '未指定'
+            },
+            'deepseek-chat',
+            'plot_outline'
+        );
     }
 } 

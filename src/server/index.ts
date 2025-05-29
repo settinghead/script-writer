@@ -754,7 +754,160 @@ app.delete("/api/outlines/:outlineId", authMiddleware.authenticate, async (req: 
   }
 });
 
-// ========== UPDATED SCRIPT ENDPOINTS (with validation) ==========
+// ========== STREAMING ENDPOINTS ==========
+
+// Streaming endpoint for outline generation
+app.post("/api/outlines/from-artifact/:artifactId/stream",
+  authMiddleware.authenticate,
+  async (req: any, res: any) => {
+    const { artifactId } = req.params;
+    const { totalEpisodes, episodeDuration } = req.body;
+
+    const user = authMiddleware.getCurrentUser(req);
+    if (!user) {
+      return res.status(401).json({ error: "User not authenticated" });
+    }
+
+    try {
+      const streamResponse = await outlineService.generateOutlineFromArtifactStream(
+        user.id,
+        artifactId,
+        totalEpisodes,
+        episodeDuration
+      );
+
+      // Return the streaming response directly
+      return streamResponse;
+
+    } catch (error: any) {
+      console.error('Error in streaming outline generation:', error);
+
+      if (error.message.includes('not found or access denied')) {
+        return res.status(404).json({ error: "Source artifact not found" });
+      }
+
+      return res.status(500).json({
+        error: "Failed to generate outline",
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+);
+
+// Streaming endpoint for plot generation
+app.post("/api/ideations/:id/generate_plot/stream",
+  authMiddleware.authenticate,
+  async (req: any, res: any) => {
+    const { id: runId } = req.params;
+    const { userInput, ideationTemplate } = req.body;
+
+    const user = authMiddleware.getCurrentUser(req);
+    if (!user) {
+      return res.status(401).json({ error: "User not authenticated" });
+    }
+
+    try {
+      const streamResponse = await ideationService.generatePlotForRunStream(
+        user.id,
+        runId,
+        userInput,
+        ideationTemplate
+      );
+
+      // Return the streaming response directly
+      return streamResponse;
+
+    } catch (error: any) {
+      console.error('Error in streaming plot generation:', error);
+
+      // Handle specific error types
+      if (error.message.includes('not found or not accessible')) {
+        return res.status(404).json({ error: "Ideation run not found" });
+      }
+      if (error.message.includes('cannot be empty')) {
+        return res.status(400).json({ error: error.message });
+      }
+
+      return res.status(500).json({
+        error: "Failed to generate plot",
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+);
+
+// Streaming endpoint for brainstorming/idea generation
+app.post("/api/brainstorm/generate/stream",
+  authMiddleware.authenticate,
+  async (req: any, res: any) => {
+    const {
+      selectedPlatform,
+      selectedGenrePaths,
+      genreProportions,
+      requirements,
+      prompt
+    } = req.body;
+
+    const user = authMiddleware.getCurrentUser(req);
+    if (!user) {
+      return res.status(401).json({ error: "User not authenticated" });
+    }
+
+    try {
+      const apiKey = process.env.DEEPSEEK_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ error: "DEEPSEEK_API_KEY not configured" });
+      }
+
+      const deepseekAI = createOpenAI({
+        apiKey,
+        baseURL: 'https://api.deepseek.com',
+      });
+
+      const result = await streamText({
+        model: deepseekAI('deepseek-chat'),
+        messages: [{ role: 'user', content: prompt }]
+      });
+
+      // Set up streaming response
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.setHeader('Transfer-Encoding', 'chunked');
+
+      const reader = result.toDataStream().getReader();
+
+      const pump = () => {
+        reader.read().then(({ done, value }) => {
+          if (done) {
+            res.end();
+            return;
+          }
+          res.write(new TextDecoder().decode(value));
+          pump();
+        }).catch(err => {
+          console.error("Error during brainstorm stream pump:", err);
+          if (!res.writableEnded) {
+            res.status(500).end("Stream error");
+          }
+        });
+      }
+      pump();
+
+    } catch (error: any) {
+      console.error('Error in streaming brainstorm generation:', error);
+      if (!res.headersSent) {
+        return res.status(500).json({
+          error: "Failed to generate ideas",
+          details: error.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  }
+);
+
+// ========== SCRIPT ENDPOINTS (with validation) ==========
 
 app.post("/api/scripts",
   authMiddleware.authenticate,

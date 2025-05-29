@@ -1,7 +1,9 @@
 import { v4 as uuidv4 } from 'uuid';
 import { ArtifactRepository } from '../repositories/ArtifactRepository';
+import { TransformRepository } from '../repositories/TransformRepository';
 import { TransformExecutor } from './TransformExecutor';
 import { CacheService } from './CacheService';
+import { createDataStreamResponse } from 'ai';
 import {
     Artifact,
     OutlineSessionV1,
@@ -120,6 +122,64 @@ export class OutlineService {
             outlineSessionId,
             artifacts: outputArtifacts
         };
+    }
+
+    // Streaming version of outline generation
+    async generateOutlineFromArtifactStream(
+        userId: string,
+        sourceArtifactId: string,
+        totalEpisodes?: number,
+        episodeDuration?: number
+    ) {
+        // Get and validate source artifact (either brainstorm_idea or user_input)
+        const sourceArtifact = await this.artifactRepo.getArtifact(sourceArtifactId, userId);
+
+        if (!sourceArtifact) {
+            throw new Error('Source artifact not found or access denied');
+        }
+
+        // Validate artifact type
+        if (!['brainstorm_idea', 'user_input'].includes(sourceArtifact.type)) {
+            throw new Error('Invalid source artifact type. Must be brainstorm_idea or user_input');
+        }
+
+        // Extract user input text from artifact
+        const userInput = sourceArtifact.data.text || sourceArtifact.data.idea_text;
+        if (!userInput || !userInput.trim()) {
+            throw new Error('Source artifact contains no text content');
+        }
+
+        // Create outline session
+        const outlineSessionId = uuidv4();
+        const outlineSessionArtifact = await this.artifactRepo.createArtifact(
+            userId,
+            'outline_session',
+            {
+                id: outlineSessionId,
+                ideation_session_id: 'artifact-based',
+                status: 'active',
+                created_at: new Date().toISOString()
+            } as OutlineSessionV1
+        );
+
+        // Build the outline prompt
+        const outlinePrompt = this.buildOutlinePrompt(userInput, totalEpisodes, episodeDuration);
+
+        // Execute streaming LLM transform to generate outline
+        const streamResponse = await this.transformExecutor.executeLLMTransformStream(
+            userId,
+            [outlineSessionArtifact, sourceArtifact],
+            outlinePrompt,
+            {
+                user_input: userInput,
+                source_artifact_id: sourceArtifactId,
+                outline_session_id: outlineSessionId  // Pass session ID for completion handling
+            },
+            'deepseek-chat',
+            'outline_components'
+        );
+
+        return streamResponse;
     }
 
     // Get outline session data
