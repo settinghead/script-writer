@@ -26,18 +26,14 @@ export class JobBroadcaster {
         const clients = this.activeJobs.get(transformId)!;
         clients.push({ res, userId });
 
-        console.log(`[JobBroadcaster] Added client for transform ${transformId}, total clients: ${clients.length}`);
-
         // Clean up on connection close
         res.on('close', () => {
-            console.log(`[JobBroadcaster] Client disconnected from transform ${transformId}`);
             this.removeClient(transformId, res);
         });
     }
 
     broadcast(transformId: string, message: string): void {
         const clients = this.activeJobs.get(transformId) || [];
-        console.log(`[JobBroadcaster] Broadcasting to ${clients.length} clients for transform ${transformId}`);
 
         clients.forEach((client, index) => {
             try {
@@ -50,9 +46,7 @@ export class JobBroadcaster {
                     message = message.trimEnd() + '\n\n';
                 }
                 client.res.write(message);
-                console.log(`[JobBroadcaster] Sent message to client ${index + 1}/${clients.length} for transform ${transformId}`);
             } catch (error) {
-                console.error(`[JobBroadcaster] Failed to send to client:`, error);
                 // Remove failed client
                 this.removeClient(transformId, client.res);
             }
@@ -76,13 +70,11 @@ export class JobBroadcaster {
         const index = clients.findIndex(client => client.res === res);
         if (index !== -1) {
             clients.splice(index, 1);
-            console.log(`[JobBroadcaster] Removed client from transform ${transformId}, remaining clients: ${clients.length}`);
         }
 
         // Clean up empty job entries
         if (clients.length === 0) {
             this.activeJobs.delete(transformId);
-            console.log(`[JobBroadcaster] No more clients for transform ${transformId}, cleaning up`);
         }
     }
 
