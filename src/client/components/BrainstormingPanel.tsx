@@ -63,7 +63,7 @@ interface BrainstormingPanelProps {
         generatedIdeaArtifacts: Array<{ id: string, text: string, title?: string, orderIndex: number }>;
         requirements: string;
     }) => void;
-    onRunCreated?: (runId: string) => void; // New callback for when a run is created
+    onRunCreated?: (runId: string, transformId?: string) => void; // Updated to include transformId
     onExpand?: () => void; // New callback for expanding the panel
     // Initial values for loading existing data
     initialPlatform?: string;
@@ -231,7 +231,7 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
 
             // Trigger immediate redirect to the new ideation run
             if (onRunCreated) {
-                onRunCreated(ideationRunId);
+                onRunCreated(ideationRunId, transformId);
             }
 
         } catch (err) {

@@ -5,9 +5,16 @@ import { jsonrepair } from 'jsonrepair';
 import { ArtifactRepository } from '../../repositories/ArtifactRepository';
 import { TransformRepository } from '../../repositories/TransformRepository';
 import { TemplateService } from '../templates/TemplateService';
-import { StreamingRequest } from '../../../common/streaming/types';
 import { Artifact, BrainstormingJobParamsV1 } from '../../types/artifacts';
 import { IdeationService } from '../IdeationService';
+
+// Define StreamingRequest interface locally to avoid path issues
+interface StreamingRequest {
+    templateId: string;
+    artifactIds: string[];
+    templateParams?: Record<string, any>;
+    modelName?: string;
+}
 
 export class StreamingTransformExecutor {
     constructor(
@@ -134,17 +141,29 @@ export class StreamingTransformExecutor {
             messages: [{ role: 'user', content: prompt }]
         });
 
-        // Set up the data stream response only if res is provided
-        if (res) {
-            res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-            res.setHeader('Transfer-Encoding', 'chunked');
+        // Set up the data stream response only if res is provided and response is writable
+        let isResponseActive = false;
+        if (res && !res.headersSent && !res.destroyed && res.writable) {
+            try {
+                res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+                res.setHeader('Transfer-Encoding', 'chunked');
+                isResponseActive = true;
+            } catch (error: any) {
+                console.warn('Failed to set response headers, continuing without streaming response:', error.message);
+                isResponseActive = false;
+            }
         }
 
         const pump = async () => {
             try {
                 for await (const chunk of result.textStream) {
-                    if (res) {
-                        res.write(`0:${JSON.stringify(chunk)}\n`);
+                    if (isResponseActive && res && !res.destroyed && res.writable) {
+                        try {
+                            res.write(`0:${JSON.stringify(chunk)}\n`);
+                        } catch (writeError: any) {
+                            console.warn('Failed to write chunk to response, disabling streaming:', writeError.message);
+                            isResponseActive = false;
+                        }
                     }
                     // For background jobs, we could log progress or store chunks if needed
                 }
@@ -158,13 +177,19 @@ export class StreamingTransformExecutor {
                     // Mark transform as completed
                     await this.transformRepo.updateTransformStatus(transform.id, 'completed');
 
-                    // Update LLM transform data
-                    await this.transformRepo.addLLMTransform({
-                        transform_id: transform.id,
-                        model_name: modelName,
-                        raw_response: text,
-                        token_usage: usage
-                    });
+                    // Check if LLM transform data already exists to prevent duplicate insertion
+                    const existingLLMData = await this.transformRepo.getLLMTransformData(transform.id);
+                    if (!existingLLMData) {
+                        // Update LLM transform data only if it doesn't exist
+                        await this.transformRepo.addLLMTransform({
+                            transform_id: transform.id,
+                            model_name: modelName,
+                            raw_response: text,
+                            token_usage: usage
+                        });
+                    } else {
+                        console.log(`LLM transform data already exists for transform ${transform.id}, skipping insertion`);
+                    }
 
                     // Parse and create output artifacts
                     let jsonData: any[] = [];
@@ -179,6 +204,7 @@ export class StreamingTransformExecutor {
                         }
 
                         // Use jsonrepair for more robust parsing
+                        const { jsonrepair } = await import('jsonrepair');
                         const repairedJson = jsonrepair(cleanContent);
                         jsonData = JSON.parse(repairedJson);
 
@@ -201,6 +227,7 @@ export class StreamingTransformExecutor {
                                 fallbackContent = fallbackContent.substring(0, lastBracket + 1) + ']';
                             }
 
+                            const { jsonrepair } = await import('jsonrepair');
                             const repairedFallback = jsonrepair(fallbackContent);
                             jsonData = JSON.parse(repairedFallback);
 
@@ -227,19 +254,29 @@ export class StreamingTransformExecutor {
                     throw error;
                 }
 
-                // Send completion events only if res is provided
-                if (res) {
-                    res.write(`e:${JSON.stringify({ finishReason: finalResult.finishReason, usage })}\n`);
-                    res.write(`d:${JSON.stringify({ finishReason: finalResult.finishReason, usage })}\n`);
-                    res.end();
+                // Send completion events only if response is still active
+                if (isResponseActive && res && !res.destroyed && res.writable) {
+                    try {
+                        res.write(`e:${JSON.stringify({ finishReason: finalResult.finishReason, usage })}\n`);
+                        res.write(`d:${JSON.stringify({ finishReason: finalResult.finishReason, usage })}\n`);
+                        res.end();
+                    } catch (endError: any) {
+                        console.warn('Failed to end response properly:', endError.message);
+                    }
                 }
 
-            } catch (error) {
+            } catch (error: any) {
                 console.error('Streaming error:', error);
                 await this.transformRepo.updateTransformStatus(transform.id, 'failed');
-                if (res) {
-                    res.write(`error:${JSON.stringify({ error: error.message })}\n`);
-                    res.end();
+
+                // Only try to send error response if response is still active
+                if (isResponseActive && res && !res.destroyed && res.writable) {
+                    try {
+                        res.write(`error:${JSON.stringify({ error: error.message })}\n`);
+                        res.end();
+                    } catch (errorWriteError: any) {
+                        console.warn('Failed to send error response:', errorWriteError.message);
+                    }
                 }
                 throw error; // Re-throw for background job retry handling
             }
@@ -392,7 +429,8 @@ export class StreamingTransformExecutor {
 
     private async retryStreamingJob(transformId: string): Promise<void> {
         try {
-            await this.executeStreamingJobWithRetries(transformId);
+            // Important: Don't pass response object to retries since the original connection may be closed
+            await this.executeStreamingJobWithRetries(transformId, undefined);
         } catch (error) {
             console.error(`Retry failed for transform ${transformId}:`, error);
         }

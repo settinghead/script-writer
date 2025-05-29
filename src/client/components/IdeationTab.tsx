@@ -23,6 +23,11 @@ const IdeationTab: React.FC = () => {
     const [isLoadingRun, setIsLoadingRun] = useState(false);
     const [error, setError] = useState<Error | null>(null);
 
+    // NEW: Streaming job state
+    const [isStreamingJob, setIsStreamingJob] = useState(false);
+    const [streamingProgress, setStreamingProgress] = useState('');
+    const [activeTransformId, setActiveTransformId] = useState<string | null>(null);
+
     // Brainstorming data  
     const [brainstormingData, setBrainstormingData] = useState({
         selectedPlatform: '',
@@ -34,6 +39,7 @@ const IdeationTab: React.FC = () => {
     });
 
     const abortControllerRef = useRef<AbortController | null>(null);
+    const eventSourceRef = useRef<EventSource | null>(null);
 
     // Effect to load existing ideation run if ID is present
     useEffect(() => {
@@ -209,7 +215,10 @@ const IdeationTab: React.FC = () => {
             if (response.ok) {
                 const jobData = await response.json();
                 if (jobData.status === 'running') {
-                    // Reconnect to streaming job
+                    // Set streaming state and connect to the job
+                    setIsStreamingJob(true);
+                    setActiveTransformId(jobData.transformId);
+                    setStreamingProgress('正在连接到生成任务...');
                     connectToStreamingJob(jobData.transformId);
                 }
             }
@@ -221,65 +230,139 @@ const IdeationTab: React.FC = () => {
     // NEW: Connect to streaming job via Server-Sent Events
     const connectToStreamingJob = (transformId: string) => {
         try {
+            // Clean up any existing connection
+            if (eventSourceRef.current) {
+                eventSourceRef.current.close();
+            }
+
+            setStreamingProgress('连接中...');
             const eventSource = new EventSource(`/api/streaming/transform/${transformId}`);
+            eventSourceRef.current = eventSource;
+
+            eventSource.onopen = () => {
+                setStreamingProgress('已连接，等待AI生成...');
+            };
 
             eventSource.onmessage = (event) => {
-                const data = JSON.parse(event.data);
+                try {
+                    const data = JSON.parse(event.data);
 
-                if (data.status === 'completed' && data.results) {
-                    // Handle completed job results
-                    const ideas = data.results.filter((result: any) =>
-                        result.type === 'brainstorm_idea'
-                    );
-
-                    setBrainstormingData(prev => ({
-                        ...prev,
-                        generatedIdeas: ideas.map((idea: any) => ({
-                            title: idea.title || 'Generated Idea',
-                            body: idea.text
-                        })),
-                        generatedIdeaArtifacts: ideas.map((idea: any, index: number) => ({
-                            id: idea.id,
-                            text: idea.text,
-                            title: idea.title,
-                            orderIndex: index
-                        }))
-                    }));
-
-                    eventSource.close();
-                } else if (data.status === 'streaming' && data.chunk) {
-                    // Handle streaming updates - this would need more sophisticated parsing
-                    // For now, just log the progress
-                    console.log('Streaming update:', data.chunk);
-                } else if (data.status === 'failed') {
-                    console.error('Streaming job failed:', data.error);
-                    eventSource.close();
+                    // Handle different event types from the streaming endpoint
+                    if (data.status === 'connected') {
+                        setStreamingProgress('已连接到生成任务');
+                    } else if (data.status === 'completed' && data.results) {
+                        // Handle completed job results
+                        handleStreamingComplete(data.results);
+                    } else if (event.data.startsWith('0:')) {
+                        // Handle streaming text chunks
+                        const chunk = JSON.parse(event.data.substring(2));
+                        setStreamingProgress(`生成中... ${chunk}`);
+                    } else if (event.data.startsWith('e:') || event.data.startsWith('d:')) {
+                        // Handle completion events
+                        setStreamingProgress('生成完成，正在处理结果...');
+                    } else if (event.data.startsWith('error:')) {
+                        // Handle errors
+                        const errorData = JSON.parse(event.data.substring(6));
+                        throw new Error(errorData.error || 'Streaming failed');
+                    }
+                } catch (parseError) {
+                    console.warn('Failed to parse streaming data:', event.data, parseError);
                 }
             };
 
             eventSource.onerror = (error) => {
                 console.error('Streaming connection error:', error);
+                setStreamingProgress('连接中断，正在重试...');
+
+                // Try to reconnect after a delay if the job is still active
+                setTimeout(() => {
+                    if (activeTransformId && isStreamingJob) {
+                        checkActiveStreamingJob(ideationRunId || '');
+                    }
+                }, 3000);
+
                 eventSource.close();
             };
 
-            // Clean up on component unmount
-            return () => eventSource.close();
+            // Set timeout to check for completion if no events received
+            setTimeout(() => {
+                if (isStreamingJob && eventSource.readyState === EventSource.OPEN) {
+                    checkJobCompletion(transformId);
+                }
+            }, 30000); // Check after 30 seconds
+
         } catch (error) {
             console.error('Error connecting to streaming job:', error);
+            setStreamingProgress('连接失败');
+            setIsStreamingJob(false);
+        }
+    };
+
+    // Check if job completed outside of streaming events
+    const checkJobCompletion = async (transformId: string) => {
+        try {
+            const response = await fetch(`/api/streaming/transform/${transformId}`);
+            if (response.ok) {
+                const result = await response.json();
+                if (result.status === 'completed') {
+                    handleStreamingComplete(result.results || []);
+                }
+            }
+        } catch (error) {
+            console.error('Error checking job completion:', error);
+        }
+    };
+
+    // Handle streaming completion
+    const handleStreamingComplete = (results: any[]) => {
+        try {
+            // Close event source
+            if (eventSourceRef.current) {
+                eventSourceRef.current.close();
+                eventSourceRef.current = null;
+            }
+
+            setIsStreamingJob(false);
+            setStreamingProgress('');
+            setActiveTransformId(null);
+
+            // If we have an ideation run ID, reload it to get the latest data
+            if (ideationRunId) {
+                loadIdeationRun(ideationRunId);
+            }
+        } catch (error) {
+            console.error('Error handling streaming completion:', error);
+            setError(error instanceof Error ? error : new Error('Failed to process results'));
+            setIsStreamingJob(false);
         }
     };
 
     // NEW: Handle job creation and immediate redirect
-    const handleRunCreated = (runId: string) => {
+    const handleRunCreated = (runId: string, transformId?: string) => {
+        // Set streaming state immediately
+        setIsStreamingJob(true);
+        setStreamingProgress('创建任务中...');
+
         // Navigate immediately to the new run
         navigate(`/ideation/${runId}`);
+
+        // If we have transform ID, start connecting to streaming immediately
+        if (transformId) {
+            setActiveTransformId(transformId);
+            setTimeout(() => {
+                connectToStreamingJob(transformId);
+            }, 1000); // Small delay to allow navigation to complete
+        }
     };
 
-    // Cleanup function to abort any ongoing fetch when component unmounts
+    // Cleanup function to abort any ongoing fetch and close event sources when component unmounts
     useEffect(() => {
         return () => {
             if (abortControllerRef.current) {
                 abortControllerRef.current.abort();
+            }
+            if (eventSourceRef.current) {
+                eventSourceRef.current.close();
             }
         };
     }, []);
@@ -347,6 +430,33 @@ const IdeationTab: React.FC = () => {
                 <div style={{ textAlign: 'center', padding: '40px' }}>
                     <Spin size="large" />
                     <div style={{ marginTop: '16px', color: '#d9d9d9' }}>加载创意记录中...</div>
+                </div>
+            ) : isStreamingJob ? (
+                <div style={{ textAlign: 'center', padding: '40px' }}>
+                    <Spin size="large" />
+                    <div style={{ marginTop: '16px', color: '#d9d9d9' }}>
+                        {streamingProgress || '正在生成故事灵感...'}
+                    </div>
+                    <div style={{ marginTop: '8px', color: '#8c8c8c', fontSize: '12px' }}>
+                        请稍候，AI正在为您创作精彩的故事创意
+                    </div>
+                    {activeTransformId && (
+                        <div style={{ marginTop: '16px' }}>
+                            <Button
+                                type="text"
+                                onClick={() => {
+                                    setIsStreamingJob(false);
+                                    setStreamingProgress('');
+                                    if (eventSourceRef.current) {
+                                        eventSourceRef.current.close();
+                                    }
+                                }}
+                                style={{ color: '#ff4d4f' }}
+                            >
+                                取消生成
+                            </Button>
+                        </div>
+                    )}
                 </div>
             ) : (
                 <>

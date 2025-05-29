@@ -1,4 +1,17 @@
-import { LLMTemplate, TemplateContext } from '../../../common/llm/types';
+// Define types locally to avoid path issues
+interface LLMTemplate {
+    id: string;
+    name: string;
+    promptTemplate: string;
+    outputFormat: string;
+    responseWrapper?: string;
+    variables: string[];
+}
+
+interface TemplateContext {
+    artifacts?: Record<string, any>;
+    params?: Record<string, any>;
+}
 
 export class TemplateService {
     private templates = new Map<string, LLMTemplate>();
@@ -85,5 +98,10 @@ export class TemplateService {
         }
 
         return value?.toString() || '';
+    }
+
+    async renderPromptTemplates(messages: Array<{ role: string; content: string }>): Promise<Array<{ role: string; content: string }>> {
+        // For now, just return messages as-is since we don't have complex template rendering
+        return messages;
     }
 } 
