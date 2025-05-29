@@ -71,6 +71,7 @@ interface BrainstormingPanelProps {
     initialGenreProportions?: number[];
     initialGeneratedIdeas?: IdeaWithTitle[];
     initialRequirements?: string;
+    activeTransformId?: string; // NEW: Transform ID for connecting to existing streams
 }
 
 const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
@@ -83,7 +84,8 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
     initialGenrePaths = [],
     initialGenreProportions = [],
     initialGeneratedIdeas = [],
-    initialRequirements = ''
+    initialRequirements = '',
+    activeTransformId // NEW prop
 }) => {
     const [selectedPlatform, setSelectedPlatform] = useStorageState<string>('ideation_selectedPlatform', initialPlatform);
     const [selectedGenrePaths, setSelectedGenrePaths] = useStorageState<string[][]>('ideation_selectedGenrePaths', initialGenrePaths);
@@ -95,8 +97,8 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
     const [isSelectingIdea, setIsSelectingIdea] = useState(false);
 
-    // Use the new RxJS-based streaming hook
-    const { status, items, error, start, stop } = useStreamingBrainstorm();
+    // Use the new RxJS-based streaming hook with optional transform ID
+    const { status, items, error, start, stop } = useStreamingBrainstorm(activeTransformId);
 
     // Update generated ideas when streaming items change
     useEffect(() => {
@@ -104,6 +106,13 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
             setGeneratedIdeas(items);
         }
     }, [items]);
+
+    // NEW: Sync external initial ideas (for partial results)
+    useEffect(() => {
+        if (initialGeneratedIdeas && initialGeneratedIdeas.length > 0 && generatedIdeas.length === 0) {
+            setGeneratedIdeas(initialGeneratedIdeas);
+        }
+    }, [initialGeneratedIdeas]);
 
     // Handle completion - ensure ideas persist when streaming finishes
     useEffect(() => {

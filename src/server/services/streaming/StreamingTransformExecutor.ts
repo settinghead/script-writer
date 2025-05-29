@@ -7,6 +7,7 @@ import { TransformRepository } from '../../repositories/TransformRepository';
 import { TemplateService } from '../templates/TemplateService';
 import { Artifact, BrainstormingJobParamsV1 } from '../../types/artifacts';
 import { IdeationService } from '../IdeationService';
+import { JobBroadcaster } from './JobBroadcaster';
 
 // Define StreamingRequest interface locally to avoid path issues
 interface StreamingRequest {
@@ -141,32 +142,48 @@ export class StreamingTransformExecutor {
             messages: [{ role: 'user', content: prompt }]
         });
 
-        // Set up the data stream response only if res is provided and response is writable
-        let isResponseActive = false;
+        // Get the job broadcaster instance
+        const broadcaster = JobBroadcaster.getInstance();
+
+        // If a response is provided, it's a direct connection (not background job)
+        // We still need to set headers for direct connections
+        let isDirectConnection = false;
         if (res && !res.headersSent && !res.destroyed && res.writable) {
             try {
                 res.setHeader('Content-Type', 'text/plain; charset=utf-8');
                 res.setHeader('Transfer-Encoding', 'chunked');
-                isResponseActive = true;
+                isDirectConnection = true;
             } catch (error: any) {
-                console.warn('Failed to set response headers, continuing without streaming response:', error.message);
-                isResponseActive = false;
+                console.warn('Failed to set response headers:', error.message);
+                isDirectConnection = false;
             }
         }
 
         const pump = async () => {
             try {
+                console.log(`[StreamingTransformExecutor] Starting pump for transform ${transform.id}`);
+                let chunkCount = 0;
+
                 for await (const chunk of result.textStream) {
-                    if (isResponseActive && res && !res.destroyed && res.writable) {
+                    chunkCount++;
+                    // Broadcast to all connected clients (including direct connection if any)
+                    const chunkMessage = `0:${JSON.stringify(chunk)}\n`;
+
+                    console.log(`[StreamingTransformExecutor] Broadcasting chunk ${chunkCount} for transform ${transform.id}`);
+                    broadcaster.broadcast(transform.id, chunkMessage);
+
+                    // Also write to direct connection if available
+                    if (isDirectConnection && res && !res.destroyed && res.writable) {
                         try {
-                            res.write(`0:${JSON.stringify(chunk)}\n`);
+                            res.write(chunkMessage);
                         } catch (writeError: any) {
-                            console.warn('Failed to write chunk to response, disabling streaming:', writeError.message);
-                            isResponseActive = false;
+                            console.warn('Failed to write to direct connection:', writeError.message);
+                            isDirectConnection = false;
                         }
                     }
-                    // For background jobs, we could log progress or store chunks if needed
                 }
+
+                console.log(`[StreamingTransformExecutor] Finished streaming ${chunkCount} chunks for transform ${transform.id}`);
 
                 // Handle completion
                 const finalResult = await result;
@@ -254,14 +271,23 @@ export class StreamingTransformExecutor {
                     throw error;
                 }
 
-                // Send completion events only if response is still active
-                if (isResponseActive && res && !res.destroyed && res.writable) {
+                // Send completion events to all connected clients
+                const completionData = {
+                    e: JSON.stringify({ finishReason: finalResult.finishReason, usage }),
+                    d: JSON.stringify({ finishReason: finalResult.finishReason, usage })
+                };
+
+                broadcaster.broadcast(transform.id, `e:${completionData.e}\n`);
+                broadcaster.broadcast(transform.id, `d:${completionData.d}\n`);
+
+                // Also send to direct connection if available
+                if (isDirectConnection && res && !res.destroyed && res.writable) {
                     try {
-                        res.write(`e:${JSON.stringify({ finishReason: finalResult.finishReason, usage })}\n`);
-                        res.write(`d:${JSON.stringify({ finishReason: finalResult.finishReason, usage })}\n`);
+                        res.write(`e:${completionData.e}\n`);
+                        res.write(`d:${completionData.d}\n`);
                         res.end();
                     } catch (endError: any) {
-                        console.warn('Failed to end response properly:', endError.message);
+                        console.warn('Failed to end direct connection:', endError.message);
                     }
                 }
 
@@ -269,13 +295,17 @@ export class StreamingTransformExecutor {
                 console.error('Streaming error:', error);
                 await this.transformRepo.updateTransformStatus(transform.id, 'failed');
 
-                // Only try to send error response if response is still active
-                if (isResponseActive && res && !res.destroyed && res.writable) {
+                // Broadcast error to all connected clients
+                const errorMessage = `error:${JSON.stringify({ error: error.message })}\n`;
+                broadcaster.broadcast(transform.id, errorMessage);
+
+                // Also send to direct connection if available
+                if (isDirectConnection && res && !res.destroyed && res.writable) {
                     try {
-                        res.write(`error:${JSON.stringify({ error: error.message })}\n`);
+                        res.write(errorMessage);
                         res.end();
                     } catch (errorWriteError: any) {
-                        console.warn('Failed to send error response:', errorWriteError.message);
+                        console.warn('Failed to send error to direct connection:', errorWriteError.message);
                     }
                 }
                 throw error; // Re-throw for background job retry handling
@@ -386,6 +416,23 @@ export class StreamingTransformExecutor {
         const transform = await this.transformRepo.getTransform(transformId);
         if (!transform) {
             throw new Error(`Transform ${transformId} not found`);
+        }
+
+        // Check if the job is stalled (running for more than 5 minutes)
+        if (transform.status === 'running') {
+            const startedAt = new Date(transform.execution_context?.started_at || transform.created_at);
+            const now = new Date();
+            const runningTimeMs = now.getTime() - startedAt.getTime();
+            const maxRunningTimeMs = 5 * 60 * 1000; // 5 minutes
+
+            if (runningTimeMs > maxRunningTimeMs) {
+                console.log(`[StreamingTransformExecutor] Transform ${transformId} has been running for ${Math.floor(runningTimeMs / 1000)}s, marking as stalled`);
+                await this.updateTransformStatus(transformId, 'stalled');
+                // Continue to restart the job
+            } else {
+                console.log(`[StreamingTransformExecutor] Transform ${transformId} is already running (${Math.floor(runningTimeMs / 1000)}s), skipping restart`);
+                return;
+            }
         }
 
         try {

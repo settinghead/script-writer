@@ -5,7 +5,8 @@ import { StreamingRequest, StreamingResponse } from '../../common/streaming/type
 
 export function useLLMStreaming<T>(
     ServiceClass: new (config: any) => LLMStreamingService<T>,
-    config: any = {}
+    config: any = {},
+    transformId?: string
 ) {
     const [response, setResponse] = useState<StreamingResponse<T>>({
         status: 'idle',
@@ -36,11 +37,16 @@ export function useLLMStreaming<T>(
             }
         });
 
+        // If transformId is provided, connect to it immediately
+        if (transformId && serviceRef.current) {
+            serviceRef.current.connectToTransform(transformId);
+        }
+
         return () => {
             subscriptionRef.current?.unsubscribe();
             serviceRef.current?.stop();
         };
-    }, []);
+    }, [transformId]);
 
     const start = useCallback(async (request: StreamingRequest) => {
         if (serviceRef.current) {

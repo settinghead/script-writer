@@ -965,6 +965,10 @@ app.get("/api/streaming/transform/:transformId", authMiddleware.authenticate, as
   const { transformId } = req.params;
 
   try {
+    // Import JobBroadcaster
+    const { JobBroadcaster } = await import('./services/streaming/JobBroadcaster');
+    const broadcaster = JobBroadcaster.getInstance();
+
     // Verify ownership
     const transform = await transformRepo.getTransform(transformId, user.id);
     if (!transform) {
@@ -988,11 +992,35 @@ app.get("/api/streaming/transform/:transformId", authMiddleware.authenticate, as
         'Access-Control-Allow-Headers': 'Cache-Control'
       });
 
+      // Register this client with the broadcaster
+      broadcaster.addClient(transformId, user.id, res);
+
       // Send initial status
       res.write(`data: ${JSON.stringify({ status: 'connected', transformId })}\n\n`);
 
-      // Connect to or start the streaming job
-      await streamingTransformExecutor.executeStreamingJobWithRetries(transformId, res);
+      // IMPORTANT: Send existing partial results first
+      try {
+        const partialOutputs = await transformRepo.getTransformOutputs(transformId);
+        if (partialOutputs.length > 0) {
+          res.write(`data: ${JSON.stringify({
+            status: 'partial_results',
+            results: partialOutputs,
+            message: `已加载 ${partialOutputs.length} 个现有结果`
+          })}\n\n`);
+        }
+      } catch (partialError) {
+        console.warn('Failed to load partial results:', partialError);
+      }
+
+      // If we're the only client (count is 1 after adding), the background job might need restarting
+      if (broadcaster.getClientCount(transformId) === 1) {
+        console.log(`First client connected to transform ${transformId}, checking if streaming is active`);
+        // The background job should already be using the broadcaster, but if it's stalled, restart it
+        // This handles cases where the job crashed or was started before broadcaster was implemented
+        setImmediate(() => {
+          streamingTransformExecutor.executeStreamingJobWithRetries(transformId);
+        });
+      }
     } else {
       // Job failed or cancelled
       res.json({ status: transform.status, error: 'Job not active' });

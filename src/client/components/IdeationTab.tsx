@@ -27,6 +27,7 @@ const IdeationTab: React.FC = () => {
     const [isStreamingJob, setIsStreamingJob] = useState(false);
     const [streamingProgress, setStreamingProgress] = useState('');
     const [activeTransformId, setActiveTransformId] = useState<string | null>(null);
+    const [streamingBrainstormPanel, setStreamingBrainstormPanel] = useState(false);
 
     // Brainstorming data  
     const [brainstormingData, setBrainstormingData] = useState({
@@ -39,7 +40,6 @@ const IdeationTab: React.FC = () => {
     });
 
     const abortControllerRef = useRef<AbortController | null>(null);
-    const eventSourceRef = useRef<EventSource | null>(null);
 
     // Effect to load existing ideation run if ID is present
     useEffect(() => {
@@ -206,7 +206,27 @@ const IdeationTab: React.FC = () => {
         setBrainstormingData({
             ...data
         });
-    }, []);
+
+        // If we were streaming and now have completed ideas, reset streaming state
+        if (isStreamingJob && data.generatedIdeas.length > 0) {
+            // Check if streaming has likely completed (could be more sophisticated)
+            const hasCompleteIdeas = data.generatedIdeas.every(idea =>
+                idea.title && idea.body && idea.title !== '无标题'
+            );
+
+            if (hasCompleteIdeas) {
+                setIsStreamingJob(false);
+                setStreamingBrainstormPanel(false);
+                setActiveTransformId(null);
+            }
+        }
+    }, [isStreamingJob]);
+
+    // NEW: Handle job creation and immediate redirect
+    const handleRunCreated = (runId: string, transformId?: string) => {
+        // Navigate immediately to the new run
+        navigate(`/ideation/${runId}`);
+    };
 
     // NEW: Check for active streaming jobs on page load
     const checkActiveStreamingJob = async (runId: string) => {
@@ -215,143 +235,18 @@ const IdeationTab: React.FC = () => {
             if (response.ok) {
                 const jobData = await response.json();
                 if (jobData.status === 'running') {
-                    // Set streaming state and connect to the job
+                    // Set streaming state and show brainstorming panel with streaming
                     setIsStreamingJob(true);
                     setActiveTransformId(jobData.transformId);
-                    setStreamingProgress('正在连接到生成任务...');
-                    connectToStreamingJob(jobData.transformId);
+                    setStreamingBrainstormPanel(true);
+                    setBrainstormingEnabled(true);
+                    setBrainstormingCollapsed(false);
+
+                    // BrainstormingPanel will handle the streaming connection via activeTransformId
                 }
             }
         } catch (error) {
             console.error('Error checking active streaming job:', error);
-        }
-    };
-
-    // NEW: Connect to streaming job via Server-Sent Events
-    const connectToStreamingJob = (transformId: string) => {
-        try {
-            // Clean up any existing connection
-            if (eventSourceRef.current) {
-                eventSourceRef.current.close();
-            }
-
-            setStreamingProgress('连接中...');
-            const eventSource = new EventSource(`/api/streaming/transform/${transformId}`);
-            eventSourceRef.current = eventSource;
-
-            eventSource.onopen = () => {
-                setStreamingProgress('已连接，等待AI生成...');
-            };
-
-            eventSource.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-
-                    // Handle different event types from the streaming endpoint
-                    if (data.status === 'connected') {
-                        setStreamingProgress('已连接到生成任务');
-                    } else if (data.status === 'completed' && data.results) {
-                        // Handle completed job results
-                        handleStreamingComplete(data.results);
-                    } else if (event.data.startsWith('0:')) {
-                        // Handle streaming text chunks
-                        const chunk = JSON.parse(event.data.substring(2));
-                        setStreamingProgress(`生成中... ${chunk}`);
-                    } else if (event.data.startsWith('e:') || event.data.startsWith('d:')) {
-                        // Handle completion events
-                        setStreamingProgress('生成完成，正在处理结果...');
-                    } else if (event.data.startsWith('error:')) {
-                        // Handle errors
-                        const errorData = JSON.parse(event.data.substring(6));
-                        throw new Error(errorData.error || 'Streaming failed');
-                    }
-                } catch (parseError) {
-                    console.warn('Failed to parse streaming data:', event.data, parseError);
-                }
-            };
-
-            eventSource.onerror = (error) => {
-                console.error('Streaming connection error:', error);
-                setStreamingProgress('连接中断，正在重试...');
-
-                // Try to reconnect after a delay if the job is still active
-                setTimeout(() => {
-                    if (activeTransformId && isStreamingJob) {
-                        checkActiveStreamingJob(ideationRunId || '');
-                    }
-                }, 3000);
-
-                eventSource.close();
-            };
-
-            // Set timeout to check for completion if no events received
-            setTimeout(() => {
-                if (isStreamingJob && eventSource.readyState === EventSource.OPEN) {
-                    checkJobCompletion(transformId);
-                }
-            }, 30000); // Check after 30 seconds
-
-        } catch (error) {
-            console.error('Error connecting to streaming job:', error);
-            setStreamingProgress('连接失败');
-            setIsStreamingJob(false);
-        }
-    };
-
-    // Check if job completed outside of streaming events
-    const checkJobCompletion = async (transformId: string) => {
-        try {
-            const response = await fetch(`/api/streaming/transform/${transformId}`);
-            if (response.ok) {
-                const result = await response.json();
-                if (result.status === 'completed') {
-                    handleStreamingComplete(result.results || []);
-                }
-            }
-        } catch (error) {
-            console.error('Error checking job completion:', error);
-        }
-    };
-
-    // Handle streaming completion
-    const handleStreamingComplete = (results: any[]) => {
-        try {
-            // Close event source
-            if (eventSourceRef.current) {
-                eventSourceRef.current.close();
-                eventSourceRef.current = null;
-            }
-
-            setIsStreamingJob(false);
-            setStreamingProgress('');
-            setActiveTransformId(null);
-
-            // If we have an ideation run ID, reload it to get the latest data
-            if (ideationRunId) {
-                loadIdeationRun(ideationRunId);
-            }
-        } catch (error) {
-            console.error('Error handling streaming completion:', error);
-            setError(error instanceof Error ? error : new Error('Failed to process results'));
-            setIsStreamingJob(false);
-        }
-    };
-
-    // NEW: Handle job creation and immediate redirect
-    const handleRunCreated = (runId: string, transformId?: string) => {
-        // Set streaming state immediately
-        setIsStreamingJob(true);
-        setStreamingProgress('创建任务中...');
-
-        // Navigate immediately to the new run
-        navigate(`/ideation/${runId}`);
-
-        // If we have transform ID, start connecting to streaming immediately
-        if (transformId) {
-            setActiveTransformId(transformId);
-            setTimeout(() => {
-                connectToStreamingJob(transformId);
-            }, 1000); // Small delay to allow navigation to complete
         }
     };
 
@@ -360,9 +255,6 @@ const IdeationTab: React.FC = () => {
         return () => {
             if (abortControllerRef.current) {
                 abortControllerRef.current.abort();
-            }
-            if (eventSourceRef.current) {
-                eventSourceRef.current.close();
             }
         };
     }, []);
@@ -431,33 +323,6 @@ const IdeationTab: React.FC = () => {
                     <Spin size="large" />
                     <div style={{ marginTop: '16px', color: '#d9d9d9' }}>加载创意记录中...</div>
                 </div>
-            ) : isStreamingJob ? (
-                <div style={{ textAlign: 'center', padding: '40px' }}>
-                    <Spin size="large" />
-                    <div style={{ marginTop: '16px', color: '#d9d9d9' }}>
-                        {streamingProgress || '正在生成故事灵感...'}
-                    </div>
-                    <div style={{ marginTop: '8px', color: '#8c8c8c', fontSize: '12px' }}>
-                        请稍候，AI正在为您创作精彩的故事创意
-                    </div>
-                    {activeTransformId && (
-                        <div style={{ marginTop: '16px' }}>
-                            <Button
-                                type="text"
-                                onClick={() => {
-                                    setIsStreamingJob(false);
-                                    setStreamingProgress('');
-                                    if (eventSourceRef.current) {
-                                        eventSourceRef.current.close();
-                                    }
-                                }}
-                                style={{ color: '#ff4d4f' }}
-                            >
-                                取消生成
-                            </Button>
-                        </div>
-                    )}
-                </div>
             ) : (
                 <>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -475,9 +340,23 @@ const IdeationTab: React.FC = () => {
                             <Title level={4} style={{ margin: 0 }}>
                                 {ideationRunId ? '灵感详情' : '灵感生成器'}
                             </Title>
+                            {isStreamingJob && (
+                                <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    marginLeft: '16px',
+                                    color: '#52c41a'
+                                }}>
+                                    <Spin size="small" />
+                                    <Text style={{ color: '#52c41a', fontSize: '12px' }}>
+                                        正在生成中...
+                                    </Text>
+                                </div>
+                            )}
                         </div>
                         <div style={{ display: 'flex', gap: '8px' }}>
-                            {ideationRunId && (
+                            {ideationRunId && !isStreamingJob && (
                                 <Button
                                     icon={<DeleteOutlined />}
                                     onClick={handleDeleteIdeation}
@@ -493,6 +372,7 @@ const IdeationTab: React.FC = () => {
                                 onClick={handleRestart}
                                 type="text"
                                 style={{ color: '#1890ff' }}
+                                disabled={isStreamingJob}
                             >
                                 重来
                             </Button>
@@ -503,7 +383,7 @@ const IdeationTab: React.FC = () => {
                         输入你的故事灵感，然后点击"开始设计大纲"生成完整的故事大纲。
                     </Paragraph>
 
-                    {/* Brainstorming Toggle */}
+                    {/* Brainstorming Toggle - disabled during streaming */}
                     <div style={{
                         marginBottom: '16px',
                         display: 'flex',
@@ -520,13 +400,19 @@ const IdeationTab: React.FC = () => {
                             checked={brainstormingEnabled}
                             onChange={handleBrainstormingToggle}
                             size="small"
+                            disabled={isStreamingJob}
                         />
+                        {isStreamingJob && (
+                            <Text style={{ color: '#8c8c8c', fontSize: '12px', marginLeft: '8px' }}>
+                                生成中不可更改
+                            </Text>
+                        )}
                     </div>
 
-                    {/* Brainstorming Panel */}
-                    {brainstormingEnabled && (
+                    {/* Brainstorming Panel - Show during streaming OR when normally enabled */}
+                    {(brainstormingEnabled || streamingBrainstormPanel) && (
                         <BrainstormingPanel
-                            isCollapsed={brainstormingCollapsed}
+                            isCollapsed={brainstormingCollapsed && !streamingBrainstormPanel}
                             onIdeaSelect={handleIdeaSelect}
                             onDataChange={handleBrainstormingDataChange}
                             onRunCreated={!ideationRunId ? handleRunCreated : undefined}
@@ -536,6 +422,7 @@ const IdeationTab: React.FC = () => {
                             initialGenreProportions={brainstormingData.genreProportions}
                             initialGeneratedIdeas={brainstormingData.generatedIdeas}
                             initialRequirements={brainstormingData.requirements}
+                            activeTransformId={streamingBrainstormPanel ? activeTransformId : undefined}
                         />
                     )}
 

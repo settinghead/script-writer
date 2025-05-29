@@ -17,6 +17,32 @@ export class BrainstormingStreamingService extends LLMStreamingService<IdeaWithT
         );
     }
 
+    // NEW: Convert artifact data to IdeaWithTitle format
+    protected convertArtifactToItem(artifactData: any): IdeaWithTitle | null {
+        try {
+            // Handle brainstorm_idea artifact format
+            if (artifactData.idea_text) {
+                return {
+                    title: artifactData.idea_title || '无标题',
+                    body: artifactData.idea_text
+                };
+            }
+
+            // Handle direct format
+            if (artifactData.title && artifactData.body) {
+                return {
+                    title: artifactData.title,
+                    body: artifactData.body
+                };
+            }
+
+            return null;
+        } catch (error) {
+            console.warn('Failed to convert artifact to idea:', artifactData, error);
+            return null;
+        }
+    }
+
     cleanContent(content: string): string {
         let cleaned = content.trim();
         if (cleaned.startsWith('```json')) {
