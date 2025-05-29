@@ -95,15 +95,9 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
     // Use the new RxJS-based streaming hook
     const { status, items, error, start, stop } = useStreamingBrainstorm();
 
-    // Debug: Log items when they change
-    useEffect(() => {
-        console.log('[BrainstormingPanel] items from hook:', items);
-    }, [items]);
-
     // Update generated ideas when streaming items change
     useEffect(() => {
         if (items.length > 0) {
-            console.log('[BrainstormingPanel] Setting generatedIdeas from items:', items);
             setGeneratedIdeas(items);
         }
     }, [items]);

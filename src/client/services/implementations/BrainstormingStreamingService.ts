@@ -28,7 +28,6 @@ export class BrainstormingStreamingService extends LLMStreamingService<IdeaWithT
     }
 
     parsePartial(content: string): IdeaWithTitle[] {
-        console.log('[BrainstormingStreamingService] parsePartial called with content length:', content.length);
         if (!content.trim()) return [];
 
         try {
@@ -41,7 +40,6 @@ export class BrainstormingStreamingService extends LLMStreamingService<IdeaWithT
 
             if (Array.isArray(parsed)) {
                 const validItems = parsed.filter(item => this.validate(item));
-                console.log(`Parsed ${validItems.length} valid items from ${parsed.length} total items`);
                 return validItems;
             }
 
@@ -64,14 +62,11 @@ export class BrainstormingStreamingService extends LLMStreamingService<IdeaWithT
                         }
                     } catch (itemError) {
                         // Skip invalid items
-                        console.warn('Failed to parse individual item:', match[0]);
                     }
                 }
 
-                console.log(`Fallback parsing found ${items.length} valid items`);
                 return items;
             } catch (fallbackError) {
-                console.warn('Failed to parse partial JSON:', fallbackError);
                 return [];
             }
         }

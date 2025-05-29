@@ -26,9 +26,7 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
         this.items$ = this.content$.pipe(
             debounceTime(this.config.debounceMs || 50),
             map(content => {
-                console.log('[LLMStreamingService] Processing content in items$, length:', content.length);
                 const parsed = this.parsePartial(this.cleanContent(content));
-                console.log('[LLMStreamingService] Parsed items:', parsed.length);
                 return parsed;
             }),
             filter(items => items.length > 0),
@@ -74,7 +72,6 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
             // Items updates - emit items with streaming status
             this.items$.pipe(
                 map(items => {
-                    console.log('[LLMStreamingService] Emitting items to response$:', items.length, 'items');
                     return {
                         status: 'streaming' as const,
                         items,
@@ -156,13 +153,11 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
                             const textData = JSON.parse(line.substring(2));
                             if (typeof textData === 'string') {
                                 accumulatedContent += textData;
-                                console.log('[LLMStreamingService] content$.next() called with length:', accumulatedContent.length);
                                 this.content$.next(accumulatedContent);
                             }
                         } else if (line.startsWith('e:') || line.startsWith('d:')) {
                             // End/Done events - trigger final parsing
                             if (accumulatedContent.trim()) {
-                                console.log('[LLMStreamingService] Final content$.next() on end event');
                                 this.content$.next(accumulatedContent);
                             }
                         }
