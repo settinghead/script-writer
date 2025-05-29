@@ -209,19 +209,44 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                 ? `特殊要求：${requirements.trim()}`
                 : '';
 
+            // NEW: Create brainstorming job immediately instead of streaming here
+            const response = await fetch('/api/ideations/create-brainstorming-job', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    platform: selectedPlatform || '通用短视频平台',
+                    genrePaths: selectedGenrePaths,
+                    genreProportions: genreProportions,
+                    requirements: requirements.trim()
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to create brainstorming job: ${response.status}`);
+            }
+
+            const { ideationRunId, transformId } = await response.json();
+
+            // Trigger immediate redirect to the new ideation run
+            if (onRunCreated) {
+                onRunCreated(ideationRunId);
+            }
+
+        } catch (err) {
+            console.error('Error creating brainstorming job:', err);
+            // Fallback to old streaming method if job creation fails
             await start({
                 artifactIds: [],
                 templateId: 'brainstorming',
                 templateParams: {
-                    genre: genreString,
+                    genre: buildGenrePromptString(),
                     platform: selectedPlatform || '通用短视频平台',
-                    requirementsSection
+                    requirementsSection: requirements.trim() ? `特殊要求：${requirements.trim()}` : ''
                 },
                 modelName: 'deepseek-chat'
             });
-
-        } catch (err) {
-            console.error('Error generating idea:', err);
         }
     };
 

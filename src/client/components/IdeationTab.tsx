@@ -39,6 +39,8 @@ const IdeationTab: React.FC = () => {
     useEffect(() => {
         if (ideationRunId) {
             loadIdeationRun(ideationRunId);
+            // Check if there's an active streaming job for this run
+            checkActiveStreamingJob(ideationRunId);
         }
     }, [ideationRunId]);
 
@@ -200,12 +202,78 @@ const IdeationTab: React.FC = () => {
         });
     }, []);
 
-    const handleRunCreated = useCallback((runId: string) => {
-        // Navigate to the new ideation run
+    // NEW: Check for active streaming jobs on page load
+    const checkActiveStreamingJob = async (runId: string) => {
+        try {
+            const response = await fetch(`/api/ideations/${runId}/active-job`);
+            if (response.ok) {
+                const jobData = await response.json();
+                if (jobData.status === 'running') {
+                    // Reconnect to streaming job
+                    connectToStreamingJob(jobData.transformId);
+                }
+            }
+        } catch (error) {
+            console.error('Error checking active streaming job:', error);
+        }
+    };
+
+    // NEW: Connect to streaming job via Server-Sent Events
+    const connectToStreamingJob = (transformId: string) => {
+        try {
+            const eventSource = new EventSource(`/api/streaming/transform/${transformId}`);
+
+            eventSource.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+
+                if (data.status === 'completed' && data.results) {
+                    // Handle completed job results
+                    const ideas = data.results.filter((result: any) =>
+                        result.type === 'brainstorm_idea'
+                    );
+
+                    setBrainstormingData(prev => ({
+                        ...prev,
+                        generatedIdeas: ideas.map((idea: any) => ({
+                            title: idea.title || 'Generated Idea',
+                            body: idea.text
+                        })),
+                        generatedIdeaArtifacts: ideas.map((idea: any, index: number) => ({
+                            id: idea.id,
+                            text: idea.text,
+                            title: idea.title,
+                            orderIndex: index
+                        }))
+                    }));
+
+                    eventSource.close();
+                } else if (data.status === 'streaming' && data.chunk) {
+                    // Handle streaming updates - this would need more sophisticated parsing
+                    // For now, just log the progress
+                    console.log('Streaming update:', data.chunk);
+                } else if (data.status === 'failed') {
+                    console.error('Streaming job failed:', data.error);
+                    eventSource.close();
+                }
+            };
+
+            eventSource.onerror = (error) => {
+                console.error('Streaming connection error:', error);
+                eventSource.close();
+            };
+
+            // Clean up on component unmount
+            return () => eventSource.close();
+        } catch (error) {
+            console.error('Error connecting to streaming job:', error);
+        }
+    };
+
+    // NEW: Handle job creation and immediate redirect
+    const handleRunCreated = (runId: string) => {
+        // Navigate immediately to the new run
         navigate(`/ideation/${runId}`);
-    }, [navigate]);
-
-
+    };
 
     // Cleanup function to abort any ongoing fetch when component unmounts
     useEffect(() => {
