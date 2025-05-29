@@ -1,79 +1,58 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
-import { Subscription } from 'rxjs';
+import { useEffect, useRef } from 'react';
+import { useObservableState } from './useObservableState';
+import { StreamingResponse } from '../../common/streaming/types';
 import { LLMStreamingService } from '../services/streaming/LLMStreamingService';
-import { StreamingRequest, StreamingResponse } from '../../common/streaming/types';
 
 export function useLLMStreaming<T>(
-    ServiceClass: new (config: any) => LLMStreamingService<T>,
-    config: any = {},
-    transformId?: string
+    service: LLMStreamingService<T>,
+    config: {
+        transformId?: string;
+    } = {}
 ) {
-    const [response, setResponse] = useState<StreamingResponse<T>>({
-        status: 'idle',
-        items: [],
-        rawContent: ''
-    });
-
-    const serviceRef = useRef<LLMStreamingService<T>>();
-    const subscriptionRef = useRef<Subscription>();
+    const { transformId } = config;
     const currentTransformIdRef = useRef<string | undefined>();
 
-    // Initialize service only once
-    useEffect(() => {
-        if (!serviceRef.current) {
-            serviceRef.current = new ServiceClass(config);
+    // Subscribe to the response stream
+    const response = useObservableState<StreamingResponse<T>>(
+        service.response$,
+        {
+            status: 'idle',
+            items: [],
+            rawContent: ''
+        }
+    );
 
-            // Subscribe to response stream
-            subscriptionRef.current = serviceRef.current.response$.subscribe({
-                next: (res) => {
-                    setResponse(res);
-                },
-                error: (err) => {
-                    console.error('[useLLMStreaming] Error:', err);
-                    setResponse({
-                        status: 'error',
-                        items: [],
-                        rawContent: '',
-                        error: err
-                    });
-                }
+    // Handle errors by converting them to a status
+    useEffect(() => {
+        const subscription = service.response$.subscribe({
+            error: (err) => {
+                // Error already handled in response stream
+            }
+        });
+
+        return () => subscription.unsubscribe();
+    }, [service]);
+
+    // Auto-connect when transformId changes
+    useEffect(() => {
+        if (transformId && transformId !== currentTransformIdRef.current) {
+            currentTransformIdRef.current = transformId;
+
+            // Connect to the transform stream
+            service.connectToTransform(transformId).catch((error) => {
+                // Error handled in service
             });
         }
 
-        // Cleanup only on unmount
         return () => {
-            subscriptionRef.current?.unsubscribe();
-            serviceRef.current?.stop();
-            serviceRef.current = undefined;
-            currentTransformIdRef.current = undefined;
+            if (currentTransformIdRef.current === transformId) {
+                currentTransformIdRef.current = undefined;
+            }
         };
-    }, []); // Empty deps - only run once
-
-    // Handle transform ID changes separately
-    useEffect(() => {
-        console.log('[useLLMStreaming] Transform ID effect triggered:', { transformId, currentTransformId: currentTransformIdRef.current });
-        if (transformId && transformId !== currentTransformIdRef.current && serviceRef.current) {
-            console.log('[useLLMStreaming] Connecting to transform:', transformId);
-            currentTransformIdRef.current = transformId;
-            serviceRef.current.connectToTransform(transformId);
-        }
-    }, [transformId]);
-
-    const start = useCallback(async (request: StreamingRequest) => {
-        if (serviceRef.current) {
-            await serviceRef.current.start(request);
-        }
-    }, []);
-
-    const stop = useCallback(() => {
-        serviceRef.current?.stop();
-    }, []);
+    }, [transformId, service]);
 
     return {
-        status: response.status,
-        items: response.items,
-        error: response.error,
-        start,
-        stop
+        ...response,
+        stop: () => service.stop()
     };
 } 

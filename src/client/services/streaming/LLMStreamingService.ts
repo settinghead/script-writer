@@ -26,13 +26,10 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
 
     constructor(protected config: StreamConfig = {}) {
         this.items$ = this.content$.pipe(
-            debounceTime(this.config.debounceMs || 50),
+            debounceTime(this.config.debounceMs || 16),
             map(content => {
-                console.log('[LLMStreamingService] Processing content for parsing, length:', content.length);
                 const cleaned = this.cleanContent(content);
-                console.log('[LLMStreamingService] Cleaned content sample:', cleaned.substring(0, 200));
                 const parsed = this.parsePartial(cleaned);
-                console.log('[LLMStreamingService] Parsed items:', parsed.length, parsed);
                 return parsed;
             }),
             filter(items => items.length > 0),
@@ -124,11 +121,9 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
 
     // NEW: Connect to an existing transform stream
     async connectToTransform(transformId: string): Promise<void> {
-        console.log('[LLMStreamingService] connectToTransform called with:', transformId);
         try {
             // Close any existing event source
             if (this.eventSource) {
-                console.log('[LLMStreamingService] Closing existing EventSource');
                 this.eventSource.close();
             }
 
@@ -137,31 +132,27 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
 
             // Create new EventSource connection
             const url = `/api/streaming/transform/${transformId}`;
-            console.log('[LLMStreamingService] Creating EventSource for URL:', url);
             this.eventSource = new EventSource(url);
 
             this.eventSource.onopen = () => {
-                console.log('[LLMStreamingService] EventSource opened for transform:', transformId);
+                // Connection established
             };
 
             this.eventSource.onmessage = (event) => {
                 try {
                     messageCount++;
-                    console.log(`[LLMStreamingService] Message #${messageCount} received, data starts with:`, event.data.substring(0, 20));
 
                     // Check message format
                     if (event.data.startsWith('0:')) {
                         // Text chunk
                         const chunk = JSON.parse(event.data.substring(2));
                         accumulatedContent += chunk;
-                        console.log('[LLMStreamingService] Accumulated content length:', accumulatedContent.length);
 
                         // Emit to content$ subject to trigger the parsing pipeline
                         this.content$.next(accumulatedContent);
                     } else if (event.data.startsWith('e:')) {
                         // Completion event
                         const completionData = JSON.parse(event.data.substring(2));
-                        console.log('[LLMStreamingService] Received completion event:', completionData);
 
                         // Emit final content and completion
                         this.content$.next(accumulatedContent);
@@ -171,28 +162,24 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
                     } else if (event.data.startsWith('error:')) {
                         // Error event
                         const errorData = JSON.parse(event.data.substring(6));
-                        console.error('[LLMStreamingService] Received error:', errorData);
                         this.error$.next(new Error(errorData.error || 'Stream error'));
                         this.eventSource?.close();
                     } else {
                         // Other data format (like status messages)
                         try {
                             const data = JSON.parse(event.data);
-                            console.log('[LLMStreamingService] Received data:', data);
                         } catch {
-                            console.log('[LLMStreamingService] Received non-JSON data:', event.data);
+                            // Non-JSON data, ignore
                         }
                     }
                 } catch (error) {
-                    console.error('[LLMStreamingService] Error processing message:', error);
+                    // Error processing message, ignore
                 }
             };
 
             this.eventSource.onerror = (error) => {
-                console.error('[LLMStreamingService] EventSource error for transform:', transformId, error);
                 // Try to fetch completed results if EventSource fails
                 this.fetchCompletedTransform(transformId).catch(fetchError => {
-                    console.error('[LLMStreamingService] Failed to fetch completed transform:', fetchError);
                     this.error$.next(new Error('Connection to transform stream failed'));
                 });
                 this.eventSource?.close();
@@ -219,7 +206,7 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
                     }
                 }
             } catch (error) {
-                console.warn('Failed to parse partial result:', result, error);
+                // Failed to parse result, skip
             }
         }
 
@@ -245,7 +232,6 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
                 throw new Error(data.error);
             }
         } catch (error) {
-            console.error('Failed to fetch completed transform:', error);
             throw error;
         }
     }
@@ -290,7 +276,7 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
                         }
                         // Ignore other line types (f:, etc.)
                     } catch (parseError) {
-                        console.warn('Failed to parse streaming data:', line, parseError);
+                        // Failed to parse, skip
                     }
                 }
             }

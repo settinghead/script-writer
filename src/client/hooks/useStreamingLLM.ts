@@ -1,77 +1,117 @@
-import { useState, useCallback, useRef } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import { StreamingRequest, StreamingResponse } from '../../common/streaming/types';
 
-export interface StreamingStatus {
-    isStreaming: boolean;
-    streamedContent: string;
-    fullContent: string;
-    progress?: {
-        tokens: number;
-        message: string;
-    };
-    error?: Error;
-    isComplete: boolean;
-    outlineSessionId?: string;
-    artifacts?: Array<{
-        id: string;
-        type: string;
-        data: any;
-    }>;
+interface UseStreamingLLMConfig {
+    debounceMs?: number;
+    completionTimeoutMs?: number;
 }
 
-export interface StreamingData {
-    type: 'status' | 'content' | 'progress' | 'complete' | 'error';
-    message?: string;
-    content?: string;
-    accumulated?: string;
-    tokens?: number;
-    transformId?: string;
-    outlineSessionId?: string;
-    artifacts?: Array<{
-        id: string;
-        type: string;
-        data: any;
-    }>;
-}
-
-export function useStreamingLLM() {
-    const [status, setStatus] = useState<StreamingStatus>({
-        isStreaming: false,
-        streamedContent: '',
-        fullContent: '',
-        isComplete: false
+export function useStreamingLLM<T>(
+    config: UseStreamingLLMConfig = {}
+) {
+    const [response, setResponse] = useState<StreamingResponse<T>>({
+        status: 'idle',
+        items: [],
+        rawContent: ''
     });
 
     const abortControllerRef = useRef<AbortController | null>(null);
 
-    const startStreaming = useCallback(async (
-        endpoint: string,
-        options: {
-            method?: string;
-            headers?: Record<string, string>;
-            body?: any;
-        } = {}
-    ) => {
+    const parsePartial = useCallback((content: string): T[] => {
+        if (!content.trim()) return [];
+
+        try {
+            // Try to parse as complete JSON first
+            const parsed = JSON.parse(content);
+            return Array.isArray(parsed) ? parsed : [parsed];
+        } catch {
+            // Try to extract partial JSON array
+            try {
+                // Find the last complete JSON object
+                const trimmed = content.trim();
+                if (trimmed.startsWith('[')) {
+                    // Find all complete objects in the array
+                    const objects: T[] = [];
+                    let depth = 0;
+                    let start = -1;
+                    let inString = false;
+                    let escaped = false;
+
+                    for (let i = 0; i < trimmed.length; i++) {
+                        const char = trimmed[i];
+
+                        if (escaped) {
+                            escaped = false;
+                            continue;
+                        }
+
+                        if (char === '\\') {
+                            escaped = true;
+                            continue;
+                        }
+
+                        if (char === '"' && !escaped) {
+                            inString = !inString;
+                            continue;
+                        }
+
+                        if (inString) continue;
+
+                        if (char === '{') {
+                            if (depth === 0) start = i;
+                            depth++;
+                        } else if (char === '}') {
+                            depth--;
+                            if (depth === 0 && start >= 0) {
+                                try {
+                                    const objStr = trimmed.substring(start, i + 1);
+                                    const obj = JSON.parse(objStr);
+                                    objects.push(obj);
+                                } catch {
+                                    // Skip invalid object
+                                }
+                                start = -1;
+                            }
+                        }
+                    }
+
+                    return objects;
+                }
+            } catch {
+                // Fallback parsing failed
+            }
+        }
+
+        return [];
+    }, []);
+
+    const cleanContent = useCallback((content: string): string => {
+        return content
+            .replace(/^```json\s*/, '')
+            .replace(/\s*```$/, '')
+            .trim();
+    }, []);
+
+    const start = useCallback(async (request: StreamingRequest): Promise<void> => {
         // Reset state
-        setStatus({
-            isStreaming: true,
-            streamedContent: '',
-            fullContent: '',
-            isComplete: false,
-            error: undefined,
-            artifacts: undefined
+        setResponse({
+            status: 'streaming',
+            items: [],
+            rawContent: ''
         });
 
-        // Create abort controller for cancellation
+        // Cancel any existing request
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+
         abortControllerRef.current = new AbortController();
 
         try {
-            const response = await fetch(endpoint, {
-                method: options.method || 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...options.headers
-                },
-                body: options.body ? JSON.stringify(options.body) : undefined,
+            const response = await fetch('/api/streaming/llm', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(request),
                 signal: abortControllerRef.current.signal
             });
 
@@ -85,120 +125,79 @@ export function useStreamingLLM() {
 
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
-
             let accumulatedContent = '';
 
-            while (true) {
-                const { done, value } = await reader.read();
+            try {
+                while (true) {
+                    const { done, value } = await reader.read();
 
-                if (done) {
-                    break;
-                }
+                    if (done) break;
 
-                const chunk = decoder.decode(value, { stream: true });
-                const lines = chunk.split('\n');
+                    const chunk = decoder.decode(value, { stream: true });
+                    const lines = chunk.split('\n');
 
-                for (const line of lines) {
-                    if (line.trim() === '') continue;
+                    for (const line of lines) {
+                        if (line.trim() === '') continue;
 
-                    try {
-                        // Parse streaming data format from AI SDK
-                        let data: StreamingData;
+                        try {
+                            // Handle AI SDK streaming format
+                            if (line.startsWith('0:')) {
+                                // Text chunk
+                                const textData = JSON.parse(line.substring(2));
+                                if (typeof textData === 'string') {
+                                    accumulatedContent += textData;
 
-                        // Handle AI SDK data stream format
-                        if (line.startsWith('0:')) {
-                            // Text chunk
-                            const textData = JSON.parse(line.substring(2));
-                            if (typeof textData === 'string') {
-                                accumulatedContent += textData;
-                                setStatus(prev => ({
-                                    ...prev,
-                                    streamedContent: textData,
-                                    fullContent: accumulatedContent
-                                }));
-                            }
-                        } else if (line.startsWith('2:[')) {
-                            // Data annotation
-                            const dataArray = JSON.parse(line.substring(2));
-                            if (Array.isArray(dataArray) && dataArray.length > 0) {
-                                data = dataArray[0] as StreamingData;
+                                    const cleanedContent = cleanContent(accumulatedContent);
+                                    const items = parsePartial(cleanedContent);
 
-                                switch (data.type) {
-                                    case 'status':
-                                        setStatus(prev => ({
-                                            ...prev,
-                                            progress: { tokens: 0, message: data.message || 'Processing...' }
-                                        }));
-                                        break;
-
-                                    case 'progress':
-                                        setStatus(prev => ({
-                                            ...prev,
-                                            progress: {
-                                                tokens: data.tokens || 0,
-                                                message: data.message || 'Generating...'
-                                            }
-                                        }));
-                                        break;
-
-                                    case 'complete':
-                                        setStatus(prev => ({
-                                            ...prev,
-                                            isStreaming: false,
-                                            isComplete: true,
-                                            artifacts: data.artifacts,
-                                            outlineSessionId: data.outlineSessionId,
-                                            progress: { tokens: 0, message: data.message || 'Complete!' }
-                                        }));
-                                        break;
-
-                                    case 'error':
-                                        throw new Error(data.message || 'Streaming error');
+                                    setResponse({
+                                        status: 'streaming',
+                                        items,
+                                        rawContent: accumulatedContent
+                                    });
                                 }
+                            } else if (line.startsWith('e:') || line.startsWith('d:')) {
+                                // Completion
+                                const cleanedContent = cleanContent(accumulatedContent);
+                                const items = parsePartial(cleanedContent);
+
+                                setResponse({
+                                    status: 'completed',
+                                    items,
+                                    rawContent: accumulatedContent
+                                });
                             }
+                        } catch (parseError) {
+                            // Skip invalid lines
                         }
-                    } catch (parseError) {
-                        console.warn('Failed to parse streaming data:', line, parseError);
                     }
                 }
+            } finally {
+                reader.releaseLock();
             }
 
         } catch (error: any) {
-            if (error.name === 'AbortError') {
-                setStatus(prev => ({
-                    ...prev,
-                    isStreaming: false,
-                    error: new Error('Streaming cancelled')
-                }));
-            } else {
-                setStatus(prev => ({
-                    ...prev,
-                    isStreaming: false,
-                    error: error instanceof Error ? error : new Error(String(error))
-                }));
+            if (error.name !== 'AbortError') {
+                setResponse({
+                    status: 'error',
+                    items: [],
+                    rawContent: '',
+                    error
+                });
             }
         }
-    }, []);
+    }, [parsePartial, cleanContent]);
 
-    const cancelStreaming = useCallback(() => {
+    const stop = useCallback(() => {
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
+            abortControllerRef.current = null;
         }
-    }, []);
-
-    const reset = useCallback(() => {
-        setStatus({
-            isStreaming: false,
-            streamedContent: '',
-            fullContent: '',
-            isComplete: false
-        });
     }, []);
 
     return {
-        status,
-        startStreaming,
-        cancelStreaming,
-        reset
+        ...response,
+        start,
+        stop
     };
 } 
