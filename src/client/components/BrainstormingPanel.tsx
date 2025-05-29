@@ -116,6 +116,8 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
     const parsePartialJson = useCallback((content: string) => {
         if (!content.trim() || content.length <= lastParsedLength) return;
 
+        console.debug('Parsing partial JSON, content length:', content.length, 'last parsed:', lastParsedLength);
+
         try {
             // Clean the content (handle ```json wrapper)
             let cleanedContent = content.trim();
@@ -125,6 +127,8 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                 cleanedContent = cleanedContent.replace(/^```\s*/, '');
             }
 
+            console.debug('Cleaned content preview:', cleanedContent.substring(0, 200));
+
             // Try to find and extract a partial JSON array
             let extractedIdeas: IdeaWithTitle[] = [];
 
@@ -133,9 +137,12 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
             if (arrayStart !== -1) {
                 let workingContent = cleanedContent.substring(arrayStart);
 
+                console.debug('Working with array content:', workingContent.substring(0, 300));
+
                 // Try to repair/complete the JSON
                 try {
                     const repairedJson = jsonrepair(workingContent);
+                    console.debug('Repaired JSON preview:', repairedJson.substring(0, 200));
                     const parsed = JSON.parse(repairedJson);
 
                     if (Array.isArray(parsed)) {
@@ -147,20 +154,37 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                             item.title.trim() &&
                             item.body.trim()
                         );
+                        console.debug('Extracted from array repair:', extractedIdeas.length, 'ideas');
                     }
                 } catch (repairError) {
-                    // If repair fails, try to extract individual complete objects
-                    const objectMatches = workingContent.match(/\{[^}]*"title"[^}]*"body"[^}]*\}/g);
-                    if (objectMatches) {
-                        for (const match of objectMatches) {
-                            try {
-                                const obj = JSON.parse(match);
-                                if (obj.title && obj.body && typeof obj.title === 'string' && typeof obj.body === 'string') {
-                                    extractedIdeas.push(obj);
+                    console.debug('Array repair failed, trying individual object extraction:', repairError.message);
+
+                    // If repair fails, try to extract individual complete objects with more flexible regex
+                    const objectPatterns = [
+                        // Pattern 1: Complete objects with title and body
+                        /\{\s*"title"\s*:\s*"[^"]*"\s*,\s*"body"\s*:\s*"[^"]*"\s*\}/g,
+                        // Pattern 2: Objects with any order of title/body
+                        /\{\s*"(?:title|body)"\s*:\s*"[^"]*"\s*,\s*"(?:title|body)"\s*:\s*"[^"]*"\s*\}/g,
+                        // Pattern 3: More flexible matching for incomplete strings
+                        /\{\s*"title"\s*:\s*"[^"]*",?\s*"body"\s*:\s*"[^"]*"[^}]*\}/g
+                    ];
+
+                    for (const pattern of objectPatterns) {
+                        const matches = workingContent.match(pattern);
+                        if (matches) {
+                            console.debug(`Found ${matches.length} matches with pattern`, pattern);
+                            for (const match of matches) {
+                                try {
+                                    const obj = JSON.parse(match);
+                                    if (obj.title && obj.body && typeof obj.title === 'string' && typeof obj.body === 'string') {
+                                        extractedIdeas.push(obj);
+                                        console.debug('Successfully parsed object:', obj.title);
+                                    }
+                                } catch (e) {
+                                    console.debug('Failed to parse individual object:', match.substring(0, 100));
                                 }
-                            } catch (e) {
-                                // Skip invalid objects
                             }
+                            if (extractedIdeas.length > 0) break; // Use first successful pattern
                         }
                     }
                 }
@@ -168,8 +192,11 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
 
             // Update streaming ideas if we found new ones
             if (extractedIdeas.length > 0) {
+                console.debug('Setting streaming ideas:', extractedIdeas.length, 'total ideas');
                 setStreamingIdeas(extractedIdeas);
                 setLastParsedLength(content.length);
+            } else {
+                console.debug('No ideas extracted from content');
             }
 
         } catch (error) {
@@ -187,12 +214,29 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
             return;
         }
 
+        console.debug('Streaming content updated, length:', streamedContent.length, 'current streaming ideas:', streamingIdeas.length);
+
+        // Try immediate parsing if we see obvious complete objects (no debounce)
+        if (streamedContent.includes('"title"') && streamedContent.includes('"body"') && streamingIdeas.length === 0) {
+            console.debug('Detected title/body content, attempting immediate parse');
+            parsePartialJson(streamedContent);
+        }
+
         const timeoutId = setTimeout(() => {
             parsePartialJson(streamedContent);
-        }, 300); // 300ms debounce
+        }, 100); // Reduced to 100ms for faster response
 
         return () => clearTimeout(timeoutId);
     }, [streamedContent, isStreamingActive, parsePartialJson]);
+
+    // Reset streaming status when streaming error occurs
+    useEffect(() => {
+        if (streamingError) {
+            // Reset streaming ideas state on error
+            setStreamingIdeas([]);
+            setLastParsedLength(0);
+        }
+    }, [streamingError]);
 
     // Effect to handle window resize for mobile detection
     useEffect(() => {
@@ -223,6 +267,9 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                 if (streamingIdeas.length > 0) {
                     setGeneratedIdeas(streamingIdeas);
                     setSelectedIdeaIndex(null); // Reset selection
+
+                    // Reset streaming status
+                    resetStreaming();
 
                     // Create ideation run after successful idea generation
                     if (onRunCreated) {
@@ -304,6 +351,8 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                     } catch (repairError) {
                         console.error('Failed to parse ideas JSON even after repair:', repairError);
                         setError(new Error('无法解析生成的故事灵感为JSON数组'));
+                        // Reset streaming status even on error
+                        resetStreaming();
                         return;
                     }
                 }
@@ -311,6 +360,9 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                 if (ideasArray.length > 0) {
                     setGeneratedIdeas(ideasArray);
                     setSelectedIdeaIndex(null); // Reset selection
+
+                    // Reset streaming status
+                    resetStreaming();
 
                     // Create ideation run after successful idea generation
                     if (onRunCreated) {
@@ -347,14 +399,18 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                     }
                 } else {
                     setError(new Error('生成的故事梗概内容为空或格式不正确'));
+                    // Reset streaming status even if no ideas
+                    resetStreaming();
                 }
 
             } catch (err) {
                 console.error('Error processing streamed ideas:', err);
                 setError(err instanceof Error ? err : new Error(String(err)));
+                // Reset streaming status on error
+                resetStreaming();
             }
         }
-    }, [streamingStatus.isComplete, streamedContent, streamingIdeas, selectedPlatform, selectedGenrePaths, genreProportions, requirements, onRunCreated]);
+    }, [streamingStatus.isComplete, streamedContent, streamingIdeas, selectedPlatform, selectedGenrePaths, genreProportions, requirements, onRunCreated, resetStreaming]);
 
     const handlePlatformChange = (value: string) => {
         setSelectedPlatform(value);
@@ -831,6 +887,14 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                     type="error"
                     showIcon
                     style={{ marginBottom: '16px' }}
+                    onClose={() => {
+                        setError(null);
+                        // Reset streaming status when error is dismissed
+                        if (streamingError) {
+                            resetStreaming();
+                        }
+                    }}
+                    closable
                 />
             )}
 
