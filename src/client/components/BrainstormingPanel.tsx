@@ -95,24 +95,15 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
     // Use the new RxJS-based streaming hook
     const { status, items, error, start, stop } = useStreamingBrainstorm();
 
-    // Debug logging for streaming state changes
+    // Debug: Log items when they change
     useEffect(() => {
-        console.log('Streaming status changed:', status);
-    }, [status]);
-
-    useEffect(() => {
-        console.log('Streaming items changed:', items);
+        console.log('[BrainstormingPanel] items from hook:', items);
     }, [items]);
-
-    useEffect(() => {
-        if (error) {
-            console.log('Streaming error changed:', error);
-        }
-    }, [error]);
 
     // Update generated ideas when streaming items change
     useEffect(() => {
         if (items.length > 0) {
+            console.log('[BrainstormingPanel] Setting generatedIdeas from items:', items);
             setGeneratedIdeas(items);
         }
     }, [items]);
@@ -189,27 +180,18 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
     };
 
     const generateIdea = async () => {
-        console.log('generateIdea called');
         if (!isGenreSelectionComplete()) {
-            console.log('Genre selection not complete, returning early');
             return;
         }
 
         // Clear previous ideas
         setGeneratedIdeas([]);
-        console.log('Cleared previous ideas');
 
         try {
             const genreString = buildGenrePromptString();
             const requirementsSection = requirements.trim()
                 ? `特殊要求：${requirements.trim()}`
                 : '';
-
-            console.log('About to start streaming with params:', {
-                genreString,
-                platform: selectedPlatform,
-                requirementsSection
-            });
 
             await start({
                 artifactIds: [],
@@ -221,8 +203,6 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                 },
                 modelName: 'deepseek-chat'
             });
-
-            console.log('Streaming start call completed');
 
         } catch (err) {
             console.error('Error generating idea:', err);

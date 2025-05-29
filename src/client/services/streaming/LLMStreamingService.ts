@@ -23,32 +23,21 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
     readonly response$: Observable<StreamingResponse<T>>;
 
     constructor(protected config: StreamConfig = {}) {
-        this.items$ = this.createItemsStream();
-        this.status$ = this.createStatusStream();
-        this.response$ = this.createResponseStream();
-    }
-
-    private createItemsStream(): Observable<T[]> {
-        return this.content$.pipe(
+        this.items$ = this.content$.pipe(
             debounceTime(this.config.debounceMs || 50),
             map(content => {
-                console.log('Items stream processing content of length:', content.length);
+                console.log('[LLMStreamingService] Processing content in items$, length:', content.length);
                 const parsed = this.parsePartial(this.cleanContent(content));
-                console.log('Items stream parsed items:', parsed.length);
+                console.log('[LLMStreamingService] Parsed items:', parsed.length);
                 return parsed;
             }),
-            filter(items => {
-                console.log('Items stream filter check - items length:', items.length);
-                return items.length > 0;
-            }),
-            distinctUntilChanged((a, b) => {
-                const same = JSON.stringify(a) === JSON.stringify(b);
-                console.log('Items stream distinctUntilChanged check - same?', same);
-                return same;
-            }),
-            takeUntil(this.abort$),
+            filter(items => items.length > 0),
+            distinctUntilChanged((a, b) => JSON.stringify(a) === JSON.stringify(b)),
             shareReplay(1)
         );
+
+        this.status$ = this.createStatusStream();
+        this.response$ = this.createResponseStream();
     }
 
     private createStatusStream(): Observable<StreamingResponse<T>['status']> {
@@ -66,8 +55,7 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
             error$
         ).pipe(
             distinctUntilChanged(),
-            takeUntil(this.abort$),
-            shareReplay(1)
+            takeUntil(this.abort$)
         );
     }
 
@@ -75,28 +63,35 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
         return merge(
             // Status changes
             this.status$.pipe(
-                map(status => ({
-                    status,
-                    items: [] as T[],
-                    rawContent: ''
-                }))
+                map(status => {
+                    return {
+                        status,
+                        items: [] as T[],
+                        rawContent: ''
+                    };
+                })
             ),
             // Items updates - emit items with streaming status
             this.items$.pipe(
-                map(items => ({
-                    status: 'streaming' as const,
-                    items,
-                    rawContent: ''
-                }))
+                map(items => {
+                    console.log('[LLMStreamingService] Emitting items to response$:', items.length, 'items');
+                    return {
+                        status: 'streaming' as const,
+                        items,
+                        rawContent: ''
+                    };
+                })
             ),
             // Error handling
             this.error$.pipe(
-                map(error => ({
-                    status: 'error' as const,
-                    items: [] as T[],
-                    rawContent: '',
-                    error
-                }))
+                map(error => {
+                    return {
+                        status: 'error' as const,
+                        items: [] as T[],
+                        rawContent: '',
+                        error
+                    };
+                })
             )
         ).pipe(
             // Combine latest status with latest items
@@ -116,7 +111,8 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
     }
 
     async start(request: StreamingRequest): Promise<void> {
-        this.abort$.next(); // Cancel any existing stream
+        // Don't call abort$.next() here - it kills the streams!
+        // Just reset the content
 
         try {
             const response = await fetch('/api/streaming/llm', {
@@ -137,7 +133,7 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
 
     private async consumeStream(reader: ReadableStreamDefaultReader<Uint8Array>): Promise<void> {
         const decoder = new TextDecoder();
-        let accumulatedContent = '';
+        let accumulatedContent = ''
 
         try {
             while (true) {
@@ -160,13 +156,13 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
                             const textData = JSON.parse(line.substring(2));
                             if (typeof textData === 'string') {
                                 accumulatedContent += textData;
-                                console.log('Accumulated content length:', accumulatedContent.length);
+                                console.log('[LLMStreamingService] content$.next() called with length:', accumulatedContent.length);
                                 this.content$.next(accumulatedContent);
                             }
                         } else if (line.startsWith('e:') || line.startsWith('d:')) {
                             // End/Done events - trigger final parsing
-                            console.log('Streaming completed, final content length:', accumulatedContent.length);
                             if (accumulatedContent.trim()) {
+                                console.log('[LLMStreamingService] Final content$.next() on end event');
                                 this.content$.next(accumulatedContent);
                             }
                         }

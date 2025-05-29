@@ -28,6 +28,7 @@ export class BrainstormingStreamingService extends LLMStreamingService<IdeaWithT
     }
 
     parsePartial(content: string): IdeaWithTitle[] {
+        console.log('[BrainstormingStreamingService] parsePartial called with content length:', content.length);
         if (!content.trim()) return [];
 
         try {
