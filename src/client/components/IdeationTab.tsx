@@ -274,7 +274,7 @@ const IdeationTab: React.FC = () => {
     };
 
     return (
-        <div style={{ padding: '20px', width: "100%", margin: '0 auto', overflow: "auto" }}>
+        <div style={{ padding: '20px', maxWidth: "800px", margin: '0 auto', width: "100%", overflow: "auto" }}>
             {isLoadingRun ? (
                 <div style={{ textAlign: 'center', padding: '40px' }}>
                     <Spin size="large" />
@@ -343,16 +343,6 @@ const IdeationTab: React.FC = () => {
                             onChange={handleBrainstormingToggle}
                             size="small"
                         />
-                        {brainstormingCollapsed && brainstormingEnabled && (
-                            <Button
-                                type="link"
-                                size="small"
-                                onClick={() => setBrainstormingCollapsed(false)}
-                                style={{ marginLeft: 'auto', color: '#1890ff' }}
-                            >
-                                展开设置
-                            </Button>
-                        )}
                     </div>
 
                     {/* Brainstorming Panel */}
@@ -362,6 +352,7 @@ const IdeationTab: React.FC = () => {
                             onIdeaSelect={handleIdeaSelect}
                             onDataChange={handleBrainstormingDataChange}
                             onRunCreated={!ideationRunId ? handleRunCreated : undefined}
+                            onExpand={() => setBrainstormingCollapsed(false)}
                             initialPlatform={brainstormingData.selectedPlatform}
                             initialGenrePaths={brainstormingData.selectedGenrePaths}
                             initialGenreProportions={brainstormingData.genreProportions}
