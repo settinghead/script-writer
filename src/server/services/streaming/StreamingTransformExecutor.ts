@@ -71,14 +71,13 @@ export class StreamingTransformExecutor {
     }
 
     private async loadArtifacts(userId: string, artifactIds: string[]): Promise<Artifact[]> {
-        if (artifactIds.length === 0) return [];
-
         const artifacts: Artifact[] = [];
         for (const id of artifactIds) {
-            const artifact = await this.artifactRepo.getArtifact(userId, id);
-            if (artifact) {
-                artifacts.push(artifact);
+            const artifact = await this.artifactRepo.getArtifact(id, userId);
+            if (!artifact) {
+                throw new Error(`Artifact ${id} not found`);
             }
+            artifacts.push(artifact);
         }
         return artifacts;
     }
@@ -528,7 +527,7 @@ export class StreamingTransformExecutor {
     }
 
     private async executeStreamingLLM(transform: any, res?: Response): Promise<void> {
-        // Get job parameters
+        // Get job parameters from transform inputs
         const inputs = await this.transformRepo.getTransformInputs(transform.id);
         const paramsInput = inputs.find(input => input.input_role === 'job_params');
 
@@ -536,7 +535,7 @@ export class StreamingTransformExecutor {
             throw new Error('Job parameters not found for transform');
         }
 
-        const paramsArtifact = await this.artifactRepo.getArtifact(paramsInput.artifact_id);
+        const paramsArtifact = await this.artifactRepo.getArtifact(paramsInput.artifact_id, transform.user_id);
         if (!paramsArtifact) {
             throw new Error('Job parameters artifact not found');
         }
@@ -589,7 +588,7 @@ export class StreamingTransformExecutor {
         jobParams: OutlineJobParamsV1
     ): Promise<{ outlineSessionId: string; transformId: string }> {
         // 1. Get and validate source artifact
-        const sourceArtifact = await this.artifactRepo.getArtifact(userId, jobParams.sourceArtifactId);
+        const sourceArtifact = await this.artifactRepo.getArtifact(jobParams.sourceArtifactId, userId);
         if (!sourceArtifact) {
             throw new Error('Source artifact not found or access denied');
         }
@@ -691,8 +690,8 @@ export class StreamingTransformExecutor {
             throw new Error('Job parameters or source artifact not found for transform');
         }
 
-        const paramsArtifact = await this.artifactRepo.getArtifact(paramsInput.artifact_id);
-        const sourceArtifact = await this.artifactRepo.getArtifact(sourceInput.artifact_id);
+        const paramsArtifact = await this.artifactRepo.getArtifact(paramsInput.artifact_id, transform.user_id);
+        const sourceArtifact = await this.artifactRepo.getArtifact(sourceInput.artifact_id, transform.user_id);
 
         if (!paramsArtifact || !sourceArtifact) {
             throw new Error('Job parameters or source artifact not found');
