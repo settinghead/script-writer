@@ -16,11 +16,14 @@ A collaborative script writing application with AI assistance, real-time collabo
 - **Session management** with automatic cleanup
 
 ### 🤖 AI-Powered Features
+- **Real-time JSON streaming** with RxJS-based architecture for partial response parsing
 - **Script editing assistance** using DeepSeek AI
-- **Ideation and plot generation** with full traceability
+- **Ideation and plot generation** with live streaming and progressive UI updates
 - **Chat interface** for AI interactions
-- **Genre-based content generation**
+- **Genre-based content generation** with multi-column responsive display
 - **Transform replay system** for reproducibility testing
+- **Partial JSON parsing** with automatic repair and error recovery
+- **Streaming progress indicators** with cancellation support
 
 ### 👥 Collaboration
 - **Real-time collaborative editing** using Yjs
@@ -109,10 +112,12 @@ npm run dev
 
 ### Frontend  
 - **React 19** with TypeScript
-- **Ant Design** component library
+- **Ant Design** component library with responsive multi-column layouts
 - **React Router** for navigation
 - **Authentication context** for state management
 - **Protected routes** requiring login
+- **RxJS streaming services** for real-time LLM JSON parsing
+- **Generic streaming hooks** with automatic state management and cleanup
 
 ### Database Schema
 
@@ -239,6 +244,7 @@ CREATE TABLE user_sessions (
 ### Protected AI Endpoints (Require Authentication)
 - `POST /llm-api/chat/completions` - Chat completions
 - `POST /llm-api/script/edit` - Script editing assistance
+- `POST /api/streaming/llm` - Generic LLM JSON streaming with template support
 
 ### Content Management (All Require Authentication)
 
@@ -248,6 +254,8 @@ CREATE TABLE user_sessions (
 - `POST /api/ideations/create_run_with_ideas` - Create ideation run with initial ideas
 - `POST /api/ideations/create_run_and_generate_plot` - Create and generate plot
 - `POST /api/ideations/:id/generate_plot` - Generate plot for existing run
+- `POST /api/ideations/:id/generate_plot/stream` - Stream plot generation with real-time updates
+- `POST /api/brainstorm/generate/stream` - Stream brainstorming ideas with progressive JSON parsing
 - `DELETE /api/ideations/:id` - Delete user's ideation run
 
 #### Script Management
@@ -311,14 +319,21 @@ CREATE TABLE user_sessions (
 ```
 src/
 ├── client/                 # React frontend
-│   ├── components/        # React components
+│   ├── components/        # React components with streaming UI
 │   ├── contexts/         # React contexts (Auth)
-│   ├── hooks/           # Custom hooks
+│   ├── hooks/           # Custom hooks including streaming hooks
+│   ├── services/        # RxJS streaming services
+│   │   ├── streaming/   # Generic LLM streaming base classes
+│   │   └── implementations/ # Specific streaming implementations
 │   └── types/           # TypeScript types
+├── common/               # Shared frontend/backend types
+│   ├── streaming/       # Streaming interfaces and types
+│   └── llm/            # LLM template types
 └── server/               # Express backend
     ├── database/        # Database helpers
     ├── middleware/      # Express middleware
-    ├── routes/         # API routes
+    ├── routes/         # API routes including streaming endpoints
+    ├── services/       # Business logic including streaming executors
     └── index.ts        # Server entry point
 ```
 
@@ -343,6 +358,28 @@ The authentication system is designed to be extensible. Planned features include
 ## Developer Notes
 
 ### 🏗️ Architecture Overview
+
+#### RxJS Streaming System
+The application features a **generalized LLM JSON streaming framework** built on RxJS:
+
+- **Generic Base Classes**: `LLMStreamingService<T>` provides reusable streaming logic
+- **Partial JSON Parsing**: Real-time parsing with `jsonrepair` and regex fallbacks
+- **Progressive UI Updates**: Multi-column responsive display with smooth animations
+- **Template System**: Prompt templates with variable interpolation
+- **State Management**: RxJS observables with React hooks integration
+- **Error Recovery**: Automatic retry logic and graceful degradation
+
+```typescript
+// Usage pattern for any LLM JSON streaming
+const { status, items, error, start, stop } = useLLMStreaming(ServiceClass, config);
+
+// Start streaming with template
+await start({
+  artifactIds: [],
+  templateId: 'brainstorming',
+  templateParams: { genre: 'romance', platform: 'tiktok' }
+});
+```
 
 #### Artifacts & Transforms System
 The application has evolved from domain-specific tables to a **generalized artifacts and transforms architecture**:
@@ -375,6 +412,24 @@ const llmStats = await replayService.getTransformStats(userId);
 ```
 
 ### 🔧 Development Patterns
+
+#### Streaming Service Pattern
+```typescript
+// Create specialized streaming service
+export class BrainstormingStreamingService extends LLMStreamingService<IdeaWithTitle> {
+  validate(item: any): item is IdeaWithTitle {
+    return typeof item.title === 'string' && typeof item.body === 'string';
+  }
+  
+  parsePartial(content: string): IdeaWithTitle[] {
+    // Custom parsing logic with error recovery
+    return this.extractValidObjects(content);
+  }
+}
+
+// Use in React components
+const { status, items, start, stop } = useStreamingBrainstorm();
+```
 
 #### Artifact Creation Pattern
 ```typescript
@@ -443,6 +498,24 @@ if (Date.now() - lastCall < 5000) { // 5 second cooldown
 
 ### 🔮 Extension Points
 
+#### Adding New Streaming Services
+1. **Extend base class** with type-specific validation and parsing
+2. **Create custom hook** with service configuration  
+3. **Add template** to backend template system
+4. **Update component** to use streaming hook
+
+```typescript
+// Example: Custom streaming service
+export class OutlineStreamingService extends LLMStreamingService<OutlineItem> {
+  // Implement abstract methods for outline-specific parsing
+}
+
+// Create hook
+export function useStreamingOutline() {
+  return useLLMStreaming(OutlineStreamingService, { debounceMs: 100 });
+}
+```
+
 #### Adding New Artifact Types
 1. **Define TypeScript interface** with version suffix (e.g., `NewTypeV1`)
 2. **Add to artifact type union** in `src/server/types/artifacts.ts`
@@ -476,16 +549,20 @@ const customMetrics = {
 
 ### 📚 Key Dependencies
 
-#### New Dependencies Added
-- **Enhanced data management**: Comprehensive artifact/transform repositories
-- **Caching system**: In-memory cache with TTL and cleanup
-- **Replay system**: Transform reproducibility testing
-- **Analytics tools**: Performance monitoring and data export
+#### Core Framework Dependencies
+- **React 19** with TypeScript for modern frontend development
+- **Express.js** with TypeScript for backend API server
+- **RxJS** for reactive streaming and state management
+- **Ant Design** for comprehensive UI component library
+- **AI SDK** with DeepSeek integration for LLM streaming
 
-#### Performance Dependencies
-- **sqlite3**: Enhanced with optimized indexes and queries
-- **Custom caching**: Memory-efficient with automatic cleanup
-- **Transform tracking**: Minimal overhead with detailed logging
+#### Streaming & Real-time Dependencies
+- **jsonrepair** for robust JSON parsing and error recovery
+- **WebSocket** via Yjs for collaborative editing
+- **Server-Sent Events** for LLM response streaming
+- **Custom RxJS operators** for partial JSON parsing and debouncing
+
+#### Enhanced Data Management Dependencies
 
 ### ⚠️ Important Notes
 
