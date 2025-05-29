@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button, Typography, Select, Divider, Alert, Input, Progress } from 'antd';
 import { BulbOutlined, RightOutlined, StopOutlined } from '@ant-design/icons';
 import { jsonrepair } from 'jsonrepair';
@@ -112,6 +112,88 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
     const streamingProgress = streamingStatus.progress;
     const streamingError = streamingStatus.error;
 
+    // Debounced function to parse partial JSON and extract ideas
+    const parsePartialJson = useCallback((content: string) => {
+        if (!content.trim() || content.length <= lastParsedLength) return;
+
+        try {
+            // Clean the content (handle ```json wrapper)
+            let cleanedContent = content.trim();
+            if (cleanedContent.startsWith('```json')) {
+                cleanedContent = cleanedContent.replace(/^```json\s*/, '');
+            } else if (cleanedContent.startsWith('```')) {
+                cleanedContent = cleanedContent.replace(/^```\s*/, '');
+            }
+
+            // Try to find and extract a partial JSON array
+            let extractedIdeas: IdeaWithTitle[] = [];
+
+            // Look for opening bracket
+            const arrayStart = cleanedContent.indexOf('[');
+            if (arrayStart !== -1) {
+                let workingContent = cleanedContent.substring(arrayStart);
+
+                // Try to repair/complete the JSON
+                try {
+                    const repairedJson = jsonrepair(workingContent);
+                    const parsed = JSON.parse(repairedJson);
+
+                    if (Array.isArray(parsed)) {
+                        extractedIdeas = parsed.filter(item =>
+                            item &&
+                            typeof item === 'object' &&
+                            typeof item.title === 'string' &&
+                            typeof item.body === 'string' &&
+                            item.title.trim() &&
+                            item.body.trim()
+                        );
+                    }
+                } catch (repairError) {
+                    // If repair fails, try to extract individual complete objects
+                    const objectMatches = workingContent.match(/\{[^}]*"title"[^}]*"body"[^}]*\}/g);
+                    if (objectMatches) {
+                        for (const match of objectMatches) {
+                            try {
+                                const obj = JSON.parse(match);
+                                if (obj.title && obj.body && typeof obj.title === 'string' && typeof obj.body === 'string') {
+                                    extractedIdeas.push(obj);
+                                }
+                            } catch (e) {
+                                // Skip invalid objects
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Update streaming ideas if we found new ones
+            if (extractedIdeas.length > 0) {
+                setStreamingIdeas(extractedIdeas);
+                setLastParsedLength(content.length);
+            }
+
+        } catch (error) {
+            // Don't show errors for partial parsing - it's expected
+            console.debug('Partial JSON parsing (expected):', error);
+        }
+    }, [lastParsedLength]);
+
+    // Debounced version of parsePartialJson
+    useEffect(() => {
+        if (!isStreamingActive || !streamedContent) {
+            // Reset when not streaming
+            setStreamingIdeas([]);
+            setLastParsedLength(0);
+            return;
+        }
+
+        const timeoutId = setTimeout(() => {
+            parsePartialJson(streamedContent);
+        }, 300); // 300ms debounce
+
+        return () => clearTimeout(timeoutId);
+    }, [streamedContent, isStreamingActive, parsePartialJson]);
+
     // Effect to handle window resize for mobile detection
     useEffect(() => {
         const handleResize = () => {
@@ -137,6 +219,48 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
     useEffect(() => {
         if (streamingStatus.isComplete && streamedContent) {
             try {
+                // If we already have streaming ideas, use those
+                if (streamingIdeas.length > 0) {
+                    setGeneratedIdeas(streamingIdeas);
+                    setSelectedIdeaIndex(null); // Reset selection
+
+                    // Create ideation run after successful idea generation
+                    if (onRunCreated) {
+                        (async () => {
+                            try {
+                                const createRunResponse = await fetch('/api/ideations/create_run_with_ideas', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify({
+                                        selectedPlatform,
+                                        genrePaths: selectedGenrePaths,
+                                        genreProportions,
+                                        initialIdeas: streamingIdeas.map(idea => idea.body),
+                                        initialIdeaTitles: streamingIdeas.map(idea => idea.title),
+                                        requirements
+                                    })
+                                });
+
+                                if (!createRunResponse.ok) {
+                                    throw new Error(`Failed to create run: ${createRunResponse.status}`);
+                                }
+
+                                const runData = await createRunResponse.json();
+                                if (runData.runId) {
+                                    onRunCreated(runData.runId);
+                                }
+                            } catch (runError) {
+                                console.error('Error creating ideation run:', runError);
+                                // Don't set error here - we still want to show the ideas
+                            }
+                        })();
+                    }
+                    return; // Early return if we already have streaming ideas
+                }
+
+                // Fallback: Parse the final content if no streaming ideas were extracted
                 // Clean the content (handle ```json wrapper)
                 let cleanedContent = streamedContent.trim();
                 if (cleanedContent.startsWith('```json')) {
@@ -230,7 +354,7 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                 setError(err instanceof Error ? err : new Error(String(err)));
             }
         }
-    }, [streamingStatus.isComplete, streamedContent, selectedPlatform, selectedGenrePaths, genreProportions, requirements, onRunCreated]);
+    }, [streamingStatus.isComplete, streamedContent, streamingIdeas, selectedPlatform, selectedGenrePaths, genreProportions, requirements, onRunCreated]);
 
     const handlePlatformChange = (value: string) => {
         setSelectedPlatform(value);
@@ -294,6 +418,9 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
 
         setError(null);
         resetStreaming();
+        // Reset streaming ideas state
+        setStreamingIdeas([]);
+        setLastParsedLength(0);
 
         try {
             const genreString = buildGenrePromptString();
@@ -353,6 +480,14 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                     @keyframes blink {
                         0%, 50% { opacity: 1; }
                         51%, 100% { opacity: 0; }
+                    }
+                    @keyframes fadeIn {
+                        from { opacity: 0; transform: translateY(10px); }
+                        to { opacity: 1; transform: translateY(0); }
+                    }
+                    @keyframes pulse {
+                        0%, 100% { opacity: 0.4; }
+                        50% { opacity: 1; }
                     }
                 `}
             </style>
@@ -530,7 +665,129 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
             )}
 
             {/* Streaming Content Display */}
-            {!hasGeneratedIdeas && isStreamingActive && streamedContent && (
+            {!hasGeneratedIdeas && isStreamingActive && streamingIdeas.length > 0 && (
+                <div style={{ marginBottom: '16px' }}>
+                    <div style={{ marginBottom: '12px' }}>
+                        <Text style={{ color: '#1890ff', fontSize: '14px', fontWeight: 'bold' }}>
+                            🤖 正在生成故事灵感... ({streamingIdeas.length}/{NUM_IDEAS_TO_GENERATE})
+                        </Text>
+                    </div>
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: isMobile ? 'repeat(1, 1fr)' : 'repeat(auto-fit, minmax(320px, 1fr))',
+                        gap: '12px'
+                    }}>
+                        {streamingIdeas.map((idea, index) => (
+                            <div
+                                key={`streaming-${index}`}
+                                style={{
+                                    padding: '16px',
+                                    minHeight: '100px',
+                                    border: '1px solid #1890ff',
+                                    borderRadius: '6px',
+                                    backgroundColor: '#1890ff10',
+                                    position: 'relative',
+                                    animation: 'fadeIn 0.5s ease-in'
+                                }}
+                            >
+                                <div style={{
+                                    position: 'absolute',
+                                    top: '8px',
+                                    right: '8px',
+                                    width: '20px',
+                                    height: '20px',
+                                    borderRadius: '50%',
+                                    backgroundColor: '#1890ff',
+                                    color: 'white',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '12px',
+                                    fontWeight: 'bold'
+                                }}>
+                                    {index + 1}
+                                </div>
+                                <div style={{
+                                    paddingRight: '30px'
+                                }}>
+                                    <div style={{
+                                        fontSize: '14px',
+                                        fontWeight: 'bold',
+                                        marginBottom: '8px',
+                                        color: '#1890ff',
+                                        wordBreak: 'break-word'
+                                    }}>
+                                        {idea.title}
+                                    </div>
+                                    <div style={{
+                                        fontSize: '13px',
+                                        lineHeight: '1.5',
+                                        color: '#d9d9d9',
+                                        wordBreak: 'break-word',
+                                        hyphens: 'auto'
+                                    }}>
+                                        {idea.body}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+
+                        {/* Loading placeholder for remaining ideas */}
+                        {streamingIdeas.length < NUM_IDEAS_TO_GENERATE && Array.from(
+                            { length: NUM_IDEAS_TO_GENERATE - streamingIdeas.length },
+                            (_, index) => (
+                                <div
+                                    key={`placeholder-${streamingIdeas.length + index}`}
+                                    style={{
+                                        padding: '16px',
+                                        minHeight: '100px',
+                                        border: '1px dashed #666',
+                                        borderRadius: '6px',
+                                        backgroundColor: '#2a2a2a20',
+                                        position: 'relative',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                    }}
+                                >
+                                    <div style={{
+                                        position: 'absolute',
+                                        top: '8px',
+                                        right: '8px',
+                                        width: '20px',
+                                        height: '20px',
+                                        borderRadius: '50%',
+                                        backgroundColor: '#666',
+                                        color: 'white',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '12px',
+                                        fontWeight: 'bold'
+                                    }}>
+                                        {streamingIdeas.length + index + 1}
+                                    </div>
+                                    <div style={{
+                                        color: '#666',
+                                        fontSize: '12px',
+                                        textAlign: 'center'
+                                    }}>
+                                        <div style={{
+                                            animation: 'pulse 1.5s infinite',
+                                            fontSize: '16px',
+                                            marginBottom: '4px'
+                                        }}>⏳</div>
+                                        正在生成...
+                                    </div>
+                                </div>
+                            )
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Raw JSON display (only when no ideas parsed yet) */}
+            {!hasGeneratedIdeas && isStreamingActive && streamedContent && streamingIdeas.length === 0 && (
                 <div style={{ marginBottom: '16px' }}>
                     <div style={{
                         padding: '16px',
@@ -540,23 +797,23 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
                     }}>
                         <div style={{ marginBottom: '12px' }}>
                             <Text style={{ color: '#1890ff', fontSize: '14px', fontWeight: 'bold' }}>
-                                🤖 AI正在生成故事灵感...
+                                🤖 AI正在准备故事灵感...
                             </Text>
                         </div>
                         <div style={{
-                            maxHeight: '300px',
+                            maxHeight: '100px',
                             overflowY: 'auto',
                             whiteSpace: 'pre-wrap',
                             fontFamily: 'monospace',
-                            fontSize: '12px',
-                            lineHeight: '1.4',
-                            color: '#e8e8e8',
+                            fontSize: '11px',
+                            lineHeight: '1.3',
+                            color: '#888',
                             background: '#1a1a1a',
-                            padding: '12px',
-                            borderRadius: '6px',
+                            padding: '8px',
+                            borderRadius: '4px',
                             border: '1px solid #333'
                         }}>
-                            {streamedContent}
+                            {streamedContent.substring(0, 200)}...
                             <span style={{
                                 color: '#1890ff',
                                 animation: 'blink 1s infinite'
