@@ -994,43 +994,48 @@ app.get("/api/streaming/transform/:transformId", authMiddleware.authenticate, as
 
       // Register this client with the broadcaster
       broadcaster.addClient(transformId, user.id, res);
+      console.log(`[SSE Endpoint] Registered client for transform ${transformId}`);
 
       // Send initial status
       res.write(`data: ${JSON.stringify({ status: 'connected', transformId })}\n\n`);
 
-      // IMPORTANT: Send existing partial results first
-      try {
-        const partialOutputs = await transformRepo.getTransformOutputs(transformId);
-        if (partialOutputs.length > 0) {
-          // Load the actual artifact data for each output
-          const outputsWithArtifacts = await Promise.all(
-            partialOutputs.map(async (output) => {
-              const artifact = await artifactRepo.getArtifact(output.artifact_id, user.id);
-              return {
-                ...output,
-                artifact: artifact
-              };
-            })
-          );
+      // Get streaming cache
+      const StreamingCache = (await import('./services/streaming/StreamingCache')).StreamingCache;
+      const cache = StreamingCache.getInstance();
 
-          res.write(`data: ${JSON.stringify({
-            status: 'partial_results',
-            results: outputsWithArtifacts,
-            message: `已加载 ${outputsWithArtifacts.length} 个现有结果`
-          })}\n\n`);
+      // Check if transform has cached data
+      const cachedChunks = cache.getChunks(transformId);
+      if (cachedChunks.length > 0) {
+        console.log(`[SSE Endpoint] Sending ${cachedChunks.length} cached chunks to client`);
+
+        // Send all cached chunks
+        for (const chunk of cachedChunks) {
+          // Chunks are already in format "0:...", need to wrap in SSE format
+          res.write(`data: ${chunk}`);
         }
-      } catch (partialError) {
-        console.warn('Failed to load partial results:', partialError);
+
+        // If streaming is complete, send completion events
+        if (cache.isComplete(transformId)) {
+          console.log(`[SSE Endpoint] Transform ${transformId} is already complete`);
+          res.write(`data: e:${JSON.stringify({ finishReason: 'stop' })}\n\n`);
+          res.write(`data: d:${JSON.stringify({ finishReason: 'stop' })}\n\n`);
+          return;
+        }
       }
 
-      // If we're the only client (count is 1 after adding), the background job might need restarting
-      if (broadcaster.getClientCount(transformId) === 1) {
-        console.log(`First client connected to transform ${transformId}, checking if streaming is active`);
-        // The background job should already be using the broadcaster, but if it's stalled, restart it
-        // This handles cases where the job crashed or was started before broadcaster was implemented
-        setImmediate(() => {
-          streamingTransformExecutor.executeStreamingJobWithRetries(transformId);
-        });
+      // Check if this is the first client and we need to start streaming
+      const clientCount = broadcaster.getClientCount(transformId);
+      if (clientCount === 1) {
+        console.log(`[SSE Endpoint] First client connected to transform ${transformId}, starting job`);
+
+        // Start the streaming job in the background
+        streamingTransformExecutor.executeStreamingJobWithRetries(transformId)
+          .catch(error => {
+            console.error(`[SSE Endpoint] Error executing streaming job:`, error);
+            res.write(`data: error:${JSON.stringify({ error: error.message })}\n\n`);
+          });
+      } else {
+        console.log(`[SSE Endpoint] Additional client connected to transform ${transformId}, total clients: ${clientCount}`);
       }
     } else {
       // Job failed or cancelled

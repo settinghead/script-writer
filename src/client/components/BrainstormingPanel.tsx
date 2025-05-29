@@ -102,6 +102,11 @@ const BrainstormingPanel: React.FC<BrainstormingPanelProps> = ({
     // Use the new RxJS-based streaming hook with optional transform ID
     const { status, items, error, start, stop } = useStreamingBrainstorm(activeTransformId);
 
+    // DEBUG: Log activeTransformId changes
+    useEffect(() => {
+        console.log('[BrainstormingPanel] activeTransformId changed:', activeTransformId);
+    }, [activeTransformId]);
+
     // Update generated ideas when streaming items change
     useEffect(() => {
         // Only log when there's an actual change in items

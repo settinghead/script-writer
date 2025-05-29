@@ -26,54 +26,34 @@ export class JobBroadcaster {
         const clients = this.activeJobs.get(transformId)!;
         clients.push({ res, userId });
 
+        console.log(`[JobBroadcaster] Added client for transform ${transformId}, total clients: ${clients.length}`);
+
         // Clean up on connection close
         res.on('close', () => {
+            console.log(`[JobBroadcaster] Client disconnected from transform ${transformId}`);
             this.removeClient(transformId, res);
         });
     }
 
-    broadcast(transformId: string, data: any): void {
-        const clients = this.activeJobs.get(transformId);
-        if (!clients || clients.length === 0) {
-            console.log(`[JobBroadcaster] No clients connected for transform ${transformId}`);
-            return;
-        }
-
+    broadcast(transformId: string, message: string): void {
+        const clients = this.activeJobs.get(transformId) || [];
         console.log(`[JobBroadcaster] Broadcasting to ${clients.length} clients for transform ${transformId}`);
 
-        let message = typeof data === 'string' ? data : JSON.stringify(data);
-
-        // Check if the message is already in streaming format (0:, e:, d:, error:)
-        const isStreamingFormat = message.match(/^(0|e|d|error):/);
-
-        if (isStreamingFormat) {
-            // Already in streaming format, just ensure proper SSE formatting
-            if (!message.startsWith('data: ')) {
-                message = `data: ${message}`;
-            }
-            if (!message.endsWith('\n\n')) {
-                message = message.replace(/\n*$/, '\n\n');
-            }
-        } else {
-            // Regular JSON data, wrap as SSE
-            if (!message.startsWith('data: ')) {
-                message = `data: ${message}\n\n`;
-            } else if (!message.endsWith('\n\n')) {
-                message = message + '\n\n';
-            }
-        }
-
-        // Send to all connected clients
         clients.forEach((client, index) => {
             try {
-                if (!client.res.writableEnded && client.res.writable) {
-                    client.res.write(message);
-                    console.log(`[JobBroadcaster] Sent message to client ${index + 1}/${clients.length} for transform ${transformId}`);
-                } else {
-                    console.log(`[JobBroadcaster] Client ${index + 1} not writable for transform ${transformId}`);
+                // Ensure message is in SSE format with proper termination
+                if (!message.startsWith('data: ')) {
+                    message = `data: ${message}`;
                 }
+                // Ensure message ends with double newline
+                if (!message.endsWith('\n\n')) {
+                    message = message.trimEnd() + '\n\n';
+                }
+                client.res.write(message);
+                console.log(`[JobBroadcaster] Sent message to client ${index + 1}/${clients.length} for transform ${transformId}`);
             } catch (error) {
-                console.warn(`[JobBroadcaster] Failed to send to client ${index + 1} for transform ${transformId}:`, error);
+                console.error(`[JobBroadcaster] Failed to send to client:`, error);
+                // Remove failed client
                 this.removeClient(transformId, client.res);
             }
         });
@@ -96,11 +76,13 @@ export class JobBroadcaster {
         const index = clients.findIndex(client => client.res === res);
         if (index !== -1) {
             clients.splice(index, 1);
+            console.log(`[JobBroadcaster] Removed client from transform ${transformId}, remaining clients: ${clients.length}`);
         }
 
         // Clean up empty job entries
         if (clients.length === 0) {
             this.activeJobs.delete(transformId);
+            console.log(`[JobBroadcaster] No more clients for transform ${transformId}, cleaning up`);
         }
     }
 

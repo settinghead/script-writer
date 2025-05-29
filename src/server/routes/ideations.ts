@@ -40,10 +40,9 @@ export function createIdeationRoutes(authMiddleware: any) {
             const { ideationRunId, transformId } = await streamingExecutor
                 .startBrainstormingJob(user.id, jobParams);
 
-            // Start streaming job in background
-            setImmediate(() => {
-                streamingExecutor.executeStreamingJobWithRetries(transformId);
-            });
+            // Don't start the job immediately - let the SSE connection start it
+            // This prevents duplicate streaming when the client connects
+            console.log(`[IdeationRoutes] Created brainstorming job ${transformId}, waiting for client connection`);
 
             res.json({ ideationRunId, transformId });
         } catch (error: any) {

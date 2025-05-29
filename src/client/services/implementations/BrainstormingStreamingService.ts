@@ -54,100 +54,26 @@ export class BrainstormingStreamingService extends LLMStreamingService<IdeaWithT
     }
 
     parsePartial(content: string): IdeaWithTitle[] {
-        console.log('[BrainstormingStreamingService] parsePartial called with content length:', content.length);
-        console.log('[BrainstormingStreamingService] Content sample:', content.substring(0, 500));
-
         if (!content.trim()) return [];
 
+        const cleaned = this.cleanContent(content);
+        if (!cleaned.trim()) return [];
+
+        // Simple approach: try to parse with jsonrepair
         try {
-            const cleaned = this.cleanContent(content);
-            console.log('[BrainstormingStreamingService] Cleaned content length:', cleaned.length);
-            console.log('[BrainstormingStreamingService] Cleaned sample:', cleaned.substring(0, 300));
+            const repaired = jsonrepair(cleaned);
+            const parsed = JSON.parse(repaired);
 
-            if (!cleaned.trim()) return [];
-
-            // First try to parse as complete JSON
-            try {
-                const repaired = jsonrepair(cleaned);
-                const parsed = JSON.parse(repaired);
-                if (Array.isArray(parsed)) {
-                    const validItems = parsed.filter(item => this.validate(item));
-                    console.log('[BrainstormingStreamingService] Complete JSON parse successful:', validItems.length, 'items');
-                    return validItems;
-                }
-            } catch (completeError) {
-                console.log('[BrainstormingStreamingService] Complete JSON parse failed:', completeError.message);
-                // Continue to partial parsing
+            if (Array.isArray(parsed)) {
+                const validItems = parsed.filter(item => this.validate(item));
+                console.log(`[BrainstormingStreamingService] Parsed ${validItems.length} valid items`);
+                return validItems;
             }
-
-            // Handle streaming/partial JSON array - extract valid complete objects
-            const items: IdeaWithTitle[] = [];
-
-            // Try to extract items from partial JSON array
-            // Look for complete {"title":"...","body":"..."} objects with proper escaping support
-            const itemPattern = /\{\s*"title"\s*:\s*"((?:[^"\\]|\\.)*)"\s*,\s*"body"\s*:\s*"((?:[^"\\]|\\.)*)"\s*\}/g;
-            let match;
-
-            while ((match = itemPattern.exec(cleaned)) !== null) {
-                try {
-                    const itemJson = match[0];
-                    const item = JSON.parse(itemJson);
-                    if (this.validate(item)) {
-                        items.push(item);
-                    }
-                } catch (itemError) {
-                    console.warn('[BrainstormingStreamingService] Failed to parse individual item:', itemError);
-                }
-            }
-
-            console.log('[BrainstormingStreamingService] Regex extraction found:', items.length, 'items');
-
-            // If no items found with strict pattern, try jsonrepair on partial content
-            if (items.length === 0) {
-                console.log('[BrainstormingStreamingService] Attempting jsonrepair on partial content');
-                try {
-                    // Attempt to repair incomplete JSON array
-                    let partialContent = cleaned;
-
-                    // If content looks like it's starting an array but incomplete
-                    if (partialContent.startsWith('[') && !partialContent.endsWith(']')) {
-                        // Add closing bracket to make it valid
-                        partialContent = partialContent + ']';
-                    }
-
-                    // If content has incomplete objects, try to clean them up
-                    if (partialContent.includes('{') && !partialContent.endsWith('}')) {
-                        // Find the last complete object
-                        const lastCompleteObject = partialContent.lastIndexOf('}');
-                        if (lastCompleteObject > 0) {
-                            // Truncate to last complete object and add array closing
-                            partialContent = partialContent.substring(0, lastCompleteObject + 1);
-                            if (partialContent.startsWith('[') && !partialContent.endsWith(']')) {
-                                partialContent = partialContent + ']';
-                            }
-                        }
-                    }
-
-                    console.log('[BrainstormingStreamingService] Attempting to repair:', partialContent.substring(0, 200));
-                    const repairedPartial = jsonrepair(partialContent);
-                    const parsedPartial = JSON.parse(repairedPartial);
-                    if (Array.isArray(parsedPartial)) {
-                        const validPartialItems = parsedPartial.filter(item => this.validate(item));
-                        console.log('[BrainstormingStreamingService] Partial repair successful:', validPartialItems.length, 'items');
-                        return validPartialItems;
-                    }
-                } catch (partialError) {
-                    console.log('[BrainstormingStreamingService] Partial repair failed:', partialError.message);
-                    // Continue to fallback
-                }
-            }
-
-            console.log('[BrainstormingStreamingService] Returning final items:', items.length);
-            return items;
-
         } catch (error) {
-            console.warn('[BrainstormingStreamingService] Failed to parse partial content:', error);
-            return [];
+            // If full parse fails, accumulate until we get valid JSON
+            console.log('[BrainstormingStreamingService] Partial content, waiting for more data');
         }
+
+        return [];
     }
 } 

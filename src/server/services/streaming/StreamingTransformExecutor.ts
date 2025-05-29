@@ -8,6 +8,7 @@ import { TemplateService } from '../templates/TemplateService';
 import { Artifact, BrainstormingJobParamsV1 } from '../../types/artifacts';
 import { IdeationService } from '../IdeationService';
 import { JobBroadcaster } from './JobBroadcaster';
+import { StreamingCache } from './StreamingCache';
 
 // Define StreamingRequest interface locally to avoid path issues
 interface StreamingRequest {
@@ -162,23 +163,61 @@ export class StreamingTransformExecutor {
         const pump = async () => {
             try {
                 console.log(`[StreamingTransformExecutor] Starting pump for transform ${transform.id}`);
+
+                // Initialize cache for this transform
+                const cache = StreamingCache.getInstance();
+                cache.initializeTransform(transform.id);
+
                 let chunkCount = 0;
+                let batchedChunks: string[] = [];
+                const BATCH_SIZE = 10; // Batch chunks together
 
                 for await (const chunk of result.textStream) {
                     chunkCount++;
-                    // Broadcast to all connected clients (including direct connection if any)
-                    const chunkMessage = `0:${JSON.stringify(chunk)}\n`;
 
-                    console.log(`[StreamingTransformExecutor] Broadcasting chunk ${chunkCount} for transform ${transform.id}`);
-                    broadcaster.broadcast(transform.id, chunkMessage);
+                    // Add chunk to batch
+                    batchedChunks.push(chunk);
 
-                    // Also write to direct connection if available
+                    // Send batch when it reaches size or on specific intervals
+                    if (batchedChunks.length >= BATCH_SIZE) {
+                        // Format batched chunks for streaming
+                        const batchedMessage = `0:${JSON.stringify(batchedChunks.join(''))}\n`;
+
+                        console.log(`[StreamingTransformExecutor] Broadcasting batch of ${batchedChunks.length} chunks (${chunkCount} total) for transform ${transform.id}`);
+
+                        // Add to cache
+                        cache.addChunk(transform.id, batchedMessage);
+
+                        // Broadcast to all connected clients
+                        broadcaster.broadcast(transform.id, batchedMessage);
+
+                        // Also write to direct connection if available
+                        if (isDirectConnection && res && !res.destroyed && res.writable) {
+                            try {
+                                res.write(`data: ${batchedMessage}`);
+                            } catch (writeError: any) {
+                                console.warn('Failed to write to direct connection:', writeError.message);
+                                isDirectConnection = false;
+                            }
+                        }
+
+                        // Clear batch
+                        batchedChunks = [];
+                    }
+                }
+
+                // Send any remaining chunks
+                if (batchedChunks.length > 0) {
+                    const batchedMessage = `0:${JSON.stringify(batchedChunks.join(''))}\n`;
+                    console.log(`[StreamingTransformExecutor] Broadcasting final batch of ${batchedChunks.length} chunks for transform ${transform.id}`);
+                    cache.addChunk(transform.id, batchedMessage);
+                    broadcaster.broadcast(transform.id, batchedMessage);
+
                     if (isDirectConnection && res && !res.destroyed && res.writable) {
                         try {
-                            res.write(chunkMessage);
+                            res.write(`data: ${batchedMessage}`);
                         } catch (writeError: any) {
                             console.warn('Failed to write to direct connection:', writeError.message);
-                            isDirectConnection = false;
                         }
                     }
                 }
@@ -262,7 +301,13 @@ export class StreamingTransformExecutor {
                     // Create output artifacts
                     if (jsonData.length > 0) {
                         await this.createOutputArtifacts(userId, transform, jsonData, text);
+
+                        // Store parsed results in cache
+                        cache.setResults(transform.id, jsonData);
                     }
+
+                    // Mark cache as complete
+                    cache.markComplete(transform.id);
 
                     console.log(`Transform ${transform.id} completed successfully`);
                 } catch (error) {
@@ -283,8 +328,8 @@ export class StreamingTransformExecutor {
                 // Also send to direct connection if available
                 if (isDirectConnection && res && !res.destroyed && res.writable) {
                     try {
-                        res.write(`e:${completionData.e}\n`);
-                        res.write(`d:${completionData.d}\n`);
+                        res.write(`data: e:${completionData.e}\n\n`);
+                        res.write(`data: d:${completionData.d}\n\n`);
                         res.end();
                     } catch (endError: any) {
                         console.warn('Failed to end direct connection:', endError.message);
@@ -302,7 +347,7 @@ export class StreamingTransformExecutor {
                 // Also send to direct connection if available
                 if (isDirectConnection && res && !res.destroyed && res.writable) {
                     try {
-                        res.write(errorMessage);
+                        res.write(`data: ${errorMessage}\n`);
                         res.end();
                     } catch (errorWriteError: any) {
                         console.warn('Failed to send error to direct connection:', errorWriteError.message);
@@ -418,36 +463,22 @@ export class StreamingTransformExecutor {
             throw new Error(`Transform ${transformId} not found`);
         }
 
-        // Check if the job is stalled (running for more than 5 minutes)
-        if (transform.status === 'running') {
-            const startedAt = new Date(transform.execution_context?.started_at || transform.created_at);
-            const now = new Date();
-            const runningTimeMs = now.getTime() - startedAt.getTime();
-            const maxRunningTimeMs = 5 * 60 * 1000; // 5 minutes
-
-            // Also check if the job has outputs but is still marked as running
-            const outputs = await this.transformRepo.getTransformOutputs(transformId);
-            const hasCompleteOutputs = outputs.length >= 5; // Assume 5+ outputs means job likely completed
-
-            if (runningTimeMs > maxRunningTimeMs || hasCompleteOutputs) {
-                console.log(`[StreamingTransformExecutor] Transform ${transformId} appears to be stalled (running for ${Math.floor(runningTimeMs / 1000)}s, ${outputs.length} outputs), marking as completed`);
-
-                if (hasCompleteOutputs) {
-                    // If we have outputs, mark as completed rather than stalled
-                    await this.updateTransformStatus(transformId, 'completed');
-                    return;
-                } else {
-                    await this.updateTransformStatus(transformId, 'stalled');
-                }
-                // Continue to restart the job if no outputs
-            } else if (runningTimeMs < 1000) {
-                // If just started (less than 1 second), allow restart
-                console.log(`[StreamingTransformExecutor] Transform ${transformId} just started, allowing restart`);
-            } else {
-                console.log(`[StreamingTransformExecutor] Transform ${transformId} is already running (${Math.floor(runningTimeMs / 1000)}s), skipping restart`);
-                return;
-            }
+        // Simple check: if completed, don't restart
+        if (transform.status === 'completed') {
+            console.log(`[StreamingTransformExecutor] Transform ${transformId} already completed`);
+            return;
         }
+
+        // Check if we already have LLM data (job finished but status not updated)
+        const llmData = await this.transformRepo.getLLMTransformData(transformId);
+        if (llmData) {
+            console.log(`[StreamingTransformExecutor] Transform ${transformId} already has LLM data, marking as completed`);
+            await this.updateTransformStatus(transformId, 'completed');
+            return;
+        }
+
+        // Just start the job - no complex checks
+        console.log(`[StreamingTransformExecutor] Starting streaming for transform ${transformId}`);
 
         try {
             await this.executeStreamingLLM(transform, res);

@@ -17,17 +17,11 @@ export function useLLMStreaming<T>(
     const serviceRef = useRef<LLMStreamingService<T>>();
     const subscriptionRef = useRef<Subscription>();
     const currentTransformIdRef = useRef<string | undefined>();
-    const ServiceClassRef = useRef(ServiceClass);
-    const configRef = useRef(config);
-
-    // Update refs when props change
-    ServiceClassRef.current = ServiceClass;
-    configRef.current = config;
 
     // Initialize service only once
     useEffect(() => {
         if (!serviceRef.current) {
-            serviceRef.current = new ServiceClassRef.current(configRef.current);
+            serviceRef.current = new ServiceClass(config);
 
             // Subscribe to response stream
             subscriptionRef.current = serviceRef.current.response$.subscribe({
@@ -57,7 +51,9 @@ export function useLLMStreaming<T>(
 
     // Handle transform ID changes separately
     useEffect(() => {
+        console.log('[useLLMStreaming] Transform ID effect triggered:', { transformId, currentTransformId: currentTransformIdRef.current });
         if (transformId && transformId !== currentTransformIdRef.current && serviceRef.current) {
+            console.log('[useLLMStreaming] Connecting to transform:', transformId);
             currentTransformIdRef.current = transformId;
             serviceRef.current.connectToTransform(transformId);
         }

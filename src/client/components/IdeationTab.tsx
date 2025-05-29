@@ -15,6 +15,7 @@ const IdeationTab: React.FC = () => {
     const navigate = useNavigate();
     const searchParams = new URLSearchParams(window.location.search);
     const initialArtifactId = searchParams.get('artifact_id');
+    const initialTransformId = searchParams.get('transform');
 
     const [userInput, setUserInput] = useState('');
     const [currentArtifactId, setCurrentArtifactId] = useState<string | null>(initialArtifactId);
@@ -26,8 +27,8 @@ const IdeationTab: React.FC = () => {
     // NEW: Streaming job state
     const [isStreamingJob, setIsStreamingJob] = useState(false);
     const [streamingProgress, setStreamingProgress] = useState('');
-    const [activeTransformId, setActiveTransformId] = useState<string | null>(null);
-    const [streamingBrainstormPanel, setStreamingBrainstormPanel] = useState(false);
+    const [activeTransformId, setActiveTransformId] = useState<string | null>(initialTransformId);
+    const [streamingBrainstormPanel, setStreamingBrainstormPanel] = useState(!!initialTransformId);
 
     // Brainstorming data  
     const [brainstormingData, setBrainstormingData] = useState({
@@ -39,16 +40,37 @@ const IdeationTab: React.FC = () => {
         requirements: ''
     });
 
+    // DEBUG: Log activeTransformId changes
+    useEffect(() => {
+        console.log('[IdeationTab] activeTransformId changed:', activeTransformId);
+    }, [activeTransformId]);
+
+    // DEBUG: Log streamingBrainstormPanel changes
+    useEffect(() => {
+        console.log('[IdeationTab] streamingBrainstormPanel changed:', streamingBrainstormPanel);
+    }, [streamingBrainstormPanel]);
+
     const abortControllerRef = useRef<AbortController | null>(null);
 
     // Effect to load existing ideation run if ID is present
     useEffect(() => {
+        console.log('[IdeationTab] useEffect triggered with:', { ideationRunId, initialTransformId });
         if (ideationRunId) {
             loadIdeationRun(ideationRunId);
-            // Check if there's an active streaming job for this run
-            checkActiveStreamingJob(ideationRunId);
+            // If we have a transform ID from URL, set streaming state immediately
+            if (initialTransformId) {
+                console.log('[IdeationTab] Setting streaming state for transform:', initialTransformId);
+                setIsStreamingJob(true);
+                setActiveTransformId(initialTransformId);  // Set the transform ID
+                setStreamingBrainstormPanel(true);         // Enable streaming panel
+                setBrainstormingEnabled(true);
+                setBrainstormingCollapsed(false);
+            } else {
+                // Otherwise check if there's an active streaming job for this run
+                checkActiveStreamingJob(ideationRunId);
+            }
         }
-    }, [ideationRunId]);
+    }, [ideationRunId]); // Note: Don't include initialTransformId in deps to avoid re-running
 
     // Function to load an existing ideation run
     const loadIdeationRun = async (runId: string) => {
@@ -206,15 +228,33 @@ const IdeationTab: React.FC = () => {
         setBrainstormingData({
             ...data
         });
-
-        // Remove the automatic resetting of streaming state - let the streaming
-        // service handle its own lifecycle
     }, []);
+
+    // NEW: Handle streaming completion
+    const handleStreamingComplete = useCallback(() => {
+        setIsStreamingJob(false);
+        setStreamingBrainstormPanel(false);
+        setActiveTransformId(null);
+
+        // Clear transform ID from URL
+        if (ideationRunId) {
+            const newSearchParams = new URLSearchParams(window.location.search);
+            newSearchParams.delete('transform');
+            const newUrl = newSearchParams.toString()
+                ? `/ideation/${ideationRunId}?${newSearchParams.toString()}`
+                : `/ideation/${ideationRunId}`;
+            navigate(newUrl, { replace: true });
+        }
+    }, [ideationRunId, navigate]);
 
     // NEW: Handle job creation and immediate redirect
     const handleRunCreated = (runId: string, transformId?: string) => {
-        // Navigate immediately to the new run
-        navigate(`/ideation/${runId}`);
+        // Navigate immediately to the new run with transform ID if available
+        if (transformId) {
+            navigate(`/ideation/${runId}?transform=${transformId}`);
+        } else {
+            navigate(`/ideation/${runId}`);
+        }
     };
 
     // NEW: Check for active streaming jobs on page load
@@ -406,20 +446,21 @@ const IdeationTab: React.FC = () => {
                             onDataChange={handleBrainstormingDataChange}
                             onRunCreated={!ideationRunId ? handleRunCreated : undefined}
                             onExpand={() => setBrainstormingCollapsed(false)}
+                            onStreamingComplete={handleStreamingComplete}
                             initialPlatform={brainstormingData.selectedPlatform}
                             initialGenrePaths={brainstormingData.selectedGenrePaths}
                             initialGenreProportions={brainstormingData.genreProportions}
                             initialGeneratedIdeas={brainstormingData.generatedIdeas}
                             initialRequirements={brainstormingData.requirements}
                             activeTransformId={streamingBrainstormPanel ? activeTransformId : undefined}
-                            onStreamingComplete={() => {
-                                // Handle streaming completion
-                                setIsStreamingJob(false);
-                                setStreamingBrainstormPanel(false);
-                                setActiveTransformId(null);
-                            }}
                         />
                     )}
+                    {/* DEBUG: Log what we're passing to BrainstormingPanel */}
+                    {console.log('[IdeationTab] Rendering BrainstormingPanel with:', {
+                        streamingBrainstormPanel,
+                        activeTransformId,
+                        finalTransformId: streamingBrainstormPanel ? activeTransformId : undefined
+                    })}
 
                     {/* Story Inspiration Editor */}
                     {ideationRunId ? (
