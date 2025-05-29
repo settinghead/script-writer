@@ -3,7 +3,7 @@ import { Tabs, Typography, Button } from 'antd';
 import { BulbOutlined, FileTextOutlined, PlusOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import IdeationsList from './IdeationsList';
-import OutlinesList from './OutlinesList';
+import { OutlinesList } from './OutlinesList';
 
 const { Title } = Typography;
 

@@ -246,21 +246,85 @@ export class IdeationService {
         const cached = this.cacheService.get<any>(cacheKey);
 
         if (cached) {
+            console.log(`[getIdeationRun] Returning cached result for ${sessionId}`);
             return cached;
         }
 
         try {
+            console.log(`[getIdeationRun] Loading ideation run ${sessionId} for user ${userId}`);
+
             // Validate session ownership
             const sessionArtifact = await this.validateSessionOwnership(userId, sessionId);
+            console.log(`[getIdeationRun] Found session artifact: ${sessionArtifact.id}`);
 
             // Get related artifacts
             const relatedArtifacts = await this.getSessionRelatedArtifacts(userId, sessionArtifact);
+            console.log(`[getIdeationRun] Found ${relatedArtifacts.length} related artifacts:`, relatedArtifacts.map(a => `${a.type}:${a.id}`));
 
             // Parse artifacts by type
             const brainstormParams = relatedArtifacts.find(a => a.type === 'brainstorm_params');
-            const brainstormIdeas = relatedArtifacts
+
+            // Also check for new streaming format brainstorming_job_params
+            const brainstormJobParams = relatedArtifacts.find(a => a.type === 'brainstorming_job_params');
+
+            // Use whichever params format is available
+            let params = brainstormParams || brainstormJobParams;
+            console.log(`[getIdeationRun] Params artifact:`, params ? `${params.type}:${params.id}` : 'none');
+
+            let brainstormIdeas = relatedArtifacts
                 .filter(a => a.type === 'brainstorm_idea')
-                .sort((a, b) => a.data.order_index - b.data.order_index);
+                .sort((a, b) => (a.data.order_index || 0) - (b.data.order_index || 0));
+            console.log(`[getIdeationRun] Found ${brainstormIdeas.length} brainstorm ideas from related artifacts`);
+
+            // If we have no ideas, look for completed streaming transforms directly
+            if (brainstormIdeas.length === 0) {
+                console.log(`[getIdeationRun] No ideas found, looking for streaming transforms with ideation_run_id: ${sessionId}`);
+
+                // Find transforms for this ideation run ID (streaming system)
+                const userTransforms = await this.transformRepo.getUserTransforms(userId);
+                console.log(`[getIdeationRun] Found ${userTransforms.length} total user transforms`);
+
+                const brainstormingTransforms = userTransforms.filter(t =>
+                    t.execution_context?.ideation_run_id === sessionId &&
+                    t.execution_context?.template_id === 'brainstorming' &&
+                    t.status === 'completed'
+                );
+                console.log(`[getIdeationRun] Found ${brainstormingTransforms.length} completed brainstorming transforms for this ideation run`);
+
+                // Get output artifacts from completed brainstorming transforms
+                for (const transform of brainstormingTransforms) {
+                    console.log(`[getIdeationRun] Processing transform ${transform.id}`);
+                    const outputs = await this.transformRepo.getTransformOutputs(transform.id);
+                    console.log(`[getIdeationRun] Transform has ${outputs.length} output artifacts`);
+
+                    for (const output of outputs) {
+                        const artifact = await this.artifactRepo.getArtifact(output.artifact_id, userId);
+                        if (artifact && artifact.type === 'brainstorm_idea') {
+                            console.log(`[getIdeationRun] Found brainstorm idea: ${artifact.id} - ${artifact.data.idea_title}`);
+                            brainstormIdeas.push(artifact);
+                        }
+                    }
+
+                    // Also get the input params from this transform if we don't have any yet
+                    if (!params) {
+                        const inputs = await this.transformRepo.getTransformInputs(transform.id);
+                        console.log(`[getIdeationRun] Transform has ${inputs.length} input artifacts`);
+                        for (const input of inputs) {
+                            const artifact = await this.artifactRepo.getArtifact(input.artifact_id, userId);
+                            if (artifact && artifact.type === 'brainstorming_job_params') {
+                                console.log(`[getIdeationRun] Found brainstorming job params: ${artifact.id}`);
+                                params = artifact;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // Sort the streaming ideas by order_index
+                brainstormIdeas.sort((a, b) => (a.data.order_index || 0) - (b.data.order_index || 0));
+                console.log(`[getIdeationRun] Final brainstorm ideas count: ${brainstormIdeas.length}`);
+            }
+
             const userInput = relatedArtifacts.find(a => a.type === 'user_input');
             const plotOutline = relatedArtifacts.find(a => a.type === 'plot_outline');
 
@@ -268,20 +332,21 @@ export class IdeationService {
             const result = {
                 id: sessionId,
                 userInput: userInput?.data.text || '',
-                selectedPlatform: brainstormParams?.data.platform || '',
-                genrePaths: brainstormParams?.data.genre_paths || [],
-                genreProportions: brainstormParams?.data.genre_proportions || [],
+                selectedPlatform: params?.data.platform || '',
+                genrePaths: params?.data.genre_paths || params?.data.genrePaths || [],
+                genreProportions: params?.data.genre_proportions || params?.data.genreProportions || [],
                 initialIdeas: brainstormIdeas.map(idea => ({
                     title: idea.data.idea_title || '',
-                    body: idea.data.idea_text
+                    body: idea.data.idea_text,
+                    artifactId: idea.id
                 })),
                 initialIdeaArtifacts: brainstormIdeas.map(idea => ({
                     id: idea.id,
                     text: idea.data.idea_text,
                     title: idea.data.idea_title,
-                    orderIndex: idea.data.order_index
+                    orderIndex: idea.data.order_index || 0
                 })),
-                requirements: brainstormParams?.data.requirements || '',
+                requirements: params?.data.requirements || '',
                 result: plotOutline ? {
                     mediaType: plotOutline.data.media_type,
                     platform: plotOutline.data.platform,
@@ -291,12 +356,15 @@ export class IdeationService {
                 createdAt: sessionArtifact.created_at
             };
 
+            console.log(`[getIdeationRun] Returning result with ${result.initialIdeas.length} ideas`);
+
             // Cache the result (shorter TTL since data might change)
             this.cacheService.set(cacheKey, result, 2 * 60 * 1000); // 2 minutes
 
             return result;
 
         } catch (error) {
+            console.error(`[getIdeationRun] Error loading ideation run ${sessionId}:`, error);
             if (error instanceof Error && error.message.includes('not found or not accessible')) {
                 return null; // Return null for not found, let caller handle 404
             }

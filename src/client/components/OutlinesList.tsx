@@ -1,48 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-    List,
-    Card,
-    Typography,
-    Tag,
-    Button,
-    Spin,
-    Alert,
-    Empty,
-    Space,
-    Modal
-} from 'antd';
-import {
-    EyeOutlined,
-    PlusOutlined,
-    ClockCircleOutlined,
-    FileTextOutlined,
-    DeleteOutlined
-} from '@ant-design/icons';
-import { formatDistanceToNow } from 'date-fns';
-import { zhCN } from 'date-fns/locale';
+import { Card, List, Button, Tag, Empty, Spin, Alert, Typography, Space } from 'antd';
+import { PlusOutlined, EyeOutlined, DeleteOutlined, FileTextOutlined } from '@ant-design/icons';
+import { apiService } from '../services/apiService';
 
 const { Title, Text } = Typography;
 
 interface OutlineSessionSummary {
     id: string;
-    ideationSessionId: string;
-    status: 'active' | 'completed';
+    source_idea: string;
+    source_idea_title?: string;
+    source_artifact_id: string;
+    ideation_run_id?: string;
     title?: string;
-    createdAt: string;
+    genre?: string;
+    total_episodes?: number;
+    episode_duration?: number;
+    created_at: string;
+    status: 'active' | 'completed' | 'failed';
 }
 
-const OutlinesList: React.FC = () => {
+export const OutlinesList: React.FC = () => {
     const navigate = useNavigate();
-    const [outlines, setOutlines] = useState<OutlineSessionSummary[]>([]);
+    const [sessions, setSessions] = useState<OutlineSessionSummary[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const [error, setError] = useState<string>('');
+    const [deleting, setDeleting] = useState<string | null>(null);
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
     useEffect(() => {
-        fetchOutlines();
-
-        // Handle window resize for mobile detection
         const handleResize = () => {
             setIsMobile(window.innerWidth <= 768);
         };
@@ -51,118 +37,79 @@ const OutlinesList: React.FC = () => {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    const fetchOutlines = async () => {
-        try {
-            const response = await fetch('/api/outlines');
-            if (!response.ok) {
-                throw new Error(`Failed to fetch outlines: ${response.status}`);
-            }
+    useEffect(() => {
+        loadSessions();
+    }, []);
 
-            const data = await response.json();
-            setOutlines(data);
-        } catch (err) {
-            console.error('Error fetching outlines:', err);
-            setError(err instanceof Error ? err.message : 'Failed to load outlines');
+    const loadSessions = async () => {
+        try {
+            setLoading(true);
+            setError('');
+            const data = await apiService.getOutlineSessions();
+            setSessions(data);
+        } catch (error) {
+            console.error('Error loading outline sessions:', error);
+            setError('Failed to load outline sessions');
         } finally {
             setLoading(false);
         }
     };
 
-    const handleViewOutline = (id: string) => {
-        navigate(`/outlines/${id}`);
+    const handleDelete = async (sessionId: string, sessionTitle: string) => {
+        if (!confirm(`确定要删除大纲"${sessionTitle}"吗？此操作无法撤销。`)) {
+            return;
+        }
+
+        try {
+            setDeleting(sessionId);
+            await apiService.deleteOutlineSession(sessionId);
+            setSessions(sessions.filter(s => s.id !== sessionId));
+        } catch (error) {
+            console.error('Error deleting outline session:', error);
+            alert('删除大纲时出错，请重试');
+        } finally {
+            setDeleting(null);
+        }
+    };
+
+    const handleViewOutline = (sessionId: string) => {
+        navigate(`/outlines/${sessionId}`);
+    };
+
+    const handleViewSourceIdea = (sessionId: string) => {
+        const session = sessions.find(s => s.id === sessionId);
+        if (session?.ideation_run_id) {
+            navigate(`/ideation/${session.ideation_run_id}`);
+        }
     };
 
     const handleCreateNew = () => {
-        navigate('/ideation');
+        navigate('/new-outline');
     };
 
-    const handleDeleteOutline = async (id: string, title: string) => {
-        Modal.confirm({
-            title: '确认删除',
-            content: `确定要删除大纲 "${title}" 吗？此操作无法撤销。`,
-            okText: '删除',
-            okType: 'danger',
-            cancelText: '取消',
-            onOk: async () => {
-                try {
-                    const response = await fetch(`/api/outlines/${id}`, {
-                        method: 'DELETE'
-                    });
-
-                    if (!response.ok) {
-                        throw new Error(`Failed to delete outline: ${response.status}`);
-                    }
-
-                    // Remove from local state to update UI immediately
-                    setOutlines(prevOutlines => prevOutlines.filter(outline => outline.id !== id));
-
-                    // Show success message
-                    Modal.success({
-                        title: '删除成功',
-                        content: '大纲已成功删除',
-                    });
-                } catch (err) {
-                    console.error('Error deleting outline:', err);
-                    Modal.error({
-                        title: '删除失败',
-                        content: '删除失败，请重试。',
-                    });
-                }
-            }
-        });
+    const getStatusTag = (status: string) => {
+        switch (status) {
+            case 'completed':
+                return <Tag color="success">已完成</Tag>;
+            case 'active':
+                return <Tag color="processing">生成中</Tag>;
+            case 'failed':
+                return <Tag color="error">失败</Tag>;
+            default:
+                return null;
+        }
     };
 
     const formatDate = (dateString: string) => {
-        try {
-            const date = new Date(dateString);
-            return formatDistanceToNow(date, {
-                addSuffix: true,
-                locale: zhCN
-            });
-        } catch {
-            return dateString;
-        }
+        return new Date(dateString).toLocaleDateString('zh-CN', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
     };
 
-    const truncateText = (text: string, maxLength: number = 60) => {
-        if (!text) return '';
-        return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
-    };
-
-    const generateTitle = (outline: OutlineSessionSummary) => {
-        const maxLength = isMobile ? 30 : 40;
-
-        // Use outline title if available
-        if (outline.title && outline.title.trim()) {
-            return truncateText(outline.title, maxLength);
-        }
-
-        // Fallback to a more descriptive title with session ID
-        return `故事大纲 (${outline.id.slice(0, 8)}...)`;
-    };
-
-    const generateDescription = (outline: OutlineSessionSummary) => {
-        // Show status and creation time
-        const statusText = outline.status === 'completed' ? '已完成' : '进行中';
-        const timeText = formatDate(outline.createdAt);
-
-        if (outline.title && outline.title.trim()) {
-            return `${statusText} · ${timeText}`;
-        } else {
-            return `${statusText} · ${timeText} · 无标题`;
-        }
-    };
-
-    const getOutlineTags = (outline: OutlineSessionSummary) => {
-        const tags = [];
-
-        if (outline.status === 'completed') {
-            tags.push({ text: '已完成', color: 'green' });
-        } else {
-            tags.push({ text: '进行中', color: 'orange' });
-        }
-
-        return tags;
+    const truncateText = (text: string, maxLength: number = 80) => {
+        return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
     };
 
     if (loading) {
@@ -186,19 +133,28 @@ const OutlinesList: React.FC = () => {
                 type="error"
                 showIcon
                 style={{ margin: '20px 0' }}
+                action={
+                    <Button onClick={loadSessions} size="small">
+                        重试
+                    </Button>
+                }
             />
         );
     }
 
     return (
         <div style={{ padding: isMobile ? '0 8px' : '0 4px' }}>
-            {outlines.length === 0 ? (
+            {sessions.length === 0 ? (
                 <Empty
-                    description="还没有创建过大纲"
+                    description="还没有大纲"
                     style={{ margin: '60px 0' }}
+                    image={<FileTextOutlined style={{ fontSize: '64px', color: '#999' }} />}
                 >
+                    <Text type="secondary" style={{ display: 'block', marginBottom: '16px' }}>
+                        基于您的故事灵感生成详细的剧本大纲
+                    </Text>
                     <Button type="primary" icon={<PlusOutlined />} onClick={handleCreateNew}>
-                        创建第一个灵感
+                        开始生成大纲
                     </Button>
                 </Empty>
             ) : (
@@ -212,17 +168,17 @@ const OutlinesList: React.FC = () => {
                         xl: 3,
                         xxl: 3,
                     }}
-                    dataSource={outlines}
-                    renderItem={(outline) => (
+                    dataSource={sessions}
+                    renderItem={(session) => (
                         <List.Item style={{ marginBottom: '16px' }}>
                             <Card
                                 hoverable
                                 style={{
-                                    minHeight: '220px',
+                                    minHeight: '240px',
                                     height: 'auto',
-                                    flex: 1,
                                     display: 'flex',
                                     flexDirection: 'column',
+                                    flex: 1,
                                     padding: isMobile ? '12px' : '16px'
                                 }}
                                 actions={[
@@ -230,7 +186,7 @@ const OutlinesList: React.FC = () => {
                                         key="view"
                                         type="text"
                                         icon={<EyeOutlined />}
-                                        onClick={() => handleViewOutline(outline.id)}
+                                        onClick={() => handleViewOutline(session.id)}
                                         style={{
                                             color: '#1890ff',
                                             fontSize: isMobile ? '12px' : '14px',
@@ -240,14 +196,29 @@ const OutlinesList: React.FC = () => {
                                     >
                                         {isMobile ? '查看' : '查看详情'}
                                     </Button>,
+                                    session.ideation_run_id && (
+                                        <Button
+                                            key="source"
+                                            type="text"
+                                            icon={<FileTextOutlined />}
+                                            onClick={() => handleViewSourceIdea(session.id)}
+                                            style={{
+                                                color: '#52c41a',
+                                                fontSize: isMobile ? '12px' : '14px',
+                                                padding: isMobile ? '4px 8px' : '4px 15px'
+                                            }}
+                                            size={isMobile ? 'small' : 'middle'}
+                                            title="查看源故事灵感"
+                                        >
+                                            源灵感
+                                        </Button>
+                                    ),
                                     <Button
                                         key="delete"
                                         type="text"
                                         icon={<DeleteOutlined />}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleDeleteOutline(outline.id, generateTitle(outline));
-                                        }}
+                                        onClick={() => handleDelete(session.id, session.title || '无标题大纲')}
+                                        loading={deleting === session.id}
                                         style={{
                                             color: '#ff4d4f',
                                             fontSize: isMobile ? '12px' : '14px',
@@ -258,7 +229,7 @@ const OutlinesList: React.FC = () => {
                                     >
                                         删除
                                     </Button>
-                                ]}
+                                ].filter(Boolean)}
                             >
                                 <div style={{
                                     flex: 1,
@@ -266,65 +237,72 @@ const OutlinesList: React.FC = () => {
                                     flexDirection: 'column',
                                     minHeight: 0
                                 }}>
-                                    <div style={{ marginBottom: isMobile ? '8px' : '12px' }}>
+                                    {/* Title and Status */}
+                                    <div style={{
+                                        marginBottom: isMobile ? '8px' : '12px',
+                                        display: 'flex',
+                                        alignItems: 'flex-start',
+                                        gap: '8px'
+                                    }}>
                                         <Text strong style={{
                                             fontSize: isMobile ? '14px' : '16px',
                                             color: '#fff',
                                             lineHeight: '1.4',
-                                            wordBreak: 'break-word'
+                                            wordBreak: 'break-word',
+                                            flex: 1
                                         }}>
-                                            {generateTitle(outline)}
+                                            {session.title || '无标题大纲'}
                                         </Text>
+                                        {getStatusTag(session.status)}
                                     </div>
 
+                                    {/* Genre */}
+                                    {session.genre && (
+                                        <div style={{ marginBottom: isMobile ? '6px' : '8px' }}>
+                                            <Tag color="blue" style={{ fontSize: '12px' }}>
+                                                {session.genre}
+                                            </Tag>
+                                        </div>
+                                    )}
+
+                                    {/* Source Idea */}
                                     <div style={{ marginBottom: isMobile ? '8px' : '12px' }}>
                                         <Text type="secondary" style={{
-                                            fontSize: isMobile ? '12px' : '13px',
+                                            fontSize: isMobile ? '11px' : '12px',
+                                            display: 'block',
+                                            marginBottom: '4px'
+                                        }}>
+                                            <strong>源故事灵感:</strong> {session.source_idea_title || '无标题'}
+                                        </Text>
+                                        <Text type="secondary" style={{
+                                            fontSize: isMobile ? '11px' : '12px',
                                             lineHeight: '1.4',
                                             wordBreak: 'break-word'
                                         }}>
-                                            {generateDescription(outline)}
+                                            {truncateText(session.source_idea)}
                                         </Text>
                                     </div>
 
+                                    {/* Metadata */}
                                     <div style={{
-                                        marginBottom: isMobile ? '6px' : '8px',
-                                        flex: '0 0 auto'
-                                    }}>
-                                        <Space size={[4, 4]} wrap>
-                                            {getOutlineTags(outline).map((tag, index) => (
-                                                <Tag
-                                                    key={index}
-                                                    color={tag.color}
-                                                    style={{
-                                                        fontSize: isMobile ? '10px' : '11px',
-                                                        margin: '2px 0',
-                                                        padding: isMobile ? '0 4px' : '0 6px'
-                                                    }}
-                                                >
-                                                    {tag.text}
-                                                </Tag>
-                                            ))}
-                                        </Space>
-                                    </div>
-
-                                    <div style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
                                         marginTop: 'auto',
-                                        paddingTop: '4px',
-                                        flex: '0 0 auto'
+                                        paddingTop: '8px'
                                     }}>
-                                        <ClockCircleOutlined style={{
-                                            marginRight: '4px',
-                                            fontSize: isMobile ? '11px' : '12px',
-                                            color: '#888'
-                                        }} />
-                                        <Text type="secondary" style={{
-                                            fontSize: isMobile ? '11px' : '12px'
-                                        }}>
-                                            {formatDate(outline.createdAt)}
-                                        </Text>
+                                        <Space size={[8, 4]} wrap>
+                                            <Text type="secondary" style={{ fontSize: '11px' }}>
+                                                {formatDate(session.created_at)}
+                                            </Text>
+                                            {session.total_episodes && (
+                                                <Tag size="small" color="default">
+                                                    {session.total_episodes} 集
+                                                </Tag>
+                                            )}
+                                            {session.episode_duration && (
+                                                <Tag size="small" color="default">
+                                                    每集 {session.episode_duration} 分钟
+                                                </Tag>
+                                            )}
+                                        </Space>
                                     </div>
                                 </div>
                             </Card>
@@ -334,6 +312,4 @@ const OutlinesList: React.FC = () => {
             )}
         </div>
     );
-};
-
-export default OutlinesList; 
+}; 

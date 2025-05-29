@@ -296,8 +296,13 @@ const IdeationTab: React.FC = () => {
                     setIsStreamingJob(true);
                     setActiveTransformId(jobData.transformId);
                 }
+            } else if (response.status === 404) {
+                // 404 is expected for completed ideations - no active job exists
+                // This is normal and not an error
+                return;
             }
         } catch (error) {
+            // Only log actual network errors, not 404s
             console.error('Error checking active streaming job:', error);
         }
     };

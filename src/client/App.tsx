@@ -11,7 +11,7 @@ import LoginPage from './components/LoginPage';
 import IdeationTab from './components/IdeationTab';
 import IdeationsList from './components/IdeationsList';
 import HomePage from './components/HomePage';
-import OutlineTab from './components/OutlineTab';
+import { OutlineTab } from './components/OutlineTab';
 import ChatTab from './components/ChatTab';
 import ScriptTab from './components/ScriptTab';
 import Breadcrumb from './components/Breadcrumb';
@@ -211,6 +211,11 @@ const AppContent: React.FC = () => {
                     <OutlineTab />
                   </ProtectedRoute>
                 } />
+                <Route path="/outlines" element={
+                  <ProtectedRoute>
+                    <OutlineTab />
+                  </ProtectedRoute>
+                } />
                 <Route path="/chat" element={
                   <ProtectedRoute>
                     <ChatTab />
@@ -258,6 +263,11 @@ const AppContent: React.FC = () => {
                   </ProtectedRoute>
                 } />
                 <Route path="/outlines/:id" element={
+                  <ProtectedRoute>
+                    <OutlineTab />
+                  </ProtectedRoute>
+                } />
+                <Route path="/outlines" element={
                   <ProtectedRoute>
                     <OutlineTab />
                   </ProtectedRoute>

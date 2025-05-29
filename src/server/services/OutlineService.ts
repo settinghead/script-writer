@@ -1,298 +1,375 @@
 import { v4 as uuidv4 } from 'uuid';
 import { ArtifactRepository } from '../repositories/ArtifactRepository';
 import { TransformRepository } from '../repositories/TransformRepository';
-import { TransformExecutor } from './TransformExecutor';
-import { CacheService } from './CacheService';
-import { createDataStreamResponse } from 'ai';
 import {
     Artifact,
     OutlineSessionV1,
+    OutlineJobParamsV1,
     OutlineTitleV1,
     OutlineGenreV1,
     OutlineSellingPointsV1,
     OutlineSettingV1,
     OutlineSynopsisV1,
-    UserInputV1,
-    OutlineCharacter,
     OutlineCharactersV1
 } from '../types/artifacts';
+import { CacheService } from './CacheService';
 
 // Response interfaces
 export interface OutlineSessionData {
-    sessionId: string;
-    ideationSessionId: string;
-    status: 'active' | 'completed';
-    userInput?: string;
-    outline?: {
-        title: string;
-        genre: string;
-        sellingPoints: string;
-        setting: string;
-        synopsis: string;
-        characters: OutlineCharacter[];
+    id: string;
+    sourceArtifact: {
+        id: string;
+        text: string;
+        title?: string;
+        type: string;
     };
+    ideationRunId?: string;
+    totalEpisodes?: number;
+    episodeDuration?: number;
+    components: {
+        title?: string;
+        genre?: string;
+        selling_points?: string;
+        setting?: string;
+        synopsis?: string;
+        characters?: Array<{ name: string; description: string }>;
+    };
+    status: 'active' | 'completed' | 'failed';
     createdAt: string;
 }
 
 export interface OutlineSessionSummary {
     id: string;
-    ideationSessionId: string;
-    status: 'active' | 'completed';
+    source_idea: string;
+    source_idea_title?: string;
+    source_artifact_id: string;
+    ideation_run_id?: string;
     title?: string;
-    createdAt: string;
+    genre?: string;
+    total_episodes?: number;
+    episode_duration?: number;
+    created_at: string;
+    status: 'active' | 'completed' | 'failed';
+}
+
+export interface LineageData {
+    nodes: Array<{
+        id: string;
+        type: 'artifact' | 'transform';
+        data: Artifact | any;
+        level: number;
+        label: string;
+        timestamp: string;
+    }>;
+    edges: Array<{
+        from: string;
+        to: string;
+        role?: string;
+    }>;
+}
+
+export interface OutlineCharacter {
+    name: string;
+    description: string;
 }
 
 export class OutlineService {
     constructor(
         private artifactRepo: ArtifactRepository,
-        private transformExecutor: TransformExecutor,
+        private transformRepo: TransformRepository,
         private cacheService: CacheService
     ) { }
 
-    // Generate outline from story inspiration artifact
-    async generateOutlineFromArtifact(
-        userId: string,
-        sourceArtifactId: string,
-        totalEpisodes?: number,
-        episodeDuration?: number
-    ): Promise<{ outlineSessionId: string; artifacts: Artifact[] }> {
-        // Get and validate source artifact (either brainstorm_idea or user_input)
-        const sourceArtifact = await this.artifactRepo.getArtifact(sourceArtifactId, userId);
+    // Validate session ownership helper
+    private async validateSessionOwnership(userId: string, sessionId: string): Promise<any> {
+        const sessionArtifacts = await this.artifactRepo.getArtifactsByType(userId, 'outline_session');
+        const sessionArtifact = sessionArtifacts.find(a => a.data.id === sessionId);
 
-        if (!sourceArtifact) {
-            throw new Error('Source artifact not found or access denied');
+        if (!sessionArtifact) {
+            throw new Error(`Outline session ${sessionId} not found or not accessible by user ${userId}`);
         }
 
-        // Validate artifact type
-        if (!['brainstorm_idea', 'user_input'].includes(sourceArtifact.type)) {
-            throw new Error('Invalid source artifact type. Must be brainstorm_idea or user_input');
-        }
-
-        // Extract user input text from artifact
-        const userInput = sourceArtifact.data.text || sourceArtifact.data.idea_text;
-        if (!userInput || !userInput.trim()) {
-            throw new Error('Source artifact contains no text content');
-        }
-
-        // Create outline session
-        const outlineSessionId = uuidv4();
-        const outlineSessionArtifact = await this.artifactRepo.createArtifact(
-            userId,
-            'outline_session',
-            {
-                id: outlineSessionId,
-                ideation_session_id: 'artifact-based', // Legacy field, not used in new flow
-                status: 'active',
-                created_at: new Date().toISOString()
-            } as OutlineSessionV1
-        );
-
-        // Use the source artifact directly as input for the transform
-
-        // Design LLM prompt for outline generation
-        const outlinePrompt = this.buildOutlinePrompt(userInput, totalEpisodes, episodeDuration);
-
-        // Execute LLM transform to generate outline
-        const { outputArtifacts } = await this.transformExecutor.executeLLMTransform(
-            userId,
-            [outlineSessionArtifact, sourceArtifact],
-            outlinePrompt,
-            {
-                user_input: userInput,
-                source_artifact_id: sourceArtifactId
-            },
-            'deepseek-chat',
-            'outline_components'
-        );
-
-        // The transform executor now creates individual component artifacts
-        // We just need to update the outline session status to completed
-        await this.artifactRepo.createArtifact(
-            userId,
-            'outline_session',
-            {
-                id: outlineSessionId,
-                ideation_session_id: 'artifact-based', // Legacy field, not used in new flow
-                status: 'completed',
-                created_at: new Date().toISOString()
-            } as OutlineSessionV1
-        );
-
-        return {
-            outlineSessionId,
-            artifacts: outputArtifacts
-        };
+        return sessionArtifact;
     }
 
-    // Streaming version of outline generation
-    async generateOutlineFromArtifactStream(
-        userId: string,
-        sourceArtifactId: string,
-        totalEpisodes?: number,
-        episodeDuration?: number
-    ) {
-        // Get and validate source artifact (either brainstorm_idea or user_input)
-        const sourceArtifact = await this.artifactRepo.getArtifact(sourceArtifactId, userId);
+    // Helper to find all related artifacts for an outline session
+    private async getOutlineArtifacts(userId: string, sessionId: string): Promise<Artifact[]> {
+        const userTransforms = await this.transformRepo.getUserTransforms(userId);
+        const relatedArtifactIds = new Set<string>();
 
-        if (!sourceArtifact) {
-            throw new Error('Source artifact not found or access denied');
-        }
-
-        // Validate artifact type
-        if (!['brainstorm_idea', 'user_input'].includes(sourceArtifact.type)) {
-            throw new Error('Invalid source artifact type. Must be brainstorm_idea or user_input');
-        }
-
-        // Extract user input text from artifact
-        const userInput = sourceArtifact.data.text || sourceArtifact.data.idea_text;
-        if (!userInput || !userInput.trim()) {
-            throw new Error('Source artifact contains no text content');
-        }
-
-        // Create outline session
-        const outlineSessionId = uuidv4();
-        const outlineSessionArtifact = await this.artifactRepo.createArtifact(
-            userId,
-            'outline_session',
-            {
-                id: outlineSessionId,
-                ideation_session_id: 'artifact-based',
-                status: 'active',
-                created_at: new Date().toISOString()
-            } as OutlineSessionV1
+        // Find transforms for this outline session
+        const outlineTransforms = userTransforms.filter(t =>
+            t.execution_context?.outline_session_id === sessionId
         );
 
-        // Build the outline prompt
-        const outlinePrompt = this.buildOutlinePrompt(userInput, totalEpisodes, episodeDuration);
+        // Collect all input and output artifact IDs
+        for (const transform of outlineTransforms) {
+            const inputs = await this.transformRepo.getTransformInputs(transform.id);
+            const outputs = await this.transformRepo.getTransformOutputs(transform.id);
 
-        // Execute streaming LLM transform to generate outline
-        const streamResponse = await this.transformExecutor.executeLLMTransformStream(
-            userId,
-            [outlineSessionArtifact, sourceArtifact],
-            outlinePrompt,
-            {
-                user_input: userInput,
-                source_artifact_id: sourceArtifactId,
-                outline_session_id: outlineSessionId  // Pass session ID for completion handling
-            },
-            'deepseek-chat',
-            'outline_components'
-        );
+            inputs.forEach(i => relatedArtifactIds.add(i.artifact_id));
+            outputs.forEach(o => relatedArtifactIds.add(o.artifact_id));
+        }
 
-        return streamResponse;
+        return await this.artifactRepo.getArtifactsByIds([...relatedArtifactIds], userId);
     }
 
-    // Get outline session data
-    async getOutlineSession(
-        userId: string,
-        outlineSessionId: string
-    ): Promise<OutlineSessionData | null> {
+    // Get outline session by ID
+    async getOutlineSession(userId: string, sessionId: string): Promise<OutlineSessionData | null> {
         // Check cache first
-        const cacheKey = `outline_session:${userId}:${outlineSessionId}`;
+        const cacheKey = `outline_session:${userId}:${sessionId}`;
         const cached = this.cacheService.get<OutlineSessionData>(cacheKey);
+
         if (cached) {
             return cached;
         }
 
-        // Get outline session artifact
-        const sessionArtifacts = await this.artifactRepo.getArtifactsByTypeForSession(
-            userId,
-            'outline_session',
-            outlineSessionId
-        );
+        try {
+            // Validate session ownership
+            const sessionArtifact = await this.validateSessionOwnership(userId, sessionId);
 
-        if (!sessionArtifacts || sessionArtifacts.length === 0) {
-            return null;
+            // Get related artifacts
+            const relatedArtifacts = await this.getOutlineArtifacts(userId, sessionId);
+
+            // Find source artifact and parameters
+            const jobParams = relatedArtifacts.find(a => a.type === 'outline_job_params');
+            let sourceArtifact = null;
+
+            if (jobParams) {
+                sourceArtifact = await this.artifactRepo.getArtifact(
+                    jobParams.data.sourceArtifactId,
+                    userId
+                );
+            }
+
+            // Parse outline components
+            const components: any = {};
+
+            // Map outline component artifacts
+            const titleArtifact = relatedArtifacts.find(a => a.type === 'outline_title');
+            if (titleArtifact) components.title = titleArtifact.data.title;
+
+            const genreArtifact = relatedArtifacts.find(a => a.type === 'outline_genre');
+            if (genreArtifact) components.genre = genreArtifact.data.genre;
+
+            const sellingPointsArtifact = relatedArtifacts.find(a => a.type === 'outline_selling_points');
+            if (sellingPointsArtifact) components.selling_points = sellingPointsArtifact.data.selling_points;
+
+            const settingArtifact = relatedArtifacts.find(a => a.type === 'outline_setting');
+            if (settingArtifact) components.setting = settingArtifact.data.setting;
+
+            const synopsisArtifact = relatedArtifacts.find(a => a.type === 'outline_synopsis');
+            if (synopsisArtifact) components.synopsis = synopsisArtifact.data.synopsis;
+
+            const charactersArtifact = relatedArtifacts.find(a => a.type === 'outline_characters');
+            if (charactersArtifact) components.characters = charactersArtifact.data.characters;
+
+            // Determine status
+            const userTransforms = await this.transformRepo.getUserTransforms(userId);
+            const outlineTransforms = userTransforms.filter(t =>
+                t.execution_context?.outline_session_id === sessionId
+            );
+
+            let status: 'active' | 'completed' | 'failed' = 'active';
+            if (outlineTransforms.length > 0) {
+                const latestTransform = outlineTransforms.sort((a, b) =>
+                    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                )[0];
+
+                if (latestTransform.status === 'completed') status = 'completed';
+                else if (latestTransform.status === 'failed') status = 'failed';
+            }
+
+            const result: OutlineSessionData = {
+                id: sessionId,
+                sourceArtifact: sourceArtifact ? {
+                    id: sourceArtifact.id,
+                    text: sourceArtifact.data.idea_text || sourceArtifact.data.text || '',
+                    title: sourceArtifact.data.idea_title || sourceArtifact.data.title,
+                    type: sourceArtifact.type
+                } : {
+                    id: '',
+                    text: '',
+                    type: 'unknown'
+                },
+                ideationRunId: sessionArtifact.data.ideation_session_id !== 'job-based'
+                    ? sessionArtifact.data.ideation_session_id
+                    : undefined,
+                totalEpisodes: jobParams?.data.totalEpisodes,
+                episodeDuration: jobParams?.data.episodeDuration,
+                components,
+                status,
+                createdAt: sessionArtifact.created_at
+            };
+
+            // Cache the result
+            this.cacheService.set(cacheKey, result, 2 * 60 * 1000); // 2 minutes
+
+            return result;
+
+        } catch (error) {
+            if (error instanceof Error && error.message.includes('not found or not accessible')) {
+                return null;
+            }
+            throw error;
         }
-
-        // Get the latest session artifact (completed status if available)
-        const sessionArtifact = sessionArtifacts
-            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
-        const sessionData = sessionArtifact.data as OutlineSessionV1;
-
-        // Get user input for this session
-        const userInputArtifacts = await this.getLatestUserInputForSession(
-            userId,
-            outlineSessionId
-        );
-        const userInput = userInputArtifacts?.data?.text;
-
-        // Get outline components
-        const outline = await this.getOutlineComponents(userId, outlineSessionId);
-
-        const result: OutlineSessionData = {
-            sessionId: outlineSessionId,
-            ideationSessionId: sessionData.ideation_session_id,
-            status: sessionData.status,
-            userInput,
-            outline,
-            createdAt: sessionData.created_at
-        };
-
-        // Cache for 5 minutes
-        this.cacheService.set(cacheKey, result, 5 * 60 * 1000);
-        return result;
     }
 
-    // List user's outline sessions
+    // List all outline sessions for a user
     async listOutlineSessions(userId: string): Promise<OutlineSessionSummary[]> {
-        const sessionArtifacts = await this.artifactRepo.getArtifactsByType(
-            userId,
-            'outline_session'
-        );
+        // Check cache first
+        const cacheKey = `outline_list:${userId}`;
+        const cached = this.cacheService.get<OutlineSessionSummary[]>(cacheKey);
 
-        // Group by session ID and get latest status for each
-        const sessionMap = new Map<string, OutlineSessionV1>();
-        sessionArtifacts.forEach(artifact => {
-            const data = artifact.data as OutlineSessionV1;
-            const existing = sessionMap.get(data.id);
-            if (!existing || new Date(artifact.created_at) > new Date(existing.created_at)) {
-                sessionMap.set(data.id, data);
-            }
-        });
-
-        // Convert to summary format
-        const summaries: OutlineSessionSummary[] = [];
-
-        // Get all user artifacts once for efficiency
-        const allArtifacts = await this.artifactRepo.getUserArtifacts(userId);
-
-        for (const [sessionId, sessionData] of sessionMap) {
-            // Get title from outline components using time-based approach
-            let title: string | undefined = undefined;
-
-            try {
-                const sessionCreationTime = new Date(sessionData.created_at).getTime();
-                const timeWindow = 5 * 60 * 1000; // 5 minutes
-
-                // Find outline title created around the same time as the session
-                const titleArtifact = allArtifacts.find(artifact => {
-                    const artifactTime = new Date(artifact.created_at).getTime();
-                    const timeDiff = Math.abs(artifactTime - sessionCreationTime);
-
-                    return timeDiff <= timeWindow && artifact.type === 'outline_title';
-                });
-
-                if (titleArtifact) {
-                    title = (titleArtifact.data as OutlineTitleV1).title;
-                }
-            } catch (error) {
-                console.error(`Error getting title for session ${sessionId}:`, error);
-            }
-
-            summaries.push({
-                id: sessionId,
-                ideationSessionId: sessionData.ideation_session_id,
-                status: sessionData.status,
-                title,
-                createdAt: sessionData.created_at
-            });
+        if (cached) {
+            return cached;
         }
 
-        // Sort by creation date (newest first)
-        return summaries.sort((a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        // Get all outline session artifacts for the user
+        const sessionArtifacts = await this.artifactRepo.getArtifactsByType(userId, 'outline_session');
+
+        const sessions: OutlineSessionSummary[] = [];
+
+        for (const sessionArtifact of sessionArtifacts) {
+            const sessionId = sessionArtifact.data.id;
+
+            try {
+                // Get minimal data for listing
+                const relatedArtifacts = await this.getOutlineArtifacts(userId, sessionId);
+
+                const jobParams = relatedArtifacts.find(a => a.type === 'outline_job_params');
+                const titleArtifact = relatedArtifacts.find(a => a.type === 'outline_title');
+                const genreArtifact = relatedArtifacts.find(a => a.type === 'outline_genre');
+
+                let sourceArtifact = null;
+                if (jobParams) {
+                    sourceArtifact = await this.artifactRepo.getArtifact(
+                        jobParams.data.sourceArtifactId,
+                        userId
+                    );
+                }
+
+                // Determine status
+                const userTransforms = await this.transformRepo.getUserTransforms(userId);
+                const outlineTransforms = userTransforms.filter(t =>
+                    t.execution_context?.outline_session_id === sessionId
+                );
+
+                let status: 'active' | 'completed' | 'failed' = 'active';
+                if (outlineTransforms.length > 0) {
+                    const latestTransform = outlineTransforms.sort((a, b) =>
+                        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                    )[0];
+
+                    if (latestTransform.status === 'completed') status = 'completed';
+                    else if (latestTransform.status === 'failed') status = 'failed';
+                }
+
+                sessions.push({
+                    id: sessionId,
+                    source_idea: sourceArtifact?.data.idea_text || sourceArtifact?.data.text || '',
+                    source_idea_title: sourceArtifact?.data.idea_title || sourceArtifact?.data.title,
+                    source_artifact_id: sourceArtifact?.id || '',
+                    ideation_run_id: sessionArtifact.data.ideation_session_id !== 'job-based'
+                        ? sessionArtifact.data.ideation_session_id
+                        : undefined,
+                    title: titleArtifact?.data.title,
+                    genre: genreArtifact?.data.genre,
+                    total_episodes: jobParams?.data.totalEpisodes,
+                    episode_duration: jobParams?.data.episodeDuration,
+                    created_at: sessionArtifact.created_at,
+                    status
+                });
+            } catch (error) {
+                // Skip sessions that can't be loaded
+                console.warn(`Error loading outline session ${sessionId}:`, error);
+            }
+        }
+
+        const sortedSessions = sessions.sort((a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
+
+        // Cache the result
+        this.cacheService.set(cacheKey, sortedSessions, 1 * 60 * 1000); // 1 minute
+
+        return sortedSessions;
+    }
+
+    // Delete outline session
+    async deleteOutlineSession(userId: string, sessionId: string): Promise<boolean> {
+        // Find the session artifact
+        const sessionArtifacts = await this.artifactRepo.getArtifactsByType(userId, 'outline_session');
+        const sessionArtifact = sessionArtifacts.find(a => a.data.id === sessionId);
+
+        if (!sessionArtifact) {
+            return false;
+        }
+
+        // Invalidate caches
+        this.cacheService.delete(`outline_session:${userId}:${sessionId}`);
+        this.cacheService.delete(`outline_list:${userId}`);
+
+        // Note: In a production system, we might want to mark artifacts as deleted rather than actually deleting them
+        // For now, we'll delete the session artifact (related artifacts will remain for traceability)
+        return await this.artifactRepo.deleteArtifact(sessionArtifact.id, userId);
+    }
+
+    // Get lineage data for visualization
+    async getOutlineLineage(userId: string, sessionId: string): Promise<LineageData> {
+        // Validate session ownership
+        await this.validateSessionOwnership(userId, sessionId);
+
+        // Get all related artifacts and transforms
+        const relatedArtifacts = await this.getOutlineArtifacts(userId, sessionId);
+        const userTransforms = await this.transformRepo.getUserTransforms(userId);
+
+        const outlineTransforms = userTransforms.filter(t =>
+            t.execution_context?.outline_session_id === sessionId
+        );
+
+        const nodes: LineageData['nodes'] = [];
+        const edges: LineageData['edges'] = [];
+
+        // Add artifact nodes
+        relatedArtifacts.forEach((artifact, index) => {
+            let label = artifact.type;
+            if (artifact.type === 'brainstorm_idea') {
+                label = `故事灵感: ${artifact.data.idea_title || ''}`;
+            } else if (artifact.type === 'outline_title') {
+                label = `标题: ${artifact.data.title || ''}`;
+            } else if (artifact.type === 'outline_genre') {
+                label = `类型: ${artifact.data.genre || ''}`;
+            }
+
+            nodes.push({
+                id: artifact.id,
+                type: 'artifact',
+                data: artifact,
+                level: index,
+                label,
+                timestamp: artifact.created_at
+            });
+        });
+
+        // Add transform nodes and edges
+        outlineTransforms.forEach((transform, index) => {
+            const label = transform.type === 'llm' ? '大纲生成' : '手动编辑';
+
+            nodes.push({
+                id: transform.id,
+                type: 'transform',
+                data: transform,
+                level: index + 1,
+                label,
+                timestamp: transform.created_at
+            });
+
+            // Add edges for inputs and outputs (simplified for now)
+            // This would need more sophisticated logic for complex lineages
+        });
+
+        return { nodes, edges };
     }
 
     // Helper method to get user input for outline session
@@ -343,190 +420,6 @@ export class OutlineService {
         } catch (error) {
             console.error('Error getting user input for session:', error);
             return null;
-        }
-    }
-
-    // Private helper methods
-    private buildOutlinePrompt(userInput: string, totalEpisodes?: number, episodeDuration?: number): string {
-        const episodeInfo = (totalEpisodes && episodeDuration)
-            ? `\n\n剧集信息：\n- 总集数：${totalEpisodes}集\n- 每集时长：约${episodeDuration}分钟`
-            : '';
-
-        return `你是一位深耕短剧创作的资深编剧，尤其擅长创作引人入胜、节奏明快、反转强烈的爆款短剧。
-根据用户提供的故事灵感，请创作一个**单集完结**的短剧大纲。${episodeInfo}
-
-故事灵感：${userInput}
-
-请严格按照以下要求和JSON格式输出：
-
-1.  **剧名 (title)**: 一个极具吸引力、能瞬间抓住眼球的短剧标题，精准概括核心看点。
-2.  **题材类型 (genre)**: 明确的短剧类型（例如：都市爽文、逆袭复仇、甜宠虐恋、战神归来、古装宫斗等常见短剧热门题材）。
-3.  **核心看点/爽点 (selling_points)**: 列出3-5个最能激发观众情绪、构成"爽点"的核心情节或元素。例如：身份反转、打脸虐渣、绝境逢生、意外获得超能力、关键时刻英雄救美/美救英雄等。
-4.  **故事设定 (setting)**:
-    *   **一句话核心设定**: 用一句话概括故事发生的核心背景和主要人物关系。
-    *   **关键场景**: 2-3个推动剧情发展的核心场景。
-5.  **主要人物 (main_characters)**: **一个包含主要人物的数组**，每个人物对象包含以下字段：
-    *   **name**: [string] 人物姓名
-    *   **description**: [string] 人物的一句话性格特征及核心目标/困境
-6.  **完整故事梗概 (synopsis)**: **一个详细且连贯的故事梗概**，描述主要情节、关键事件、核心冲突的发展，以及故事的最终结局。请用自然流畅的段落撰写，体现故事的吸引力。
-
-**短剧创作核心要求 (非常重要！):**
--   **节奏极快**: 剧情推进迅速，不拖沓，每一分钟都要有信息量或情绪点。
--   **冲突强烈**: 核心矛盾要直接、尖锐，能迅速抓住观众。
--   **反转惊人**: 设计至少1-2个出人意料的情节反转。
--   **情绪到位**: 准确拿捏观众的情绪，如愤怒、喜悦、紧张、同情等，并快速给予满足（如"打脸"情节）。
--   **人物鲜明**: 主角和核心对手的人物性格和动机要清晰、极致。
--   **结局爽快**: 结局要干脆利落，给观众明确的情感释放。
--   **紧扣灵感**: 所有设计必须围绕原始故事灵感展开，并将其特点放大。
--   **避免"电影感"**: 不要追求复杂的叙事结构、过多的角色内心戏或宏大的世界观。专注于简单直接、冲击力强的单集故事。
-
-请以JSON格式返回，字段如下：
-{
-  "title": "[string] 剧名",
-  "genre": "[string] 题材类型",
-  "selling_points": ["[string] 核心看点1", "[string] 核心看点2", "[string] 核心看点3"],
-  "setting": {
-    "core_setting_summary": "[string] 一句话核心设定",
-    "key_scenes": ["[string] 关键场景1", "[string] 关键场景2"]
-  },
-  "main_characters": [
-    { "name": "[string] 人物1姓名", "description": "[string] 人物1描述..." },
-    { "name": "[string] 人物2姓名", "description": "[string] 人物2描述..." }
-  ],
-  "synopsis": "[string] 详细的、包含主要情节/关键事件/核心冲突发展和结局的故事梗概。"
-}`;
-    }
-
-    private parseOutlineResponse(rawData: any): any {
-        // Handle both direct JSON response and nested response formats
-        let outlineData = rawData;
-
-        if (typeof rawData === 'string') {
-            try {
-                outlineData = JSON.parse(rawData);
-            } catch (e) {
-                throw new Error('Invalid JSON response from LLM');
-            }
-        }
-
-        // Validate required fields based on the new structure
-        if (!outlineData.title || typeof outlineData.title !== 'string') {
-            throw new Error('Missing or invalid field: title');
-        }
-        if (!outlineData.genre || typeof outlineData.genre !== 'string') {
-            throw new Error('Missing or invalid field: genre');
-        }
-        if (!outlineData.selling_points || !Array.isArray(outlineData.selling_points) || !outlineData.selling_points.every((sp: any) => typeof sp === 'string')) {
-            throw new Error('Missing or invalid field: selling_points');
-        }
-        if (!outlineData.setting || typeof outlineData.setting !== 'object' ||
-            !outlineData.setting.core_setting_summary || typeof outlineData.setting.core_setting_summary !== 'string' ||
-            !outlineData.setting.key_scenes || !Array.isArray(outlineData.setting.key_scenes) || !outlineData.setting.key_scenes.every((ks: any) => typeof ks === 'string')) {
-            throw new Error('Missing or invalid field: setting');
-        }
-
-        // Validate main_characters as an array of objects
-        if (!outlineData.main_characters || !Array.isArray(outlineData.main_characters) || outlineData.main_characters.length === 0) {
-            throw new Error('Missing or invalid field: main_characters must be a non-empty array.');
-        }
-        for (const character of outlineData.main_characters) {
-            if (!character || typeof character !== 'object' ||
-                !character.name || typeof character.name !== 'string' || !character.name.trim() ||
-                !character.description || typeof character.description !== 'string' || !character.description.trim()) {
-                throw new Error('Invalid structure in main_characters array: each character must have a non-empty name and description.');
-            }
-        }
-
-        if (!outlineData.synopsis || typeof outlineData.synopsis !== 'string' || !outlineData.synopsis.trim()) {
-            throw new Error('Missing or invalid field: synopsis must be a non-empty string.');
-        }
-
-        // Return the structured data directly. Consumers will adapt.
-        return outlineData;
-    }
-
-    private async getOutlineComponents(
-        userId: string,
-        outlineSessionId: string
-    ): Promise<{
-        title: string;
-        genre: string;
-        sellingPoints: string;
-        setting: string;
-        synopsis: string;
-        characters: OutlineCharacter[];
-    } | undefined> {
-        try {
-            // Find outline components by looking at transforms that have the outline session as input
-            // and produced outline component artifacts as output
-
-            // First, get the outline session artifact
-            const sessionArtifacts = await this.artifactRepo.getArtifactsByTypeForSession(
-                userId,
-                'outline_session',
-                outlineSessionId
-            );
-
-            if (sessionArtifacts.length === 0) {
-                return undefined;
-            }
-
-            // Get all user artifacts and filter for outline components created around the same time
-            const allArtifacts = await this.artifactRepo.getUserArtifacts(userId);
-
-            // Find the session creation time
-            const sessionCreationTime = new Date(sessionArtifacts[0].created_at).getTime();
-
-            // Look for outline components created within a reasonable time window (5 minutes)
-            const timeWindow = 5 * 60 * 1000; // 5 minutes in milliseconds
-
-            const outlineComponents = allArtifacts.filter(artifact => {
-                const artifactTime = new Date(artifact.created_at).getTime();
-                const timeDiff = Math.abs(artifactTime - sessionCreationTime);
-
-                return timeDiff <= timeWindow && [
-                    'outline_title',
-                    'outline_genre',
-                    'outline_selling_points',
-                    'outline_setting',
-                    'outline_synopsis',
-                    'outline_characters'
-                ].includes(artifact.type);
-            });
-
-            // Group by type
-            const componentsByType = outlineComponents.reduce((acc, artifact) => {
-                acc[artifact.type] = artifact;
-                return acc;
-            }, {} as Record<string, any>);
-
-            // Check if we have all required components
-            const requiredTypes = [
-                'outline_title',
-                'outline_genre',
-                'outline_selling_points',
-                'outline_setting',
-                'outline_synopsis',
-                'outline_characters'
-            ];
-            const hasAllComponents = requiredTypes.every(type => componentsByType[type]);
-
-            if (!hasAllComponents) {
-                console.log('Missing outline components:', requiredTypes.filter(type => !componentsByType[type]));
-                return undefined;
-            }
-
-            return {
-                title: (componentsByType['outline_title'].data as OutlineTitleV1).title,
-                genre: (componentsByType['outline_genre'].data as OutlineGenreV1).genre,
-                sellingPoints: (componentsByType['outline_selling_points'].data as OutlineSellingPointsV1).selling_points,
-                setting: (componentsByType['outline_setting'].data as OutlineSettingV1).setting,
-                synopsis: (componentsByType['outline_synopsis'].data as OutlineSynopsisV1).synopsis,
-                characters: (componentsByType['outline_characters'].data as OutlineCharactersV1).characters
-            };
-        } catch (error) {
-            console.error('Error fetching outline components:', error);
-            return undefined;
         }
     }
 } 

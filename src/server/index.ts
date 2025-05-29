@@ -30,6 +30,8 @@ import { TemplateService } from './services/templates/TemplateService';
 import { StreamingTransformExecutor } from './services/streaming/StreamingTransformExecutor';
 import { createIdeationRoutes } from './routes/ideations';
 import { BrainstormingJobParamsV1, OutlineJobParamsV1 } from './types/artifacts';
+// Import and mount outline routes
+import { createOutlineRoutes } from './routes/outlineRoutes';
 
 dotenv.config();
 
@@ -56,7 +58,7 @@ const cacheService = new CacheService();
 // Initialize services with caching
 const transformExecutor = new TransformExecutor(artifactRepo, transformRepo);
 const ideationService = new IdeationService(artifactRepo, transformRepo, transformExecutor, cacheService);
-const outlineService = new OutlineService(artifactRepo, transformExecutor, cacheService);
+const outlineService = new OutlineService(artifactRepo, transformRepo, cacheService);
 const scriptService = new ScriptService(artifactRepo, transformExecutor);
 const replayService = new ReplayService(artifactRepo, transformRepo, transformExecutor);
 
@@ -513,6 +515,54 @@ app.post("/api/ideations/:id/generate_plot",
   }
 );
 
+// ========== TRANSFORM ENDPOINTS ==========
+
+// Stop streaming transform
+app.post("/api/transforms/:transformId/stop",
+  authMiddleware.authenticate,
+  async (req: any, res: any) => {
+    const { transformId } = req.params;
+
+    const user = authMiddleware.getCurrentUser(req);
+    if (!user) {
+      return res.status(401).json({ error: "User not authenticated" });
+    }
+
+    try {
+      // Verify transform ownership
+      const transform = await transformRepo.getTransform(transformId, user.id);
+      if (!transform) {
+        return res.status(404).json({ error: "Transform not found or access denied" });
+      }
+
+      // Check if transform is actually running
+      if (transform.status !== 'running') {
+        return res.status(400).json({
+          error: "Transform is not running",
+          status: transform.status
+        });
+      }
+
+      // Stop the transform by updating its status
+      await transformRepo.updateTransformStatus(transformId, 'cancelled');
+
+      res.json({
+        message: "Transform stopped",
+        transformId: transformId,
+        timestamp: new Date().toISOString()
+      });
+
+    } catch (error: any) {
+      console.error('Error stopping transform:', error);
+      res.status(500).json({
+        error: "Failed to stop transform",
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+);
+
 // ========== ARTIFACT ENDPOINTS ==========
 
 app.get("/api/artifacts/:artifactId",
@@ -653,168 +703,11 @@ app.put("/api/artifacts/:artifactId",
 
 // ========== OUTLINE ENDPOINTS ==========
 
-app.post("/api/outlines/from-artifact/:artifactId",
-  authMiddleware.authenticate,
-  async (req: any, res: any) => {
-    const { artifactId } = req.params;
-    const { totalEpisodes, episodeDuration } = req.body;
-
-    const user = authMiddleware.getCurrentUser(req);
-    if (!user) {
-      return res.status(401).json({ error: "User not authenticated" });
-    }
-
-    try {
-      const result = await outlineService.generateOutlineFromArtifact(
-        user.id,
-        artifactId,
-        totalEpisodes,
-        episodeDuration
-      );
-
-      res.json(result);
-
-    } catch (error: any) {
-      console.error('Error generating outline:', error);
-
-      if (error.message.includes('not found or access denied')) {
-        return res.status(404).json({ error: "Source artifact not found" });
-      }
-
-      res.status(500).json({
-        error: "Failed to generate outline",
-        details: error.message,
-        timestamp: new Date().toISOString()
-      });
-    }
-  }
-);
-
-app.get("/api/outlines/:outlineId", authMiddleware.authenticate, async (req: any, res: any) => {
-  const { outlineId } = req.params;
-
-  const user = authMiddleware.getCurrentUser(req);
-  if (!user) {
-    return res.status(401).json({ error: "User not authenticated" });
-  }
-
-  try {
-    const outlineSession = await outlineService.getOutlineSession(user.id, outlineId);
-
-    if (!outlineSession) {
-      return res.status(404).json({ error: "Outline session not found" });
-    }
-
-    res.json(outlineSession);
-
-  } catch (error: any) {
-    console.error('Error fetching outline session:', error);
-    res.status(500).json({
-      error: "Failed to fetch outline session",
-      details: error.message
-    });
-  }
-});
-
-app.get("/api/outlines", authMiddleware.authenticate, async (req: any, res: any) => {
-  const user = authMiddleware.getCurrentUser(req);
-  if (!user) {
-    return res.status(401).json({ error: "User not authenticated" });
-  }
-
-  try {
-    const outlineSessions = await outlineService.listOutlineSessions(user.id);
-    res.json(outlineSessions);
-
-  } catch (error: any) {
-    console.error('Error fetching outline sessions:', error);
-    res.status(500).json({
-      error: "Failed to fetch outline sessions",
-      details: error.message
-    });
-  }
-});
-
-app.delete("/api/outlines/:outlineId", authMiddleware.authenticate, async (req: any, res: any) => {
-  const { outlineId } = req.params;
-
-  const user = authMiddleware.getCurrentUser(req);
-  if (!user) {
-    return res.status(401).json({ error: "User not authenticated" });
-  }
-
-  try {
-    // For now, we'll implement a simple deletion by removing the outline session
-    // In a production system, we might want to mark as deleted rather than actually delete
-    const sessionArtifacts = await artifactRepo.getArtifactsByTypeForSession(
-      user.id,
-      'outline_session',
-      outlineId
-    );
-
-    if (sessionArtifacts.length === 0) {
-      return res.status(404).json({ error: "Outline session not found" });
-    }
-
-    // Delete the latest session artifact
-    const latestSession = sessionArtifacts[0];
-    const deleted = await artifactRepo.deleteArtifact(latestSession.id, user.id);
-
-    if (!deleted) {
-      return res.status(404).json({ error: "Outline session not found" });
-    }
-
-    res.json({ success: true, message: "Outline session deleted successfully" });
-
-  } catch (error: any) {
-    console.error('Error deleting outline session:', error);
-    res.status(500).json({
-      error: "Failed to delete outline session",
-      details: error.message
-    });
-  }
-});
+// Import and mount outline routes
+import { createOutlineRoutes } from './routes/outlineRoutes';
+app.use('/api', createOutlineRoutes(authMiddleware, cacheService, artifactRepo, transformRepo));
 
 // ========== STREAMING ENDPOINTS ==========
-
-// Streaming endpoint for outline generation
-app.post("/api/outlines/from-artifact/:artifactId/stream",
-  authMiddleware.authenticate,
-  async (req: any, res: any) => {
-    const { artifactId } = req.params;
-    const { totalEpisodes, episodeDuration } = req.body;
-
-    const user = authMiddleware.getCurrentUser(req);
-    if (!user) {
-      return res.status(401).json({ error: "User not authenticated" });
-    }
-
-    try {
-      const streamResponse = await outlineService.generateOutlineFromArtifactStream(
-        user.id,
-        artifactId,
-        totalEpisodes,
-        episodeDuration
-      );
-
-      // Return the streaming response directly
-      return streamResponse;
-
-    } catch (error: any) {
-      console.error('Error in streaming outline generation:', error);
-
-      if (error.message.includes('not found or access denied')) {
-        return res.status(404).json({ error: "Source artifact not found" });
-      }
-
-      return res.status(500).json({
-        error: "Failed to generate outline",
-        details: error.message,
-        timestamp: new Date().toISOString()
-      });
-    }
-  }
-);
 
 // Streaming endpoint for plot generation
 app.post("/api/ideations/:id/generate_plot/stream",
