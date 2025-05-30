@@ -242,7 +242,7 @@ export const OutlineInputForm: React.FC = () => {
                                         value={totalEpisodes}
                                         onChange={(value) => setTotalEpisodes(value || 10)}
                                         min={1}
-                                        max={50}
+                                        max={200}
                                         style={{
                                             width: '100%',
                                             backgroundColor: '#1f1f1f',

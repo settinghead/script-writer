@@ -27,9 +27,9 @@ export class TemplateService {
             name: 'Story Brainstorming',
             promptTemplate: `你是一个故事创意生成器。请根据给定的故事类型，生成多个完整的故事情节梗概灵感。
 
-故事类型：{genre}
-目标平台：{platform}
-{requirementsSection}
+故事类型：{params.genre}
+目标平台：{params.platform}
+{params.requirementsSection}
 
 要求：
 - 每个创意包含一个标题（3-7个字符）和一个完整的故事梗概灵感（50-80字）
@@ -65,7 +65,7 @@ export class TemplateService {
 不要其他解释或包裹。`,
             outputFormat: 'json_array',
             responseWrapper: '```json',
-            variables: ['genre', 'platform', 'requirementsSection']
+            variables: ['params.genre', 'params.platform', 'params.requirementsSection']
         });
 
         // Register outline template
@@ -73,9 +73,9 @@ export class TemplateService {
             id: 'outline',
             name: 'Story Outline Generation',
             promptTemplate: `你是一位深耕短剧创作的资深编剧，尤其擅长创作引人入胜、节奏明快、反转强烈的爆款短剧。
-根据用户提供的故事灵感，请创作一个**单集完结**的短剧大纲。{episodeInfo}
+根据用户提供的故事灵感，请创作一个**单集完结**的短剧大纲。{params.episodeInfo}
 
-故事灵感：{userInput}
+故事灵感：{params.userInput}
 
 请严格按照以下要求和JSON格式输出：
 
@@ -132,7 +132,7 @@ export class TemplateService {
 }`,
             outputFormat: 'json',
             responseWrapper: '```json',
-            variables: ['episodeInfo', 'userInput']
+            variables: ['params.episodeInfo', 'params.userInput']
         });
     }
 

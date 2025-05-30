@@ -553,12 +553,17 @@ export class StreamingTransformExecutor {
             throw new Error('Brainstorming template not found');
         }
 
+        // Build requirements section if provided
+        const requirementsSection = jobParams.requirements?.trim()
+            ? `特殊要求：${jobParams.requirements.trim()}`
+            : '';
+
         const prompt = await this.templateService.renderTemplate(template, {
             artifacts: {},
             params: {
                 platform: jobParams.platform,
                 genre: this.buildGenrePromptString(jobParams.genrePaths, jobParams.genreProportions),
-                requirements: jobParams.requirements
+                requirementsSection: requirementsSection
             }
         });
 
