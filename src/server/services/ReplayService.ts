@@ -45,13 +45,12 @@ export class ReplayService {
         const originalOutputs = await this.artifactRepo.getArtifactsByIds(originalOutputIds, userId);
         const outputType = originalOutputs.length > 0 ? originalOutputs[0].type : 'unknown';
 
-        // Replay the transform
+        // Replay the transform with same inputs and prompt
         const { transform: replayedTransform, outputArtifacts } = await this.transformExecutor.executeLLMTransform(
             userId,
             inputArtifacts,
             originalPrompt.prompt_text,
             {}, // Empty variables since we're using the exact prompt
-            originalTransform.llm_data.model_name,
             outputType,
             'v1'
         );

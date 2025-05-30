@@ -1,15 +1,5 @@
 {
-  "files": [],
-  "references": [
-    {
-      "path": "./tsconfig.app.json"
-    },
-    {
-      "path": "./tsconfig.node.json"
-    }
-  ],
   "compilerOptions": {
-    "composite": true,
     "target": "es2022",
     "lib": [
       "es2022",
@@ -39,14 +29,10 @@
       "vite/client"
     ],
     "jsx": "react-jsx",
-    "allowImportingTsExtensions": true,
-    "disableSourceOfProjectReferenceRedirect": true,
-    "disableSolutionSearching": true
+    "allowImportingTsExtensions": true
   },
   "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    "**/*.mjs"
+    "vite.config.ts"
   ],
   "exclude": [
     "node_modules",
