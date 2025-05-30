@@ -2,6 +2,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { ArtifactRepository } from '../repositories/ArtifactRepository';
 import { TransformRepository } from '../repositories/TransformRepository';
 import { TransformExecutor } from './TransformExecutor';
+import { CacheService } from './CacheService';
+import { getLLMCredentials } from './LLMConfig';
 import {
     Artifact,
     IdeationSessionV1,
@@ -10,7 +12,6 @@ import {
     UserInputV1,
     PlotOutlineV1
 } from '../types/artifacts';
-import { CacheService } from './CacheService';
 
 export class IdeationService {
     constructor(
@@ -186,7 +187,6 @@ export class IdeationService {
                 platform: selectedPlatform || '未指定',
                 genre: genrePromptString || '未指定'
             },
-            'deepseek-chat',
             'plot_outline'
         );
 
@@ -527,7 +527,6 @@ export class IdeationService {
                     platform: brainstormParams.data.platform || '未指定',
                     genre: genrePromptString || '未指定'
                 },
-                'deepseek-chat',
                 'plot_outline'
             );
 
@@ -612,7 +611,6 @@ export class IdeationService {
                 platform: brainstormParams.data.platform || '未指定',
                 genre: genrePromptString || '未指定'
             },
-            'deepseek-chat',
             'plot_outline'
         );
     }

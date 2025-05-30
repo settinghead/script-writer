@@ -88,6 +88,9 @@ export class TemplateService {
 5.  **主要人物 (main_characters)**: **一个包含主要人物的数组**，每个人物对象包含以下字段：
     *   **name**: [string] 人物姓名
     *   **description**: [string] 人物的一句话性格特征及核心目标/困境
+    *   **age**: [string] 年龄（如"25岁"、"30多岁"、"中年"等）
+    *   **gender**: [string] 性别（"男"或"女"）
+    *   **occupation**: [string] 职业（如"CEO"、"学生"、"医生"等）
 6.  **完整故事梗概 (synopsis)**: **一个详细且连贯的故事梗概**，描述主要情节、关键事件、核心冲突的发展，以及故事的最终结局。请用自然流畅的段落撰写，体现故事的吸引力。
 
 **短剧创作核心要求 (非常重要！):**
@@ -110,8 +113,20 @@ export class TemplateService {
     "key_scenes": ["[string] 关键场景1", "[string] 关键场景2"]
   },
   "main_characters": [
-    { "name": "[string] 人物1姓名", "description": "[string] 人物1描述..." },
-    { "name": "[string] 人物2姓名", "description": "[string] 人物2描述..." }
+    { 
+      "name": "[string] 人物1姓名", 
+      "description": "[string] 人物1描述...",
+      "age": "[string] 人物1年龄",
+      "gender": "[string] 人物1性别", 
+      "occupation": "[string] 人物1职业"
+    },
+    { 
+      "name": "[string] 人物2姓名", 
+      "description": "[string] 人物2描述...",
+      "age": "[string] 人物2年龄",
+      "gender": "[string] 人物2性别",
+      "occupation": "[string] 人物2职业"
+    }
   ],
   "synopsis": "[string] 详细的、包含主要情节/关键事件/核心冲突发展和结局的故事梗概。"
 }`,

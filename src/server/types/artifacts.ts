@@ -2,6 +2,7 @@
 // TODO: Gradually migrate all server imports to use ../../common/types directly
 
 export * from '../../common/types';
+import type { OutlineCharacter, OutlineCharactersV1 } from '../../common/types';
 
 // ========== LEGACY: These will be removed once migration is complete ==========
 
@@ -161,16 +162,6 @@ export interface OutlineSynopsisV1 {
     synopsis: string;
 }
 
-// New artifact type for characters
-export interface OutlineCharacter {
-    name: string;
-    description: string;
-}
-
-export interface OutlineCharactersV1 {
-    characters: OutlineCharacter[];
-}
-
 // Type guards for artifact data validation
 export function validateArtifactData(type: string, typeVersion: string, data: any): boolean {
     switch (`${type}:${typeVersion}`) {
@@ -202,8 +193,6 @@ export function validateArtifactData(type: string, typeVersion: string, data: an
             return isOutlineSettingV1(data);
         case 'outline_synopsis:v1':
             return isOutlineSynopsisV1(data);
-        case 'outline_character:v1':
-            return isOutlineCharacter(data);
         case 'outline_characters:v1':
             return isOutlineCharactersV1(data);
         default:
@@ -304,14 +293,17 @@ function isOutlineSynopsisV1(data: any): data is OutlineSynopsisV1 {
         typeof data.synopsis === 'string';
 }
 
-function isOutlineCharacter(data: any): data is OutlineCharacter {
-    return typeof data === 'object' &&
-        typeof data.name === 'string' &&
-        typeof data.description === 'string';
-}
-
 function isOutlineCharactersV1(data: any): data is OutlineCharactersV1 {
     return typeof data === 'object' &&
         Array.isArray(data.characters) &&
         data.characters.every((character: any) => isOutlineCharacter(character));
+}
+
+function isOutlineCharacter(data: any): data is OutlineCharacter {
+    return typeof data === 'object' &&
+        typeof data.name === 'string' &&
+        typeof data.description === 'string' &&
+        (data.age === undefined || typeof data.age === 'string') &&
+        (data.gender === undefined || typeof data.gender === 'string') &&
+        (data.occupation === undefined || typeof data.occupation === 'string');
 } 

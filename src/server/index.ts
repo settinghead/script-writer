@@ -33,6 +33,8 @@ import { BrainstormingJobParamsV1, OutlineJobParamsV1 } from './types/artifacts'
 import { OutlineGenerateRequest, OutlineGenerateResponse } from '../common/streaming/types';
 // Import and mount outline routes
 import { createOutlineRoutes } from './routes/outlineRoutes';
+// Import LLM configuration
+import { getLLMCredentials } from './services/LLMConfig';
 
 dotenv.config();
 
@@ -102,29 +104,25 @@ app.get("/message", (_req, res) => {
 
 // Original chat completions endpoint - Protected by authentication
 app.post("/llm-api/chat/completions", authMiddleware.authenticate, async (req: any, res: any) => {
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  if (!apiKey) {
-    console.error('Error: DEEPSEEK_API_KEY environment variable is not set.');
-    return res.status(500).json({ error: "DEEPSEEK_API_KEY not configured" });
-  }
-
-  const { messages, model: modelName, stream = true, ...restOfBody } = req.body;
-
-  if (!messages || !modelName) {
-    return res.status(400).json({ error: "Missing 'messages' or 'model' in request body" });
-  }
-
-  const deepseekAI = createOpenAI({
-    apiKey: apiKey,
-    baseURL: 'https://api.deepseek.com',
-  });
-
   try {
+    const { apiKey, baseUrl } = getLLMCredentials();
+
+    const { messages, model: modelName, stream = true, ...restOfBody } = req.body;
+
+    if (!messages || !modelName) {
+      return res.status(400).json({ error: "Missing 'messages' or 'model' in request body" });
+    }
+
+    const llmAI = createOpenAI({
+      apiKey: apiKey,
+      baseURL: baseUrl,
+    });
+
     if (stream === false) {
       // Non-streaming response
       const { generateText } = await import('ai');
       const result = await generateText({
-        model: deepseekAI(modelName),
+        model: llmAI(modelName),
         messages: messages,
         ...restOfBody
       });
@@ -150,7 +148,7 @@ app.post("/llm-api/chat/completions", authMiddleware.authenticate, async (req: a
     } else {
       // Streaming response (original behavior)
       const result = await streamText({
-        model: deepseekAI(modelName),
+        model: llmAI(modelName),
         messages: messages,
         ...restOfBody
       });
@@ -197,12 +195,6 @@ app.post("/llm-api/chat/completions", authMiddleware.authenticate, async (req: a
 
 // New endpoint for script editing using LLM - Protected by authentication
 app.post("/llm-api/script/edit", authMiddleware.authenticate, async (req: any, res: any) => {
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  if (!apiKey) {
-    console.error('Error: DEEPSEEK_API_KEY environment variable is not set.');
-    return res.status(500).json({ error: "DEEPSEEK_API_KEY not configured" });
-  }
-
   const {
     messages,
     model: modelName,
@@ -217,12 +209,14 @@ app.post("/llm-api/script/edit", authMiddleware.authenticate, async (req: any, r
     });
   }
 
-  const deepseekAI = createOpenAI({
-    apiKey: apiKey,
-    baseURL: 'https://api.deepseek.com',
-  });
-
   try {
+    const { apiKey, baseUrl } = getLLMCredentials();
+
+    const llmAI = createOpenAI({
+      apiKey: apiKey,
+      baseURL: baseUrl,
+    });
+
     // Add system message instructing the LLM how to format script editing responses
     const systemMessage = {
       role: 'system',
@@ -258,7 +252,7 @@ app.post("/llm-api/script/edit", authMiddleware.authenticate, async (req: any, r
 
     // Request formatted specifically for script edits
     const result = await streamText({
-      model: deepseekAI(modelName),
+      model: llmAI(modelName),
       messages: enhancedMessages,
       response_format: { type: "json_object" },
       ...restOfBody
@@ -770,18 +764,15 @@ app.post("/api/brainstorm/generate/stream",
     }
 
     try {
-      const apiKey = process.env.DEEPSEEK_API_KEY;
-      if (!apiKey) {
-        return res.status(500).json({ error: "DEEPSEEK_API_KEY not configured" });
-      }
+      const { apiKey, baseUrl, modelName } = getLLMCredentials();
 
-      const deepseekAI = createOpenAI({
+      const llmAI = createOpenAI({
         apiKey,
-        baseURL: 'https://api.deepseek.com',
+        baseURL: baseUrl,
       });
 
       const result = await streamText({
-        model: deepseekAI('deepseek-chat'),
+        model: llmAI(modelName),
         messages: [{ role: 'user', content: prompt }]
       });
 

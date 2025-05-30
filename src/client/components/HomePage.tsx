@@ -12,17 +12,22 @@ const HomePage: React.FC = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
+    // Valid tab keys
+    const validTabs = ['ideations', 'outlines'];
+
     // Get initial tab from URL parameter, default to 'ideations'
-    const initialTab = searchParams.get('tab') || 'ideations';
+    const tabFromUrl = searchParams.get('tab');
+    const initialTab = validTabs.includes(tabFromUrl || '') ? tabFromUrl! : 'ideations';
     const [activeTab, setActiveTab] = useState(initialTab);
 
     // Sync state when URL changes (e.g., browser back/forward)
     useEffect(() => {
-        const tabFromUrl = searchParams.get('tab') || 'ideations';
-        if (tabFromUrl !== activeTab) {
-            setActiveTab(tabFromUrl);
+        const tabFromUrl = searchParams.get('tab');
+        const validTab = validTabs.includes(tabFromUrl || '') ? tabFromUrl! : 'ideations';
+        if (validTab !== activeTab) {
+            setActiveTab(validTab);
         }
-    }, [searchParams]);
+    }, [searchParams, activeTab]);
 
     useEffect(() => {
         const handleResize = () => {

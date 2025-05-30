@@ -98,6 +98,9 @@ export interface OutlineSynopsisV1 {
 export interface OutlineCharacter {
     name: string;
     description: string;
+    age?: string;        // e.g., "25岁", "30多岁", "中年"
+    gender?: string;     // e.g., "男", "女"
+    occupation?: string; // e.g., "CEO", "学生", "医生"
 }
 
 export interface OutlineCharactersV1 {

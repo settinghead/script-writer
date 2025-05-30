@@ -10,13 +10,13 @@ import { IdeationService } from '../IdeationService';
 import { JobBroadcaster } from './JobBroadcaster';
 import { StreamingCache } from './StreamingCache';
 import { v4 as uuidv4 } from 'uuid';
+import { getLLMCredentials } from '../LLMConfig';
 
 // Define StreamingRequest interface locally to avoid path issues
 interface StreamingRequest {
     templateId: string;
     artifactIds: string[];
     templateParams?: Record<string, any>;
-    modelName?: string;
 }
 
 export class StreamingTransformExecutor {
@@ -50,10 +50,14 @@ export class StreamingTransformExecutor {
             // 3. Create transform record
             const transform = await this.createTransform(userId, artifacts, template.id);
 
-            // 4. Stream LLM response
+            // 4. Get model name from request or use default
+            const { modelName: defaultModelName } = getLLMCredentials();
+            const modelName = defaultModelName;
+
+            // 5. Stream LLM response
             await this.streamLLMResponse(
                 prompt,
-                request.modelName || 'deepseek-chat',
+                modelName,
                 template.outputFormat,
                 transform,
                 res,
@@ -91,6 +95,8 @@ export class StreamingTransformExecutor {
     }
 
     private async createTransform(userId: string, artifacts: Artifact[], templateId: string) {
+        const { modelName: defaultModelName } = getLLMCredentials();
+
         const transform = await this.transformRepo.createTransform(
             userId,
             'llm',
@@ -99,7 +105,7 @@ export class StreamingTransformExecutor {
             {
                 started_at: new Date().toISOString(),
                 template_id: templateId,
-                model_name: 'deepseek-chat'
+                model_name: defaultModelName
             }
         );
 
@@ -122,14 +128,11 @@ export class StreamingTransformExecutor {
         res: Response | undefined,
         userId: string
     ): Promise<void> {
-        const apiKey = process.env.DEEPSEEK_API_KEY;
-        if (!apiKey) {
-            throw new Error('DEEPSEEK_API_KEY not configured');
-        }
+        const { apiKey, baseUrl } = getLLMCredentials();
 
-        const deepseekAI = createOpenAI({
+        const llmAI = createOpenAI({
             apiKey,
-            baseURL: 'https://api.deepseek.com',
+            baseURL: baseUrl,
         });
 
         // Store the prompt
@@ -138,7 +141,7 @@ export class StreamingTransformExecutor {
         ]);
 
         const result = await streamText({
-            model: deepseekAI(modelName),
+            model: llmAI(modelName),
             messages: [{ role: 'user', content: prompt }]
         });
 
@@ -414,7 +417,10 @@ export class StreamingTransformExecutor {
             'v1'
         );
 
-        // 3. Create transform with 'running' status
+        // 3. Get default model name
+        const { modelName } = getLLMCredentials();
+
+        // 4. Create transform with 'running' status
         const transform = await this.transformRepo.createTransform(
             userId,
             'llm',
@@ -423,13 +429,13 @@ export class StreamingTransformExecutor {
             {
                 started_at: new Date().toISOString(),
                 template_id: 'brainstorming',
-                model_name: 'deepseek-chat',
+                model_name: modelName,
                 ideation_run_id: ideationRunId,
                 max_retries: 2
             }
         );
 
-        // 4. Link transform inputs
+        // 5. Link transform inputs
         await this.transformRepo.addTransformInputs(
             transform.id,
             [{ artifactId: paramsArtifact.id, inputRole: 'job_params' }]
@@ -557,10 +563,13 @@ export class StreamingTransformExecutor {
             }
         });
 
+        // Get model name from credentials
+        const { modelName } = getLLMCredentials();
+
         // Stream LLM response
         await this.streamLLMResponse(
             prompt,
-            'deepseek-chat',
+            modelName,
             template.outputFormat,
             transform,
             res,
@@ -619,7 +628,10 @@ export class StreamingTransformExecutor {
             'v1'
         );
 
-        // 4. Create transform with 'running' status
+        // 4. Get default model name
+        const { modelName } = getLLMCredentials();
+
+        // 5. Create transform with 'running' status
         const transform = await this.transformRepo.createTransform(
             userId,
             'llm',
@@ -628,13 +640,13 @@ export class StreamingTransformExecutor {
             {
                 started_at: new Date().toISOString(),
                 template_id: 'outline',
-                model_name: 'deepseek-chat',
+                model_name: modelName,
                 outline_session_id: outlineSessionId,
                 max_retries: 2
             }
         );
 
-        // 5. Link transform inputs
+        // 6. Link transform inputs
         await this.transformRepo.addTransformInputs(
             transform.id,
             [
@@ -724,10 +736,13 @@ export class StreamingTransformExecutor {
             }
         });
 
+        // Get model name from credentials
+        const { modelName } = getLLMCredentials();
+
         // Stream LLM response with outline_components output format
         await this.streamLLMResponse(
             prompt,
-            'deepseek-chat',
+            modelName,
             'outline_components',
             transform,
             res,

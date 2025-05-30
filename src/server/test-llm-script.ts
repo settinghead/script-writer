@@ -1,43 +1,33 @@
 import OpenAI from 'openai';
 import dotenv from 'dotenv';
+import { getLLMCredentials } from './services/LLMConfig';
 
 dotenv.config();
 
 async function main() {
-  // It'''s recommended to use an environment variable for your API key
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  if (!apiKey) {
-    console.error('Error: DEEPSEEK_API_KEY environment variable is not set.');
-    process.exit(1);
-  }
-
-  const model = process.env.DEEPSEEK_MODEL_NAME;
-  if (!model) {
-    console.error('Error: DEEPSEEK_MODEL_NAME environment variable is not set.');
-    process.exit(1);
-  }
-
-  const openai = new OpenAI({
-    apiKey: apiKey,
-    baseURL: 'https://api.deepseek.com',
-  });
-
-  // Modified prompt to request JSON output
-  const userPrompt = "Translate the following English text to French and provide the result as a JSON object with a key 'translation'. Text: 'Hello, world!'";
-
   try {
-    console.log(`Sending prompt to Deepseek: "${userPrompt}"`);
+    const { apiKey, baseUrl, modelName } = getLLMCredentials();
+
+    const openai = new OpenAI({
+      apiKey: apiKey,
+      baseURL: baseUrl,
+    });
+
+    // Modified prompt to request JSON output
+    const userPrompt = "Translate the following English text to French and provide the result as a JSON object with a key 'translation'. Text: 'Hello, world!'";
+
+    console.log(`Sending prompt to LLM: "${userPrompt}"`);
     const stream = await openai.chat.completions.create({
       messages: [
         { role: 'system', content: 'You are a helpful assistant designed to output JSON.' }, // System message to guide model behavior
         { role: 'user', content: userPrompt }
       ],
-      model: model,
+      model: modelName,
       response_format: { type: "json_object" }, // Request JSON response format
       stream: true,
     });
 
-    console.log('Deepseek Response (Streaming JSON):');
+    console.log('LLM Response (Streaming JSON):');
     let fullResponse = '';
     for await (const chunk of stream) {
       const content = chunk.choices[0]?.delta?.content || '';
@@ -57,7 +47,7 @@ async function main() {
     }
 
   } catch (error) {
-    console.error('Error calling Deepseek API:', error);
+    console.error('Error calling LLM API:', error);
   }
 }
 

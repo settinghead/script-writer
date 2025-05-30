@@ -3,6 +3,7 @@ import { generateText, streamText, createDataStreamResponse } from 'ai';
 import { ArtifactRepository } from '../repositories/ArtifactRepository';
 import { TransformRepository } from '../repositories/TransformRepository';
 import { Artifact } from '../types/artifacts';
+import { getLLMCredentials } from './LLMConfig';
 
 export class TransformExecutor {
     constructor(
@@ -16,10 +17,12 @@ export class TransformExecutor {
         inputArtifacts: Artifact[],
         promptTemplate: string,
         promptVariables: Record<string, string>,
-        modelName: string = 'deepseek-chat',
         outputArtifactType: string,
         outputArtifactTypeVersion: string = 'v1'
     ): Promise<{ transform: any; outputArtifacts: Artifact[] }> {
+        // Get LLM credentials and use default model if not specified
+        const { apiKey, baseUrl, modelName } = getLLMCredentials();
+
         // Create the transform
         const transform = await this.transformRepo.createTransform(
             userId,
@@ -52,18 +55,13 @@ export class TransformExecutor {
             ]);
 
             // Execute the LLM call
-            const apiKey = process.env.DEEPSEEK_API_KEY;
-            if (!apiKey) {
-                throw new Error('DEEPSEEK_API_KEY not configured');
-            }
-
-            const deepseekAI = createOpenAI({
+            const llmAI = createOpenAI({
                 apiKey,
-                baseURL: 'https://api.deepseek.com',
+                baseURL: baseUrl,
             });
 
             const result = await generateText({
-                model: deepseekAI(modelName),
+                model: llmAI(modelName),
                 messages: [{ role: 'user', content: finalPrompt }]
             });
 
@@ -288,12 +286,14 @@ export class TransformExecutor {
         inputArtifacts: Artifact[],
         promptTemplate: string,
         promptVariables: Record<string, string>,
-        modelName: string = 'deepseek-chat',
         outputArtifactType: string,
         outputArtifactTypeVersion: string = 'v1'
     ) {
         return createDataStreamResponse({
             execute: async (dataStream) => {
+                // Get LLM credentials
+                const { apiKey, baseUrl, modelName } = getLLMCredentials();
+
                 // Create the transform record immediately
                 const transform = await this.transformRepo.createTransform(
                     userId,
@@ -333,18 +333,13 @@ export class TransformExecutor {
                     });
 
                     // Execute the streaming LLM call
-                    const apiKey = process.env.DEEPSEEK_API_KEY;
-                    if (!apiKey) {
-                        throw new Error('DEEPSEEK_API_KEY not configured');
-                    }
-
-                    const deepseekAI = createOpenAI({
+                    const llmAI = createOpenAI({
                         apiKey,
-                        baseURL: 'https://api.deepseek.com',
+                        baseURL: baseUrl,
                     });
 
                     const result = await streamText({
-                        model: deepseekAI(modelName),
+                        model: llmAI(modelName),
                         messages: [{ role: 'user', content: finalPrompt }]
                     });
 
