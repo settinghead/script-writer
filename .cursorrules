@@ -1,0 +1,102 @@
+# Script Writer Project - Cursor Rules
+
+## Core Architecture Principles
+
+### 1. Artifacts & Transforms System
+- **ALWAYS respect the artifacts => transform => artifacts structure** when changing backend flow logic
+- Every data modification MUST be tracked through transforms with proper input/output artifact relationships
+- Artifacts are immutable - create new versions rather than modifying existing ones
+- Use `TransformExecutor` for all data modifications that need traceability
+- Transforms must specify type ('llm' or 'human'), execution context, and status
+
+### 2. API Design Philosophy
+- **DO NOT expose artifacts/transforms directly** in server routes - they are low-level constructs
+- **DO NOT make frontend interact with artifacts/transforms directly**
+- Create domain-specific endpoints (e.g., `/api/ideations`, `/api/scripts`) that abstract the underlying artifacts system
+- Frontend should work with business domain objects (IdeationRun, ScriptDocument) not raw artifacts
+- Use repository pattern to encapsulate artifact/transform operations
+
+## Security & Authentication
+
+### 3. Authentication Requirements
+- **ALL AI/LLM endpoints MUST require authentication** using `requireAuth` middleware
+- **ALL data operations MUST be scoped to authenticated user** (`user_id` filtering)
+- Use HTTP-only cookies for JWT tokens to prevent XSS attacks
+- Validate user ownership before allowing access to any resource
+- Room IDs must include user ID for WebSocket security: `script-{user_id}-{timestamp}-{random}`
+
+### 4. Data Isolation
+- Every database query MUST filter by user_id for the authenticated user
+- Users can ONLY access their own scripts, ideations, and collaborative sessions
+- WebSocket connections must verify room ownership before allowing access
+- Debug endpoints must scope data to authenticated user only
+
+## TypeScript & Code Organization
+
+### 5. Type Safety
+- Use strict TypeScript throughout both frontend and backend
+- Define interfaces with version suffixes (e.g., `IdeationSessionV1`) for artifact types
+- Keep shared types in `src/common/` for frontend/backend consistency
+- Properly type all streaming services and API responses
+
+### 6. File Structure
+```
+src/
+├── client/                 # React frontend
+│   ├── components/        # UI components with streaming support
+│   ├── hooks/            # Custom hooks including streaming hooks
+│   ├── services/         # RxJS streaming services
+│   └── types/            # Frontend-specific types
+├── common/               # Shared types and interfaces
+│   ├── streaming/        # Streaming interfaces
+│   └── llm/             # LLM template types
+└── server/               # Express backend
+    ├── routes/           # API routes (domain-focused)
+    ├── services/         # Business logic with transform execution
+    ├── repositories/     # Data access layer (artifacts/transforms)
+    └── middleware/       # Authentication and validation
+```
+
+
+## Database & Performance
+
+### 9. Database Operations
+- Use `ArtifactRepository` and `TransformRepository` for flow related data access
+- Use `CacheService` for performance optimization
+
+
+## API Endpoint Patterns
+
+### 11. Route Organization
+- Group routes by domain: `/api/ideations`, `/api/scripts`, `/api/brainstorm`
+- Use RESTful conventions where appropriate
+- Streaming endpoints use `/stream` suffix
+- Debug endpoints under `/debug/` (development only)
+- Authentication endpoints under `/auth/`
+
+### 12. Request/Response Patterns
+- Always validate input parameters
+- Return domain objects, not raw artifacts
+- Include proper error handling with user-friendly messages
+- Use consistent response formats across endpoints
+- Include pagination for list endpoints
+
+
+## Development & Testing
+
+### 15. Error Handling
+- Use try-catch blocks for all async operations
+- Log errors with sufficient context for debugging
+- Return appropriate HTTP status codes
+- Include user-friendly error messages for frontend
+
+### 16. Debugging & Analytics
+- If a new flow is constructed or modified, test by creating a node.js only testing script that executes transforms
+
+## Data Validation
+
+### 21. Input Validation
+- Validate all input data at API boundaries
+- Use TypeScript for compile-time type checking
+- Include runtime validation for external data
+- Test edge cases and error conditions
