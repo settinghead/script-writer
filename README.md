@@ -71,8 +71,10 @@ cp .env.example .env
 
 Required environment variables:
 ```env
-# DeepSeek API Configuration
-DEEPSEEK_API_KEY=your-deepseek-api-key-here
+# LLM API Configuration
+LLM_API_KEY=your-deepseek-api-key-here
+LLM_BASE_URL=...
+LLM_MODEL_NAME=...
 
 # JWT Authentication Configuration  
 JWT_SECRET=your-super-secret-jwt-key-256-bits-minimum

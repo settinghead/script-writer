@@ -839,7 +839,10 @@ export class StreamingTransformExecutor {
                     {
                         characters: outlineData.main_characters.map((char: any) => ({
                             name: char.name || '',
-                            description: char.description || ''
+                            description: char.description || '',
+                            age: char.age || undefined,
+                            gender: char.gender || undefined,
+                            occupation: char.occupation || undefined
                         }))
                     },
                     'v1',

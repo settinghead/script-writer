@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Button, Card, Typography, Alert, Space, message } from 'antd';
+import { Button, Card, Typography, Alert, Space, message, InputNumber, Row, Col } from 'antd';
 import { SaveOutlined, FileTextOutlined } from '@ant-design/icons';
 import TextareaAutosize from 'react-textarea-autosize';
 import { apiService } from '../services/apiService';
@@ -14,6 +14,8 @@ export const OutlineInputForm: React.FC = () => {
     const artifact_id = searchParams.get('artifact_id');
 
     const [text, setText] = useState('');
+    const [totalEpisodes, setTotalEpisodes] = useState<number>(10);
+    const [episodeDuration, setEpisodeDuration] = useState<number>(3);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
@@ -129,8 +131,8 @@ export const OutlineInputForm: React.FC = () => {
             // Generate outline using the common interface
             const result = await apiService.generateOutline({
                 sourceArtifactId: artifactToUse.id,
-                totalEpisodes: 10, // Default values
-                episodeDuration: 30
+                totalEpisodes: totalEpisodes,
+                episodeDuration: episodeDuration
             });
 
             // Navigate to the streaming outline page
@@ -222,6 +224,58 @@ export const OutlineInputForm: React.FC = () => {
                         />
                         <Text type="secondary" style={{ fontSize: '12px', color: '#888', marginTop: '4px', display: 'block' }}>
                             详细描述您的故事设定、角色、情节等，内容越丰富生成的大纲越精确
+                        </Text>
+                    </div>
+
+                    {/* Episode Configuration */}
+                    <div>
+                        <Text strong style={{ color: '#fff', marginBottom: '12px', display: 'block' }}>
+                            剧集配置
+                        </Text>
+                        <Row gutter={16}>
+                            <Col span={12}>
+                                <div>
+                                    <Text style={{ color: '#fff', marginBottom: '8px', display: 'block' }}>
+                                        总集数
+                                    </Text>
+                                    <InputNumber
+                                        value={totalEpisodes}
+                                        onChange={(value) => setTotalEpisodes(value || 10)}
+                                        min={1}
+                                        max={50}
+                                        style={{
+                                            width: '100%',
+                                            backgroundColor: '#1f1f1f',
+                                            borderColor: '#404040',
+                                            color: '#fff'
+                                        }}
+                                        addonAfter="集"
+                                    />
+                                </div>
+                            </Col>
+                            <Col span={12}>
+                                <div>
+                                    <Text style={{ color: '#fff', marginBottom: '8px', display: 'block' }}>
+                                        每集时长
+                                    </Text>
+                                    <InputNumber
+                                        value={episodeDuration}
+                                        onChange={(value) => setEpisodeDuration(value || 3)}
+                                        min={1}
+                                        max={60}
+                                        style={{
+                                            width: '100%',
+                                            backgroundColor: '#1f1f1f',
+                                            borderColor: '#404040',
+                                            color: '#fff'
+                                        }}
+                                        addonAfter="分钟"
+                                    />
+                                </div>
+                            </Col>
+                        </Row>
+                        <Text type="secondary" style={{ fontSize: '12px', color: '#888', marginTop: '8px', display: 'block' }}>
+                            建议短剧：6-12集，每集2-5分钟；中长剧：15-30集，每集8-15分钟
                         </Text>
                     </div>
 

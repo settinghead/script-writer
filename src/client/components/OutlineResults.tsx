@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { Row, Col, Alert, Button, Card, Typography, Space } from 'antd';
-import { ReloadOutlined, CheckCircleOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
+import { ReloadOutlined, CheckCircleOutlined, ExclamationCircleOutlined, ExportOutlined } from '@ant-design/icons';
 import { EditableTextField, StreamingProgress } from './shared';
+import { OutlineExportModal } from './shared/OutlineExportModal';
 import { apiService } from '../services/apiService';
+import { formatOutlineForExport, type OutlineExportData } from '../utils/outlineExporter';
 
 const { Title, Text } = Typography;
 
@@ -29,6 +31,15 @@ interface OutlineResultsProps {
     isConnecting?: boolean;
     onStopStreaming?: () => void;
     onComponentUpdate?: (componentType: string, newValue: string, newArtifactId: string) => void;
+    // Additional props needed for export
+    sourceArtifact?: {
+        text: string;
+        title?: string;
+        type: string;
+    };
+    totalEpisodes?: number;
+    episodeDuration?: number;
+    createdAt?: string;
 }
 
 export const OutlineResults: React.FC<OutlineResultsProps> = ({
@@ -38,9 +49,15 @@ export const OutlineResults: React.FC<OutlineResultsProps> = ({
     isStreaming = false,
     isConnecting = false,
     onStopStreaming,
-    onComponentUpdate
+    onComponentUpdate,
+    sourceArtifact,
+    totalEpisodes,
+    episodeDuration,
+    createdAt
 }) => {
     const [isRegenerating, setIsRegenerating] = useState(false);
+    const [isExportModalVisible, setIsExportModalVisible] = useState(false);
+    const [exportText, setExportText] = useState('');
 
     const handleFieldEdit = async (fieldType: string, newValue: string, newArtifactId: string) => {
         try {
@@ -67,6 +84,26 @@ export const OutlineResults: React.FC<OutlineResultsProps> = ({
             console.error('Error regenerating outline:', error);
             setIsRegenerating(false);
         }
+    };
+
+    const handleExport = () => {
+        // Prepare export data
+        const exportData: OutlineExportData = {
+            sessionId,
+            sourceArtifact: sourceArtifact || {
+                text: '',
+                type: 'unknown'
+            },
+            totalEpisodes,
+            episodeDuration,
+            components,
+            createdAt: createdAt || new Date().toISOString()
+        };
+
+        // Generate formatted text
+        const formattedText = formatOutlineForExport(exportData);
+        setExportText(formattedText);
+        setIsExportModalVisible(true);
     };
 
     const getCompletedComponentsCount = () => {
@@ -301,15 +338,24 @@ export const OutlineResults: React.FC<OutlineResultsProps> = ({
             {/* Actions */}
             {status === 'completed' && (
                 <div style={{ textAlign: 'right', paddingTop: '20px', borderTop: '1px solid #303030' }}>
-                    <Button
-                        onClick={handleRegenerate}
-                        disabled={isRegenerating || isStreaming}
-                        loading={isRegenerating}
-                        icon={<ReloadOutlined />}
-                        type="default"
-                    >
-                        {isRegenerating ? '重新生成中...' : '重新生成大纲'}
-                    </Button>
+                    <Space>
+                        <Button
+                            onClick={handleExport}
+                            icon={<ExportOutlined />}
+                            type="default"
+                        >
+                            导出大纲
+                        </Button>
+                        <Button
+                            onClick={handleRegenerate}
+                            disabled={isRegenerating || isStreaming}
+                            loading={isRegenerating}
+                            icon={<ReloadOutlined />}
+                            type="default"
+                        >
+                            {isRegenerating ? '重新生成中...' : '重新生成大纲'}
+                        </Button>
+                    </Space>
                 </div>
             )}
 
@@ -328,6 +374,14 @@ export const OutlineResults: React.FC<OutlineResultsProps> = ({
                     }}
                 />
             )}
+
+            {/* Export Modal */}
+            <OutlineExportModal
+                visible={isExportModalVisible}
+                onClose={() => setIsExportModalVisible(false)}
+                exportText={exportText}
+                title="导出大纲"
+            />
         </Space>
     );
 }; 

@@ -286,13 +286,17 @@ export const OutlineTab: React.FC = () => {
             {/* Results */}
             <div style={{ marginTop: '20px' }}>
                 <OutlineResults
-                    sessionId={id}
+                    sessionId={id || ''}
                     components={sessionData.components}
                     status={sessionData.status}
                     isStreaming={isStreaming}
                     isConnecting={isConnecting}
                     onStopStreaming={handleStopStreaming}
                     onComponentUpdate={handleComponentUpdate}
+                    sourceArtifact={sessionData.sourceArtifact}
+                    totalEpisodes={sessionData.totalEpisodes}
+                    episodeDuration={sessionData.episodeDuration}
+                    createdAt={sessionData.createdAt}
                 />
             </div>
 
