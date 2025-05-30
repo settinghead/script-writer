@@ -15,6 +15,7 @@ interface EditableTextFieldProps {
     multiline?: boolean;
     label?: string;
     className?: string;
+    size?: 'small' | 'middle' | 'large';
 }
 
 export const EditableTextField: React.FC<EditableTextFieldProps> = ({
@@ -25,12 +26,13 @@ export const EditableTextField: React.FC<EditableTextFieldProps> = ({
     placeholder,
     multiline = false,
     label,
-    className = ''
+    className = '',
+    size = 'middle'
 }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editValue, setEditValue] = useState(value);
     const [isSaving, setIsSaving] = useState(false);
-    const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+    const inputRef = useRef<any>(null);
 
     useEffect(() => {
         setEditValue(value);
@@ -94,11 +96,26 @@ export const EditableTextField: React.FC<EditableTextFieldProps> = ({
         }
     }, [isEditing]);
 
+    const getLabelStyle = () => {
+        const baseStyle = { color: '#fff', display: 'block' as const };
+        if (size === 'small') {
+            return { ...baseStyle, marginBottom: '4px', fontSize: '12px' };
+        }
+        return { ...baseStyle, marginBottom: '8px' };
+    };
+
+    const getContainerStyle = () => {
+        if (size === 'small') {
+            return { marginBottom: '8px' };
+        }
+        return { marginBottom: '16px' };
+    };
+
     if (isEditing) {
         return (
-            <div style={{ marginBottom: '16px' }}>
+            <div style={getContainerStyle()}>
                 {label && (
-                    <Text strong style={{ color: '#fff', marginBottom: '8px', display: 'block' }}>
+                    <Text strong style={getLabelStyle()}>
                         {label}
                     </Text>
                 )}
@@ -128,12 +145,13 @@ export const EditableTextField: React.FC<EditableTextFieldProps> = ({
                     />
                 ) : (
                     <Input
-                        ref={inputRef as React.RefObject<HTMLInputElement>}
+                        ref={inputRef}
                         value={editValue}
                         onChange={(e) => setEditValue(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder={placeholder}
                         disabled={isSaving}
+                        size={size}
                         style={{
                             backgroundColor: '#1f1f1f',
                             borderColor: '#404040',
@@ -173,7 +191,7 @@ export const EditableTextField: React.FC<EditableTextFieldProps> = ({
     return (
         <div>
             {label && (
-                <Text strong style={{ color: '#fff', marginBottom: '8px', display: 'block' }}>
+                <Text strong style={getLabelStyle()}>
                     {label}
                 </Text>
             )}

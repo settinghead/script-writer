@@ -1,7 +1,6 @@
 import { createOpenAI } from '@ai-sdk/openai';
 import { streamText, createDataStreamResponse } from 'ai';
 import { Response } from 'express';
-import { jsonrepair } from 'jsonrepair';
 import { ArtifactRepository } from '../../repositories/ArtifactRepository';
 import { TransformRepository } from '../../repositories/TransformRepository';
 import { TemplateService } from '../templates/TemplateService';
