@@ -4,16 +4,9 @@ import { Button, Card, Typography, Alert, Space, message } from 'antd';
 import { SaveOutlined, FileTextOutlined } from '@ant-design/icons';
 import TextareaAutosize from 'react-textarea-autosize';
 import { apiService } from '../services/apiService';
+import { Artifact, getArtifactTextContent } from '../../common/types';
 
 const { Title, Text } = Typography;
-
-interface Artifact {
-    id: string;
-    text: string;
-    title?: string;
-    type: string;
-    data: any;
-}
 
 export const OutlineInputForm: React.FC = () => {
     const navigate = useNavigate();
@@ -27,11 +20,6 @@ export const OutlineInputForm: React.FC = () => {
     const [error, setError] = useState('');
     const [sourceArtifact, setSourceArtifact] = useState<Artifact | null>(null);
 
-    // Debug text state changes
-    useEffect(() => {
-        console.log('OutlineInputForm: Text state changed to:', text);
-    }, [text]);
-
     // Load artifact if artifact_id is provided
     useEffect(() => {
         if (artifact_id) {
@@ -44,42 +32,16 @@ export const OutlineInputForm: React.FC = () => {
             setIsLoading(true);
             setError('');
 
-            console.log('OutlineInputForm: Loading artifact', artifactId);
             const response = await fetch(`/api/artifacts/${artifactId}`);
             if (!response.ok) {
                 throw new Error(`Failed to fetch artifact: ${response.status}`);
             }
             const artifact = await response.json();
-            console.log('OutlineInputForm: Artifact loaded', artifact);
-            console.log('OutlineInputForm: Artifact data structure:', JSON.stringify(artifact.data, null, 2));
             setSourceArtifact(artifact);
 
-            // Set the text based on artifact type
-            let textToSet = '';
-            if (artifact.type === 'brainstorm_idea') {
-                console.log('OutlineInputForm: Processing brainstorm_idea type');
-                console.log('OutlineInputForm: artifact.data.text =', artifact.data.text);
-                console.log('OutlineInputForm: artifact.data.idea_text =', artifact.data.idea_text);
-                console.log('OutlineInputForm: artifact.data.body =', artifact.data.body);
-                console.log('OutlineInputForm: artifact.data.content =', artifact.data.content);
-                textToSet = artifact.data.text || artifact.data.idea_text || artifact.data.body || artifact.data.content || '';
-            } else if (artifact.type === 'user_input') {
-                textToSet = artifact.data.text || '';
-            } else {
-                textToSet = JSON.stringify(artifact.data, null, 2);
-            }
-
-            console.log('OutlineInputForm: Setting text to:', textToSet);
+            // Use the shared helper function to get text content
+            const textToSet = getArtifactTextContent(artifact);
             setText(textToSet);
-
-            // Force a small delay to ensure TextareaAutosize picks up the value
-            setTimeout(() => {
-                console.log('OutlineInputForm: Text state after delay:', text);
-                if (text !== textToSet) {
-                    console.log('OutlineInputForm: Re-setting text due to mismatch');
-                    setText(textToSet);
-                }
-            }, 100);
 
         } catch (error: any) {
             console.error('Error loading artifact:', error);
@@ -240,7 +202,6 @@ export const OutlineInputForm: React.FC = () => {
                             主题/灵感 *
                         </Text>
                         <TextareaAutosize
-                            key={text ? 'with-content' : 'empty'}
                             value={text}
                             onChange={handleTextChange}
                             placeholder="请输入您的故事主题、灵感或想法..."

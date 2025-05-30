@@ -1,3 +1,10 @@
+// ========== TRANSITION: Re-export from common types ==========
+// TODO: Gradually migrate all server imports to use ../../common/types directly
+
+export * from '../../common/types';
+
+// ========== LEGACY: These will be removed once migration is complete ==========
+
 // Base artifact interface
 export interface Artifact {
     id: string;

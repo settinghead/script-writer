@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tabs, Typography, Button } from 'antd';
 import { BulbOutlined, FileTextOutlined, PlusOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import IdeationsList from './IdeationsList';
 import { OutlinesList } from './OutlinesList';
 
@@ -9,10 +9,22 @@ const { Title } = Typography;
 
 const HomePage: React.FC = () => {
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState('ideations');
+    const [searchParams, setSearchParams] = useSearchParams();
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
-    React.useEffect(() => {
+    // Get initial tab from URL parameter, default to 'ideations'
+    const initialTab = searchParams.get('tab') || 'ideations';
+    const [activeTab, setActiveTab] = useState(initialTab);
+
+    // Sync state when URL changes (e.g., browser back/forward)
+    useEffect(() => {
+        const tabFromUrl = searchParams.get('tab') || 'ideations';
+        if (tabFromUrl !== activeTab) {
+            setActiveTab(tabFromUrl);
+        }
+    }, [searchParams]);
+
+    useEffect(() => {
         const handleResize = () => {
             setIsMobile(window.innerWidth <= 768);
         };
@@ -20,6 +32,16 @@ const HomePage: React.FC = () => {
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
+
+    // Update URL when tab changes
+    const handleTabChange = (key: string) => {
+        setActiveTab(key);
+
+        // Update URL search params
+        const newSearchParams = new URLSearchParams(searchParams);
+        newSearchParams.set('tab', key);
+        setSearchParams(newSearchParams, { replace: true });
+    };
 
     const handleCreateNew = () => {
         navigate('/ideation');
@@ -74,7 +96,7 @@ const HomePage: React.FC = () => {
 
             <Tabs
                 activeKey={activeTab}
-                onChange={setActiveTab}
+                onChange={handleTabChange}
                 items={tabItems}
                 size={isMobile ? 'small' : 'middle'}
                 style={{
