@@ -13,6 +13,7 @@ nvm use 22
 
 # Project configuration
 PROJECT_NAME="script-writer"
+GITHUB_REPO="settinghead/script-writer"
 
 # Create deployment directory with timestamp
 DEPLOY_DIR="/var/www/$PROJECT_NAME-$(date +%Y%m%d%H%M%S)"
@@ -25,7 +26,7 @@ sudo chmod 755 /var/data/$PROJECT_NAME
 
 
 # Clone repository
-git clone --depth 1 git@github.com:settinghead/$PROJECT_NAME.git $DEPLOY_DIR
+git clone --depth 1 git@github.com:$GITHUB_REPO.git $DEPLOY_DIR
 cd $DEPLOY_DIR
 
 # Install dependencies
