@@ -76,57 +76,11 @@ export const outlineFieldRegistry: FieldDefinition[] = [
     component: CharacterCard,
     containerType: 'card',
     extractKey: (char) => char?.name || `char-${Date.now()}`,
-    order: 9
-  },
-  
-  // Individual character fields (for progressive enhancement within cards)
-  { 
-    path: "characters[*].name", 
-    component: TextField, 
-    label: "姓名",
-    group: "characters"
-  },
-  { 
-    path: "characters[*].type", 
-    component: TextField, 
-    label: "角色类型",
-    group: "characters"
-  },
-  { 
-    path: "characters[*].description", 
-    component: TextAreaField, 
-    label: "角色描述",
-    group: "characters"
-  },
-  { 
-    path: "characters[*].age", 
-    component: TextField, 
-    label: "年龄",
-    group: "characters"
-  },
-  { 
-    path: "characters[*].gender", 
-    component: TextField, 
-    label: "性别",
-    group: "characters"
-  },
-  { 
-    path: "characters[*].occupation", 
-    component: TextField, 
-    label: "职业",
-    group: "characters"
-  },
-  { 
-    path: "characters[*].personality_traits", 
-    component: TagListField, 
-    label: "性格特点",
-    group: "characters"
-  },
-  { 
-    path: "characters[*].character_arc", 
-    component: TextAreaField, 
-    label: "人物成长轨迹",
-    group: "characters"
+    order: 9,
+    layout: {
+      columns: { xs: 24, sm: 24, md: 12, lg: 12, xl: 12 }, // Two columns on medium+ screens
+      compact: true
+    }
   },
   
   // Synopsis stages

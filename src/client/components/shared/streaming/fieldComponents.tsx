@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, Typography, Tag, Input } from 'antd';
+import { Card, Typography, Tag, Input, Row, Col } from 'antd';
 import { FieldProps } from './types';
 import TextareaAutosize from 'react-textarea-autosize';
 
@@ -336,68 +336,103 @@ export const CharacterCard: React.FC<FieldProps> = ({ value }) => {
 
   return (
     <Card
+      size="small"
       style={{
         backgroundColor: '#1a1a1a',
         border: '1px solid #303030',
-        marginBottom: '12px'
+        marginBottom: '12px',
+        height: '100%'
       }}
       bodyStyle={{ padding: '12px' }}
     >
-      {character.name && (
-        <TextField 
-          value={character.name} 
-          path="name" 
-          label="姓名"
-        />
-      )}
-      {character.type && (
-        <TextField 
-          value={character.type} 
-          path="type" 
-          label="角色类型"
-        />
-      )}
+      {/* Header: Name and Type */}
+      <div style={{ marginBottom: '8px' }}>
+        <Row gutter={8}>
+          <Col span={14}>
+            {character.name && (
+              <TextField 
+                value={character.name} 
+                path="name" 
+                label="姓名"
+              />
+            )}
+          </Col>
+          <Col span={10}>
+            {character.type && (
+              <TextField 
+                value={character.type} 
+                path="type" 
+                label="类型"
+              />
+            )}
+          </Col>
+        </Row>
+      </div>
+
+      {/* Basic Info Row */}
+      <div style={{ marginBottom: '8px' }}>
+        <Row gutter={6}>
+          <Col span={8}>
+            {character.age && (
+              <TextField 
+                value={character.age} 
+                path="age" 
+                label="年龄"
+              />
+            )}
+          </Col>
+          <Col span={8}>
+            {character.gender && (
+              <TextField 
+                value={character.gender} 
+                path="gender" 
+                label="性别"
+              />
+            )}
+          </Col>
+          <Col span={8}>
+            {character.occupation && (
+              <TextField 
+                value={character.occupation} 
+                path="occupation" 
+                label="职业"
+              />
+            )}
+          </Col>
+        </Row>
+      </div>
+
+      {/* Description */}
       {character.description && (
-        <TextAreaField 
-          value={character.description} 
-          path="description" 
-          label="角色描述"
-        />
+        <div style={{ marginBottom: '8px' }}>
+          <TextAreaField 
+            value={character.description} 
+            path="description" 
+            label="描述"
+          />
+        </div>
       )}
-      {character.age && (
-        <TextField 
-          value={character.age} 
-          path="age" 
-          label="年龄"
-        />
-      )}
-      {character.gender && (
-        <TextField 
-          value={character.gender} 
-          path="gender" 
-          label="性别"
-        />
-      )}
-      {character.occupation && (
-        <TextField 
-          value={character.occupation} 
-          path="occupation" 
-          label="职业"
-        />
-      )}
+
+      {/* Personality Traits */}
       {character.personality_traits && (
-        <TagListField 
-          value={character.personality_traits} 
-          path="personality_traits" 
-          label="性格特点"
-        />
+        <div style={{ marginBottom: '8px' }}>
+          <TagListField 
+            value={character.personality_traits} 
+            path="personality_traits" 
+            label="性格特点"
+          />
+        </div>
       )}
+
+      {/* Character Arc */}
       {character.character_arc && (
-        <TextAreaField 
-          value={character.character_arc} 
-          path="character_arc" 
-          label="人物成长轨迹"
-        />
+        <div>
+          <TextAreaField 
+            value={character.character_arc} 
+            path="character_arc" 
+            label="成长轨迹"
+          />
+        </div>
       )}
     </Card>
   );

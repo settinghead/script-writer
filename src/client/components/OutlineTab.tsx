@@ -298,16 +298,16 @@ export const OutlineTab: React.FC = () => {
                     onStopStreaming={handleStopStreaming}
                     onComponentUpdate={handleComponentUpdate}
                     streamingItems={outlineItems}
+                    sourceArtifact={sessionData.sourceArtifact}
+                    totalEpisodes={sessionData.totalEpisodes}
+                    episodeDuration={sessionData.episodeDuration}
+                    createdAt={sessionData.createdAt}
                     onRegenerate={async () => {
                         try {
                             await apiService.regenerateOutline(id || '');
                         } catch (error) {
                             console.error('Error regenerating outline:', error);
                         }
-                    }}
-                    onExport={() => {
-                        // TODO: Implement export functionality
-                        console.log('Export outline');
                     }}
                 />
             </div>

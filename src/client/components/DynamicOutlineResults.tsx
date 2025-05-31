@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Row, Col, Alert, Button, Space } from 'antd';
 import { ReloadOutlined, ExportOutlined } from '@ant-design/icons';
 import { DynamicStreamingUI, outlineFieldRegistry } from './shared/streaming';
+import { OutlineExportModal } from './shared/OutlineExportModal';
+import { formatOutlineForExport, type OutlineExportData } from '../utils/outlineExporter';
 
 interface OutlineCharacter {
     name: string;
@@ -38,9 +40,17 @@ interface DynamicOutlineResultsProps {
     onStopStreaming?: () => void;
     onComponentUpdate?: (componentType: string, newValue: string, newArtifactId: string) => void;
     onRegenerate?: () => void;
-    onExport?: () => void;
     // New props for real-time streaming
     streamingItems?: any[];
+    // Additional props needed for export
+    sourceArtifact?: {
+        text: string;
+        title?: string;
+        type: string;
+    };
+    totalEpisodes?: number;
+    episodeDuration?: number;
+    createdAt?: string;
 }
 
 export const DynamicOutlineResults: React.FC<DynamicOutlineResultsProps> = ({
@@ -52,9 +62,14 @@ export const DynamicOutlineResults: React.FC<DynamicOutlineResultsProps> = ({
     onStopStreaming,
     onComponentUpdate,
     onRegenerate,
-    onExport,
-    streamingItems = []
+    streamingItems = [],
+    sourceArtifact,
+    totalEpisodes,
+    episodeDuration,
+    createdAt
 }) => {
+    const [isExportModalVisible, setIsExportModalVisible] = useState(false);
+    const [exportText, setExportText] = useState('');
     // Determine streaming status
     const streamingStatus = isConnecting ? 'idle' : isStreaming ? 'streaming' : 'completed';
 
@@ -106,6 +121,10 @@ export const DynamicOutlineResults: React.FC<DynamicOutlineResultsProps> = ({
             selling_points: typeof components.selling_points === 'string' 
                 ? components.selling_points.split('\n').filter(p => p.trim())
                 : components.selling_points,
+            // Handle setting: if it's a string, wrap it in the expected object structure
+            setting: typeof components.setting === 'string' 
+                ? { core_setting_summary: components.setting }
+                : components.setting,
             // Ensure other arrays are properly formatted
             satisfaction_points: components.satisfaction_points || [],
             synopsis_stages: components.synopsis_stages || [],
@@ -114,6 +133,26 @@ export const DynamicOutlineResults: React.FC<DynamicOutlineResultsProps> = ({
         
         return [transformedData];
     }, [components, streamingItems, isStreaming]);
+
+    const handleExport = () => {
+        // Prepare export data
+        const exportData: OutlineExportData = {
+            sessionId,
+            sourceArtifact: sourceArtifact || {
+                text: '',
+                type: 'unknown'
+            },
+            totalEpisodes,
+            episodeDuration,
+            components,
+            createdAt: createdAt || new Date().toISOString()
+        };
+
+        // Generate formatted text
+        const formattedText = formatOutlineForExport(exportData);
+        setExportText(formattedText);
+        setIsExportModalVisible(true);
+    };
 
     const getCompletedComponentsCount = () => {
         let count = 0;
@@ -167,7 +206,7 @@ export const DynamicOutlineResults: React.FC<DynamicOutlineResultsProps> = ({
                     <Button
                         type="default"
                         icon={<ExportOutlined />}
-                        onClick={onExport}
+                        onClick={handleExport}
                         disabled={!components || Object.keys(components).length === 0}
                         style={{
                             background: '#434343',
@@ -203,6 +242,14 @@ export const DynamicOutlineResults: React.FC<DynamicOutlineResultsProps> = ({
                     {isStreaming ? '正在生成大纲...' : '暂无大纲数据'}
                 </div>
             ) : null}
+
+            {/* Export Modal */}
+            <OutlineExportModal
+                visible={isExportModalVisible}
+                onClose={() => setIsExportModalVisible(false)}
+                exportText={exportText}
+                title="导出大纲"
+            />
         </Space>
     );
 };

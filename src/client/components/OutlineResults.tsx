@@ -287,92 +287,92 @@ export const OutlineResults: React.FC<OutlineResultsProps> = ({
                                             }}
                                             bodyStyle={{ backgroundColor: '#1f1f1f', padding: '12px' }}
                                         >
-                                            <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                                                {/* Name and type row */}
-                                                <Row gutter={8}>
-                                                    <Col span={12}>
-                                                        <EditableTextField
-                                                            value={character.name}
-                                                            artifactId={`character_name_${sessionId}_${index}`}
-                                                            artifactType="character_name"
-                                                            onChange={(newValue, newArtifactId) => {
-                                                                const updatedCharacters = [...(components.characters || [])];
-                                                                updatedCharacters[index] = { ...character, name: newValue };
-                                                                handleFieldEdit('characters', JSON.stringify(updatedCharacters), newArtifactId);
-                                                            }}
-                                                            placeholder="角色姓名..."
-                                                            label="姓名"
-                                                            className="font-medium"
-                                                            size="small"
-                                                        />
-                                                    </Col>
-                                                    <Col span={12}>
-                                                        <EditableTextField
-                                                            value={character.type || ''}
-                                                            artifactId={`character_type_${sessionId}_${index}`}
-                                                            artifactType="character_type"
-                                                            onChange={(newValue, newArtifactId) => {
-                                                                const updatedCharacters = [...(components.characters || [])];
-                                                                updatedCharacters[index] = { ...character, type: newValue };
-                                                                handleFieldEdit('characters', JSON.stringify(updatedCharacters), newArtifactId);
-                                                            }}
-                                                            placeholder="角色类型（如：male_lead, female_lead等）..."
-                                                            label="角色类型"
-                                                            size="small"
-                                                        />
-                                                    </Col>
-                                                </Row>
+                                            {/* Header: Name and Type */}
+                                            <Row gutter={8} style={{ marginBottom: '8px' }}>
+                                                <Col span={14}>
+                                                    <EditableTextField
+                                                        value={character.name}
+                                                        artifactId={`character_name_${sessionId}_${index}`}
+                                                        artifactType="character_name"
+                                                        onChange={(newValue, newArtifactId) => {
+                                                            const updatedCharacters = [...(components.characters || [])];
+                                                            updatedCharacters[index] = { ...character, name: newValue };
+                                                            handleFieldEdit('characters', JSON.stringify(updatedCharacters), newArtifactId);
+                                                        }}
+                                                        placeholder="角色姓名..."
+                                                        label="姓名"
+                                                        className="font-medium"
+                                                        size="small"
+                                                    />
+                                                </Col>
+                                                <Col span={10}>
+                                                    <EditableTextField
+                                                        value={character.type || ''}
+                                                        artifactId={`character_type_${sessionId}_${index}`}
+                                                        artifactType="character_type"
+                                                        onChange={(newValue, newArtifactId) => {
+                                                            const updatedCharacters = [...(components.characters || [])];
+                                                            updatedCharacters[index] = { ...character, type: newValue };
+                                                            handleFieldEdit('characters', JSON.stringify(updatedCharacters), newArtifactId);
+                                                        }}
+                                                        placeholder="类型..."
+                                                        label="类型"
+                                                        size="small"
+                                                    />
+                                                </Col>
+                                            </Row>
 
-                                                {/* Basic info row */}
-                                                <Row gutter={8}>
-                                                    <Col span={8}>
-                                                        <EditableTextField
-                                                            value={character.age || ''}
-                                                            artifactId={`character_age_${sessionId}_${index}`}
-                                                            artifactType="character_age"
-                                                            onChange={(newValue, newArtifactId) => {
-                                                                const updatedCharacters = [...(components.characters || [])];
-                                                                updatedCharacters[index] = { ...character, age: newValue };
-                                                                handleFieldEdit('characters', JSON.stringify(updatedCharacters), newArtifactId);
-                                                            }}
-                                                            placeholder="年龄..."
-                                                            label="年龄"
-                                                            size="small"
-                                                        />
-                                                    </Col>
-                                                    <Col span={8}>
-                                                        <EditableTextField
-                                                            value={character.gender || ''}
-                                                            artifactId={`character_gender_${sessionId}_${index}`}
-                                                            artifactType="character_gender"
-                                                            onChange={(newValue, newArtifactId) => {
-                                                                const updatedCharacters = [...(components.characters || [])];
-                                                                updatedCharacters[index] = { ...character, gender: newValue };
-                                                                handleFieldEdit('characters', JSON.stringify(updatedCharacters), newArtifactId);
-                                                            }}
-                                                            placeholder="性别..."
-                                                            label="性别"
-                                                            size="small"
-                                                        />
-                                                    </Col>
-                                                    <Col span={8}>
-                                                        <EditableTextField
-                                                            value={character.occupation || ''}
-                                                            artifactId={`character_occupation_${sessionId}_${index}`}
-                                                            artifactType="character_occupation"
-                                                            onChange={(newValue, newArtifactId) => {
-                                                                const updatedCharacters = [...(components.characters || [])];
-                                                                updatedCharacters[index] = { ...character, occupation: newValue };
-                                                                handleFieldEdit('characters', JSON.stringify(updatedCharacters), newArtifactId);
-                                                            }}
-                                                            placeholder="职业..."
-                                                            label="职业"
-                                                            size="small"
-                                                        />
-                                                    </Col>
-                                                </Row>
+                                            {/* Basic info row */}
+                                            <Row gutter={6} style={{ marginBottom: '8px' }}>
+                                                <Col span={8}>
+                                                    <EditableTextField
+                                                        value={character.age || ''}
+                                                        artifactId={`character_age_${sessionId}_${index}`}
+                                                        artifactType="character_age"
+                                                        onChange={(newValue, newArtifactId) => {
+                                                            const updatedCharacters = [...(components.characters || [])];
+                                                            updatedCharacters[index] = { ...character, age: newValue };
+                                                            handleFieldEdit('characters', JSON.stringify(updatedCharacters), newArtifactId);
+                                                        }}
+                                                        placeholder="年龄..."
+                                                        label="年龄"
+                                                        size="small"
+                                                    />
+                                                </Col>
+                                                <Col span={8}>
+                                                    <EditableTextField
+                                                        value={character.gender || ''}
+                                                        artifactId={`character_gender_${sessionId}_${index}`}
+                                                        artifactType="character_gender"
+                                                        onChange={(newValue, newArtifactId) => {
+                                                            const updatedCharacters = [...(components.characters || [])];
+                                                            updatedCharacters[index] = { ...character, gender: newValue };
+                                                            handleFieldEdit('characters', JSON.stringify(updatedCharacters), newArtifactId);
+                                                        }}
+                                                        placeholder="性别..."
+                                                        label="性别"
+                                                        size="small"
+                                                    />
+                                                </Col>
+                                                <Col span={8}>
+                                                    <EditableTextField
+                                                        value={character.occupation || ''}
+                                                        artifactId={`character_occupation_${sessionId}_${index}`}
+                                                        artifactType="character_occupation"
+                                                        onChange={(newValue, newArtifactId) => {
+                                                            const updatedCharacters = [...(components.characters || [])];
+                                                            updatedCharacters[index] = { ...character, occupation: newValue };
+                                                            handleFieldEdit('characters', JSON.stringify(updatedCharacters), newArtifactId);
+                                                        }}
+                                                        placeholder="职业..."
+                                                        label="职业"
+                                                        size="small"
+                                                    />
+                                                </Col>
+                                            </Row>
 
-                                                {/* Description */}
+                                            {/* Description */}
+                                            <div style={{ marginBottom: '8px' }}>
                                                 <EditableTextField
                                                     value={character.description}
                                                     artifactId={`character_desc_${sessionId}_${index}`}
@@ -383,12 +383,14 @@ export const OutlineResults: React.FC<OutlineResultsProps> = ({
                                                         handleFieldEdit('characters', JSON.stringify(updatedCharacters), newArtifactId);
                                                     }}
                                                     placeholder="角色描述..."
-                                                    label="角色描述"
+                                                    label="描述"
                                                     multiline
                                                     size="small"
                                                 />
+                                            </div>
 
-                                                {/* Personality Traits */}
+                                            {/* Personality Traits */}
+                                            <div style={{ marginBottom: '8px' }}>
                                                 <EditableTextField
                                                     value={character.personality_traits ? character.personality_traits.join('、') : ''}
                                                     artifactId={`character_traits_${sessionId}_${index}`}
@@ -405,8 +407,10 @@ export const OutlineResults: React.FC<OutlineResultsProps> = ({
                                                     label="性格特点"
                                                     size="small"
                                                 />
+                                            </div>
 
-                                                {/* Character Arc */}
+                                            {/* Character Arc */}
+                                            <div>
                                                 <EditableTextField
                                                     value={character.character_arc || ''}
                                                     artifactId={`character_arc_${sessionId}_${index}`}
@@ -417,11 +421,11 @@ export const OutlineResults: React.FC<OutlineResultsProps> = ({
                                                         handleFieldEdit('characters', JSON.stringify(updatedCharacters), newArtifactId);
                                                     }}
                                                     placeholder="人物成长轨迹..."
-                                                    label="人物成长轨迹"
+                                                    label="成长轨迹"
                                                     multiline
                                                     size="small"
                                                 />
-                                            </Space>
+                                            </div>
                                         </Card>
                                     </Col>
                                 ))}

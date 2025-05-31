@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Space, Button, Spin } from 'antd';
+import { Space, Button, Spin, Row, Col } from 'antd';
 import { StopOutlined } from '@ant-design/icons';
 import { 
   DynamicStreamingUIProps, 
   RenderedField, 
-  FieldUpdate 
+  FieldUpdate,
+  FieldDefinition
 } from './types';
 import { StreamingFieldDetector, PathMatcher } from './StreamingFieldDetector';
 // import { useLLMStreaming } from '../../../hooks/useLLMStreaming';
@@ -271,28 +272,47 @@ export const DynamicStreamingUI: React.FC<DynamicStreamingUIProps> = ({
       </Space>
 
       {/* Render grouped fields */}
-      {Object.entries(groupedFields.groups).map(([groupKey, fields]) => (
-        <div key={groupKey} style={{ marginTop: '16px' }}>
-          <div style={{ 
-            marginBottom: '8px', 
-            fontSize: '14px', 
-            fontWeight: 'bold', 
-            color: '#fff' 
-          }}>
-            {/* You might want to add group titles based on the groupKey */}
-            {formatGroupTitle(groupKey)}
+      {Object.entries(groupedFields.groups).map(([groupKey, fields]) => {
+        // Get layout configuration from the first field in the group
+        const layoutConfig = fields[0]?.definition?.layout;
+        const useGrid = layoutConfig?.columns;
+        
+        return (
+          <div key={groupKey} style={{ marginTop: '16px' }}>
+            <div style={{ 
+              marginBottom: '8px', 
+              fontSize: '14px', 
+              fontWeight: 'bold', 
+              color: '#fff' 
+            }}>
+              {formatGroupTitle(groupKey)}
+            </div>
+            
+            {useGrid ? (
+              <Row gutter={[16, 16]}>
+                {sortFields(fields).map(field => (
+                  <Col key={field.id} {...layoutConfig.columns}>
+                    <StreamingFieldRenderer
+                      field={field}
+                      onEdit={handleFieldEdit(field.path)}
+                    />
+                  </Col>
+                ))}
+              </Row>
+            ) : (
+              <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                {sortFields(fields).map(field => (
+                  <StreamingFieldRenderer
+                    key={field.id}
+                    field={field}
+                    onEdit={handleFieldEdit(field.path)}
+                  />
+                ))}
+              </Space>
+            )}
           </div>
-          <Space direction="vertical" size="small" style={{ width: '100%' }}>
-            {sortFields(fields).map(field => (
-              <StreamingFieldRenderer
-                key={field.id}
-                field={field}
-                onEdit={handleFieldEdit(field.path)}
-              />
-            ))}
-          </Space>
-        </div>
-      ))}
+        );
+      })}
 
       {/* Loading state when processing but no fields yet */}
       {isProcessing && !hasFields && (

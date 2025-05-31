@@ -18,6 +18,12 @@ export interface FieldDefinition {
   extractKey?: (data: any) => string; // For arrays, extract unique key
   group?: string;                      // Optional grouping for organization
   order?: number;                      // Optional ordering within groups
+  layout?: {                           // Layout configuration
+    columns?: { xs?: number; sm?: number; md?: number; lg?: number; xl?: number }; // Grid columns
+    compact?: boolean;                 // Use compact display
+    orientation?: 'horizontal' | 'vertical'; // Field orientation
+    maxItems?: number;                 // Max items to show (for arrays)
+  };
 }
 
 export interface RenderedField {
