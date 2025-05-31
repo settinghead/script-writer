@@ -50,12 +50,23 @@ export interface OutlineData {
       demographic?: string;
       core_themes?: string[];
     };
-    selling_points?: string[];
+    selling_points?: string;
     satisfaction_points?: string[];
-    setting?: any;
+    setting?: string;
     synopsis?: string;
     synopsis_stages?: string[];
-    characters?: any[];
+    characters?: Array<{
+      name: string;
+      type?: string;
+      description: string;
+      age?: string;
+      gender?: string;
+      occupation?: string;
+      personality_traits?: string[];
+      character_arc?: string;
+      relationships?: { [key: string]: string };
+      key_scenes?: string[];
+    }>;
   };
   streamingData?: {
     transformId: string;
@@ -105,7 +116,7 @@ export class UnifiedStreamingService {
         await this.getIdeationParameters(userId, transforms);
 
       // 5. Check if currently streaming
-      let streamingData = null;
+      let streamingData: { transformId: string; chunks: string[]; progress: number } | undefined = undefined;
       let status: 'streaming' | 'completed' | 'failed' = 'completed';
 
       if (latestTransform) {
@@ -169,7 +180,7 @@ export class UnifiedStreamingService {
       const { totalEpisodes, episodeDuration } = await this.getOutlineParameters(userId, transforms);
 
       // 6. Check if currently streaming
-      let streamingData = null;
+      let streamingData: { transformId: string; chunks: string[]; progress: number } | undefined = undefined;
       let status: 'streaming' | 'completed' | 'failed' = 'completed';
 
       if (latestTransform) {
