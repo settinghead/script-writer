@@ -333,7 +333,7 @@ export class TransformRepository {
             .count('id as count')
             .first();
 
-        return (count?.count ?? 0) > 0;
+        return Number(count?.count ?? 0) > 0;
     }
 
     // Clean up chunks for completed transforms (replaces StreamingCache.clear)
