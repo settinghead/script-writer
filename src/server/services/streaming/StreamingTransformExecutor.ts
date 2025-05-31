@@ -890,19 +890,7 @@ export class StreamingTransformExecutor {
                 ]);
             }
 
-            // Update outline session status to completed
-            if (transform.execution_context?.outline_session_id) {
-                await this.artifactRepo.createArtifact(
-                    userId,
-                    'outline_session',
-                    {
-                        id: transform.execution_context.outline_session_id,
-                        ideation_session_id: 'job-based',
-                        status: 'completed',
-                        created_at: new Date().toISOString()
-                    } as OutlineSessionV1
-                );
-            }
+            // Note: Outline session status is tracked via transform status, no need to create duplicate artifact
 
         } catch (error) {
             throw error;
