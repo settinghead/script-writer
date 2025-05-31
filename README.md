@@ -151,6 +151,16 @@ CREATE TABLE transforms (
   FOREIGN KEY (user_id) REFERENCES users (id)
 );
 
+-- Streaming chunks for real-time processing
+CREATE TABLE transform_chunks (
+  id TEXT PRIMARY KEY,
+  transform_id TEXT NOT NULL,
+  chunk_index INTEGER NOT NULL,
+  chunk_data TEXT NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (transform_id) REFERENCES transforms (id) ON DELETE CASCADE
+);
+
 -- Many-to-many relationships
 CREATE TABLE transform_inputs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -233,6 +243,72 @@ CREATE TABLE user_sessions (
 );
 ```
 
+### Unified Streaming Architecture
+
+The application features a **unified, database-backed streaming architecture** that eliminates caching-related issues and provides a single source of truth for both streaming and completed data.
+
+#### Core Design Principles
+
+1. **Single Source of Truth**: Database (artifacts/transforms) is the only authoritative data source
+2. **Real-time Updates**: Database changes trigger events to connected clients via EventSource
+3. **Unified Endpoints**: Single API endpoints serve both streaming and completed data states
+4. **No Caching Layer**: Eliminates race conditions and stale data issues
+
+#### Streaming State Management
+
+```typescript
+interface StreamingState {
+  transformId: string;
+  status: 'running' | 'completed' | 'failed';
+  chunks: string[];        // Retrieved from transform_chunks table
+  results: any[];          // Retrieved from completed artifacts
+  progress: number;        // Calculated from chunks/expected
+}
+```
+
+#### Architecture Diagram
+
+```
+┌─────────────┐     ┌──────────────┐     ┌─────────────┐
+│   Frontend  │────►│  Single API  │────►│   Database  │
+│             │◄────│   Endpoint   │◄────│ (Artifacts/ │
+└─────────────┘     └──────────────┘     │ Transforms) │
+      ▲                    │              └─────────────┘
+      │                    │                     │
+      │              ┌─────▼──────┐              │
+      └──────────────│   Event    │◄─────────────┘
+                     │ Broadcaster │   DB Changes
+                     └────────────┘
+```
+
+#### Benefits
+
+- **Simplicity**: Single source of truth, no cache invalidation complexity
+- **Real-time**: Instant updates via event broadcasting 
+- **Consistency**: Same data structure for all streaming states
+- **Performance**: Optimized database queries, no redundant cache operations
+- **Reliability**: Eliminates race conditions and stale data issues
+
+#### Implementation Details
+
+The `UnifiedStreamingService` provides a single interface for both streaming and completed data:
+
+```typescript
+// Returns complete state regardless of streaming status
+const ideationData = await unifiedStreamingService.getIdeationRun(userId, sessionId);
+
+// Includes both completed artifacts and real-time streaming chunks
+const streamingState = {
+  status: transform.status,
+  ideas: completedArtifacts,      // From artifacts table
+  streamingData: {
+    transformId: transform.id,
+    chunks: streamingChunks,      // From transform_chunks table
+    progress: calculateProgress(chunks)
+  }
+};
+```
+
 ## API Endpoints
 
 ### Authentication
@@ -247,6 +323,11 @@ CREATE TABLE user_sessions (
 - `POST /llm-api/chat/completions` - Chat completions
 - `POST /llm-api/script/edit` - Script editing assistance
 - `POST /api/streaming/llm` - Generic LLM JSON streaming with template support
+
+### Real-time Streaming Endpoints
+- `GET /api/streaming/transform/:transformId` - Subscribe to transform streaming updates via EventSource
+- `GET /api/streaming/status/:transformId` - Get current streaming status and progress
+- `POST /api/streaming/cancel/:transformId` - Cancel active streaming operation
 
 ### Content Management (All Require Authentication)
 
@@ -569,17 +650,18 @@ const customMetrics = {
 
 ### ⚠️ Important Notes
 
-1. **Database Evolution**: Old tables renamed to `legacy_*` for emergency recovery
-2. **API Compatibility**: All existing endpoints work unchanged during transition
-3. **Caching Strategy**: Intelligent TTL based on data volatility patterns
-4. **Transform Replay**: Available for all LLM transforms for reproducibility
+1. **Unified Streaming Architecture**: Database-backed streaming eliminates caching complexities and race conditions
+2. **Database Evolution**: Complete migration from caching layer to persistent streaming chunks
+3. **API Compatibility**: All existing endpoints maintained while using new unified streaming backend
+4. **Transform Replay**: Available for all LLM transforms for reproducibility and debugging
 5. **Data Export**: Complete user data available for AI training purposes
-6. **Performance Monitoring**: Built-in metrics for system health tracking
-7. **Debug Tools**: Comprehensive debugging endpoints for development
-8. **Memory Management**: Automatic cache cleanup and memory optimization
+6. **Real-time Performance**: Built-in metrics and streaming state monitoring
+7. **Debug Tools**: Comprehensive debugging endpoints for development and analytics
+8. **Memory Management**: Efficient streaming with automatic cleanup and garbage collection
 9. **Streaming Architecture**: RxJS-based services provide consistent streaming patterns across all LLM features
 10. **JSON Parsing**: Robust error recovery with multiple parsing strategies and `jsonrepair` integration
 11. **UI Animations**: Smooth transitions with proper cleanup to prevent memory leaks and infinite loops
+12. **Single Source of Truth**: Database serves as the only authoritative data source, eliminating synchronization issues
 
 ## Contributing
 
