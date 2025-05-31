@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Input, Button, Typography, Spin, Alert, Switch, Modal, Card, Space, Breadcrumb } from 'antd';
 import { ReloadOutlined, ArrowLeftOutlined, DeleteOutlined, BulbOutlined, DesktopOutlined, HomeOutlined, FileTextOutlined, PlusOutlined } from '@ant-design/icons';
 import BrainstormingInputForm from './BrainstormingInputForm';
 import BrainstormingParameterSummary from './BrainstormingParameterSummary';
 import StoryInspirationEditor from './StoryInspirationEditor';
 import BrainstormingResults from './BrainstormingResults';
+import DynamicBrainstormingResults from './DynamicBrainstormingResults';
 import { useStreamingBrainstorm } from '../hooks/useStreamingBrainstorm';
 import { IdeaWithTitle } from '../services/implementations/BrainstormingStreamingService';
 import TextareaAutosize from 'react-textarea-autosize';
@@ -16,7 +17,7 @@ const { Title, Text, Paragraph } = Typography;
 const IdeationTab: React.FC = () => {
     const { id: ideationRunId } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const searchParams = new URLSearchParams(window.location.search);
+    const [searchParams] = useSearchParams();
     const initialArtifactId = searchParams.get('artifact_id');
     const initialTransformId = searchParams.get('transform');
 
@@ -64,14 +65,32 @@ const IdeationTab: React.FC = () => {
 
     const abortControllerRef = useRef<AbortController | null>(null);
 
+    // Effect to watch for URL parameter changes
+    useEffect(() => {
+        const currentTransformId = searchParams.get('transform');
+        const currentArtifactId = searchParams.get('artifact_id');
+        
+        // Update transform ID if it changed
+        if (currentTransformId !== activeTransformId) {
+            setActiveTransformId(currentTransformId);
+            setIsStreamingJob(!!currentTransformId);
+        }
+        
+        // Update artifact ID if it changed
+        if (currentArtifactId !== currentArtifactId) {
+            setCurrentArtifactId(currentArtifactId);
+        }
+    }, [searchParams]);
+
     // Effect to load existing ideation run if ID is present
     useEffect(() => {
         if (ideationRunId) {
             loadIdeationRun(ideationRunId);
             // If we have a transform ID from URL, set streaming state immediately
-            if (initialTransformId) {
+            const currentTransformId = searchParams.get('transform');
+            if (currentTransformId) {
                 setIsStreamingJob(true);
-                setActiveTransformId(initialTransformId);
+                setActiveTransformId(currentTransformId);
             } else {
                 // Otherwise check if there's an active streaming job for this run
                 checkActiveStreamingJob(ideationRunId);
@@ -470,7 +489,7 @@ const IdeationTab: React.FC = () => {
 
                             {/* Show results if we have ideas or are streaming */}
                             {(brainstormingData.generatedIdeas.length > 0 || activeTransformId || status === 'streaming') && !brainstormingCollapsed && (
-                                <BrainstormingResults
+                                <DynamicBrainstormingResults
                                     ideas={brainstormingData.generatedIdeas}
                                     onIdeaSelect={handleIdeaSelect}
                                     isStreaming={status === 'streaming'}
