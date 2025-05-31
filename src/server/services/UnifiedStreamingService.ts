@@ -41,6 +41,7 @@ export interface OutlineData {
     text: string;
     title?: string;
     type: string;
+    ideationRunId?: string;
   };
   components: {
     title?: string;
