@@ -397,16 +397,55 @@ export class UnifiedStreamingService {
       for (const input of inputs) {
         const artifact = await this.artifactRepo.getArtifact(input.artifact_id, userId);
         if (artifact && (artifact.type === 'brainstorm_idea' || artifact.type === 'user_input')) {
+          // If it's a brainstorm_idea, try to find the originating ideation run
+          let ideationRunId = null;
+          if (artifact.type === 'brainstorm_idea') {
+            ideationRunId = await this.findIdeationRunForArtifact(userId, artifact.id);
+          }
+          
           return {
             id: artifact.id,
             text: artifact.data.idea_text || artifact.data.text || '',
             title: artifact.data.idea_title || artifact.data.title,
-            type: artifact.type
+            type: artifact.type,
+            ideationRunId
           };
         }
       }
     }
     return null;
+  }
+
+  private async findIdeationRunForArtifact(userId: string, artifactId: string): Promise<string | null> {
+    try {
+      console.log(`[findIdeationRunForArtifact] Looking for ideation run for artifact: ${artifactId}`);
+      
+      // Find transforms that produced this artifact
+      const userTransforms = await this.transformRepo.getUserTransforms(userId);
+      console.log(`[findIdeationRunForArtifact] Found ${userTransforms.length} user transforms`);
+      
+      for (const transform of userTransforms) {
+        const outputs = await this.transformRepo.getTransformOutputs(transform.id);
+        
+        // If this transform produced the artifact
+        if (outputs.some(o => o.artifact_id === artifactId)) {
+          console.log(`[findIdeationRunForArtifact] Transform ${transform.id} produced artifact ${artifactId}`);
+          console.log(`[findIdeationRunForArtifact] Execution context:`, transform.execution_context);
+          
+          // Check if the transform has an ideation_run_id in execution context
+          if (transform.execution_context?.ideation_run_id) {
+            console.log(`[findIdeationRunForArtifact] Found ideation_run_id: ${transform.execution_context.ideation_run_id}`);
+            return transform.execution_context.ideation_run_id;
+          }
+        }
+      }
+      
+      console.log(`[findIdeationRunForArtifact] No ideation run found for artifact ${artifactId}`);
+      return null;
+    } catch (error) {
+      console.error('Error finding ideation run for artifact:', error);
+      return null;
+    }
   }
 
   private async getOutlineParameters(userId: string, transforms: any[]): Promise<{

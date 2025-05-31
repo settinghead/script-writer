@@ -149,7 +149,7 @@ export class OutlineService {
             return {
                 id: outlineData.id,
                 sourceArtifact: outlineData.sourceArtifact,
-                ideationRunId: undefined, // Not used in new system
+                ideationRunId: outlineData.sourceArtifact?.ideationRunId,
                 totalEpisodes: outlineData.totalEpisodes,
                 episodeDuration: outlineData.episodeDuration,
                 components: outlineData.components,

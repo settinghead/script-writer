@@ -137,7 +137,7 @@ export const OutlineParameterSummary: React.FC<OutlineParameterSummaryProps> = (
                                             onClick={handleViewSource}
                                             style={{ marginLeft: '12px', color: '#1890ff' }}
                                         >
-                                            查看源头脑风暴
+                                            查看原灵感组
                                         </Button>
                                     )}
                                 </div>
@@ -211,19 +211,6 @@ export const OutlineParameterSummary: React.FC<OutlineParameterSummaryProps> = (
                             </Card>
                         </div>
 
-                        {/* Additional Info */}
-                        <Alert
-                            message="参数说明"
-                            description="基于选定的故事灵感和集数配置，系统将生成包含标题、类型、角色设定等完整大纲内容。所有生成的内容都可以进行编辑和完善。"
-                            type="info"
-                            showIcon
-                            icon={<InfoCircleOutlined />}
-                            style={{
-                                backgroundColor: '#1a3c5a',
-                                border: '1px solid #2563eb',
-                                color: '#fff'
-                            }}
-                        />
                     </Space>
                 </div>
             )}
