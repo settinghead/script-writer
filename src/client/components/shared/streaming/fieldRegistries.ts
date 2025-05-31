@@ -136,14 +136,7 @@ export const outlineFieldRegistry: FieldDefinition[] = [
     label: "分段故事梗概",
     order: 10
   },
-  
 
-  { 
-    path: "synopsis", 
-    component: TextAreaField, 
-    label: "故事梗概",
-    order: 10
-  }
 ];
 
 /**
