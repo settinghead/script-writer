@@ -499,6 +499,7 @@ const IdeationTab: React.FC = () => {
                                     error={streamingError}
                                     selectedIdeaIndex={selectedIdeaIndex}
                                     canRegenerate={!isStreamingJob}
+                                    ideationRunId={ideationRunId}
                                 />
                             )}
 

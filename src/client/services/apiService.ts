@@ -162,6 +162,15 @@ class ApiService {
         }
         return response.json();
     }
+
+    // Get outlines associated with ideas for an ideation session
+    async getIdeaOutlines(ideationRunId: string): Promise<{ [ideaId: string]: any[] }> {
+        const response = await fetch(`${this.baseUrl}/ideations/${ideationRunId}/idea-outlines`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch idea outlines: ${response.status}`);
+        }
+        return response.json();
+    }
 }
 
 export const apiService = new ApiService(); 

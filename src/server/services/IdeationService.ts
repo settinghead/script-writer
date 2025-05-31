@@ -220,12 +220,21 @@ export class IdeationService {
         const userTransforms = await this.transformRepo.getUserTransforms(userId);
         const relatedArtifactIds = new Set<string>();
         relatedArtifactIds.add(sessionArtifact.id);
+        
+        const sessionId = sessionArtifact.data.id; // Extract the session ID from session data
 
         for (const transform of userTransforms) {
             const outputs = await this.transformRepo.getTransformOutputs(transform.id);
             const inputs = await this.transformRepo.getTransformInputs(transform.id);
 
+            // Check if transform is related to this session artifact directly
             if (outputs.some(o => o.artifact_id === sessionArtifact.id)) {
+                inputs.forEach(i => relatedArtifactIds.add(i.artifact_id));
+                outputs.forEach(o => relatedArtifactIds.add(o.artifact_id));
+            }
+
+            // Check if transform has this session ID in execution context
+            if (transform.execution_context?.ideation_run_id === sessionId) {
                 inputs.forEach(i => relatedArtifactIds.add(i.artifact_id));
                 outputs.forEach(o => relatedArtifactIds.add(o.artifact_id));
             }
@@ -511,5 +520,129 @@ export class IdeationService {
             },
             'plot_outline'
         );
+    }
+
+    // Get outlines associated with brainstorm ideas for a session
+    async getIdeaOutlines(userId: string, sessionId: string): Promise<{ [ideaId: string]: any[] }> {
+        try {
+            // Get all user transforms
+            const userTransforms = await this.transformRepo.getUserTransforms(userId);
+
+            // Get the actual session artifact first
+            const sessionArtifact = await this.validateSessionOwnership(userId, sessionId);
+            
+            // Get all brainstorm_idea artifacts for this session
+            const sessionArtifacts = await this.getSessionRelatedArtifacts(userId, sessionArtifact);
+            const brainstormIdeas = sessionArtifacts.filter(a => a.type === 'brainstorm_idea');
+
+            const ideaOutlines: { [ideaId: string]: any[] } = {};
+
+            for (const idea of brainstormIdeas) {
+                ideaOutlines[idea.id] = [];
+
+                // Find transforms that use this idea as input (directly or indirectly)
+                const associatedOutlines = await this.findOutlinesForIdea(userId, idea.id, userTransforms);
+                ideaOutlines[idea.id] = associatedOutlines;
+            }
+
+            return ideaOutlines;
+        } catch (error) {
+            console.error('Error getting idea outlines:', error);
+            return {};
+        }
+    }
+
+    private async findOutlinesForIdea(userId: string, ideaId: string, userTransforms: any[]): Promise<any[]> {
+        const outlines: any[] = [];
+        
+        // Track all artifact IDs that are derived from this idea
+        const derivedArtifactIds = new Set<string>([ideaId]);
+        
+        // Find all transforms that have this idea or its derivatives as input
+        for (const transform of userTransforms) {
+            const inputs = await this.transformRepo.getTransformInputs(transform.id);
+            const hasIdeaInput = inputs.some(input => derivedArtifactIds.has(input.artifact_id));
+            
+            if (hasIdeaInput) {
+                // If this is a human transform that created a user_input, track the output
+                if (transform.type === 'human') {
+                    const outputs = await this.transformRepo.getTransformOutputs(transform.id);
+                    outputs.forEach(output => {
+                        derivedArtifactIds.add(output.artifact_id);
+                    });
+                }
+                
+                // If this transform has outline_session_id in execution context, it's an outline job
+                if (transform.execution_context?.outline_session_id) {
+                    const outlineSessionId = transform.execution_context.outline_session_id;
+                    
+                    // Get outline session details
+                    try {
+                        const outlineSession = await this.getOutlineSessionInfo(userId, outlineSessionId);
+                        if (outlineSession) {
+                            outlines.push({
+                                sessionId: outlineSessionId,
+                                transformId: transform.id,
+                                status: transform.status,
+                                createdAt: transform.created_at,
+                                title: outlineSession.title,
+                                genre: outlineSession.genre,
+                                sourceType: outlineSession.sourceType
+                            });
+                        }
+                    } catch (error) {
+                        console.warn(`Error getting outline session ${outlineSessionId}:`, error);
+                    }
+                }
+            }
+        }
+        
+        return outlines.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }
+
+    private async getOutlineSessionInfo(userId: string, sessionId: string): Promise<any | null> {
+        try {
+            // Get outline session artifact
+            const sessionArtifacts = await this.artifactRepo.getArtifactsByType(userId, 'outline_session');
+            const sessionArtifact = sessionArtifacts.find(a => a.data.id === sessionId);
+            
+            if (!sessionArtifact) {
+                return null;
+            }
+
+            // Get related outline artifacts
+            const userTransforms = await this.transformRepo.getUserTransforms(userId);
+            const outlineTransforms = userTransforms.filter(t => 
+                t.execution_context?.outline_session_id === sessionId
+            );
+
+            const relatedArtifactIds = new Set<string>();
+            for (const transform of outlineTransforms) {
+                const inputs = await this.transformRepo.getTransformInputs(transform.id);
+                const outputs = await this.transformRepo.getTransformOutputs(transform.id);
+                
+                inputs.forEach(i => relatedArtifactIds.add(i.artifact_id));
+                outputs.forEach(o => relatedArtifactIds.add(o.artifact_id));
+            }
+
+            const relatedArtifacts = await this.artifactRepo.getArtifactsByIds([...relatedArtifactIds], userId);
+            
+            // Extract key information
+            const titleArtifact = relatedArtifacts.find(a => a.type === 'outline_title');
+            const genreArtifact = relatedArtifacts.find(a => a.type === 'outline_genre');
+            const sourceArtifact = relatedArtifacts.find(a => 
+                a.type === 'brainstorm_idea' || a.type === 'user_input'
+            );
+
+            return {
+                title: titleArtifact?.data.title,
+                genre: genreArtifact?.data.genre,
+                sourceType: sourceArtifact?.type,
+                status: sessionArtifact.data.status
+            };
+        } catch (error) {
+            console.error(`Error getting outline session info for ${sessionId}:`, error);
+            return null;
+        }
     }
 } 

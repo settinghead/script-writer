@@ -1,14 +1,16 @@
 import React from 'react';
-import { Button, Typography } from 'antd';
-import { BulbOutlined } from '@ant-design/icons';
+import { Space, Button, Typography, Spin, Empty, Card, Tag } from 'antd';
+import { StopOutlined, ReloadOutlined, EyeOutlined } from '@ant-design/icons';
 import { IdeaCard } from './shared/streaming';
 import { IdeaWithTitle } from '../services/implementations/BrainstormingStreamingService';
+import { apiService } from '../services/apiService';
+import { useNavigate } from 'react-router-dom';
 
 const { Text } = Typography;
 
 interface DynamicBrainstormingResultsProps {
     ideas: IdeaWithTitle[];
-    onIdeaSelect: (idea: string) => void;
+    onIdeaSelect: (ideaText: string) => void;
     isStreaming?: boolean;
     isConnecting?: boolean;
     onStop?: () => void;
@@ -16,7 +18,93 @@ interface DynamicBrainstormingResultsProps {
     error?: Error | null;
     selectedIdeaIndex?: number | null;
     canRegenerate?: boolean;
+    ideationRunId?: string;
 }
+
+// Component to display associated outlines for an idea
+const IdeaOutlines: React.FC<{ 
+    ideaId: string; 
+    outlines: any[]; 
+    isLoading: boolean; 
+}> = ({ ideaId, outlines, isLoading }) => {
+    const navigate = useNavigate();
+
+    if (isLoading) {
+        return (
+            <div style={{ padding: '8px', textAlign: 'center' }}>
+                <Spin size="small" />
+                <Text type="secondary" style={{ marginLeft: '8px', fontSize: '12px' }}>
+                    加载关联大纲...
+                </Text>
+            </div>
+        );
+    }
+
+    if (outlines.length === 0) {
+        return (
+            <div style={{ padding: '8px' }}>
+                <Text type="secondary" style={{ fontSize: '12px' }}>
+                    暂无关联大纲
+                </Text>
+            </div>
+        );
+    }
+
+    return (
+        <div style={{ padding: '8px' }}>
+            <Text style={{ fontSize: '12px', fontWeight: 'bold', color: '#d9d9d9' }}>
+                关联大纲 ({outlines.length})
+            </Text>
+            <div style={{ marginTop: '4px' }}>
+                {outlines.map((outline, index) => (
+                    <div
+                        key={outline.sessionId}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '4px 8px',
+                            marginBottom: '4px',
+                            background: '#262626',
+                            borderRadius: '4px',
+                            border: '1px solid #434343'
+                        }}
+                    >
+                        <div style={{ flex: 1 }}>
+                            <Text style={{ fontSize: '12px', color: '#d9d9d9' }}>
+                                {outline.title || '未命名大纲'}
+                            </Text>
+                            {outline.genre && (
+                                <Tag size="small" style={{ marginLeft: '4px', fontSize: '10px' }}>
+                                    {outline.genre}
+                                </Tag>
+                            )}
+                            {outline.status && (
+                                <Tag 
+                                    size="small" 
+                                    color={outline.status === 'completed' ? 'green' : outline.status === 'failed' ? 'red' : 'blue'}
+                                    style={{ marginLeft: '4px', fontSize: '10px' }}
+                                >
+                                    {outline.status === 'completed' ? '已完成' : 
+                                     outline.status === 'failed' ? '失败' : '进行中'}
+                                </Tag>
+                            )}
+                        </div>
+                        <Button
+                            size="small"
+                            type="text"
+                            icon={<EyeOutlined />}
+                            onClick={() => navigate(`/outlines/${outline.sessionId}`)}
+                            style={{ color: '#1890ff', fontSize: '12px' }}
+                        >
+                            查看
+                        </Button>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
 
 export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsProps> = ({
     ideas,
@@ -27,8 +115,34 @@ export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsPr
     onRegenerate,
     error,
     selectedIdeaIndex = null,
-    canRegenerate = true
+    canRegenerate = true,
+    ideationRunId
 }) => {
+    const [ideaOutlines, setIdeaOutlines] = React.useState<{ [ideaId: string]: any[] }>({});
+    const [outlinesLoading, setOutlinesLoading] = React.useState(false);
+    const navigate = useNavigate();
+
+    // Fetch associated outlines when ideationRunId is available
+    React.useEffect(() => {
+        if (ideationRunId && ideas.length > 0 && !isStreaming) {
+            fetchIdeaOutlines();
+        }
+    }, [ideationRunId, ideas.length, isStreaming]);
+
+    const fetchIdeaOutlines = async () => {
+        if (!ideationRunId) return;
+        
+        setOutlinesLoading(true);
+        try {
+            const outlines = await apiService.getIdeaOutlines(ideationRunId);
+            setIdeaOutlines(outlines);
+        } catch (error) {
+            console.error('Error fetching idea outlines:', error);
+        } finally {
+            setOutlinesLoading(false);
+        }
+    };
+
     // Determine streaming status
     const streamingStatus = isConnecting ? 'idle' : isStreaming ? 'streaming' : 'completed';
 
@@ -37,6 +151,8 @@ export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsPr
         const ideaText = `${idea.title}: ${idea.body}`;
         onIdeaSelect(ideaText);
     }, [onIdeaSelect]);
+
+
 
     return (
         <div style={{
@@ -71,54 +187,115 @@ export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsPr
             )}
 
             {/* Ideas Display */}
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-                gap: '12px',
-                overflowY: 'auto'
-            }}>
-                {ideas.map((idea, index) => (
-                    <IdeaCard
-                        key={`${idea.title}-${idea.body?.substring(0, 20)}-${index}`}
-                        value={idea}
-                        path={`[${index}]`}
-                        isSelected={selectedIdeaIndex === index}
-                        onSelect={() => handleIdeaClick(idea, index)}
-                    />
-                ))}
-                
-                {/* Show streaming indicator */}
-                {isStreaming && (
-                    <div style={{
-                        padding: '20px',
-                        textAlign: 'center',
-                        color: '#666',
-                        gridColumn: '1 / -1'
-                    }}>
-                        <div style={{ animation: 'pulse 1.5s infinite' }}>
-                            正在生成更多灵感...
-                        </div>
-                    </div>
-                )}
-            </div>
+            {ideas.length > 0 ? (
+                <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                    {ideas.map((idea, index) => {
+                        const isSelected = selectedIdeaIndex === index;
+                        const ideaOutlinesForThis = ideaOutlines[idea.artifactId || ''] || [];
+                        
+                        return (
+                            <Card
+                                key={idea.artifactId || `idea-${index}`}
+                                style={{
+                                    backgroundColor: isSelected ? '#2d3436' : '#262626',
+                                    border: isSelected ? '1px solid #1890ff' : '1px solid #434343',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease',
+                                    animation: 'fadeIn 0.3s ease-out'
+                                }}
+                                bodyStyle={{ padding: '12px' }}
+                                hoverable={!isSelected}
+                                onClick={() => handleIdeaClick(idea, index)}
+                                onMouseEnter={(e) => {
+                                    if (!isSelected) {
+                                        e.currentTarget.style.borderColor = '#1890ff';
+                                        e.currentTarget.style.backgroundColor = '#2d3436';
+                                    }
+                                }}
+                                onMouseLeave={(e) => {
+                                    if (!isSelected) {
+                                        e.currentTarget.style.borderColor = '#434343';
+                                        e.currentTarget.style.backgroundColor = '#262626';
+                                    }
+                                }}
+                            >
+                                <div>
+                                    {/* Idea header */}
+                                    <div style={{ marginBottom: '8px' }}>
+                                        <Text strong style={{ 
+                                            color: '#d9d9d9', 
+                                            fontSize: '14px'
+                                        }}>
+                                            {idea.title}
+                                        </Text>
+                                    </div>
+                                    
+                                    {/* Idea body */}
+                                    <Text style={{ 
+                                        color: '#a6a6a6', 
+                                        fontSize: '13px', 
+                                        lineHeight: '1.4',
+                                        display: 'block',
+                                        marginBottom: ideaOutlinesForThis.length > 0 ? '8px' : '0'
+                                    }}>
+                                        {idea.body}
+                                    </Text>
 
-            {/* Regenerate button */}
-            {canRegenerate && ideas.length > 0 && !isStreaming && !isConnecting && onRegenerate && (
-                <Button
-                    type="default"
-                    icon={<BulbOutlined />}
-                    onClick={onRegenerate}
-                    style={{
-                        width: '100%',
-                        height: '40px',
-                        background: '#434343',
-                        borderColor: '#434343',
-                        color: '#d9d9d9',
-                        marginTop: '16px'
-                    }}
-                >
-                    重新生成
-                </Button>
+                                    {/* Associated outlines - only show if there are outlines */}
+                                    {ideaOutlinesForThis.length > 0 && (
+                                        <div style={{
+                                            borderTop: '1px solid #434343',
+                                            marginTop: '8px',
+                                            paddingTop: '8px'
+                                        }}>
+                                            <IdeaOutlines
+                                                ideaId={idea.artifactId || ''}
+                                                outlines={ideaOutlinesForThis}
+                                                isLoading={false}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            </Card>
+                        );
+                    })}
+                </Space>
+            ) : (
+                <Empty
+                    description={
+                        <Text type="secondary">
+                            {isConnecting ? '正在连接...' : isStreaming ? '正在生成灵感...' : '暂无灵感'}
+                        </Text>
+                    }
+                    style={{ padding: '40px 0' }}
+                />
+            )}
+
+            {/* Action buttons */}
+            {streamingStatus === 'streaming' && onStop && (
+                <div style={{ marginTop: '16px', textAlign: 'center' }}>
+                    <Button 
+                        icon={<StopOutlined />} 
+                        onClick={onStop}
+                        danger
+                        size="small"
+                    >
+                        停止生成
+                    </Button>
+                </div>
+            )}
+
+            {streamingStatus === 'completed' && ideas.length > 0 && onRegenerate && canRegenerate && (
+                <div style={{ marginTop: '16px', textAlign: 'center' }}>
+                    <Button 
+                        icon={<ReloadOutlined />} 
+                        onClick={onRegenerate}
+                        type="default"
+                        size="small"
+                    >
+                        重新生成
+                    </Button>
+                </div>
             )}
         </div>
     );

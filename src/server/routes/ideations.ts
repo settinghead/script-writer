@@ -2,8 +2,15 @@ import express from 'express';
 import { StreamingTransformExecutor } from '../services/streaming/StreamingTransformExecutor';
 import { BrainstormingJobParamsV1 } from '../types/artifacts';
 import { TransformRepository } from '../repositories/TransformRepository';
+import { ArtifactRepository } from '../repositories/ArtifactRepository';
+import { IdeationService } from '../services/IdeationService';
 
-export function createIdeationRoutes(authMiddleware: any) {
+export function createIdeationRoutes(
+    authMiddleware: any,
+    artifactRepo: ArtifactRepository,
+    transformRepo: TransformRepository,
+    streamingExecutor: StreamingTransformExecutor
+) {
     const router = express.Router();
 
     // Create brainstorming job (immediate creation and redirect)
@@ -31,11 +38,7 @@ export function createIdeationRoutes(authMiddleware: any) {
                 requestedAt: new Date().toISOString()
             };
 
-            // Get the streaming executor (need to pass this from the main server)
-            const streamingExecutor = req.app.locals.streamingExecutor as StreamingTransformExecutor;
-            if (!streamingExecutor) {
-                return res.status(500).json({ error: "Streaming executor not available" });
-            }
+            // Use the injected streaming executor
 
             const { ideationRunId, transformId } = await streamingExecutor
                 .startBrainstormingJob(user.id, jobParams);
@@ -64,11 +67,7 @@ export function createIdeationRoutes(authMiddleware: any) {
 
             const ideationRunId = req.params.id;
 
-            // Get the transform repository (need to pass this from the main server)
-            const transformRepo = req.app.locals.transformRepo as TransformRepository;
-            if (!transformRepo) {
-                return res.status(500).json({ error: "Transform repository not available" });
-            }
+            // Use the injected transform repository
 
             // Find the most recent running transform for this ideation run
             const activeTransform = await transformRepo.getActiveTransformForRun(
@@ -91,6 +90,37 @@ export function createIdeationRoutes(authMiddleware: any) {
                 error: 'Failed to check active job',
                 details: error.message
             });
+        }
+    });
+
+    // Get outlines associated with ideas for an ideation session
+    router.get('/:id/idea-outlines', authMiddleware.authenticate, async (req: any, res: any) => {
+        try {
+            const user = authMiddleware.getCurrentUser(req);
+            if (!user) {
+                return res.status(401).json({ error: "User not authenticated" });
+            }
+
+            const sessionId = req.params.id;
+
+            // Use injected dependencies
+            const transformExecutor = new (require('../services/TransformExecutor').TransformExecutor)(
+                artifactRepo,
+                transformRepo
+            );
+
+            const unifiedStreamingService = new (require('../services/UnifiedStreamingService').UnifiedStreamingService)(
+                artifactRepo,
+                transformRepo
+            );
+
+            const ideationService = new IdeationService(artifactRepo, transformRepo, transformExecutor, unifiedStreamingService);
+            const ideaOutlines = await ideationService.getIdeaOutlines(user.id, sessionId);
+            
+            res.json(ideaOutlines);
+        } catch (error: any) {
+            console.error('Error getting idea outlines:', error);
+            res.status(500).json({ error: 'Failed to get idea outlines', details: error.message });
         }
     });
 
