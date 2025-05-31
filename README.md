@@ -39,7 +39,7 @@ A collaborative script writing application with AI assistance, real-time collabo
 ### 📊 Analytics & Debugging
 - **Complete data traceability** through artifacts and transforms
 - **Transform replay capabilities** for testing and analysis
-- **Performance monitoring** with caching and metrics
+- **Performance monitoring** with real-time state management and metrics
 - **Advanced search** across all user data
 - **Data export** for AI training and analysis
 - **Comprehensive debugging tools** for development
@@ -110,7 +110,7 @@ npm run dev
 - **JWT authentication** with session management
 - **DeepSeek AI integration** for content generation
 - **Yjs WebSocket server** for real-time collaboration
-- **Intelligent caching** for performance optimization
+- **Unified streaming architecture** with database-backed state management
 
 ### Frontend  
 - **React 19** with TypeScript
