@@ -27,7 +27,7 @@ const config: { [key: string]: Knex.Config } = {
     production: {
         client: 'sqlite3',
         connection: {
-            filename: './ideations.db'
+            filename: '/var/data/ideations.db'
         },
         useNullAsDefault: true,
         migrations: {
