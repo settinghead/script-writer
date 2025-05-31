@@ -200,28 +200,49 @@ export function createOutlineRoutes(
             const userId = req.user?.id;
             const sessionId = req.params.id;
 
+            console.log(`[OutlineRoutes] Active job check for session ${sessionId} by user ${userId}`);
+
             if (!userId) {
+                console.warn(`[OutlineRoutes] User not authenticated for active job check`);
                 return res.status(401).json({ error: 'User not authenticated' });
             }
 
             // Find active transforms for this outline session
             const userTransforms = await transformRepo.getUserTransforms(userId);
+            console.log(`[OutlineRoutes] Found ${userTransforms.length} transforms for user ${userId}`);
+            
             const activeTransform = userTransforms.find(t =>
                 t.execution_context?.outline_session_id === sessionId &&
                 t.status === 'running'
             );
 
+            console.log(`[OutlineRoutes] Active transform search result:`, {
+                sessionId,
+                userId,
+                foundActiveTransform: !!activeTransform,
+                activeTransformId: activeTransform?.id,
+                activeTransformStatus: activeTransform?.status,
+                allTransforms: userTransforms.map(t => ({
+                    id: t.id,
+                    status: t.status,
+                    outlineSessionId: t.execution_context?.outline_session_id,
+                    templateId: t.execution_context?.template_id
+                }))
+            });
+
             if (activeTransform) {
+                console.log(`[OutlineRoutes] Returning active transform ${activeTransform.id}`);
                 res.json({
                     transformId: activeTransform.id,
                     status: activeTransform.status
                 });
             } else {
+                console.log(`[OutlineRoutes] No active streaming job found for session ${sessionId}`);
                 res.status(404).json({ error: 'No active streaming job found' });
             }
 
         } catch (error) {
-            console.error('Error checking active streaming job:', error);
+            console.error('[OutlineRoutes] Error checking active streaming job:', error);
             res.status(500).json({ error: 'Failed to check active streaming job' });
         }
     });

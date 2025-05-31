@@ -14,8 +14,8 @@ export const OutlineInputForm: React.FC = () => {
     const artifact_id = searchParams.get('artifact_id');
 
     const [text, setText] = useState('');
-    const [totalEpisodes, setTotalEpisodes] = useState<number>(10);
-    const [episodeDuration, setEpisodeDuration] = useState<number>(3);
+    const [totalEpisodes, setTotalEpisodes] = useState<number>(60);
+    const [episodeDuration, setEpisodeDuration] = useState<number>(2);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
@@ -240,7 +240,7 @@ export const OutlineInputForm: React.FC = () => {
                                     </Text>
                                     <InputNumber
                                         value={totalEpisodes}
-                                        onChange={(value) => setTotalEpisodes(value || 10)}
+                                        onChange={(value) => setTotalEpisodes(value || 60)}
                                         min={1}
                                         max={200}
                                         style={{
@@ -260,7 +260,7 @@ export const OutlineInputForm: React.FC = () => {
                                     </Text>
                                     <InputNumber
                                         value={episodeDuration}
-                                        onChange={(value) => setEpisodeDuration(value || 3)}
+                                        onChange={(value) => setEpisodeDuration(value || 2)}
                                         min={1}
                                         max={60}
                                         style={{

@@ -42,24 +42,50 @@ export class OutlineStreamingService extends LLMStreamingService<OutlineSection>
     parsePartial(content: string): OutlineSection[] {
         if (!content.trim()) return [];
 
+        // Clean the content first
+        const cleanedContent = this.cleanContent(content);
+        
+        // Try to ensure we have a complete JSON structure
+        let processableContent = cleanedContent;
+        
+        // Find the start of the JSON object
+        const jsonStart = processableContent.indexOf('{');
+        if (jsonStart > 0) {
+            processableContent = processableContent.substring(jsonStart);
+        }
+        
+        // If content doesn't look like it starts with a JSON object, return empty
+        if (!processableContent.trim().startsWith('{')) {
+            console.log(`[OutlineStreamingService] Content doesn't start with JSON object, returning empty array`);
+            return [];
+        }
+
+        // Fallback to single object parsing
         try {
             // Try to parse the content as JSON
-            const parsed = JSON.parse(content);
-
-            // Always return array with single outline object
+            const parsed = JSON.parse(processableContent);
+            console.log(`[OutlineStreamingService] Successfully parsed JSON with keys:`, Object.keys(parsed));
             return [this.normalizeOutline(parsed)];
         } catch (error) {
+            console.log(`[OutlineStreamingService] Initial JSON parse failed, attempting repair...`);
+            
             // Try jsonrepair for incomplete JSON
             try {
-                const repaired = jsonrepair(content);
+                const repaired = jsonrepair(processableContent);
                 const parsed = JSON.parse(repaired);
+                console.log(`[OutlineStreamingService] Successfully repaired and parsed JSON with keys:`, Object.keys(parsed));
                 return [this.normalizeOutline(parsed)];
             } catch (repairError) {
+                console.log(`[OutlineStreamingService] JSON repair failed, attempting partial extraction...`);
+                
                 // Try to extract partial fields
-                const partial = this.extractPartialOutline(content);
+                const partial = this.extractPartialOutline(processableContent);
                 if (Object.keys(partial).length > 0) {
+                    console.log(`[OutlineStreamingService] Extracted partial outline with keys:`, Object.keys(partial));
                     return [partial];
                 }
+                
+                console.log(`[OutlineStreamingService] No parseable content found, returning empty array`);
                 return [];
             }
         }

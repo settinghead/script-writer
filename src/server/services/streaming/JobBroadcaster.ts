@@ -38,14 +38,15 @@ export class JobBroadcaster {
         clients.forEach((client, index) => {
             try {
                 // Ensure message is in SSE format with proper termination
-                if (!message.startsWith('data: ')) {
-                    message = `data: ${message}`;
+                let formattedMessage = message;
+                if (!formattedMessage.startsWith('data: ')) {
+                    formattedMessage = `data: ${formattedMessage}`;
                 }
-                // Ensure message ends with double newline
-                if (!message.endsWith('\n\n')) {
-                    message = message.trimEnd() + '\n\n';
+                // Ensure message ends with double newline for proper SSE format
+                if (!formattedMessage.endsWith('\n\n')) {
+                    formattedMessage = formattedMessage.trimEnd() + '\n\n';
                 }
-                client.res.write(message);
+                client.res.write(formattedMessage);
             } catch (error) {
                 // Remove failed client
                 this.removeClient(transformId, client.res);

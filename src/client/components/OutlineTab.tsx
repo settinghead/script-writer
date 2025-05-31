@@ -30,7 +30,7 @@ export const OutlineTab: React.FC = () => {
     const streamingService = useMemo(() => new OutlineStreamingService(), []);
 
     // Use the LLM streaming hook
-    const { status: streamingStatus, items: outlineItems, stop: stopStreaming } = useLLMStreaming(
+    const { status: streamingStatus, items: outlineItems, stop: stopStreaming, error: streamingError } = useLLMStreaming(
         streamingService,
         { transformId: transformId || undefined }
     );
@@ -65,9 +65,10 @@ export const OutlineTab: React.FC = () => {
     // Handle streaming errors
     useEffect(() => {
         if (streamingStatus === 'error') {
+            console.error('Streaming error occurred:', streamingError);
             setError('Streaming error occurred');
         }
-    }, [streamingStatus]);
+    }, [streamingStatus, streamingError]);
 
     const loadSession = async (sessionId: string) => {
         try {
