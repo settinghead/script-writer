@@ -31,11 +31,11 @@ const config: { [key: string]: Knex.Config } = {
         },
         useNullAsDefault: true,
         migrations: {
-            directory: './dist-server/src/server/database/migrations',
+            directory: './server/database/migrations',
             extension: 'js'
         },
         seeds: {
-            directory: './dist-server/src/server/database/seeds',
+            directory: './server/database/seeds',
             extension: 'js'
         },
         pool: {
