@@ -407,6 +407,61 @@ export class StreamingTransformExecutor {
         }
     }
 
+    // Generalized job creation method
+    private async createStreamingJob<T>(
+        userId: string,
+        templateId: string,
+        jobParams: T,
+        additionalInputs: Array<{ artifactId: string; inputRole: string }> = [],
+        executionContext: Record<string, any> = {}
+    ): Promise<{ transformId: string }> {
+        // 1. Create job parameters artifact
+        const paramsArtifact = await this.artifactRepo.createArtifact(
+            userId,
+            `${templateId}_job_params`,
+            jobParams,
+            'v1'
+        );
+
+        // 2. Get default model name
+        const { modelName } = getLLMCredentials();
+
+        // 3. Create transform with 'running' status
+        const transform = await this.transformRepo.createTransform(
+            userId,
+            'llm',
+            'v1',
+            'running',
+            {
+                started_at: new Date().toISOString(),
+                template_id: templateId,
+                model_name: modelName,
+                max_retries: 2,
+                ...executionContext
+            }
+        );
+
+        // 4. Link transform inputs
+        const inputs = [
+            { artifactId: paramsArtifact.id, inputRole: 'job_params' },
+            ...additionalInputs
+        ];
+        await this.transformRepo.addTransformInputs(transform.id, inputs);
+
+        // 5. Start the streaming job immediately in the background
+        const jobExecutor = templateId === 'brainstorming' 
+            ? this.executeStreamingJobWithRetries.bind(this)
+            : this.executeOutlineJobWithRetries.bind(this);
+            
+        jobExecutor(transform.id)
+            .catch(error => {
+                console.error(`Error starting ${templateId} streaming job for transform ${transform.id}:`, error);
+                this.transformRepo.updateTransformStatus(transform.id, 'failed');
+            });
+
+        return { transformId: transform.id };
+    }
+
     // Job-based brainstorming methods
     async startBrainstormingJob(
         userId: string,
@@ -427,49 +482,18 @@ export class StreamingTransformExecutor {
             jobParams.requirements
         );
 
-        // 2. Create job parameters artifact
-        const paramsArtifact = await this.artifactRepo.createArtifact(
+        // 2. Use generalized job creation
+        const { transformId } = await this.createStreamingJob(
             userId,
-            'brainstorming_job_params',
+            'brainstorming',
             jobParams,
-            'v1'
+            [], // No additional inputs for brainstorming
+            { ideation_run_id: ideationRunId }
         );
-
-        // 3. Get default model name
-        const { modelName } = getLLMCredentials();
-
-        // 4. Create transform with 'running' status
-        const transform = await this.transformRepo.createTransform(
-            userId,
-            'llm',
-            'v1',
-            'running',
-            {
-                started_at: new Date().toISOString(),
-                template_id: 'brainstorming',
-                model_name: modelName,
-                ideation_run_id: ideationRunId,
-                max_retries: 2
-            }
-        );
-
-        // 5. Link transform inputs
-        await this.transformRepo.addTransformInputs(
-            transform.id,
-            [{ artifactId: paramsArtifact.id, inputRole: 'job_params' }]
-        );
-
-        // 6. Start the streaming job immediately in the background
-        this.executeStreamingJobWithRetries(transform.id)
-            .catch(error => {
-                console.error(`Error starting brainstorming streaming job for transform ${transform.id}:`, error);
-                // Update transform status to failed if job fails to start
-                this.transformRepo.updateTransformStatus(transform.id, 'failed');
-            });
 
         return {
             ideationRunId,
-            transformId: transform.id
+            transformId
         };
     }
 
@@ -559,52 +583,34 @@ export class StreamingTransformExecutor {
     }
 
     private async executeStreamingLLM(transform: any, res?: Response): Promise<void> {
-        // Get job parameters from transform inputs
-        const inputs = await this.transformRepo.getTransformInputs(transform.id);
-        const paramsInput = inputs.find(input => input.input_role === 'job_params');
-
-        if (!paramsInput) {
-            throw new Error('Job parameters not found for transform');
-        }
-
-        const paramsArtifact = await this.artifactRepo.getArtifact(paramsInput.artifact_id, transform.user_id);
-        if (!paramsArtifact) {
-            throw new Error('Job parameters artifact not found');
-        }
-
-        const jobParams = paramsArtifact.data as BrainstormingJobParamsV1;
-
-        // Get and render template
-        const template = this.templateService.getTemplate('brainstorming');
-        if (!template) {
-            throw new Error('Brainstorming template not found');
-        }
-
-        // Build requirements section if provided
-        const requirementsSection = jobParams.requirements?.trim()
-            ? `特殊要求：${jobParams.requirements.trim()}`
-            : '';
-
-        const prompt = await this.templateService.renderTemplate(template, {
-            artifacts: {},
-            params: {
-                platform: jobParams.platform,
-                genre: this.buildGenrePromptString(jobParams.genrePaths, jobParams.genreProportions),
-                requirementsSection: requirementsSection
+        const brainstormingPromptBuilder = async (jobParams: BrainstormingJobParamsV1) => {
+            // Get and render template
+            const template = this.templateService.getTemplate('brainstorming');
+            if (!template) {
+                throw new Error('Brainstorming template not found');
             }
-        });
 
-        // Get model name from credentials
-        const { modelName } = getLLMCredentials();
+            // Build requirements section if provided
+            const requirementsSection = jobParams.requirements?.trim()
+                ? `特殊要求：${jobParams.requirements.trim()}`
+                : '';
 
-        // Stream LLM response
-        await this.streamLLMResponse(
-            prompt,
-            modelName,
-            template.outputFormat,
+            return await this.templateService.renderTemplate(template, {
+                artifacts: {},
+                params: {
+                    platform: jobParams.platform,
+                    genre: this.buildGenrePromptString(jobParams.genrePaths, jobParams.genreProportions),
+                    requirementsSection: requirementsSection
+                }
+            });
+        };
+
+        await this.executeGenericStreamingJob(
             transform,
-            res,
-            transform.user_id
+            'brainstorming',
+            brainstormingPromptBuilder,
+            'json_array',
+            res
         );
     }
 
@@ -651,53 +657,21 @@ export class StreamingTransformExecutor {
             } as OutlineSessionV1
         );
 
-        // 3. Create job parameters artifact
-        const paramsArtifact = await this.artifactRepo.createArtifact(
+        // 3. Use generalized job creation
+        const { transformId } = await this.createStreamingJob(
             userId,
-            'outline_job_params',
+            'outline',
             jobParams,
-            'v1'
-        );
-
-        // 4. Get default model name
-        const { modelName } = getLLMCredentials();
-
-        // 5. Create transform with 'running' status
-        const transform = await this.transformRepo.createTransform(
-            userId,
-            'llm',
-            'v1',
-            'running',
-            {
-                started_at: new Date().toISOString(),
-                template_id: 'outline',
-                model_name: modelName,
-                outline_session_id: outlineSessionId,
-                max_retries: 2
-            }
-        );
-
-        // 6. Link transform inputs
-        await this.transformRepo.addTransformInputs(
-            transform.id,
             [
-                { artifactId: paramsArtifact.id, inputRole: 'job_params' },
                 { artifactId: sourceArtifact.id, inputRole: 'source_artifact' },
                 { artifactId: outlineSessionArtifact.id, inputRole: 'outline_session' }
-            ]
+            ],
+            { outline_session_id: outlineSessionId }
         );
-
-        // 7. Start the streaming job immediately in the background
-        this.executeOutlineJobWithRetries(transform.id)
-            .catch(error => {
-                console.error(`Error starting outline streaming job for transform ${transform.id}:`, error);
-                // Update transform status to failed if job fails to start
-                this.transformRepo.updateTransformStatus(transform.id, 'failed');
-            });
 
         return {
             outlineSessionId,
-            transformId: transform.id
+            transformId
         };
     }
 
@@ -732,60 +706,43 @@ export class StreamingTransformExecutor {
     }
 
     private async executeStreamingOutline(transform: any, res?: Response): Promise<void> {
-        // Get job parameters and source artifact
-        const inputs = await this.transformRepo.getTransformInputs(transform.id);
-        const paramsInput = inputs.find(input => input.input_role === 'job_params');
-        const sourceInput = inputs.find(input => input.input_role === 'source_artifact');
-
-        if (!paramsInput || !sourceInput) {
-            throw new Error('Job parameters or source artifact not found for transform');
-        }
-
-        const paramsArtifact = await this.artifactRepo.getArtifact(paramsInput.artifact_id, transform.user_id);
-        const sourceArtifact = await this.artifactRepo.getArtifact(sourceInput.artifact_id, transform.user_id);
-
-        if (!paramsArtifact || !sourceArtifact) {
-            throw new Error('Job parameters or source artifact not found');
-        }
-
-        const jobParams = paramsArtifact.data as OutlineJobParamsV1;
-
-        // Extract user input text from source artifact
-        const userInput = sourceArtifact.data.text || sourceArtifact.data.idea_text;
-        if (!userInput || !userInput.trim()) {
-            throw new Error('Source artifact contains no text content');
-        }
-
-        // Get and render template
-        const template = this.templateService.getTemplate('outline');
-        if (!template) {
-            throw new Error('Outline template not found');
-        }
-
-        // Build episode info string if provided
-        const episodeInfo = (jobParams.totalEpisodes && jobParams.episodeDuration)
-            ? `\n\n剧集信息：\n- 总集数：${jobParams.totalEpisodes}集\n- 每集时长：约${jobParams.episodeDuration}分钟`
-            : '';
-
-        const prompt = await this.templateService.renderTemplate(template, {
-            artifacts: {},
-            params: {
-                episodeInfo,
-                userInput
+        const outlinePromptBuilder = async (jobParams: OutlineJobParamsV1, sourceArtifact: any) => {
+            if (!sourceArtifact) {
+                throw new Error('Source artifact is required for outline generation');
             }
-        });
 
-        // Get model name from credentials
-        const { modelName } = getLLMCredentials();
+            // Extract user input text from source artifact
+            const userInput = sourceArtifact.data.text || sourceArtifact.data.idea_text;
+            if (!userInput || !userInput.trim()) {
+                throw new Error('Source artifact contains no text content');
+            }
 
-        // Stream LLM response with outline_components output format
-        await this.streamLLMResponse(
-            prompt,
-            modelName,
-            'outline_components',
+            // Get and render template
+            const template = this.templateService.getTemplate('outline');
+            if (!template) {
+                throw new Error('Outline template not found');
+            }
+
+            // Build episode info string if provided
+            const episodeInfo = (jobParams.totalEpisodes && jobParams.episodeDuration)
+                ? `\n\n剧集信息：\n- 总集数：${jobParams.totalEpisodes}集\n- 每集时长：约${jobParams.episodeDuration}分钟`
+                : '';
+
+            return await this.templateService.renderTemplate(template, {
+                artifacts: {},
+                params: {
+                    episodeInfo,
+                    userInput
+                }
+            });
+        };
+
+        await this.executeGenericStreamingJob(
             transform,
-            res,
-            transform.user_id
+            'outline',
+            outlinePromptBuilder,
+            'outline_components',
+            res
         );
     }
 
@@ -964,5 +921,55 @@ export class StreamingTransformExecutor {
         } catch (error) {
             throw error;
         }
+    }
+
+    // Generalized job execution method
+    private async executeGenericStreamingJob(
+        transform: any,
+        templateId: string,
+        promptBuilder: (jobParams: any, sourceArtifact?: any) => Promise<string>,
+        outputFormat: string,
+        res?: Response
+    ): Promise<void> {
+        // Get job parameters from transform inputs
+        const inputs = await this.transformRepo.getTransformInputs(transform.id);
+        const paramsInput = inputs.find(input => input.input_role === 'job_params');
+        const sourceInput = inputs.find(input => input.input_role === 'source_artifact');
+
+        if (!paramsInput) {
+            throw new Error('Job parameters not found for transform');
+        }
+
+        const paramsArtifact = await this.artifactRepo.getArtifact(paramsInput.artifact_id, transform.user_id);
+        if (!paramsArtifact) {
+            throw new Error('Job parameters artifact not found');
+        }
+
+        const jobParams = paramsArtifact.data;
+
+        // Get source artifact if needed
+        let sourceArtifact = null;
+        if (sourceInput) {
+            sourceArtifact = await this.artifactRepo.getArtifact(sourceInput.artifact_id, transform.user_id);
+            if (!sourceArtifact) {
+                throw new Error('Source artifact not found');
+            }
+        }
+
+        // Build prompt using the provided builder function
+        const prompt = await promptBuilder(jobParams, sourceArtifact);
+
+        // Get model name from credentials
+        const { modelName } = getLLMCredentials();
+
+        // Stream LLM response
+        await this.streamLLMResponse(
+            prompt,
+            modelName,
+            outputFormat,
+            transform,
+            res,
+            transform.user_id
+        );
     }
 } 
