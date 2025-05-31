@@ -24,6 +24,7 @@ A collaborative script writing application with AI assistance, real-time collabo
 - **Transform replay system** for reproducibility testing
 - **Partial JSON parsing** with automatic repair and error recovery
 - **Streaming progress indicators** with cancellation support
+- **Automatic content filtering** - Removes `<think>...</think>` tags and code block wrappers from LLM outputs
 
 ### 👥 Collaboration
 - **Real-time collaborative editing** using Yjs
@@ -471,6 +472,47 @@ The application has evolved from domain-specific tables to a **generalized artif
 - **Immutable Artifacts**: All data stored as versioned, immutable entities
 - **Transform Chains**: Operations linked to show data flow and lineage
 - **API Compatibility**: Existing endpoints maintained while using new system
+
+#### LLM Content Filtering System
+The application includes a **centralized content filtering system** that automatically cleans LLM outputs:
+
+```typescript
+// Centralized cleaning utilities in src/common/utils/textCleaning.ts
+import { cleanLLMContent, removeThinkTags, removeCodeBlockWrappers } from '../../common/utils/textCleaning';
+
+// Automatic filtering applied at multiple levels:
+// 1. Server-side streaming (TransformExecutor)
+// 2. Client-side streaming services  
+// 3. Database storage (UnifiedStreamingService)
+
+// Example usage:
+const cleanedContent = cleanLLMContent(rawLLMOutput);
+// Removes: <think>reasoning</think>, ```json wrappers, extra whitespace
+
+// Console spinner for think mode indication
+const { ConsoleSpinner, processStreamingContent } = await import('../../common/utils/textCleaning');
+const spinner = ConsoleSpinner.getInstance();
+
+// During streaming, automatically detect think mode and show spinner
+const { isThinking, thinkingStarted, thinkingEnded } = processStreamingContent(
+    currentContent, 
+    previousContent
+);
+
+if (thinkingStarted) {
+    spinner.start('AI thinking'); // Shows: ⠋ AI thinking...
+} else if (thinkingEnded) {
+    spinner.stop(); // Clears spinner line
+}
+```
+
+**Filtering Features:**
+- **Think Tag Removal**: Strips `<think>...</think>` tags (case-insensitive, multiline)
+- **Code Block Cleanup**: Removes markdown code block wrappers (`\`\`\`json`, `\`\`\``)
+- **Whitespace Normalization**: Trims leading/trailing whitespace
+- **Streaming Integration**: Applied to both real-time streams and final outputs
+- **Consistent Processing**: Same cleaning logic across all LLM interaction points
+- **Console Think Indicator**: Displays animated spinner when AI is in "thinking mode" during streaming
 
 #### Enhanced Analytics & Debugging
 ```typescript

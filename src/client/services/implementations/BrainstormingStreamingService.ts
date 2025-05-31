@@ -1,5 +1,6 @@
 import { jsonrepair } from 'jsonrepair';
 import { LLMStreamingService } from '../streaming/LLMStreamingService';
+import { cleanLLMContent, extractJSONFromContent } from '../../../common/utils/textCleaning';
 
 export interface IdeaWithTitle {
     title: string;
@@ -20,10 +21,9 @@ export class BrainstormingStreamingService extends LLMStreamingService<IdeaWithT
         if (!content.trim()) return [];
 
         try {
-            // Clean the content first
-            const cleaned = this.cleanContent(content);
-
-            const parsed = JSON.parse(cleaned);
+            // Extract clean JSON from content that may have additional text
+            const extractedJSON = this.extractJSON(content);
+            const parsed = JSON.parse(extractedJSON);
 
             if (Array.isArray(parsed)) {
                 const ideas = parsed.map(item => ({
@@ -64,10 +64,11 @@ export class BrainstormingStreamingService extends LLMStreamingService<IdeaWithT
     }
 
     cleanContent(content: string): string {
-        return content
-            .replace(/^```json\s*/m, '')
-            .replace(/\s*```$/m, '')
-            .trim();
+        return cleanLLMContent(content);
+    }
+
+    private extractJSON(content: string): string {
+        return extractJSONFromContent(content);
     }
 
     // Override to handle completed transforms and extract artifact IDs

@@ -363,8 +363,8 @@ export class UnifiedStreamingService {
         const llmData = await this.transformRepo.getLLMTransformData(transform.id);
         if (llmData?.raw_response) {
           try {
-            const cleanContent = this.cleanLLMResponse(llmData.raw_response);
-            const parsedData = JSON.parse(cleanContent);
+            const { robustJSONParse } = await import('../../common/utils/textCleaning');
+            const parsedData = await robustJSONParse(llmData.raw_response);
             Object.assign(components, parsedData);
             break; // Use most recent LLM response
           } catch (error) {
@@ -479,14 +479,9 @@ export class UnifiedStreamingService {
     return {};
   }
 
-  private cleanLLMResponse(response: string): string {
-    let cleanContent = response.trim();
-    if (cleanContent.startsWith('```json')) {
-      cleanContent = cleanContent.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-    } else if (cleanContent.startsWith('```')) {
-      cleanContent = cleanContent.replace(/^```\s*/, '').replace(/\s*```$/, '');
-    }
-    return cleanContent;
+  private async cleanLLMResponse(response: string): Promise<string> {
+    const { cleanLLMContent } = await import('../../common/utils/textCleaning');
+    return cleanLLMContent(response);
   }
 
   private calculateProgress(chunks: string[]): number {

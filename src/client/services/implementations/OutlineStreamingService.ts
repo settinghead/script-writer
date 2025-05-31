@@ -1,5 +1,6 @@
 import { LLMStreamingService } from '../streaming/LLMStreamingService';
 import { jsonrepair } from 'jsonrepair';
+import { cleanLLMContent, extractJSONFromContent } from '../../../common/utils/textCleaning';
 
 // Character interface with normalized structure
 export interface OutlineCharacter {
@@ -56,36 +57,30 @@ export class OutlineStreamingService extends LLMStreamingService<OutlineSection>
         
         // If content doesn't look like it starts with a JSON object, return empty
         if (!processableContent.trim().startsWith('{')) {
-            console.log(`[OutlineStreamingService] Content doesn't start with JSON object, returning empty array`);
             return [];
         }
 
         // Fallback to single object parsing
         try {
-            // Try to parse the content as JSON
-            const parsed = JSON.parse(processableContent);
-            console.log(`[OutlineStreamingService] Successfully parsed JSON with keys:`, Object.keys(parsed));
-            return [this.normalizeOutline(parsed)];
+            // Extract clean JSON from content that may have additional text
+            const extractedJSON = this.extractJSON(processableContent);
+            const parsed = JSON.parse(extractedJSON);
+            const normalized = this.normalizeOutline(parsed);
+            return [normalized];
         } catch (error) {
-            console.log(`[OutlineStreamingService] Initial JSON parse failed, attempting repair...`);
-            
             // Try jsonrepair for incomplete JSON
             try {
                 const repaired = jsonrepair(processableContent);
                 const parsed = JSON.parse(repaired);
-                console.log(`[OutlineStreamingService] Successfully repaired and parsed JSON with keys:`, Object.keys(parsed));
-                return [this.normalizeOutline(parsed)];
+                const normalized = this.normalizeOutline(parsed);
+                return [normalized];
             } catch (repairError) {
-                console.log(`[OutlineStreamingService] JSON repair failed, attempting partial extraction...`);
-                
                 // Try to extract partial fields
                 const partial = this.extractPartialOutline(processableContent);
                 if (Object.keys(partial).length > 0) {
-                    console.log(`[OutlineStreamingService] Extracted partial outline with keys:`, Object.keys(partial));
                     return [partial];
                 }
                 
-                console.log(`[OutlineStreamingService] No parseable content found, returning empty array`);
                 return [];
             }
         }
@@ -212,11 +207,11 @@ export class OutlineStreamingService extends LLMStreamingService<OutlineSection>
     }
 
     cleanContent(content: string): string {
-        // Remove markdown code blocks and clean up
-        return content
-            .replace(/^```json\s*/m, '')
-            .replace(/\s*```$/m, '')
-            .trim();
+        return cleanLLMContent(content);
+    }
+
+    private extractJSON(content: string): string {
+        return extractJSONFromContent(content);
     }
 
     // Override to handle outline artifact format

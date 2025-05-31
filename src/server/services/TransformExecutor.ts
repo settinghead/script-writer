@@ -77,21 +77,27 @@ export class TransformExecutor {
                 } : null
             });
 
-            // Parse the response based on output type
+            // Clean the response - remove think tags, code wrappers, etc.
+            const { cleanLLMContent } = await import('../../common/utils/textCleaning');
+            const cleanedContent = cleanLLMContent(result.text);
+
+            // Parse the response based on output type using robust JSON parsing
             let parsedData: any;
             try {
+                const { robustJSONParse } = await import('../../common/utils/textCleaning');
+                
                 if (outputArtifactType === 'plot_outline') {
-                    parsedData = JSON.parse(result.text);
+                    parsedData = await robustJSONParse(result.text);
                 } else if (outputArtifactType === 'brainstorm_idea') {
                     // For brainstorm ideas, expect a JSON array
-                    const ideas = JSON.parse(result.text);
+                    const ideas = await robustJSONParse(result.text);
                     if (!Array.isArray(ideas)) {
                         throw new Error('Expected array of ideas');
                     }
                     parsedData = ideas;
                 } else if (outputArtifactType === 'outline_components') {
                     // For outline components, parse into individual components
-                    const components = JSON.parse(result.text);
+                    const components = await robustJSONParse(result.text);
                     if (!components || typeof components !== 'object') {
                         throw new Error('Expected object with outline components');
                     }
@@ -104,18 +110,11 @@ export class TransformExecutor {
                     }
                     parsedData = components;
                 } else {
-                    parsedData = { content: result.text };
+                    parsedData = { content: cleanedContent };
                 }
             } catch (parseError) {
-                // Try with jsonrepair if available
-                try {
-                    const { jsonrepair } = await import('jsonrepair');
-                    const repairedJson = jsonrepair(result.text);
-                    parsedData = JSON.parse(repairedJson);
-                } catch (repairError) {
-                    // Fallback: treat as plain text
-                    parsedData = { content: result.text, parse_error: true };
-                }
+                // Fallback: treat as plain text
+                parsedData = { content: cleanedContent, parse_error: true };
             }
 
             // Create output artifacts
@@ -345,12 +344,30 @@ export class TransformExecutor {
 
                     // Set up content accumulation and streaming
                     let accumulatedContent = '';
+                    let previousContent = '';
                     let tokenCount = 0;
+
+                    // Import spinner and processing utilities
+                    const { processStreamingContent, ConsoleSpinner } = await import('../../common/utils/textCleaning');
+                    const spinner = ConsoleSpinner.getInstance();
 
                     // Stream the content as it arrives
                     for await (const textPart of result.textStream) {
                         accumulatedContent += textPart;
                         tokenCount++;
+
+                        // Process content for think mode detection
+                        const { isThinking, thinkingStarted, thinkingEnded } = processStreamingContent(
+                            accumulatedContent, 
+                            previousContent
+                        );
+
+                        // Handle spinner for think mode
+                        if (thinkingStarted) {
+                            spinner.start(`Transform ${transform.id.substring(0, 8)} - AI thinking`);
+                        } else if (thinkingEnded) {
+                            spinner.stop();
+                        }
 
                         // Send streaming content to client
                         dataStream.writeData({
@@ -364,23 +381,22 @@ export class TransformExecutor {
                             dataStream.writeData({
                                 type: 'progress',
                                 tokens: tokenCount,
-                                message: 'Generating content...'
+                                message: isThinking ? 'AI thinking...' : 'Generating content...'
                             });
                         }
+
+                        previousContent = accumulatedContent;
                     }
+
+                    // Ensure spinner is stopped at the end
+                    spinner.stop();
 
                     // Wait for final result
                     const finalResult = await result;
 
-                    // Handle the ```json wrapper issue - clean the response
-                    let cleanedContent = accumulatedContent.trim();
-
-                    // Remove ```json and ``` wrappers if present
-                    if (cleanedContent.startsWith('```json')) {
-                        cleanedContent = cleanedContent.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-                    } else if (cleanedContent.startsWith('```')) {
-                        cleanedContent = cleanedContent.replace(/^```\s*/, '').replace(/\s*```$/, '');
-                    }
+                    // Clean the response - remove think tags, code wrappers, etc.
+                    const { cleanLLMContent } = await import('../../common/utils/textCleaning');
+                    const cleanedContent = cleanLLMContent(accumulatedContent);
 
                     // Store LLM metadata
                     await this.transformRepo.addLLMTransform({
@@ -402,17 +418,11 @@ export class TransformExecutor {
                     // Parse the cleaned response
                     let parsedData: any;
                     try {
-                        parsedData = JSON.parse(cleanedContent);
+                        const { robustJSONParse } = await import('../../common/utils/textCleaning');
+                        parsedData = await robustJSONParse(accumulatedContent);
                     } catch (parseError) {
-                        // Try with jsonrepair if available
-                        try {
-                            const { jsonrepair } = await import('jsonrepair');
-                            const repairedJson = jsonrepair(cleanedContent);
-                            parsedData = JSON.parse(repairedJson);
-                        } catch (repairError) {
-                            // Fallback: treat as plain text
-                            parsedData = { content: cleanedContent, parse_error: true };
-                        }
+                        // Fallback: treat as plain text
+                        parsedData = { content: cleanedContent, parse_error: true };
                     }
 
                     // Create output artifacts (same logic as non-streaming)

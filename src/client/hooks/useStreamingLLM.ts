@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { StreamingRequest, StreamingResponse } from '../../common/streaming/types';
+import { cleanLLMContent } from '../../common/utils/textCleaning';
 
 interface UseStreamingLLMConfig {
     debounceMs?: number;
@@ -86,10 +87,7 @@ export function useStreamingLLM<T>(
     }, []);
 
     const cleanContent = useCallback((content: string): string => {
-        return content
-            .replace(/^```json\s*/, '')
-            .replace(/\s*```$/, '')
-            .trim();
+        return cleanLLMContent(content);
     }, []);
 
     const start = useCallback(async (request: StreamingRequest): Promise<void> => {

@@ -166,10 +166,30 @@ export class StreamingTransformExecutor {
             try {
                 let chunkCount = 0;
                 let batchedChunks: string[] = [];
+                let accumulatedContent = '';
+                let previousContent = '';
                 const BATCH_SIZE = 10; // Batch chunks together
+
+                // Import spinner and processing utilities
+                const { processStreamingContent, ConsoleSpinner } = await import('../../../common/utils/textCleaning');
+                const spinner = ConsoleSpinner.getInstance();
 
                 for await (const chunk of result.textStream) {
                     chunkCount++;
+                    accumulatedContent += chunk;
+
+                    // Process content for think mode detection
+                    const { isThinking, thinkingStarted, thinkingEnded } = processStreamingContent(
+                        accumulatedContent, 
+                        previousContent
+                    );
+
+                    // Handle spinner for think mode
+                    if (thinkingStarted) {
+                        spinner.start(`Transform ${transform.id.substring(0, 8)} - AI thinking`);
+                    } else if (thinkingEnded) {
+                        spinner.stop();
+                    }
 
                     // Add chunk to batch
                     batchedChunks.push(chunk);
@@ -198,7 +218,12 @@ export class StreamingTransformExecutor {
                         // Clear batch
                         batchedChunks = [];
                     }
+
+                    previousContent = accumulatedContent;
                 }
+
+                // Ensure spinner is stopped at the end
+                spinner.stop();
 
                 // Send any remaining chunks
                 if (batchedChunks.length > 0) {
@@ -215,6 +240,9 @@ export class StreamingTransformExecutor {
                         }
                     }
                 }
+
+                // Final spinner cleanup
+                spinner.stop();
 
                 // Handle completion
                 const finalResult = await result;
@@ -238,18 +266,9 @@ export class StreamingTransformExecutor {
                     let parsedData: any = null;
 
                     try {
-                        // Clean the text content
-                        let cleanContent = text.trim();
-                        if (cleanContent.startsWith('```json')) {
-                            cleanContent = cleanContent.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-                        } else if (cleanContent.startsWith('```')) {
-                            cleanContent = cleanContent.replace(/^```\s*/, '').replace(/\s*```$/, '');
-                        }
-
-                        // Use jsonrepair for more robust parsing
-                        const { jsonrepair } = await import('jsonrepair');
-                        const repairedJson = jsonrepair(cleanContent);
-                        parsedData = JSON.parse(repairedJson);
+                        // Use robust JSON parsing that handles code blocks and additional text
+                        const { robustJSONParse } = await import('../../../common/utils/textCleaning');
+                        parsedData = await robustJSONParse(text);
 
                         // Validate based on output format
                         if (outputFormat === 'json_array' && !Array.isArray(parsedData)) {
@@ -259,29 +278,10 @@ export class StreamingTransformExecutor {
                         }
 
                     } catch (parseError) {
-                        // Try a more aggressive cleaning approach for arrays
-                        if (outputFormat === 'json_array') {
-                            try {
-                                let fallbackContent = text.trim();
-                                // Remove any trailing incomplete JSON
-                                const lastBracket = fallbackContent.lastIndexOf('}');
-                                if (lastBracket > 0) {
-                                    fallbackContent = fallbackContent.substring(0, lastBracket + 1) + ']';
-                                }
-
-                                const { jsonrepair } = await import('jsonrepair');
-                                const repairedFallback = jsonrepair(fallbackContent);
-                                parsedData = JSON.parse(repairedFallback);
-
-                                if (!Array.isArray(parsedData)) {
-                                    throw new Error('Fallback parsing failed - not an array');
-                                }
-                            } catch (fallbackError) {
-                                throw parseError; // Throw original error
-                            }
-                        } else {
-                            throw parseError;
-                        }
+                        console.error(`[StreamingTransformExecutor] JSON parsing failed for transform ${transform.id}:`, parseError.message);
+                        console.error(`[StreamingTransformExecutor] Raw content length: ${text.length}`);
+                        console.error(`[StreamingTransformExecutor] Raw content preview: ${text.substring(0, 200)}...`);
+                        throw parseError;
                     }
 
                     // Create output artifacts based on output format

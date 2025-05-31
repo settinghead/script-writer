@@ -287,7 +287,11 @@ export class TransformRepository {
 
         const nextIndex = (result?.max_index ?? -1) + 1;
 
+        // Import UUID generation
+        const { v4: uuidv4 } = await import('uuid');
+
         await this.db('transform_chunks').insert({
+            id: uuidv4(),
             transform_id: transformId,
             chunk_index: nextIndex,
             chunk_data: chunkData

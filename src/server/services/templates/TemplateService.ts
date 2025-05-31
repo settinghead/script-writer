@@ -62,7 +62,8 @@ export class TemplateService {
   {"title": "标题2", "body": "故事梗概2"},
   ...
 ]
-不要其他解释或包裹。`,
+
+**重要：只输出纯JSON，不要任何解释、说明、或其他文本。不要在JSON前后添加任何内容。**`,
             outputFormat: 'json_array',
             responseWrapper: '```json',
             variables: ['params.genre', 'params.platform', 'params.requirementsSection']
@@ -219,7 +220,9 @@ export class TemplateService {
     "[string] 第四阶段：高潮对决与重大反转（必须约400字符，包含对决细节、反转过程、关键选择、爽点爆发等）",
     "[string] 第五阶段：结局收尾与情感升华（必须约400字符，包含矛盾解决、角色蜕变、价值传递、情感满足等）"
   ]
-}`,
+}
+
+**CRITICAL: 只输出纯JSON格式，绝对不要在JSON后添加任何解释、设计说明、补充内容或其他文本。JSON结构必须完整且正确。**`,
             outputFormat: 'json',
             responseWrapper: '```json',
             variables: ['params.episodeInfo', 'params.userInput']
