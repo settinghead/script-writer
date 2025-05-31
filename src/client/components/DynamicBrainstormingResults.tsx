@@ -94,7 +94,10 @@ const IdeaOutlines: React.FC<{
                             size="small"
                             type="text"
                             icon={<EyeOutlined />}
-                            onClick={() => navigate(`/outlines/${outline.sessionId}`)}
+                            onClick={(e) => {
+                                e.stopPropagation(); // Prevent event bubbling to parent card
+                                navigate(`/outlines/${outline.sessionId}`);
+                            }}
                             style={{ color: '#1890ff', fontSize: '12px' }}
                         >
                             查看
