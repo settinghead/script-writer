@@ -222,6 +222,38 @@ export const DynamicStreamingUI: React.FC<DynamicStreamingUIProps> = ({
     });
   };
 
+  // Create ordered sections that respect global field order
+  const orderedSections = React.useMemo(() => {
+    const sections: Array<{ type: 'field' | 'group'; key: string; order: number; content: any }> = [];
+
+    // Add ungrouped fields
+    groupedFields.ungrouped.forEach(field => {
+      sections.push({
+        type: 'field',
+        key: field.id,
+        order: field.definition.order ?? 999,
+        content: field
+      });
+    });
+
+    // Add grouped fields (use the order of the first field in each group)
+    Object.entries(groupedFields.groups).forEach(([groupKey, fields]) => {
+      const groupOrder = fields[0]?.definition?.order ?? 999;
+      sections.push({
+        type: 'group',
+        key: groupKey,
+        order: groupOrder,
+        content: { groupKey, fields }
+      });
+    });
+
+    // Sort sections by order
+    return sections.sort((a, b) => {
+      if (a.order !== b.order) return a.order - b.order;
+      return a.key.localeCompare(b.key);
+    });
+  }, [groupedFields]);
+
   const isStreaming = streamingStatus === 'streaming';
   const hasFields = renderedFields.length > 0;
 
@@ -260,59 +292,63 @@ export const DynamicStreamingUI: React.FC<DynamicStreamingUIProps> = ({
         </div>
       )}
 
-      {/* Render ungrouped fields */}
+      {/* Render all sections in correct order */}
       <Space direction="vertical" size="small" style={{ width: '100%' }}>
-        {sortFields(groupedFields.ungrouped).map(field => (
-          <StreamingFieldRenderer
-            key={field.id}
-            field={field}
-            onEdit={handleFieldEdit(field.path)}
-          />
-        ))}
-      </Space>
-
-      {/* Render grouped fields */}
-      {Object.entries(groupedFields.groups).map(([groupKey, fields]) => {
-        // Get layout configuration from the first field in the group
-        const layoutConfig = fields[0]?.definition?.layout;
-        const useGrid = layoutConfig?.columns;
-        
-        return (
-          <div key={groupKey} style={{ marginTop: '16px' }}>
-            <div style={{ 
-              marginBottom: '8px', 
-              fontSize: '14px', 
-              fontWeight: 'bold', 
-              color: '#fff' 
-            }}>
-              {formatGroupTitle(groupKey)}
-            </div>
+        {orderedSections.map((section) => {
+          if (section.type === 'field') {
+            // Render individual field
+            const field = section.content;
+            return (
+              <StreamingFieldRenderer
+                key={field.id}
+                field={field}
+                onEdit={handleFieldEdit(field.path)}
+              />
+            );
+          } else {
+            // Render grouped fields
+            const { groupKey, fields } = section.content;
+            const layoutConfig = fields[0]?.definition?.layout;
+            const useGrid = layoutConfig?.columns;
             
-            {useGrid ? (
-              <Row gutter={[16, 16]}>
-                {sortFields(fields).map(field => (
-                  <Col key={field.id} {...layoutConfig.columns}>
-                    <StreamingFieldRenderer
-                      field={field}
-                      onEdit={handleFieldEdit(field.path)}
-                    />
-                  </Col>
-                ))}
-              </Row>
-            ) : (
-              <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                {sortFields(fields).map(field => (
-                  <StreamingFieldRenderer
-                    key={field.id}
-                    field={field}
-                    onEdit={handleFieldEdit(field.path)}
-                  />
-                ))}
-              </Space>
-            )}
-          </div>
-        );
-      })}
+            return (
+              <div key={groupKey} style={{ marginTop: section.order === 1 ? '0' : '16px' }}>
+                <div style={{ 
+                  marginBottom: '8px', 
+                  fontSize: '14px', 
+                  fontWeight: 'bold', 
+                  color: '#fff' 
+                }}>
+                  {formatGroupTitle(groupKey)}
+                </div>
+                
+                {useGrid ? (
+                  <Row gutter={[16, 16]}>
+                    {sortFields(fields).map(field => (
+                      <Col key={field.id} {...layoutConfig.columns}>
+                        <StreamingFieldRenderer
+                          field={field}
+                          onEdit={handleFieldEdit(field.path)}
+                        />
+                      </Col>
+                    ))}
+                  </Row>
+                ) : (
+                  <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                    {sortFields(fields).map(field => (
+                      <StreamingFieldRenderer
+                        key={field.id}
+                        field={field}
+                        onEdit={handleFieldEdit(field.path)}
+                      />
+                    ))}
+                  </Space>
+                )}
+              </div>
+            );
+          }
+        })}
+      </Space>
 
       {/* Loading state when processing but no fields yet */}
       {isProcessing && !hasFields && (

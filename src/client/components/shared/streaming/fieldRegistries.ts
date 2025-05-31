@@ -12,7 +12,7 @@ import {
  * Field registry for outline generation
  */
 export const outlineFieldRegistry: FieldDefinition[] = [
-  // Title first - most important
+  // 1. Title (matches LLM streaming order)
   { 
     path: "title", 
     component: TextField, 
@@ -20,37 +20,39 @@ export const outlineFieldRegistry: FieldDefinition[] = [
     order: 1
   },
   
-  // Target audience section - establish who this is for
+  // 2. Genre 
+  { 
+    path: "genre", 
+    component: TextField, 
+    label: "剧本类型",
+    order: 2
+  },
+  
+  // 3. Target audience
   { 
     path: "target_audience.demographic", 
     component: TextField, 
     label: "目标受众",
     group: "target_audience",
-    order: 2
+    order: 3
   },
   { 
     path: "target_audience.core_themes", 
     component: TagListField, 
     label: "核心主题",
     group: "target_audience",
-    order: 3
-  },
-  
-  // Basic info
-  { 
-    path: "genre", 
-    component: TextField, 
-    label: "剧本类型",
     order: 4
   },
   
-  // Commercial aspects
+  // 4. Selling points
   { 
     path: "selling_points", 
     component: TextListField, 
     label: "产品卖点",
     order: 5
   },
+  
+  // 5. Satisfaction points
   { 
     path: "satisfaction_points", 
     component: TextListField, 
@@ -58,7 +60,7 @@ export const outlineFieldRegistry: FieldDefinition[] = [
     order: 6
   },
   
-  // World building
+  // 6. Setting
   { 
     path: "setting.core_setting_summary", 
     component: TextAreaField, 
@@ -72,7 +74,7 @@ export const outlineFieldRegistry: FieldDefinition[] = [
     order: 8
   },
   
-  // Characters - people before plot
+  // 7. Characters (matches LLM streaming order)
   { 
     path: "characters[*]", 
     component: CharacterCard,
@@ -85,7 +87,7 @@ export const outlineFieldRegistry: FieldDefinition[] = [
     }
   },
   
-  // Synopsis stages - detailed plot last
+  // 8. Synopsis stages (last, matches LLM streaming order)
   { 
     path: "synopsis_stages", 
     component: TextListField, 
