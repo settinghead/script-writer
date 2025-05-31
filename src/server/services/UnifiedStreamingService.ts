@@ -317,8 +317,8 @@ export class UnifiedStreamingService {
       }
     }
 
-    // Sort by order_index if available
-    return ideas.sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
+    // Sort by artifact ID for consistent ordering
+    return ideas.sort((a, b) => a.artifactId.localeCompare(b.artifactId));
   }
 
   private async getIdeationParameters(userId: string, transforms: any[]): Promise<{
