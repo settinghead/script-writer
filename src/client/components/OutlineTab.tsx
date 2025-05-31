@@ -4,7 +4,7 @@ import { Spin, Alert, Button, Typography, Breadcrumb, Space, Card } from 'antd';
 import { HomeOutlined, FileTextOutlined, PlusOutlined } from '@ant-design/icons';
 import { OutlineInputForm } from './OutlineInputForm';
 import { OutlineParameterSummary } from './OutlineParameterSummary';
-import { OutlineResults } from './OutlineResults';
+import { DynamicOutlineResults } from './DynamicOutlineResults';
 import { OutlinesList } from './OutlinesList';
 import { apiService } from '../services/apiService';
 import { OutlineStreamingService } from '../services/implementations/OutlineStreamingService';
@@ -289,7 +289,7 @@ export const OutlineTab: React.FC = () => {
 
             {/* Results */}
             <div style={{ marginTop: '20px' }}>
-                <OutlineResults
+                <DynamicOutlineResults
                     sessionId={id || ''}
                     components={sessionData.components}
                     status={sessionData.status}
@@ -297,10 +297,18 @@ export const OutlineTab: React.FC = () => {
                     isConnecting={isConnecting}
                     onStopStreaming={handleStopStreaming}
                     onComponentUpdate={handleComponentUpdate}
-                    sourceArtifact={sessionData.sourceArtifact}
-                    totalEpisodes={sessionData.totalEpisodes}
-                    episodeDuration={sessionData.episodeDuration}
-                    createdAt={sessionData.createdAt}
+                    streamingItems={outlineItems}
+                    onRegenerate={async () => {
+                        try {
+                            await apiService.regenerateOutline(id || '');
+                        } catch (error) {
+                            console.error('Error regenerating outline:', error);
+                        }
+                    }}
+                    onExport={() => {
+                        // TODO: Implement export functionality
+                        console.log('Export outline');
+                    }}
                 />
             </div>
 

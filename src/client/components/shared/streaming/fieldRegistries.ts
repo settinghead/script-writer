@@ -137,13 +137,7 @@ export const outlineFieldRegistry: FieldDefinition[] = [
     order: 10
   },
   
-  // Legacy fields for backward compatibility
-  { 
-    path: "setting", 
-    component: TextAreaField, 
-    label: "故事设定",
-    order: 7
-  },
+
   { 
     path: "synopsis", 
     component: TextAreaField, 

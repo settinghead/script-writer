@@ -12,7 +12,6 @@ export const TextField: React.FC<FieldProps & { label?: string; placeholder?: st
   value,
   path,
   onEdit,
-  isPartial,
   label,
   placeholder
 }) => {
@@ -61,6 +60,21 @@ export const TextField: React.FC<FieldProps & { label?: string; placeholder?: st
     );
   }
 
+  // Handle object values safely
+  const displayValue = React.useMemo(() => {
+    if (typeof value === 'string') {
+      return value;
+    } else if (typeof value === 'object' && value !== null) {
+      // For TextField, convert objects to a simple string
+      try {
+        return JSON.stringify(value);
+      } catch {
+        return '[Object]';
+      }
+    }
+    return value || placeholder || '';
+  }, [value, placeholder]);
+
   return (
     <div style={{ marginBottom: '8px' }}>
       {label && (
@@ -79,15 +93,10 @@ export const TextField: React.FC<FieldProps & { label?: string; placeholder?: st
           color: '#d9d9d9',
           minHeight: '32px',
           display: 'flex',
-          alignItems: 'center',
-          opacity: isPartial ? 0.7 : 1,
-          transition: 'opacity 0.3s ease'
+          alignItems: 'center'
         }}
       >
-        {value || placeholder || ''}
-        {isPartial && (
-          <span style={{ marginLeft: '8px', animation: 'blink 1s infinite' }}>▋</span>
-        )}
+        {displayValue}
       </div>
     </div>
   );
@@ -100,7 +109,6 @@ export const TextAreaField: React.FC<FieldProps & { label?: string; placeholder?
   value,
   path,
   onEdit,
-  isPartial,
   label,
   placeholder
 }) => {
@@ -163,6 +171,25 @@ export const TextAreaField: React.FC<FieldProps & { label?: string; placeholder?
     );
   }
 
+  // Handle object values safely
+  const displayValue = React.useMemo(() => {
+    if (typeof value === 'string') {
+      return value;
+    } else if (typeof value === 'object' && value !== null) {
+      // If it's an object, try to extract a meaningful string representation
+      if (value.core_setting_summary) {
+        return value.core_setting_summary;
+      }
+      // For other objects, try to stringify them safely
+      try {
+        return JSON.stringify(value, null, 2);
+      } catch {
+        return '[Object]';
+      }
+    }
+    return value || placeholder || '';
+  }, [value, placeholder]);
+
   return (
     <div style={{ marginBottom: '8px' }}>
       {label && (
@@ -181,15 +208,10 @@ export const TextAreaField: React.FC<FieldProps & { label?: string; placeholder?
           color: '#d9d9d9',
           minHeight: '80px',
           whiteSpace: 'pre-wrap',
-          lineHeight: '1.5',
-          opacity: isPartial ? 0.7 : 1,
-          transition: 'opacity 0.3s ease'
+          lineHeight: '1.5'
         }}
       >
-        {value || placeholder || ''}
-        {isPartial && (
-          <span style={{ marginLeft: '8px', animation: 'blink 1s infinite' }}>▋</span>
-        )}
+        {displayValue}
       </div>
     </div>
   );
@@ -200,7 +222,6 @@ export const TextAreaField: React.FC<FieldProps & { label?: string; placeholder?
  */
 export const TagListField: React.FC<FieldProps & { label?: string }> = ({
   value,
-  isPartial,
   label
 }) => {
   const items = Array.isArray(value) ? value : [];
@@ -212,15 +233,12 @@ export const TagListField: React.FC<FieldProps & { label?: string }> = ({
           {label}
         </Text>
       )}
-      <div style={{ opacity: isPartial ? 0.7 : 1, transition: 'opacity 0.3s ease' }}>
+      <div>
         {items.map((item, index) => (
           <Tag key={index} style={{ marginBottom: '4px', backgroundColor: '#434343', color: '#d9d9d9', border: 'none' }}>
             {item}
           </Tag>
         ))}
-        {isPartial && items.length > 0 && (
-          <span style={{ marginLeft: '8px', animation: 'blink 1s infinite' }}>▋</span>
-        )}
       </div>
     </div>
   );
@@ -231,7 +249,6 @@ export const TagListField: React.FC<FieldProps & { label?: string }> = ({
  */
 export const TextListField: React.FC<FieldProps & { label?: string }> = ({
   value,
-  isPartial,
   label
 }) => {
   const items = Array.isArray(value) ? value : [];
@@ -243,7 +260,7 @@ export const TextListField: React.FC<FieldProps & { label?: string }> = ({
           {label}
         </Text>
       )}
-      <div style={{ opacity: isPartial ? 0.7 : 1, transition: 'opacity 0.3s ease' }}>
+      <div>
         {items.map((item, index) => (
           <div
             key={index}
@@ -259,9 +276,6 @@ export const TextListField: React.FC<FieldProps & { label?: string }> = ({
             {item}
           </div>
         ))}
-        {isPartial && items.length > 0 && (
-          <span style={{ marginLeft: '8px', animation: 'blink 1s infinite' }}>▋</span>
-        )}
       </div>
     </div>
   );
@@ -270,7 +284,7 @@ export const TextListField: React.FC<FieldProps & { label?: string }> = ({
 /**
  * Character card component for outline characters
  */
-export const CharacterCard: React.FC<FieldProps> = ({ value, isPartial }) => {
+export const CharacterCard: React.FC<FieldProps> = ({ value }) => {
   const character = value || {};
 
   return (
@@ -278,9 +292,7 @@ export const CharacterCard: React.FC<FieldProps> = ({ value, isPartial }) => {
       style={{
         backgroundColor: '#1a1a1a',
         border: '1px solid #303030',
-        marginBottom: '12px',
-        opacity: isPartial ? 0.7 : 1,
-        transition: 'opacity 0.3s ease'
+        marginBottom: '12px'
       }}
       bodyStyle={{ padding: '12px' }}
     >
@@ -289,7 +301,6 @@ export const CharacterCard: React.FC<FieldProps> = ({ value, isPartial }) => {
           value={character.name} 
           path="name" 
           label="姓名"
-          isPartial={isPartial && !character.type}
         />
       )}
       {character.type && (
@@ -297,7 +308,6 @@ export const CharacterCard: React.FC<FieldProps> = ({ value, isPartial }) => {
           value={character.type} 
           path="type" 
           label="角色类型"
-          isPartial={isPartial && !character.description}
         />
       )}
       {character.description && (
@@ -305,7 +315,6 @@ export const CharacterCard: React.FC<FieldProps> = ({ value, isPartial }) => {
           value={character.description} 
           path="description" 
           label="角色描述"
-          isPartial={isPartial && !character.age}
         />
       )}
       {character.age && (
@@ -313,7 +322,6 @@ export const CharacterCard: React.FC<FieldProps> = ({ value, isPartial }) => {
           value={character.age} 
           path="age" 
           label="年龄"
-          isPartial={isPartial && !character.gender}
         />
       )}
       {character.gender && (
@@ -321,7 +329,6 @@ export const CharacterCard: React.FC<FieldProps> = ({ value, isPartial }) => {
           value={character.gender} 
           path="gender" 
           label="性别"
-          isPartial={isPartial && !character.occupation}
         />
       )}
       {character.occupation && (
@@ -329,7 +336,6 @@ export const CharacterCard: React.FC<FieldProps> = ({ value, isPartial }) => {
           value={character.occupation} 
           path="occupation" 
           label="职业"
-          isPartial={isPartial && !character.personality_traits}
         />
       )}
       {character.personality_traits && (
@@ -337,7 +343,6 @@ export const CharacterCard: React.FC<FieldProps> = ({ value, isPartial }) => {
           value={character.personality_traits} 
           path="personality_traits" 
           label="性格特点"
-          isPartial={isPartial && !character.character_arc}
         />
       )}
       {character.character_arc && (
@@ -345,13 +350,7 @@ export const CharacterCard: React.FC<FieldProps> = ({ value, isPartial }) => {
           value={character.character_arc} 
           path="character_arc" 
           label="人物成长轨迹"
-          isPartial={isPartial}
         />
-      )}
-      {isPartial && (
-        <div style={{ textAlign: 'center', color: '#666', fontSize: '12px', marginTop: '8px' }}>
-          <span style={{ animation: 'blink 1s infinite' }}>正在生成...</span>
-        </div>
       )}
     </Card>
   );
@@ -362,7 +361,6 @@ export const CharacterCard: React.FC<FieldProps> = ({ value, isPartial }) => {
  */
 export const IdeaCard: React.FC<FieldProps & { onSelect?: () => void; isSelected?: boolean }> = ({ 
   value, 
-  isPartial, 
   onSelect,
   isSelected 
 }) => {
@@ -379,8 +377,7 @@ export const IdeaCard: React.FC<FieldProps & { onSelect?: () => void; isSelected
         marginBottom: '8px',
         cursor: onSelect ? 'pointer' : 'default',
         transition: 'all 0.3s ease',
-        opacity: isPartial ? 0.7 : 1,
-        animation: isPartial ? 'none' : 'fadeIn 0.3s ease-out'
+        animation: 'fadeIn 0.3s ease-out'
       }}
       onMouseEnter={(e) => {
         if (!isSelected && onSelect) {
@@ -405,9 +402,6 @@ export const IdeaCard: React.FC<FieldProps & { onSelect?: () => void; isSelected
           {idea.body}
         </Text>
       )}
-      {isPartial && (
-        <span style={{ marginLeft: '8px', animation: 'blink 1s infinite' }}>▋</span>
-      )}
     </div>
   );
 };
@@ -429,10 +423,6 @@ const styles = `
   @keyframes fadeIn {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes blink {
-    0%, 50% { opacity: 1; }
-    51%, 100% { opacity: 0; }
   }
 `;
 

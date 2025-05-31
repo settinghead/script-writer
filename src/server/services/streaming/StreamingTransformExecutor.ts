@@ -228,9 +228,6 @@ export class StreamingTransformExecutor {
                 const usage = await finalResult.usage;
 
                 try {
-                    // Mark transform as completed
-                    await this.transformRepo.updateTransformStatus(transform.id, 'completed');
-
                     // Check if LLM transform data already exists to prevent duplicate insertion
                     const existingLLMData = await this.transformRepo.getLLMTransformData(transform.id);
                     if (!existingLLMData) {
@@ -309,6 +306,11 @@ export class StreamingTransformExecutor {
                     // Mark cache as complete and streaming as inactive
                     cache.markComplete(transform.id);
                     cache.markStreamingInactive(transform.id);
+
+                    // CRITICAL: Mark transform as completed ONLY AFTER all data is saved
+                    // This ensures that when frontend checks status='completed', all data is guaranteed to be available
+                    await this.transformRepo.updateTransformStatus(transform.id, 'completed');
+                    console.log(`[StreamingTransformExecutor] Transform ${transform.id} marked as completed - all data is now available`);
 
                 } catch (error) {
                     await this.transformRepo.updateTransformStatus(transform.id, 'failed');

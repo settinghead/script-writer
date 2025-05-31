@@ -16,7 +16,7 @@ const StreamingFieldRenderer: React.FC<{
   field: RenderedField;
   onEdit?: (value: any) => void;
 }> = ({ field, onEdit }) => {
-  const { definition, value, isPartial, path } = field;
+  const { definition, value, path } = field;
   const Component = definition.component;
 
   // Handle edit by calling onEdit with the field path
@@ -31,7 +31,6 @@ const StreamingFieldRenderer: React.FC<{
       value={value}
       path={path}
       onEdit={handleEdit}
-      isPartial={isPartial}
       {...(definition.label && { label: definition.label })}
     />
   );
@@ -157,7 +156,6 @@ export const DynamicStreamingUI: React.FC<DynamicStreamingUIProps> = ({
           path: update.path,
           definition: pathMatch.definition,
           value: update.value,
-          isPartial: isStreaming,
           groupKey: extractGroupKey(update.path, pathMatch.definition)
         };
 
@@ -171,8 +169,7 @@ export const DynamicStreamingUI: React.FC<DynamicStreamingUIProps> = ({
       if (field.path === update.path) {
         return {
           ...field,
-          value: update.value,
-          isPartial: isStreaming
+          value: update.value
         };
       }
       return field;

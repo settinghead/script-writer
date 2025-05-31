@@ -39,6 +39,8 @@ interface DynamicOutlineResultsProps {
     onComponentUpdate?: (componentType: string, newValue: string, newArtifactId: string) => void;
     onRegenerate?: () => void;
     onExport?: () => void;
+    // New props for real-time streaming
+    streamingItems?: any[];
 }
 
 export const DynamicOutlineResults: React.FC<DynamicOutlineResultsProps> = ({
@@ -50,7 +52,8 @@ export const DynamicOutlineResults: React.FC<DynamicOutlineResultsProps> = ({
     onStopStreaming,
     onComponentUpdate,
     onRegenerate,
-    onExport
+    onExport,
+    streamingItems = []
 }) => {
     // Determine streaming status
     const streamingStatus = isConnecting ? 'idle' : isStreaming ? 'streaming' : 'completed';
@@ -88,6 +91,12 @@ export const DynamicOutlineResults: React.FC<DynamicOutlineResultsProps> = ({
 
     // Transform components data for streaming
     const streamingData = React.useMemo(() => {
+        // Use real-time streaming items if available and streaming
+        if (isStreaming && streamingItems.length > 0) {
+            return streamingItems;
+        }
+        
+        // Otherwise use components data
         if (!components) return [];
         
         // Convert the components object into a format that matches the streaming structure
@@ -104,7 +113,7 @@ export const DynamicOutlineResults: React.FC<DynamicOutlineResultsProps> = ({
         };
         
         return [transformedData];
-    }, [components]);
+    }, [components, streamingItems, isStreaming]);
 
     const getCompletedComponentsCount = () => {
         let count = 0;

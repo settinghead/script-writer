@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button, Typography } from 'antd';
 import { BulbOutlined } from '@ant-design/icons';
-import { DynamicStreamingUI, brainstormFieldRegistry, IdeaCard } from './shared/streaming';
+import { IdeaCard } from './shared/streaming';
 import { IdeaWithTitle } from '../services/implementations/BrainstormingStreamingService';
 
 const { Text } = Typography;
@@ -32,47 +32,11 @@ export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsPr
     // Determine streaming status
     const streamingStatus = isConnecting ? 'idle' : isStreaming ? 'streaming' : 'completed';
 
-    // Handle field edit (for ideas, this would allow editing idea content)
-    const handleFieldEdit = (path: string, value: any) => {
-        console.log('Field edit requested:', path, value);
-        // This could be implemented to allow editing ideas
-        // For now, we'll just log it
-    };
-
     // Handle idea selection
     const handleIdeaClick = React.useCallback((idea: IdeaWithTitle, index: number) => {
         const ideaText = `${idea.title}: ${idea.body}`;
         onIdeaSelect(ideaText);
     }, [onIdeaSelect]);
-
-    // Create enhanced registry with selection handlers
-    const enhancedRegistry = React.useMemo(() => {
-        return brainstormFieldRegistry.map(def => {
-            if (def.path === '[*]') {
-                // Add selection handler to idea cards
-                return {
-                    ...def,
-                    component: ({ value, isPartial, ...props }: any) => {
-                        const ideaIndex = ideas.findIndex(idea => 
-                            idea.title === value?.title && idea.body === value?.body
-                        );
-                        const isSelected = selectedIdeaIndex === ideaIndex;
-                        
-                        return (
-                            <IdeaCard
-                                value={value}
-                                isPartial={isPartial}
-                                isSelected={isSelected}
-                                onSelect={() => handleIdeaClick(value, ideaIndex)}
-                                {...props}
-                            />
-                        );
-                    }
-                };
-            }
-            return def;
-        });
-    }, [ideas, selectedIdeaIndex, handleIdeaClick]);
 
     return (
         <div style={{
@@ -106,15 +70,37 @@ export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsPr
                 </div>
             )}
 
-            {/* Dynamic streaming UI */}
-            <DynamicStreamingUI
-                fieldRegistry={enhancedRegistry}
-                streamingData={ideas.length > 0 ? [ideas] : []}
-                streamingStatus={streamingStatus}
-                onStopStreaming={onStop}
-                onFieldEdit={handleFieldEdit}
-                className="brainstorming-results"
-            />
+            {/* Ideas Display */}
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                gap: '12px',
+                overflowY: 'auto'
+            }}>
+                {ideas.map((idea, index) => (
+                    <IdeaCard
+                        key={`${idea.title}-${idea.body?.substring(0, 20)}-${index}`}
+                        value={idea}
+                        path={`[${index}]`}
+                        isSelected={selectedIdeaIndex === index}
+                        onSelect={() => handleIdeaClick(idea, index)}
+                    />
+                ))}
+                
+                {/* Show streaming indicator */}
+                {isStreaming && (
+                    <div style={{
+                        padding: '20px',
+                        textAlign: 'center',
+                        color: '#666',
+                        gridColumn: '1 / -1'
+                    }}>
+                        <div style={{ animation: 'pulse 1.5s infinite' }}>
+                            正在生成更多灵感...
+                        </div>
+                    </div>
+                )}
+            </div>
 
             {/* Regenerate button */}
             {canRegenerate && ideas.length > 0 && !isStreaming && !isConnecting && onRegenerate && (

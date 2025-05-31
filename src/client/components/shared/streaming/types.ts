@@ -8,7 +8,6 @@ export interface FieldProps {
   value: any;
   path: string;
   onEdit?: (newValue: any) => void;
-  isPartial?: boolean; // Whether the field is still being streamed
 }
 
 export interface FieldDefinition {
@@ -26,7 +25,6 @@ export interface RenderedField {
   path: string;
   definition: FieldDefinition;
   value: any;
-  isPartial: boolean;
   groupKey?: string; // For array items, the parent path
 }
 
