@@ -12,37 +12,39 @@ import {
  * Field registry for outline generation
  */
 export const outlineFieldRegistry: FieldDefinition[] = [
-  // Basic info fields
+  // Title first - most important
   { 
     path: "title", 
     component: TextField, 
     label: "剧本标题",
     order: 1
   },
-  { 
-    path: "genre", 
-    component: TextField, 
-    label: "剧本类型",
-    order: 2
-  },
   
-  // Target audience section
+  // Target audience section - establish who this is for
   { 
     path: "target_audience.demographic", 
     component: TextField, 
     label: "目标受众",
     group: "target_audience",
-    order: 3
+    order: 2
   },
   { 
     path: "target_audience.core_themes", 
     component: TagListField, 
     label: "核心主题",
     group: "target_audience",
+    order: 3
+  },
+  
+  // Basic info
+  { 
+    path: "genre", 
+    component: TextField, 
+    label: "剧本类型",
     order: 4
   },
   
-  // Selling and satisfaction points
+  // Commercial aspects
   { 
     path: "selling_points", 
     component: TextListField, 
@@ -56,7 +58,7 @@ export const outlineFieldRegistry: FieldDefinition[] = [
     order: 6
   },
   
-  // Setting
+  // World building
   { 
     path: "setting.core_setting_summary", 
     component: TextAreaField, 
@@ -70,7 +72,7 @@ export const outlineFieldRegistry: FieldDefinition[] = [
     order: 8
   },
   
-  // Characters array - each character as a card
+  // Characters - people before plot
   { 
     path: "characters[*]", 
     component: CharacterCard,
@@ -83,7 +85,7 @@ export const outlineFieldRegistry: FieldDefinition[] = [
     }
   },
   
-  // Synopsis stages
+  // Synopsis stages - detailed plot last
   { 
     path: "synopsis_stages", 
     component: TextListField, 
