@@ -162,6 +162,19 @@ export interface OutlineSynopsisV1 {
     synopsis: string;
 }
 
+export interface OutlineTargetAudienceV1 {
+    demographic: string;
+    core_themes: string[];
+}
+
+export interface OutlineSatisfactionPointsV1 {
+    satisfaction_points: string[];
+}
+
+export interface OutlineSynopsisStagesV1 {
+    synopsis_stages: string[];
+}
+
 // Type guards for artifact data validation
 export function validateArtifactData(type: string, typeVersion: string, data: any): boolean {
     switch (`${type}:${typeVersion}`) {
@@ -195,6 +208,12 @@ export function validateArtifactData(type: string, typeVersion: string, data: an
             return isOutlineSynopsisV1(data);
         case 'outline_characters:v1':
             return isOutlineCharactersV1(data);
+        case 'outline_target_audience:v1':
+            return isOutlineTargetAudienceV1(data);
+        case 'outline_satisfaction_points:v1':
+            return isOutlineSatisfactionPointsV1(data);
+        case 'outline_synopsis_stages:v1':
+            return isOutlineSynopsisStagesV1(data);
         default:
             return false;
     }
@@ -283,6 +302,22 @@ function isOutlineSellingPointsV1(data: any): data is OutlineSellingPointsV1 {
         typeof data.selling_points === 'string';
 }
 
+function isOutlineTargetAudienceV1(data: any): data is OutlineTargetAudienceV1 {
+    return typeof data === 'object' &&
+        typeof data.demographic === 'string' &&
+        Array.isArray(data.core_themes);
+}
+
+function isOutlineSatisfactionPointsV1(data: any): data is OutlineSatisfactionPointsV1 {
+    return typeof data === 'object' &&
+        Array.isArray(data.satisfaction_points);
+}
+
+function isOutlineSynopsisStagesV1(data: any): data is OutlineSynopsisStagesV1 {
+    return typeof data === 'object' &&
+        Array.isArray(data.synopsis_stages);
+}
+
 function isOutlineSettingV1(data: any): data is OutlineSettingV1 {
     return typeof data === 'object' &&
         typeof data.setting === 'string';
@@ -300,10 +335,17 @@ function isOutlineCharactersV1(data: any): data is OutlineCharactersV1 {
 }
 
 function isOutlineCharacter(data: any): data is OutlineCharacter {
+    const validTypes = ['male_lead', 'female_lead', 'male_second', 'female_second', 'male_supporting', 'female_supporting', 'antagonist', 'other'];
+
     return typeof data === 'object' &&
         typeof data.name === 'string' &&
+        validTypes.includes(data.type) &&
         typeof data.description === 'string' &&
         (data.age === undefined || typeof data.age === 'string') &&
         (data.gender === undefined || typeof data.gender === 'string') &&
-        (data.occupation === undefined || typeof data.occupation === 'string');
+        (data.occupation === undefined || typeof data.occupation === 'string') &&
+        (data.personality_traits === undefined || Array.isArray(data.personality_traits)) &&
+        (data.character_arc === undefined || typeof data.character_arc === 'string') &&
+        (data.relationships === undefined || (typeof data.relationships === 'object' && data.relationships !== null)) &&
+        (data.key_scenes === undefined || Array.isArray(data.key_scenes));
 } 

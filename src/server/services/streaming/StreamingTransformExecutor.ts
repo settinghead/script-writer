@@ -836,18 +836,56 @@ export class StreamingTransformExecutor {
                 ]);
             }
 
-            // 6. Characters
-            if (outlineData.main_characters && Array.isArray(outlineData.main_characters)) {
+            // 6. Target Audience
+            if (outlineData.target_audience) {
+                const targetAudienceArtifact = await this.artifactRepo.createArtifact(
+                    userId,
+                    'outline_target_audience',
+                    {
+                        demographic: outlineData.target_audience.demographic || '',
+                        core_themes: outlineData.target_audience.core_themes || []
+                    },
+                    'v1',
+                    { transform_id: transform.id }
+                );
+                await this.transformRepo.addTransformOutputs(transform.id, [
+                    { artifactId: targetAudienceArtifact.id, outputRole: 'target_audience' }
+                ]);
+            }
+
+            // 7. Satisfaction Points
+            if (outlineData.satisfaction_points && Array.isArray(outlineData.satisfaction_points)) {
+                const satisfactionPointsArtifact = await this.artifactRepo.createArtifact(
+                    userId,
+                    'outline_satisfaction_points',
+                    {
+                        satisfaction_points: outlineData.satisfaction_points
+                    },
+                    'v1',
+                    { transform_id: transform.id }
+                );
+                await this.transformRepo.addTransformOutputs(transform.id, [
+                    { artifactId: satisfactionPointsArtifact.id, outputRole: 'satisfaction_points' }
+                ]);
+            }
+
+            // 8. Characters
+            if (outlineData.characters && Array.isArray(outlineData.characters)) {
                 const charactersArtifact = await this.artifactRepo.createArtifact(
                     userId,
                     'outline_characters',
                     {
-                        characters: outlineData.main_characters.map((char: any) => ({
+                        characters: outlineData.characters.map((char: any) => ({
                             name: char.name || '',
+                            type: char.type || 'other',
                             description: char.description || '',
                             age: char.age || undefined,
                             gender: char.gender || undefined,
-                            occupation: char.occupation || undefined
+                            occupation: char.occupation || undefined,
+                            personality_traits: char.personality_traits || undefined,
+                            character_arc: char.character_arc || undefined,
+                            relationships: char.relationships || undefined,
+                            key_scenes: char.key_scenes || undefined
                         }))
                     },
                     'v1',
@@ -855,6 +893,22 @@ export class StreamingTransformExecutor {
                 );
                 await this.transformRepo.addTransformOutputs(transform.id, [
                     { artifactId: charactersArtifact.id, outputRole: 'characters' }
+                ]);
+            }
+
+            // 9. Synopsis Stages
+            if (outlineData.synopsis_stages && Array.isArray(outlineData.synopsis_stages)) {
+                const synopsisStagesArtifact = await this.artifactRepo.createArtifact(
+                    userId,
+                    'outline_synopsis_stages',
+                    {
+                        synopsis_stages: outlineData.synopsis_stages
+                    },
+                    'v1',
+                    { transform_id: transform.id }
+                );
+                await this.transformRepo.addTransformOutputs(transform.id, [
+                    { artifactId: synopsisStagesArtifact.id, outputRole: 'synopsis_stages' }
                 ]);
             }
 

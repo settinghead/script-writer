@@ -10,7 +10,10 @@ import {
     OutlineSellingPointsV1,
     OutlineSettingV1,
     OutlineSynopsisV1,
-    OutlineCharactersV1
+    OutlineCharactersV1,
+    OutlineTargetAudienceV1,
+    OutlineSatisfactionPointsV1,
+    OutlineSynopsisStagesV1
 } from '../types/artifacts';
 import { CacheService } from './CacheService';
 
@@ -29,10 +32,27 @@ export interface OutlineSessionData {
     components: {
         title?: string;
         genre?: string;
+        target_audience?: {
+            demographic?: string;
+            core_themes?: string[];
+        };
         selling_points?: string;
+        satisfaction_points?: string[];
         setting?: string;
         synopsis?: string;
-        characters?: Array<{ name: string; description: string }>;
+        synopsis_stages?: string[];
+        characters?: Array<{
+            name: string;
+            type?: string;
+            description: string;
+            age?: string;
+            gender?: string;
+            occupation?: string;
+            personality_traits?: string[];
+            character_arc?: string;
+            relationships?: { [key: string]: string };
+            key_scenes?: string[];
+        }>;
     };
     status: 'active' | 'completed' | 'failed';
     createdAt: string;
@@ -176,19 +196,35 @@ export class OutlineService {
                     // Extract components from LLM response
                     if (parsedData.title) components.title = parsedData.title;
                     if (parsedData.genre) components.genre = parsedData.genre;
+
+                    if (parsedData.target_audience) {
+                        components.target_audience = parsedData.target_audience;
+                    }
+
                     if (parsedData.selling_points) {
                         components.selling_points = Array.isArray(parsedData.selling_points)
                             ? parsedData.selling_points.join('\n')
                             : parsedData.selling_points;
                     }
+
+                    if (parsedData.satisfaction_points && Array.isArray(parsedData.satisfaction_points)) {
+                        components.satisfaction_points = parsedData.satisfaction_points;
+                    }
+
                     if (parsedData.setting) {
                         components.setting = typeof parsedData.setting === 'object'
                             ? `${parsedData.setting.core_setting_summary || ''}\n\n关键场景：\n${(parsedData.setting.key_scenes || []).map((scene: string) => `- ${scene}`).join('\n')}`
                             : parsedData.setting;
                     }
+
                     if (parsedData.synopsis) components.synopsis = parsedData.synopsis;
-                    if (parsedData.main_characters && Array.isArray(parsedData.main_characters)) {
-                        components.characters = parsedData.main_characters;
+
+                    if (parsedData.synopsis_stages && Array.isArray(parsedData.synopsis_stages)) {
+                        components.synopsis_stages = parsedData.synopsis_stages;
+                    }
+
+                    if (parsedData.characters && Array.isArray(parsedData.characters)) {
+                        components.characters = parsedData.characters;
                     }
                 } catch (parseError) {
                     console.error('Error parsing LLM response:', parseError);
@@ -212,6 +248,15 @@ export class OutlineService {
 
             const synopsisArtifact = relatedArtifacts.find(a => a.type === 'outline_synopsis');
             if (synopsisArtifact) components.synopsis = synopsisArtifact.data.synopsis;
+
+            const targetAudienceArtifact = relatedArtifacts.find(a => a.type === 'outline_target_audience');
+            if (targetAudienceArtifact) components.target_audience = targetAudienceArtifact.data;
+
+            const satisfactionPointsArtifact = relatedArtifacts.find(a => a.type === 'outline_satisfaction_points');
+            if (satisfactionPointsArtifact) components.satisfaction_points = satisfactionPointsArtifact.data.satisfaction_points;
+
+            const synopsisStagesArtifact = relatedArtifacts.find(a => a.type === 'outline_synopsis_stages');
+            if (synopsisStagesArtifact) components.synopsis_stages = synopsisStagesArtifact.data.synopsis_stages;
 
             const charactersArtifact = relatedArtifacts.find(a => a.type === 'outline_characters');
             if (charactersArtifact) components.characters = charactersArtifact.data.characters;

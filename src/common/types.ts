@@ -95,12 +95,30 @@ export interface OutlineSynopsisV1 {
     synopsis: string;
 }
 
+export interface OutlineTargetAudienceV1 {
+    demographic: string;
+    core_themes: string[];
+}
+
+export interface OutlineSatisfactionPointsV1 {
+    satisfaction_points: string[];
+}
+
+export interface OutlineSynopsisStagesV1 {
+    synopsis_stages: string[];
+}
+
 export interface OutlineCharacter {
     name: string;
+    type: 'male_lead' | 'female_lead' | 'male_second' | 'female_second' | 'male_supporting' | 'female_supporting' | 'antagonist' | 'other';
     description: string;
     age?: string;        // e.g., "25岁", "30多岁", "中年"
     gender?: string;     // e.g., "男", "女"
     occupation?: string; // e.g., "CEO", "学生", "医生"
+    personality_traits?: string[];
+    character_arc?: string;
+    relationships?: { [key: string]: string };
+    key_scenes?: string[];
 }
 
 export interface OutlineCharactersV1 {

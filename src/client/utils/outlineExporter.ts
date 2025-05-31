@@ -10,15 +10,26 @@ interface OutlineExportData {
     components: {
         title?: string;
         genre?: string;
+        target_audience?: {
+            demographic?: string;
+            core_themes?: string[];
+        };
         selling_points?: string;
+        satisfaction_points?: string[];
         setting?: string;
         synopsis?: string;
+        synopsis_stages?: string[];
         characters?: Array<{
             name: string;
+            type?: string;
             description: string;
             age?: string;
             gender?: string;
             occupation?: string;
+            personality_traits?: string[];
+            character_arc?: string;
+            relationships?: { [key: string]: string };
+            key_scenes?: string[];
         }>;
     };
     createdAt: string;
@@ -67,11 +78,34 @@ export function formatOutlineForExport(data: OutlineExportData): string {
     sections.push(`类型：${data.sourceArtifact.type}`);
     sections.push("");
 
+    // Target Audience
+    if (data.components.target_audience) {
+        sections.push("🎯 目标受众");
+        sections.push(repeatChar("-", 30));
+        if (data.components.target_audience.demographic) {
+            sections.push(`受众群体：${data.components.target_audience.demographic}`);
+        }
+        if (data.components.target_audience.core_themes && data.components.target_audience.core_themes.length > 0) {
+            sections.push(`核心主题：${data.components.target_audience.core_themes.join('、')}`);
+        }
+        sections.push("");
+    }
+
     // Selling Points
     if (data.components.selling_points) {
-        sections.push("🎯 故事卖点");
+        sections.push("💼 产品卖点");
         sections.push(repeatChar("-", 30));
         sections.push(data.components.selling_points);
+        sections.push("");
+    }
+
+    // Satisfaction Points
+    if (data.components.satisfaction_points && data.components.satisfaction_points.length > 0) {
+        sections.push("⚡ 情感爽点");
+        sections.push(repeatChar("-", 30));
+        data.components.satisfaction_points.forEach((point, index) => {
+            sections.push(`${index + 1}. ${point}`);
+        });
         sections.push("");
     }
 
@@ -93,6 +127,7 @@ export function formatOutlineForExport(data: OutlineExportData): string {
 
             // Character details in a compact format
             const details: string[] = [];
+            if (character.type) details.push(`类型：${character.type}`);
             if (character.age) details.push(`年龄：${character.age}`);
             if (character.gender) details.push(`性别：${character.gender}`);
             if (character.occupation) details.push(`职业：${character.occupation}`);
@@ -104,6 +139,15 @@ export function formatOutlineForExport(data: OutlineExportData): string {
             if (character.description) {
                 sections.push(`   描述：${character.description}`);
             }
+
+            if (character.personality_traits && character.personality_traits.length > 0) {
+                sections.push(`   性格特点：${character.personality_traits.join('、')}`);
+            }
+
+            if (character.character_arc) {
+                sections.push(`   成长轨迹：${character.character_arc}`);
+            }
+
             sections.push("");
         });
     }
@@ -114,6 +158,17 @@ export function formatOutlineForExport(data: OutlineExportData): string {
         sections.push(repeatChar("-", 30));
         sections.push(data.components.synopsis);
         sections.push("");
+    }
+
+    // Synopsis Stages
+    if (data.components.synopsis_stages && data.components.synopsis_stages.length > 0) {
+        sections.push("📚 分段故事梗概");
+        sections.push(repeatChar("-", 30));
+        data.components.synopsis_stages.forEach((stage, index) => {
+            sections.push(`第${index + 1}阶段：`);
+            sections.push(stage);
+            sections.push("");
+        });
     }
 
     // Footer

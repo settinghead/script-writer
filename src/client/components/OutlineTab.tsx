@@ -110,10 +110,13 @@ export const OutlineTab: React.FC = () => {
                     // Map outline structure to components
                     title: outline.title || prev.components.title,
                     genre: outline.genre || prev.components.genre,
+                    target_audience: outline.target_audience || prev.components.target_audience,
                     selling_points: outline.selling_points?.join('\n') || prev.components.selling_points,
+                    satisfaction_points: outline.satisfaction_points || prev.components.satisfaction_points,
                     setting: outline.setting?.core_setting_summary || prev.components.setting,
-                    synopsis: outline.synopsis || prev.components.synopsis,
-                    characters: outline.main_characters || prev.components.characters
+                    synopsis: prev.components.synopsis, // Keep existing synopsis for backward compatibility
+                    synopsis_stages: outline.synopsis_stages || prev.components.synopsis_stages,
+                    characters: outline.characters || prev.components.characters
                 }
             };
         });

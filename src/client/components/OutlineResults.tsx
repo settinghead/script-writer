@@ -10,10 +10,15 @@ const { Title, Text } = Typography;
 
 interface OutlineCharacter {
     name: string;
+    type?: string;
     description: string;
     age?: string;
     gender?: string;
     occupation?: string;
+    personality_traits?: string[];
+    character_arc?: string;
+    relationships?: { [key: string]: string };
+    key_scenes?: string[];
 }
 
 interface OutlineResultsProps {
@@ -21,9 +26,15 @@ interface OutlineResultsProps {
     components: {
         title?: string;
         genre?: string;
+        target_audience?: {
+            demographic?: string;
+            core_themes?: string[];
+        };
         selling_points?: string;
+        satisfaction_points?: string[];
         setting?: string;
         synopsis?: string;
+        synopsis_stages?: string[];
         characters?: OutlineCharacter[];
     };
     status: 'active' | 'completed' | 'failed';
@@ -110,9 +121,12 @@ export const OutlineResults: React.FC<OutlineResultsProps> = ({
         let count = 0;
         if (components.title) count++;
         if (components.genre) count++;
+        if (components.target_audience) count++;
         if (components.selling_points) count++;
+        if (components.satisfaction_points && components.satisfaction_points.length > 0) count++;
         if (components.setting) count++;
         if (components.synopsis) count++;
+        if (components.synopsis_stages && components.synopsis_stages.length > 0) count++;
         if (components.characters && components.characters.length > 0) count++;
         return count;
     };
@@ -173,6 +187,21 @@ export const OutlineResults: React.FC<OutlineResultsProps> = ({
                     />
                 </Col>
 
+                {/* Target Audience */}
+                <Col xs={24} lg={12}>
+                    <EditableTextField
+                        value={components.target_audience ?
+                            `受众群体：${components.target_audience.demographic || ''}\n核心主题：${(components.target_audience.core_themes || []).join('、')}`
+                            : ''}
+                        artifactId={`outline_target_audience_${sessionId}`}
+                        artifactType="outline_target_audience"
+                        onChange={(newValue, newArtifactId) => handleFieldEdit('target_audience', newValue, newArtifactId)}
+                        placeholder="目标受众将在这里显示..."
+                        label="目标受众"
+                        multiline
+                    />
+                </Col>
+
                 {/* Selling Points */}
                 <Col xs={24} lg={12}>
                     <EditableTextField
@@ -180,8 +209,21 @@ export const OutlineResults: React.FC<OutlineResultsProps> = ({
                         artifactId={`outline_selling_points_${sessionId}`}
                         artifactType="outline_selling_points"
                         onChange={(newValue, newArtifactId) => handleFieldEdit('selling_points', newValue, newArtifactId)}
-                        placeholder="故事卖点将在这里显示..."
-                        label="故事卖点"
+                        placeholder="产品卖点将在这里显示..."
+                        label="产品卖点"
+                        multiline
+                    />
+                </Col>
+
+                {/* Satisfaction Points */}
+                <Col xs={24} lg={12}>
+                    <EditableTextField
+                        value={components.satisfaction_points ? components.satisfaction_points.join('\n') : ''}
+                        artifactId={`outline_satisfaction_points_${sessionId}`}
+                        artifactType="outline_satisfaction_points"
+                        onChange={(newValue, newArtifactId) => handleFieldEdit('satisfaction_points', newValue, newArtifactId)}
+                        placeholder="情感爽点将在这里显示..."
+                        label="情感爽点"
                         multiline
                     />
                 </Col>
@@ -212,6 +254,19 @@ export const OutlineResults: React.FC<OutlineResultsProps> = ({
                     />
                 </Col>
 
+                {/* Synopsis Stages */}
+                <Col span={24}>
+                    <EditableTextField
+                        value={components.synopsis_stages ? components.synopsis_stages.join('\n\n') : ''}
+                        artifactId={`outline_synopsis_stages_${sessionId}`}
+                        artifactType="outline_synopsis_stages"
+                        onChange={(newValue, newArtifactId) => handleFieldEdit('synopsis_stages', newValue, newArtifactId)}
+                        placeholder="分段故事梗概将在这里显示..."
+                        label="分段故事梗概（约2000字）"
+                        multiline
+                    />
+                </Col>
+
                 {/* Characters */}
                 <Col span={24}>
                     <div>
@@ -233,7 +288,7 @@ export const OutlineResults: React.FC<OutlineResultsProps> = ({
                                             bodyStyle={{ backgroundColor: '#1f1f1f', padding: '12px' }}
                                         >
                                             <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                                                {/* Name and basic info row */}
+                                                {/* Name and type row */}
                                                 <Row gutter={8}>
                                                     <Col span={12}>
                                                         <EditableTextField
@@ -251,7 +306,26 @@ export const OutlineResults: React.FC<OutlineResultsProps> = ({
                                                             size="small"
                                                         />
                                                     </Col>
-                                                    <Col span={6}>
+                                                    <Col span={12}>
+                                                        <EditableTextField
+                                                            value={character.type || ''}
+                                                            artifactId={`character_type_${sessionId}_${index}`}
+                                                            artifactType="character_type"
+                                                            onChange={(newValue, newArtifactId) => {
+                                                                const updatedCharacters = [...(components.characters || [])];
+                                                                updatedCharacters[index] = { ...character, type: newValue };
+                                                                handleFieldEdit('characters', JSON.stringify(updatedCharacters), newArtifactId);
+                                                            }}
+                                                            placeholder="角色类型（如：male_lead, female_lead等）..."
+                                                            label="角色类型"
+                                                            size="small"
+                                                        />
+                                                    </Col>
+                                                </Row>
+
+                                                {/* Basic info row */}
+                                                <Row gutter={8}>
+                                                    <Col span={8}>
                                                         <EditableTextField
                                                             value={character.age || ''}
                                                             artifactId={`character_age_${sessionId}_${index}`}
@@ -266,7 +340,7 @@ export const OutlineResults: React.FC<OutlineResultsProps> = ({
                                                             size="small"
                                                         />
                                                     </Col>
-                                                    <Col span={6}>
+                                                    <Col span={8}>
                                                         <EditableTextField
                                                             value={character.gender || ''}
                                                             artifactId={`character_gender_${sessionId}_${index}`}
@@ -281,22 +355,22 @@ export const OutlineResults: React.FC<OutlineResultsProps> = ({
                                                             size="small"
                                                         />
                                                     </Col>
+                                                    <Col span={8}>
+                                                        <EditableTextField
+                                                            value={character.occupation || ''}
+                                                            artifactId={`character_occupation_${sessionId}_${index}`}
+                                                            artifactType="character_occupation"
+                                                            onChange={(newValue, newArtifactId) => {
+                                                                const updatedCharacters = [...(components.characters || [])];
+                                                                updatedCharacters[index] = { ...character, occupation: newValue };
+                                                                handleFieldEdit('characters', JSON.stringify(updatedCharacters), newArtifactId);
+                                                            }}
+                                                            placeholder="职业..."
+                                                            label="职业"
+                                                            size="small"
+                                                        />
+                                                    </Col>
                                                 </Row>
-
-                                                {/* Occupation */}
-                                                <EditableTextField
-                                                    value={character.occupation || ''}
-                                                    artifactId={`character_occupation_${sessionId}_${index}`}
-                                                    artifactType="character_occupation"
-                                                    onChange={(newValue, newArtifactId) => {
-                                                        const updatedCharacters = [...(components.characters || [])];
-                                                        updatedCharacters[index] = { ...character, occupation: newValue };
-                                                        handleFieldEdit('characters', JSON.stringify(updatedCharacters), newArtifactId);
-                                                    }}
-                                                    placeholder="职业..."
-                                                    label="职业"
-                                                    size="small"
-                                                />
 
                                                 {/* Description */}
                                                 <EditableTextField
@@ -310,6 +384,40 @@ export const OutlineResults: React.FC<OutlineResultsProps> = ({
                                                     }}
                                                     placeholder="角色描述..."
                                                     label="角色描述"
+                                                    multiline
+                                                    size="small"
+                                                />
+
+                                                {/* Personality Traits */}
+                                                <EditableTextField
+                                                    value={character.personality_traits ? character.personality_traits.join('、') : ''}
+                                                    artifactId={`character_traits_${sessionId}_${index}`}
+                                                    artifactType="character_traits"
+                                                    onChange={(newValue, newArtifactId) => {
+                                                        const updatedCharacters = [...(components.characters || [])];
+                                                        updatedCharacters[index] = {
+                                                            ...character,
+                                                            personality_traits: newValue ? newValue.split('、').map(t => t.trim()) : undefined
+                                                        };
+                                                        handleFieldEdit('characters', JSON.stringify(updatedCharacters), newArtifactId);
+                                                    }}
+                                                    placeholder="性格特点（用、分隔）..."
+                                                    label="性格特点"
+                                                    size="small"
+                                                />
+
+                                                {/* Character Arc */}
+                                                <EditableTextField
+                                                    value={character.character_arc || ''}
+                                                    artifactId={`character_arc_${sessionId}_${index}`}
+                                                    artifactType="character_arc"
+                                                    onChange={(newValue, newArtifactId) => {
+                                                        const updatedCharacters = [...(components.characters || [])];
+                                                        updatedCharacters[index] = { ...character, character_arc: newValue };
+                                                        handleFieldEdit('characters', JSON.stringify(updatedCharacters), newArtifactId);
+                                                    }}
+                                                    placeholder="人物成长轨迹..."
+                                                    label="人物成长轨迹"
                                                     multiline
                                                     size="small"
                                                 />
