@@ -399,8 +399,8 @@ const replayResult = await replayService.replayTransform(userId, transformId);
 // Workflow analysis
 const workflowChain = await replayService.replayWorkflow(userId, artifactId);
 
-// Performance monitoring
-const stats = await cacheService.getStats();
+// Real-time performance monitoring
+const streamingStatus = await unifiedStreamingService.getStreamingState(transformId);
 const transformStats = await replayService.getTransformStats(userId);
 ```
 
@@ -453,18 +453,19 @@ const { transform, outputArtifacts } = await transformExecutor.executeLLMTransfo
 );
 ```
 
-#### Caching Pattern
+#### Real-time Data Pattern
 ```typescript
-// Intelligent caching with TTL
-const cacheKey = CacheService.ideationRunKey(userId, sessionId);
-const cached = cacheService.get<IdeationRun>(cacheKey);
+// Database-backed real-time state management
+const ideationData = await unifiedStreamingService.getIdeationRun(userId, sessionId);
 
-if (!cached) {
-  const data = await fetchFromDatabase();
-  cacheService.set(cacheKey, data, 5 * 60 * 1000); // 5 minutes
-  return data;
+// Streaming state management
+const streamingState = await unifiedStreamingService.getStreamingState(transformId);
+if (streamingState.status === 'running') {
+  console.log(`Progress: ${streamingState.progress}%, Chunks: ${streamingState.chunks.length}`);
 }
-return cached;
+
+// Add streaming chunks to persistent storage
+await unifiedStreamingService.addStreamingChunk(transformId, chunkData);
 ```
 
 #### Transform Replay Pattern

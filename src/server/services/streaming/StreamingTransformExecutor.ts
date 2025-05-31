@@ -7,7 +7,6 @@ import { TemplateService } from '../templates/TemplateService';
 import { Artifact, BrainstormingJobParamsV1, OutlineJobParamsV1, OutlineSessionV1 } from '../../types/artifacts';
 import { IdeationService } from '../IdeationService';
 import { JobBroadcaster } from './JobBroadcaster';
-import { StreamingCache } from './StreamingCache';
 import { v4 as uuidv4 } from 'uuid';
 import { getLLMCredentials } from '../LLMConfig';
 
@@ -160,13 +159,8 @@ export class StreamingTransformExecutor {
             }
         }
 
-        // Initialize cache for this transform BEFORE starting the stream
-        const cache = StreamingCache.getInstance();
-        cache.initializeTransform(transform.id);
-        
-        // Mark streaming as active immediately
-        cache.markStreamingActive(transform.id);
-        console.log(`[StreamingTransformExecutor] Cache initialized and streaming marked as active for transform ${transform.id}`);
+        // Initialize streaming in database
+        console.log(`[StreamingTransformExecutor] Starting streaming for transform ${transform.id}`);
 
         const pump = async () => {
             try {
@@ -185,9 +179,9 @@ export class StreamingTransformExecutor {
                         // Format batched chunks for streaming
                         const batchedMessage = `0:${JSON.stringify(batchedChunks.join(''))}`;
 
-                        // Add to cache
-                        cache.addChunk(transform.id, batchedMessage);
-                        console.log(`[StreamingTransformExecutor] Added batch ${Math.floor(chunkCount / BATCH_SIZE)} to cache for transform ${transform.id}, batch content preview: ${batchedMessage.substring(0, 100)}...`);
+                        // Add to database
+                        await this.transformRepo.addTransformChunk(transform.id, batchedMessage);
+                        console.log(`[StreamingTransformExecutor] Added batch ${Math.floor(chunkCount / BATCH_SIZE)} to database for transform ${transform.id}, batch content preview: ${batchedMessage.substring(0, 100)}...`);
 
                         // Broadcast to all connected clients
                         broadcaster.broadcast(transform.id, batchedMessage);
@@ -209,8 +203,8 @@ export class StreamingTransformExecutor {
                 // Send any remaining chunks
                 if (batchedChunks.length > 0) {
                     const batchedMessage = `0:${JSON.stringify(batchedChunks.join(''))}`;
-                    cache.addChunk(transform.id, batchedMessage);
-                    console.log(`[StreamingTransformExecutor] Added final batch to cache for transform ${transform.id}, content preview: ${batchedMessage.substring(0, 100)}...`);
+                    await this.transformRepo.addTransformChunk(transform.id, batchedMessage);
+                    console.log(`[StreamingTransformExecutor] Added final batch to database for transform ${transform.id}, content preview: ${batchedMessage.substring(0, 100)}...`);
                     broadcaster.broadcast(transform.id, batchedMessage);
 
                     if (isDirectConnection && res && !res.destroyed && res.writable) {
@@ -299,13 +293,8 @@ export class StreamingTransformExecutor {
                             await this.createOutputArtifacts(userId, transform, parsedData, text);
                         }
 
-                        // Store parsed results in cache
-                        cache.setResults(transform.id, parsedData);
+                        // Results are stored as artifacts, no need to cache them
                     }
-
-                    // Mark cache as complete and streaming as inactive
-                    cache.markComplete(transform.id);
-                    cache.markStreamingInactive(transform.id);
 
                     // CRITICAL: Mark transform as completed ONLY AFTER all data is saved
                     // This ensures that when frontend checks status='completed', all data is guaranteed to be available
@@ -314,8 +303,6 @@ export class StreamingTransformExecutor {
 
                 } catch (error) {
                     await this.transformRepo.updateTransformStatus(transform.id, 'failed');
-                    // Mark streaming as inactive on error
-                    cache.markStreamingInactive(transform.id);
                     throw error;
                 }
 
@@ -340,17 +327,14 @@ export class StreamingTransformExecutor {
                 }
                 
                 // Schedule cleanup after 5 minutes to allow final clients to receive data
-                setTimeout(() => {
-                    cache.clear(transform.id); // This will also clear streaming state
+                setTimeout(async () => {
+                    await this.transformRepo.cleanupTransformChunks(transform.id);
                     broadcaster.cleanup(transform.id);
-                    console.log(`[StreamingTransformExecutor] Cleaned up cache and broadcaster for transform ${transform.id}`);
+                    console.log(`[StreamingTransformExecutor] Cleaned up chunks and broadcaster for transform ${transform.id}`);
                 }, 5 * 60 * 1000);
 
             } catch (error: any) {
                 await this.transformRepo.updateTransformStatus(transform.id, 'failed');
-                
-                // Mark streaming as inactive on error
-                cache.markStreamingInactive(transform.id);
 
                 // Broadcast error to all connected clients
                 const errorMessage = `error:${JSON.stringify({ error: error.message })}`;

@@ -15,7 +15,7 @@ import {
     OutlineSatisfactionPointsV1,
     OutlineSynopsisStagesV1
 } from '../types/artifacts';
-import { CacheService } from './CacheService';
+import { UnifiedStreamingService } from './UnifiedStreamingService';
 
 // Response interfaces
 export interface OutlineSessionData {
@@ -97,7 +97,7 @@ export class OutlineService {
     constructor(
         private artifactRepo: ArtifactRepository,
         private transformRepo: TransformRepository,
-        private cacheService: CacheService
+        private unifiedStreamingService: UnifiedStreamingService
     ) { }
 
     // Validate session ownership helper
@@ -136,172 +136,30 @@ export class OutlineService {
 
     // Get outline session by ID
     async getOutlineSession(userId: string, sessionId: string): Promise<OutlineSessionData | null> {
-        // Check cache first
-        const cacheKey = `outline_session:${userId}:${sessionId}`;
-        const cached = this.cacheService.get<OutlineSessionData>(cacheKey);
-
-        if (cached) {
-            return cached;
-        }
 
         try {
-            // Validate session ownership
-            const sessionArtifact = await this.validateSessionOwnership(userId, sessionId);
-
-            // Get related artifacts
-            const relatedArtifacts = await this.getOutlineArtifacts(userId, sessionId);
-
-            // Find source artifact and parameters
-            const jobParams = relatedArtifacts.find(a => a.type === 'outline_job_params');
-            let sourceArtifact: Artifact | null = null;
-
-            if (jobParams) {
-                sourceArtifact = await this.artifactRepo.getArtifact(
-                    jobParams.data.sourceArtifactId,
-                    userId
-                );
+            // Use unified streaming service to get data from database
+            const outlineData = await this.unifiedStreamingService.getOutlineSession(userId, sessionId);
+            
+            if (!outlineData) {
+                return null;
             }
 
-            // Parse outline components
-            const components: any = {};
-
-            // First, try to get data from LLM transform (original generation)
-            const allUserTransforms = await this.transformRepo.getUserTransforms(userId);
-            const llmOutlineTransforms = allUserTransforms.filter(t =>
-                t.execution_context?.outline_session_id === sessionId && t.type === 'llm'
-            );
-
-            let llmData: any = null;
-            if (llmOutlineTransforms.length > 0) {
-                const latestLLMTransform = llmOutlineTransforms.sort((a, b) =>
-                    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-                )[0];
-
-                llmData = await this.transformRepo.getLLMTransformData(latestLLMTransform.id);
-            }
-
-            // Parse LLM response if available
-            if (llmData && llmData.raw_response) {
-                try {
-                    // Clean and parse the LLM response
-                    let cleanContent = llmData.raw_response.trim();
-                    if (cleanContent.startsWith('```json')) {
-                        cleanContent = cleanContent.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-                    } else if (cleanContent.startsWith('```')) {
-                        cleanContent = cleanContent.replace(/^```\s*/, '').replace(/\s*```$/, '');
-                    }
-
-                    const parsedData = JSON.parse(cleanContent);
-
-                    // Extract components from LLM response
-                    if (parsedData.title) components.title = parsedData.title;
-                    if (parsedData.genre) components.genre = parsedData.genre;
-
-                    if (parsedData.target_audience) {
-                        components.target_audience = parsedData.target_audience;
-                    }
-
-                    if (parsedData.selling_points) {
-                        components.selling_points = Array.isArray(parsedData.selling_points)
-                            ? parsedData.selling_points.join('\n')
-                            : parsedData.selling_points;
-                    }
-
-                    if (parsedData.satisfaction_points && Array.isArray(parsedData.satisfaction_points)) {
-                        components.satisfaction_points = parsedData.satisfaction_points;
-                    }
-
-                    if (parsedData.setting) {
-                        components.setting = typeof parsedData.setting === 'object'
-                            ? `${parsedData.setting.core_setting_summary || ''}\n\n关键场景：\n${(parsedData.setting.key_scenes || []).map((scene: string) => `- ${scene}`).join('\n')}`
-                            : parsedData.setting;
-                    }
-
-                    if (parsedData.synopsis) components.synopsis = parsedData.synopsis;
-
-                    if (parsedData.synopsis_stages && Array.isArray(parsedData.synopsis_stages)) {
-                        components.synopsis_stages = parsedData.synopsis_stages;
-                    }
-
-                    if (parsedData.characters && Array.isArray(parsedData.characters)) {
-                        components.characters = parsedData.characters;
-                    }
-                } catch (parseError) {
-                    console.error('Error parsing LLM response:', parseError);
-                    // Fall back to artifact-based loading
-                }
-            }
-
-            // Override with user modifications from artifacts (if any)
-            // This allows user edits to take precedence over LLM-generated content
-            const titleArtifact = relatedArtifacts.find(a => a.type === 'outline_title');
-            if (titleArtifact) components.title = titleArtifact.data.title;
-
-            const genreArtifact = relatedArtifacts.find(a => a.type === 'outline_genre');
-            if (genreArtifact) components.genre = genreArtifact.data.genre;
-
-            const sellingPointsArtifact = relatedArtifacts.find(a => a.type === 'outline_selling_points');
-            if (sellingPointsArtifact) components.selling_points = sellingPointsArtifact.data.selling_points;
-
-            const settingArtifact = relatedArtifacts.find(a => a.type === 'outline_setting');
-            if (settingArtifact) components.setting = settingArtifact.data.setting;
-
-            const synopsisArtifact = relatedArtifacts.find(a => a.type === 'outline_synopsis');
-            if (synopsisArtifact) components.synopsis = synopsisArtifact.data.synopsis;
-
-            const targetAudienceArtifact = relatedArtifacts.find(a => a.type === 'outline_target_audience');
-            if (targetAudienceArtifact) components.target_audience = targetAudienceArtifact.data;
-
-            const satisfactionPointsArtifact = relatedArtifacts.find(a => a.type === 'outline_satisfaction_points');
-            if (satisfactionPointsArtifact) components.satisfaction_points = satisfactionPointsArtifact.data.satisfaction_points;
-
-            const synopsisStagesArtifact = relatedArtifacts.find(a => a.type === 'outline_synopsis_stages');
-            if (synopsisStagesArtifact) components.synopsis_stages = synopsisStagesArtifact.data.synopsis_stages;
-
-            const charactersArtifact = relatedArtifacts.find(a => a.type === 'outline_characters');
-            if (charactersArtifact) components.characters = charactersArtifact.data.characters;
-
-            // Determine status using the same transforms we already fetched
-            const statusOutlineTransforms = allUserTransforms.filter(t =>
-                t.execution_context?.outline_session_id === sessionId
-            );
-
-            let status: 'active' | 'completed' | 'failed' = 'active';
-            if (statusOutlineTransforms.length > 0) {
-                const latestTransform = statusOutlineTransforms.sort((a, b) =>
-                    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-                )[0];
-
-                if (latestTransform.status === 'completed') status = 'completed';
-                else if (latestTransform.status === 'failed') status = 'failed';
-            }
-
-            const result: OutlineSessionData = {
-                id: sessionId,
-                sourceArtifact: sourceArtifact ? {
-                    id: sourceArtifact.id,
-                    text: sourceArtifact.data.idea_text || sourceArtifact.data.text || '',
-                    title: sourceArtifact.data.idea_title || sourceArtifact.data.title,
-                    type: sourceArtifact.type
-                } : {
-                    id: '',
-                    text: '',
-                    type: 'unknown'
-                },
-                ideationRunId: sessionArtifact.data.ideation_session_id !== 'job-based'
-                    ? sessionArtifact.data.ideation_session_id
-                    : undefined,
-                totalEpisodes: jobParams?.data.totalEpisodes,
-                episodeDuration: jobParams?.data.episodeDuration,
-                components,
-                status,
-                createdAt: sessionArtifact.created_at
+            // Convert to legacy format for backward compatibility
+            return {
+                id: outlineData.id,
+                sourceArtifact: outlineData.sourceArtifact,
+                ideationRunId: undefined, // Not used in new system
+                totalEpisodes: outlineData.totalEpisodes,
+                episodeDuration: outlineData.episodeDuration,
+                components: outlineData.components,
+                status: outlineData.status === 'streaming' ? 'active' : outlineData.status,
+                createdAt: outlineData.createdAt,
+                // Add streaming info if active
+                ...(outlineData.streamingData && {
+                    streamingData: outlineData.streamingData
+                })
             };
-
-            // Cache the result
-            this.cacheService.set(cacheKey, result, 2 * 60 * 1000); // 2 minutes
-
-            return result;
 
         } catch (error) {
             if (error instanceof Error && error.message.includes('not found or not accessible')) {
@@ -313,13 +171,6 @@ export class OutlineService {
 
     // List all outline sessions for a user
     async listOutlineSessions(userId: string): Promise<OutlineSessionSummary[]> {
-        // Check cache first
-        const cacheKey = `outline_list:${userId}`;
-        const cached = this.cacheService.get<OutlineSessionSummary[]>(cacheKey);
-
-        if (cached) {
-            return cached;
-        }
 
         // Get all outline session artifacts for the user
         const sessionArtifacts = await this.artifactRepo.getArtifactsByType(userId, 'outline_session');
@@ -386,9 +237,6 @@ export class OutlineService {
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
 
-        // Cache the result
-        this.cacheService.set(cacheKey, sortedSessions, 1 * 60 * 1000); // 1 minute
-
         return sortedSessions;
     }
 
@@ -402,9 +250,7 @@ export class OutlineService {
             return false;
         }
 
-        // Invalidate caches
-        this.cacheService.delete(`outline_session:${userId}:${sessionId}`);
-        this.cacheService.delete(`outline_list:${userId}`);
+        // No cache to invalidate
 
         // Note: In a production system, we might want to mark artifacts as deleted rather than actually deleting them
         // For now, we'll delete the session artifact (related artifacts will remain for traceability)

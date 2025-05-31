@@ -8,6 +8,9 @@ dist
 dist-client
 
 *.db
+*.sqlite
+*.db-journal
+
 
 *.tsbuildinfo
 

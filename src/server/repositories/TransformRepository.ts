@@ -274,4 +274,98 @@ export class TransformRepository {
             execution_context: row.execution_context ? JSON.parse(row.execution_context) : null
         };
     }
+
+    // Transform chunks methods for persistent streaming storage
+
+    // Add a chunk to a transform (replaces StreamingCache.addChunk)
+    async addTransformChunk(transformId: string, chunkData: string): Promise<number> {
+        // Get the next chunk index
+        const result = await this.db('transform_chunks')
+            .where('transform_id', transformId)
+            .max('chunk_index as max_index')
+            .first();
+
+        const nextIndex = (result?.max_index ?? -1) + 1;
+
+        await this.db('transform_chunks').insert({
+            transform_id: transformId,
+            chunk_index: nextIndex,
+            chunk_data: chunkData
+        });
+
+        return nextIndex;
+    }
+
+    // Get all chunks for a transform (replaces StreamingCache.getChunks)
+    async getTransformChunks(transformId: string): Promise<string[]> {
+        const rows = await this.db('transform_chunks')
+            .where('transform_id', transformId)
+            .orderBy('chunk_index', 'asc')
+            .select('chunk_data');
+
+        return rows.map(row => row.chunk_data);
+    }
+
+    // Get accumulated content from chunks (replaces StreamingCache.getAccumulatedContent)
+    async getTransformAccumulatedContent(transformId: string): Promise<string> {
+        const chunks = await this.getTransformChunks(transformId);
+        const content = chunks
+            .map(chunk => {
+                // Extract text from streaming format "0:..."
+                if (chunk.startsWith('0:')) {
+                    try {
+                        return JSON.parse(chunk.substring(2));
+                    } catch {
+                        return '';
+                    }
+                }
+                return '';
+            })
+            .join('');
+
+        return content.trim();
+    }
+
+    // Check if transform has chunks (replaces StreamingCache existence check)
+    async hasTransformChunks(transformId: string): Promise<boolean> {
+        const count = await this.db('transform_chunks')
+            .where('transform_id', transformId)
+            .count('id as count')
+            .first();
+
+        return (count?.count ?? 0) > 0;
+    }
+
+    // Clean up chunks for completed transforms (replaces StreamingCache.clear)
+    async cleanupTransformChunks(transformId: string): Promise<void> {
+        await this.db('transform_chunks')
+            .where('transform_id', transformId)
+            .del();
+    }
+
+    // Get transforms by ideation run ID
+    async getTransformsByIdeationRun(userId: string, ideationRunId: string): Promise<Transform[]> {
+        const rows = await this.db('transforms')
+            .where('user_id', userId)
+            .whereRaw("JSON_EXTRACT(execution_context, '$.ideation_run_id') = ?", [ideationRunId])
+            .orderBy('created_at', 'desc');
+
+        return rows.map(row => ({
+            ...row,
+            execution_context: row.execution_context ? JSON.parse(row.execution_context) : null
+        }));
+    }
+
+    // Get transforms by outline session ID
+    async getTransformsByOutlineSession(userId: string, outlineSessionId: string): Promise<Transform[]> {
+        const rows = await this.db('transforms')
+            .where('user_id', userId)
+            .whereRaw("JSON_EXTRACT(execution_context, '$.outline_session_id') = ?", [outlineSessionId])
+            .orderBy('created_at', 'desc');
+
+        return rows.map(row => ({
+            ...row,
+            execution_context: row.execution_context ? JSON.parse(row.execution_context) : null
+        }));
+    }
 }

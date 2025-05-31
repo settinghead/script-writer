@@ -23,7 +23,7 @@ import {
   validateScriptUpdate
 } from './middleware/validation';
 import { ReplayService } from './services/ReplayService';
-import { CacheService } from './services/CacheService';
+import { UnifiedStreamingService } from './services/UnifiedStreamingService';
 import { db, initializeDatabase } from './database/connection';
 // New streaming framework imports
 import { TemplateService } from './services/templates/TemplateService';
@@ -55,13 +55,13 @@ const authMiddleware = createAuthMiddleware(authDB);
 const artifactRepo = new ArtifactRepository(db);
 const transformRepo = new TransformRepository(db);
 
-// Initialize cache service
-const cacheService = new CacheService();
+// Initialize unified streaming service
+const unifiedStreamingService = new UnifiedStreamingService(artifactRepo, transformRepo);
 
-// Initialize services with caching
+// Initialize services with unified streaming
 const transformExecutor = new TransformExecutor(artifactRepo, transformRepo);
-const ideationService = new IdeationService(artifactRepo, transformRepo, transformExecutor, cacheService);
-const outlineService = new OutlineService(artifactRepo, transformRepo, cacheService);
+const ideationService = new IdeationService(artifactRepo, transformRepo, transformExecutor, unifiedStreamingService);
+const outlineService = new OutlineService(artifactRepo, transformRepo, unifiedStreamingService);
 const scriptService = new ScriptService(artifactRepo, transformExecutor);
 const replayService = new ReplayService(artifactRepo, transformRepo, transformExecutor);
 
@@ -699,7 +699,7 @@ app.put("/api/artifacts/:artifactId",
 
 // ========== OUTLINE ENDPOINTS ==========
 
-app.use('/api', createOutlineRoutes(authMiddleware, cacheService, artifactRepo, transformRepo));
+app.use('/api', createOutlineRoutes(authMiddleware, unifiedStreamingService, artifactRepo, transformRepo));
 
 // ========== STREAMING ENDPOINTS ==========
 
@@ -853,9 +853,7 @@ app.get("/api/streaming/transform/:transformId", authMiddleware.authenticate, as
   try {
     // Import services
     const { JobBroadcaster } = await import('./services/streaming/JobBroadcaster');
-    const { StreamingCache } = await import('./services/streaming/StreamingCache');
     const broadcaster = JobBroadcaster.getInstance();
-    const cache = StreamingCache.getInstance();
 
     // Verify ownership
     const transform = await transformRepo.getTransform(transformId, user.id);
@@ -864,7 +862,7 @@ app.get("/api/streaming/transform/:transformId", authMiddleware.authenticate, as
       return res.status(403).json({ error: 'Transform not found or unauthorized' });
     }
 
-    // If job is already completed, send cached results in SSE format
+    // If job is already completed, send database chunks in SSE format
     if (transform.status === 'completed') {
       // Setup SSE connection even for completed jobs
       res.writeHead(200, {
@@ -878,13 +876,11 @@ app.get("/api/streaming/transform/:transformId", authMiddleware.authenticate, as
       // Send initial status
       res.write(`data: ${JSON.stringify({ status: 'connected', transformId })}\n\n`);
 
-      // Send completed data from cache
-
-      // Check if transform has cached data
-      const cachedChunks = cache.getChunks(transformId);
-      if (cachedChunks.length > 0) {
-        // Send all cached chunks with proper SSE formatting
-        for (const chunk of cachedChunks) {
+      // Send completed data from database
+      const chunks = await transformRepo.getTransformChunks(transformId);
+      if (chunks.length > 0) {
+        // Send all chunks with proper SSE formatting
+        for (const chunk of chunks) {
           res.write(`data: ${chunk}\n\n`);
         }
       }
@@ -913,36 +909,17 @@ app.get("/api/streaming/transform/:transformId", authMiddleware.authenticate, as
       // Send initial status
       res.write(`data: ${JSON.stringify({ status: 'connected', transformId })}\n\n`);
 
-      // Check cached data from streaming cache
-
-      // Check if transform has cached data
-      const cachedChunks = cache.getChunks(transformId);
-      if (cachedChunks.length > 0) {
-        // Send all cached chunks with proper SSE formatting
-        for (const chunk of cachedChunks) {
-          // Chunks are already in format "0:...", need to wrap in SSE format with proper termination
+      // Send any existing chunks from database
+      const chunks = await transformRepo.getTransformChunks(transformId);
+      if (chunks.length > 0) {
+        // Send all existing chunks with proper SSE formatting
+        for (const chunk of chunks) {
           res.write(`data: ${chunk}\n\n`);
         }
-
-        // If streaming is complete, send completion events
-        if (cache.isComplete(transformId)) {
-          res.write(`data: e:${JSON.stringify({ finishReason: 'stop' })}\n\n`);
-          res.write(`data: d:${JSON.stringify({ finishReason: 'stop' })}\n\n`);
-          return;
-        }
       }
 
-      // SSE endpoint should only connect to existing streams, not start new jobs
-      // Streaming jobs are started when outline jobs are created
-      console.log(`[Streaming] Client connected to transform ${transformId}, streaming job should already be running`);
+      console.log(`[Streaming] Client connected to transform ${transformId}, streaming job should be running or will start shortly`);
       
-      // If transform is running but no streaming is active, the job might have failed to start
-      const isStreamingActive = cache.isStreamingActive(transformId);
-      if (!isStreamingActive && transform.status === 'running') {
-        console.warn(`[Streaming] Transform ${transformId} is running but no active streaming found. Job may have failed to start.`);
-        res.write(`data: error:${JSON.stringify({ error: 'Streaming job not active. Please try regenerating.' })}\n\n`);
-        return;
-      }
     } else {
       // Job failed or cancelled - send error in SSE format
       res.writeHead(200, {
@@ -1158,31 +1135,19 @@ app.get("/debug/stats/transforms", authMiddleware.authenticate, async (req: any,
   }
 });
 
-// Get cache statistics
-app.get("/debug/cache/stats", authMiddleware.authenticate, async (req: any, res: any) => {
+// Get streaming service status
+app.get("/debug/streaming/status", authMiddleware.authenticate, async (req: any, res: any) => {
   try {
-    const stats = cacheService.getStats();
-    res.json(stats);
-
-  } catch (error: any) {
-    console.error('Error fetching cache stats:', error);
-    res.status(500).json({
-      error: "Failed to fetch cache stats",
-      details: error.message
+    res.json({
+      status: 'active',
+      message: 'Using database-backed streaming (no cache layer)',
+      timestamp: new Date().toISOString()
     });
-  }
-});
-
-// Clear cache
-app.post("/debug/cache/clear", authMiddleware.authenticate, async (req: any, res: any) => {
-  try {
-    cacheService.clear();
-    res.json({ success: true, message: "Cache cleared successfully" });
 
   } catch (error: any) {
-    console.error('Error clearing cache:', error);
+    console.error('Error fetching streaming status:', error);
     res.status(500).json({
-      error: "Failed to clear cache",
+      error: "Failed to fetch streaming status",
       details: error.message
     });
   }
@@ -1268,9 +1233,6 @@ app.get("/debug/health", authMiddleware.authenticate, async (req: any, res: any)
     const artifacts = await artifactRepo.getUserArtifacts(user.id, 1);
     const transforms = await transformRepo.getUserTransforms(user.id, 1);
 
-    // Check cache health
-    const cacheStats = cacheService.getStats();
-
     // Basic health checks
     const health = {
       status: 'healthy',
@@ -1280,9 +1242,9 @@ app.get("/debug/health", authMiddleware.authenticate, async (req: any, res: any)
         artifacts_accessible: artifacts.length >= 0,
         transforms_accessible: transforms.length >= 0
       },
-      cache: {
+      streaming: {
         status: 'ok',
-        ...cacheStats
+        type: 'database-backed'
       },
       user: {
         id: user.id,
@@ -1321,11 +1283,9 @@ app.get("/debug/performance", authMiddleware.authenticate, async (req: any, res:
     await transformRepo.getUserTransforms(user.id, 10);
     const transformTime = Date.now() - transformFetchTime;
 
-    const cacheTestTime = Date.now();
-    cacheService.set('test_key', { test: 'data' });
-    cacheService.get('test_key');
-    cacheService.delete('test_key');
-    const cacheTime = Date.now() - cacheTestTime;
+    const streamingTestTime = Date.now();
+    // Test streaming service (no operations needed - it's database-backed)
+    const streamingTime = Date.now() - streamingTestTime;
 
     const totalTime = Date.now() - startTime;
 
@@ -1335,9 +1295,8 @@ app.get("/debug/performance", authMiddleware.authenticate, async (req: any, res:
       breakdown: {
         artifact_fetch_ms: artifactTime,
         transform_fetch_ms: transformTime,
-        cache_operations_ms: cacheTime
+        streaming_test_ms: streamingTime
       },
-      cache_stats: cacheService.getStats(),
       memory_usage: process.memoryUsage()
     });
 

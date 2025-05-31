@@ -1,12 +1,12 @@
 import * as express from 'express';
 import { ArtifactRepository } from '../repositories/ArtifactRepository';
 import { TransformRepository } from '../repositories/TransformRepository';
-import { CacheService } from '../services/CacheService';
+import { UnifiedStreamingService } from '../services/UnifiedStreamingService';
 import { OutlineService } from '../services/OutlineService';
 
 export function createOutlineRoutes(
     authMiddleware: any,
-    cacheService: CacheService,
+    unifiedStreamingService: UnifiedStreamingService,
     artifactRepo: ArtifactRepository,
     transformRepo: TransformRepository
 ) {
@@ -23,7 +23,7 @@ export function createOutlineRoutes(
             const outlineService = new OutlineService(
                 artifactRepo,
                 transformRepo,
-                cacheService
+                unifiedStreamingService
             );
 
             const sessions = await outlineService.listOutlineSessions(userId);
@@ -48,7 +48,7 @@ export function createOutlineRoutes(
             const outlineService = new OutlineService(
                 artifactRepo,
                 transformRepo,
-                cacheService
+                unifiedStreamingService
             );
 
             const session = await outlineService.getOutlineSession(userId, sessionId);
@@ -78,7 +78,7 @@ export function createOutlineRoutes(
             const outlineService = new OutlineService(
                 artifactRepo,
                 transformRepo,
-                cacheService
+                unifiedStreamingService
             );
 
             const deleted = await outlineService.deleteOutlineSession(userId, sessionId);
@@ -108,7 +108,7 @@ export function createOutlineRoutes(
             const outlineService = new OutlineService(
                 artifactRepo,
                 transformRepo,
-                cacheService
+                unifiedStreamingService
             );
 
             const lineage = await outlineService.getOutlineLineage(userId, sessionId);
@@ -144,7 +144,7 @@ export function createOutlineRoutes(
             });
 
             // Find the original component artifact for this session
-            const outlineService = new OutlineService(artifactRepo, transformRepo, cacheService);
+            const outlineService = new OutlineService(artifactRepo, transformRepo, unifiedStreamingService);
             const session = await outlineService.getOutlineSession(userId, sessionId);
 
             if (!session) {

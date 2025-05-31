@@ -16,10 +16,37 @@ export const TextField: React.FC<FieldProps & { label?: string; placeholder?: st
   placeholder
 }) => {
   const [isEditing, setIsEditing] = React.useState(false);
-  const [editValue, setEditValue] = React.useState(value || '');
+  const [editValue, setEditValue] = React.useState(() => {
+    if (typeof value === 'string') return value || '';
+    if (typeof value === 'object' && value !== null) {
+      if (value.core_setting_summary) {
+        return value.core_setting_summary;
+      }
+      try {
+        return JSON.stringify(value, null, 2);
+      } catch {
+        return '';
+      }
+    }
+    return value || '';
+  });
 
   React.useEffect(() => {
-    setEditValue(value || '');
+    if (typeof value === 'string') {
+      setEditValue(value || '');
+    } else if (typeof value === 'object' && value !== null) {
+      if (value.core_setting_summary) {
+        setEditValue(value.core_setting_summary);
+      } else {
+        try {
+          setEditValue(JSON.stringify(value, null, 2));
+        } catch {
+          setEditValue('');
+        }
+      }
+    } else {
+      setEditValue(value || '');
+    }
   }, [value]);
 
   const handleSave = () => {
@@ -113,10 +140,30 @@ export const TextAreaField: React.FC<FieldProps & { label?: string; placeholder?
   placeholder
 }) => {
   const [isEditing, setIsEditing] = React.useState(false);
-  const [editValue, setEditValue] = React.useState(value || '');
+  const [editValue, setEditValue] = React.useState(() => {
+    if (typeof value === 'string') return value || '';
+    if (typeof value === 'object' && value !== null) {
+      try {
+        return JSON.stringify(value);
+      } catch {
+        return '';
+      }
+    }
+    return value || '';
+  });
 
   React.useEffect(() => {
-    setEditValue(value || '');
+    if (typeof value === 'string') {
+      setEditValue(value || '');
+    } else if (typeof value === 'object' && value !== null) {
+      try {
+        setEditValue(JSON.stringify(value));
+      } catch {
+        setEditValue('');
+      }
+    } else {
+      setEditValue(value || '');
+    }
   }, [value]);
 
   const handleSave = () => {

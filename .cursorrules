@@ -62,7 +62,7 @@ src/
 
 ### 9. Database Operations
 - Use `ArtifactRepository` and `TransformRepository` for flow related data access
-- Use `CacheService` for performance optimization
+- Use `UnifiedStreamingService` for streaming data and real-time state management
 
 
 ## API Endpoint Patterns
