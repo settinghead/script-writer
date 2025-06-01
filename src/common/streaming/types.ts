@@ -17,6 +17,7 @@ export interface StreamingResponse<T> {
     items: T[];
     rawContent?: string;
     error?: Error;
+    isThinking?: boolean;
     metadata?: {
         tokensProcessed?: number;
         startTime?: number;

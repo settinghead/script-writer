@@ -37,6 +37,7 @@ interface DynamicOutlineResultsProps {
     status: 'active' | 'completed' | 'failed';
     isStreaming?: boolean;
     isConnecting?: boolean;
+    isThinking?: boolean;
     onStopStreaming?: () => void;
     onComponentUpdate?: (componentType: string, newValue: string, newArtifactId: string) => void;
     onRegenerate?: () => void;
@@ -59,6 +60,7 @@ export const DynamicOutlineResults: React.FC<DynamicOutlineResultsProps> = ({
     status,
     isStreaming = false,
     isConnecting = false,
+    isThinking = false,
     onStopStreaming,
     onComponentUpdate,
     onRegenerate,
@@ -224,6 +226,7 @@ export const DynamicOutlineResults: React.FC<DynamicOutlineResultsProps> = ({
                 fieldRegistry={outlineFieldRegistry}
                 streamingData={streamingData}
                 streamingStatus={streamingStatus}
+                isThinking={isThinking}
                 onStopStreaming={onStopStreaming}
                 onFieldEdit={handleFieldEdit}
                 className="outline-results"

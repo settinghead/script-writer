@@ -30,7 +30,7 @@ export const OutlineTab: React.FC = () => {
     const streamingService = useMemo(() => new OutlineStreamingService(), []);
 
     // Use the LLM streaming hook
-    const { status: streamingStatus, items: outlineItems, stop: stopStreaming, error: streamingError } = useLLMStreaming(
+    const { status: streamingStatus, items: outlineItems, isThinking, stop: stopStreaming, error: streamingError } = useLLMStreaming(
         streamingService,
         { transformId: transformId || undefined }
     );
@@ -295,6 +295,7 @@ export const OutlineTab: React.FC = () => {
                     status={sessionData.status}
                     isStreaming={isStreaming}
                     isConnecting={isConnecting}
+                    isThinking={isThinking}
                     onStopStreaming={handleStopStreaming}
                     onComponentUpdate={handleComponentUpdate}
                     streamingItems={outlineItems}

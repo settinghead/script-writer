@@ -8,6 +8,7 @@ import {
   FieldDefinition
 } from './types';
 import { StreamingFieldDetector, PathMatcher } from './StreamingFieldDetector';
+import { ThinkingIndicator } from '../ThinkingIndicator';
 // import { useLLMStreaming } from '../../../hooks/useLLMStreaming';
 
 /**
@@ -90,6 +91,7 @@ export const DynamicStreamingUI: React.FC<DynamicStreamingUIProps> = ({
   data,
   streamingData = [],
   streamingStatus = 'idle',
+  isThinking = false,
   onStopStreaming,
   className = ''
 }) => {
@@ -259,8 +261,13 @@ export const DynamicStreamingUI: React.FC<DynamicStreamingUIProps> = ({
 
   return (
     <div className={`dynamic-streaming-ui ${className}`}>
-      {/* Streaming indicator */}
-      {isStreaming && (
+      {/* Show thinking indicator when in thinking mode, otherwise show regular streaming indicator */}
+      {isThinking ? (
+        <ThinkingIndicator
+          isThinking={isThinking}
+          className="mb-4"
+        />
+      ) : isStreaming && (
         <div style={{ 
           marginBottom: '16px', 
           padding: '12px', 
@@ -275,20 +282,20 @@ export const DynamicStreamingUI: React.FC<DynamicStreamingUIProps> = ({
             <Spin size="small" />
             <span style={{ color: '#1890ff' }}>正在生成内容...</span>
           </div>
-                     {onStopStreaming && (
-             <Button
-               size="small"
-               icon={<StopOutlined />}
-               onClick={onStopStreaming}
-               style={{
-                 background: '#ff4d4f',
-                 borderColor: '#ff4d4f',
-                 color: 'white'
-               }}
-             >
-               停止
-             </Button>
-           )}
+          {onStopStreaming && (
+            <Button
+              size="small"
+              icon={<StopOutlined />}
+              onClick={onStopStreaming}
+              style={{
+                background: '#ff4d4f',
+                borderColor: '#ff4d4f',
+                color: 'white'
+              }}
+            >
+              停止
+            </Button>
+          )}
         </div>
       )}
 

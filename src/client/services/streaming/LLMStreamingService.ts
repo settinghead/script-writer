@@ -11,18 +11,21 @@ import {
 } from 'rxjs/operators';
 import { JSONStreamable } from '../../../common/streaming/interfaces';
 import { StreamConfig, StreamingRequest, StreamingResponse } from '../../../common/streaming/types';
+import { processStreamingContent } from '../../../common/utils/textCleaning';
 
 export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
     protected abort$ = new Subject<void>();
     protected content$ = new Subject<string>();
     protected error$ = new Subject<Error>();
     protected completion$ = new Subject<void>();
+    protected thinking$ = new Subject<boolean>();
     protected eventSource?: EventSource;
 
     // Observable streams
     readonly items$: Observable<T[]>;
     readonly status$: Observable<StreamingResponse<T>['status']>;
     readonly response$: Observable<StreamingResponse<T>>;
+    readonly isThinking$: Observable<boolean>;
 
     constructor(protected config: StreamConfig = {}) {
         this.items$ = this.content$.pipe(
@@ -34,6 +37,11 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
             }),
             filter(items => items.length > 0),
             distinctUntilChanged((a, b) => JSON.stringify(a) === JSON.stringify(b)),
+            shareReplay(1)
+        );
+
+        this.isThinking$ = this.thinking$.pipe(
+            distinctUntilChanged(),
             shareReplay(1)
         );
 
@@ -64,15 +72,17 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
     }
 
     private createResponseStream(): Observable<StreamingResponse<T>> {
-        // Combine latest status with latest items to avoid race conditions
+        // Combine latest status, items, and thinking state to avoid race conditions
         const mainStream = combineLatest([
             this.status$.pipe(startWith('idle' as const)),
-            this.items$.pipe(startWith([] as T[]))
+            this.items$.pipe(startWith([] as T[])),
+            this.isThinking$.pipe(startWith(false))
         ]).pipe(
-            map(([status, items]) => ({
+            map(([status, items, isThinking]) => ({
                 status,
                 items,
-                rawContent: ''
+                rawContent: '',
+                isThinking
             }))
         );
 
@@ -84,6 +94,7 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
                     status: 'error' as const,
                     items: [] as T[],
                     rawContent: '',
+                    isThinking: false,
                     error
                 }))
             )
@@ -91,6 +102,7 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
             distinctUntilChanged((a, b) =>
                 a.status === b.status &&
                 a.items.length === b.items.length &&
+                a.isThinking === b.isThinking &&
                 JSON.stringify(a.items) === JSON.stringify(b.items)
             ),
             takeUntil(this.abort$),
@@ -131,6 +143,7 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
             }
 
             let accumulatedContent = '';
+            let previousContent = '';
             let messageCount = 0;
 
             // Create new EventSource connection
@@ -166,8 +179,22 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
                                 console.log(`[LLMStreamingService] Current accumulated content preview:`, 
                                     accumulatedContent.substring(0, 200) + (accumulatedContent.length > 200 ? '...' : ''));
 
+                                // Detect thinking mode changes
+                                const { isThinking, thinkingStarted, thinkingEnded } = processStreamingContent(
+                                    accumulatedContent, 
+                                    previousContent
+                                );
+
+                                if (thinkingStarted) {
+                                    this.thinking$.next(true);
+                                } else if (thinkingEnded) {
+                                    this.thinking$.next(false);
+                                }
+
                                 // Emit to content$ subject to trigger the parsing pipeline
                                 this.content$.next(accumulatedContent);
+                                
+                                previousContent = accumulatedContent;
                             } else if (line.startsWith('e:')) {
                                 // Completion event
                                 const completionData = JSON.parse(line.substring(2));
@@ -176,6 +203,9 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
                                 // Emit final content and completion
                                 this.content$.next(accumulatedContent);
                                 this.completion$.next();
+
+                                // Ensure thinking mode is stopped on completion
+                                this.thinking$.next(false);
 
                                 console.log(`[LLMStreamingService] Closing EventSource after completion`);
                                 this.eventSource?.close();

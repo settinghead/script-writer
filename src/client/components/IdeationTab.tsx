@@ -44,7 +44,7 @@ const IdeationTab: React.FC = () => {
     });
 
     // Use streaming hook when we have an active transform ID
-    const { status, items, error: streamingError, start, stop } = useStreamingBrainstorm(activeTransformId || undefined);
+    const { status, items, isThinking, error: streamingError, start, stop } = useStreamingBrainstorm(activeTransformId || undefined);
 
     // Update generated ideas when streaming items change
     useEffect(() => {
@@ -494,6 +494,7 @@ const IdeationTab: React.FC = () => {
                                     onIdeaSelect={handleIdeaSelect}
                                     isStreaming={status === 'streaming'}
                                     isConnecting={!!activeTransformId && status === 'idle'}
+                                    isThinking={isThinking}
                                     onStop={stop}
                                     onRegenerate={handleRegenerate}
                                     error={streamingError}

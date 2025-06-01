@@ -41,6 +41,7 @@ export interface DynamicStreamingUIProps {
   data?: any; // Initial/static data
   streamingData?: any[]; // Current streaming items
   streamingStatus?: 'idle' | 'streaming' | 'completed' | 'error';
+  isThinking?: boolean; // Whether the AI is in thinking mode
   onStopStreaming?: () => void;
   className?: string;
 }

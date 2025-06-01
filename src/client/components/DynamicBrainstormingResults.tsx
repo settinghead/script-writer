@@ -2,6 +2,7 @@ import React from 'react';
 import { Space, Button, Typography, Spin, Empty, Card, Tag } from 'antd';
 import { StopOutlined, ReloadOutlined, EyeOutlined } from '@ant-design/icons';
 import { IdeaCard } from './shared/streaming';
+import { ThinkingIndicator } from './shared/ThinkingIndicator';
 import { IdeaWithTitle } from '../services/implementations/BrainstormingStreamingService';
 import { apiService } from '../services/apiService';
 import { useNavigate } from 'react-router-dom';
@@ -13,6 +14,7 @@ interface DynamicBrainstormingResultsProps {
     onIdeaSelect: (ideaText: string) => void;
     isStreaming?: boolean;
     isConnecting?: boolean;
+    isThinking?: boolean;
     onStop?: () => void;
     onRegenerate?: () => void;
     error?: Error | null;
@@ -114,6 +116,7 @@ export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsPr
     onIdeaSelect,
     isStreaming = false,
     isConnecting = false,
+    isThinking = false,
     onStop,
     onRegenerate,
     error,
@@ -174,6 +177,49 @@ export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsPr
                     {isConnecting ? '连接中...' : isStreaming ? '正在生成中...' : '选择一个灵感继续'}
                 </Text>
             </div>
+
+            {/* Thinking indicator */}
+            {isThinking && (
+                <ThinkingIndicator
+                    isThinking={isThinking}
+                    className="mb-4"
+                />
+            )}
+
+            {/* Streaming progress for non-thinking mode */}
+            {!isThinking && (isStreaming || isConnecting) && (
+                <div style={{ 
+                    marginBottom: '16px', 
+                    padding: '12px', 
+                    backgroundColor: '#1a1a1a', 
+                    border: '1px solid #1890ff',
+                    borderRadius: '6px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Spin size="small" />
+                        <span style={{ color: '#1890ff' }}>
+                            {isConnecting ? '正在连接...' : '正在生成灵感...'}
+                        </span>
+                    </div>
+                    {onStop && (
+                        <Button
+                            size="small"
+                            icon={<StopOutlined />}
+                            onClick={onStop}
+                            style={{
+                                background: '#ff4d4f',
+                                borderColor: '#ff4d4f',
+                                color: 'white'
+                            }}
+                        >
+                            停止
+                        </Button>
+                    )}
+                </div>
+            )}
 
             {/* Error display */}
             {error && (

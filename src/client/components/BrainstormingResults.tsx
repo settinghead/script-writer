@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Typography, Button, Spin, Alert, Progress } from 'antd';
 import { StopOutlined, BulbOutlined } from '@ant-design/icons';
+import { ThinkingIndicator } from './shared/ThinkingIndicator';
 import { IdeaWithTitle } from '../services/implementations/BrainstormingStreamingService';
 
 const { Text } = Typography;
@@ -10,6 +11,7 @@ interface BrainstormingResultsProps {
     onIdeaSelect: (idea: string) => void;
     isStreaming?: boolean;
     isConnecting?: boolean;
+    isThinking?: boolean;
     onStop?: () => void;
     onRegenerate?: () => void;
     error?: Error | null;
@@ -22,6 +24,7 @@ const BrainstormingResults: React.FC<BrainstormingResultsProps> = ({
     onIdeaSelect,
     isStreaming = false,
     isConnecting = false,
+    isThinking = false,
     onStop,
     onRegenerate,
     error,
@@ -99,8 +102,16 @@ const BrainstormingResults: React.FC<BrainstormingResultsProps> = ({
                 />
             )}
 
-            {/* Streaming progress */}
-            {(isStreaming || isConnecting) && (
+            {/* Thinking indicator */}
+            {isThinking && (
+                <ThinkingIndicator
+                    isThinking={isThinking}
+                    className="mb-4"
+                />
+            )}
+
+            {/* Streaming progress for non-thinking mode */}
+            {!isThinking && (isStreaming || isConnecting) && (
                 <div style={{ marginBottom: '16px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                         <Text style={{ color: '#1890ff' }}>
