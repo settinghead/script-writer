@@ -88,7 +88,7 @@ export class UnifiedStreamingService {
   constructor(
     private artifactRepo: ArtifactRepository,
     private transformRepo: TransformRepository
-  ) {}
+  ) { }
 
   /**
    * Get complete ideation run data from database
@@ -112,7 +112,7 @@ export class UnifiedStreamingService {
       const ideas = await this.getIdeasFromTransforms(userId, transforms);
 
       // 4. Get parameters
-      const { selectedPlatform, genrePaths, genreProportions, requirements, userInput } = 
+      const { selectedPlatform, genrePaths, genreProportions, requirements, userInput } =
         await this.getIdeationParameters(userId, transforms);
 
       // 5. Check if currently streaming
@@ -158,46 +158,44 @@ export class UnifiedStreamingService {
    */
   async getOutlineSession(userId: string, sessionId: string): Promise<OutlineData | null> {
     try {
-      // 1. Get session artifact
-      const sessionArtifacts = await this.artifactRepo.getArtifactsByType(userId, 'outline_session');
-      const sessionArtifact = sessionArtifacts.find(a => a.data.id === sessionId);
+      console.log(`[UnifiedStreamingService] Getting outline session ${sessionId} for user ${userId}`);
 
-      if (!sessionArtifact) {
+      // Get all transforms related to this outline session
+      const transforms = await this.transformRepo.getTransformsByOutlineSession(userId, sessionId);
+      console.log(`[UnifiedStreamingService] Found ${transforms.length} transforms for session ${sessionId}`);
+
+      if (transforms.length === 0) {
+        console.log(`[UnifiedStreamingService] No transforms found for session ${sessionId}`);
         return null;
       }
 
-      // 2. Get latest transform for this outline session
-      const transforms = await this.transformRepo.getTransformsByOutlineSession(userId, sessionId);
-      const latestTransform = transforms.length > 0 ? transforms[0] : null;
-
-      // 3. Get components from artifacts and LLM response
-      const components = await this.getOutlineComponents(userId, sessionId, transforms);
-
-      // 4. Get source artifact
+      // Get source artifact and parameters
       const sourceArtifact = await this.getOutlineSourceArtifact(userId, transforms);
-
-      // 5. Get parameters
       const { totalEpisodes, episodeDuration } = await this.getOutlineParameters(userId, transforms);
 
-      // 6. Check if currently streaming
-      let streamingData: { transformId: string; chunks: string[]; progress: number } | undefined = undefined;
-      let status: 'streaming' | 'completed' | 'failed' = 'completed';
+      // Get components (with user edits)
+      const components = await this.getOutlineComponents(userId, sessionId, transforms);
 
-      if (latestTransform) {
-        if (latestTransform.status === 'running') {
-          status = 'streaming';
-          const chunks = await this.transformRepo.getTransformChunks(latestTransform.id);
+      // Determine status
+      const hasRunningTransform = transforms.some(t => t.status === 'running');
+      const hasFailedTransform = transforms.some(t => t.status === 'failed');
+      const status = hasRunningTransform ? 'streaming' : hasFailedTransform ? 'failed' : 'completed';
+
+      // Get streaming data if there's an active transform
+      let streamingData: { transformId: string; chunks: string[]; progress: number } | undefined = undefined;
+      const runningTransform = transforms.find(t => t.status === 'running');
+      if (runningTransform) {
+        const streamingState = await this.getStreamingState(runningTransform.id);
+        if (streamingState) {
           streamingData = {
-            transformId: latestTransform.id,
-            chunks,
-            progress: this.calculateProgress(chunks)
+            transformId: streamingState.transformId,
+            chunks: streamingState.chunks,
+            progress: streamingState.progress
           };
-        } else if (latestTransform.status === 'failed') {
-          status = 'failed';
         }
       }
 
-      return {
+      const result: OutlineData = {
         id: sessionId,
         status,
         sourceArtifact: sourceArtifact || {
@@ -209,12 +207,60 @@ export class UnifiedStreamingService {
         streamingData,
         totalEpisodes,
         episodeDuration,
-        createdAt: sessionArtifact.created_at
+        createdAt: transforms[0]?.created_at || new Date().toISOString()
       };
 
+      console.log(`[UnifiedStreamingService] Returning outline session data for ${sessionId}:`, {
+        status: result.status,
+        hasComponents: !!result.components,
+        hasStreamingData: !!result.streamingData,
+        componentKeys: Object.keys(result.components || {})
+      });
+
+      return result;
     } catch (error) {
       console.error(`[UnifiedStreamingService] Error getting outline session ${sessionId}:`, error);
-      return null;
+      throw error;
+    }
+  }
+
+  // Get original outline data without user edits
+  async getOriginalOutlineData(userId: string, sessionId: string): Promise<OutlineData | null> {
+    try {
+      console.log(`[UnifiedStreamingService] Getting original outline data for session ${sessionId}`);
+
+      // Get all transforms related to this outline session
+      const transforms = await this.transformRepo.getTransformsByOutlineSession(userId, sessionId);
+
+      if (transforms.length === 0) {
+        return null;
+      }
+
+      // Get source artifact and parameters
+      const sourceArtifact = await this.getOutlineSourceArtifact(userId, transforms);
+      const { totalEpisodes, episodeDuration } = await this.getOutlineParameters(userId, transforms);
+
+      // Get ONLY original LLM components (no user edits)
+      const originalComponents = await this.getOriginalOutlineComponents(userId, transforms);
+
+      const result: OutlineData = {
+        id: sessionId,
+        status: 'completed', // Original data is always completed
+        sourceArtifact: sourceArtifact || {
+          id: '',
+          text: '',
+          type: 'unknown'
+        },
+        components: originalComponents,
+        totalEpisodes,
+        episodeDuration,
+        createdAt: transforms[0]?.created_at || new Date().toISOString()
+      };
+
+      return result;
+    } catch (error) {
+      console.error(`[UnifiedStreamingService] Error getting original outline data:`, error);
+      throw error;
     }
   }
 
@@ -229,7 +275,7 @@ export class UnifiedStreamingService {
       }
 
       const chunks = await this.transformRepo.getTransformChunks(transformId);
-      
+
       // Get results from artifacts if completed
       const results = [];
       if (transform.status === 'completed') {
@@ -262,11 +308,11 @@ export class UnifiedStreamingService {
   async addStreamingChunk(transformId: string, chunkData: string): Promise<void> {
     try {
       await this.transformRepo.addTransformChunk(transformId, chunkData);
-      
+
       // Broadcast chunk to connected clients
       const broadcaster = JobBroadcaster.getInstance();
       broadcaster.broadcast(transformId, chunkData);
-      
+
     } catch (error) {
       console.error(`[UnifiedStreamingService] Error adding chunk for ${transformId}:`, error);
       throw error;
@@ -279,17 +325,17 @@ export class UnifiedStreamingService {
   async completeStreaming(transformId: string): Promise<void> {
     try {
       await this.transformRepo.updateTransformStatus(transformId, 'completed');
-      
+
       // Broadcast completion
       const broadcaster = JobBroadcaster.getInstance();
       broadcaster.broadcast(transformId, 'stream:complete');
-      
+
       // Schedule cleanup after grace period
       setTimeout(async () => {
         await this.transformRepo.cleanupTransformChunks(transformId);
         broadcaster.cleanup(transformId);
       }, 5 * 60 * 1000); // 5 minutes
-      
+
     } catch (error) {
       console.error(`[UnifiedStreamingService] Error completing streaming for ${transformId}:`, error);
       throw error;
@@ -300,7 +346,7 @@ export class UnifiedStreamingService {
 
   private async getIdeasFromTransforms(userId: string, transforms: any[]): Promise<any[]> {
     const ideas = [];
-    
+
     for (const transform of transforms) {
       if (transform.status === 'completed') {
         const outputs = await this.transformRepo.getTransformOutputs(transform.id);
@@ -376,7 +422,7 @@ export class UnifiedStreamingService {
 
     // Override with user modifications (individual component artifacts)
     const relatedArtifacts = await this.getOutlineArtifacts(userId, sessionId);
-    
+
     const titleArtifact = relatedArtifacts.find(a => a.type === 'outline_title');
     if (titleArtifact) components.title = titleArtifact.data.title;
 
@@ -395,7 +441,7 @@ export class UnifiedStreamingService {
     for (const transform of transforms) {
       const inputs = await this.transformRepo.getTransformInputs(transform.id);
       const outputs = await this.transformRepo.getTransformOutputs(transform.id);
-      
+
       inputs.forEach(i => artifactIds.add(i.artifact_id));
       outputs.forEach(o => artifactIds.add(o.artifact_id));
     }
@@ -414,7 +460,7 @@ export class UnifiedStreamingService {
           if (artifact.type === 'brainstorm_idea') {
             ideationRunId = await this.findIdeationRunForArtifact(userId, artifact.id);
           }
-          
+
           return {
             id: artifact.id,
             text: artifact.data.idea_text || artifact.data.text || '',
@@ -431,19 +477,19 @@ export class UnifiedStreamingService {
   private async findIdeationRunForArtifact(userId: string, artifactId: string): Promise<string | null> {
     try {
       console.log(`[findIdeationRunForArtifact] Looking for ideation run for artifact: ${artifactId}`);
-      
+
       // Find transforms that produced this artifact
       const userTransforms = await this.transformRepo.getUserTransforms(userId);
       console.log(`[findIdeationRunForArtifact] Found ${userTransforms.length} user transforms`);
-      
+
       for (const transform of userTransforms) {
         const outputs = await this.transformRepo.getTransformOutputs(transform.id);
-        
+
         // If this transform produced the artifact
         if (outputs.some(o => o.artifact_id === artifactId)) {
           console.log(`[findIdeationRunForArtifact] Transform ${transform.id} produced artifact ${artifactId}`);
           console.log(`[findIdeationRunForArtifact] Execution context:`, transform.execution_context);
-          
+
           // Check if the transform has an ideation_run_id in execution context
           if (transform.execution_context?.ideation_run_id) {
             console.log(`[findIdeationRunForArtifact] Found ideation_run_id: ${transform.execution_context.ideation_run_id}`);
@@ -451,7 +497,7 @@ export class UnifiedStreamingService {
           }
         }
       }
-      
+
       console.log(`[findIdeationRunForArtifact] No ideation run found for artifact ${artifactId}`);
       return null;
     } catch (error) {
@@ -488,5 +534,57 @@ export class UnifiedStreamingService {
     // Simple progress calculation based on chunk count
     // Could be enhanced with more sophisticated logic
     return Math.min(chunks.length * 10, 100);
+  }
+
+  private async getOriginalOutlineComponents(userId: string, transforms: any[]): Promise<any> {
+    const components: any = {};
+
+    // Get ONLY from LLM response (no user edits)
+    for (const transform of transforms) {
+      if (transform.type === 'llm' && transform.status === 'completed') {
+        const outputs = await this.transformRepo.getTransformOutputs(transform.id);
+        for (const output of outputs) {
+          const artifact = await this.artifactRepo.getArtifact(output.artifact_id, userId);
+          if (artifact) {
+            // Map artifact types to component fields
+            switch (artifact.type) {
+              case 'outline_title':
+                components.title = artifact.data.title;
+                break;
+              case 'outline_genre':
+                components.genre = artifact.data.genre;
+                break;
+              case 'outline_selling_points':
+                components.selling_points = artifact.data.selling_points;
+                break;
+              case 'outline_setting':
+                components.setting = artifact.data.setting;
+                break;
+              case 'outline_synopsis':
+                components.synopsis = artifact.data.synopsis;
+                break;
+              case 'outline_target_audience':
+                components.target_audience = {
+                  demographic: artifact.data.demographic,
+                  core_themes: artifact.data.core_themes
+                };
+                break;
+              case 'outline_satisfaction_points':
+                components.satisfaction_points = artifact.data.satisfaction_points;
+                break;
+              case 'outline_characters':
+                components.characters = artifact.data.characters;
+                break;
+              case 'outline_synopsis_stages':
+                components.synopsis_stages = artifact.data.synopsis_stages;
+                break;
+            }
+          }
+        }
+        break; // Use most recent LLM response
+      }
+    }
+
+    return components;
   }
 } 

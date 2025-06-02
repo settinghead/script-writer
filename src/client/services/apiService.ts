@@ -89,6 +89,55 @@ class ApiService {
         }
     }
 
+    // Get original outline data (without user edits)
+    async getOriginalOutlineData(sessionId: string): Promise<OutlineSessionData> {
+        const response = await fetch(`${this.baseUrl}/outlines/${sessionId}/original`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch original outline data: ${response.status}`);
+        }
+        return response.json();
+    }
+
+    // Clear all user edits for a session
+    async clearOutlineEdits(sessionId: string): Promise<void> {
+        const response = await fetch(`${this.baseUrl}/outlines/${sessionId}/edits`, {
+            method: 'DELETE'
+        });
+        if (!response.ok) {
+            throw new Error(`Failed to clear outline edits: ${response.status}`);
+        }
+    }
+
+    // Episode generation
+    async generateEpisodes(params: {
+        outlineSessionId: string;
+        episode_count: number;
+        episode_duration: number;
+        generation_strategy: 'sequential' | 'batch';
+        custom_requirements?: string;
+        use_modified_outline: boolean;
+    }): Promise<{ sessionId: string; transformId: string }> {
+        const response = await fetch(`${this.baseUrl}/episodes/generate`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(params)
+        });
+        if (!response.ok) {
+            throw new Error(`Failed to generate episodes: ${response.status}`);
+        }
+        return response.json();
+    }
+
+    async getEpisodeSession(sessionId: string): Promise<any> {
+        const response = await fetch(`${this.baseUrl}/episodes/${sessionId}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch episode session: ${response.status}`);
+        }
+        return response.json();
+    }
+
     // Ideas/artifacts
     async getUserIdeas(): Promise<any[]> {
         const response = await fetch(`${this.baseUrl}/artifacts/ideas`);

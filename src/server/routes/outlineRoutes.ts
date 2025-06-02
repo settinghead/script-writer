@@ -132,16 +132,19 @@ export function createOutlineRoutes(
                 return res.status(401).json({ error: 'User not authenticated' });
             }
 
-            if (!value) {
+            if (value === undefined || value === null) {
                 return res.status(400).json({ error: 'Value is required' });
             }
 
-            // Create new user_input artifact with the edited content
-            const newArtifact = await artifactRepo.createArtifact(userId, 'user_input', {
-                text: value,
-                source: `edited_${componentType}`,
-                outline_session_id: sessionId
-            });
+            // Create specific edit artifact type instead of generic 'user_input'
+            const artifactType = `${componentType}_edit`;
+            const artifactData = {
+                [componentType]: value,
+                outline_session_id: sessionId,
+                edited_at: new Date().toISOString()
+            };
+
+            const newArtifact = await artifactRepo.createArtifact(userId, artifactType, artifactData);
 
             // Find the original component artifact for this session
             const outlineService = new OutlineService(artifactRepo, transformRepo, unifiedStreamingService);
@@ -194,6 +197,51 @@ export function createOutlineRoutes(
         }
     });
 
+    // Get original LLM data (without user edits)
+    router.get('/outlines/:id/original', authMiddleware.authenticate, async (req: any, res: any) => {
+        try {
+            const userId = req.user?.id;
+            const sessionId = req.params.id;
+
+            if (!userId) {
+                return res.status(401).json({ error: 'User not authenticated' });
+            }
+
+            const originalData = await unifiedStreamingService.getOriginalOutlineData(userId, sessionId);
+
+            if (!originalData) {
+                return res.status(404).json({ error: 'Original outline data not found' });
+            }
+
+            res.json(originalData);
+
+        } catch (error) {
+            console.error('Error getting original outline data:', error);
+            res.status(500).json({ error: 'Failed to get original outline data' });
+        }
+    });
+
+    // Clear all user edits for a session
+    router.delete('/outlines/:id/edits', authMiddleware.authenticate, async (req: any, res: any) => {
+        try {
+            const userId = req.user?.id;
+            const sessionId = req.params.id;
+
+            if (!userId) {
+                return res.status(401).json({ error: 'User not authenticated' });
+            }
+
+            const outlineService = new OutlineService(artifactRepo, transformRepo, unifiedStreamingService);
+            await outlineService.clearUserEdits(userId, sessionId);
+
+            res.json({ success: true, message: 'User edits cleared successfully' });
+
+        } catch (error) {
+            console.error('Error clearing user edits:', error);
+            res.status(500).json({ error: 'Failed to clear user edits' });
+        }
+    });
+
     // Check for active streaming job
     router.get('/outlines/:id/active-job', authMiddleware.authenticate, async (req: any, res: any) => {
         try {
@@ -210,7 +258,7 @@ export function createOutlineRoutes(
             // Find active transforms for this outline session
             const userTransforms = await transformRepo.getUserTransforms(userId);
             console.log(`[OutlineRoutes] Found ${userTransforms.length} transforms for user ${userId}`);
-            
+
             const activeTransform = userTransforms.find(t =>
                 t.execution_context?.outline_session_id === sessionId &&
                 t.status === 'running'

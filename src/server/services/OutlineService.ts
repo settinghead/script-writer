@@ -140,7 +140,7 @@ export class OutlineService {
         try {
             // Use unified streaming service to get data from database
             const outlineData = await this.unifiedStreamingService.getOutlineSession(userId, sessionId);
-            
+
             if (!outlineData) {
                 return null;
             }
@@ -240,21 +240,58 @@ export class OutlineService {
         return sortedSessions;
     }
 
-    // Delete outline session
+    // Delete outline session and all related artifacts
     async deleteOutlineSession(userId: string, sessionId: string): Promise<boolean> {
-        // Find the session artifact
-        const sessionArtifacts = await this.artifactRepo.getArtifactsByType(userId, 'outline_session');
-        const sessionArtifact = sessionArtifacts.find(a => a.data.id === sessionId);
+        try {
+            // Validate ownership first
+            await this.validateSessionOwnership(userId, sessionId);
 
-        if (!sessionArtifact) {
+            // Get all related artifacts
+            const relatedArtifacts = await this.getOutlineArtifacts(userId, sessionId);
+
+            // Delete all related artifacts
+            for (const artifact of relatedArtifacts) {
+                await this.artifactRepo.deleteArtifact(artifact.id, userId);
+            }
+
+            return true;
+        } catch (error) {
+            console.error(`Error deleting outline session ${sessionId}:`, error);
             return false;
         }
+    }
 
-        // No cache to invalidate
+    // Clear all user edits for an outline session
+    async clearUserEdits(userId: string, sessionId: string): Promise<void> {
+        try {
+            // Validate ownership first
+            await this.validateSessionOwnership(userId, sessionId);
 
-        // Note: In a production system, we might want to mark artifacts as deleted rather than actually deleting them
-        // For now, we'll delete the session artifact (related artifacts will remain for traceability)
-        return await this.artifactRepo.deleteArtifact(sessionArtifact.id, userId);
+            // Define edit artifact types
+            const editTypes = [
+                'title_edit', 'genre_edit', 'selling_points_edit', 'setting_edit',
+                'synopsis_edit', 'target_audience_edit', 'satisfaction_points_edit',
+                'characters_edit', 'synopsis_stages_edit'
+            ];
+
+            // Get all edit artifacts for this session
+            for (const editType of editTypes) {
+                const editArtifacts = await this.artifactRepo.getArtifactsByType(userId, editType);
+                const sessionEdits = editArtifacts.filter(a =>
+                    a.data.outline_session_id === sessionId
+                );
+
+                // Delete each edit artifact
+                for (const editArtifact of sessionEdits) {
+                    await this.artifactRepo.deleteArtifact(editArtifact.id, userId);
+                }
+            }
+
+            console.log(`[OutlineService] Cleared user edits for session ${sessionId}`);
+        } catch (error) {
+            console.error(`[OutlineService] Error clearing user edits for session ${sessionId}:`, error);
+            throw error;
+        }
     }
 
     // Get lineage data for visualization

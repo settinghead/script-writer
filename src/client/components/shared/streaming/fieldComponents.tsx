@@ -1,7 +1,8 @@
-import React from 'react';
-import { Card, Typography, Tag, Input, Row, Col } from 'antd';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Card, Typography, Tag, Input, Row, Col, Spin } from 'antd';
 import { FieldProps } from './types';
 import TextareaAutosize from 'react-textarea-autosize';
+import { debounce } from 'lodash';
 
 const { Text, Title } = Typography;
 
@@ -350,18 +351,18 @@ export const CharacterCard: React.FC<FieldProps> = ({ value }) => {
         <Row gutter={8}>
           <Col span={14}>
             {character.name && (
-              <TextField 
-                value={character.name} 
-                path="name" 
+              <TextField
+                value={character.name}
+                path="name"
                 label="姓名"
               />
             )}
           </Col>
           <Col span={10}>
             {character.type && (
-              <TextField 
-                value={character.type} 
-                path="type" 
+              <TextField
+                value={character.type}
+                path="type"
                 label="类型"
               />
             )}
@@ -374,27 +375,27 @@ export const CharacterCard: React.FC<FieldProps> = ({ value }) => {
         <Row gutter={6}>
           <Col span={8}>
             {character.age && (
-              <TextField 
-                value={character.age} 
-                path="age" 
+              <TextField
+                value={character.age}
+                path="age"
                 label="年龄"
               />
             )}
           </Col>
           <Col span={8}>
             {character.gender && (
-              <TextField 
-                value={character.gender} 
-                path="gender" 
+              <TextField
+                value={character.gender}
+                path="gender"
                 label="性别"
               />
             )}
           </Col>
           <Col span={8}>
             {character.occupation && (
-              <TextField 
-                value={character.occupation} 
-                path="occupation" 
+              <TextField
+                value={character.occupation}
+                path="occupation"
                 label="职业"
               />
             )}
@@ -405,9 +406,9 @@ export const CharacterCard: React.FC<FieldProps> = ({ value }) => {
       {/* Description */}
       {character.description && (
         <div style={{ marginBottom: '8px' }}>
-          <TextAreaField 
-            value={character.description} 
-            path="description" 
+          <TextAreaField
+            value={character.description}
+            path="description"
             label="描述"
           />
         </div>
@@ -416,9 +417,9 @@ export const CharacterCard: React.FC<FieldProps> = ({ value }) => {
       {/* Personality Traits */}
       {character.personality_traits && (
         <div style={{ marginBottom: '8px' }}>
-          <TagListField 
-            value={character.personality_traits} 
-            path="personality_traits" 
+          <TagListField
+            value={character.personality_traits}
+            path="personality_traits"
             label="性格特点"
           />
         </div>
@@ -427,9 +428,9 @@ export const CharacterCard: React.FC<FieldProps> = ({ value }) => {
       {/* Character Arc */}
       {character.character_arc && (
         <div>
-          <TextAreaField 
-            value={character.character_arc} 
-            path="character_arc" 
+          <TextAreaField
+            value={character.character_arc}
+            path="character_arc"
             label="成长轨迹"
           />
         </div>
@@ -441,10 +442,10 @@ export const CharacterCard: React.FC<FieldProps> = ({ value }) => {
 /**
  * Idea card component for brainstorming
  */
-export const IdeaCard: React.FC<FieldProps & { onSelect?: () => void; isSelected?: boolean }> = ({ 
-  value, 
+export const IdeaCard: React.FC<FieldProps & { onSelect?: () => void; isSelected?: boolean }> = ({
+  value,
   onSelect,
-  isSelected 
+  isSelected
 }) => {
   const idea = value || {};
 
@@ -513,4 +514,219 @@ if (typeof document !== 'undefined') {
   const styleElement = document.createElement('style');
   styleElement.textContent = styles;
   document.head.appendChild(styleElement);
-} 
+}
+
+// Extended field props for auto-save components
+interface ExtendedFieldProps extends FieldProps {
+  disabled?: boolean;
+  style?: React.CSSProperties;
+  placeholder?: string;
+}
+
+// Auto-save textarea field with resize
+export const AutoSaveTextAreaField: React.FC<ExtendedFieldProps & {
+  label?: string;
+  onSave?: (value: string) => Promise<void>;
+  debounceMs?: number;
+}> = ({
+  value,
+  onSave,
+  debounceMs = 1000,
+  label,
+  placeholder,
+  disabled = false,
+  style,
+  ...props
+}) => {
+    const [localValue, setLocalValue] = useState(value || '');
+    const [isSaving, setIsSaving] = useState(false);
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
+
+    // Update local value when prop changes
+    useEffect(() => {
+      setLocalValue(value || '');
+      setHasUnsavedChanges(false);
+    }, [value]);
+
+    // Debounced save function
+    const debouncedSave = useMemo(
+      () => debounce(async (newValue: string) => {
+        if (onSave && newValue !== value) {
+          setIsSaving(true);
+          setSaveError(null);
+          try {
+            await onSave(newValue);
+            setHasUnsavedChanges(false);
+          } catch (error) {
+            console.error('Auto-save failed:', error);
+            setSaveError('保存失败');
+          } finally {
+            setIsSaving(false);
+          }
+        }
+      }, debounceMs),
+      [onSave, value, debounceMs]
+    );
+
+    // Auto-save on value change
+    useEffect(() => {
+      if (localValue !== value) {
+        setHasUnsavedChanges(true);
+        debouncedSave(localValue);
+      }
+    }, [localValue, debouncedSave, value]);
+
+    // Cleanup debounce on unmount
+    useEffect(() => {
+      return () => {
+        debouncedSave.cancel();
+      };
+    }, [debouncedSave]);
+
+    return (
+      <div style={{ marginBottom: '8px', ...style }}>
+        {label && (
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
+            <Text strong style={{ color: '#fff' }}>
+              {label}
+            </Text>
+            {isSaving && (
+              <Spin size="small" style={{ marginLeft: '8px' }} />
+            )}
+            {hasUnsavedChanges && !isSaving && (
+              <Text type="secondary" style={{ marginLeft: '8px', fontSize: '12px' }}>
+                未保存
+              </Text>
+            )}
+            {saveError && (
+              <Text type="danger" style={{ marginLeft: '8px', fontSize: '12px' }}>
+                {saveError}
+              </Text>
+            )}
+          </div>
+        )}
+
+        <TextareaAutosize
+          value={localValue}
+          onChange={(e) => setLocalValue(e.target.value)}
+          placeholder={placeholder}
+          disabled={disabled}
+          minRows={3}
+          maxRows={20}
+          style={{
+            width: '100%',
+            backgroundColor: '#1f1f1f',
+            border: '1px solid #404040',
+            borderRadius: '6px',
+            color: '#fff',
+            padding: '8px 12px',
+            fontSize: '14px',
+            lineHeight: '1.5715',
+            resize: 'none',
+            outline: 'none',
+            fontFamily: 'inherit'
+          }}
+        />
+      </div>
+    );
+  };
+
+// Single-line auto-save field
+export const AutoSaveTextField: React.FC<ExtendedFieldProps & {
+  label?: string;
+  onSave?: (value: string) => Promise<void>;
+  debounceMs?: number;
+}> = ({
+  value,
+  onSave,
+  debounceMs = 1000,
+  label,
+  placeholder,
+  disabled = false,
+  style,
+  ...props
+}) => {
+    const [localValue, setLocalValue] = useState(value || '');
+    const [isSaving, setIsSaving] = useState(false);
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
+
+    // Update local value when prop changes
+    useEffect(() => {
+      setLocalValue(value || '');
+      setHasUnsavedChanges(false);
+    }, [value]);
+
+    // Debounced save function
+    const debouncedSave = useMemo(
+      () => debounce(async (newValue: string) => {
+        if (onSave && newValue !== value) {
+          setIsSaving(true);
+          setSaveError(null);
+          try {
+            await onSave(newValue);
+            setHasUnsavedChanges(false);
+          } catch (error) {
+            console.error('Auto-save failed:', error);
+            setSaveError('保存失败');
+          } finally {
+            setIsSaving(false);
+          }
+        }
+      }, debounceMs),
+      [onSave, value, debounceMs]
+    );
+
+    // Auto-save on value change
+    useEffect(() => {
+      if (localValue !== value) {
+        setHasUnsavedChanges(true);
+        debouncedSave(localValue);
+      }
+    }, [localValue, debouncedSave, value]);
+
+    // Cleanup debounce on unmount
+    useEffect(() => {
+      return () => {
+        debouncedSave.cancel();
+      };
+    }, [debouncedSave]);
+
+    return (
+      <div style={{ marginBottom: '8px', ...style }}>
+        {label && (
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
+            <Text strong style={{ color: '#fff' }}>
+              {label}
+            </Text>
+            {isSaving && (
+              <Spin size="small" style={{ marginLeft: '8px' }} />
+            )}
+            {hasUnsavedChanges && !isSaving && (
+              <Text type="secondary" style={{ marginLeft: '8px', fontSize: '12px' }}>
+                未保存
+              </Text>
+            )}
+            {saveError && (
+              <Text type="danger" style={{ marginLeft: '8px', fontSize: '12px' }}>
+                {saveError}
+              </Text>
+            )}
+          </div>
+        )}
+
+        <Input
+          value={localValue}
+          onChange={(e) => setLocalValue(e.target.value)}
+          placeholder={placeholder}
+          disabled={disabled}
+          style={{
+            backgroundColor: '#1f1f1f',
+            borderColor: '#404040',
+            color: '#fff'
+          }}
+        />
+      </div>
+    );
+  }; 
