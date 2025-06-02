@@ -37,7 +37,7 @@ export const OutlineTab: React.FC = () => {
 
     // Derived streaming state
     const isStreaming = streamingStatus === 'streaming';
-    const isConnecting = streamingStatus === 'idle' && transformId;
+    const isConnecting = !!(streamingStatus === 'idle' && transformId);
 
     // Load session data when ID changes
     useEffect(() => {
@@ -236,7 +236,7 @@ export const OutlineTab: React.FC = () => {
 
     // Main outline view
     return (
-        <div style={{ maxWidth: '1200px', margin: '0 auto', overflowY: 'auto', padding: '20px' }}>
+        <div style={{ width: '900px', maxWidth: "100%", margin: '0 auto', overflowY: 'auto', padding: '20px' }}>
             {/* Header */}
             <div style={{ marginBottom: '20px' }}>
                 <div style={{

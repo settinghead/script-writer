@@ -280,7 +280,7 @@ export class UnifiedStreamingService {
       const chunks = await this.transformRepo.getTransformChunks(transformId);
 
       // Get results from artifacts if completed
-      const results = [];
+      const results: any[] = [];
       if (transform.status === 'completed') {
         const outputs = await this.transformRepo.getTransformOutputs(transformId);
         for (const output of outputs) {
@@ -348,7 +348,7 @@ export class UnifiedStreamingService {
   // Private helper methods
 
   private async getIdeasFromTransforms(userId: string, transforms: any[]): Promise<any[]> {
-    const ideas = [];
+    const ideas: any[] = [];
 
     for (const transform of transforms) {
       if (transform.status === 'completed') {
@@ -483,7 +483,7 @@ export class UnifiedStreamingService {
         const artifact = await this.artifactRepo.getArtifact(input.artifact_id, userId);
         if (artifact && (artifact.type === 'brainstorm_idea' || artifact.type === 'user_input')) {
           // If it's a brainstorm_idea, try to find the originating ideation run
-          let ideationRunId = null;
+          let ideationRunId: string | null = null;
           if (artifact.type === 'brainstorm_idea') {
             ideationRunId = await this.findIdeationRunForArtifact(userId, artifact.id);
           }

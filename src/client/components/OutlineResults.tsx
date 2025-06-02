@@ -34,7 +34,10 @@ interface OutlineResultsProps {
         satisfaction_points?: string[];
         setting?: string;
         synopsis?: string;
-        synopsis_stages?: string[];
+        synopsis_stages?: Array<{
+            stageSynopsis: string;
+            numberOfEpisodes: number;
+        }>;
         characters?: OutlineCharacter[];
     };
     status: 'active' | 'completed' | 'failed';
@@ -245,7 +248,7 @@ export const OutlineResults: React.FC<OutlineResultsProps> = ({
                 {/* Synopsis Stages */}
                 <Col span={24}>
                     <EditableTextField
-                        value={components.synopsis_stages ? components.synopsis_stages.join('\n\n') : ''}
+                        value={components.synopsis_stages ? components.synopsis_stages.map(stage => stage.stageSynopsis).join('\n\n') : ''}
                         artifactId={`outline_synopsis_stages_${sessionId}`}
                         artifactType="outline_synopsis_stages"
                         onChange={(newValue, newArtifactId) => handleFieldEdit('synopsis_stages', newValue, newArtifactId)}
