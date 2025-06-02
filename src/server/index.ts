@@ -701,6 +701,10 @@ app.put("/api/artifacts/:artifactId",
 
 app.use('/api', createOutlineRoutes(authMiddleware, unifiedStreamingService, artifactRepo, transformRepo));
 
+// Mount episode routes
+const { createEpisodeRoutes } = require('./routes/episodes');
+app.use('/api/episodes', createEpisodeRoutes(artifactRepo, transformRepo, authMiddleware));
+
 // ========== STREAMING ENDPOINTS ==========
 
 // Streaming endpoint for plot generation
@@ -857,7 +861,7 @@ app.get("/api/streaming/transform/:transformId", authMiddleware.authenticate, as
 
     // Verify ownership
     const transform = await transformRepo.getTransform(transformId, user.id);
-    
+
     if (!transform) {
       return res.status(403).json({ error: 'Transform not found or unauthorized' });
     }
@@ -919,7 +923,7 @@ app.get("/api/streaming/transform/:transformId", authMiddleware.authenticate, as
       }
 
       console.log(`[Streaming] Client connected to transform ${transformId}, streaming job should be running or will start shortly`);
-      
+
     } else {
       // Job failed or cancelled - send error in SSE format
       res.writeHead(200, {

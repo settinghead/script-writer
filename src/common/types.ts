@@ -112,6 +112,40 @@ export interface OutlineSynopsisStagesV1 {
     }>;
 }
 
+// New episode generation types
+export interface OutlineSynopsisStageV1 {
+    stageNumber: number;
+    stageSynopsis: string;
+    numberOfEpisodes: number;
+    outlineSessionId: string;
+}
+
+export interface EpisodeGenerationSessionV1 {
+    id: string;
+    outlineSessionId: string;
+    stageArtifactId: string;
+    status: 'active' | 'completed' | 'failed';
+    totalEpisodes: number;
+    episodeDuration: number;
+}
+
+export interface EpisodeSynopsisV1 {
+    episodeNumber: number;
+    title: string;
+    briefSummary: string;
+    keyEvents: string[];
+    hooks: string;
+    stageArtifactId: string;
+    episodeGenerationSessionId: string;
+}
+
+export interface EpisodeGenerationParamsV1 {
+    stageArtifactId: string;
+    numberOfEpisodes: number;
+    stageSynopsis: string;
+    customRequirements?: string;
+}
+
 export interface OutlineCharacter {
     name: string;
     type: 'male_lead' | 'female_lead' | 'male_second' | 'female_second' | 'male_supporting' | 'female_supporting' | 'antagonist' | 'other';

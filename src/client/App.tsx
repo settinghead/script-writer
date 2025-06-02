@@ -14,6 +14,7 @@ import HomePage from './components/HomePage';
 import { OutlineTab } from './components/OutlineTab';
 import ChatTab from './components/ChatTab';
 import ScriptTab from './components/ScriptTab';
+import { EpisodeGenerationPage } from './components/EpisodeGenerationPage';
 import Breadcrumb from './components/Breadcrumb';
 import StagewiseToolbar from './components/StagewiseToolbar';
 
@@ -226,6 +227,16 @@ const AppContent: React.FC = () => {
                     <ScriptTab />
                   </ProtectedRoute>
                 } />
+                <Route path="/scripts/:scriptId" element={
+                  <ProtectedRoute>
+                    <EpisodeGenerationPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/episode-generation" element={
+                  <ProtectedRoute>
+                    <EpisodeGenerationPage />
+                  </ProtectedRoute>
+                } />
                 <Route path="/" element={<Navigate to="/ideations" replace />} />
               </Routes>
             </div>
@@ -280,6 +291,16 @@ const AppContent: React.FC = () => {
                 <Route path="/script" element={
                   <ProtectedRoute>
                     <ScriptTab />
+                  </ProtectedRoute>
+                } />
+                <Route path="/scripts/:scriptId" element={
+                  <ProtectedRoute>
+                    <EpisodeGenerationPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/episode-generation" element={
+                  <ProtectedRoute>
+                    <EpisodeGenerationPage />
                   </ProtectedRoute>
                 } />
                 <Route path="/" element={<Navigate to="/ideations" replace />} />

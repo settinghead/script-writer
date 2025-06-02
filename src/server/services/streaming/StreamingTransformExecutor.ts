@@ -875,20 +875,41 @@ export class StreamingTransformExecutor {
                 ]);
             }
 
-            // 9. Synopsis Stages
+            // 9. Synopsis Stages - Create individual stage artifacts
             if (outlineData.synopsis_stages && Array.isArray(outlineData.synopsis_stages)) {
-                const synopsisStagesArtifact = await this.artifactRepo.createArtifact(
-                    userId,
-                    'outline_synopsis_stages',
-                    {
-                        synopsis_stages: outlineData.synopsis_stages
-                    },
-                    'v1',
-                    { transform_id: transform.id }
-                );
-                await this.transformRepo.addTransformOutputs(transform.id, [
-                    { artifactId: synopsisStagesArtifact.id, outputRole: 'synopsis_stages' }
-                ]);
+                // Get outline session ID from transform context
+                const outlineSessionId = transform.execution_context?.outline_session_id;
+
+                if (!outlineSessionId) {
+                    console.warn('No outline session ID found in transform context, skipping stage artifacts creation');
+                } else {
+                    // Create individual stage artifacts
+                    for (let i = 0; i < outlineData.synopsis_stages.length; i++) {
+                        const stage = outlineData.synopsis_stages[i];
+
+                        const stageArtifact = await this.artifactRepo.createArtifact(
+                            userId,
+                            'outline_synopsis_stage',
+                            {
+                                stageNumber: i + 1,
+                                stageSynopsis: stage.stageSynopsis || stage,
+                                numberOfEpisodes: stage.numberOfEpisodes || 1,
+                                outlineSessionId: outlineSessionId
+                            },
+                            'v1',
+                            {
+                                transform_id: transform.id,
+                                stage_number: i + 1
+                            }
+                        );
+
+                        await this.transformRepo.addTransformOutputs(transform.id, [
+                            { artifactId: stageArtifact.id, outputRole: 'synopsis_stage' }
+                        ]);
+
+                        console.log(`Created stage artifact ${stageArtifact.id} for stage ${i + 1}`);
+                    }
+                }
             }
 
             // Note: Outline session status is tracked via transform status, no need to create duplicate artifact
@@ -923,7 +944,7 @@ export class StreamingTransformExecutor {
         const jobParams = paramsArtifact.data;
 
         // Get source artifact if needed
-        let sourceArtifact = null;
+        let sourceArtifact: Artifact | null = null;
         if (sourceInput) {
             sourceArtifact = await this.artifactRepo.getArtifact(sourceInput.artifact_id, transform.user_id);
             if (!sourceArtifact) {

@@ -179,6 +179,40 @@ export interface OutlineSynopsisStagesV1 {
     }>;
 }
 
+// New episode generation artifact types
+export interface OutlineSynopsisStageV1 {
+    stageNumber: number;
+    stageSynopsis: string;
+    numberOfEpisodes: number;
+    outlineSessionId: string;
+}
+
+export interface EpisodeGenerationSessionV1 {
+    id: string;
+    outlineSessionId: string;
+    stageArtifactId: string;
+    status: 'active' | 'completed' | 'failed';
+    totalEpisodes: number;
+    episodeDuration: number;
+}
+
+export interface EpisodeSynopsisV1 {
+    episodeNumber: number;
+    title: string;
+    briefSummary: string;
+    keyEvents: string[];  // 2-3 key events per episode
+    hooks: string;        // End-of-episode hook to next episode
+    stageArtifactId: string;
+    episodeGenerationSessionId: string;
+}
+
+export interface EpisodeGenerationParamsV1 {
+    stageArtifactId: string;
+    numberOfEpisodes: number;
+    stageSynopsis: string;
+    customRequirements?: string;
+}
+
 // Workflow context for carrying parameters between stages
 export interface WorkflowContextV1 {
     totalEpisodes?: number;
@@ -229,6 +263,14 @@ export function validateArtifactData(type: string, typeVersion: string, data: an
             return isOutlineSatisfactionPointsV1(data);
         case 'outline_synopsis_stages:v1':
             return isOutlineSynopsisStagesV1(data);
+        case 'outline_synopsis_stage:v1':
+            return isOutlineSynopsisStageV1(data);
+        case 'episode_generation_session:v1':
+            return isEpisodeGenerationSessionV1(data);
+        case 'episode_synopsis:v1':
+            return isEpisodeSynopsisV1(data);
+        case 'episode_generation_params:v1':
+            return isEpisodeGenerationParamsV1(data);
         default:
             return false;
     }
@@ -363,4 +405,41 @@ function isOutlineCharacter(data: any): data is OutlineCharacter {
 function isOutlineSettingV1(data: any): data is OutlineSettingV1 {
     return typeof data === 'object' &&
         typeof data.setting === 'string';
+}
+
+function isOutlineSynopsisStageV1(data: any): data is OutlineSynopsisStageV1 {
+    return typeof data === 'object' &&
+        typeof data.stageNumber === 'number' &&
+        typeof data.stageSynopsis === 'string' &&
+        typeof data.numberOfEpisodes === 'number' &&
+        typeof data.outlineSessionId === 'string';
+}
+
+function isEpisodeGenerationSessionV1(data: any): data is EpisodeGenerationSessionV1 {
+    return typeof data === 'object' &&
+        typeof data.id === 'string' &&
+        typeof data.outlineSessionId === 'string' &&
+        typeof data.stageArtifactId === 'string' &&
+        ['active', 'completed', 'failed'].includes(data.status) &&
+        typeof data.totalEpisodes === 'number' &&
+        typeof data.episodeDuration === 'number';
+}
+
+function isEpisodeSynopsisV1(data: any): data is EpisodeSynopsisV1 {
+    return typeof data === 'object' &&
+        typeof data.episodeNumber === 'number' &&
+        typeof data.title === 'string' &&
+        typeof data.briefSummary === 'string' &&
+        Array.isArray(data.keyEvents) &&
+        typeof data.hooks === 'string' &&
+        typeof data.stageArtifactId === 'string' &&
+        typeof data.episodeGenerationSessionId === 'string';
+}
+
+function isEpisodeGenerationParamsV1(data: any): data is EpisodeGenerationParamsV1 {
+    return typeof data === 'object' &&
+        typeof data.stageArtifactId === 'string' &&
+        typeof data.numberOfEpisodes === 'number' &&
+        typeof data.stageSynopsis === 'string' &&
+        (data.customRequirements === undefined || typeof data.customRequirements === 'string');
 } 

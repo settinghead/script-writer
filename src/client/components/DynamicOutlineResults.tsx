@@ -167,7 +167,7 @@ export const DynamicOutlineResults: React.FC<DynamicOutlineResultsProps> = ({
     };
 
     const handleGenerateEpisodes = () => {
-        navigate(`/episodes/generate?outlineId=${sessionId}`);
+        navigate(`/scripts/${sessionId}`);
     };
 
     const hasModifications = modifiedFields.size > 0;
@@ -349,7 +349,7 @@ export const DynamicOutlineResults: React.FC<DynamicOutlineResultsProps> = ({
                             borderColor: '#52c41a'
                         }}
                     >
-                        生成剧集
+                        开始每集撰写
                     </Button>
                 </Col>
             </Row>
