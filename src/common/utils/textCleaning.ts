@@ -21,10 +21,10 @@ export class ConsoleSpinner {
 
     start(message: string = 'AI thinking'): void {
         if (this.isSpinning) return;
-        
+
         this.isSpinning = true;
         this.currentIndex = 0;
-        
+
         // Only show spinner in development/server environment
         if (typeof process !== 'undefined' && process.stdout && process.stdout.write) {
             this.intervalId = setInterval(() => {
@@ -37,14 +37,14 @@ export class ConsoleSpinner {
 
     stop(): void {
         if (!this.isSpinning) return;
-        
+
         this.isSpinning = false;
-        
+
         if (this.intervalId) {
             clearInterval(this.intervalId);
             this.intervalId = null;
         }
-        
+
         // Clear the spinner line
         if (typeof process !== 'undefined' && process.stdout && process.stdout.write) {
             process.stdout.write('\r' + ' '.repeat(50) + '\r');
@@ -94,14 +94,14 @@ export function removeThinkTags(content: string): string {
  */
 export function removeCodeBlockWrappers(content: string): string {
     let cleaned = content.trim();
-    
+
     // Remove ```json and ``` wrappers if present
     if (cleaned.startsWith('```json')) {
         cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '');
     } else if (cleaned.startsWith('```')) {
         cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
     }
-    
+
     return cleaned;
 }
 
@@ -111,18 +111,18 @@ export function removeCodeBlockWrappers(content: string): string {
  */
 export function cleanLLMContent(content: string): string {
     if (!content) return content;
-    
+
     let cleaned = content;
-    
+
     // 1. Remove think tags first (before other processing)
     cleaned = removeThinkTags(cleaned);
-    
+
     // 2. Remove code block wrappers
     cleaned = removeCodeBlockWrappers(cleaned);
-    
+
     // 3. Trim whitespace
     cleaned = cleaned.trim();
-    
+
     return cleaned;
 }
 
@@ -131,19 +131,19 @@ export function cleanLLMContent(content: string): string {
  * Returns cleaned content and think mode status
  */
 export function processStreamingContent(
-    content: string, 
+    content: string,
     previousContent: string = ''
-): { 
-    cleanedContent: string; 
-    isThinking: boolean; 
-    thinkingStarted: boolean; 
-    thinkingEnded: boolean; 
+): {
+    cleanedContent: string;
+    isThinking: boolean;
+    thinkingStarted: boolean;
+    thinkingEnded: boolean;
 } {
     const wasThinking = isInsideThinkTags(previousContent);
     const isThinking = isInsideThinkTags(content);
     const thinkingStarted = !wasThinking && isThinking;
     const thinkingEnded = wasThinking && !isThinking;
-    
+
     return {
         cleanedContent: cleanLLMContent(content),
         isThinking,
@@ -158,18 +158,18 @@ export function processStreamingContent(
  */
 export function extractJSONFromContent(content: string): string {
     if (!content?.trim()) return content;
-    
+
     let cleaned = content.trim();
-    
+
     // First, remove think tags
     cleaned = removeThinkTags(cleaned);
-    
+
     // Check if content is wrapped in code blocks
     const codeBlockMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
     if (codeBlockMatch) {
         cleaned = codeBlockMatch[1].trim();
     }
-    
+
     // Try to extract JSON portion when followed by additional content
     // Look for the end of a complete JSON object or array
     let jsonEndIndex = -1;
@@ -178,27 +178,27 @@ export function extractJSONFromContent(content: string): string {
     let inString = false;
     let escaped = false;
     let jsonStarted = false;
-    
+
     for (let i = 0; i < cleaned.length; i++) {
         const char = cleaned[i];
-        
+
         if (escaped) {
             escaped = false;
             continue;
         }
-        
+
         if (char === '\\') {
             escaped = true;
             continue;
         }
-        
+
         if (char === '"' && !escaped) {
             inString = !inString;
             continue;
         }
-        
+
         if (inString) continue;
-        
+
         // Track JSON structure boundaries
         if (char === '{') {
             braceCount++;
@@ -220,12 +220,12 @@ export function extractJSONFromContent(content: string): string {
             }
         }
     }
-    
+
     // If we found a complete JSON structure, extract just that part
     if (jsonEndIndex >= 0) {
         cleaned = cleaned.substring(0, jsonEndIndex + 1);
     }
-    
+
     return cleaned.trim();
 }
 
@@ -237,16 +237,16 @@ export async function robustJSONParse(content: string): Promise<any> {
     if (!content?.trim()) {
         throw new Error('Empty content provided for JSON parsing');
     }
-    
+
     // Step 1: Try to extract clean JSON
     const cleanJSON = extractJSONFromContent(content);
-    
+
     // Step 2: Try normal JSON parsing first
     try {
         return JSON.parse(cleanJSON);
     } catch (parseError) {
         console.log('Initial JSON parse failed, attempting repair...');
-        
+
         // Step 3: Try jsonrepair on the extracted JSON
         try {
             const { jsonrepair } = await import('jsonrepair');
@@ -254,7 +254,7 @@ export async function robustJSONParse(content: string): Promise<any> {
             return JSON.parse(repairedJSON);
         } catch (repairError) {
             console.log('JSON repair failed on extracted JSON');
-            
+
             // Step 4: Try jsonrepair on the original cleaned content as a last resort
             try {
                 const { jsonrepair } = await import('jsonrepair');
@@ -267,7 +267,7 @@ export async function robustJSONParse(content: string): Promise<any> {
                 console.error('- Original content length:', content.length);
                 console.error('- Cleaned JSON length:', cleanJSON.length);
                 console.error('- Cleaned JSON preview:', cleanJSON.substring(0, 200));
-                throw new Error(`Failed to parse JSON after all attempts. Original error: ${parseError.message}`);
+                throw new Error(`Failed to parse JSON after all attempts. Original error: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
             }
         }
     }

@@ -7,7 +7,11 @@ import {
   CharacterCard,
   IdeaCard,
   AutoSaveTextField,
-  AutoSaveTextAreaField
+  AutoSaveTextAreaField,
+  EditableTextListField,
+  EditableTagListField,
+  EditableCharacterCard,
+  EditableCharacterArrayField
 } from './fieldComponents';
 
 /**
@@ -40,7 +44,7 @@ export const outlineFieldRegistry: FieldDefinition[] = [
   },
   {
     path: "target_audience.core_themes",
-    component: TagListField,
+    component: EditableTagListField,
     label: "核心主题",
     group: "target_audience",
     order: 4
@@ -54,10 +58,10 @@ export const outlineFieldRegistry: FieldDefinition[] = [
     order: 5
   },
 
-  // 5. Satisfaction points
+  // 5. Satisfaction points - now editable
   {
     path: "satisfaction_points",
-    component: TextListField,
+    component: EditableTextListField,
     label: "情感爽点",
     order: 6
   },
@@ -71,28 +75,23 @@ export const outlineFieldRegistry: FieldDefinition[] = [
   },
   {
     path: "setting.key_scenes",
-    component: TextListField,
+    component: EditableTextListField,
     label: "关键场景",
     order: 8
   },
 
-  // 7. Characters (matches LLM streaming order)
+  // 7. Characters - now editable array
   {
-    path: "characters[*]",
-    component: CharacterCard,
-    containerType: 'card',
-    extractKey: (char) => char?.name || `char-${Date.now()}`,
-    order: 9,
-    layout: {
-      columns: { xs: 24, sm: 24, md: 12, lg: 12, xl: 12 }, // Two columns on medium+ screens
-      compact: true
-    }
+    path: "characters",
+    component: EditableCharacterArrayField,
+    label: "角色",
+    order: 9
   },
 
-  // 8. Synopsis stages (last, matches LLM streaming order)
+  // 8. Synopsis stages - now editable
   {
     path: "synopsis_stages",
-    component: TextListField,
+    component: EditableTextListField,
     label: "分段故事梗概",
     order: 10
   },

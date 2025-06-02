@@ -180,7 +180,7 @@ export class StreamingTransformExecutor {
 
                     // Process content for think mode detection
                     const { isThinking, thinkingStarted, thinkingEnded } = processStreamingContent(
-                        accumulatedContent, 
+                        accumulatedContent,
                         previousContent
                     );
 
@@ -278,7 +278,7 @@ export class StreamingTransformExecutor {
                         }
 
                     } catch (parseError) {
-                        console.error(`[StreamingTransformExecutor] JSON parsing failed for transform ${transform.id}:`, parseError.message);
+                        console.error(`[StreamingTransformExecutor] JSON parsing failed for transform ${transform.id}:`, parseError instanceof Error ? parseError.message : String(parseError));
                         console.error(`[StreamingTransformExecutor] Raw content length: ${text.length}`);
                         console.error(`[StreamingTransformExecutor] Raw content preview: ${text.substring(0, 200)}...`);
                         throw parseError;
@@ -325,7 +325,7 @@ export class StreamingTransformExecutor {
                         // Silent fail
                     }
                 }
-                
+
                 // Schedule cleanup after 5 minutes to allow final clients to receive data
                 setTimeout(async () => {
                     await this.transformRepo.cleanupTransformChunks(transform.id);
@@ -435,10 +435,10 @@ export class StreamingTransformExecutor {
         await this.transformRepo.addTransformInputs(transform.id, inputs);
 
         // 5. Start the streaming job immediately in the background
-        const jobExecutor = templateId === 'brainstorming' 
+        const jobExecutor = templateId === 'brainstorming'
             ? this.executeStreamingJobWithRetries.bind(this)
             : this.executeOutlineJobWithRetries.bind(this);
-            
+
         jobExecutor(transform.id)
             .catch(error => {
                 console.error(`Error starting ${templateId} streaming job for transform ${transform.id}:`, error);

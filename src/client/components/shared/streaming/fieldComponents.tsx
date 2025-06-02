@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Typography, Tag, Input, Row, Col, Spin } from 'antd';
+import { Card, Typography, Tag, Input, Row, Col, Spin, Button } from 'antd';
 import { FieldProps } from './types';
 import TextareaAutosize from 'react-textarea-autosize';
 import { debounce } from 'lodash';
@@ -727,6 +727,697 @@ export const AutoSaveTextField: React.FC<ExtendedFieldProps & {
             color: '#fff'
           }}
         />
+      </div>
+    );
+  };
+
+// Editable array of text items (like satisfaction points, key scenes, synopsis stages)
+export const EditableTextListField: React.FC<ExtendedFieldProps & {
+  label?: string;
+  onSave?: (value: string[]) => Promise<void>;
+  debounceMs?: number;
+  placeholder?: string;
+}> = ({
+  value,
+  onSave,
+  debounceMs = 1000,
+  label,
+  placeholder = "添加新项目...",
+  disabled = false,
+  style,
+  ...props
+}) => {
+    const [localItems, setLocalItems] = useState<string[]>(() => {
+      return Array.isArray(value) ? value : [];
+    });
+    const [isSaving, setIsSaving] = useState(false);
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
+
+    // Update local value when prop changes
+    useEffect(() => {
+      const newItems = Array.isArray(value) ? value : [];
+      setLocalItems(newItems);
+      setHasUnsavedChanges(false);
+    }, [value]);
+
+    // Debounced save function
+    const debouncedSave = useMemo(
+      () => debounce(async (newItems: string[]) => {
+        if (onSave && JSON.stringify(newItems) !== JSON.stringify(value)) {
+          setIsSaving(true);
+          setSaveError(null);
+          try {
+            await onSave(newItems);
+            setHasUnsavedChanges(false);
+          } catch (error) {
+            console.error('Auto-save failed:', error);
+            setSaveError('保存失败');
+          } finally {
+            setIsSaving(false);
+          }
+        }
+      }, debounceMs),
+      [onSave, value, debounceMs]
+    );
+
+    // Auto-save on items change
+    useEffect(() => {
+      if (JSON.stringify(localItems) !== JSON.stringify(value)) {
+        setHasUnsavedChanges(true);
+        debouncedSave(localItems);
+      }
+    }, [localItems, debouncedSave, value]);
+
+    // Cleanup debounce on unmount
+    useEffect(() => {
+      return () => {
+        debouncedSave.cancel();
+      };
+    }, [debouncedSave]);
+
+    const updateItem = (index: number, newValue: string) => {
+      const newItems = [...localItems];
+      newItems[index] = newValue;
+      setLocalItems(newItems);
+    };
+
+    const addItem = () => {
+      setLocalItems([...localItems, '']);
+    };
+
+    const removeItem = (index: number) => {
+      const newItems = localItems.filter((_, i) => i !== index);
+      setLocalItems(newItems);
+    };
+
+    return (
+      <div style={{ marginBottom: '8px', ...style }}>
+        {label && (
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+            <Text strong style={{ color: '#fff' }}>
+              {label}
+            </Text>
+            {isSaving && (
+              <Spin size="small" style={{ marginLeft: '8px' }} />
+            )}
+            {hasUnsavedChanges && !isSaving && (
+              <Text type="secondary" style={{ marginLeft: '8px', fontSize: '12px' }}>
+                未保存
+              </Text>
+            )}
+            {saveError && (
+              <Text type="danger" style={{ marginLeft: '8px', fontSize: '12px' }}>
+                {saveError}
+              </Text>
+            )}
+          </div>
+        )}
+
+        <div>
+          {localItems.map((item, index) => (
+            <div key={index} style={{ display: 'flex', marginBottom: '8px', alignItems: 'flex-start' }}>
+              <TextareaAutosize
+                value={item}
+                onChange={(e) => updateItem(index, e.target.value)}
+                placeholder={placeholder}
+                disabled={disabled}
+                minRows={2}
+                maxRows={6}
+                style={{
+                  flex: 1,
+                  backgroundColor: '#1f1f1f',
+                  border: '1px solid #404040',
+                  borderRadius: '6px',
+                  color: '#fff',
+                  padding: '8px 12px',
+                  fontSize: '14px',
+                  lineHeight: '1.5715',
+                  resize: 'none',
+                  outline: 'none',
+                  fontFamily: 'inherit'
+                }}
+              />
+              <Button
+                type="text"
+                danger
+                size="small"
+                onClick={() => removeItem(index)}
+                disabled={disabled}
+                style={{
+                  marginLeft: '8px',
+                  color: '#ff4d4f',
+                  minWidth: '32px'
+                }}
+              >
+                ×
+              </Button>
+            </div>
+          ))}
+
+          <Button
+            type="dashed"
+            onClick={addItem}
+            disabled={disabled}
+            style={{
+              width: '100%',
+              backgroundColor: 'transparent',
+              borderColor: '#404040',
+              color: '#d9d9d9',
+              borderStyle: 'dashed'
+            }}
+          >
+            + 添加项目
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
+// Editable tag list (for core themes)
+export const EditableTagListField: React.FC<ExtendedFieldProps & {
+  label?: string;
+  onSave?: (value: string[]) => Promise<void>;
+  debounceMs?: number;
+  placeholder?: string;
+}> = ({
+  value,
+  onSave,
+  debounceMs = 1000,
+  label,
+  placeholder = "添加标签...",
+  disabled = false,
+  style,
+  ...props
+}) => {
+    const [localTags, setLocalTags] = useState<string[]>(() => {
+      return Array.isArray(value) ? value : [];
+    });
+    const [inputValue, setInputValue] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
+
+    // Update local value when prop changes
+    useEffect(() => {
+      const newTags = Array.isArray(value) ? value : [];
+      setLocalTags(newTags);
+      setHasUnsavedChanges(false);
+    }, [value]);
+
+    // Debounced save function
+    const debouncedSave = useMemo(
+      () => debounce(async (newTags: string[]) => {
+        if (onSave && JSON.stringify(newTags) !== JSON.stringify(value)) {
+          setIsSaving(true);
+          setSaveError(null);
+          try {
+            await onSave(newTags);
+            setHasUnsavedChanges(false);
+          } catch (error) {
+            console.error('Auto-save failed:', error);
+            setSaveError('保存失败');
+          } finally {
+            setIsSaving(false);
+          }
+        }
+      }, debounceMs),
+      [onSave, value, debounceMs]
+    );
+
+    // Auto-save on tags change
+    useEffect(() => {
+      if (JSON.stringify(localTags) !== JSON.stringify(value)) {
+        setHasUnsavedChanges(true);
+        debouncedSave(localTags);
+      }
+    }, [localTags, debouncedSave, value]);
+
+    // Cleanup debounce on unmount
+    useEffect(() => {
+      return () => {
+        debouncedSave.cancel();
+      };
+    }, [debouncedSave]);
+
+    const addTag = () => {
+      if (inputValue.trim() && !localTags.includes(inputValue.trim())) {
+        setLocalTags([...localTags, inputValue.trim()]);
+        setInputValue('');
+      }
+    };
+
+    const removeTag = (tagToRemove: string) => {
+      setLocalTags(localTags.filter(tag => tag !== tagToRemove));
+    };
+
+    const handleKeyPress = (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        addTag();
+      }
+    };
+
+    return (
+      <div style={{ marginBottom: '8px', ...style }}>
+        {label && (
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+            <Text strong style={{ color: '#fff' }}>
+              {label}
+            </Text>
+            {isSaving && (
+              <Spin size="small" style={{ marginLeft: '8px' }} />
+            )}
+            {hasUnsavedChanges && !isSaving && (
+              <Text type="secondary" style={{ marginLeft: '8px', fontSize: '12px' }}>
+                未保存
+              </Text>
+            )}
+            {saveError && (
+              <Text type="danger" style={{ marginLeft: '8px', fontSize: '12px' }}>
+                {saveError}
+              </Text>
+            )}
+          </div>
+        )}
+
+        <div style={{ marginBottom: '8px' }}>
+          {localTags.map((tag, index) => (
+            <Tag
+              key={index}
+              closable={!disabled}
+              onClose={() => removeTag(tag)}
+              style={{
+                marginBottom: '4px',
+                backgroundColor: '#434343',
+                color: '#d9d9d9',
+                border: 'none'
+              }}
+            >
+              {tag}
+            </Tag>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <Input
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder={placeholder}
+            disabled={disabled}
+            style={{
+              flex: 1,
+              backgroundColor: '#1f1f1f',
+              borderColor: '#404040',
+              color: '#fff'
+            }}
+          />
+          <Button
+            type="primary"
+            onClick={addTag}
+            disabled={disabled || !inputValue.trim()}
+            style={{
+              backgroundColor: '#1890ff',
+              borderColor: '#1890ff'
+            }}
+          >
+            添加
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
+// Editable character card component
+export const EditableCharacterCard: React.FC<ExtendedFieldProps & {
+  onSave?: (value: any) => Promise<void>;
+  debounceMs?: number;
+  onRemove?: () => void;
+  path?: string;
+}> = ({
+  value,
+  onSave,
+  debounceMs = 1000,
+  onRemove,
+  disabled = false,
+  path,
+  ...props
+}) => {
+    const [localCharacter, setLocalCharacter] = useState(() => {
+      return value || {
+        name: '',
+        type: '',
+        description: '',
+        age: '',
+        gender: '',
+        occupation: '',
+        personality_traits: [],
+        character_arc: '',
+        relationships: {},
+        key_scenes: []
+      };
+    });
+    const [isSaving, setIsSaving] = useState(false);
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
+
+    // Update local value when prop changes
+    useEffect(() => {
+      setLocalCharacter(value || {
+        name: '',
+        type: '',
+        description: '',
+        age: '',
+        gender: '',
+        occupation: '',
+        personality_traits: [],
+        character_arc: '',
+        relationships: {},
+        key_scenes: []
+      });
+      setHasUnsavedChanges(false);
+    }, [value]);
+
+    // Debounced save function
+    const debouncedSave = useMemo(
+      () => debounce(async (newCharacter: any) => {
+        if (onSave && JSON.stringify(newCharacter) !== JSON.stringify(value)) {
+          setIsSaving(true);
+          setSaveError(null);
+          try {
+            await onSave(newCharacter);
+            setHasUnsavedChanges(false);
+          } catch (error) {
+            console.error('Auto-save failed:', error);
+            setSaveError('保存失败');
+          } finally {
+            setIsSaving(false);
+          }
+        }
+      }, debounceMs),
+      [onSave, value, debounceMs]
+    );
+
+    // Auto-save on character change
+    useEffect(() => {
+      if (JSON.stringify(localCharacter) !== JSON.stringify(value)) {
+        setHasUnsavedChanges(true);
+        debouncedSave(localCharacter);
+      }
+    }, [localCharacter, debouncedSave, value]);
+
+    // Cleanup debounce on unmount
+    useEffect(() => {
+      return () => {
+        debouncedSave.cancel();
+      };
+    }, [debouncedSave]);
+
+    const updateField = (field: string, newValue: any) => {
+      setLocalCharacter(prev => ({
+        ...prev,
+        [field]: newValue
+      }));
+    };
+
+    return (
+      <Card
+        size="small"
+        style={{
+          backgroundColor: '#1a1a1a',
+          border: '1px solid #303030',
+          marginBottom: '12px',
+          height: '100%'
+        }}
+        bodyStyle={{ padding: '12px' }}
+        extra={
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {isSaving && <Spin size="small" />}
+            {hasUnsavedChanges && !isSaving && (
+              <Text type="secondary" style={{ fontSize: '12px' }}>未保存</Text>
+            )}
+            {saveError && (
+              <Text type="danger" style={{ fontSize: '12px' }}>{saveError}</Text>
+            )}
+            {onRemove && (
+              <Button
+                type="text"
+                danger
+                size="small"
+                onClick={onRemove}
+                disabled={disabled}
+                style={{ color: '#ff4d4f' }}
+              >
+                删除
+              </Button>
+            )}
+          </div>
+        }
+      >
+        {/* Header: Name and Type */}
+        <Row gutter={8} style={{ marginBottom: '8px' }}>
+          <Col span={14}>
+            <AutoSaveTextField
+              value={localCharacter.name}
+              onSave={async (value) => updateField('name', value)}
+              label="姓名"
+              placeholder="角色姓名"
+              disabled={disabled}
+              path={path ? `${path}.name` : 'name'}
+            />
+          </Col>
+          <Col span={10}>
+            <AutoSaveTextField
+              value={localCharacter.type}
+              onSave={async (value) => updateField('type', value)}
+              label="类型"
+              placeholder="主角/配角"
+              disabled={disabled}
+              path={path ? `${path}.type` : 'type'}
+            />
+          </Col>
+        </Row>
+
+        {/* Basic Info Row */}
+        <Row gutter={6} style={{ marginBottom: '8px' }}>
+          <Col span={8}>
+            <AutoSaveTextField
+              value={localCharacter.age}
+              onSave={async (value) => updateField('age', value)}
+              label="年龄"
+              placeholder="年龄"
+              disabled={disabled}
+              path={path ? `${path}.age` : 'age'}
+            />
+          </Col>
+          <Col span={8}>
+            <AutoSaveTextField
+              value={localCharacter.gender}
+              onSave={async (value) => updateField('gender', value)}
+              label="性别"
+              placeholder="性别"
+              disabled={disabled}
+              path={path ? `${path}.gender` : 'gender'}
+            />
+          </Col>
+          <Col span={8}>
+            <AutoSaveTextField
+              value={localCharacter.occupation}
+              onSave={async (value) => updateField('occupation', value)}
+              label="职业"
+              placeholder="职业"
+              disabled={disabled}
+              path={path ? `${path}.occupation` : 'occupation'}
+            />
+          </Col>
+        </Row>
+
+        {/* Description */}
+        <div style={{ marginBottom: '8px' }}>
+          <AutoSaveTextAreaField
+            value={localCharacter.description}
+            onSave={async (value) => updateField('description', value)}
+            label="描述"
+            placeholder="角色描述"
+            disabled={disabled}
+            path={path ? `${path}.description` : 'description'}
+          />
+        </div>
+
+        {/* Personality Traits */}
+        <div style={{ marginBottom: '8px' }}>
+          <EditableTagListField
+            value={localCharacter.personality_traits}
+            onSave={async (value) => updateField('personality_traits', value)}
+            label="性格特点"
+            placeholder="添加性格特点"
+            disabled={disabled}
+            path={path ? `${path}.personality_traits` : 'personality_traits'}
+          />
+        </div>
+
+        {/* Character Arc */}
+        <div>
+          <AutoSaveTextAreaField
+            value={localCharacter.character_arc}
+            onSave={async (value) => updateField('character_arc', value)}
+            label="成长轨迹"
+            placeholder="角色成长轨迹"
+            disabled={disabled}
+            path={path ? `${path}.character_arc` : 'character_arc'}
+          />
+        </div>
+      </Card>
+    );
+  };
+
+// Editable character array wrapper
+export const EditableCharacterArrayField: React.FC<ExtendedFieldProps & {
+  label?: string;
+  onSave?: (value: any[]) => Promise<void>;
+  debounceMs?: number;
+}> = ({
+  value,
+  onSave,
+  debounceMs = 1000,
+  label,
+  disabled = false,
+  style,
+  path,
+  ...props
+}) => {
+    const [localCharacters, setLocalCharacters] = useState<any[]>(() => {
+      return Array.isArray(value) ? value : [];
+    });
+    const [isSaving, setIsSaving] = useState(false);
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
+
+    // Update local value when prop changes
+    useEffect(() => {
+      const newCharacters = Array.isArray(value) ? value : [];
+      setLocalCharacters(newCharacters);
+      setHasUnsavedChanges(false);
+    }, [value]);
+
+    // Debounced save function
+    const debouncedSave = useMemo(
+      () => debounce(async (newCharacters: any[]) => {
+        if (onSave && JSON.stringify(newCharacters) !== JSON.stringify(value)) {
+          setIsSaving(true);
+          setSaveError(null);
+          try {
+            await onSave(newCharacters);
+            setHasUnsavedChanges(false);
+          } catch (error) {
+            console.error('Auto-save failed:', error);
+            setSaveError('保存失败');
+          } finally {
+            setIsSaving(false);
+          }
+        }
+      }, debounceMs),
+      [onSave, value, debounceMs]
+    );
+
+    // Auto-save on characters change
+    useEffect(() => {
+      if (JSON.stringify(localCharacters) !== JSON.stringify(value)) {
+        setHasUnsavedChanges(true);
+        debouncedSave(localCharacters);
+      }
+    }, [localCharacters, debouncedSave, value]);
+
+    // Cleanup debounce on unmount
+    useEffect(() => {
+      return () => {
+        debouncedSave.cancel();
+      };
+    }, [debouncedSave]);
+
+    const updateCharacter = (index: number, newCharacter: any) => {
+      const newCharacters = [...localCharacters];
+      newCharacters[index] = newCharacter;
+      setLocalCharacters(newCharacters);
+    };
+
+    const addCharacter = () => {
+      const newCharacter = {
+        name: '',
+        type: '',
+        description: '',
+        age: '',
+        gender: '',
+        occupation: '',
+        personality_traits: [],
+        character_arc: '',
+        relationships: {},
+        key_scenes: []
+      };
+      setLocalCharacters([...localCharacters, newCharacter]);
+    };
+
+    const removeCharacter = (index: number) => {
+      const newCharacters = localCharacters.filter((_, i) => i !== index);
+      setLocalCharacters(newCharacters);
+    };
+
+    return (
+      <div style={{ marginBottom: '16px', ...style }}>
+        {label && (
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
+            <Text strong style={{ color: '#fff', fontSize: '16px' }}>
+              {label}
+            </Text>
+            {isSaving && (
+              <Spin size="small" style={{ marginLeft: '8px' }} />
+            )}
+            {hasUnsavedChanges && !isSaving && (
+              <Text type="secondary" style={{ marginLeft: '8px', fontSize: '12px' }}>
+                未保存
+              </Text>
+            )}
+            {saveError && (
+              <Text type="danger" style={{ marginLeft: '8px', fontSize: '12px' }}>
+                {saveError}
+              </Text>
+            )}
+          </div>
+        )}
+
+        <Row gutter={[16, 16]}>
+          {localCharacters.map((character, index) => (
+            <Col key={index} xs={24} sm={24} md={12} lg={12} xl={12}>
+              <EditableCharacterCard
+                value={character}
+                onSave={async (newCharacter) => {
+                  updateCharacter(index, newCharacter);
+                }}
+                onRemove={() => removeCharacter(index)}
+                disabled={disabled}
+                debounceMs={500} // Faster save for individual character fields
+                path={`${path ? `${path}.` : ''}characters[${index}]`}
+              />
+            </Col>
+          ))}
+        </Row>
+
+        <Button
+          type="dashed"
+          onClick={addCharacter}
+          disabled={disabled}
+          style={{
+            width: '100%',
+            marginTop: '12px',
+            backgroundColor: 'transparent',
+            borderColor: '#404040',
+            color: '#d9d9d9',
+            borderStyle: 'dashed'
+          }}
+        >
+          + 添加角色
+        </Button>
       </div>
     );
   }; 
