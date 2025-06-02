@@ -6,7 +6,7 @@ A collaborative script writing application with AI assistance, real-time collabo
 
 ### 🔐 Authentication System
 - **JWT-based authentication** with HTTP-only cookies for security
-- **Test user login** via dropdown selection (xiyang, xiaolin, giselle)
+- **Test user login** via dropdown selection (xiyang, xiaolin)
 - **Extensible provider architecture** ready for future integrations:
   - WeChat login
   - Weibo login  
@@ -99,7 +99,6 @@ npm run dev
 2. Select one of the test users from the dropdown:
    - **Xi Yang** (xiyang)
    - **Xiao Lin** (xiaolin) 
-   - **Giselle** (giselle)
 3. Click "登录" to log in
 4. You'll be redirected to the main application
 

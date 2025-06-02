@@ -5,7 +5,6 @@ export async function seed(knex: Knex): Promise<void> {
     const testUsers = [
         { id: 'test-user-xiyang', username: 'xiyang', display_name: 'Xi Yang' },
         { id: 'test-user-xiaolin', username: 'xiaolin', display_name: 'Xiao Lin' },
-        { id: 'test-user-giselle', username: 'giselle', display_name: 'Giselle' }
     ];
 
     // Ensure each test user and their auth provider exist
