@@ -8,6 +8,7 @@ import {
   IdeaCard,
   AutoSaveTextField,
   AutoSaveTextAreaField,
+  AutoSaveSelectField,
   EditableTextListField,
   EditableTagListField,
   EditableCharacterCard,

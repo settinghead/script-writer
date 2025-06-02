@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Typography, Tag, Input, Row, Col, Spin, Button } from 'antd';
+import { Card, Typography, Tag, Input, Row, Col, Spin, Button, Select } from 'antd';
 import { FieldProps } from './types';
 import TextareaAutosize from 'react-textarea-autosize';
 import { debounce } from 'lodash';
 
 const { Text, Title } = Typography;
+const { Option } = Select;
 
 /**
  * Basic text field component
@@ -507,6 +508,35 @@ const styles = `
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
   }
+
+  .dark-select-dropdown .ant-select-item {
+    background-color: #1f1f1f !important;
+    color: #fff !important;
+    border: none !important;
+  }
+
+  .dark-select-dropdown .ant-select-item:hover {
+    background-color: #434343 !important;
+  }
+
+  .dark-select-dropdown .ant-select-item-option-selected {
+    background-color: #1890ff !important;
+    color: #fff !important;
+  }
+
+  .ant-select-selector {
+    background-color: #1f1f1f !important;
+    border-color: #404040 !important;
+    color: #fff !important;
+  }
+
+  .ant-select-selection-placeholder {
+    color: #8c8c8c !important;
+  }
+
+  .ant-select-arrow {
+    color: #fff !important;
+  }
 `;
 
 // Inject styles
@@ -516,12 +546,150 @@ if (typeof document !== 'undefined') {
   document.head.appendChild(styleElement);
 }
 
+// Character type options with user-friendly Mandarin labels
+const CHARACTER_TYPE_OPTIONS = [
+  { value: 'protagonist', label: '主角' },
+  { value: 'male_lead', label: '男主角' },
+  { value: 'female_lead', label: '女主角' },
+  { value: 'antagonist', label: '反派' },
+  { value: 'supporting', label: '配角' },
+  { value: 'mentor', label: '导师' },
+  { value: 'love_interest', label: '恋人' },
+  { value: 'comic_relief', label: '搞笑角色' },
+  { value: 'sidekick', label: '助手' },
+  { value: 'villain', label: '反面角色' },
+  { value: 'neutral', label: '中性角色' },
+  { value: 'other', label: '其他' }
+];
+
 // Extended field props for auto-save components
 interface ExtendedFieldProps extends FieldProps {
   disabled?: boolean;
   style?: React.CSSProperties;
   placeholder?: string;
 }
+
+// Auto-save select field for character type
+export const AutoSaveSelectField: React.FC<ExtendedFieldProps & {
+  label?: string;
+  onSave?: (value: string) => Promise<void>;
+  debounceMs?: number;
+  options: Array<{ value: string; label: string }>;
+  placeholder?: string;
+}> = ({
+  value,
+  onSave,
+  debounceMs = 1000,
+  label,
+  options,
+  placeholder,
+  disabled = false,
+  style,
+  ...props
+}) => {
+    const [localValue, setLocalValue] = useState(value || '');
+    const [isSaving, setIsSaving] = useState(false);
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
+
+    // Update local value when prop changes
+    useEffect(() => {
+      setLocalValue(value || '');
+      setHasUnsavedChanges(false);
+    }, [value]);
+
+    // Debounced save function
+    const debouncedSave = useMemo(
+      () => debounce(async (newValue: string) => {
+        if (onSave && newValue !== value) {
+          setIsSaving(true);
+          setSaveError(null);
+          try {
+            await onSave(newValue);
+            setHasUnsavedChanges(false);
+          } catch (error) {
+            console.error('Auto-save failed:', error);
+            setSaveError('保存失败');
+          } finally {
+            setIsSaving(false);
+          }
+        }
+      }, debounceMs),
+      [onSave, value, debounceMs]
+    );
+
+    // Auto-save on value change
+    useEffect(() => {
+      if (localValue !== value) {
+        setHasUnsavedChanges(true);
+        debouncedSave(localValue);
+      }
+    }, [localValue, debouncedSave, value]);
+
+    // Cleanup debounce on unmount
+    useEffect(() => {
+      return () => {
+        debouncedSave.cancel();
+      };
+    }, [debouncedSave]);
+
+    // Find the display label for the current value
+    const getDisplayLabel = (val: string) => {
+      const option = options.find(opt => opt.value === val);
+      return option ? option.label : val;
+    };
+
+    return (
+      <div style={{ marginBottom: '8px', ...style }}>
+        {label && (
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
+            <Text strong style={{ color: '#fff' }}>
+              {label}
+            </Text>
+            {isSaving && (
+              <Spin size="small" style={{ marginLeft: '8px' }} />
+            )}
+            {hasUnsavedChanges && !isSaving && (
+              <Text type="secondary" style={{ marginLeft: '8px', fontSize: '12px' }}>
+                未保存
+              </Text>
+            )}
+            {saveError && (
+              <Text type="danger" style={{ marginLeft: '8px', fontSize: '12px' }}>
+                {saveError}
+              </Text>
+            )}
+          </div>
+        )}
+
+        <Select
+          value={localValue}
+          onChange={setLocalValue}
+          placeholder={placeholder}
+          disabled={disabled}
+          style={{
+            width: '100%'
+          }}
+          dropdownStyle={{
+            backgroundColor: '#1f1f1f',
+            border: '1px solid #404040'
+          }}
+          dropdownClassName="dark-select-dropdown"
+          optionLabelProp="label"
+        >
+          {options.map(option => (
+            <Option
+              key={option.value}
+              value={option.value}
+              label={option.label}
+            >
+              {option.label}
+            </Option>
+          ))}
+        </Select>
+      </div>
+    );
+  };
 
 // Auto-save textarea field with resize
 export const AutoSaveTextAreaField: React.FC<ExtendedFieldProps & {
@@ -1188,13 +1356,14 @@ export const EditableCharacterCard: React.FC<ExtendedFieldProps & {
             />
           </Col>
           <Col span={10}>
-            <AutoSaveTextField
+            <AutoSaveSelectField
               value={localCharacter.type}
               onSave={async (value) => updateField('type', value)}
               label="类型"
               placeholder="主角/配角"
               disabled={disabled}
               path={path ? `${path}.type` : 'type'}
+              options={CHARACTER_TYPE_OPTIONS}
             />
           </Col>
         </Row>
