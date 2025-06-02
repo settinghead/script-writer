@@ -54,7 +54,10 @@ export interface OutlineData {
     satisfaction_points?: string[];
     setting?: string;
     synopsis?: string;
-    synopsis_stages?: string[];
+    synopsis_stages?: Array<{
+      stageSynopsis: string;
+      numberOfEpisodes: number;
+    }>;
     characters?: Array<{
       name: string;
       type?: string;
@@ -429,7 +432,31 @@ export class UnifiedStreamingService {
     const genreArtifact = relatedArtifacts.find(a => a.type === 'outline_genre');
     if (genreArtifact) components.genre = genreArtifact.data.genre;
 
-    // Add other component overrides as needed...
+    const sellingPointsArtifact = relatedArtifacts.find(a => a.type === 'outline_selling_points');
+    if (sellingPointsArtifact) components.selling_points = sellingPointsArtifact.data.selling_points;
+
+    const settingArtifact = relatedArtifacts.find(a => a.type === 'outline_setting');
+    if (settingArtifact) components.setting = settingArtifact.data.setting;
+
+    const synopsisArtifact = relatedArtifacts.find(a => a.type === 'outline_synopsis');
+    if (synopsisArtifact) components.synopsis = synopsisArtifact.data.synopsis;
+
+    const targetAudienceArtifact = relatedArtifacts.find(a => a.type === 'outline_target_audience');
+    if (targetAudienceArtifact) {
+      components.target_audience = {
+        demographic: targetAudienceArtifact.data.demographic,
+        core_themes: targetAudienceArtifact.data.core_themes
+      };
+    }
+
+    const satisfactionPointsArtifact = relatedArtifacts.find(a => a.type === 'outline_satisfaction_points');
+    if (satisfactionPointsArtifact) components.satisfaction_points = satisfactionPointsArtifact.data.satisfaction_points;
+
+    const charactersArtifact = relatedArtifacts.find(a => a.type === 'outline_characters');
+    if (charactersArtifact) components.characters = charactersArtifact.data.characters;
+
+    const synopsisStagesArtifact = relatedArtifacts.find(a => a.type === 'outline_synopsis_stages');
+    if (synopsisStagesArtifact) components.synopsis_stages = synopsisStagesArtifact.data.synopsis_stages;
 
     return components;
   }

@@ -718,7 +718,8 @@ export class StreamingTransformExecutor {
                 artifacts: {},
                 params: {
                     episodeInfo,
-                    userInput
+                    userInput,
+                    totalEpisodes: jobParams.totalEpisodes || 12
                 }
             });
         };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Typography, Tag, Input, Row, Col, Spin, Button, Select } from 'antd';
+import { Card, Typography, Tag, Input, Row, Col, Spin, Button, Select, InputNumber } from 'antd';
 import { FieldProps } from './types';
 import TextareaAutosize from 'react-textarea-autosize';
 import { debounce } from 'lodash';
@@ -1587,6 +1587,229 @@ export const EditableCharacterArrayField: React.FC<ExtendedFieldProps & {
         >
           + 添加角色
         </Button>
+      </div>
+    );
+  };
+
+// Editable synopsis stages field with episode distribution
+export const EditableSynopsisStagesField: React.FC<ExtendedFieldProps & {
+  label?: string;
+  onSave?: (value: Array<{ stageSynopsis: string; numberOfEpisodes: number }>) => Promise<void>;
+  debounceMs?: number;
+  placeholder?: string;
+}> = ({
+  value,
+  onSave,
+  debounceMs = 1000,
+  label,
+  placeholder = "添加故事阶段...",
+  disabled = false,
+  style,
+  ...props
+}) => {
+    const [localStages, setLocalStages] = useState<Array<{ stageSynopsis: string; numberOfEpisodes: number }>>(() => {
+      return Array.isArray(value) ? value : [];
+    });
+    const [isSaving, setIsSaving] = useState(false);
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
+
+    // Update local value when prop changes
+    useEffect(() => {
+      const newStages = Array.isArray(value) ? value : [];
+      setLocalStages(newStages);
+      setHasUnsavedChanges(false);
+    }, [value]);
+
+    // Debounced save function
+    const debouncedSave = useMemo(
+      () => debounce(async (newStages: Array<{ stageSynopsis: string; numberOfEpisodes: number }>) => {
+        if (onSave && JSON.stringify(newStages) !== JSON.stringify(value)) {
+          setIsSaving(true);
+          setSaveError(null);
+          try {
+            await onSave(newStages);
+            setHasUnsavedChanges(false);
+          } catch (error) {
+            console.error('Auto-save failed:', error);
+            setSaveError('保存失败');
+          } finally {
+            setIsSaving(false);
+          }
+        }
+      }, debounceMs),
+      [onSave, value, debounceMs]
+    );
+
+    // Auto-save on stages change
+    useEffect(() => {
+      if (JSON.stringify(localStages) !== JSON.stringify(value)) {
+        setHasUnsavedChanges(true);
+        debouncedSave(localStages);
+      }
+    }, [localStages, debouncedSave, value]);
+
+    // Cleanup debounce on unmount
+    useEffect(() => {
+      return () => {
+        debouncedSave.cancel();
+      };
+    }, [debouncedSave]);
+
+    const updateStage = (index: number, field: 'stageSynopsis' | 'numberOfEpisodes', newValue: string | number) => {
+      const newStages = [...localStages];
+      if (field === 'stageSynopsis') {
+        newStages[index] = { ...newStages[index], stageSynopsis: String(newValue) };
+      } else {
+        newStages[index] = { ...newStages[index], numberOfEpisodes: Number(newValue) };
+      }
+      setLocalStages(newStages);
+    };
+
+    const addStage = () => {
+      setLocalStages([...localStages, { stageSynopsis: '', numberOfEpisodes: 1 }]);
+    };
+
+    const removeStage = (index: number) => {
+      const newStages = localStages.filter((_, i) => i !== index);
+      setLocalStages(newStages);
+    };
+
+    // Calculate episode ranges and totals
+    const calculateEpisodeRange = (stageIndex: number) => {
+      let startEpisode = 1;
+      for (let i = 0; i < stageIndex; i++) {
+        startEpisode += localStages[i].numberOfEpisodes;
+      }
+      const endEpisode = startEpisode + localStages[stageIndex].numberOfEpisodes - 1;
+      return { start: startEpisode, end: endEpisode };
+    };
+
+    const totalEpisodes = localStages.reduce((sum, stage) => sum + stage.numberOfEpisodes, 0);
+
+    return (
+      <div style={{ marginBottom: '16px', ...style }}>
+        {label && (
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
+            <Text strong style={{ color: '#fff', fontSize: '16px' }}>
+              {label}
+            </Text>
+            <div style={{ marginLeft: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <Text style={{ color: '#1890ff', fontSize: '14px' }}>
+                总计: {totalEpisodes} 集
+              </Text>
+              {isSaving && (
+                <Spin size="small" />
+              )}
+              {hasUnsavedChanges && !isSaving && (
+                <Text type="secondary" style={{ fontSize: '12px' }}>
+                  未保存
+                </Text>
+              )}
+              {saveError && (
+                <Text type="danger" style={{ fontSize: '12px' }}>
+                  {saveError}
+                </Text>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div>
+          {localStages.map((stage, index) => {
+            const episodeRange = calculateEpisodeRange(index);
+            return (
+              <Card
+                key={index}
+                size="small"
+                style={{
+                  backgroundColor: '#1a1a1a',
+                  border: '1px solid #303030',
+                  marginBottom: '12px'
+                }}
+                bodyStyle={{ padding: '16px' }}
+                title={
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Text strong style={{ color: '#fff' }}>
+                      第{index + 1}阶段 (第{episodeRange.start}-{episodeRange.end}集)
+                    </Text>
+                    <Button
+                      type="text"
+                      danger
+                      size="small"
+                      onClick={() => removeStage(index)}
+                      disabled={disabled}
+                      style={{ color: '#ff4d4f' }}
+                    >
+                      删除
+                    </Button>
+                  </div>
+                }
+              >
+                <div style={{ marginBottom: '12px' }}>
+                  <Text strong style={{ color: '#fff', display: 'block', marginBottom: '8px' }}>
+                    集数分配
+                  </Text>
+                  <InputNumber
+                    value={stage.numberOfEpisodes}
+                    onChange={(value) => updateStage(index, 'numberOfEpisodes', value || 1)}
+                    min={1}
+                    max={50}
+                    disabled={disabled}
+                    style={{
+                      backgroundColor: '#1f1f1f',
+                      borderColor: '#404040',
+                      color: '#fff'
+                    }}
+                  />
+                  <Text style={{ color: '#8c8c8c', marginLeft: '8px' }}>集</Text>
+                </div>
+
+                <div>
+                  <Text strong style={{ color: '#fff', display: 'block', marginBottom: '8px' }}>
+                    故事内容
+                  </Text>
+                  <TextareaAutosize
+                    value={stage.stageSynopsis}
+                    onChange={(e) => updateStage(index, 'stageSynopsis', e.target.value)}
+                    placeholder={placeholder}
+                    disabled={disabled}
+                    minRows={4}
+                    maxRows={12}
+                    style={{
+                      width: '100%',
+                      backgroundColor: '#1f1f1f',
+                      border: '1px solid #404040',
+                      borderRadius: '6px',
+                      color: '#fff',
+                      padding: '8px 12px',
+                      fontSize: '14px',
+                      lineHeight: '1.5715',
+                      resize: 'none',
+                      outline: 'none',
+                      fontFamily: 'inherit'
+                    }}
+                  />
+                </div>
+              </Card>
+            );
+          })}
+
+          <Button
+            type="dashed"
+            onClick={addStage}
+            disabled={disabled}
+            style={{
+              width: '100%',
+              backgroundColor: 'transparent',
+              borderColor: '#404040',
+              color: '#d9d9d9',
+              borderStyle: 'dashed'
+            }}
+          >
+            + 添加故事阶段
+          </Button>
+        </div>
       </div>
     );
   }; 

@@ -18,7 +18,10 @@ interface OutlineExportData {
         satisfaction_points?: string[];
         setting?: string;
         synopsis?: string;
-        synopsis_stages?: string[];
+        synopsis_stages?: Array<{
+            stageSynopsis: string;
+            numberOfEpisodes: number;
+        }>;
         characters?: Array<{
             name: string;
             type?: string;
@@ -164,10 +167,19 @@ export function formatOutlineForExport(data: OutlineExportData): string {
     if (data.components.synopsis_stages && data.components.synopsis_stages.length > 0) {
         sections.push("📚 分段故事梗概");
         sections.push(repeatChar("-", 30));
+
+        // Calculate total episodes
+        const totalEpisodes = data.components.synopsis_stages.reduce((sum, stage) => sum + stage.numberOfEpisodes, 0);
+        sections.push(`总计：${totalEpisodes}集`);
+        sections.push("");
+
+        let currentEpisode = 1;
         data.components.synopsis_stages.forEach((stage, index) => {
-            sections.push(`第${index + 1}阶段：`);
-            sections.push(stage);
+            const endEpisode = currentEpisode + stage.numberOfEpisodes - 1;
+            sections.push(`第${index + 1}阶段 (第${currentEpisode}-${endEpisode}集)：`);
+            sections.push(stage.stageSynopsis);
             sections.push("");
+            currentEpisode = endEpisode + 1;
         });
     }
 

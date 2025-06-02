@@ -34,7 +34,10 @@ interface DynamicOutlineResultsProps {
         satisfaction_points?: string[];
         setting?: string;
         synopsis?: string;
-        synopsis_stages?: string[];
+        synopsis_stages?: Array<{
+            stageSynopsis: string;
+            numberOfEpisodes: number;
+        }>;
         characters?: OutlineCharacter[];
     };
     status: 'active' | 'completed' | 'failed';
@@ -219,7 +222,16 @@ export const DynamicOutlineResults: React.FC<DynamicOutlineResultsProps> = ({
                 : components.setting,
             // Ensure other arrays are properly formatted
             satisfaction_points: components.satisfaction_points || [],
-            synopsis_stages: components.synopsis_stages || [],
+            // Handle synopsis_stages: ensure it's in the new format
+            synopsis_stages: components.synopsis_stages ?
+                (Array.isArray(components.synopsis_stages) && components.synopsis_stages.length > 0 &&
+                    typeof components.synopsis_stages[0] === 'object' && 'stageSynopsis' in components.synopsis_stages[0]
+                    ? components.synopsis_stages // Already in new format
+                    : (components.synopsis_stages as unknown as string[]).map((stage, index) => ({ // Convert from old format
+                        stageSynopsis: stage,
+                        numberOfEpisodes: Math.ceil(12 / (components.synopsis_stages as unknown as string[]).length) // Distribute episodes evenly
+                    }))
+                ) : [],
             characters: components.characters || []
         };
 

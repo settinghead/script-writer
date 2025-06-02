@@ -241,18 +241,6 @@ export const OutlineResults: React.FC<OutlineResultsProps> = ({
                     />
                 </Col>
 
-                {/* Synopsis */}
-                <Col span={24}>
-                    <EditableTextField
-                        value={components.synopsis || ''}
-                        artifactId={`outline_synopsis_${sessionId}`}
-                        artifactType="outline_synopsis"
-                        onChange={(newValue, newArtifactId) => handleFieldEdit('synopsis', newValue, newArtifactId)}
-                        placeholder="剧情大纲将在这里显示..."
-                        label="剧情大纲"
-                        multiline
-                    />
-                </Col>
 
                 {/* Synopsis Stages */}
                 <Col span={24}>

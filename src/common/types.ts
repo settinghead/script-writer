@@ -64,6 +64,7 @@ export interface OutlineJobParamsV1 {
     totalEpisodes?: number;
     episodeDuration?: number;
     requestedAt: string;
+    workflowContext?: WorkflowContextV1;
 }
 
 // Outline session container
@@ -105,7 +106,10 @@ export interface OutlineSatisfactionPointsV1 {
 }
 
 export interface OutlineSynopsisStagesV1 {
-    synopsis_stages: string[];
+    synopsis_stages: Array<{
+        stageSynopsis: string;
+        numberOfEpisodes: number;
+    }>;
 }
 
 export interface OutlineCharacter {
@@ -170,4 +174,15 @@ export function getArtifactTextContent(artifact: TypedArtifact | Artifact): stri
     // Fallback for unknown types
     const data = artifact.data as any;
     return data.idea_text || data.text || data.content || JSON.stringify(data, null, 2);
+}
+
+// Workflow context for carrying parameters between stages
+export interface WorkflowContextV1 {
+    totalEpisodes?: number;
+    episodeDuration?: number;
+    platform?: string;
+    genre?: string;
+    requirements?: string;
+    // Add more parameters as needed for future stages
+    [key: string]: any;
 } 

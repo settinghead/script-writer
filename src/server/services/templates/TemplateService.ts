@@ -133,6 +133,7 @@ export class TemplateService {
 8.  **分段故事梗概 (synopsis_stages)**: **总计约2000字符的详细故事发展，分为5个阶段，每段必须达到约400字符**：
     
     **IMPORTANT: 每个阶段必须详细描述，字数要求严格！每段约400字符，总计2000字符左右。不可过于简化。**
+    **CRITICAL: 每个阶段必须包含该阶段覆盖的集数(numberOfEpisodes)，所有阶段的集数总和必须等于{params.totalEpisodes}集。请根据剧情复杂度和重要性合理分配集数。**
     
     *   **第一阶段**: 背景设定与人物介绍
         - 详细描述故事发生的具体时间、地点、社会背景和环境氛围
@@ -214,18 +215,33 @@ export class TemplateService {
     }
   ],
   "synopsis_stages": [
-    "[string] 第一阶段内容",
-    "[string] 第二阶段内容",
-    "[string] 第三阶段内容",
-    "[string] 第四阶段内容",
-    "[string] 第五阶段内容"
+    {
+      "stageSynopsis": "[string] 第一阶段内容",
+      "numberOfEpisodes": "[number] 该阶段覆盖的集数"
+    },
+    {
+      "stageSynopsis": "[string] 第二阶段内容", 
+      "numberOfEpisodes": "[number] 该阶段覆盖的集数"
+    },
+    {
+      "stageSynopsis": "[string] 第三阶段内容",
+      "numberOfEpisodes": "[number] 该阶段覆盖的集数"
+    },
+    {
+      "stageSynopsis": "[string] 第四阶段内容",
+      "numberOfEpisodes": "[number] 该阶段覆盖的集数"
+    },
+    {
+      "stageSynopsis": "[string] 第五阶段内容",
+      "numberOfEpisodes": "[number] 该阶段覆盖的集数"
+    }
   ]
 }
 
 **CRITICAL: 只输出纯JSON格式，绝对不要在JSON后添加任何解释、设计说明、补充内容或其他文本。JSON结构必须完整且正确。**`,
             outputFormat: 'json',
             responseWrapper: '```json',
-            variables: ['params.episodeInfo', 'params.userInput']
+            variables: ['params.episodeInfo', 'params.userInput', 'params.totalEpisodes']
         });
     }
 

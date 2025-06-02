@@ -31,7 +31,10 @@ export interface OutlineSection {
         key_scenes?: string[];
     };
     characters?: OutlineCharacter[];
-    synopsis_stages?: string[];
+    synopsis_stages?: Array<{
+        stageSynopsis: string;
+        numberOfEpisodes: number;
+    }>;
 }
 
 export class OutlineStreamingService extends LLMStreamingService<OutlineSection> {
@@ -45,16 +48,16 @@ export class OutlineStreamingService extends LLMStreamingService<OutlineSection>
 
         // Clean the content first
         const cleanedContent = this.cleanContent(content);
-        
+
         // Try to ensure we have a complete JSON structure
         let processableContent = cleanedContent;
-        
+
         // Find the start of the JSON object
         const jsonStart = processableContent.indexOf('{');
         if (jsonStart > 0) {
             processableContent = processableContent.substring(jsonStart);
         }
-        
+
         // If content doesn't look like it starts with a JSON object, return empty
         if (!processableContent.trim().startsWith('{')) {
             return [];
@@ -80,7 +83,7 @@ export class OutlineStreamingService extends LLMStreamingService<OutlineSection>
                 if (Object.keys(partial).length > 0) {
                     return [partial];
                 }
-                
+
                 return [];
             }
         }
@@ -152,7 +155,10 @@ export class OutlineStreamingService extends LLMStreamingService<OutlineSection>
         }
 
         if (data.synopsis_stages !== undefined && Array.isArray(data.synopsis_stages)) {
-            outline.synopsis_stages = data.synopsis_stages.map((stage: any) => String(stage));
+            outline.synopsis_stages = data.synopsis_stages.map((stage: any) => ({
+                stageSynopsis: String(stage.stageSynopsis),
+                numberOfEpisodes: Number(stage.numberOfEpisodes)
+            }));
         }
 
         return outline;
@@ -192,13 +198,19 @@ export class OutlineStreamingService extends LLMStreamingService<OutlineSection>
             try {
                 const stagesArray = JSON.parse(`[${synopsisStagesMatch[1]}]`);
                 if (Array.isArray(stagesArray)) {
-                    outline.synopsis_stages = stagesArray.map(stage => String(stage));
+                    outline.synopsis_stages = stagesArray.map(stage => ({
+                        stageSynopsis: String(stage.stageSynopsis),
+                        numberOfEpisodes: Number(stage.numberOfEpisodes)
+                    }));
                 }
             } catch (e) {
                 // Try to extract individual strings
                 const stageStrings = synopsisStagesMatch[1].match(/"([^"]*)"/g);
                 if (stageStrings) {
-                    outline.synopsis_stages = stageStrings.map(s => s.replace(/"/g, ''));
+                    outline.synopsis_stages = stageStrings.map(s => s.replace(/"/g, '')).map(s => ({
+                        stageSynopsis: s,
+                        numberOfEpisodes: 1
+                    }));
                 }
             }
         }

@@ -109,6 +109,7 @@ export interface OutlineJobParamsV1 {
     totalEpisodes?: number;
     episodeDuration?: number;
     requestedAt: string; // ISO timestamp
+    workflowContext?: WorkflowContextV1;
 }
 
 // User input/selection (for user-modified or manually entered content)
@@ -172,7 +173,21 @@ export interface OutlineSatisfactionPointsV1 {
 }
 
 export interface OutlineSynopsisStagesV1 {
-    synopsis_stages: string[];
+    synopsis_stages: Array<{
+        stageSynopsis: string;
+        numberOfEpisodes: number;
+    }>;
+}
+
+// Workflow context for carrying parameters between stages
+export interface WorkflowContextV1 {
+    totalEpisodes?: number;
+    episodeDuration?: number;
+    platform?: string;
+    genre?: string;
+    requirements?: string;
+    // Add more parameters as needed for future stages
+    [key: string]: any;
 }
 
 // Type guards for artifact data validation
@@ -318,11 +333,6 @@ function isOutlineSynopsisStagesV1(data: any): data is OutlineSynopsisStagesV1 {
         Array.isArray(data.synopsis_stages);
 }
 
-function isOutlineSettingV1(data: any): data is OutlineSettingV1 {
-    return typeof data === 'object' &&
-        typeof data.setting === 'string';
-}
-
 function isOutlineSynopsisV1(data: any): data is OutlineSynopsisV1 {
     return typeof data === 'object' &&
         typeof data.synopsis === 'string';
@@ -348,4 +358,9 @@ function isOutlineCharacter(data: any): data is OutlineCharacter {
         (data.character_arc === undefined || typeof data.character_arc === 'string') &&
         (data.relationships === undefined || (typeof data.relationships === 'object' && data.relationships !== null)) &&
         (data.key_scenes === undefined || Array.isArray(data.key_scenes));
+}
+
+function isOutlineSettingV1(data: any): data is OutlineSettingV1 {
+    return typeof data === 'object' &&
+        typeof data.setting === 'string';
 } 

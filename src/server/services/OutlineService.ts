@@ -40,7 +40,10 @@ export interface OutlineSessionData {
         satisfaction_points?: string[];
         setting?: string;
         synopsis?: string;
-        synopsis_stages?: string[];
+        synopsis_stages?: Array<{
+            stageSynopsis: string;
+            numberOfEpisodes: number;
+        }>;
         characters?: Array<{
             name: string;
             type?: string;
@@ -399,6 +402,104 @@ export class OutlineService {
         } catch (error) {
             console.error('Error getting user input for session:', error);
             return null;
+        }
+    }
+
+    async startOutlineGeneration(
+        userId: string,
+        sourceArtifactId: string,
+        totalEpisodes?: number,
+        episodeDuration?: number
+    ): Promise<{ sessionId: string; transformId: string }> {
+        try {
+            console.log(`[OutlineService] Starting outline generation for user ${userId}, source artifact ${sourceArtifactId}`);
+
+            // Extract parameters from source artifact if not provided
+            let finalTotalEpisodes = totalEpisodes;
+            let finalEpisodeDuration = episodeDuration;
+            let workflowContext: any = {};
+
+            if (!finalTotalEpisodes || !finalEpisodeDuration) {
+                const sourceArtifact = await this.artifactRepo.getArtifact(sourceArtifactId, userId);
+                if (sourceArtifact) {
+                    // Try to extract from brainstorm idea data
+                    if (sourceArtifact.type === 'brainstorm_idea' && sourceArtifact.data) {
+                        finalTotalEpisodes = finalTotalEpisodes || sourceArtifact.data.totalEpisodes;
+                        finalEpisodeDuration = finalEpisodeDuration || sourceArtifact.data.episodeDuration;
+
+                        // Build workflow context from brainstorm data
+                        workflowContext = {
+                            totalEpisodes: finalTotalEpisodes,
+                            episodeDuration: finalEpisodeDuration,
+                            platform: sourceArtifact.data.platform,
+                            genre: sourceArtifact.data.genre,
+                            requirements: sourceArtifact.data.requirements
+                        };
+                    }
+
+                    // Try to find related ideation run for additional context
+                    if (sourceArtifact.type === 'brainstorm_idea') {
+                        try {
+                            // Note: We'll skip ideation run lookup for now since the method is private
+                            // This can be enhanced later if needed
+                            console.log('Skipping ideation run context lookup');
+                        } catch (error) {
+                            console.warn('Could not find ideation run context:', error);
+                        }
+                    }
+                }
+            } else {
+                workflowContext = {
+                    totalEpisodes: finalTotalEpisodes,
+                    episodeDuration: finalEpisodeDuration
+                };
+            }
+
+            // Create job parameters artifact
+            const jobParams: OutlineJobParamsV1 = {
+                sourceArtifactId,
+                totalEpisodes: finalTotalEpisodes,
+                episodeDuration: finalEpisodeDuration,
+                requestedAt: new Date().toISOString(),
+                workflowContext
+            };
+
+            const jobParamsArtifact = await this.artifactRepo.createArtifact(
+                userId,
+                'outline_job_params',
+                jobParams
+            );
+
+            // Create transform for outline generation
+            const sessionId = `outline-${userId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            const transform = await this.transformRepo.createTransform(
+                userId,
+                'llm',
+                'outline_generation',
+                'running',
+                {
+                    outline_session_id: sessionId,
+                    totalEpisodes: finalTotalEpisodes,
+                    episodeDuration: finalEpisodeDuration,
+                    workflowContext
+                }
+            );
+
+            // Add input artifacts
+            await this.transformRepo.addTransformInputs(transform.id, [
+                { artifactId: sourceArtifactId },
+                { artifactId: jobParamsArtifact.id }
+            ]);
+
+            console.log(`[OutlineService] Created outline session ${sessionId} with transform ${transform.id}`);
+
+            return {
+                sessionId,
+                transformId: transform.id
+            };
+        } catch (error) {
+            console.error('[OutlineService] Error starting outline generation:', error);
+            throw error;
         }
     }
 } 

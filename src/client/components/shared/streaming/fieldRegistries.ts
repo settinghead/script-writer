@@ -12,7 +12,8 @@ import {
   EditableTextListField,
   EditableTagListField,
   EditableCharacterCard,
-  EditableCharacterArrayField
+  EditableCharacterArrayField,
+  EditableSynopsisStagesField
 } from './fieldComponents';
 
 /**
@@ -92,18 +93,11 @@ export const outlineFieldRegistry: FieldDefinition[] = [
   // 8. Synopsis stages - now editable
   {
     path: "synopsis_stages",
-    component: EditableTextListField,
+    component: EditableSynopsisStagesField,
     label: "分段故事梗概",
     order: 10
   },
 
-  // 9. Synopsis (main synopsis field)
-  {
-    path: "synopsis",
-    component: AutoSaveTextAreaField,
-    label: "剧情大纲",
-    order: 11
-  },
 
 ];
 
