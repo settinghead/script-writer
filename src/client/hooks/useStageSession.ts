@@ -117,6 +117,15 @@ export const useStageSession = (stageId: string | null) => {
     // Derived streaming state
     const isStreaming = streamingStatus === 'streaming';
 
+    // Automatically update generating state based on streaming status
+    useEffect(() => {
+        if (streamingStatus === 'completed' || streamingStatus === 'error') {
+            console.log('[useStageSession] Streaming completed/errored, setting generating to false');
+            setGenerating(false);
+            setCurrentTransformId(undefined);
+        }
+    }, [streamingStatus]);
+
     // Load stage data and check for active generation when stageId changes
     useEffect(() => {
         if (!stageId || stageId === 'undefined') {
