@@ -288,6 +288,15 @@ export class StreamingTransformExecutor {
                     if (parsedData) {
                         if (outputFormat === 'outline_components') {
                             await this.createOutlineArtifacts(userId, transform, parsedData);
+                        } else if (outputFormat === 'json_array') {
+                            // Check template type to determine artifact creation method
+                            const templateId = transform.execution_context?.template_id;
+                            if (templateId === 'episode_synopsis_generation') {
+                                await this.createEpisodeArtifacts(userId, transform, parsedData);
+                            } else {
+                                // Default to brainstorming handling
+                                await this.createOutputArtifacts(userId, transform, parsedData, text);
+                            }
                         } else {
                             // Default to array handling (brainstorming)
                             await this.createOutputArtifacts(userId, transform, parsedData, text);
@@ -515,6 +524,9 @@ export class StreamingTransformExecutor {
                 case 'outline':
                     await this.executeStreamingOutline(transform, res);
                     break;
+                case 'episode_synopsis_generation':
+                    await this.executeStreamingEpisodeGeneration(transform, res);
+                    break;
                 default:
                     throw new Error(`Unknown template_id: ${templateId}`);
             }
@@ -733,6 +745,48 @@ export class StreamingTransformExecutor {
         );
     }
 
+    private async executeStreamingEpisodeGeneration(transform: any, res?: Response): Promise<void> {
+        const episodePromptBuilder = async (jobParams: any, stageArtifact: any, paramsArtifact?: any) => {
+            if (!stageArtifact) {
+                throw new Error('Stage artifact is required for episode generation');
+            }
+
+            const stageData = stageArtifact.data;
+
+            // Use custom parameters if provided, otherwise use stage defaults
+            const numberOfEpisodes = paramsArtifact?.data?.numberOfEpisodes || stageData.numberOfEpisodes;
+            const customRequirements = paramsArtifact?.data?.customRequirements;
+
+            // Get and render template
+            const template = this.templateService.getTemplate('episode_synopsis_generation');
+            if (!template) {
+                throw new Error('Episode synopsis generation template not found');
+            }
+
+            // Build requirements section if provided
+            const requirementsSection = customRequirements?.trim()
+                ? `\n特殊要求：${customRequirements.trim()}`
+                : '';
+
+            return await this.templateService.renderTemplate(template, {
+                artifacts: {},
+                params: {
+                    numberOfEpisodes,
+                    stageSynopsis: stageData.stageSynopsis,
+                    customRequirements: requirementsSection
+                }
+            });
+        };
+
+        await this.executeGenericStreamingJob(
+            transform,
+            'episode_synopsis_generation',
+            episodePromptBuilder,
+            'json_array',
+            res
+        );
+    }
+
     private async createOutlineArtifacts(
         userId: string,
         transform: any,
@@ -919,53 +973,178 @@ export class StreamingTransformExecutor {
         }
     }
 
+    private async createEpisodeArtifacts(
+        userId: string,
+        transform: any,
+        episodeData: any[]
+    ): Promise<void> {
+        try {
+            // Get episode generation session ID from transform context
+            const sessionId = transform.execution_context?.episode_generation_session_id;
+
+            if (!sessionId) {
+                console.warn('No episode generation session ID found in transform context, using fallback');
+            }
+
+            // Create individual episode synopsis artifacts
+            for (let i = 0; i < episodeData.length; i++) {
+                const episode = episodeData[i];
+
+                const episodeArtifact = await this.artifactRepo.createArtifact(
+                    userId,
+                    'episode_synopsis',
+                    {
+                        episodeNumber: episode.episodeNumber || (i + 1),
+                        title: episode.title || `第${i + 1}集`,
+                        synopsis: episode.synopsis || '',
+                        keyEvents: episode.keyEvents || [],
+                        endHook: episode.endHook || '',
+                        episodeGenerationSessionId: sessionId
+                    },
+                    'v1',
+                    {
+                        transform_id: transform.id,
+                        episode_number: episode.episodeNumber || (i + 1)
+                    }
+                );
+
+                // Link artifact as transform output
+                await this.transformRepo.addTransformOutputs(transform.id, [
+                    { artifactId: episodeArtifact.id, outputRole: `episode_${episode.episodeNumber || (i + 1)}` }
+                ]);
+
+                console.log(`Created episode artifact ${episodeArtifact.id} for episode ${episode.episodeNumber || (i + 1)}`);
+            }
+
+            // Update episode generation session status to completed
+            if (sessionId) {
+                try {
+                    // Find and update the session artifact
+                    const sessionArtifacts = await this.artifactRepo.getArtifactsByType(
+                        userId,
+                        'episode_generation_session'
+                    );
+
+                    const sessionArtifact = sessionArtifacts.find(
+                        artifact => (artifact.data as any).id === sessionId
+                    );
+
+                    if (sessionArtifact) {
+                        // Update session status
+                        const updatedSessionData = {
+                            ...sessionArtifact.data,
+                            status: 'completed'
+                        };
+
+                        await this.artifactRepo.createArtifact(
+                            userId,
+                            'episode_generation_session',
+                            updatedSessionData,
+                            'v1',
+                            {
+                                transform_id: transform.id,
+                                replaces_artifact_id: sessionArtifact.id
+                            }
+                        );
+
+                        console.log(`Updated episode generation session ${sessionId} status to completed`);
+                    }
+                } catch (sessionUpdateError) {
+                    console.error('Failed to update episode generation session status:', sessionUpdateError);
+                    // Don't throw - episode creation succeeded, session update is not critical
+                }
+            }
+
+        } catch (error) {
+            throw error;
+        }
+    }
+
     // Generalized job execution method
     private async executeGenericStreamingJob(
         transform: any,
         templateId: string,
-        promptBuilder: (jobParams: any, sourceArtifact?: any) => Promise<string>,
+        promptBuilder: (jobParams: any, sourceArtifact?: any, paramsArtifact?: any) => Promise<string>,
         outputFormat: string,
         res?: Response
     ): Promise<void> {
         // Get job parameters from transform inputs
         const inputs = await this.transformRepo.getTransformInputs(transform.id);
-        const paramsInput = inputs.find(input => input.input_role === 'job_params');
-        const sourceInput = inputs.find(input => input.input_role === 'source_artifact');
 
-        if (!paramsInput) {
-            throw new Error('Job parameters not found for transform');
-        }
+        // For episode generation, we need to handle multiple input roles
+        if (templateId === 'episode_synopsis_generation') {
+            const stageInput = inputs.find(input => input.input_role === 'stage_data');
+            const paramsInput = inputs.find(input => input.input_role === 'episode_params');
 
-        const paramsArtifact = await this.artifactRepo.getArtifact(paramsInput.artifact_id, transform.user_id);
-        if (!paramsArtifact) {
-            throw new Error('Job parameters artifact not found');
-        }
-
-        const jobParams = paramsArtifact.data;
-
-        // Get source artifact if needed
-        let sourceArtifact: Artifact | null = null;
-        if (sourceInput) {
-            sourceArtifact = await this.artifactRepo.getArtifact(sourceInput.artifact_id, transform.user_id);
-            if (!sourceArtifact) {
-                throw new Error('Source artifact not found');
+            if (!stageInput) {
+                throw new Error('Stage data not found for episode generation');
             }
+
+            const stageArtifact = await this.artifactRepo.getArtifact(stageInput.artifact_id, transform.user_id);
+            if (!stageArtifact) {
+                throw new Error('Stage artifact not found');
+            }
+
+            let paramsArtifact: any = null;
+            if (paramsInput) {
+                paramsArtifact = await this.artifactRepo.getArtifact(paramsInput.artifact_id, transform.user_id);
+            }
+
+            // Build prompt using the provided builder function with stage and params artifacts
+            const prompt = await promptBuilder(null, stageArtifact, paramsArtifact);
+
+            // Get model name from credentials
+            const { modelName } = getLLMCredentials();
+
+            // Stream LLM response
+            await this.streamLLMResponse(
+                prompt,
+                modelName,
+                outputFormat,
+                transform,
+                res,
+                transform.user_id
+            );
+        } else {
+            // Original logic for other templates
+            const paramsInput = inputs.find(input => input.input_role === 'job_params');
+            const sourceInput = inputs.find(input => input.input_role === 'source_artifact');
+
+            if (!paramsInput) {
+                throw new Error('Job parameters not found for transform');
+            }
+
+            const paramsArtifact = await this.artifactRepo.getArtifact(paramsInput.artifact_id, transform.user_id);
+            if (!paramsArtifact) {
+                throw new Error('Job parameters artifact not found');
+            }
+
+            const jobParams = paramsArtifact.data;
+
+            // Get source artifact if needed
+            let sourceArtifact: Artifact | null = null;
+            if (sourceInput) {
+                sourceArtifact = await this.artifactRepo.getArtifact(sourceInput.artifact_id, transform.user_id);
+                if (!sourceArtifact) {
+                    throw new Error('Source artifact not found');
+                }
+            }
+
+            // Build prompt using the provided builder function
+            const prompt = await promptBuilder(jobParams, sourceArtifact);
+
+            // Get model name from credentials
+            const { modelName } = getLLMCredentials();
+
+            // Stream LLM response
+            await this.streamLLMResponse(
+                prompt,
+                modelName,
+                outputFormat,
+                transform,
+                res,
+                transform.user_id
+            );
         }
-
-        // Build prompt using the provided builder function
-        const prompt = await promptBuilder(jobParams, sourceArtifact);
-
-        // Get model name from credentials
-        const { modelName } = getLLMCredentials();
-
-        // Stream LLM response
-        await this.streamLLMResponse(
-            prompt,
-            modelName,
-            outputFormat,
-            transform,
-            res,
-            transform.user_id
-        );
     }
 } 

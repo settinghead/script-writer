@@ -11,7 +11,7 @@ interface StageNode extends DataNode {
     artifactId: string;
 }
 
-// Mock API service for now - will be implemented later
+// Real API service - replace the mock
 const apiService = {
     async getStageArtifacts(outlineSessionId: string): Promise<Array<{
         artifactId: string;
@@ -20,9 +20,18 @@ const apiService = {
         stageSynopsis: string;
         outlineSessionId: string;
     }>> {
-        // This will be implemented when we create the API routes
-        console.log('Getting stage artifacts for:', outlineSessionId);
-        return [];
+        try {
+            const response = await fetch(`/api/episodes/outlines/${outlineSessionId}/stages`, {
+                credentials: 'include'
+            });
+            if (!response.ok) {
+                throw new Error('Failed to fetch stage artifacts');
+            }
+            return await response.json();
+        } catch (error) {
+            console.error('Error fetching stage artifacts:', error);
+            throw error;
+        }
     }
 };
 

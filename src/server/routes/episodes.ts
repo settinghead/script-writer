@@ -15,13 +15,14 @@ export function createEpisodeRoutes(
     // Start episode generation for a stage
     router.post('/stages/:stageId/episodes/generate',
         authMiddleware.authenticate,
-        async (req, res) => {
+        async (req, res): Promise<void> => {
             const userId = req.user?.id;
             const { stageId } = req.params;
             const { numberOfEpisodes, customRequirements } = req.body;
 
             if (!userId) {
-                return res.status(401).json({ error: 'Unauthorized' });
+                res.status(401).json({ error: 'Unauthorized' });
+                return;
             }
 
             try {
@@ -42,12 +43,13 @@ export function createEpisodeRoutes(
     // Get episode generation session
     router.get('/episode-generation/:sessionId',
         authMiddleware.authenticate,
-        async (req, res) => {
+        async (req, res): Promise<void> => {
             const userId = req.user?.id;
             const { sessionId } = req.params;
 
             if (!userId) {
-                return res.status(401).json({ error: 'Unauthorized' });
+                res.status(401).json({ error: 'Unauthorized' });
+                return;
             }
 
             try {
@@ -57,7 +59,8 @@ export function createEpisodeRoutes(
                 );
 
                 if (!session) {
-                    return res.status(404).json({ error: 'Episode generation session not found' });
+                    res.status(404).json({ error: 'Episode generation session not found' });
+                    return;
                 }
 
                 res.json(session);
@@ -71,12 +74,13 @@ export function createEpisodeRoutes(
     // Get stage artifacts for an outline
     router.get('/outlines/:outlineId/stages',
         authMiddleware.authenticate,
-        async (req, res) => {
+        async (req, res): Promise<void> => {
             const userId = req.user?.id;
             const { outlineId } = req.params;
 
             if (!userId) {
-                return res.status(401).json({ error: 'Unauthorized' });
+                res.status(401).json({ error: 'Unauthorized' });
+                return;
             }
 
             try {
@@ -92,19 +96,21 @@ export function createEpisodeRoutes(
     // Get specific stage artifact
     router.get('/stages/:stageId',
         authMiddleware.authenticate,
-        async (req, res) => {
+        async (req, res): Promise<void> => {
             const userId = req.user?.id;
             const { stageId } = req.params;
 
             if (!userId) {
-                return res.status(401).json({ error: 'Unauthorized' });
+                res.status(401).json({ error: 'Unauthorized' });
+                return;
             }
 
             try {
                 const stage = await episodeService.getStageArtifact(userId, stageId);
 
                 if (!stage) {
-                    return res.status(404).json({ error: 'Stage not found' });
+                    res.status(404).json({ error: 'Stage not found' });
+                    return;
                 }
 
                 res.json(stage);
@@ -118,12 +124,13 @@ export function createEpisodeRoutes(
     // Check for active episode generation
     router.get('/stages/:stageId/active-generation',
         authMiddleware.authenticate,
-        async (req, res) => {
+        async (req, res): Promise<void> => {
             const userId = req.user?.id;
             const { stageId } = req.params;
 
             if (!userId) {
-                return res.status(401).json({ error: 'Unauthorized' });
+                res.status(401).json({ error: 'Unauthorized' });
+                return;
             }
 
             try {

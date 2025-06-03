@@ -1,31 +1,31 @@
 // Define types locally to avoid path issues
 interface LLMTemplate {
-    id: string;
-    name: string;
-    promptTemplate: string;
-    outputFormat: string;
-    responseWrapper?: string;
-    variables: string[];
+  id: string;
+  name: string;
+  promptTemplate: string;
+  outputFormat: string;
+  responseWrapper?: string;
+  variables: string[];
 }
 
 interface TemplateContext {
-    artifacts?: Record<string, any>;
-    params?: Record<string, any>;
+  artifacts?: Record<string, any>;
+  params?: Record<string, any>;
 }
 
 export class TemplateService {
-    private templates = new Map<string, LLMTemplate>();
+  private templates = new Map<string, LLMTemplate>();
 
-    constructor() {
-        this.initializeTemplates();
-    }
+  constructor() {
+    this.initializeTemplates();
+  }
 
-    private initializeTemplates() {
-        // Register brainstorming template
-        this.templates.set('brainstorming', {
-            id: 'brainstorming',
-            name: 'Story Brainstorming',
-            promptTemplate: `你是一个故事创意生成器。请根据给定的故事类型，生成多个完整的故事情节梗概灵感。
+  private initializeTemplates() {
+    // Register brainstorming template
+    this.templates.set('brainstorming', {
+      id: 'brainstorming',
+      name: 'Story Brainstorming',
+      promptTemplate: `你是一个故事创意生成器。请根据给定的故事类型，生成多个完整的故事情节梗概灵感。
 
 故事类型：{params.genre}
 目标平台：{params.platform}
@@ -64,16 +64,16 @@ export class TemplateService {
 ]
 
 **重要：只输出纯JSON，不要任何解释、说明、或其他文本。不要在JSON前后添加任何内容。**`,
-            outputFormat: 'json_array',
-            responseWrapper: '```json',
-            variables: ['params.genre', 'params.platform', 'params.requirementsSection']
-        });
+      outputFormat: 'json_array',
+      responseWrapper: '```json',
+      variables: ['params.genre', 'params.platform', 'params.requirementsSection']
+    });
 
-        // Register outline template
-        this.templates.set('outline', {
-            id: 'outline',
-            name: 'Story Outline Generation',
-            promptTemplate: `你是一位深耕短剧创作的资深编剧，尤其擅长创作引人入胜、节奏明快、反转强烈的爆款短剧。
+    // Register outline template
+    this.templates.set('outline', {
+      id: 'outline',
+      name: 'Story Outline Generation',
+      promptTemplate: `你是一位深耕短剧创作的资深编剧，尤其擅长创作引人入胜、节奏明快、反转强烈的爆款短剧。
 根据用户提供的故事灵感，请创作一个**单集完结**的短剧大纲。{params.episodeInfo}
 
 故事灵感：{params.userInput}
@@ -239,45 +239,119 @@ export class TemplateService {
 }
 
 **CRITICAL: 只输出纯JSON格式，绝对不要在JSON后添加任何解释、设计说明、补充内容或其他文本。JSON结构必须完整且正确。**`,
-            outputFormat: 'json',
-            responseWrapper: '```json',
-            variables: ['params.episodeInfo', 'params.userInput', 'params.totalEpisodes']
-        });
+      outputFormat: 'json',
+      responseWrapper: '```json',
+      variables: ['params.episodeInfo', 'params.userInput', 'params.totalEpisodes']
+    });
+
+    // Register episode synopsis generation template
+    this.templates.set('episode_synopsis_generation', {
+      id: 'episode_synopsis_generation',
+      name: 'Episode Synopsis Generation',
+      promptTemplate: `你是一位资深的短剧编剧，专门负责将故事阶段梗概展开为具体的分集剧情大纲。
+
+根据以下信息，请为该阶段生成 {params.numberOfEpisodes} 集的详细剧集大纲：
+
+**阶段梗概**：
+{params.stageSynopsis}
+
+**生成要求**：
+- 集数：{params.numberOfEpisodes} 集
+- 每集时长：约45分钟{params.customRequirements}
+
+**剧集大纲要求**：
+1. **剧集标题**：每集都要有一个富有吸引力、体现该集核心看点的标题（8-15字）
+2. **剧集简介**：每集100-150字的详细剧情简介，包含：
+   - 该集的核心冲突和主要事件
+   - 主要角色的行动和情感变化
+   - 该集的情绪高潮点
+   - 与前后集的连接关系
+
+3. **关键事件**：每集3-5个推动剧情发展的关键事件，必须是具体的**事件**而非动作或情感状态
+   - 事件要具体可执行，有明确的时间地点人物
+   - 事件之间要有逻辑关联和因果关系
+   - 事件要能够推动人物关系发展或揭示重要信息
+
+4. **结尾悬念**：每集结尾的悬念设置，引发观众对下一集的期待
+   - 悬念必须是具体的**事件**，不能是情感状态或心理活动
+   - 要与剧情发展紧密相关，为下集做铺垫
+   - 要有足够的吸引力让观众想继续观看
+
+**注意事项**：
+- 严格按照阶段梗概的故事走向进行展开，不能偏离主线
+- 每集都要有明确的起承转合结构
+- 角色发展要循序渐进，符合人物性格逻辑
+- 情节安排要紧凑有节奏，避免拖沓
+- 确保所有关键事件和结尾悬念都是具体的事件，而非抽象概念
+
+**输出格式**：
+请以JSON数组的格式返回，每个集数包含以下字段：
+
+[
+  {
+    "episodeNumber": 1,
+    "title": "集标题",
+    "synopsis": "该集的详细剧情简介（100-150字）",
+    "keyEvents": [
+      "具体事件1：描述发生的具体事情",
+      "具体事件2：描述发生的具体事情",
+      "具体事件3：描述发生的具体事情"
+    ],
+    "endHook": "结尾悬念事件：描述具体发生的悬念事件"
+  },
+  {
+    "episodeNumber": 2,
+    "title": "集标题",
+    "synopsis": "该集的详细剧情简介（100-150字）",
+    "keyEvents": [
+      "具体事件1：描述发生的具体事情",
+      "具体事件2：描述发生的具体事情",
+      "具体事件3：描述发生的具体事情"
+    ],
+    "endHook": "结尾悬念事件：描述具体发生的悬念事件"
+  }
+]
+
+**重要**：只输出纯JSON数组，不要任何解释、说明、或其他文本。确保JSON格式正确且完整。`,
+      outputFormat: 'json_array',
+      responseWrapper: '```json',
+      variables: ['params.numberOfEpisodes', 'params.stageSynopsis', 'params.customRequirements']
+    });
+  }
+
+  getTemplate(templateId: string): LLMTemplate | undefined {
+    return this.templates.get(templateId);
+  }
+
+  async renderTemplate(
+    template: LLMTemplate,
+    context: TemplateContext
+  ): Promise<string> {
+    let prompt = template.promptTemplate;
+
+    // Replace variables with context values
+    for (const variable of template.variables) {
+      const value = this.resolveVariable(variable, context);
+      prompt = prompt.replace(`{${variable}}`, value);
     }
 
-    getTemplate(templateId: string): LLMTemplate | undefined {
-        return this.templates.get(templateId);
+    return prompt;
+  }
+
+  private resolveVariable(path: string, context: TemplateContext): string {
+    // Handle nested paths like "artifacts.brainstorm_params.genre"
+    const parts = path.split('.');
+    let value: any = context;
+
+    for (const part of parts) {
+      value = value?.[part];
     }
 
-    async renderTemplate(
-        template: LLMTemplate,
-        context: TemplateContext
-    ): Promise<string> {
-        let prompt = template.promptTemplate;
+    return value?.toString() || '';
+  }
 
-        // Replace variables with context values
-        for (const variable of template.variables) {
-            const value = this.resolveVariable(variable, context);
-            prompt = prompt.replace(`{${variable}}`, value);
-        }
-
-        return prompt;
-    }
-
-    private resolveVariable(path: string, context: TemplateContext): string {
-        // Handle nested paths like "artifacts.brainstorm_params.genre"
-        const parts = path.split('.');
-        let value: any = context;
-
-        for (const part of parts) {
-            value = value?.[part];
-        }
-
-        return value?.toString() || '';
-    }
-
-    async renderPromptTemplates(messages: Array<{ role: string; content: string }>): Promise<Array<{ role: string; content: string }>> {
-        // For now, just return messages as-is since we don't have complex template rendering
-        return messages;
-    }
+  async renderPromptTemplates(messages: Array<{ role: string; content: string }>): Promise<Array<{ role: string; content: string }>> {
+    // For now, just return messages as-is since we don't have complex template rendering
+    return messages;
+  }
 } 
