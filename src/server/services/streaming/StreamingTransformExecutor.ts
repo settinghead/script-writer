@@ -773,7 +773,17 @@ export class StreamingTransformExecutor {
                 params: {
                     numberOfEpisodes,
                     stageSynopsis: stageData.stageSynopsis,
-                    customRequirements: requirementsSection
+                    customRequirements: requirementsSection,
+                    // Enhanced stage parameters
+                    timeframe: stageData.timeframe || '',
+                    startingCondition: stageData.startingCondition || '',
+                    endingCondition: stageData.endingCondition || '',
+                    stageStartEvent: stageData.stageStartEvent || '',
+                    stageEndEvent: stageData.stageEndEvent || '',
+                    keyMilestones: Array.isArray(stageData.keyMilestones) ? stageData.keyMilestones.join('\n') : (stageData.keyMilestones || ''),
+                    relationshipLevel: stageData.relationshipLevel || '',
+                    emotionalArc: stageData.emotionalArc || '',
+                    externalPressure: stageData.externalPressure || ''
                 }
             });
         };
@@ -948,7 +958,17 @@ export class StreamingTransformExecutor {
                                 stageNumber: i + 1,
                                 stageSynopsis: stage.stageSynopsis || stage,
                                 numberOfEpisodes: stage.numberOfEpisodes || 1,
-                                outlineSessionId: outlineSessionId
+                                outlineSessionId: outlineSessionId,
+                                // Enhanced stage structure fields
+                                timeframe: stage.timeframe || '',
+                                startingCondition: stage.startingCondition || '',
+                                endingCondition: stage.endingCondition || '',
+                                stageStartEvent: stage.stageStartEvent || '',
+                                stageEndEvent: stage.stageEndEvent || '',
+                                keyMilestones: stage.keyMilestones || [],
+                                relationshipLevel: stage.relationshipLevel || '',
+                                emotionalArc: stage.emotionalArc || '',
+                                externalPressure: stage.externalPressure || ''
                             },
                             'v1',
                             {

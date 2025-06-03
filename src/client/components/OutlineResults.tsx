@@ -52,10 +52,7 @@ interface OutlineResultsProps {
         satisfaction_points?: string[];
         setting?: string;
         synopsis?: string;
-        synopsis_stages?: Array<{
-            stageSynopsis: string;
-            numberOfEpisodes: number;
-        }>;
+        synopsis_stages?: OutlineSynopsisStage[];
         characters?: OutlineCharacter[];
     };
     status: 'active' | 'completed' | 'failed';
@@ -262,18 +259,231 @@ export const OutlineResults: React.FC<OutlineResultsProps> = ({
                     />
                 </Col>
 
-
                 {/* Synopsis Stages */}
                 <Col span={24}>
-                    <EditableTextField
-                        value={components.synopsis_stages ? components.synopsis_stages.map(stage => stage.stageSynopsis).join('\n\n') : ''}
-                        artifactId={`outline_synopsis_stages_${sessionId}`}
-                        artifactType="outline_synopsis_stages"
-                        onChange={(newValue, newArtifactId) => handleFieldEdit('synopsis_stages', newValue, newArtifactId)}
-                        placeholder="分段故事梗概将在这里显示..."
-                        label="分段故事梗概（约2000字）"
-                        multiline
-                    />
+                    <div>
+                        <Text strong style={{ color: '#fff', marginBottom: '12px', display: 'block' }}>
+                            分段故事梗概（约2000字）
+                        </Text>
+
+                        {components.synopsis_stages && components.synopsis_stages.length > 0 ? (
+                            <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                                {components.synopsis_stages.map((stage, index) => (
+                                    <Card
+                                        key={index}
+                                        title={`第${index + 1}阶段 (${stage.numberOfEpisodes}集)`}
+                                        size="small"
+                                        style={{
+                                            backgroundColor: '#1f1f1f',
+                                            border: '1px solid #404040'
+                                        }}
+                                        headStyle={{
+                                            backgroundColor: '#2a2a2a',
+                                            borderBottom: '1px solid #404040',
+                                            color: '#fff'
+                                        }}
+                                        bodyStyle={{ backgroundColor: '#1f1f1f', padding: '16px' }}
+                                    >
+                                        {/* Stage Synopsis */}
+                                        <div style={{ marginBottom: '16px' }}>
+                                            <EditableTextField
+                                                value={stage.stageSynopsis}
+                                                artifactId={`stage_synopsis_${sessionId}_${index}`}
+                                                artifactType="stage_synopsis"
+                                                onChange={(newValue, newArtifactId) => {
+                                                    const updatedStages = [...(components.synopsis_stages || [])];
+                                                    updatedStages[index] = { ...stage, stageSynopsis: newValue };
+                                                    handleFieldEdit('synopsis_stages', JSON.stringify(updatedStages), newArtifactId);
+                                                }}
+                                                placeholder="阶段梗概..."
+                                                label="阶段梗概"
+                                                multiline
+                                                size="small"
+                                            />
+                                        </div>
+
+                                        {/* Temporal Constraints (Option A) */}
+                                        <Row gutter={[12, 12]} style={{ marginBottom: '16px' }}>
+                                            <Col span={24}>
+                                                <Text strong style={{ color: '#4CAF50', fontSize: '13px' }}>
+                                                    ⏰ 时间约束
+                                                </Text>
+                                            </Col>
+                                            <Col xs={24} lg={8}>
+                                                <EditableTextField
+                                                    value={stage.timeframe || ''}
+                                                    artifactId={`stage_timeframe_${sessionId}_${index}`}
+                                                    artifactType="stage_timeframe"
+                                                    onChange={(newValue, newArtifactId) => {
+                                                        const updatedStages = [...(components.synopsis_stages || [])];
+                                                        updatedStages[index] = { ...stage, timeframe: newValue };
+                                                        handleFieldEdit('synopsis_stages', JSON.stringify(updatedStages), newArtifactId);
+                                                    }}
+                                                    placeholder="时间跨度..."
+                                                    label="时间跨度"
+                                                    size="small"
+                                                />
+                                            </Col>
+                                            <Col xs={24} lg={8}>
+                                                <EditableTextField
+                                                    value={stage.startingCondition}
+                                                    artifactId={`stage_start_condition_${sessionId}_${index}`}
+                                                    artifactType="stage_start_condition"
+                                                    onChange={(newValue, newArtifactId) => {
+                                                        const updatedStages = [...(components.synopsis_stages || [])];
+                                                        updatedStages[index] = { ...stage, startingCondition: newValue };
+                                                        handleFieldEdit('synopsis_stages', JSON.stringify(updatedStages), newArtifactId);
+                                                    }}
+                                                    placeholder="开始状态..."
+                                                    label="开始状态"
+                                                    size="small"
+                                                />
+                                            </Col>
+                                            <Col xs={24} lg={8}>
+                                                <EditableTextField
+                                                    value={stage.endingCondition}
+                                                    artifactId={`stage_end_condition_${sessionId}_${index}`}
+                                                    artifactType="stage_end_condition"
+                                                    onChange={(newValue, newArtifactId) => {
+                                                        const updatedStages = [...(components.synopsis_stages || [])];
+                                                        updatedStages[index] = { ...stage, endingCondition: newValue };
+                                                        handleFieldEdit('synopsis_stages', JSON.stringify(updatedStages), newArtifactId);
+                                                    }}
+                                                    placeholder="结束状态..."
+                                                    label="结束状态"
+                                                    size="small"
+                                                />
+                                            </Col>
+                                        </Row>
+
+                                        {/* Event Boundaries (Option B) */}
+                                        <Row gutter={[12, 12]} style={{ marginBottom: '16px' }}>
+                                            <Col span={24}>
+                                                <Text strong style={{ color: '#2196F3', fontSize: '13px' }}>
+                                                    🎬 事件边界
+                                                </Text>
+                                            </Col>
+                                            <Col xs={24} lg={12}>
+                                                <EditableTextField
+                                                    value={stage.stageStartEvent}
+                                                    artifactId={`stage_start_event_${sessionId}_${index}`}
+                                                    artifactType="stage_start_event"
+                                                    onChange={(newValue, newArtifactId) => {
+                                                        const updatedStages = [...(components.synopsis_stages || [])];
+                                                        updatedStages[index] = { ...stage, stageStartEvent: newValue };
+                                                        handleFieldEdit('synopsis_stages', JSON.stringify(updatedStages), newArtifactId);
+                                                    }}
+                                                    placeholder="起始事件..."
+                                                    label="起始事件"
+                                                    size="small"
+                                                />
+                                            </Col>
+                                            <Col xs={24} lg={12}>
+                                                <EditableTextField
+                                                    value={stage.stageEndEvent}
+                                                    artifactId={`stage_end_event_${sessionId}_${index}`}
+                                                    artifactType="stage_end_event"
+                                                    onChange={(newValue, newArtifactId) => {
+                                                        const updatedStages = [...(components.synopsis_stages || [])];
+                                                        updatedStages[index] = { ...stage, stageEndEvent: newValue };
+                                                        handleFieldEdit('synopsis_stages', JSON.stringify(updatedStages), newArtifactId);
+                                                    }}
+                                                    placeholder="结束事件..."
+                                                    label="结束事件"
+                                                    size="small"
+                                                />
+                                            </Col>
+                                            <Col span={24}>
+                                                <EditableTextField
+                                                    value={stage.keyMilestones ? stage.keyMilestones.join('\n') : ''}
+                                                    artifactId={`stage_milestones_${sessionId}_${index}`}
+                                                    artifactType="stage_milestones"
+                                                    onChange={(newValue, newArtifactId) => {
+                                                        const updatedStages = [...(components.synopsis_stages || [])];
+                                                        updatedStages[index] = {
+                                                            ...stage,
+                                                            keyMilestones: newValue ? newValue.split('\n').map(m => m.trim()).filter(m => m) : []
+                                                        };
+                                                        handleFieldEdit('synopsis_stages', JSON.stringify(updatedStages), newArtifactId);
+                                                    }}
+                                                    placeholder="关键里程碑（每行一个）..."
+                                                    label="关键里程碑"
+                                                    multiline
+                                                    size="small"
+                                                />
+                                            </Col>
+                                        </Row>
+
+                                        {/* Relationship Progression (Option C) */}
+                                        <Row gutter={[12, 12]}>
+                                            <Col span={24}>
+                                                <Text strong style={{ color: '#FF9800', fontSize: '13px' }}>
+                                                    💕 关系发展
+                                                </Text>
+                                            </Col>
+                                            <Col xs={24} lg={8}>
+                                                <EditableTextField
+                                                    value={stage.relationshipLevel}
+                                                    artifactId={`stage_relationship_${sessionId}_${index}`}
+                                                    artifactType="stage_relationship"
+                                                    onChange={(newValue, newArtifactId) => {
+                                                        const updatedStages = [...(components.synopsis_stages || [])];
+                                                        updatedStages[index] = { ...stage, relationshipLevel: newValue };
+                                                        handleFieldEdit('synopsis_stages', JSON.stringify(updatedStages), newArtifactId);
+                                                    }}
+                                                    placeholder="关系变化..."
+                                                    label="关系变化"
+                                                    size="small"
+                                                />
+                                            </Col>
+                                            <Col xs={24} lg={8}>
+                                                <EditableTextField
+                                                    value={stage.emotionalArc}
+                                                    artifactId={`stage_emotion_${sessionId}_${index}`}
+                                                    artifactType="stage_emotion"
+                                                    onChange={(newValue, newArtifactId) => {
+                                                        const updatedStages = [...(components.synopsis_stages || [])];
+                                                        updatedStages[index] = { ...stage, emotionalArc: newValue };
+                                                        handleFieldEdit('synopsis_stages', JSON.stringify(updatedStages), newArtifactId);
+                                                    }}
+                                                    placeholder="情感轨迹..."
+                                                    label="情感轨迹"
+                                                    size="small"
+                                                />
+                                            </Col>
+                                            <Col xs={24} lg={8}>
+                                                <EditableTextField
+                                                    value={stage.externalPressure}
+                                                    artifactId={`stage_pressure_${sessionId}_${index}`}
+                                                    artifactType="stage_pressure"
+                                                    onChange={(newValue, newArtifactId) => {
+                                                        const updatedStages = [...(components.synopsis_stages || [])];
+                                                        updatedStages[index] = { ...stage, externalPressure: newValue };
+                                                        handleFieldEdit('synopsis_stages', JSON.stringify(updatedStages), newArtifactId);
+                                                    }}
+                                                    placeholder="外部压力..."
+                                                    label="外部压力"
+                                                    size="small"
+                                                />
+                                            </Col>
+                                        </Row>
+                                    </Card>
+                                ))}
+                            </Space>
+                        ) : (
+                            <Card
+                                style={{
+                                    textAlign: 'center',
+                                    padding: '24px 20px',
+                                    backgroundColor: '#1f1f1f',
+                                    border: '1px solid #404040'
+                                }}
+                                bodyStyle={{ backgroundColor: '#1f1f1f' }}
+                            >
+                                <Text type="secondary" style={{ color: '#888' }}>分段故事梗概将在这里显示...</Text>
+                            </Card>
+                        )}
+                    </div>
                 </Col>
 
                 {/* Characters */}
