@@ -1591,10 +1591,10 @@ export const EditableCharacterArrayField: React.FC<ExtendedFieldProps & {
     );
   };
 
-// Editable synopsis stages field with episode distribution
+// Editable synopsis stages field with full enhanced structure
 export const EditableSynopsisStagesField: React.FC<ExtendedFieldProps & {
   label?: string;
-  onSave?: (value: Array<{ stageSynopsis: string; numberOfEpisodes: number }>) => Promise<void>;
+  onSave?: (value: Array<any>) => Promise<void>;
   debounceMs?: number;
   placeholder?: string;
 }> = ({
@@ -1607,7 +1607,7 @@ export const EditableSynopsisStagesField: React.FC<ExtendedFieldProps & {
   style,
   ...props
 }) => {
-    const [localStages, setLocalStages] = useState<Array<{ stageSynopsis: string; numberOfEpisodes: number }>>(() => {
+    const [localStages, setLocalStages] = useState<Array<any>>(() => {
       return Array.isArray(value) ? value : [];
     });
     const [isSaving, setIsSaving] = useState(false);
@@ -1623,7 +1623,7 @@ export const EditableSynopsisStagesField: React.FC<ExtendedFieldProps & {
 
     // Debounced save function
     const debouncedSave = useMemo(
-      () => debounce(async (newStages: Array<{ stageSynopsis: string; numberOfEpisodes: number }>) => {
+      () => debounce(async (newStages: Array<any>) => {
         if (onSave && JSON.stringify(newStages) !== JSON.stringify(value)) {
           setIsSaving(true);
           setSaveError(null);
@@ -1656,18 +1656,54 @@ export const EditableSynopsisStagesField: React.FC<ExtendedFieldProps & {
       };
     }, [debouncedSave]);
 
-    const updateStage = (index: number, field: 'stageSynopsis' | 'numberOfEpisodes', newValue: string | number) => {
+    const updateStage = (index: number, field: string, newValue: any) => {
       const newStages = [...localStages];
-      if (field === 'stageSynopsis') {
-        newStages[index] = { ...newStages[index], stageSynopsis: String(newValue) };
+      if (field.includes('.')) {
+        // Handle nested fields like keyMilestones[0]
+        const [parentField, childIndex] = field.split('[');
+        const arrayIndex = parseInt(childIndex?.replace(']', '') || '0');
+        if (!newStages[index][parentField]) {
+          newStages[index][parentField] = [];
+        }
+        newStages[index][parentField][arrayIndex] = newValue;
       } else {
-        newStages[index] = { ...newStages[index], numberOfEpisodes: Number(newValue) };
+        newStages[index] = { ...newStages[index], [field]: newValue };
+      }
+      setLocalStages(newStages);
+    };
+
+    const addMilestone = (stageIndex: number) => {
+      const newStages = [...localStages];
+      if (!newStages[stageIndex].keyMilestones) {
+        newStages[stageIndex].keyMilestones = [];
+      }
+      newStages[stageIndex].keyMilestones.push('');
+      setLocalStages(newStages);
+    };
+
+    const removeMilestone = (stageIndex: number, milestoneIndex: number) => {
+      const newStages = [...localStages];
+      if (newStages[stageIndex].keyMilestones) {
+        newStages[stageIndex].keyMilestones.splice(milestoneIndex, 1);
       }
       setLocalStages(newStages);
     };
 
     const addStage = () => {
-      setLocalStages([...localStages, { stageSynopsis: '', numberOfEpisodes: 1 }]);
+      const newStage = {
+        stageSynopsis: '',
+        numberOfEpisodes: 1,
+        timeframe: '',
+        startingCondition: '',
+        endingCondition: '',
+        stageStartEvent: '',
+        stageEndEvent: '',
+        keyMilestones: [],
+        relationshipLevel: '',
+        emotionalArc: '',
+        externalPressure: ''
+      };
+      setLocalStages([...localStages, newStage]);
     };
 
     const removeStage = (index: number) => {
@@ -1679,13 +1715,13 @@ export const EditableSynopsisStagesField: React.FC<ExtendedFieldProps & {
     const calculateEpisodeRange = (stageIndex: number) => {
       let startEpisode = 1;
       for (let i = 0; i < stageIndex; i++) {
-        startEpisode += localStages[i].numberOfEpisodes;
+        startEpisode += (localStages[i].numberOfEpisodes || 1);
       }
-      const endEpisode = startEpisode + localStages[stageIndex].numberOfEpisodes - 1;
+      const endEpisode = startEpisode + (localStages[stageIndex].numberOfEpisodes || 1) - 1;
       return { start: startEpisode, end: endEpisode };
     };
 
-    const totalEpisodes = localStages.reduce((sum, stage) => sum + stage.numberOfEpisodes, 0);
+    const totalEpisodes = localStages.reduce((sum, stage) => sum + (stage.numberOfEpisodes || 1), 0);
 
     return (
       <div style={{ marginBottom: '16px', ...style }}>
@@ -1725,9 +1761,9 @@ export const EditableSynopsisStagesField: React.FC<ExtendedFieldProps & {
                 style={{
                   backgroundColor: '#1a1a1a',
                   border: '1px solid #303030',
-                  marginBottom: '12px'
+                  marginBottom: '16px'
                 }}
-                bodyStyle={{ padding: '16px' }}
+                bodyStyle={{ padding: '20px' }}
                 title={
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <Text strong style={{ color: '#fff' }}>
@@ -1746,50 +1782,224 @@ export const EditableSynopsisStagesField: React.FC<ExtendedFieldProps & {
                   </div>
                 }
               >
-                <div style={{ marginBottom: '12px' }}>
-                  <Text strong style={{ color: '#fff', display: 'block', marginBottom: '8px' }}>
-                    集数分配
-                  </Text>
-                  <InputNumber
-                    value={stage.numberOfEpisodes}
-                    onChange={(value) => updateStage(index, 'numberOfEpisodes', value || 1)}
-                    min={1}
-                    max={50}
-                    disabled={disabled}
-                    style={{
-                      backgroundColor: '#1f1f1f',
-                      borderColor: '#404040',
-                      color: '#fff'
-                    }}
-                  />
-                  <Text style={{ color: '#8c8c8c', marginLeft: '8px' }}>集</Text>
+                {/* Basic Info */}
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+                    <div style={{ flex: 1 }}>
+                      <Text strong style={{ color: '#fff', display: 'block', marginBottom: '8px' }}>
+                        集数分配
+                      </Text>
+                      <InputNumber
+                        value={stage.numberOfEpisodes}
+                        onChange={(value) => updateStage(index, 'numberOfEpisodes', value || 1)}
+                        min={1}
+                        max={50}
+                        disabled={disabled}
+                        style={{
+                          width: '100px',
+                          backgroundColor: '#1f1f1f',
+                          borderColor: '#404040',
+                          color: '#fff'
+                        }}
+                      />
+                      <Text style={{ color: '#8c8c8c', marginLeft: '8px' }}>集</Text>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Text strong style={{ color: '#fff', display: 'block', marginBottom: '8px' }}>
+                      故事内容
+                    </Text>
+                    <TextareaAutosize
+                      value={stage.stageSynopsis || ''}
+                      onChange={(e) => updateStage(index, 'stageSynopsis', e.target.value)}
+                      placeholder={placeholder}
+                      disabled={disabled}
+                      minRows={4}
+                      maxRows={12}
+                      style={{
+                        width: '100%',
+                        backgroundColor: '#1f1f1f',
+                        border: '1px solid #404040',
+                        borderRadius: '6px',
+                        color: '#fff',
+                        padding: '8px 12px',
+                        fontSize: '14px',
+                        lineHeight: '1.5715',
+                        resize: 'none',
+                        outline: 'none',
+                        fontFamily: 'inherit'
+                      }}
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <Text strong style={{ color: '#fff', display: 'block', marginBottom: '8px' }}>
-                    故事内容
+                {/* Temporal Constraints */}
+                <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: '#0f1419', borderRadius: '8px', border: '1px solid #2a3441' }}>
+                  <Text strong style={{ color: '#52c41a', display: 'block', marginBottom: '12px', fontSize: '14px' }}>
+                    🟢 时间约束
                   </Text>
-                  <TextareaAutosize
-                    value={stage.stageSynopsis}
-                    onChange={(e) => updateStage(index, 'stageSynopsis', e.target.value)}
-                    placeholder={placeholder}
-                    disabled={disabled}
-                    minRows={4}
-                    maxRows={12}
-                    style={{
-                      width: '100%',
-                      backgroundColor: '#1f1f1f',
-                      border: '1px solid #404040',
-                      borderRadius: '6px',
-                      color: '#fff',
-                      padding: '8px 12px',
-                      fontSize: '14px',
-                      lineHeight: '1.5715',
-                      resize: 'none',
-                      outline: 'none',
-                      fontFamily: 'inherit'
-                    }}
-                  />
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                    <div>
+                      <Text style={{ color: '#d9d9d9', display: 'block', marginBottom: '4px', fontSize: '12px' }}>
+                        时间框架
+                      </Text>
+                      <Input
+                        value={stage.timeframe || ''}
+                        onChange={(e) => updateStage(index, 'timeframe', e.target.value)}
+                        placeholder="如: 故事开始的第1-6天"
+                        disabled={disabled}
+                        style={{ backgroundColor: '#1f1f1f', borderColor: '#404040', color: '#fff' }}
+                      />
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div>
+                      <Text style={{ color: '#d9d9d9', display: 'block', marginBottom: '4px', fontSize: '12px' }}>
+                        开始条件
+                      </Text>
+                      <Input
+                        value={stage.startingCondition || ''}
+                        onChange={(e) => updateStage(index, 'startingCondition', e.target.value)}
+                        placeholder="阶段开始时的状态"
+                        disabled={disabled}
+                        style={{ backgroundColor: '#1f1f1f', borderColor: '#404040', color: '#fff' }}
+                      />
+                    </div>
+                    <div>
+                      <Text style={{ color: '#d9d9d9', display: 'block', marginBottom: '4px', fontSize: '12px' }}>
+                        结束条件
+                      </Text>
+                      <Input
+                        value={stage.endingCondition || ''}
+                        onChange={(e) => updateStage(index, 'endingCondition', e.target.value)}
+                        placeholder="阶段结束时的状态"
+                        disabled={disabled}
+                        style={{ backgroundColor: '#1f1f1f', borderColor: '#404040', color: '#fff' }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Event Boundaries */}
+                <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: '#0a1220', borderRadius: '8px', border: '1px solid #1a365d' }}>
+                  <Text strong style={{ color: '#1890ff', display: 'block', marginBottom: '12px', fontSize: '14px' }}>
+                    🔵 事件边界
+                  </Text>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                    <div>
+                      <Text style={{ color: '#d9d9d9', display: 'block', marginBottom: '4px', fontSize: '12px' }}>
+                        开始事件
+                      </Text>
+                      <Input
+                        value={stage.stageStartEvent || ''}
+                        onChange={(e) => updateStage(index, 'stageStartEvent', e.target.value)}
+                        placeholder="触发阶段开始的关键事件"
+                        disabled={disabled}
+                        style={{ backgroundColor: '#1f1f1f', borderColor: '#404040', color: '#fff' }}
+                      />
+                    </div>
+                    <div>
+                      <Text style={{ color: '#d9d9d9', display: 'block', marginBottom: '4px', fontSize: '12px' }}>
+                        结束事件
+                      </Text>
+                      <Input
+                        value={stage.stageEndEvent || ''}
+                        onChange={(e) => updateStage(index, 'stageEndEvent', e.target.value)}
+                        placeholder="标志阶段结束的事件"
+                        disabled={disabled}
+                        style={{ backgroundColor: '#1f1f1f', borderColor: '#404040', color: '#fff' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <Text style={{ color: '#d9d9d9', fontSize: '12px' }}>
+                        关键节点
+                      </Text>
+                      <Button
+                        type="text"
+                        size="small"
+                        onClick={() => addMilestone(index)}
+                        disabled={disabled}
+                        style={{ color: '#1890ff', fontSize: '12px' }}
+                      >
+                        + 添加
+                      </Button>
+                    </div>
+                    {stage.keyMilestones && stage.keyMilestones.map((milestone: string, mIndex: number) => (
+                      <div key={mIndex} style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                        <Input
+                          value={milestone}
+                          onChange={(e) => updateStage(index, `keyMilestones[${mIndex}]`, e.target.value)}
+                          placeholder="关键事件节点"
+                          disabled={disabled}
+                          style={{
+                            flex: 1,
+                            backgroundColor: '#1f1f1f',
+                            borderColor: '#404040',
+                            color: '#fff',
+                            fontSize: '12px'
+                          }}
+                        />
+                        <Button
+                          type="text"
+                          size="small"
+                          onClick={() => removeMilestone(index, mIndex)}
+                          disabled={disabled}
+                          style={{ color: '#ff4d4f' }}
+                        >
+                          ×
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Relationship Progression */}
+                <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: '#1a0d00', borderRadius: '8px', border: '1px solid #5a2d00' }}>
+                  <Text strong style={{ color: '#fa8c16', display: 'block', marginBottom: '12px', fontSize: '14px' }}>
+                    🟠 关系发展
+                  </Text>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                    <div>
+                      <Text style={{ color: '#d9d9d9', display: 'block', marginBottom: '4px', fontSize: '12px' }}>
+                        关系层次
+                      </Text>
+                      <Input
+                        value={stage.relationshipLevel || ''}
+                        onChange={(e) => updateStage(index, 'relationshipLevel', e.target.value)}
+                        placeholder="如: 陌生 → 敌意"
+                        disabled={disabled}
+                        style={{ backgroundColor: '#1f1f1f', borderColor: '#404040', color: '#fff' }}
+                      />
+                    </div>
+                    <div>
+                      <Text style={{ color: '#d9d9d9', display: 'block', marginBottom: '4px', fontSize: '12px' }}>
+                        情感弧线
+                      </Text>
+                      <Input
+                        value={stage.emotionalArc || ''}
+                        onChange={(e) => updateStage(index, 'emotionalArc', e.target.value)}
+                        placeholder="如: 压抑 → 爆发"
+                        disabled={disabled}
+                        style={{ backgroundColor: '#1f1f1f', borderColor: '#404040', color: '#fff' }}
+                      />
+                    </div>
+                    <div>
+                      <Text style={{ color: '#d9d9d9', display: 'block', marginBottom: '4px', fontSize: '12px' }}>
+                        外部压力
+                      </Text>
+                      <Input
+                        value={stage.externalPressure || ''}
+                        onChange={(e) => updateStage(index, 'externalPressure', e.target.value)}
+                        placeholder="外部环境压力"
+                        disabled={disabled}
+                        style={{ backgroundColor: '#1f1f1f', borderColor: '#404040', color: '#fff' }}
+                      />
+                    </div>
+                  </div>
                 </div>
               </Card>
             );

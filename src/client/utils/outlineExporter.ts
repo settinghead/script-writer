@@ -21,6 +21,15 @@ interface OutlineExportData {
         synopsis_stages?: Array<{
             stageSynopsis: string;
             numberOfEpisodes: number;
+            timeframe?: string;
+            startingCondition?: string;
+            endingCondition?: string;
+            stageStartEvent?: string;
+            stageEndEvent?: string;
+            keyMilestones?: string[];
+            relationshipLevel?: string;
+            emotionalArc?: string;
+            externalPressure?: string;
         }>;
         characters?: Array<{
             name: string;
@@ -163,9 +172,9 @@ export function formatOutlineForExport(data: OutlineExportData): string {
         sections.push("");
     }
 
-    // Synopsis Stages
+    // Enhanced Synopsis Stages with detailed structure
     if (data.components.synopsis_stages && data.components.synopsis_stages.length > 0) {
-        sections.push("📚 分段故事梗概");
+        sections.push("📚 分段故事梗概（详细结构）");
         sections.push(repeatChar("-", 30));
 
         // Calculate total episodes
@@ -176,9 +185,67 @@ export function formatOutlineForExport(data: OutlineExportData): string {
         let currentEpisode = 1;
         data.components.synopsis_stages.forEach((stage, index) => {
             const endEpisode = currentEpisode + stage.numberOfEpisodes - 1;
-            sections.push(`第${index + 1}阶段 (第${currentEpisode}-${endEpisode}集)：`);
+
+            // Stage header
+            sections.push(repeatChar("─", 40));
+            sections.push(`第${index + 1}阶段 (第${currentEpisode}-${endEpisode}集，共${stage.numberOfEpisodes}集)`);
+            sections.push(repeatChar("─", 40));
+
+            // Basic story content
+            sections.push("📖 故事内容：");
             sections.push(stage.stageSynopsis);
             sections.push("");
+
+            // Temporal Constraints (🟢)
+            if (stage.timeframe || stage.startingCondition || stage.endingCondition) {
+                sections.push("🟢 时间约束：");
+                if (stage.timeframe) {
+                    sections.push(`   时间框架：${stage.timeframe}`);
+                }
+                if (stage.startingCondition) {
+                    sections.push(`   开始条件：${stage.startingCondition}`);
+                }
+                if (stage.endingCondition) {
+                    sections.push(`   结束条件：${stage.endingCondition}`);
+                }
+                sections.push("");
+            }
+
+            // Event Boundaries (🔵)
+            if (stage.stageStartEvent || stage.stageEndEvent || (stage.keyMilestones && stage.keyMilestones.length > 0)) {
+                sections.push("🔵 事件边界：");
+                if (stage.stageStartEvent) {
+                    sections.push(`   开始事件：${stage.stageStartEvent}`);
+                }
+                if (stage.stageEndEvent) {
+                    sections.push(`   结束事件：${stage.stageEndEvent}`);
+                }
+                if (stage.keyMilestones && stage.keyMilestones.length > 0) {
+                    sections.push("   关键节点：");
+                    stage.keyMilestones.forEach((milestone, mIndex) => {
+                        if (milestone.trim()) {
+                            sections.push(`     ${mIndex + 1}. ${milestone}`);
+                        }
+                    });
+                }
+                sections.push("");
+            }
+
+            // Relationship Progression (🟠)
+            if (stage.relationshipLevel || stage.emotionalArc || stage.externalPressure) {
+                sections.push("🟠 关系发展：");
+                if (stage.relationshipLevel) {
+                    sections.push(`   关系层次：${stage.relationshipLevel}`);
+                }
+                if (stage.emotionalArc) {
+                    sections.push(`   情感弧线：${stage.emotionalArc}`);
+                }
+                if (stage.externalPressure) {
+                    sections.push(`   外部压力：${stage.externalPressure}`);
+                }
+                sections.push("");
+            }
+
             currentEpisode = endEpisode + 1;
         });
     }
