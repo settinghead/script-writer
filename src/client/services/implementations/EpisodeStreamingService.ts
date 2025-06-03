@@ -24,8 +24,13 @@ export class EpisodeStreamingService extends LLMStreamingService<EpisodeSynopsis
     parsePartial(content: string): EpisodeSynopsis[] {
         if (!content.trim()) return [];
 
+        console.log('[EpisodeStreamingService] Original content length:', content.length);
+        console.log('[EpisodeStreamingService] Original content preview:',
+            content.substring(0, 100) + (content.length > 100 ? '...' : ''));
+
         // Clean the content first
         const cleanedContent = this.cleanContent(content);
+        console.log('[EpisodeStreamingService] After cleaning, length:', cleanedContent.length);
 
         // Try to find JSON array
         let processableContent = cleanedContent;
@@ -34,39 +39,51 @@ export class EpisodeStreamingService extends LLMStreamingService<EpisodeSynopsis
         const arrayStart = processableContent.indexOf('[');
         if (arrayStart >= 0) {
             processableContent = processableContent.substring(arrayStart);
+            console.log('[EpisodeStreamingService] Found array start, processing from position:', arrayStart);
         } else {
-            // If no array, return empty
+            console.log('[EpisodeStreamingService] No array start found, content:', processableContent);
             return [];
         }
 
         // Try to parse as complete array first
         try {
             const extractedJSON = this.extractJSON(processableContent);
+            console.log('[EpisodeStreamingService] Extracted JSON length:', extractedJSON.length);
             const parsed = JSON.parse(extractedJSON);
             if (Array.isArray(parsed)) {
-                return parsed
+                console.log('[EpisodeStreamingService] Successfully parsed complete array with', parsed.length, 'episodes');
+                const episodes = parsed
                     .map(episode => this.normalizeEpisode(episode))
                     .filter(episode => this.validate(episode));
+                console.log('[EpisodeStreamingService] Returning', episodes.length, 'valid episodes');
+                return episodes;
             }
         } catch (error) {
-            // Continue to partial parsing
+            console.log('[EpisodeStreamingService] Failed to parse complete JSON:', error.message);
         }
 
         // Try jsonrepair for incomplete JSON
         try {
             const repaired = jsonrepair(processableContent);
+            console.log('[EpisodeStreamingService] JSON repair attempted, length:', repaired.length);
             const parsed = JSON.parse(repaired);
             if (Array.isArray(parsed)) {
-                return parsed
+                console.log('[EpisodeStreamingService] Successfully parsed repaired JSON with', parsed.length, 'episodes');
+                const episodes = parsed
                     .map(episode => this.normalizeEpisode(episode))
                     .filter(episode => this.validate(episode));
+                console.log('[EpisodeStreamingService] Returning', episodes.length, 'valid episodes from repair');
+                return episodes;
             }
         } catch (repairError) {
-            // Continue to individual episode parsing
+            console.log('[EpisodeStreamingService] JSON repair failed:', repairError.message);
         }
 
         // Try to extract individual complete episodes
-        return this.extractPartialEpisodes(processableContent);
+        console.log('[EpisodeStreamingService] Falling back to partial episode extraction');
+        const partialEpisodes = this.extractPartialEpisodes(processableContent);
+        console.log('[EpisodeStreamingService] Extracted', partialEpisodes.length, 'partial episodes');
+        return partialEpisodes;
     }
 
     private normalizeEpisode(data: any): EpisodeSynopsis {
@@ -170,7 +187,22 @@ export class EpisodeStreamingService extends LLMStreamingService<EpisodeSynopsis
     }
 
     cleanContent(content: string): string {
-        return cleanLLMContent(content);
+        // Remove streaming protocol prefixes like '0:"' and decode JSON strings
+        let cleaned = content
+            .replace(/^\d+:"/, '') // Remove streaming protocol prefix like '0:"'
+            .replace(/\\n/g, '\n')  // Decode newlines
+            .replace(/\\"/g, '"')   // Decode quotes
+            .replace(/\\t/g, '\t')  // Decode tabs
+            .replace(/\\""/g, '"')  // Fix double-escaped quotes
+            .trim();
+
+        // Use the common text cleaning utility
+        cleaned = cleanLLMContent(cleaned);
+
+        console.log('[EpisodeStreamingService] Cleaned content preview:',
+            cleaned.substring(0, 200) + (cleaned.length > 200 ? '...' : ''));
+
+        return cleaned;
     }
 
     private extractJSON(content: string): string {

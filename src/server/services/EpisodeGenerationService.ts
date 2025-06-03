@@ -253,6 +253,97 @@ export class EpisodeGenerationService {
         return null;
     }
 
+    async getLatestEpisodeGeneration(
+        userId: string,
+        stageArtifactId: string
+    ): Promise<EpisodeGenerationSessionData | null> {
+        try {
+            // Find all episode generation sessions for this stage
+            const sessionArtifacts = await this.artifactRepo.getArtifactsByType(
+                userId,
+                'episode_generation_session'
+            );
+
+            // Filter sessions for this stage and sort by creation time (newest first)
+            const stageSessionArtifacts = sessionArtifacts
+                .filter(artifact => {
+                    const sessionData = artifact.data as EpisodeGenerationSessionV1;
+                    return sessionData.stageArtifactId === stageArtifactId;
+                })
+                .sort((a, b) => {
+                    // Extract timestamp from session ID
+                    const timestampA = parseInt((a.data as EpisodeGenerationSessionV1).id.split('-')[3]);
+                    const timestampB = parseInt((b.data as EpisodeGenerationSessionV1).id.split('-')[3]);
+                    return timestampB - timestampA; // Newest first
+                });
+
+            if (stageSessionArtifacts.length === 0) {
+                return null;
+            }
+
+            // Get the latest session
+            const latestSessionArtifact = stageSessionArtifacts[0];
+            const sessionData = latestSessionArtifact.data as EpisodeGenerationSessionV1;
+
+            // Get stage artifact
+            const stageArtifact = await this.artifactRepo.getArtifact(
+                sessionData.stageArtifactId,
+                userId
+            );
+
+            if (!stageArtifact) {
+                throw new Error('Stage artifact not found');
+            }
+
+            // Get episode artifacts for this session
+            const episodeArtifacts = await this.artifactRepo.getArtifactsByType(
+                userId,
+                'episode_synopsis'
+            );
+
+            const episodes = episodeArtifacts
+                .filter(artifact =>
+                    (artifact.data as EpisodeSynopsisV1).episodeGenerationSessionId === sessionData.id
+                )
+                .map(artifact => artifact.data as EpisodeSynopsisV1)
+                .sort((a, b) => a.episodeNumber - b.episodeNumber);
+
+            // Check for active transform if session is active
+            let currentTransformId: string | undefined;
+            let status: 'active' | 'completed' | 'failed' = sessionData.status;
+
+            if (sessionData.status === 'active') {
+                const userTransforms = await this.transformRepo.getUserTransforms(userId);
+                const activeTransform = userTransforms.find(transform =>
+                    transform.status === 'running' &&
+                    transform.execution_context?.episode_generation_session_id === sessionData.id
+                );
+
+                if (activeTransform) {
+                    currentTransformId = activeTransform.id;
+                } else {
+                    // Session marked as active but no running transform - mark as completed
+                    status = 'completed';
+                }
+            }
+
+            return {
+                session: sessionData,
+                stage: {
+                    ...stageArtifact.data as OutlineSynopsisStageV1,
+                    artifactId: stageArtifact.id
+                },
+                episodes,
+                currentTransformId,
+                status
+            };
+
+        } catch (error) {
+            console.error('Error getting latest episode generation:', error);
+            return null;
+        }
+    }
+
     async getAllEpisodeGenerationSessions(userId: string): Promise<EpisodeGenerationSessionData[]> {
         try {
             // Get all episode generation session artifacts for the user

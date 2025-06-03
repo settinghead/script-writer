@@ -121,6 +121,31 @@ export function createEpisodeRoutes(
         }
     );
 
+    // Get latest episode generation for a stage (any status)
+    router.get('/stages/:stageId/latest-generation',
+        authMiddleware.authenticate,
+        async (req, res): Promise<void> => {
+            const userId = req.user?.id;
+            const { stageId } = req.params;
+
+            if (!userId) {
+                res.status(401).json({ error: 'Unauthorized' });
+                return;
+            }
+
+            try {
+                const latestGeneration = await episodeService.getLatestEpisodeGeneration(
+                    userId,
+                    stageId
+                );
+                res.json(latestGeneration);
+            } catch (error: any) {
+                console.error('Error getting latest episode generation:', error);
+                res.status(500).json({ error: error.message });
+            }
+        }
+    );
+
     // Check for active episode generation
     router.get('/stages/:stageId/active-generation',
         authMiddleware.authenticate,

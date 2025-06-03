@@ -232,11 +232,6 @@ const AppContent: React.FC = () => {
                     <EpisodeGenerationPage />
                   </ProtectedRoute>
                 } />
-                <Route path="/scripts/:scriptId/stages/:stageId" element={
-                  <ProtectedRoute>
-                    <EpisodeGenerationPage />
-                  </ProtectedRoute>
-                } />
                 <Route path="/episode-generation" element={
                   <ProtectedRoute>
                     <EpisodeGenerationPage />
@@ -299,11 +294,6 @@ const AppContent: React.FC = () => {
                   </ProtectedRoute>
                 } />
                 <Route path="/scripts/:scriptId" element={
-                  <ProtectedRoute>
-                    <EpisodeGenerationPage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/scripts/:scriptId/stages/:stageId" element={
                   <ProtectedRoute>
                     <EpisodeGenerationPage />
                   </ProtectedRoute>

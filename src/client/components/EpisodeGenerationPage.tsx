@@ -36,13 +36,14 @@ const apiService = {
 };
 
 export const EpisodeGenerationPage: React.FC = () => {
-    const { scriptId, stageId: urlStageId } = useParams<{ scriptId: string; stageId?: string }>();
+    const { scriptId } = useParams<{ scriptId: string }>();
     const navigate = useNavigate();
-    const [searchParams] = useSearchParams();
-    const sessionId = searchParams.get('session');
-    const transformId = searchParams.get('transform');
+    const [searchParams, setSearchParams] = useSearchParams();
 
-    const [selectedStageId, setSelectedStageId] = useState<string | null>(urlStageId || null);
+    // Get stage_id from query parameters instead of URL path
+    const stageIdFromUrl = searchParams.get('stage_id');
+
+    const [selectedStageId, setSelectedStageId] = useState<string | null>(stageIdFromUrl || null);
     const [treeData, setTreeData] = useState<StageNode[]>([]);
     const [expandedKeys, setExpandedKeys] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
@@ -54,12 +55,12 @@ export const EpisodeGenerationPage: React.FC = () => {
         }
     }, [scriptId]);
 
-    // Update selected stage when URL changes
+    // Update selected stage when query params change
     useEffect(() => {
-        if (urlStageId && urlStageId !== selectedStageId) {
-            setSelectedStageId(urlStageId);
+        if (stageIdFromUrl && stageIdFromUrl !== selectedStageId) {
+            setSelectedStageId(stageIdFromUrl);
         }
-    }, [urlStageId]);
+    }, [stageIdFromUrl]);
 
     const loadOutlineData = async () => {
         if (!scriptId) return;
@@ -106,12 +107,13 @@ export const EpisodeGenerationPage: React.FC = () => {
         const nodeKey = selectedKeys[0] as string;
 
         if (nodeKey && nodeKey.includes('episode-')) {
-            // Navigate to episode detail
+            // Navigate to episode detail (future implementation)
             const [stageId, episodeId] = parseEpisodeKey(nodeKey);
-            navigate(`/scripts/${scriptId}/stages/${stageId}/episodes/${episodeId}`);
+            setSearchParams({ stage_id: stageId, episode_id: episodeId });
         } else if (nodeKey) {
-            // Stage selected
+            // Stage selected - use query parameter
             setSelectedStageId(nodeKey);
+            setSearchParams({ stage_id: nodeKey });
         }
     };
 
@@ -126,12 +128,6 @@ export const EpisodeGenerationPage: React.FC = () => {
             return [parts[1], parts[2]];
         }
         throw new Error('Invalid episode key format');
-    };
-
-    const startStreamingEpisodes = () => {
-        // The URL navigation is already handled in StageDetailView's handleStartGeneration
-        // This callback is just to notify that generation has started
-        console.log('[EpisodeGenerationPage] Episode generation started for stage:', selectedStageId);
     };
 
     if (loading) {
@@ -225,7 +221,6 @@ export const EpisodeGenerationPage: React.FC = () => {
                     <StageDetailView
                         scriptId={scriptId}
                         stageId={selectedStageId}
-                        onGenerateStart={startStreamingEpisodes}
                     />
                 ) : (
                     <Empty

@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
 import {
     Card,
     Typography,
@@ -15,355 +14,74 @@ import {
     List,
     Tag
 } from 'antd';
-import { PlayCircleOutlined, EditOutlined, StopOutlined } from '@ant-design/icons';
-import { EpisodeGenerationSessionV1, EpisodeSynopsisV1, OutlineSynopsisStageV1 } from '../../common/types';
-import { EpisodeStreamingService, EpisodeSynopsis } from '../services/implementations/EpisodeStreamingService';
-import { useLLMStreaming } from '../hooks/useLLMStreaming';
+import { PlayCircleOutlined, EditOutlined, StopOutlined, ExportOutlined } from '@ant-design/icons';
+import { EpisodeSynopsisV1 } from '../../common/types';
+import { EpisodeSynopsis } from '../services/implementations/EpisodeStreamingService';
+import { OutlineExportModal } from './shared/OutlineExportModal';
+import { formatEpisodesForExport, type EpisodeExportData } from '../utils/episodeExporter';
+import { useStageSession } from '../hooks/useStageSession';
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
 
-interface StageData {
-    artifactId: string;
-    stageNumber: number;
-    stageSynopsis: string;
-    numberOfEpisodes: number;
-    outlineSessionId: string;
-}
-
-interface EpisodeGenerationSessionData {
-    session: EpisodeGenerationSessionV1;
-    status: 'active' | 'completed' | 'failed';
-    episodes: EpisodeSynopsisV1[];
-}
-
 interface StageDetailViewProps {
     scriptId: string;
-    stageId: string;
+    stageId: string | null;
     onGenerateStart?: () => void;
 }
-
-// API service functions
-const apiService = {
-    async getStageDetails(stageId: string): Promise<StageData | null> {
-        console.log('[API] getStageDetails called for stageId:', stageId);
-        try {
-            const response = await fetch(`/api/episodes/stages/${stageId}`, {
-                credentials: 'include'
-            });
-            console.log('[API] getStageDetails response status:', response.status);
-            if (!response.ok) {
-                throw new Error('Failed to fetch stage details');
-            }
-            const data = await response.json();
-            console.log('[API] getStageDetails response data:', data);
-            return data;
-        } catch (error) {
-            console.error('[API] getStageDetails error:', error);
-            return null;
-        }
-    },
-
-    async getEpisodeGenerationSession(sessionId: string): Promise<EpisodeGenerationSessionData | null> {
-        console.log('[API] getEpisodeGenerationSession called for sessionId:', sessionId);
-        try {
-            const response = await fetch(`/api/episodes/episode-generation/${sessionId}`, {
-                credentials: 'include'
-            });
-            console.log('[API] getEpisodeGenerationSession response status:', response.status);
-            if (!response.ok) {
-                throw new Error('Failed to fetch episode generation session');
-            }
-            const data = await response.json();
-            console.log('[API] getEpisodeGenerationSession response data:', data);
-            return data;
-        } catch (error) {
-            console.error('[API] getEpisodeGenerationSession error:', error);
-            return null;
-        }
-    },
-
-    async checkActiveEpisodeGeneration(stageId: string): Promise<EpisodeGenerationSessionData | null> {
-        console.log('[API] checkActiveEpisodeGeneration called for stageId:', stageId);
-        try {
-            const response = await fetch(`/api/episodes/stages/${stageId}/active-generation`, {
-                credentials: 'include'
-            });
-            console.log('[API] checkActiveEpisodeGeneration response status:', response.status);
-            if (!response.ok) {
-                return null;
-            }
-            const data = await response.json();
-            console.log('[API] checkActiveEpisodeGeneration response data:', data);
-            return data;
-        } catch (error) {
-            console.error('[API] checkActiveEpisodeGeneration error:', error);
-            return null;
-        }
-    },
-
-    async startEpisodeGeneration(
-        stageId: string,
-        numberOfEpisodes: number,
-        customRequirements?: string
-    ): Promise<{ sessionId: string; transformId: string }> {
-        console.log('[API] startEpisodeGeneration called for stageId:', stageId);
-        const response = await fetch(`/api/episodes/stages/${stageId}/episodes/generate`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            credentials: 'include',
-            body: JSON.stringify({
-                numberOfEpisodes,
-                customRequirements
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error('Failed to start episode generation');
-        }
-
-        const data = await response.json();
-        console.log('[API] startEpisodeGeneration response data:', data);
-        return data;
-    },
-
-    async stopEpisodeGeneration(sessionId: string): Promise<void> {
-        console.log('[API] stopEpisodeGeneration called for sessionId:', sessionId);
-        const response = await fetch(`/api/episodes/episode-generation/${sessionId}/stop`, {
-            method: 'POST',
-            credentials: 'include'
-        });
-
-        if (!response.ok) {
-            throw new Error('Failed to stop episode generation');
-        }
-    }
-};
 
 export const StageDetailView: React.FC<StageDetailViewProps> = ({
     scriptId,
     stageId,
     onGenerateStart
 }) => {
-    const [searchParams, setSearchParams] = useSearchParams();
-    const [stageData, setStageData] = useState<StageData | null>(null);
-    const [sessionData, setSessionData] = useState<EpisodeGenerationSessionData | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [generating, setGenerating] = useState(false);
     const [editMode, setEditMode] = useState(false);
+    const [isExportModalVisible, setIsExportModalVisible] = useState(false);
+    const [exportText, setExportText] = useState('');
 
     // Editable parameters
     const [editedEpisodes, setEditedEpisodes] = useState<number>(0);
     const [editedRequirements, setEditedRequirements] = useState<string>('');
 
-    // Get session and transform IDs from URL parameters
-    const sessionId = searchParams.get('session');
-    const transformId = searchParams.get('transform');
-
-    console.log('[StageDetailView] URL parameters:', { sessionId, transformId, stageId });
-
-    // Create streaming service instance
-    const streamingService = useMemo(() => new EpisodeStreamingService(), []);
-
-    // Use the LLM streaming hook
+    // Use the stage session hook for all data management
     const {
-        status: streamingStatus,
-        items: streamingEpisodes,
+        stageData,
+        sessionData,
+        streamingEpisodes,
+        isStreaming,
         isThinking,
-        stop: stopStreaming,
-        error: streamingError
-    } = useLLMStreaming(streamingService, {
-        transformId: transformId && transformId !== 'undefined' ? transformId : undefined
-    });
+        streamingError,
+        loading,
+        generating,
+        startGeneration,
+        stopGeneration,
+        progress,
+        episodeCount
+    } = useStageSession(stageId);
 
-    console.log('[StageDetailView] Streaming state:', {
-        status: streamingStatus,
-        episodeCount: streamingEpisodes.length,
-        isThinking,
-        hasError: !!streamingError,
-        transformId: transformId && transformId !== 'undefined' ? transformId : undefined
-    });
-
-    // Derived streaming state
-    const isStreaming = streamingStatus === 'streaming';
-    const isConnecting = !!(streamingStatus === 'idle' && transformId);
-
-    useEffect(() => {
-        console.log('[StageDetailView] useEffect triggered - loading stage data and checking sessions');
-        console.log('[StageDetailView] sessionId from URL:', sessionId);
-        console.log('[StageDetailView] transformId from URL:', transformId);
-        console.log('[StageDetailView] stageId:', stageId);
-
-        // Validate stageId before making API calls
-        if (!stageId || stageId === 'undefined') {
-            console.log('[StageDetailView] Invalid stageId, skipping data loading');
-            setLoading(false);
-            return;
+    // Initialize editable parameters when stage data loads
+    React.useEffect(() => {
+        if (stageData) {
+            setEditedEpisodes(stageData.numberOfEpisodes);
         }
-
-        loadStageData();
-        // If we have session info from URL, check that specific session
-        if (sessionId && sessionId !== 'undefined' && transformId && transformId !== 'undefined') {
-            console.log('[StageDetailView] Checking session from URL parameters:', sessionId);
-            checkSessionStatus(sessionId);
-        } else {
-            console.log('[StageDetailView] No valid session in URL, checking for active generation');
-            checkActiveGeneration();
-        }
-    }, [stageId, sessionId, transformId]);
-
-    // Handle streaming completion
-    useEffect(() => {
-        if (streamingStatus === 'completed' && sessionId) {
-            // Reload session to get final state
-            checkSessionStatus(sessionId);
-        }
-    }, [streamingStatus, sessionId]);
-
-    // Handle streaming errors
-    useEffect(() => {
-        if (streamingStatus === 'error') {
-            console.error('Streaming error occurred:', streamingError);
-            message.error('剧集生成出现错误');
-        }
-    }, [streamingStatus, streamingError]);
-
-    // Update session data when streaming provides new episode data
-    useEffect(() => {
-        if (streamingEpisodes.length > 0) {
-            setSessionData(prev => {
-                if (!prev) return prev;
-
-                // Convert streaming episodes to EpisodeSynopsisV1 format
-                const convertedEpisodes: EpisodeSynopsisV1[] = streamingEpisodes.map(episode => ({
-                    episodeNumber: episode.episodeNumber,
-                    title: episode.title,
-                    briefSummary: episode.synopsis || episode.briefSummary || '',
-                    keyEvents: episode.keyEvents,
-                    hooks: episode.endHook || episode.hooks || '',
-                    stageArtifactId: stageData?.artifactId || '',
-                    episodeGenerationSessionId: prev.session.id
-                }));
-
-                return {
-                    ...prev,
-                    episodes: convertedEpisodes,
-                    status: isStreaming ? 'active' : prev.status
-                };
-            });
-        }
-    }, [streamingEpisodes, isStreaming, stageData]);
-
-    const loadStageData = async () => {
-        console.log('[StageDetailView] loadStageData called for stageId:', stageId);
-
-        // Validate stageId before API call
-        if (!stageId || stageId === 'undefined') {
-            console.log('[StageDetailView] Invalid stageId, cannot load stage data');
-            setLoading(false);
-            return;
-        }
-
-        try {
-            const data = await apiService.getStageDetails(stageId);
-            if (data) {
-                setStageData(data);
-                setEditedEpisodes(data.numberOfEpisodes);
-            }
-        } catch (error) {
-            console.error('Error loading stage data:', error);
-            message.error('加载阶段数据失败');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const checkSessionStatus = async (sessionId: string) => {
-        console.log('[StageDetailView] checkSessionStatus called for sessionId:', sessionId);
-        try {
-            const sessionData = await apiService.getEpisodeGenerationSession(sessionId);
-            console.log('[StageDetailView] Session data received:', sessionData);
-            if (sessionData) {
-                setSessionData(sessionData);
-                setGenerating(sessionData.status === 'active');
-            } else {
-                // Session not found - this can happen if database was reset
-                console.log('[StageDetailView] Session not found, resetting state');
-                setSessionData(null);
-                setGenerating(false);
-            }
-        } catch (error) {
-            console.log('[StageDetailView] Error checking session status (may be expected):', error);
-            // Don't show error to user as this is expected when session doesn't exist
-            setSessionData(null);
-            setGenerating(false);
-        }
-    };
-
-    const checkActiveGeneration = async () => {
-        console.log('[StageDetailView] checkActiveGeneration called for stageId:', stageId);
-        try {
-            const activeGeneration = await apiService.checkActiveEpisodeGeneration(stageId);
-            console.log('[StageDetailView] Active generation check result:', activeGeneration);
-            if (activeGeneration) {
-                setSessionData(activeGeneration);
-                setGenerating(activeGeneration.status === 'active');
-            } else {
-                setGenerating(false);
-            }
-        } catch (error) {
-            console.error('Error checking active generation:', error);
-            setGenerating(false);
-        }
-    };
+    }, [stageData]);
 
     const handleStartGeneration = async () => {
         if (!stageData) return;
 
         try {
-            setGenerating(true);
-            setSessionData(null); // Clear previous session data
-
-            const result = await apiService.startEpisodeGeneration(
-                stageId,
-                editedEpisodes,
-                editedRequirements.trim() || undefined
-            );
-
-            // Update URL with new session and transform IDs using React Router
-            setSearchParams(prev => {
-                const newParams = new URLSearchParams(prev);
-                newParams.set('session', result.sessionId);
-                newParams.set('transform', result.transformId);
-                return newParams;
-            });
-
-            console.log('[StageDetailView] Updated URL with session and transform:', {
-                sessionId: result.sessionId,
-                transformId: result.transformId
-            });
-
+            await startGeneration(editedEpisodes, editedRequirements.trim() || undefined);
             onGenerateStart?.();
             message.success('剧集生成已开始');
-
         } catch (error) {
             console.error('Error starting episode generation:', error);
             message.error('启动剧集生成失败');
-            setGenerating(false);
         }
     };
 
     const handleStopGeneration = async () => {
-        if (!sessionData) return;
-
         try {
-            await stopStreaming();
-            if (sessionData.session.id) {
-                await apiService.stopEpisodeGeneration(sessionData.session.id);
-            }
-            setGenerating(false);
+            await stopGeneration();
             message.success('剧集生成已停止');
         } catch (error) {
             console.error('Error stopping episode generation:', error);
@@ -374,6 +92,31 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
     const handleSaveParameters = () => {
         setEditMode(false);
         message.success('参数已保存');
+    };
+
+    const handleExport = () => {
+        if (!stageData) return;
+
+        // Get episodes from either streaming data or session data
+        const episodes = streamingEpisodes.length > 0 ? streamingEpisodes : (sessionData?.episodes || []);
+
+        // Prepare export data
+        const exportData: EpisodeExportData = {
+            sessionId: sessionData?.session.id || 'unknown',
+            stageData: {
+                stageNumber: stageData.stageNumber,
+                stageSynopsis: stageData.stageSynopsis,
+                numberOfEpisodes: stageData.numberOfEpisodes,
+                artifactId: stageData.artifactId
+            },
+            episodes,
+            generatedAt: new Date().toISOString()
+        };
+
+        // Generate formatted text
+        const formattedText = formatEpisodesForExport(exportData);
+        setExportText(formattedText);
+        setIsExportModalVisible(true);
     };
 
     if (loading) {
@@ -387,12 +130,12 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
         );
     }
 
-    if (!stageId || stageId === 'undefined') {
+    if (!stageId) {
         return (
             <Alert
-                message="无效的阶段ID"
-                description="请选择一个有效的阶段"
-                type="error"
+                message="请选择阶段"
+                description="在左侧树形菜单中选择一个阶段开始生成剧集"
+                type="info"
                 showIcon
             />
         );
@@ -409,10 +152,8 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
         );
     }
 
-    // Calculate progress for streaming
+    // Calculate expected episodes
     const expectedEpisodes = editedEpisodes || stageData.numberOfEpisodes;
-    const currentEpisodes = streamingEpisodes.length || (sessionData?.episodes.length || 0);
-    const progress = expectedEpisodes > 0 ? Math.min((currentEpisodes / expectedEpisodes) * 100, 100) : 0;
 
     return (
         <div style={{ padding: '20px' }}>
@@ -512,7 +253,7 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
                                 />
                                 <div style={{ marginTop: '8px' }}>
                                     <Text type="secondary">
-                                        已生成 {currentEpisodes} / {expectedEpisodes} 集
+                                        已生成 {episodeCount} / {expectedEpisodes} 集
                                     </Text>
                                 </div>
                             </div>
@@ -532,7 +273,24 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
 
             {/* Episodes List */}
             {(streamingEpisodes.length > 0 || (sessionData && sessionData.episodes.length > 0)) && (
-                <Card title="剧集大纲" style={{ marginBottom: '20px' }}>
+                <Card
+                    title={
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span>剧集大纲</span>
+                            {!isStreaming && (
+                                <Button
+                                    onClick={handleExport}
+                                    icon={<ExportOutlined />}
+                                    type="default"
+                                    size="small"
+                                >
+                                    导出剧集大纲
+                                </Button>
+                            )}
+                        </div>
+                    }
+                    style={{ marginBottom: '20px' }}
+                >
                     {isStreaming && (
                         <Alert
                             message="正在实时生成剧集大纲"
@@ -603,6 +361,24 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
                     style={{ marginBottom: '20px' }}
                 />
             )}
+
+            {streamingError && (
+                <Alert
+                    message="流式传输错误"
+                    description={typeof streamingError === 'string' ? streamingError : streamingError.message}
+                    type="error"
+                    showIcon
+                    style={{ marginBottom: '20px' }}
+                />
+            )}
+
+            {/* Export Modal */}
+            <OutlineExportModal
+                visible={isExportModalVisible}
+                onClose={() => setIsExportModalVisible(false)}
+                exportText={exportText}
+                title="导出剧集大纲"
+            />
         </div>
     );
 }; 
