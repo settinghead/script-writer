@@ -256,7 +256,20 @@ export class TemplateService {
       "endingCondition": "[string] 阶段结束时必须达到的状态",
       "stageStartEvent": "[string] 触发该阶段的关键事件",
       "stageEndEvent": "[string] 结束该阶段的标志性事件",
-      "keyMilestones": ["[string] 里程碑1", "[string] 里程碑2", "[string] 里程碑3"],
+      "keyMilestones": [
+        {
+          "event": "[string] 里程碑事件1",
+          "timeSpan": "[string] 时间跨度1"
+        },
+        {
+          "event": "[string] 里程碑事件2",
+          "timeSpan": "[string] 时间跨度2"
+        },
+        {
+          "event": "[string] 里程碑事件3",
+          "timeSpan": "[string] 时间跨度3"
+        }
+      ],
       "relationshipLevel": "[string] 人物关系变化，如'陌生邻居 → 合作伙伴'",
       "emotionalArc": "[string] 情感变化轨迹，如'尴尬紧张 → 初步信任'",
       "externalPressure": "[string] 外部压力状况"
@@ -269,7 +282,20 @@ export class TemplateService {
       "endingCondition": "[string] 该阶段必须达到的新状态",
       "stageStartEvent": "[string] 从上一阶段自然过渡的事件",
       "stageEndEvent": "[string] 为下一阶段做铺垫的事件",
-      "keyMilestones": ["[string] 里程碑1", "[string] 里程碑2", "[string] 里程碑3"],
+      "keyMilestones": [
+        {
+          "event": "[string] 里程碑事件1",
+          "timeSpan": "[string] 时间跨度1"
+        },
+        {
+          "event": "[string] 里程碑事件2",
+          "timeSpan": "[string] 时间跨度2"
+        },
+        {
+          "event": "[string] 里程碑事件3",
+          "timeSpan": "[string] 时间跨度3"
+        }
+      ],
       "relationshipLevel": "[string] 关系的进一步发展",
       "emotionalArc": "[string] 情感的复杂化过程",
       "externalPressure": "[string] 外部压力的升级"
@@ -282,7 +308,20 @@ export class TemplateService {
       "endingCondition": "[string] 阶段结束条件",
       "stageStartEvent": "[string] 触发事件",
       "stageEndEvent": "[string] 结束事件",
-      "keyMilestones": ["[string] 里程碑1", "[string] 里程碑2", "[string] 里程碑3"],
+      "keyMilestones": [
+        {
+          "event": "[string] 里程碑事件1",
+          "timeSpan": "[string] 时间跨度1"
+        },
+        {
+          "event": "[string] 里程碑事件2",
+          "timeSpan": "[string] 时间跨度2"
+        },
+        {
+          "event": "[string] 里程碑事件3",
+          "timeSpan": "[string] 时间跨度3"
+        }
+      ],
       "relationshipLevel": "[string] 关系发展",
       "emotionalArc": "[string] 情感轨迹",
       "externalPressure": "[string] 外部压力"
@@ -295,7 +334,20 @@ export class TemplateService {
       "endingCondition": "[string] 阶段结束条件",
       "stageStartEvent": "[string] 触发事件",
       "stageEndEvent": "[string] 结束事件",
-      "keyMilestones": ["[string] 里程碑1", "[string] 里程碑2", "[string] 里程碑3"],
+      "keyMilestones": [
+        {
+          "event": "[string] 里程碑事件1",
+          "timeSpan": "[string] 时间跨度1"
+        },
+        {
+          "event": "[string] 里程碑事件2",
+          "timeSpan": "[string] 时间跨度2"
+        },
+        {
+          "event": "[string] 里程碑事件3",
+          "timeSpan": "[string] 时间跨度3"
+        }
+      ],
       "relationshipLevel": "[string] 关系发展",
       "emotionalArc": "[string] 情感轨迹",
       "externalPressure": "[string] 外部压力"
@@ -308,7 +360,20 @@ export class TemplateService {
       "endingCondition": "[string] 阶段结束条件",
       "stageStartEvent": "[string] 触发事件",
       "stageEndEvent": "[string] 结束事件",
-      "keyMilestones": ["[string] 里程碑1", "[string] 里程碑2", "[string] 里程碑3"],
+      "keyMilestones": [
+        {
+          "event": "[string] 里程碑事件1",
+          "timeSpan": "[string] 时间跨度1"
+        },
+        {
+          "event": "[string] 里程碑事件2",
+          "timeSpan": "[string] 时间跨度2"
+        },
+        {
+          "event": "[string] 里程碑事件3",
+          "timeSpan": "[string] 时间跨度3"
+        }
+      ],
       "relationshipLevel": "[string] 关系发展",
       "emotionalArc": "[string] 情感轨迹",
       "externalPressure": "[string] 外部压力"

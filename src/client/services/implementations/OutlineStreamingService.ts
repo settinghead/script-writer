@@ -34,6 +34,18 @@ export interface OutlineSection {
     synopsis_stages?: Array<{
         stageSynopsis: string;
         numberOfEpisodes: number;
+        timeframe?: string;
+        startingCondition?: string;
+        endingCondition?: string;
+        stageStartEvent?: string;
+        stageEndEvent?: string;
+        keyMilestones?: Array<{
+            event: string;
+            timeSpan: string;
+        }>;
+        relationshipLevel?: string;
+        emotionalArc?: string;
+        externalPressure?: string;
     }>;
 }
 
@@ -157,7 +169,21 @@ export class OutlineStreamingService extends LLMStreamingService<OutlineSection>
         if (data.synopsis_stages !== undefined && Array.isArray(data.synopsis_stages)) {
             outline.synopsis_stages = data.synopsis_stages.map((stage: any) => ({
                 stageSynopsis: String(stage.stageSynopsis),
-                numberOfEpisodes: Number(stage.numberOfEpisodes)
+                numberOfEpisodes: Number(stage.numberOfEpisodes),
+                timeframe: stage.timeframe ? String(stage.timeframe) : undefined,
+                startingCondition: stage.startingCondition ? String(stage.startingCondition) : undefined,
+                endingCondition: stage.endingCondition ? String(stage.endingCondition) : undefined,
+                stageStartEvent: stage.stageStartEvent ? String(stage.stageStartEvent) : undefined,
+                stageEndEvent: stage.stageEndEvent ? String(stage.stageEndEvent) : undefined,
+                keyMilestones: stage.keyMilestones && Array.isArray(stage.keyMilestones)
+                    ? stage.keyMilestones.map((km: any) => ({
+                        event: String(km.event),
+                        timeSpan: String(km.timeSpan)
+                    }))
+                    : undefined,
+                relationshipLevel: stage.relationshipLevel ? String(stage.relationshipLevel) : undefined,
+                emotionalArc: stage.emotionalArc ? String(stage.emotionalArc) : undefined,
+                externalPressure: stage.externalPressure ? String(stage.externalPressure) : undefined
             }));
         }
 
@@ -200,7 +226,21 @@ export class OutlineStreamingService extends LLMStreamingService<OutlineSection>
                 if (Array.isArray(stagesArray)) {
                     outline.synopsis_stages = stagesArray.map(stage => ({
                         stageSynopsis: String(stage.stageSynopsis),
-                        numberOfEpisodes: Number(stage.numberOfEpisodes)
+                        numberOfEpisodes: Number(stage.numberOfEpisodes),
+                        timeframe: stage.timeframe ? String(stage.timeframe) : undefined,
+                        startingCondition: stage.startingCondition ? String(stage.startingCondition) : undefined,
+                        endingCondition: stage.endingCondition ? String(stage.endingCondition) : undefined,
+                        stageStartEvent: stage.stageStartEvent ? String(stage.stageStartEvent) : undefined,
+                        stageEndEvent: stage.stageEndEvent ? String(stage.stageEndEvent) : undefined,
+                        keyMilestones: stage.keyMilestones && Array.isArray(stage.keyMilestones)
+                            ? stage.keyMilestones.map((km: any) => ({
+                                event: String(km.event),
+                                timeSpan: String(km.timeSpan)
+                            }))
+                            : undefined,
+                        relationshipLevel: stage.relationshipLevel ? String(stage.relationshipLevel) : undefined,
+                        emotionalArc: stage.emotionalArc ? String(stage.emotionalArc) : undefined,
+                        externalPressure: stage.externalPressure ? String(stage.externalPressure) : undefined
                     }));
                 }
             } catch (e) {
@@ -209,7 +249,16 @@ export class OutlineStreamingService extends LLMStreamingService<OutlineSection>
                 if (stageStrings) {
                     outline.synopsis_stages = stageStrings.map(s => s.replace(/"/g, '')).map(s => ({
                         stageSynopsis: s,
-                        numberOfEpisodes: 1
+                        numberOfEpisodes: 1,
+                        timeframe: undefined,
+                        startingCondition: undefined,
+                        endingCondition: undefined,
+                        stageStartEvent: undefined,
+                        stageEndEvent: undefined,
+                        keyMilestones: undefined,
+                        relationshipLevel: undefined,
+                        emotionalArc: undefined,
+                        externalPressure: undefined
                     }));
                 }
             }

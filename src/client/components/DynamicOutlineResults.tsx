@@ -37,6 +37,18 @@ interface DynamicOutlineResultsProps {
         synopsis_stages?: Array<{
             stageSynopsis: string;
             numberOfEpisodes: number;
+            timeframe?: string;
+            startingCondition?: string;
+            endingCondition?: string;
+            stageStartEvent?: string;
+            stageEndEvent?: string;
+            keyMilestones?: Array<{
+                event: string;
+                timeSpan: string;
+            }>;
+            relationshipLevel?: string;
+            emotionalArc?: string;
+            externalPressure?: string;
         }>;
         characters?: OutlineCharacter[];
     };
