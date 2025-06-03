@@ -1658,14 +1658,20 @@ export const EditableSynopsisStagesField: React.FC<ExtendedFieldProps & {
 
     const updateStage = (index: number, field: string, newValue: any) => {
       const newStages = [...localStages];
-      if (field.includes('.')) {
-        // Handle nested fields like keyMilestones[0]
-        const [parentField, childIndex] = field.split('[');
-        const arrayIndex = parseInt(childIndex?.replace(']', '') || '0');
-        if (!newStages[index][parentField]) {
-          newStages[index][parentField] = [];
+      if (field.includes('keyMilestones[')) {
+        // Handle milestone fields like keyMilestones[0].event or keyMilestones[0].timeSpan
+        const match = field.match(/keyMilestones\[(\d+)\]\.(.+)/);
+        if (match) {
+          const milestoneIndex = parseInt(match[1]);
+          const milestoneField = match[2];
+          if (!newStages[index].keyMilestones) {
+            newStages[index].keyMilestones = [];
+          }
+          if (!newStages[index].keyMilestones[milestoneIndex]) {
+            newStages[index].keyMilestones[milestoneIndex] = { event: '', timeSpan: '' };
+          }
+          newStages[index].keyMilestones[milestoneIndex][milestoneField] = newValue;
         }
-        newStages[index][parentField][arrayIndex] = newValue;
       } else {
         newStages[index] = { ...newStages[index], [field]: newValue };
       }
@@ -1677,7 +1683,7 @@ export const EditableSynopsisStagesField: React.FC<ExtendedFieldProps & {
       if (!newStages[stageIndex].keyMilestones) {
         newStages[stageIndex].keyMilestones = [];
       }
-      newStages[stageIndex].keyMilestones.push('');
+      newStages[stageIndex].keyMilestones.push({ event: '', timeSpan: '' });
       setLocalStages(newStages);
     };
 
@@ -1928,12 +1934,25 @@ export const EditableSynopsisStagesField: React.FC<ExtendedFieldProps & {
                         + 添加
                       </Button>
                     </div>
-                    {stage.keyMilestones && stage.keyMilestones.map((milestone: string, mIndex: number) => (
+                    {stage.keyMilestones && stage.keyMilestones.map((milestone: any, mIndex: number) => (
                       <div key={mIndex} style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
                         <Input
-                          value={milestone}
-                          onChange={(e) => updateStage(index, `keyMilestones[${mIndex}]`, e.target.value)}
+                          value={milestone.event || ''}
+                          onChange={(e) => updateStage(index, `keyMilestones[${mIndex}].event`, e.target.value)}
                           placeholder="关键事件节点"
+                          disabled={disabled}
+                          style={{
+                            flex: 1,
+                            backgroundColor: '#1f1f1f',
+                            borderColor: '#404040',
+                            color: '#fff',
+                            fontSize: '12px'
+                          }}
+                        />
+                        <Input
+                          value={milestone.timeSpan || ''}
+                          onChange={(e) => updateStage(index, `keyMilestones[${mIndex}].timeSpan`, e.target.value)}
+                          placeholder="时间跨度"
                           disabled={disabled}
                           style={{
                             flex: 1,

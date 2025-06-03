@@ -78,6 +78,22 @@ export class TemplateService {
 
 故事灵感：{params.userInput}
 
+**重要时间规划原则**：
+1. **集数与时间的关系**：
+   - 短剧通常采用"日更"或"双更"模式，观众每天看1-2集
+   - 1集≈故事内1-3天的内容（重要事件可压缩时间）
+   - 避免时间跨度过大但事件稀少的情况
+   
+2. **事件密度指导**：
+   - 高密度期（1天多件事）：危机爆发、冲突升级、关键转折
+   - 中密度期（1-2天一件事）：调查取证、关系发展、计划实施
+   - 低密度期（数天一件事）：恢复期、等待期、铺垫期
+
+3. **时间连贯性要求**：
+   - 明确标注具体日期范围（如"第1-3天"而非笼统的"前期"）
+   - 事件数量必须与时间跨度相匹配
+   - 考虑事件的现实执行时间（如调查需要时间、恢复需要时间）
+
 请严格按照以下要求和JSON格式输出：
 
 1.  **剧名 (title)**: 一个极具吸引力、能瞬间抓住眼球的短剧标题，精准概括核心看点。
@@ -135,40 +151,55 @@ export class TemplateService {
     **IMPORTANT: 每个阶段必须详细描述，字数要求严格！每段约400字符，总计2000字符左右。不可过于简化。**
     **CRITICAL: 每个阶段必须包含该阶段覆盖的集数(numberOfEpisodes)，所有阶段的集数总和必须等于{params.totalEpisodes}集。请根据剧情复杂度和重要性合理分配集数。**
     
+    **时间规划与事件密度平衡要求**：
+    
     **阶段结构增强要求 - 为防止时间线崩塌和确保清晰的阶段边界，每个阶段必须包含以下详细信息：**
     
     *   **第一阶段**: 背景设定与人物介绍
-        - **stageSynopsis**: 详细描述故事发生的具体时间、地点、社会背景和环境氛围；逐一介绍主要角色的完整身份、详细性格特征、具体目标和当前生活状态；建立故事的整体基调、情感色彩和叙事风格；巧妙埋下多个后续冲突的重要伏笔和线索；展现主角的初始状态和面临的潜在问题
-        - **timeframe**: 明确时间跨度（如"故事开始的第1-5天"）
+        - **stageSynopsis**: 详细描述故事发生的具体时间、地点、社会背景和环境氛围；逐一介绍主要角色的完整身份、详细性格特征、具体目标和当前生活状态；建立故事的整体基调、情感色彩和叙事风格；巧妙埋下多个后续冲突的重要伏笔和线索；展现主角的初始状态和面临的潜在问题。**重要：故事内容中不要提及具体天数（如"第1-3天"），时间信息只在timeframe字段中表达**
+        - **timeframe**: 具体到天的时间跨度（如"第1-3天"），根据事件密度合理安排
         - **startingCondition**: 阶段开始时的具体状况（如"主角过着平凡的单身生活"）
         - **endingCondition**: 阶段结束时必须达到的状态（如"初步建立假恋爱关系，周围人开始怀疑"）
         - **stageStartEvent**: 触发该阶段的关键事件（如"母亲催婚电话打来"）
         - **stageEndEvent**: 结束该阶段的标志性事件（如"邻居开始议论他们的关系"）
-        - **keyMilestones**: 该阶段的3-4个重要里程碑（如["首次请求帮助","达成协议","第一次练习"]）
+        - **keyMilestones**: 该阶段的3-4个重要里程碑，每个包含事件描述和具体时间跨度（如[{"event":"首次请求帮助","timeSpan":"第1天"},{"event":"达成协议","timeSpan":"第2天"},{"event":"第一次练习","timeSpan":"第3天"}]）
         - **relationshipLevel**: 人物关系的变化（如"陌生邻居 → 合作伙伴"）
         - **emotionalArc**: 情感变化轨迹（如"尴尬紧张 → 初步信任"）
         - **externalPressure**: 外部压力状况（如"家庭催婚压力初现"）
     
     *   **第二阶段**: 初始冲突与矛盾爆发
-        - **stageSynopsis**: 详细描述引发核心矛盾的具体事件和冲突爆发过程；深入展现主角面临的第一个重大挑战的具体内容和影响；清晰呈现各方势力、利益关系和立场分歧的初步显现；描述推动故事向前发展的多个关键事件及其连锁反应；展现角色在冲突中的具体反应和应对策略
-        - **timeframe**: 明确时间跨度
+        - **stageSynopsis**: 详细描述引发核心矛盾的具体事件和冲突爆发过程；深入展现主角面临的第一个重大挑战的具体内容和影响；清晰呈现各方势力、利益关系和立场分歧的初步显现；描述推动故事向前发展的多个关键事件及其连锁反应；展现角色在冲突中的具体反应和应对策略。**重要：故事内容中不要提及具体天数，专注于事件描述**
+        - **timeframe**: 根据冲突强度安排（如"第4-8天"，冲突期可适当压缩）
         - **startingCondition**: 承接上一阶段的结束状态
         - **endingCondition**: 该阶段必须达到的新状态（不能超前到后续阶段）
         - **stageStartEvent**: 从上一阶段自然过渡的事件
         - **stageEndEvent**: 为下一阶段做铺垫的事件
-        - **keyMilestones**: 该阶段的重要进展节点
+        - **keyMilestones**: 该阶段的重要进展节点，每个包含事件和时间跨度
         - **relationshipLevel**: 关系的进一步发展
         - **emotionalArc**: 情感的复杂化过程
         - **externalPressure**: 外部压力的升级
     
     *   **第三阶段**: 情节发展与关系复杂化 
-        - **同样的详细结构要求...**
+        - **stageSynopsis**: **重要：故事内容专注于情节发展，不提及具体天数**
+        - **timeframe**: 发展期可适当延长（如"第9-20天"）
+        - **其他增强结构字段同上...**
     
     *   **第四阶段**: 高潮对决与重大反转
-        - **同样的详细结构要求...**
+        - **stageSynopsis**: **重要：故事内容专注于高潮情节，不提及具体天数**
+        - **timeframe**: 高潮期节奏加快（如"第21-25天"）
+        - **其他增强结构字段同上...**
     
     *   **第五阶段**: 结局收尾与情感升华
-        - **同样的详细结构要求...**
+        - **stageSynopsis**: **重要：故事内容专注于结局发展，不提及具体天数**
+        - **timeframe**: 收尾期合理安排（如"第26-30天"）
+        - **其他增强结构字段同上...**
+
+    **时间连贯性检查清单（每个阶段都必须满足）**：
+    - ✅ 时间跨度是否与事件数量匹配？（避免3天发生10件大事）
+    - ✅ 事件发展是否需要合理的执行时间？（调查、恢复、准备等）
+    - ✅ 集数分配是否与时间跨度成比例？（避免2天拍10集）
+    - ✅ 阶段之间的时间是否连续？（避免时间跳跃或重叠）
+    - ✅ 关键事件的时间间隔是否合理？（避免过于密集或稀疏）
 
 **短剧创作核心要求 (非常重要！):**
 -   **节奏极快**: 剧情推进迅速，不拖沓，每一分钟都要有信息量或情绪点。
@@ -184,6 +215,7 @@ export class TemplateService {
 -   **详细梗概要求**: synopsis_stages每个阶段必须详细描述，严格达到约400字符，总计2000字符左右。绝不可简化或缩短。
 -   **字数达标要求**: 每个synopsis_stages条目都必须包含足够的情节细节、角色行动、环境描述、情感变化等，确保达到400字符要求。
 -   **时间线连贯性**: 每个阶段的时间跨度和事件边界必须清晰，防止阶段间的时间重叠或跳跃。
+-   **时间规划合理性**: 必须确保时间框架与事件密度相匹配，避免不合理的时间安排。
 
 请以JSON格式返回，字段如下：
 {
@@ -219,7 +251,7 @@ export class TemplateService {
     {
       "stageSynopsis": "[string] 第一阶段内容（约400字符）",
       "numberOfEpisodes": "[number] 该阶段覆盖的集数",
-      "timeframe": "[string] 时间跨度，如'故事开始的第1-5天'",
+      "timeframe": "[string] 具体时间跨度，如'第1-3天'",
       "startingCondition": "[string] 阶段开始时的具体状况",
       "endingCondition": "[string] 阶段结束时必须达到的状态",
       "stageStartEvent": "[string] 触发该阶段的关键事件",
@@ -232,7 +264,7 @@ export class TemplateService {
     {
       "stageSynopsis": "[string] 第二阶段内容（约400字符）", 
       "numberOfEpisodes": "[number] 该阶段覆盖的集数",
-      "timeframe": "[string] 时间跨度",
+      "timeframe": "[string] 具体时间跨度",
       "startingCondition": "[string] 承接上一阶段的结束状态",
       "endingCondition": "[string] 该阶段必须达到的新状态",
       "stageStartEvent": "[string] 从上一阶段自然过渡的事件",
@@ -245,7 +277,7 @@ export class TemplateService {
     {
       "stageSynopsis": "[string] 第三阶段内容（约400字符）",
       "numberOfEpisodes": "[number] 该阶段覆盖的集数",
-      "timeframe": "[string] 时间跨度",
+      "timeframe": "[string] 具体时间跨度",
       "startingCondition": "[string] 阶段开始条件",
       "endingCondition": "[string] 阶段结束条件",
       "stageStartEvent": "[string] 触发事件",
@@ -258,7 +290,7 @@ export class TemplateService {
     {
       "stageSynopsis": "[string] 第四阶段内容（约400字符）",
       "numberOfEpisodes": "[number] 该阶段覆盖的集数",
-      "timeframe": "[string] 时间跨度",
+      "timeframe": "[string] 具体时间跨度",
       "startingCondition": "[string] 阶段开始条件",
       "endingCondition": "[string] 阶段结束条件",
       "stageStartEvent": "[string] 触发事件",
@@ -271,7 +303,7 @@ export class TemplateService {
     {
       "stageSynopsis": "[string] 第五阶段内容（约400字符）",
       "numberOfEpisodes": "[number] 该阶段覆盖的集数",
-      "timeframe": "[string] 时间跨度",
+      "timeframe": "[string] 具体时间跨度",
       "startingCondition": "[string] 阶段开始条件",
       "endingCondition": "[string] 阶段结束条件",
       "stageStartEvent": "[string] 触发事件",

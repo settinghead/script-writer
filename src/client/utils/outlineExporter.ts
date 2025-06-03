@@ -26,7 +26,10 @@ interface OutlineExportData {
             endingCondition?: string;
             stageStartEvent?: string;
             stageEndEvent?: string;
-            keyMilestones?: string[];
+            keyMilestones?: Array<{
+                event: string;
+                timeSpan: string;
+            }>;
             relationshipLevel?: string;
             emotionalArc?: string;
             externalPressure?: string;
@@ -223,8 +226,8 @@ export function formatOutlineForExport(data: OutlineExportData): string {
                 if (stage.keyMilestones && stage.keyMilestones.length > 0) {
                     sections.push("   关键节点：");
                     stage.keyMilestones.forEach((milestone, mIndex) => {
-                        if (milestone.trim()) {
-                            sections.push(`     ${mIndex + 1}. ${milestone}`);
+                        if (milestone.event.trim()) {
+                            sections.push(`     ${mIndex + 1}. ${milestone.event} (${milestone.timeSpan})`);
                         }
                     });
                 }
