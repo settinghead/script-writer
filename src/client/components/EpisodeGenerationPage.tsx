@@ -1,136 +1,151 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { Tree, Empty, Typography, Spin, Alert, message } from 'antd';
+import { Tree, Empty, Typography, Spin, Alert } from 'antd';
 import type { DataNode } from 'antd/es/tree';
 import { StageDetailView } from './StageDetailView';
+import { useEpisodeContext } from '../contexts/EpisodeContext';
 
 const { Title } = Typography;
+
+interface EpisodeNode extends DataNode {
+    episodeNumber: number;
+    episodeId: string;
+    stageId: string;
+    title: string;
+    synopsis: string;
+}
 
 interface StageNode extends DataNode {
     stageNumber: number;
     artifactId: string;
+    numberOfEpisodes: number;
+    children?: EpisodeNode[];
+    hasEpisodes?: boolean;
 }
-
-// Real API service - replace the mock
-const apiService = {
-    async getStageArtifacts(outlineSessionId: string): Promise<Array<{
-        artifactId: string;
-        stageNumber: number;
-        numberOfEpisodes: number;
-        stageSynopsis: string;
-        outlineSessionId: string;
-    }>> {
-        try {
-            const response = await fetch(`/api/episodes/outlines/${outlineSessionId}/stages`, {
-                credentials: 'include'
-            });
-            if (!response.ok) {
-                throw new Error('Failed to fetch stage artifacts');
-            }
-            return await response.json();
-        } catch (error) {
-            console.error('Error fetching stage artifacts:', error);
-            throw error;
-        }
-    }
-};
 
 export const EpisodeGenerationPage: React.FC = () => {
     const { scriptId } = useParams<{ scriptId: string }>();
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
+    const { state, actions } = useEpisodeContext();
 
-    // Get stage_id from query parameters instead of URL path
+    // Get URL parameters
     const stageIdFromUrl = searchParams.get('stage_id');
+    const episodeIdFromUrl = searchParams.get('episode_id');
 
-    const [selectedStageId, setSelectedStageId] = useState<string | null>(stageIdFromUrl || null);
-    const [treeData, setTreeData] = useState<StageNode[]>([]);
-    const [expandedKeys, setExpandedKeys] = useState<string[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
+    // Combined initialization and URL sync effect
     useEffect(() => {
-        if (scriptId) {
-            loadOutlineData();
+        // Initialize script if needed
+        if (scriptId && scriptId !== state.scriptId) {
+            actions.setScriptId(scriptId);
+            actions.loadStages(scriptId);
         }
-    }, [scriptId]);
 
-    // Update selected stage when query params change
-    useEffect(() => {
-        if (stageIdFromUrl && stageIdFromUrl !== selectedStageId) {
-            setSelectedStageId(stageIdFromUrl);
+        // Sync URL parameters with context state
+        if (stageIdFromUrl && stageIdFromUrl !== state.selectedStageId) {
+            actions.setSelectedStage(stageIdFromUrl);
         }
-    }, [stageIdFromUrl]);
+        if (episodeIdFromUrl && episodeIdFromUrl !== state.selectedEpisodeId) {
+            actions.setSelectedEpisode(episodeIdFromUrl);
+        }
 
-    const loadOutlineData = async () => {
-        if (!scriptId) return;
+        // Auto-select first stage if none selected and stages are loaded
+        if (!state.selectedStageId && state.stages.length > 0 && !state.loading && !stageIdFromUrl) {
+            const firstStageId = state.stages[0].artifactId;
+            actions.setSelectedStage(firstStageId);
+            setSearchParams({ stage_id: firstStageId });
+        }
+    }, [
+        scriptId,
+        state.scriptId,
+        state.selectedStageId,
+        state.selectedEpisodeId,
+        state.stages.length,
+        state.loading,
+        stageIdFromUrl,
+        episodeIdFromUrl,
+        actions,
+        setSearchParams
+    ]);
 
-        try {
-            setLoading(true);
-            setError(null);
+    // Build tree data for rendering
+    const treeData = useMemo(() => {
+        return state.stages.map(stage => {
+            const stageEpisodeData = state.stageEpisodeData[stage.artifactId];
+            const episodes = stageEpisodeData?.episodes || [];
+            const isLoadingEpisodes = stageEpisodeData?.loading || false;
+            const isStreamingEpisodes = stageEpisodeData?.isStreaming || false;
 
-            // Load stage artifacts for this outline session
-            const stages = await apiService.getStageArtifacts(scriptId);
-
-            if (!stages || stages.length === 0) {
-                setError('该大纲还没有生成分阶段内容，请返回重新生成大纲。');
-                return;
-            }
-
-            // Build tree nodes from stage artifacts
-            const treeNodes: StageNode[] = stages.map(stage => ({
-                key: stage.artifactId,
-                title: `第${stage.stageNumber}阶段 (${stage.numberOfEpisodes}集)`,
-                isLeaf: false,
-                children: [], // Will be populated when episodes are generated
-                stageNumber: stage.stageNumber,
-                artifactId: stage.artifactId
+            const episodeChildren: EpisodeNode[] = episodes.map(episode => ({
+                key: `episode-${stage.artifactId}-${episode.episodeNumber}`,
+                title: `第${episode.episodeNumber}集: ${episode.title}`,
+                isLeaf: true,
+                episodeNumber: episode.episodeNumber,
+                episodeId: episode.episodeNumber.toString(),
+                stageId: stage.artifactId,
+                synopsis: episode.briefSummary
             }));
 
-            setTreeData(treeNodes);
-
-            // Auto-select first stage if none selected
-            if (!selectedStageId && treeNodes.length > 0) {
-                setSelectedStageId(treeNodes[0].artifactId);
+            // Build stage title with status
+            let stageTitle = `第${stage.stageNumber}阶段 (${stage.numberOfEpisodes}集)`;
+            if (isStreamingEpisodes && episodes.length > 0) {
+                stageTitle += ` - 正在生成 ${episodes.length}/${stage.numberOfEpisodes}`;
+            } else if (episodes.length > 0) {
+                stageTitle += ` - 已生成 ${episodes.length}集`;
             }
 
-        } catch (error) {
-            console.error('Error loading outline data:', error);
-            setError('加载大纲数据失败，请重试。');
-            message.error('加载大纲数据失败');
-        } finally {
-            setLoading(false);
-        }
-    };
+            return {
+                key: stage.artifactId,
+                title: stageTitle,
+                isLeaf: false,
+                children: episodeChildren,
+                stageNumber: stage.stageNumber,
+                artifactId: stage.artifactId,
+                numberOfEpisodes: stage.numberOfEpisodes,
+                hasEpisodes: episodes.length > 0,
+                icon: isLoadingEpisodes ? <Spin size="small" /> : undefined
+            } as StageNode;
+        });
+    }, [state.stages, state.stageEpisodeData]);
 
-    const onTreeSelect = (selectedKeys: React.Key[], info: any) => {
+    // Handle tree selection
+    const onTreeSelect = (selectedKeys: React.Key[]) => {
         const nodeKey = selectedKeys[0] as string;
 
         if (nodeKey && nodeKey.includes('episode-')) {
-            // Navigate to episode detail (future implementation)
-            const [stageId, episodeId] = parseEpisodeKey(nodeKey);
-            setSearchParams({ stage_id: stageId, episode_id: episodeId });
+            // Episode selected
+            const [, stageId, episodeNumber] = nodeKey.split('-');
+            actions.setSelectedStage(stageId);
+            actions.setSelectedEpisode(episodeNumber);
+            setSearchParams({ stage_id: stageId, episode_id: episodeNumber });
         } else if (nodeKey) {
-            // Stage selected - use query parameter
-            setSelectedStageId(nodeKey);
+            // Stage selected
+            actions.setSelectedStage(nodeKey);
+            actions.setSelectedEpisode(null);
             setSearchParams({ stage_id: nodeKey });
         }
     };
 
+    // Handle tree expansion
     const onTreeExpand = (expandedKeys: React.Key[]) => {
-        setExpandedKeys(expandedKeys as string[]);
+        const newExpandedKeys = expandedKeys as string[];
+        actions.setExpandedKeys(newExpandedKeys);
+
+        // Load episodes for newly expanded stages
+        const currentExpandedKeys = state.expandedKeys;
+        const newlyExpanded = newExpandedKeys.filter(key =>
+            !currentExpandedKeys.includes(key) && !key.includes('episode-')
+        );
+
+        newlyExpanded.forEach(stageId => {
+            if (!state.stageEpisodeData[stageId]) {
+                actions.loadStageEpisodes(stageId);
+            }
+        });
     };
 
-    const parseEpisodeKey = (episodeKey: string): [string, string] => {
-        // Format: "episode-{stageId}-{episodeId}"
-        const parts = episodeKey.split('-');
-        if (parts.length >= 3) {
-            return [parts[1], parts[2]];
-        }
-        throw new Error('Invalid episode key format');
-    };
-
-    if (loading) {
+    // Loading state
+    if (state.loading) {
         return (
             <div style={{
                 display: 'flex',
@@ -143,12 +158,13 @@ export const EpisodeGenerationPage: React.FC = () => {
         );
     }
 
-    if (error) {
+    // Error state
+    if (state.error) {
         return (
             <div style={{ padding: '40px', textAlign: 'center' }}>
                 <Alert
                     message="加载失败"
-                    description={error}
+                    description={state.error}
                     type="error"
                     showIcon
                     action={
@@ -171,6 +187,11 @@ export const EpisodeGenerationPage: React.FC = () => {
         );
     }
 
+    // Selected keys for tree
+    const selectedNodeKeys = state.selectedEpisodeId
+        ? [`episode-${state.selectedStageId}-${state.selectedEpisodeId}`]
+        : state.selectedStageId ? [state.selectedStageId] : [];
+
     return (
         <div style={{
             display: 'flex',
@@ -179,7 +200,7 @@ export const EpisodeGenerationPage: React.FC = () => {
         }}>
             {/* Left: Tree View */}
             <div style={{
-                width: '300px',
+                width: '350px',
                 borderRight: '1px solid #303030',
                 padding: '20px',
                 overflowY: 'auto',
@@ -193,14 +214,15 @@ export const EpisodeGenerationPage: React.FC = () => {
                     <Tree
                         treeData={treeData}
                         onSelect={onTreeSelect}
-                        selectedKeys={selectedStageId ? [selectedStageId] : []}
-                        expandedKeys={expandedKeys}
+                        selectedKeys={selectedNodeKeys}
+                        expandedKeys={state.expandedKeys}
                         onExpand={onTreeExpand}
                         style={{
                             background: 'transparent',
                             color: '#e6edf3'
                         }}
                         className="episode-tree"
+                        showIcon={true}
                     />
                 ) : (
                     <Empty
@@ -217,10 +239,11 @@ export const EpisodeGenerationPage: React.FC = () => {
                 overflowY: 'auto',
                 backgroundColor: '#0d1117'
             }}>
-                {selectedStageId && scriptId ? (
+                {state.selectedStageId && scriptId ? (
                     <StageDetailView
                         scriptId={scriptId}
-                        stageId={selectedStageId}
+                        stageId={state.selectedStageId}
+                        selectedEpisodeId={state.selectedEpisodeId}
                     />
                 ) : (
                     <Empty

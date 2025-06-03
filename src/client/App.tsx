@@ -6,6 +6,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavig
 import { Layout, Typography, ConfigProvider, theme, Button, Drawer, Menu, Dropdown, Avatar } from 'antd';
 import { MenuOutlined, UserOutlined, LogoutOutlined, LoginOutlined } from '@ant-design/icons';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { EpisodeProvider } from './contexts/EpisodeContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './components/LoginPage';
 import IdeationTab from './components/IdeationTab';
@@ -229,12 +230,16 @@ const AppContent: React.FC = () => {
                 } />
                 <Route path="/scripts/:scriptId" element={
                   <ProtectedRoute>
-                    <EpisodeGenerationPage />
+                    <EpisodeProvider>
+                      <EpisodeGenerationPage />
+                    </EpisodeProvider>
                   </ProtectedRoute>
                 } />
                 <Route path="/episode-generation" element={
                   <ProtectedRoute>
-                    <EpisodeGenerationPage />
+                    <EpisodeProvider>
+                      <EpisodeGenerationPage />
+                    </EpisodeProvider>
                   </ProtectedRoute>
                 } />
                 <Route path="/" element={<Navigate to="/ideations" replace />} />
@@ -295,12 +300,16 @@ const AppContent: React.FC = () => {
                 } />
                 <Route path="/scripts/:scriptId" element={
                   <ProtectedRoute>
-                    <EpisodeGenerationPage />
+                    <EpisodeProvider>
+                      <EpisodeGenerationPage />
+                    </EpisodeProvider>
                   </ProtectedRoute>
                 } />
                 <Route path="/episode-generation" element={
                   <ProtectedRoute>
-                    <EpisodeGenerationPage />
+                    <EpisodeProvider>
+                      <EpisodeGenerationPage />
+                    </EpisodeProvider>
                   </ProtectedRoute>
                 } />
                 <Route path="/" element={<Navigate to="/ideations" replace />} />

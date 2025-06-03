@@ -1,0 +1,428 @@
+import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
+import { EpisodeSynopsisV1 } from '../../common/types';
+import { EpisodeStreamingService, EpisodeSynopsis } from '../services/implementations/EpisodeStreamingService';
+import { useLLMStreaming } from '../hooks/useLLMStreaming';
+
+// Types
+interface StageData {
+    artifactId: string;
+    stageNumber: number;
+    stageSynopsis: string;
+    numberOfEpisodes: number;
+    outlineSessionId: string;
+}
+
+interface EpisodeGenerationSessionData {
+    session: { id: string };
+    status: 'active' | 'completed' | 'failed';
+    episodes: EpisodeSynopsisV1[];
+    currentTransformId?: string;
+}
+
+interface StageEpisodeState {
+    episodes: EpisodeSynopsisV1[];
+    loading: boolean;
+    isStreaming: boolean;
+    sessionData?: EpisodeGenerationSessionData;
+}
+
+interface EpisodeState {
+    // Script and selection
+    scriptId: string | null;
+    selectedStageId: string | null;
+    selectedEpisodeId: string | null;
+
+    // Data
+    stages: StageData[];
+    stageEpisodeData: Record<string, StageEpisodeState>;
+
+    // UI State
+    expandedKeys: string[];
+    loading: boolean;
+    error: string | null;
+
+    // Streaming State
+    activeStreamingStageId: string | null;
+    streamingTransformId: string | null;
+}
+
+// Actions
+type EpisodeAction =
+    | { type: 'SET_SCRIPT_ID'; payload: string }
+    | { type: 'SET_SELECTED_STAGE'; payload: string | null }
+    | { type: 'SET_SELECTED_EPISODE'; payload: string | null }
+    | { type: 'SET_STAGES'; payload: StageData[] }
+    | { type: 'SET_STAGE_EPISODES'; payload: { stageId: string; data: StageEpisodeState } }
+    | { type: 'SET_EXPANDED_KEYS'; payload: string[] }
+    | { type: 'ADD_EXPANDED_KEY'; payload: string }
+    | { type: 'SET_LOADING'; payload: boolean }
+    | { type: 'SET_ERROR'; payload: string | null }
+    | { type: 'START_STREAMING'; payload: { stageId: string; transformId: string } }
+    | { type: 'STOP_STREAMING' }
+    | { type: 'UPDATE_STREAMING_EPISODES'; payload: { stageId: string; episodes: EpisodeSynopsisV1[] } };
+
+// Reducer
+const episodeReducer = (state: EpisodeState, action: EpisodeAction): EpisodeState => {
+    switch (action.type) {
+        case 'SET_SCRIPT_ID':
+            return { ...state, scriptId: action.payload };
+
+        case 'SET_SELECTED_STAGE':
+            return { ...state, selectedStageId: action.payload };
+
+        case 'SET_SELECTED_EPISODE':
+            return { ...state, selectedEpisodeId: action.payload };
+
+        case 'SET_STAGES':
+            return { ...state, stages: action.payload, loading: false, error: null };
+
+        case 'SET_STAGE_EPISODES':
+            return {
+                ...state,
+                stageEpisodeData: {
+                    ...state.stageEpisodeData,
+                    [action.payload.stageId]: action.payload.data
+                }
+            };
+
+        case 'SET_EXPANDED_KEYS':
+            return { ...state, expandedKeys: action.payload };
+
+        case 'ADD_EXPANDED_KEY':
+            if (state.expandedKeys.includes(action.payload)) {
+                return state;
+            }
+            return { ...state, expandedKeys: [...state.expandedKeys, action.payload] };
+
+        case 'SET_LOADING':
+            return { ...state, loading: action.payload };
+
+        case 'SET_ERROR':
+            return { ...state, error: action.payload, loading: false };
+
+        case 'START_STREAMING':
+            return {
+                ...state,
+                activeStreamingStageId: action.payload.stageId,
+                streamingTransformId: action.payload.transformId
+            };
+
+        case 'STOP_STREAMING':
+            return {
+                ...state,
+                activeStreamingStageId: null,
+                streamingTransformId: null
+            };
+
+        case 'UPDATE_STREAMING_EPISODES':
+            return {
+                ...state,
+                stageEpisodeData: {
+                    ...state.stageEpisodeData,
+                    [action.payload.stageId]: {
+                        ...state.stageEpisodeData[action.payload.stageId],
+                        episodes: action.payload.episodes,
+                        isStreaming: true
+                    }
+                }
+            };
+
+        default:
+            return state;
+    }
+};
+
+// Initial state
+const initialState: EpisodeState = {
+    scriptId: null,
+    selectedStageId: null,
+    selectedEpisodeId: null,
+    stages: [],
+    stageEpisodeData: {},
+    expandedKeys: [],
+    loading: false,
+    error: null,
+    activeStreamingStageId: null,
+    streamingTransformId: null
+};
+
+// Context
+interface EpisodeContextType {
+    state: EpisodeState;
+    actions: {
+        setScriptId: (scriptId: string) => void;
+        setSelectedStage: (stageId: string | null) => void;
+        setSelectedEpisode: (episodeId: string | null) => void;
+        loadStages: (scriptId: string) => Promise<void>;
+        loadStageEpisodes: (stageId: string) => Promise<void>;
+        expandStage: (stageId: string) => void;
+        setExpandedKeys: (keys: string[]) => void;
+        startEpisodeGeneration: (stageId: string, numberOfEpisodes: number, customRequirements?: string) => Promise<void>;
+        stopEpisodeGeneration: (stageId: string) => Promise<void>;
+    };
+}
+
+const EpisodeContext = createContext<EpisodeContextType | null>(null);
+
+// API Service
+class EpisodeApiService {
+    static async getStageArtifacts(outlineSessionId: string): Promise<StageData[]> {
+        const response = await fetch(`/api/episodes/outlines/${outlineSessionId}/stages`, {
+            credentials: 'include'
+        });
+        if (!response.ok) {
+            throw new Error('Failed to fetch stage artifacts');
+        }
+        return await response.json();
+    }
+
+    static async getStageDetails(stageId: string): Promise<StageData | null> {
+        const response = await fetch(`/api/episodes/stages/${stageId}`, {
+            credentials: 'include'
+        });
+        if (!response.ok) {
+            return null;
+        }
+        return await response.json();
+    }
+
+    static async getStageEpisodes(stageId: string): Promise<EpisodeGenerationSessionData | null> {
+        const response = await fetch(`/api/episodes/stages/${stageId}/latest-generation`, {
+            credentials: 'include'
+        });
+        if (!response.ok) {
+            return null;
+        }
+        return await response.json();
+    }
+
+    static async startEpisodeGeneration(
+        stageId: string,
+        numberOfEpisodes: number,
+        customRequirements?: string
+    ): Promise<{ sessionId: string; transformId: string }> {
+        const response = await fetch(`/api/episodes/stages/${stageId}/episodes/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ numberOfEpisodes, customRequirements })
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to start episode generation');
+        }
+
+        return await response.json();
+    }
+
+    static async stopEpisodeGeneration(sessionId: string): Promise<void> {
+        const response = await fetch(`/api/episodes/episode-generation/${sessionId}/stop`, {
+            method: 'POST',
+            credentials: 'include'
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to stop episode generation');
+        }
+    }
+}
+
+// Provider Component
+export const EpisodeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+    const [state, dispatch] = useReducer(episodeReducer, initialState);
+
+    // Streaming service and hook
+    const streamingService = React.useMemo(() => new EpisodeStreamingService(), []);
+    const {
+        status: streamingStatus,
+        items: streamingEpisodes,
+        stop: stopStreaming
+    } = useLLMStreaming(streamingService, {
+        transformId: state.streamingTransformId || undefined
+    });
+
+    // Handle streaming updates
+    useEffect(() => {
+        if (state.activeStreamingStageId && streamingEpisodes.length > 0) {
+            const convertedEpisodes: EpisodeSynopsisV1[] = streamingEpisodes.map(ep => ({
+                episodeNumber: ep.episodeNumber,
+                title: ep.title,
+                briefSummary: ep.synopsis || ep.briefSummary || '',
+                keyEvents: ep.keyEvents,
+                hooks: ep.endHook || ep.hooks || '',
+                stageArtifactId: state.activeStreamingStageId!,
+                episodeGenerationSessionId: ''
+            }));
+
+            dispatch({
+                type: 'UPDATE_STREAMING_EPISODES',
+                payload: {
+                    stageId: state.activeStreamingStageId,
+                    episodes: convertedEpisodes
+                }
+            });
+
+            // Auto-expand streaming stage
+            dispatch({ type: 'ADD_EXPANDED_KEY', payload: state.activeStreamingStageId });
+        }
+    }, [state.activeStreamingStageId, streamingEpisodes]);
+
+    // Handle streaming completion
+    useEffect(() => {
+        if (streamingStatus === 'completed' || streamingStatus === 'error') {
+            dispatch({ type: 'STOP_STREAMING' });
+        }
+    }, [streamingStatus]);
+
+    // Actions
+    const actions = {
+        setScriptId: (scriptId: string) => {
+            dispatch({ type: 'SET_SCRIPT_ID', payload: scriptId });
+        },
+
+        setSelectedStage: (stageId: string | null) => {
+            dispatch({ type: 'SET_SELECTED_STAGE', payload: stageId });
+        },
+
+        setSelectedEpisode: (episodeId: string | null) => {
+            dispatch({ type: 'SET_SELECTED_EPISODE', payload: episodeId });
+        },
+
+        loadStages: async (scriptId: string) => {
+            try {
+                dispatch({ type: 'SET_LOADING', payload: true });
+                const stages = await EpisodeApiService.getStageArtifacts(scriptId);
+                dispatch({ type: 'SET_STAGES', payload: stages });
+
+                // Load existing episodes for all stages
+                const episodePromises = stages.map(async (stage) => {
+                    const sessionData = await EpisodeApiService.getStageEpisodes(stage.artifactId);
+                    return {
+                        stageId: stage.artifactId,
+                        data: {
+                            episodes: sessionData?.episodes || [],
+                            loading: false,
+                            isStreaming: false,
+                            sessionData: sessionData || undefined
+                        }
+                    };
+                });
+
+                const results = await Promise.all(episodePromises);
+                results.forEach(result => {
+                    dispatch({ type: 'SET_STAGE_EPISODES', payload: result });
+                });
+
+                // Auto-expand stages with episodes
+                const stagesToExpand = results
+                    .filter(result => result.data.episodes.length > 0)
+                    .map(result => result.stageId);
+
+                if (stagesToExpand.length > 0) {
+                    dispatch({ type: 'SET_EXPANDED_KEYS', payload: stagesToExpand });
+                }
+
+            } catch (error) {
+                console.error('Error loading stages:', error);
+                dispatch({ type: 'SET_ERROR', payload: 'Failed to load stages' });
+            }
+        },
+
+        loadStageEpisodes: async (stageId: string) => {
+            try {
+                dispatch({
+                    type: 'SET_STAGE_EPISODES',
+                    payload: {
+                        stageId,
+                        data: { episodes: [], loading: true, isStreaming: false }
+                    }
+                });
+
+                const sessionData = await EpisodeApiService.getStageEpisodes(stageId);
+                dispatch({
+                    type: 'SET_STAGE_EPISODES',
+                    payload: {
+                        stageId,
+                        data: {
+                            episodes: sessionData?.episodes || [],
+                            loading: false,
+                            isStreaming: false,
+                            sessionData: sessionData || undefined
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Error loading stage episodes:', error);
+                dispatch({
+                    type: 'SET_STAGE_EPISODES',
+                    payload: {
+                        stageId,
+                        data: { episodes: [], loading: false, isStreaming: false }
+                    }
+                });
+            }
+        },
+
+        expandStage: (stageId: string) => {
+            dispatch({ type: 'ADD_EXPANDED_KEY', payload: stageId });
+        },
+
+        setExpandedKeys: (keys: string[]) => {
+            dispatch({ type: 'SET_EXPANDED_KEYS', payload: keys });
+        },
+
+        startEpisodeGeneration: async (stageId: string, numberOfEpisodes: number, customRequirements?: string) => {
+            try {
+                const result = await EpisodeApiService.startEpisodeGeneration(stageId, numberOfEpisodes, customRequirements);
+
+                // Update state to show streaming
+                dispatch({
+                    type: 'SET_STAGE_EPISODES',
+                    payload: {
+                        stageId,
+                        data: { episodes: [], loading: false, isStreaming: true }
+                    }
+                });
+
+                // Start streaming
+                dispatch({
+                    type: 'START_STREAMING',
+                    payload: { stageId, transformId: result.transformId }
+                });
+
+            } catch (error) {
+                console.error('Error starting episode generation:', error);
+                throw error;
+            }
+        },
+
+        stopEpisodeGeneration: async (stageId: string) => {
+            try {
+                const stageData = state.stageEpisodeData[stageId];
+                if (stageData?.sessionData?.session.id) {
+                    await EpisodeApiService.stopEpisodeGeneration(stageData.sessionData.session.id);
+                }
+                await stopStreaming();
+                dispatch({ type: 'STOP_STREAMING' });
+            } catch (error) {
+                console.error('Error stopping episode generation:', error);
+                throw error;
+            }
+        }
+    };
+
+    return (
+        <EpisodeContext.Provider value={{ state, actions }}>
+            {children}
+        </EpisodeContext.Provider>
+    );
+};
+
+// Hook to use the context
+export const useEpisodeContext = () => {
+    const context = useContext(EpisodeContext);
+    if (!context) {
+        throw new Error('useEpisodeContext must be used within an EpisodeProvider');
+    }
+    return context;
+}; 
