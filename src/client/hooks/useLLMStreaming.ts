@@ -10,7 +10,7 @@ export function useLLMStreaming<T>(
     } = {}
 ) {
     const { transformId } = config;
-    const currentTransformIdRef = useRef<string | undefined>();
+    const currentTransformIdRef = useRef<string | undefined>(undefined);
 
     console.log(`[useLLMStreaming] Hook initialized with transformId: ${transformId}`);
 
@@ -28,12 +28,13 @@ export function useLLMStreaming<T>(
     useEffect(() => {
         console.log(`[useLLMStreaming] Response state changed:`, {
             status: response.status,
-            itemCount: response.items.length,
+            itemCount: response.items?.length || 0,
             hasError: !!response.error,
             errorMessage: response.error?.message,
-            transformId: transformId
+            transformId: transformId,
+            items: response.items?.slice(0, 2) || [] // Show first 2 items for debugging
         });
-    }, [response.status, response.items.length, response.error, transformId]);
+    }, [response.status, response.items?.length, response.error, transformId]);
 
     // Handle errors by converting them to a status
     useEffect(() => {

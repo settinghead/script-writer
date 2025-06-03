@@ -146,7 +146,9 @@ export const useStageSession = (stageId: string | null) => {
 
     // Update session data when streaming provides new episode data
     useEffect(() => {
-        if (streamingEpisodes.length > 0 && sessionData) {
+        if (streamingEpisodes.length > 0 && sessionData && sessionData.session.id) {
+            console.log('[useStageSession] Updating session data with streaming episodes:', streamingEpisodes.length);
+
             const convertedEpisodes: EpisodeSynopsisV1[] = streamingEpisodes.map(episode => ({
                 episodeNumber: episode.episodeNumber,
                 title: episode.title,
@@ -251,12 +253,22 @@ export const useStageSession = (stageId: string | null) => {
         }
     };
 
+    // Log current state for debugging
+    console.log('[useStageSession] Current state:', {
+        stageId,
+        generating,
+        isStreaming,
+        streamingEpisodesCount: streamingEpisodes.length,
+        sessionDataEpisodesCount: sessionData?.episodes.length || 0,
+        currentTransformId
+    });
+
     return {
         // Data
         stageData,
         sessionData,
 
-        // Streaming
+        // Streaming - provide episodes directly from streaming service
         streamingEpisodes,
         isStreaming,
         isThinking,

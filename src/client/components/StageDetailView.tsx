@@ -59,6 +59,16 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
         episodeCount
     } = useStageSession(stageId);
 
+    // Debug logging for streaming episodes
+    console.log('[StageDetailView] Current state:', {
+        stageId,
+        generating,
+        isStreaming,
+        streamingEpisodesLength: streamingEpisodes.length,
+        sessionDataEpisodesLength: sessionData?.episodes.length || 0,
+        streamingEpisodes: streamingEpisodes.slice(0, 2) // Show first 2 episodes for debugging
+    });
+
     // Initialize editable parameters when stage data loads
     React.useEffect(() => {
         if (stageData) {
@@ -272,7 +282,8 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
             </Card>
 
             {/* Episodes List */}
-            {(streamingEpisodes.length > 0 || (sessionData && sessionData.episodes.length > 0)) && (
+            {/* Debug: Show episodes list if we're streaming OR have episodes OR have session data */}
+            {(streamingEpisodes.length > 0 || isStreaming || (sessionData && sessionData.episodes.length > 0)) && (
                 <Card
                     title={
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -295,6 +306,16 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
                         <Alert
                             message="正在实时生成剧集大纲"
                             type="info"
+                            style={{ marginBottom: '16px' }}
+                            showIcon
+                        />
+                    )}
+
+                    {/* Debug information */}
+                    {isStreaming && streamingEpisodes.length === 0 && (
+                        <Alert
+                            message={`调试信息: 正在流式传输但未检测到剧集数据 (流式剧集: ${streamingEpisodes.length}, 会话剧集: ${sessionData?.episodes.length || 0})`}
+                            type="warning"
                             style={{ marginBottom: '16px' }}
                             showIcon
                         />
