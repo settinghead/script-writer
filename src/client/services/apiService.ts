@@ -138,6 +138,71 @@ class ApiService {
         return response.json();
     }
 
+    // New episode generation API methods
+    async getAllEpisodeSessions(): Promise<any[]> {
+        const response = await fetch(`${this.baseUrl}/episodes/sessions`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch episode sessions: ${response.status}`);
+        }
+        return response.json();
+    }
+
+    async getStageArtifacts(outlineSessionId: string): Promise<any[]> {
+        const response = await fetch(`${this.baseUrl}/episodes/outlines/${outlineSessionId}/stages`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch stage artifacts: ${response.status}`);
+        }
+        return response.json();
+    }
+
+    async getStageArtifact(stageId: string): Promise<any> {
+        const response = await fetch(`${this.baseUrl}/episodes/stages/${stageId}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch stage artifact: ${response.status}`);
+        }
+        return response.json();
+    }
+
+    async startEpisodeGeneration(params: {
+        stageArtifactId: string;
+        numberOfEpisodes?: number;
+        customRequirements?: string;
+    }): Promise<{ sessionId: string; transformId: string }> {
+        const response = await fetch(`${this.baseUrl}/episodes/stages/${params.stageArtifactId}/episodes/generate`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                numberOfEpisodes: params.numberOfEpisodes,
+                customRequirements: params.customRequirements
+            })
+        });
+        if (!response.ok) {
+            throw new Error(`Failed to start episode generation: ${response.status}`);
+        }
+        return response.json();
+    }
+
+    async getEpisodeGenerationSession(sessionId: string): Promise<any> {
+        const response = await fetch(`${this.baseUrl}/episodes/episode-generation/${sessionId}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch episode generation session: ${response.status}`);
+        }
+        return response.json();
+    }
+
+    async checkActiveEpisodeGeneration(stageId: string): Promise<any> {
+        const response = await fetch(`${this.baseUrl}/episodes/stages/${stageId}/active-generation`);
+        if (response.status === 404) {
+            return null;
+        }
+        if (!response.ok) {
+            throw new Error(`Failed to check active episode generation: ${response.status}`);
+        }
+        return response.json();
+    }
+
     // Ideas/artifacts
     async getUserIdeas(): Promise<any[]> {
         const response = await fetch(`${this.baseUrl}/artifacts/ideas`);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Tree, Empty, Typography, Spin, Alert, message } from 'antd';
 import type { DataNode } from 'antd/es/tree';
 import { StageDetailView } from './StageDetailView';
@@ -36,10 +36,13 @@ const apiService = {
 };
 
 export const EpisodeGenerationPage: React.FC = () => {
-    const { scriptId } = useParams<{ scriptId: string }>();
+    const { scriptId, stageId: urlStageId } = useParams<{ scriptId: string; stageId?: string }>();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const sessionId = searchParams.get('session');
+    const transformId = searchParams.get('transform');
 
-    const [selectedStageId, setSelectedStageId] = useState<string | null>(null);
+    const [selectedStageId, setSelectedStageId] = useState<string | null>(urlStageId || null);
     const [treeData, setTreeData] = useState<StageNode[]>([]);
     const [expandedKeys, setExpandedKeys] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
@@ -50,6 +53,13 @@ export const EpisodeGenerationPage: React.FC = () => {
             loadOutlineData();
         }
     }, [scriptId]);
+
+    // Update selected stage when URL changes
+    useEffect(() => {
+        if (urlStageId && urlStageId !== selectedStageId) {
+            setSelectedStageId(urlStageId);
+        }
+    }, [urlStageId]);
 
     const loadOutlineData = async () => {
         if (!scriptId) return;

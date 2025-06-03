@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Tabs, Typography, Button } from 'antd';
-import { BulbOutlined, FileTextOutlined, PlusOutlined } from '@ant-design/icons';
+import { BulbOutlined, FileTextOutlined, PlusOutlined, VideoCameraOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import IdeationsList from './IdeationsList';
 import { OutlinesList } from './OutlinesList';
+import ScriptsList from './ScriptsList';
 
 const { Title } = Typography;
 
@@ -13,7 +14,7 @@ const HomePage: React.FC = () => {
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
     // Valid tab keys
-    const validTabs = ['ideations', 'outlines'];
+    const validTabs = ['ideations', 'outlines', 'scripts'];
 
     // Get initial tab from URL parameter, default to 'ideations'
     const tabFromUrl = searchParams.get('tab');
@@ -72,6 +73,16 @@ const HomePage: React.FC = () => {
                 </span>
             ),
             children: <OutlinesList />
+        },
+        {
+            key: 'scripts',
+            label: (
+                <span>
+                    <VideoCameraOutlined />
+                    剧本制作
+                </span>
+            ),
+            children: <ScriptsList />
         }
     ];
 
@@ -104,11 +115,6 @@ const HomePage: React.FC = () => {
                 onChange={handleTabChange}
                 items={tabItems}
                 size={isMobile ? 'small' : 'middle'}
-                style={{
-                    '& .ant-tabs-content-holder': {
-                        paddingTop: '16px'
-                    }
-                }}
             />
         </div>
     );

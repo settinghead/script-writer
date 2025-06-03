@@ -146,5 +146,26 @@ export function createEpisodeRoutes(
         }
     );
 
+    // Get all episode generation sessions for user
+    router.get('/sessions',
+        authMiddleware.authenticate,
+        async (req, res): Promise<void> => {
+            const userId = req.user?.id;
+
+            if (!userId) {
+                res.status(401).json({ error: 'Unauthorized' });
+                return;
+            }
+
+            try {
+                const sessions = await episodeService.getAllEpisodeGenerationSessions(userId);
+                res.json(sessions);
+            } catch (error: any) {
+                console.error('Error getting episode generation sessions:', error);
+                res.status(500).json({ error: error.message });
+            }
+        }
+    );
+
     return router;
 } 

@@ -84,6 +84,21 @@ const apiService = {
         }
     },
 
+    async getEpisodeGenerationSession(sessionId: string): Promise<any> {
+        try {
+            const response = await fetch(`/api/episodes/episode-generation/${sessionId}`, {
+                credentials: 'include'
+            });
+            if (!response.ok) {
+                throw new Error('Failed to get episode generation session');
+            }
+            return await response.json();
+        } catch (error) {
+            console.error('Error getting episode generation session:', error);
+            return null;
+        }
+    },
+
     async startEpisodeGeneration(
         stageId: string,
         numberOfEpisodes: number,
@@ -120,23 +135,37 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
     const [editedEpisodes, setEditedEpisodes] = useState<number>(0);
     const [editedRequirements, setEditedRequirements] = useState<string>('');
 
+    // Get session and transform IDs from URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get('session');
+    const transformId = urlParams.get('transform');
+
     useEffect(() => {
         loadStageData();
-        checkActiveGeneration();
-    }, [stageId]);
+        // If we have session info from URL, check that specific session
+        if (sessionId && transformId) {
+            checkSessionStatus(sessionId);
+        } else {
+            checkActiveGeneration();
+        }
+    }, [stageId, sessionId, transformId]);
 
     useEffect(() => {
         let interval: NodeJS.Timeout;
         if (activeGeneration?.status === 'running') {
             // Poll for updates every 2 seconds while generation is running
             interval = setInterval(() => {
-                checkActiveGeneration();
+                if (sessionId) {
+                    checkSessionStatus(sessionId);
+                } else {
+                    checkActiveGeneration();
+                }
             }, 2000);
         }
         return () => {
             if (interval) clearInterval(interval);
         };
-    }, [activeGeneration?.status]);
+    }, [activeGeneration?.status, sessionId]);
 
     const loadStageData = async () => {
         try {
@@ -161,6 +190,22 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
             setActiveGeneration(generation);
         } catch (error) {
             console.error('Error checking active generation:', error);
+        }
+    };
+
+    const checkSessionStatus = async (sessionId: string) => {
+        try {
+            const sessionData = await apiService.getEpisodeGenerationSession(sessionId);
+            if (sessionData) {
+                setActiveGeneration({
+                    sessionId: sessionData.session.id,
+                    transformId: transformId || '',
+                    status: sessionData.status,
+                    episodes: sessionData.episodes || []
+                });
+            }
+        } catch (error) {
+            console.error('Error checking session status:', error);
         }
     };
 

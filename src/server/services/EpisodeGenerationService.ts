@@ -252,4 +252,63 @@ export class EpisodeGenerationService {
 
         return null;
     }
+
+    async getAllEpisodeGenerationSessions(userId: string): Promise<EpisodeGenerationSessionData[]> {
+        try {
+            // Get all episode generation session artifacts for the user
+            const sessionArtifacts = await this.artifactRepo.getArtifactsByType(
+                userId,
+                'episode_generation_session'
+            );
+
+            const sessions: EpisodeGenerationSessionData[] = [];
+
+            for (const sessionArtifact of sessionArtifacts) {
+                const sessionData = sessionArtifact.data as EpisodeGenerationSessionV1;
+
+                // Get stage artifact
+                const stageArtifact = await this.artifactRepo.getArtifact(
+                    sessionData.stageArtifactId,
+                    userId
+                );
+
+                if (!stageArtifact) {
+                    continue; // Skip if stage artifact not found
+                }
+
+                // Get episode artifacts for this session
+                const episodeArtifacts = await this.artifactRepo.getArtifactsByType(
+                    userId,
+                    'episode_synopsis'
+                );
+
+                const episodes = episodeArtifacts
+                    .filter(artifact =>
+                        (artifact.data as EpisodeSynopsisV1).episodeGenerationSessionId === sessionData.id
+                    )
+                    .map(artifact => artifact.data as EpisodeSynopsisV1)
+                    .sort((a, b) => a.episodeNumber - b.episodeNumber);
+
+                sessions.push({
+                    session: sessionData,
+                    stage: {
+                        ...stageArtifact.data as OutlineSynopsisStageV1,
+                        artifactId: stageArtifact.id
+                    },
+                    episodes,
+                    status: sessionData.status
+                });
+            }
+
+            // Sort by creation time (newest first)
+            return sessions.sort((a, b) =>
+                new Date(b.session.id.split('-').slice(-2, -1)[0]).getTime() -
+                new Date(a.session.id.split('-').slice(-2, -1)[0]).getTime()
+            );
+
+        } catch (error) {
+            console.error('Error getting all episode generation sessions:', error);
+            return [];
+        }
+    }
 } 
