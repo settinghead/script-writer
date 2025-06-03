@@ -128,9 +128,10 @@ export const EpisodeGenerationPage: React.FC = () => {
         throw new Error('Invalid episode key format');
     };
 
-    const startStreamingEpisodes = (stageId: string, sessionId: string, transformId: string) => {
-        // Start progressive tree expansion by navigating to episode list view
-        navigate(`/scripts/${scriptId}/stages/${stageId}?session=${sessionId}&transform=${transformId}`);
+    const startStreamingEpisodes = () => {
+        // The URL navigation is already handled in StageDetailView's handleStartGeneration
+        // This callback is just to notify that generation has started
+        console.log('[EpisodeGenerationPage] Episode generation started for stage:', selectedStageId);
     };
 
     if (loading) {

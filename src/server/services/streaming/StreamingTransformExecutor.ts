@@ -996,9 +996,10 @@ export class StreamingTransformExecutor {
                     {
                         episodeNumber: episode.episodeNumber || (i + 1),
                         title: episode.title || `第${i + 1}集`,
-                        synopsis: episode.synopsis || '',
+                        briefSummary: episode.synopsis || episode.briefSummary || '',
                         keyEvents: episode.keyEvents || [],
-                        endHook: episode.endHook || '',
+                        hooks: episode.endHook || episode.hooks || '',
+                        stageArtifactId: '',
                         episodeGenerationSessionId: sessionId
                     },
                     'v1',
