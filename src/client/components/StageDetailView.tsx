@@ -280,6 +280,11 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
                             <Text type="secondary">正在生成剧集内容...</Text>
                         </div>
                     )}
+                    {isStreaming && !isActiveStreaming && (
+                        <div style={{ marginTop: '10px' }}>
+                            <Text type="secondary">正在重新连接到生成会话...</Text>
+                        </div>
+                    )}
                 </Card>
             )}
 

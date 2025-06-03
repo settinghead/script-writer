@@ -101,14 +101,9 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
             shareReplay(1) // Make it hot for combineLatest
         );
 
-        const completed$ = merge(
-            sourceContentForStatus$.pipe(
-                debounceTime(this.config.completionTimeoutMs || 2000),
-                mapTo('completed' as const)
-            ),
-            this.completion$.pipe(
-                mapTo('completed' as const)
-            )
+        // ONLY use explicit completion from backend - remove timeout guessing
+        const completed$ = this.completion$.pipe(
+            mapTo('completed' as const)
         );
 
         const error$ = this.error$.pipe(

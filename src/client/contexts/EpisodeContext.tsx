@@ -108,10 +108,20 @@ const episodeReducer = (state: EpisodeState, action: EpisodeAction): EpisodeStat
             };
 
         case 'STOP_STREAMING':
+            // Find the currently streaming stage and update its state
+            const updatedStageEpisodeData = { ...state.stageEpisodeData };
+            if (state.activeStreamingStageId && updatedStageEpisodeData[state.activeStreamingStageId]) {
+                updatedStageEpisodeData[state.activeStreamingStageId] = {
+                    ...updatedStageEpisodeData[state.activeStreamingStageId],
+                    isStreaming: false
+                };
+            }
+
             return {
                 ...state,
                 activeStreamingStageId: null,
-                streamingTransformId: null
+                streamingTransformId: null,
+                stageEpisodeData: updatedStageEpisodeData
             };
 
         case 'UPDATE_STREAMING_EPISODES':
@@ -265,11 +275,12 @@ export const EpisodeProvider: React.FC<{ children: ReactNode }> = ({ children })
             // Auto-expand streaming stage
             dispatch({ type: 'ADD_EXPANDED_KEY', payload: state.activeStreamingStageId });
         }
-    }, [state.activeStreamingStageId, streamingEpisodes]);
+    }, [state.activeStreamingStageId, streamingEpisodes.length]); // Only depend on stage ID and episode count
 
     // Handle streaming completion
     useEffect(() => {
         if (streamingStatus === 'completed' || streamingStatus === 'error') {
+            console.log('[EpisodeContext] Streaming ended:', streamingStatus);
             dispatch({ type: 'STOP_STREAMING' });
         }
     }, [streamingStatus]);
@@ -302,15 +313,29 @@ export const EpisodeProvider: React.FC<{ children: ReactNode }> = ({ children })
                         data: {
                             episodes: sessionData?.episodes || [],
                             loading: false,
-                            isStreaming: false,
+                            isStreaming: sessionData?.status === 'active',
                             sessionData: sessionData || undefined
                         }
                     };
                 });
 
                 const results = await Promise.all(episodePromises);
+
+                // Check for active generation sessions that need to be resumed
+                let activeSession: { stageId: string; transformId: string } | null = null;
+
                 results.forEach(result => {
                     dispatch({ type: 'SET_STAGE_EPISODES', payload: result });
+
+                    // Check if this stage has an active generation session
+                    if (result.data.sessionData?.status === 'active' &&
+                        result.data.sessionData.currentTransformId &&
+                        !activeSession) {
+                        activeSession = {
+                            stageId: result.stageId,
+                            transformId: result.data.sessionData.currentTransformId
+                        };
+                    }
                 });
 
                 // Auto-expand stages with episodes
@@ -320,6 +345,15 @@ export const EpisodeProvider: React.FC<{ children: ReactNode }> = ({ children })
 
                 if (stagesToExpand.length > 0) {
                     dispatch({ type: 'SET_EXPANDED_KEYS', payload: stagesToExpand });
+                }
+
+                // Resume active streaming session if found
+                if (activeSession) {
+                    console.log('[EpisodeContext] Resuming active generation session:', activeSession);
+                    dispatch({
+                        type: 'START_STREAMING',
+                        payload: activeSession
+                    });
                 }
 
             } catch (error) {
