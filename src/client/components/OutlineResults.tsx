@@ -21,6 +21,24 @@ interface OutlineCharacter {
     key_scenes?: string[];
 }
 
+// Enhanced stage structure interface
+interface OutlineSynopsisStage {
+    stageSynopsis: string;
+    numberOfEpisodes: number;
+    // Option A: Temporal Constraints
+    timeframe?: string;
+    startingCondition: string;
+    endingCondition: string;
+    // Option B: Event-Based Stage Boundaries
+    stageStartEvent: string;
+    stageEndEvent: string;
+    keyMilestones: string[];
+    // Option C: Relationship Progression Levels
+    relationshipLevel: string;
+    emotionalArc: string;
+    externalPressure: string;
+}
+
 interface OutlineResultsProps {
     sessionId: string;
     components: {

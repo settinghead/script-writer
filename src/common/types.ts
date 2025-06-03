@@ -219,4 +219,25 @@ export interface WorkflowContextV1 {
     requirements?: string;
     // Add more parameters as needed for future stages
     [key: string]: any;
+}
+
+// Enhanced stage structure with temporal and event boundaries
+export interface StageStructure {
+    stageSynopsis: string;
+    numberOfEpisodes: number;
+
+    // Option A: Temporal Constraints
+    timeframe?: string; // e.g., "Days 1-10: Initial setup period"
+    startingCondition: string; // e.g., "Neighbors are strangers"
+    endingCondition: string; // e.g., "Successfully convince first outsider they're dating"
+
+    // Option B: Event-Based Stage Boundaries
+    stageStartEvent: string; // e.g., "Mother calls demanding to meet boyfriend"
+    stageEndEvent: string; // e.g., "Mother books train ticket to visit"
+    keyMilestones: string[]; // e.g., ["First fake date in public", "Neighbors start gossiping"]
+
+    // Option C: Relationship Progression Levels
+    relationshipLevel: string; // e.g., "Strangers → Awkward actors"
+    emotionalArc: string; // e.g., "Reluctant cooperation → Grudging respect"
+    externalPressure: string; // e.g., "Family curiosity → Neighbor suspicion"
 } 

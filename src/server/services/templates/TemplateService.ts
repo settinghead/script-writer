@@ -135,40 +135,40 @@ export class TemplateService {
     **IMPORTANT: 每个阶段必须详细描述，字数要求严格！每段约400字符，总计2000字符左右。不可过于简化。**
     **CRITICAL: 每个阶段必须包含该阶段覆盖的集数(numberOfEpisodes)，所有阶段的集数总和必须等于{params.totalEpisodes}集。请根据剧情复杂度和重要性合理分配集数。**
     
+    **阶段结构增强要求 - 为防止时间线崩塌和确保清晰的阶段边界，每个阶段必须包含以下详细信息：**
+    
     *   **第一阶段**: 背景设定与人物介绍
-        - 详细描述故事发生的具体时间、地点、社会背景和环境氛围
-        - 逐一介绍主要角色的完整身份、详细性格特征、具体目标和当前生活状态
-        - 建立故事的整体基调、情感色彩和叙事风格
-        - 巧妙埋下多个后续冲突的重要伏笔和线索
-        - 展现主角的初始状态和面临的潜在问题
+        - **stageSynopsis**: 详细描述故事发生的具体时间、地点、社会背景和环境氛围；逐一介绍主要角色的完整身份、详细性格特征、具体目标和当前生活状态；建立故事的整体基调、情感色彩和叙事风格；巧妙埋下多个后续冲突的重要伏笔和线索；展现主角的初始状态和面临的潜在问题
+        - **timeframe**: 明确时间跨度（如"故事开始的第1-5天"）
+        - **startingCondition**: 阶段开始时的具体状况（如"主角过着平凡的单身生活"）
+        - **endingCondition**: 阶段结束时必须达到的状态（如"初步建立假恋爱关系，周围人开始怀疑"）
+        - **stageStartEvent**: 触发该阶段的关键事件（如"母亲催婚电话打来"）
+        - **stageEndEvent**: 结束该阶段的标志性事件（如"邻居开始议论他们的关系"）
+        - **keyMilestones**: 该阶段的3-4个重要里程碑（如["首次请求帮助","达成协议","第一次练习"]）
+        - **relationshipLevel**: 人物关系的变化（如"陌生邻居 → 合作伙伴"）
+        - **emotionalArc**: 情感变化轨迹（如"尴尬紧张 → 初步信任"）
+        - **externalPressure**: 外部压力状况（如"家庭催婚压力初现"）
     
-    *   **第二阶段（约400字符）**: 初始冲突与矛盾爆发
-        - 详细描述引发核心矛盾的具体事件和冲突爆发过程
-        - 深入展现主角面临的第一个重大挑战的具体内容和影响
-        - 清晰呈现各方势力、利益关系和立场分歧的初步显现
-        - 描述推动故事向前发展的多个关键事件及其连锁反应
-        - 展现角色在冲突中的具体反应和应对策略
+    *   **第二阶段**: 初始冲突与矛盾爆发
+        - **stageSynopsis**: 详细描述引发核心矛盾的具体事件和冲突爆发过程；深入展现主角面临的第一个重大挑战的具体内容和影响；清晰呈现各方势力、利益关系和立场分歧的初步显现；描述推动故事向前发展的多个关键事件及其连锁反应；展现角色在冲突中的具体反应和应对策略
+        - **timeframe**: 明确时间跨度
+        - **startingCondition**: 承接上一阶段的结束状态
+        - **endingCondition**: 该阶段必须达到的新状态（不能超前到后续阶段）
+        - **stageStartEvent**: 从上一阶段自然过渡的事件
+        - **stageEndEvent**: 为下一阶段做铺垫的事件
+        - **keyMilestones**: 该阶段的重要进展节点
+        - **relationshipLevel**: 关系的进一步发展
+        - **emotionalArc**: 情感的复杂化过程
+        - **externalPressure**: 外部压力的升级
     
-    *   **第三阶段（约400字符）**: 情节发展与关系复杂化
-        - 详细描述矛盾如何逐步升级，情节如何层层递进和复杂化
-        - 深入展现人物关系网络的复杂变化，新角色的登场和作用
-        - 具体描述主角的成长变化过程和心理转变轨迹
-        - 详细铺垫高潮部分的多个重要元素和情感蓄力过程
-        - 展现各种伏笔的逐步展开和相互关联
+    *   **第三阶段**: 情节发展与关系复杂化 
+        - **同样的详细结构要求...**
     
-    *   **第四阶段（约400字符）**: 高潮对决与重大反转
-        - 详细描述故事最紧张激烈对决时刻的具体过程和细节
-        - 深入展现意想不到的重大反转或真相揭露的完整过程
-        - 具体描述主角面临的最严峻考验和关键选择的内容
-        - 详细展现各个伏笔收尾和爽点集中爆发的精彩时刻
-        - 描述所有角色在高潮中的具体表现和命运转折
+    *   **第四阶段**: 高潮对决与重大反转
+        - **同样的详细结构要求...**
     
-    *   **第五阶段（约400字符）**: 结局收尾与情感升华
-        - 详细描述所有矛盾解决过程，善恶得到应有结果的具体情况
-        - 深入展现主角完成成长蜕变的具体表现和目标实现过程
-        - 具体描述情感升华过程和正能量价值观的传递方式
-        - 详细展现给观众留下的深刻印象和获得的情感满足
-        - 完整收尾所有故事线和角色命运的最终走向
+    *   **第五阶段**: 结局收尾与情感升华
+        - **同样的详细结构要求...**
 
 **短剧创作核心要求 (非常重要！):**
 -   **节奏极快**: 剧情推进迅速，不拖沓，每一分钟都要有信息量或情绪点。
@@ -183,6 +183,7 @@ export class TemplateService {
 -   **完整角色体系**: 必须包含男主、女主、男二、女二等完整的角色配置。
 -   **详细梗概要求**: synopsis_stages每个阶段必须详细描述，严格达到约400字符，总计2000字符左右。绝不可简化或缩短。
 -   **字数达标要求**: 每个synopsis_stages条目都必须包含足够的情节细节、角色行动、环境描述、情感变化等，确保达到400字符要求。
+-   **时间线连贯性**: 每个阶段的时间跨度和事件边界必须清晰，防止阶段间的时间重叠或跳跃。
 
 请以JSON格式返回，字段如下：
 {
@@ -216,24 +217,69 @@ export class TemplateService {
   ],
   "synopsis_stages": [
     {
-      "stageSynopsis": "[string] 第一阶段内容",
-      "numberOfEpisodes": "[number] 该阶段覆盖的集数"
+      "stageSynopsis": "[string] 第一阶段内容（约400字符）",
+      "numberOfEpisodes": "[number] 该阶段覆盖的集数",
+      "timeframe": "[string] 时间跨度，如'故事开始的第1-5天'",
+      "startingCondition": "[string] 阶段开始时的具体状况",
+      "endingCondition": "[string] 阶段结束时必须达到的状态",
+      "stageStartEvent": "[string] 触发该阶段的关键事件",
+      "stageEndEvent": "[string] 结束该阶段的标志性事件",
+      "keyMilestones": ["[string] 里程碑1", "[string] 里程碑2", "[string] 里程碑3"],
+      "relationshipLevel": "[string] 人物关系变化，如'陌生邻居 → 合作伙伴'",
+      "emotionalArc": "[string] 情感变化轨迹，如'尴尬紧张 → 初步信任'",
+      "externalPressure": "[string] 外部压力状况"
     },
     {
-      "stageSynopsis": "[string] 第二阶段内容", 
-      "numberOfEpisodes": "[number] 该阶段覆盖的集数"
+      "stageSynopsis": "[string] 第二阶段内容（约400字符）", 
+      "numberOfEpisodes": "[number] 该阶段覆盖的集数",
+      "timeframe": "[string] 时间跨度",
+      "startingCondition": "[string] 承接上一阶段的结束状态",
+      "endingCondition": "[string] 该阶段必须达到的新状态",
+      "stageStartEvent": "[string] 从上一阶段自然过渡的事件",
+      "stageEndEvent": "[string] 为下一阶段做铺垫的事件",
+      "keyMilestones": ["[string] 里程碑1", "[string] 里程碑2", "[string] 里程碑3"],
+      "relationshipLevel": "[string] 关系的进一步发展",
+      "emotionalArc": "[string] 情感的复杂化过程",
+      "externalPressure": "[string] 外部压力的升级"
     },
     {
-      "stageSynopsis": "[string] 第三阶段内容",
-      "numberOfEpisodes": "[number] 该阶段覆盖的集数"
+      "stageSynopsis": "[string] 第三阶段内容（约400字符）",
+      "numberOfEpisodes": "[number] 该阶段覆盖的集数",
+      "timeframe": "[string] 时间跨度",
+      "startingCondition": "[string] 阶段开始条件",
+      "endingCondition": "[string] 阶段结束条件",
+      "stageStartEvent": "[string] 触发事件",
+      "stageEndEvent": "[string] 结束事件",
+      "keyMilestones": ["[string] 里程碑1", "[string] 里程碑2", "[string] 里程碑3"],
+      "relationshipLevel": "[string] 关系发展",
+      "emotionalArc": "[string] 情感轨迹",
+      "externalPressure": "[string] 外部压力"
     },
     {
-      "stageSynopsis": "[string] 第四阶段内容",
-      "numberOfEpisodes": "[number] 该阶段覆盖的集数"
+      "stageSynopsis": "[string] 第四阶段内容（约400字符）",
+      "numberOfEpisodes": "[number] 该阶段覆盖的集数",
+      "timeframe": "[string] 时间跨度",
+      "startingCondition": "[string] 阶段开始条件",
+      "endingCondition": "[string] 阶段结束条件",
+      "stageStartEvent": "[string] 触发事件",
+      "stageEndEvent": "[string] 结束事件",
+      "keyMilestones": ["[string] 里程碑1", "[string] 里程碑2", "[string] 里程碑3"],
+      "relationshipLevel": "[string] 关系发展",
+      "emotionalArc": "[string] 情感轨迹",
+      "externalPressure": "[string] 外部压力"
     },
     {
-      "stageSynopsis": "[string] 第五阶段内容",
-      "numberOfEpisodes": "[number] 该阶段覆盖的集数"
+      "stageSynopsis": "[string] 第五阶段内容（约400字符）",
+      "numberOfEpisodes": "[number] 该阶段覆盖的集数",
+      "timeframe": "[string] 时间跨度",
+      "startingCondition": "[string] 阶段开始条件",
+      "endingCondition": "[string] 阶段结束条件",
+      "stageStartEvent": "[string] 触发事件",
+      "stageEndEvent": "[string] 结束事件",
+      "keyMilestones": ["[string] 里程碑1", "[string] 里程碑2", "[string] 里程碑3"],
+      "relationshipLevel": "[string] 关系发展",
+      "emotionalArc": "[string] 情感轨迹",
+      "externalPressure": "[string] 外部压力"
     }
   ]
 }
@@ -250,14 +296,36 @@ export class TemplateService {
       name: 'Episode Synopsis Generation',
       promptTemplate: `你是一位资深的短剧编剧，专门负责将故事阶段梗概展开为具体的分集剧情大纲。
 
+**重要提醒：这是故事中的一个特定阶段，不是完整故事。你只需要为这个阶段的内容生成剧集，不能超出该阶段的范围！**
+
 根据以下信息，请为该阶段生成 {params.numberOfEpisodes} 集的详细剧集大纲：
 
-**阶段梗概**：
-{params.stageSynopsis}
+**阶段信息**：
+- **阶段梗概**: {params.stageSynopsis}
+- **时间跨度**: {params.timeframe}
+- **开始状态**: {params.startingCondition}
+- **结束状态**: {params.endingCondition}
+- **起始事件**: {params.stageStartEvent}
+- **结束事件**: {params.stageEndEvent}
+- **关键里程碑**: {params.keyMilestones}
+- **关系发展**: {params.relationshipLevel}
+- **情感轨迹**: {params.emotionalArc}
+- **外部压力**: {params.externalPressure}
 
 **生成要求**：
 - 集数：{params.numberOfEpisodes} 集
 - 每集时长：约45分钟{params.customRequirements}
+
+**核心约束条件**：
+1. **严格限制在阶段范围内**：生成的所有剧集必须严格按照上述阶段信息进行，不能引入该阶段之外的情节
+2. **时间边界约束**：剧集必须在指定的时间跨度内发展，不能超前或滞后
+3. **状态转换约束**：从"开始状态"逐步发展到"结束状态"，不能跳跃或超越
+4. **事件边界约束**：第1集必须从"起始事件"开始或紧接其后，最后一集必须以"结束事件"结尾
+5. **里程碑分布**：关键里程碑必须在适当集数中实现，确保进度合理分配
+6. **关系/情感约束**：人物关系和情感必须按照指定轨迹发展，不能过快或过慢
+7. **外部压力一致性**：外部压力状况必须与阶段设定保持一致
+8. **保持悬念和连续性**：每集结尾要为后续集数和后续阶段留下发展空间
+9. **内容分布均匀**：将阶段内容均匀分配到所有集数中，确保每集都有足够的内容
 
 **剧集大纲要求**：
 1. **剧集标题**：每集都要有一个富有吸引力、体现该集核心看点的标题（8-15字）
@@ -271,18 +339,29 @@ export class TemplateService {
    - 事件要具体可执行，有明确的时间地点人物
    - 事件之间要有逻辑关联和因果关系
    - 事件要能够推动人物关系发展或揭示重要信息
+   - **所有事件必须在阶段信息的约束范围内**
 
 4. **结尾悬念**：每集结尾的悬念设置，引发观众对下一集的期待
    - 悬念必须是具体的**事件**，不能是情感状态或心理活动
    - 要与剧情发展紧密相关，为下集做铺垫
    - 要有足够的吸引力让观众想继续观看
+   - **不能设置超出当前阶段范围的悬念**
 
-**注意事项**：
-- 严格按照阶段梗概的故事走向进行展开，不能偏离主线
-- 每集都要有明确的起承转合结构
-- 角色发展要循序渐进，符合人物性格逻辑
-- 情节安排要紧凑有节奏，避免拖沓
-- 确保所有关键事件和结尾悬念都是具体的事件，而非抽象概念
+**内容分配策略**：
+- 将阶段里程碑按集数合理分配（如4集阶段，每集实现1个里程碑）
+- 确保每集都有独立的小高潮，同时推进整体阶段发展
+- 前几集重点建立该阶段的背景和冲突
+- 中间几集深入发展人物关系和矛盾
+- 后几集推向该阶段的高潮，但不解决整个故事的主要冲突
+
+**阶段边界检查清单**：
+- ✅ 是否在指定时间跨度内？
+- ✅ 是否从正确的开始状态出发？
+- ✅ 是否以正确的结束状态收尾？ 
+- ✅ 是否包含所有关键里程碑？
+- ✅ 人物关系是否按指定轨迹发展？
+- ✅ 情感变化是否符合指定弧线？
+- ✅ 外部压力是否保持一致？
 
 **输出格式**：
 请以JSON数组的格式返回，每个集数包含以下字段：
@@ -312,10 +391,10 @@ export class TemplateService {
   }
 ]
 
-**重要**：只输出纯JSON数组，不要任何解释、说明、或其他文本。确保JSON格式正确且完整。`,
+**重要**：只输出纯JSON数组，不要任何解释、说明、或其他文本。确保JSON格式正确且完整。所有内容必须严格限制在给定的阶段信息范围内，不能超出该阶段的故事发展。`,
       outputFormat: 'json_array',
       responseWrapper: '```json',
-      variables: ['params.numberOfEpisodes', 'params.stageSynopsis', 'params.customRequirements']
+      variables: ['params.numberOfEpisodes', 'params.stageSynopsis', 'params.customRequirements', 'params.timeframe', 'params.startingCondition', 'params.endingCondition', 'params.stageStartEvent', 'params.stageEndEvent', 'params.keyMilestones', 'params.relationshipLevel', 'params.emotionalArc', 'params.externalPressure']
     });
   }
 
