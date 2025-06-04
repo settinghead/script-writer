@@ -29,11 +29,11 @@ const config = {
         },
         useNullAsDefault: true,
         migrations: {
-            directory: './src/server/database/migrations',
+            directory: './migrations',
             extension: 'js'
         },
         seeds: {
-            directory: './src/server/database/seeds',
+            directory: './seeds',
             extension: 'js'
         },
         pool: {
