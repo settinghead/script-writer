@@ -339,6 +339,7 @@ export class TransformExecutor {
 
                     const result = await streamText({
                         model: llmAI(modelName),
+                        temperature: 1.5,
                         messages: [{ role: 'user', content: finalPrompt }]
                     });
 
