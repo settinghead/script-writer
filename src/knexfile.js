@@ -1,7 +1,5 @@
-import type { Knex } from 'knex';
-import * as path from 'path';
 
-const config: { [key: string]: Knex.Config } = {
+const config = {
     development: {
         client: 'sqlite3',
         connection: {
@@ -9,15 +7,15 @@ const config: { [key: string]: Knex.Config } = {
         },
         useNullAsDefault: true,
         migrations: {
-            directory: './src/server/database/migrations',
-            extension: 'ts'
+            directory: './src/migrations',
+            extension: 'js'
         },
         seeds: {
-            directory: './src/server/database/seeds',
-            extension: 'ts'
+            directory: './src/seeds',
+            extension: 'js'
         },
         pool: {
-            afterCreate: (conn: any, done: any) => {
+            afterCreate: (conn, done) => {
                 // Enable foreign key constraints
                 conn.run('PRAGMA foreign_keys = ON', done);
             }
@@ -31,15 +29,15 @@ const config: { [key: string]: Knex.Config } = {
         },
         useNullAsDefault: true,
         migrations: {
-            directory: './server/database/migrations',
+            directory: './src/migrations',
             extension: 'js'
         },
         seeds: {
-            directory: './server/database/seeds',
+            directory: './src/seeds',
             extension: 'js'
         },
         pool: {
-            afterCreate: (conn: any, done: any) => {
+            afterCreate: (conn, done) => {
                 conn.run('PRAGMA foreign_keys = ON', done);
             }
         }

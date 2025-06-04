@@ -1,6 +1,4 @@
-import { Knex } from 'knex';
-
-export async function up(knex: Knex): Promise<void> {
+exports.up = async function (knex) {
     // Add retry tracking fields to existing transforms table
     await knex.schema.alterTable('transforms', (table) => {
         table.integer('retry_count').defaultTo(0);
@@ -12,9 +10,9 @@ export async function up(knex: Knex): Promise<void> {
     await knex.schema.alterTable('transforms', (table) => {
         table.string('status').defaultTo('running').alter();
     });
-}
+};
 
-export async function down(knex: Knex): Promise<void> {
+exports.down = async function (knex) {
     // Remove the added columns
     await knex.schema.alterTable('transforms', (table) => {
         table.dropColumn('retry_count');
@@ -26,4 +24,4 @@ export async function down(knex: Knex): Promise<void> {
     await knex.schema.alterTable('transforms', (table) => {
         table.string('status').defaultTo('completed').alter();
     });
-} 
+}; 

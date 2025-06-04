@@ -24,8 +24,7 @@
   "include": [
     "src/server/**/*.ts",
     "src/server/**/*.tsx",
-    "src/common/**/*.ts",
-    "src/knexfile.ts"
+    "src/common/**/*.ts"
   ],
   "exclude": [
     "src/server/**/*.spec.ts"

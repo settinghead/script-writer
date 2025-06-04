@@ -1,6 +1,4 @@
-import { Knex } from 'knex';
-
-export async function up(knex: Knex): Promise<void> {
+exports.up = async function (knex) {
     // Create transform_chunks table for persistent streaming storage
     // This eliminates the need for in-memory StreamingCache
     await knex.schema.createTable('transform_chunks', (table) => {
@@ -9,7 +7,7 @@ export async function up(knex: Knex): Promise<void> {
         table.integer('chunk_index').notNullable();
         table.text('chunk_data').notNullable();
         table.timestamp('created_at').defaultTo(knex.fn.now());
-        
+
         // Ensure chunks are ordered properly
         table.unique(['transform_id', 'chunk_index']);
     });
@@ -17,8 +15,8 @@ export async function up(knex: Knex): Promise<void> {
     // Indexes for efficient querying
     await knex.schema.raw('CREATE INDEX IF NOT EXISTS idx_transform_chunks_transform_id ON transform_chunks(transform_id)');
     await knex.schema.raw('CREATE INDEX IF NOT EXISTS idx_transform_chunks_transform_id_index ON transform_chunks(transform_id, chunk_index)');
-}
+};
 
-export async function down(knex: Knex): Promise<void> {
+exports.down = async function (knex) {
     await knex.schema.dropTableIfExists('transform_chunks');
-} 
+}; 

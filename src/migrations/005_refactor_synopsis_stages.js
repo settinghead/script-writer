@@ -1,7 +1,6 @@
-import { Knex } from 'knex';
-import { v4 as uuidv4 } from 'uuid';
+const { v4: uuidv4 } = require('uuid');
 
-export async function up(knex: Knex): Promise<void> {
+exports.up = async function (knex) {
     console.log('Starting synopsis stages refactoring migration...');
 
     // 1. Find all outline_synopsis_stages artifacts
@@ -23,7 +22,7 @@ export async function up(knex: Knex): Promise<void> {
 
             // 2. Extract individual stages from the array
             const stages = data.synopsis_stages || [];
-            const newStageArtifactIds: string[] = [];
+            const newStageArtifactIds = [];
 
             for (let i = 0; i < stages.length; i++) {
                 const stage = stages[i];
@@ -77,9 +76,9 @@ export async function up(knex: Knex): Promise<void> {
     }
 
     console.log('Synopsis stages refactoring migration completed');
-}
+};
 
-export async function down(knex: Knex): Promise<void> {
+exports.down = async function (knex) {
     console.log('Reversing synopsis stages refactoring migration...');
 
     // Group stage artifacts by outline session
@@ -88,7 +87,7 @@ export async function down(knex: Knex): Promise<void> {
         .where('type_version', 'v1')
         .orderBy('created_at');
 
-    const stagesBySession: { [sessionId: string]: any[] } = {};
+    const stagesBySession = {};
 
     for (const artifact of stageArtifacts) {
         const data = JSON.parse(artifact.data);
@@ -154,10 +153,10 @@ export async function down(knex: Knex): Promise<void> {
     }
 
     console.log('Synopsis stages refactoring migration reversed');
-}
+};
 
 // Helper function to find the outline session ID for a given artifact
-async function getOutlineSessionId(knex: Knex, artifactId: string): Promise<string | null> {
+async function getOutlineSessionId(knex, artifactId) {
     // Find transforms that have this artifact as output
     const transformOutputs = await knex('transform_outputs')
         .where('artifact_id', artifactId);

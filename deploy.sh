@@ -41,7 +41,7 @@ npm run build
 
 # Run database migrations
 echo "Running database migrations..."
-NODE_ENV=production npx knex migrate:latest --knexfile dist-server/knexfile.js
+NODE_ENV=production npx knex migrate:latest --knexfile src/knexfile.js
 
 # Run database seeds (only if needed - typically not in production)
 # Uncomment the next line if you want to run seeds in production

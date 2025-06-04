@@ -1,6 +1,4 @@
-import { Knex } from 'knex';
-
-export async function seed(knex: Knex): Promise<void> {
+exports.seed = async function (knex) {
     // Define test users
     const testUsers = [
         { id: 'test-user-xiyang', username: 'xiyang', display_name: 'Xi Yang' },
@@ -38,4 +36,4 @@ export async function seed(knex: Knex): Promise<void> {
             console.log(`Auth provider already exists for: ${user.username}`);
         }
     }
-} 
+}; 

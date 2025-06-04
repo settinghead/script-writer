@@ -1,6 +1,4 @@
-import { Knex } from 'knex';
-
-export async function up(knex: Knex): Promise<void> {
+exports.up = async function (knex) {
     // Create users table
     await knex.schema.createTable('users', (table) => {
         table.string('id').primary();
@@ -33,10 +31,10 @@ export async function up(knex: Knex): Promise<void> {
 
         table.foreign('user_id').references('id').inTable('users');
     });
-}
+};
 
-export async function down(knex: Knex): Promise<void> {
+exports.down = async function (knex) {
     await knex.schema.dropTableIfExists('user_sessions');
     await knex.schema.dropTableIfExists('auth_providers');
     await knex.schema.dropTableIfExists('users');
-} 
+}; 
