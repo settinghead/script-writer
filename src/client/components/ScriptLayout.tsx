@@ -107,17 +107,25 @@ export const ScriptLayout: React.FC = () => {
             const stageKey = stage.artifactId;
 
             const children: DataNode[] = episodes.map(episode => {
-                // For episodes, always show dotted circle since script generation is not yet implemented for status tracking
+                // Check if script exists for this episode
+                const hasScript = episode.hasScript || false;
+                
+                // Show green checkmark if script exists, dotted circle otherwise
+                const statusIcon = hasScript ? 
+                    <CheckCircleFilled style={{ color: '#52c41a', fontSize: '12px' }} /> :
+                    <DottedCircle />;
+
                 return {
                     key: `episode-${stageKey}-${episode.episodeNumber}`,
                     title: (
                         <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <DottedCircle />
+                            {statusIcon}
                             <span>第{episode.episodeNumber}集: {episode.title || '无标题'}</span>
                         </span>
                     ),
                     isLeaf: true,
-                    style: { color: '#d9d9d9' }
+                    style: { color: hasScript ? '#52c41a' : '#d9d9d9' },
+                    hasScript // Store script status for navigation logic
                 };
             });
 
@@ -172,11 +180,11 @@ export const ScriptLayout: React.FC = () => {
     }, [state.stages, state.stageEpisodeData]);
 
     // Handle tree selection - navigate to appropriate route
-    const onTreeSelect = (selectedKeys: React.Key[]) => {
+    const onTreeSelect = (selectedKeys: React.Key[], info: any) => {
         const nodeKey = selectedKeys[0] as string;
 
         if (nodeKey && nodeKey.includes('episode-')) {
-            // Episode selected - navigate to episode script generation
+            // Episode selected
             const episodePrefix = 'episode-';
             const afterPrefix = nodeKey.substring(episodePrefix.length);
             const lastHyphenIndex = afterPrefix.lastIndexOf('-');
@@ -184,7 +192,18 @@ export const ScriptLayout: React.FC = () => {
             if (lastHyphenIndex !== -1) {
                 const stageId = afterPrefix.substring(0, lastHyphenIndex);
                 const episodeNumber = afterPrefix.substring(lastHyphenIndex + 1);
-                navigate(`/scripts/${scriptId}/stages/${stageId}/episodes/${episodeNumber}`);
+                
+                // Check if script exists for this episode
+                const selectedNode = info.node;
+                const hasScript = selectedNode?.hasScript || false;
+                
+                if (hasScript) {
+                    // Navigate to script display page
+                    navigate(`/scripts/${scriptId}/stages/${stageId}/episodes/${episodeNumber}/script`);
+                } else {
+                    // Navigate to script generation page
+                    navigate(`/scripts/${scriptId}/stages/${stageId}/episodes/${episodeNumber}`);
+                }
             }
         } else if (nodeKey) {
             // Stage selected - navigate to stage detail

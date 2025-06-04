@@ -161,6 +161,8 @@ export interface EpisodeSynopsisV1 {
     hooks: string;
     stageArtifactId: string;
     episodeGenerationSessionId: string;
+    // Script status tracking
+    hasScript?: boolean;
     // 🔥 NEW: Episode-level emotion and relationship development tracking
     emotionDevelopments?: Array<{
         characters: string[];  // Characters involved in this emotion development

@@ -7,6 +7,7 @@ import { Slate, Editable, withReact } from 'slate-react';
 import type { EpisodeScriptV1 } from '../../common/streaming/types';
 import { useLLMStreaming } from '../hooks/useLLMStreaming';
 import { ScriptStreamingService, StreamingScript } from '../services/implementations/ScriptStreamingService';
+import { useEpisodeContext } from '../contexts/EpisodeContext';
 
 const { Title, Text } = Typography;
 
@@ -24,6 +25,7 @@ export const ScriptDisplayPage: React.FC = () => {
     }>();
     const navigate = useNavigate();
     const location = useLocation();
+    const { actions } = useEpisodeContext();
 
     // Get transformId from navigation state
     const { transformId, sessionId } = (location.state as any) || {};
@@ -60,22 +62,97 @@ export const ScriptDisplayPage: React.FC = () => {
 
     // Use streaming script data if available
     const currentScriptContent = useMemo(() => {
+        console.log('[ScriptDisplayPage] Computing current script content:', {
+            streamingItemsLength: streamingItems?.length || 0,
+            isStreaming,
+            hasScriptData: !!scriptData,
+            streamingItems: streamingItems?.slice(0, 1) // Show first item for debugging
+        });
+
+        // Helper function to convert scenes array to script text
+        const convertScenesToText = (scenes: any[]): string => {
+            if (!scenes || scenes.length === 0) return '';
+            
+            return scenes.map(scene => {
+                let sceneText = `【第${scene.sceneNumber}场：${scene.location}·${scene.timeOfDay}】\n\n`;
+                
+                if (scene.action) {
+                    sceneText += `（${scene.action}）\n\n`;
+                }
+                
+                if (scene.dialogue && scene.dialogue.length > 0) {
+                    scene.dialogue.forEach((line: any) => {
+                        sceneText += `${line.character}：${line.line}\n`;
+                        if (line.direction) {
+                            sceneText += `（${line.direction}）\n`;
+                        }
+                        sceneText += '\n';
+                    });
+                }
+                
+                return sceneText.trim();
+            }).join('\n\n');
+        };
+
         // If we have streaming items, use the latest one
         if (streamingItems && streamingItems.length > 0) {
-            const latestScript = streamingItems[streamingItems.length - 1];
-            return latestScript.scriptContent;
+            const latestScript = streamingItems[streamingItems.length - 1] as StreamingScript;
+            let scriptContent = latestScript.scriptContent || '';
+            
+            // 🔥 FALLBACK: If scriptContent is empty or placeholder, convert from scenes
+            if (!scriptContent || scriptContent.length < 10 || 
+                scriptContent.includes('完整剧本文本') || scriptContent.includes('剧本内容')) {
+                console.log('[ScriptDisplayPage] scriptContent is placeholder, converting from scenes');
+                scriptContent = convertScenesToText(latestScript.scenes || []);
+            }
+            
+            console.log('[ScriptDisplayPage] Using streaming content:', {
+                contentLength: scriptContent.length,
+                contentPreview: scriptContent.substring(0, 100) || 'no content',
+                usedFallback: scriptContent !== latestScript.scriptContent
+            });
+            return scriptContent;
         }
+        
         // Otherwise use loaded script data
-        return scriptData?.scriptContent || '';
-    }, [streamingItems, scriptData?.scriptContent]);
+        let loadedContent = scriptData?.scriptContent || '';
+        
+        // 🔥 FALLBACK: If loaded scriptContent is empty or placeholder, convert from scenes
+        if (scriptData && (!loadedContent || loadedContent.length < 10 || 
+            loadedContent.includes('完整剧本文本') || loadedContent.includes('剧本内容'))) {
+            console.log('[ScriptDisplayPage] Loaded scriptContent is placeholder, converting from scenes');
+            loadedContent = convertScenesToText(scriptData.scenes || []);
+        }
+        
+        console.log('[ScriptDisplayPage] Using loaded content:', {
+            contentLength: loadedContent.length,
+            contentPreview: loadedContent.substring(0, 100) || 'no content'
+        });
+        return loadedContent;
+    }, [streamingItems, scriptData, isStreaming]);
 
     // Update loading state when streaming content becomes available
     useEffect(() => {
+        console.log('[ScriptDisplayPage] Loading state effect:', {
+            streamingItemsLength: streamingItems?.length || 0,
+            loading,
+            currentContentLength: currentScriptContent.length
+        });
+
         if (streamingItems && streamingItems.length > 0 && loading) {
+            console.log('[ScriptDisplayPage] Setting loading to false due to streaming content');
             setLoading(false);
             setError(null);
         }
-    }, [streamingItems, loading]);
+    }, [streamingItems, loading, currentScriptContent]);
+
+    // Update episode script status when streaming completes
+    useEffect(() => {
+        if (isComplete && streamingItems && streamingItems.length > 0 && stageId && episodeId) {
+            console.log('[ScriptDisplayPage] Script generation completed, updating status');
+            actions.updateEpisodeScriptStatus(stageId, parseInt(episodeId), true);
+        }
+    }, [isComplete, streamingItems, stageId, episodeId, actions]);
 
     const loadScript = async () => {
         if (!episodeId || !stageId) return;
@@ -112,11 +189,20 @@ export const ScriptDisplayPage: React.FC = () => {
 
     // Convert script content to Slate format
     const slateValue: Descendant[] = useMemo(() => {
-        if (!currentScriptContent) {
+        console.log('[ScriptDisplayPage] Computing slate value:', {
+            contentLength: currentScriptContent.length,
+            isStreaming,
+            streamingStatus,
+            contentPreview: currentScriptContent.substring(0, 100) || 'empty'
+        });
+
+        if (!currentScriptContent || currentScriptContent.length < 10) {
+            const message = (isStreaming || streamingStatus === 'streaming') ? '剧本生成中...' : '暂无内容';
+            console.log('[ScriptDisplayPage] No content, showing message:', message);
             return [
                 {
                     type: 'paragraph',
-                    children: [{ text: isStreaming ? '剧本生成中...' : '暂无内容' }]
+                    children: [{ text: message }]
                 }
             ] as Descendant[];
         }
@@ -128,22 +214,22 @@ export const ScriptDisplayPage: React.FC = () => {
         for (const line of lines) {
             const trimmedLine = line.trim();
             if (trimmedLine) {
-                // Check if it's a character name (ALL CAPS followed by colon)
-                if (/^[A-Z\u4e00-\u9fff\s]+:/.test(trimmedLine)) {
-                    nodes.push({
-                        type: 'character',
-                        children: [{ text: trimmedLine }]
-                    } as Descendant);
-                }
-                // Check if it's a scene heading (starts with common scene indicators)
-                else if (/(场景|镜头|外景|内景|INT\.|EXT\.)/.test(trimmedLine)) {
+                // Check if it's a scene heading (Chinese script format)
+                if (/【.*】/.test(trimmedLine)) {
                     nodes.push({
                         type: 'scene-heading',
                         children: [{ text: trimmedLine }]
                     } as Descendant);
                 }
-                // Check if it's an action line (parenthetical or action description)
-                else if (trimmedLine.startsWith('(') && trimmedLine.endsWith(')')) {
+                // Check if it's a character name (Chinese name followed by colon or action in parentheses)
+                else if (/^[\u4e00-\u9fff\w\s]+[:：]/.test(trimmedLine)) {
+                    nodes.push({
+                        type: 'character',
+                        children: [{ text: trimmedLine }]
+                    } as Descendant);
+                }
+                // Check if it's an action line (parenthetical)
+                else if (trimmedLine.startsWith('(') || trimmedLine.startsWith('（')) {
                     nodes.push({
                         type: 'action',
                         children: [{ text: trimmedLine }]
@@ -165,6 +251,7 @@ export const ScriptDisplayPage: React.FC = () => {
             }
         }
 
+        console.log('[ScriptDisplayPage] Created', nodes.length, 'slate nodes');
         return nodes.length > 0 ? nodes : [
             {
                 type: 'paragraph',
@@ -248,8 +335,20 @@ export const ScriptDisplayPage: React.FC = () => {
         }
     ];
 
-    // Show loading states
-    if (isStreaming || (loading && !scriptData)) {
+    // Show loading states - only show loading screen if we're still loading and have no content
+    const shouldShowLoadingScreen = (loading && !scriptData && (!streamingItems || streamingItems.length === 0)) || 
+                                   (isStreaming && (!streamingItems || streamingItems.length === 0));
+
+    console.log('[ScriptDisplayPage] Loading screen decision:', {
+        loading,
+        hasScriptData: !!scriptData,
+        isStreaming,
+        streamingItemsLength: streamingItems?.length || 0,
+        shouldShowLoadingScreen,
+        hasError: !!error || !!streamingError
+    });
+
+    if (shouldShowLoadingScreen) {
         return (
             <div style={{
                 height: '100%',
@@ -270,10 +369,10 @@ export const ScriptDisplayPage: React.FC = () => {
                             </Text>
                         </div>
                     )}
-                    {streamingError && (
+                    {(streamingError || error) && (
                         <Alert
                             message="生成失败"
-                            description={streamingError}
+                            description={streamingError || error}
                             type="error"
                             style={{ maxWidth: '400px' }}
                         />
@@ -333,6 +432,33 @@ export const ScriptDisplayPage: React.FC = () => {
                                     </Text>
                                 </div>
                             </div>
+                        </Space>
+                    </Card>
+                )}
+
+                {/* Streaming Progress Indicator */}
+                {(isStreaming || streamingStatus === 'streaming') && (
+                    <Card
+                        style={{
+                            backgroundColor: '#1a1a1a',
+                            border: '1px solid #404040',
+                            borderRadius: '12px',
+                            marginBottom: '20px'
+                        }}
+                    >
+                        <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <LoadingOutlined style={{ color: '#1890ff' }} />
+                                <Text style={{ color: '#fff' }}>剧本生成中...</Text>
+                            </div>
+                            <div style={{ color: '#888', fontSize: '14px' }}>
+                                正在根据剧集大纲生成详细剧本内容，请稍候...
+                            </div>
+                            {streamingItems && streamingItems.length > 0 && (
+                                <div style={{ color: '#888', fontSize: '12px' }}>
+                                    已生成内容：{currentScriptContent.length} 字符
+                                </div>
+                            )}
                         </Space>
                     </Card>
                 )}

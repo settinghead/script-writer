@@ -59,7 +59,8 @@ type EpisodeAction =
     | { type: 'SET_ERROR'; payload: string | null }
     | { type: 'START_STREAMING'; payload: { stageId: string; transformId: string } }
     | { type: 'STOP_STREAMING' }
-    | { type: 'UPDATE_STREAMING_EPISODES'; payload: { stageId: string; episodes: EpisodeSynopsisV1[] } };
+    | { type: 'UPDATE_STREAMING_EPISODES'; payload: { stageId: string; episodes: EpisodeSynopsisV1[] } }
+    | { type: 'UPDATE_EPISODE_SCRIPT_STATUS'; payload: { stageId: string; episodeNumber: number; hasScript: boolean } };
 
 // Reducer
 const episodeReducer = (state: EpisodeState, action: EpisodeAction): EpisodeState => {
@@ -137,6 +138,27 @@ const episodeReducer = (state: EpisodeState, action: EpisodeAction): EpisodeStat
                 }
             };
 
+        case 'UPDATE_EPISODE_SCRIPT_STATUS':
+            const currentStageData = state.stageEpisodeData[action.payload.stageId];
+            if (!currentStageData) return state;
+
+            const updatedEpisodes = currentStageData.episodes.map(episode =>
+                episode.episodeNumber === action.payload.episodeNumber
+                    ? { ...episode, hasScript: action.payload.hasScript }
+                    : episode
+            );
+
+            return {
+                ...state,
+                stageEpisodeData: {
+                    ...state.stageEpisodeData,
+                    [action.payload.stageId]: {
+                        ...currentStageData,
+                        episodes: updatedEpisodes
+                    }
+                }
+            };
+
         default:
             return state;
     }
@@ -169,6 +191,7 @@ interface EpisodeContextType {
         setExpandedKeys: (keys: string[]) => void;
         startEpisodeGeneration: (stageId: string, numberOfEpisodes: number, customRequirements?: string, cascadedParams?: any) => Promise<void>;
         stopEpisodeGeneration: (stageId: string) => Promise<void>;
+        updateEpisodeScriptStatus: (stageId: string, episodeNumber: number, hasScript: boolean) => void;
     };
 }
 
@@ -288,6 +311,31 @@ export class EpisodeApiService {
             return null;
         }
     }
+
+    static async checkScriptExists(episodeId: string, stageId: string): Promise<boolean> {
+        try {
+            const response = await fetch(`/api/scripts/${episodeId}/${stageId}/exists`, {
+                credentials: 'include'
+            });
+            
+            if (response.status === 200) {
+                // Parse the JSON response to get the actual exists status
+                const data = await response.json();
+                return data.exists === true;
+            } else if (response.status === 404) {
+                return false;
+            } else if (response.status === 401) {
+                console.warn(`Authentication required for script check: episode ${episodeId}, stage ${stageId}`);
+                return false;
+            } else {
+                console.warn(`Unexpected status ${response.status} when checking script exists: episode ${episodeId}, stage ${stageId}`);
+                return false;
+            }
+        } catch (error) {
+            console.warn(`Failed to check script exists for episode ${episodeId}, stage ${stageId}:`, error);
+            return false;
+        }
+    }
 }
 
 // Provider Component
@@ -360,13 +408,28 @@ export const EpisodeProvider: React.FC<{ children: ReactNode }> = ({ children })
                 const stages = await EpisodeApiService.getStageArtifacts(scriptId);
                 dispatch({ type: 'SET_STAGES', payload: stages });
 
-                // Load existing episodes for all stages
+                // Load existing episodes for all stages and check script status
                 const episodePromises = stages.map(async (stage) => {
                     const sessionData = await EpisodeApiService.getStageEpisodes(stage.artifactId);
+                    
+                    // Check script status for each episode
+                    const episodesWithScriptStatus = sessionData?.episodes ? await Promise.all(
+                        sessionData.episodes.map(async (episode) => {
+                            const hasScript = await EpisodeApiService.checkScriptExists(
+                                episode.episodeNumber.toString(), 
+                                stage.artifactId
+                            );
+                            return {
+                                ...episode,
+                                hasScript
+                            };
+                        })
+                    ) : [];
+                    
                     return {
                         stageId: stage.artifactId,
                         data: {
-                            episodes: sessionData?.episodes || [],
+                            episodes: episodesWithScriptStatus,
                             loading: false,
                             isStreaming: sessionData?.status === 'active',
                             sessionData: sessionData || undefined
@@ -497,6 +560,13 @@ export const EpisodeProvider: React.FC<{ children: ReactNode }> = ({ children })
                 console.error('Error stopping episode generation:', error);
                 throw error;
             }
+        },
+
+        updateEpisodeScriptStatus: (stageId: string, episodeNumber: number, hasScript: boolean) => {
+            dispatch({
+                type: 'UPDATE_EPISODE_SCRIPT_STATUS',
+                payload: { stageId, episodeNumber, hasScript }
+            });
         }
     };
 

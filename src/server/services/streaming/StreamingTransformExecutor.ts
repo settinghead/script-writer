@@ -1434,10 +1434,14 @@ export class StreamingTransformExecutor {
                 'episode_script',
                 {
                     episodeNumber: scriptData.episodeNumber || 1,
-                    title: scriptData.title || '未命名剧本',
+                    scriptContent: scriptData.scriptContent || '', // 🔥 FIX: Include the actual script content!
                     scenes: scriptData.scenes || [],
-                    characterList: scriptData.characterList || [],
+                    wordCount: scriptData.wordCount || 0,
                     estimatedDuration: scriptData.estimatedDuration || 0,
+                    generatedAt: new Date().toISOString(),
+                    // Legacy fields for compatibility
+                    title: scriptData.title || '未命名剧本',
+                    characterList: scriptData.characterList || [],
                     summary: scriptData.summary || '',
                     totalDialogueLines: scriptData.totalDialogueLines || 0
                 },
@@ -1450,7 +1454,7 @@ export class StreamingTransformExecutor {
                 { artifactId: scriptArtifact.id, outputRole: 'episode_script' }
             ]);
 
-            console.log(`✅ Created script artifact ${scriptArtifact.id} for episode ${scriptData.episodeNumber}`);
+            console.log(`✅ Created script artifact ${scriptArtifact.id} for episode ${scriptData.episodeNumber} with script content length: ${scriptData.scriptContent?.length || 0}`);
 
         } catch (error) {
             throw error;
