@@ -41,6 +41,14 @@ export class EpisodeGenerationService {
 
         const stageData = stageArtifact.data as OutlineSynopsisStageV1;
 
+        // 🔥 DEBUG: Log incoming parameters
+        console.log('🔍 [DEBUG] EpisodeGenerationService.startEpisodeGeneration called with:');
+        console.log('🔍 [DEBUG] - userId:', userId);
+        console.log('🔍 [DEBUG] - stageArtifactId:', stageArtifactId);
+        console.log('🔍 [DEBUG] - numberOfEpisodes:', numberOfEpisodes);
+        console.log('🔍 [DEBUG] - customRequirements:', customRequirements);
+        console.log('🔍 [DEBUG] - cascadedParams:', JSON.stringify(cascadedParams, null, 2));
+
         // 2. Create or get user_input artifact if modifications exist
         let paramsArtifact;
         if (numberOfEpisodes !== stageData.numberOfEpisodes || customRequirements || cascadedParams) {
@@ -51,16 +59,20 @@ export class EpisodeGenerationService {
             );
 
             // Create user_input artifact
+            const paramsData = {
+                stageArtifactId,
+                numberOfEpisodes: numberOfEpisodes || stageData.numberOfEpisodes,
+                stageSynopsis: stageData.stageSynopsis,
+                customRequirements,
+                cascadedParams
+            } as EpisodeGenerationParamsV1;
+
+            console.log('🔍 [DEBUG] Creating episode_generation_params artifact with data:', JSON.stringify(paramsData, null, 2));
+
             paramsArtifact = await this.artifactRepo.createArtifact(
                 userId,
                 'episode_generation_params',
-                {
-                    stageArtifactId,
-                    numberOfEpisodes: numberOfEpisodes || stageData.numberOfEpisodes,
-                    stageSynopsis: stageData.stageSynopsis,
-                    customRequirements,
-                    cascadedParams
-                } as EpisodeGenerationParamsV1,
+                paramsData,
                 'v1'
             );
 

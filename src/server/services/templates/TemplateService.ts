@@ -27,9 +27,9 @@ export class TemplateService {
       name: 'Story Brainstorming',
       promptTemplate: `你是一个故事创意生成器。请根据给定的故事类型，生成多个完整的故事情节梗概灵感。
 
-故事类型：{params.genre}
-目标平台：{params.platform}
-{params.requirementsSection}
+故事类型：%%params.genre%%
+目标平台：%%params.platform%%
+%%params.requirementsSection%%
 
 要求：
 - 题材不要老旧，要新颖有创意
@@ -60,14 +60,14 @@ export class TemplateService {
       id: 'outline',
       name: 'Story Outline Generation',
       promptTemplate: `你是一位深耕短剧创作的资深编剧，尤其擅长创作引人入胜、节奏明快、反转强烈的爆款短剧。
-根据用户提供的故事灵感，请创作一个**单集完结**的短剧大纲。{params.episodeInfo}
+根据用户提供的故事灵感，请创作一个**单集完结**的短剧大纲。%%params.episodeInfo%%
 
 **📺 制作规格**：
-- **目标平台**: {params.platform}
-- **故事类型**: {params.genre}
-- **特殊要求**: {params.requirements}
+- **目标平台**: %%params.platform%%
+- **故事类型**: %%params.genre%%
+- **特殊要求**: %%params.requirements%%
 
-故事灵感：{params.userInput}
+故事灵感：%%params.userInput%%
 
 **重要时间规划原则**：
 1. **集数与时间的关系**：
@@ -83,7 +83,7 @@ export class TemplateService {
    - 事件数量必须与时间跨度相匹配
    - 考虑事件的现实执行时间（如调查需要时间、恢复需要时间）
 
-**📱 平台化创作指导（基于{params.platform}）**：
+**📱 平台化创作指导（基于%%params.platform%%）**：
 
 - 注重视觉冲击力和快节奏剪辑适配
 - 每集必须有1-2个强烈的情绪爆点
@@ -148,7 +148,7 @@ export class TemplateService {
 8.  **分段故事梗概 (synopsis_stages)**: **总计约2000字符的详细故事发展，分为5个阶段，每段必须达到约400字符**：
     
     **每个阶段必须详细描述，字数要求严格！每段约400字符，总计2000字符左右。不可过于简化。**
-    **每个阶段必须包含该阶段覆盖的集数(numberOfEpisodes)，所有阶段的集数总和必须等于{params.totalEpisodes}集。请根据剧情复杂度和重要性合理分配集数。**
+    **每个阶段必须包含该阶段覆盖的集数(numberOfEpisodes)，所有阶段的集数总和必须等于%%params.totalEpisodes%%集。请根据剧情复杂度和重要性合理分配集数。**
     **给的灵感往往不够完整，需要你根据灵感进行扩展，确保每个阶段都有足够的情节发展**
 
     **时间规划与事件密度平衡要求**：
@@ -315,30 +315,30 @@ export class TemplateService {
 **重要提醒：这是故事中的一个特定阶段，不是完整故事。你只需要为这个阶段的内容生成剧集，不能超出该阶段的范围！**
 
 **📺 整体制作规格（继承自前序阶段）**：
-- **目标平台**: {params.platform}
-- **故事类型**: {params.genre}
-- **特殊要求**: {params.requirements}
-- **总集数**: {params.totalEpisodes}集
-- **每集时长**: {params.episodeDuration}分钟
+- **目标平台**: %%params.platform%%
+- **故事类型**: %%params.genre%%
+- **特殊要求**: %%params.requirements%%
+- **总集数**: %%params.totalEpisodes%%集
+- **每集时长**: %%params.episodeDuration%%分钟
 
 **🎬 当前阶段要求**：
-根据以上整体制作规格，为第{params.stageNumber}阶段生成 {params.numberOfEpisodes} 集的详细剧集大纲：
+根据以上整体制作规格，为第%%params.stageNumber%%阶段生成 %%params.numberOfEpisodes%% 集的详细剧集大纲：
 
 **阶段信息**：
-- **阶段梗概**: {params.stageSynopsis}
-- **时间跨度**: {params.timeframe}
-- **开始状态**: {params.startingCondition}
-- **结束状态**: {params.endingCondition}
-- **起始事件**: {params.stageStartEvent}
-- **结束事件**: {params.stageEndEvent}
-- **关键事件**: {params.keyPoints}
-- **关系发展**: {params.relationshipLevel}
-- **情感轨迹**: {params.emotionalArc}
-- **外部压力**: {params.externalPressure}
+- **阶段梗概**: %%params.stageSynopsis%%
+- **时间跨度**: %%params.timeframe%%
+- **开始状态**: %%params.startingCondition%%
+- **结束状态**: %%params.endingCondition%%
+- **起始事件**: %%params.stageStartEvent%%
+- **结束事件**: %%params.stageEndEvent%%
+- **关键事件**: %%params.keyPoints%%
+- **关系发展**: %%params.relationshipLevel%%
+- **情感轨迹**: %%params.emotionalArc%%
+- **外部压力**: %%params.externalPressure%%
 
 
 
-**📱 平台化剧集指导（基于{params.platform}）**：
+**📱 平台化剧集指导（基于%%params.platform%%）**：
 
 - 每集开头3秒内必须有强烈视觉冲击
 - 对话要简洁有力，适合竖屏观看
@@ -346,9 +346,13 @@ export class TemplateService {
 - 钩子要在15秒内建立，符合短视频习惯
 - 剧情要兼顾拍摄的难度和可行性
 
-**生成要求**：
-- 集数：{params.numberOfEpisodes} 集
-- 每集时长：约{params.episodeDuration}分钟{params.customRequirements}
+**🚨 生成要求（必须严格遵守）**：
+- **必须生成完整的 %%params.numberOfEpisodes%% 集**：不能少于 %%params.numberOfEpisodes%% 集，也不能多于 %%params.numberOfEpisodes%% 集
+- 每集时长：约%%params.episodeDuration%%分钟%%params.customRequirements%%
+
+**⚠️ 重要：请确保输出的JSON数组包含exactly %%params.numberOfEpisodes%% 个完整的episode对象，从第%%params.startingEpisode%%集到第%%params.endingEpisode%%集，缺一不可！**
+
+%%params.episodeSpecificInstructions%%
 
 **🔥 情感线发展要求（解决专业编剧反馈的核心问题）**：
 1. **男女主关系必须是核心**：每集都要有男女主的直接互动和情感推进
@@ -405,7 +409,7 @@ export class TemplateService {
 - ✅ 外部压力是否保持一致？
 
 **输出格式**：
-请以JSON数组的格式返回，每个集数包含以下字段：
+请以JSON数组的格式返回，**必须包含完整的%%params.numberOfEpisodes%%集**，每个集数包含以下字段：
 
 [
   {
@@ -488,10 +492,40 @@ export class TemplateService {
 - 主要角色每集都应该有情感或关系的变化追踪
 - 重要配角的发展也要适当关注
 
-**重要**：只输出纯JSON数组，不要任何解释、说明、或其他文本。确保JSON格式正确且完整。所有内容必须严格限制在给定的阶段信息范围内，不能超出该阶段的故事发展。情感和关系发展必须与剧情事件紧密结合，体现人物的真实成长轨迹。`,
+**🔥 最终检查提醒**：
+1. **集数确认**：输出的JSON数组必须包含**完整的%%params.numberOfEpisodes%%个episode对象**
+2. **编号检查**：episodeNumber从1到%%params.numberOfEpisodes%%，连续无遗漏
+3. **格式要求**：只输出纯JSON数组，不要任何解释、说明、或其他文本
+4. **完整性要求**：确保JSON格式正确且完整，所有字段都要填写
+5. **内容约束**：所有内容必须严格限制在给定的阶段信息范围内，不能超出该阶段的故事发展
+6. **质量要求**：情感和关系发展必须与剧情事件紧密结合，体现人物的真实成长轨迹
+
+**再次强调：必须生成%%params.numberOfEpisodes%%集完整内容！**`,
       outputFormat: 'json_array',
       responseWrapper: '```json',
-      variables: ['params.numberOfEpisodes', 'params.stageSynopsis', 'params.customRequirements', 'params.timeframe', 'params.startingCondition', 'params.endingCondition', 'params.stageStartEvent', 'params.stageEndEvent', 'params.keyPoints', 'params.relationshipLevel', 'params.emotionalArc', 'params.externalPressure', 'params.platform', 'params.genre', 'params.requirements', 'params.totalEpisodes', 'params.episodeDuration', 'params.stageNumber']
+      variables: [
+        'params.numberOfEpisodes',
+        'params.stageSynopsis', 
+        'params.customRequirements',
+        'params.timeframe',
+        'params.startingCondition',
+        'params.endingCondition', 
+        'params.stageStartEvent',
+        'params.stageEndEvent',
+        'params.keyPoints',
+        'params.relationshipLevel',
+        'params.emotionalArc',
+        'params.externalPressure',
+        'params.platform',
+        'params.genre', 
+        'params.requirements',
+        'params.totalEpisodes',
+        'params.episodeDuration',
+        'params.stageNumber',
+        'params.startingEpisode', 
+        'params.endingEpisode',
+        'params.episodeSpecificInstructions'
+      ]
     });
   }
 
@@ -505,10 +539,18 @@ export class TemplateService {
   ): Promise<string> {
     let prompt = template.promptTemplate;
 
-    // Replace variables with context values
+    // Replace variables with context values using %% delimiters
     for (const variable of template.variables) {
       const value = this.resolveVariable(variable, context);
-      prompt = prompt.replace(`{${variable}}`, value);
+      // Use global replace to replace all occurrences
+      prompt = prompt.replaceAll(`%%${variable}%%`, value);
+    }
+
+    // 🔥 VALIDATION: Check for any unresolved template variables
+    // Only check for %%params.*%% and %%artifacts.*%% patterns
+    const unresolvedMatches = prompt.match(/%%((params|artifacts)\.[^%]+)%%/g);
+    if (unresolvedMatches) {
+      throw new Error(`Template contains unresolved variables: ${unresolvedMatches.join(', ')}`);
     }
 
     return prompt;
@@ -523,11 +565,56 @@ export class TemplateService {
       value = value?.[part];
     }
 
-    return value?.toString() || '';
+    // 🔥 FIXED: Don't return empty string for missing values - throw error instead
+    if (value === undefined || value === null) {
+      throw new Error(`Required template variable '${path}' is missing or null in context`);
+    }
+
+    return value.toString();
   }
 
   async renderPromptTemplates(messages: Array<{ role: string; content: string }>): Promise<Array<{ role: string; content: string }>> {
     // For now, just return messages as-is since we don't have complex template rendering
     return messages;
+  }
+
+  /**
+   * Generate episode-specific instructions based on the episode range being generated
+   * This is extensible for future special episode requirements
+   */
+  generateEpisodeSpecificInstructions(startingEpisode: number, endingEpisode: number): string {
+    const instructions: string[] = [];
+
+    // First episode special requirements
+    if (startingEpisode === 1) {
+      instructions.push(`
+**📺 第一集特殊要求**：
+- **开篇吸引力**：第一集的开头必须用吸引人的方式，快速把主要人物的背景、剧中的初始关系都交代清楚
+- **人物碰撞设计**：可以选择一些人物短期快速能碰撞的场景，制造戏剧冲突和张力
+- **叙事技巧运用**：如果有交代的空缺，可以利用flashback（闪回）、倒序等手法来补充背景信息
+- **信息密度控制**：在保持节奏紧凑的同时，确保观众能快速理解人物关系和故事背景
+- **钩子前置**：开场3分钟内必须建立核心矛盾或悬念，抓住观众注意力`);
+    }
+
+    // Future: Add more conditional requirements here
+    // Example: Mid-season episodes, finale episodes, etc.
+    /*
+    if (endingEpisode >= 10 && endingEpisode <= 15) {
+      instructions.push(`
+**🔥 中期剧集要求**：
+- **情感深化**：深入挖掘人物内心世界和复杂情感
+- **关系转折**：准备重大关系转变的铺垫`);
+    }
+
+    if (endingEpisode >= 20) {
+      instructions.push(`
+**🎬 高潮剧集要求**：
+- **冲突激化**：将所有积累的矛盾推向高潮
+- **角色成长**：展现角色的重大成长和转变`);
+    }
+    */
+
+    // If no special instructions, return empty string
+    return instructions.length > 0 ? instructions.join('\n') : '';
   }
 } 

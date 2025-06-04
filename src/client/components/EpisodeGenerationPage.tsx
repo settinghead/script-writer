@@ -1,9 +1,13 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Tree, Empty, Typography, Spin, Alert } from 'antd';
 import type { DataNode } from 'antd/es/tree';
 import { StageDetailView } from './StageDetailView';
 import { useEpisodeContext } from '../contexts/EpisodeContext';
+import { OutlineExportModal } from './shared/OutlineExportModal';
+import { formatMultiStageEpisodesForExport, type MultiStageEpisodeExportData } from '../utils/episodeExporter';
+import { Button } from 'antd';
+import { ExportOutlined } from '@ant-design/icons';
 
 const { Title } = Typography;
 
@@ -28,10 +32,50 @@ export const EpisodeGenerationPage: React.FC = () => {
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     const { state, actions } = useEpisodeContext();
+    
+    // 🔥 NEW: Export modal state
+    const [isExportModalVisible, setIsExportModalVisible] = useState(false);
+    const [exportText, setExportText] = useState('');
 
     // Get URL parameters
     const stageIdFromUrl = searchParams.get('stage_id');
     const episodeIdFromUrl = searchParams.get('episode_id');
+
+    // 🔥 NEW: Multi-stage export function
+    const handleExportAllEpisodes = () => {
+        if (!scriptId) return;
+
+        // Calculate total episodes
+        const totalEpisodes = state.stages.reduce((sum, stage) => sum + stage.numberOfEpisodes, 0);
+
+        // Get outline session ID from first stage (they should all have the same one)
+        const outlineSessionId = state.stages.length > 0 ? state.stages[0].outlineSessionId : 'unknown';
+
+        // Prepare multi-stage export data
+        const exportData: MultiStageEpisodeExportData = {
+            scriptId,
+            outlineSessionId,
+            stages: state.stages.map(stage => ({
+                stageNumber: stage.stageNumber,
+                stageSynopsis: stage.stageSynopsis,
+                numberOfEpisodes: stage.numberOfEpisodes,
+                artifactId: stage.artifactId,
+                episodes: state.stageEpisodeData[stage.artifactId]?.episodes || []
+            })),
+            totalEpisodes,
+            generatedAt: new Date().toISOString()
+        };
+
+        // Generate formatted text
+        const formattedText = formatMultiStageEpisodesForExport(exportData);
+        setExportText(formattedText);
+        setIsExportModalVisible(true);
+    };
+
+    // Check if there are any generated episodes across all stages
+    const hasGeneratedEpisodes = state.stages.some(stage => 
+        state.stageEpisodeData[stage.artifactId]?.episodes?.length > 0
+    );
 
     // Combined initialization and URL sync effect
     useEffect(() => {
@@ -114,10 +158,19 @@ export const EpisodeGenerationPage: React.FC = () => {
 
         if (nodeKey && nodeKey.includes('episode-')) {
             // Episode selected
-            const [, stageId, episodeNumber] = nodeKey.split('-');
-            actions.setSelectedStage(stageId);
-            actions.setSelectedEpisode(episodeNumber);
-            setSearchParams({ stage_id: stageId, episode_id: episodeNumber });
+            // Parse episode key: episode-{stageId}-{episodeNumber}
+            // Since stageId can contain hyphens (UUID), find the last hyphen
+            const episodePrefix = 'episode-';
+            const afterPrefix = nodeKey.substring(episodePrefix.length);
+            const lastHyphenIndex = afterPrefix.lastIndexOf('-');
+            
+            if (lastHyphenIndex !== -1) {
+                const stageId = afterPrefix.substring(0, lastHyphenIndex);
+                const episodeNumber = afterPrefix.substring(lastHyphenIndex + 1);
+                actions.setSelectedStage(stageId);
+                actions.setSelectedEpisode(episodeNumber);
+                setSearchParams({ stage_id: stageId, episode_id: episodeNumber });
+            }
         } else if (nodeKey) {
             // Stage selected
             actions.setSelectedStage(nodeKey);
@@ -151,7 +204,7 @@ export const EpisodeGenerationPage: React.FC = () => {
                 display: 'flex',
                 justifyContent: 'center',
                 alignItems: 'center',
-                height: '100vh'
+                height: 'calc(100vh - 200px)'
             }}>
                 <Spin size="large" />
             </div>
@@ -195,20 +248,44 @@ export const EpisodeGenerationPage: React.FC = () => {
     return (
         <div style={{
             display: 'flex',
-            height: '100vh',
-            backgroundColor: '#0d1117'
+            height: 'calc(100vh - 160px)',
+            width: '100vw',
+            backgroundColor: '#0d1117',
+            margin: 0,
+            padding: 0
         }}>
             {/* Left: Tree View */}
             <div style={{
-                width: '350px',
+                width: '25vw',
+                minWidth: '300px',
+                maxWidth: '400px',
                 borderRight: '1px solid #303030',
                 padding: '20px',
                 overflowY: 'auto',
                 backgroundColor: '#161b22'
             }}>
-                <Title level={4} style={{ color: '#e6edf3', marginBottom: '20px' }}>
-                    剧集结构
-                </Title>
+                <div style={{ marginBottom: '20px' }}>
+                    <Title level={4} style={{ color: '#e6edf3', marginBottom: '12px' }}>
+                        剧集结构
+                    </Title>
+                    
+                    {/* 🔥 NEW: Export All Episodes Button */}
+                    {hasGeneratedEpisodes && (
+                        <Button
+                            icon={<ExportOutlined />}
+                            onClick={handleExportAllEpisodes}
+                            style={{
+                                width: '100%',
+                                marginBottom: '12px',
+                                backgroundColor: '#0969da',
+                                borderColor: '#0969da',
+                                color: '#ffffff'
+                            }}
+                        >
+                            导出全部剧集
+                        </Button>
+                    )}
+                </div>
 
                 {treeData.length > 0 ? (
                     <Tree
@@ -235,7 +312,8 @@ export const EpisodeGenerationPage: React.FC = () => {
             {/* Right: Content Area */}
             <div style={{
                 flex: 1,
-                padding: '20px',
+                width: '75vw',
+                padding: 0,
                 overflowY: 'auto',
                 backgroundColor: '#0d1117'
             }}>
@@ -255,6 +333,14 @@ export const EpisodeGenerationPage: React.FC = () => {
                     />
                 )}
             </div>
+
+            {/* 🔥 NEW: Export Modal */}
+            <OutlineExportModal
+                visible={isExportModalVisible}
+                onClose={() => setIsExportModalVisible(false)}
+                exportText={exportText}
+                title="完整剧集大纲导出"
+            />
         </div>
     );
 }; 

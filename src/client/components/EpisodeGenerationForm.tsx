@@ -138,7 +138,7 @@ export const EpisodeGenerationForm: React.FC = () => {
             maxWidth: "100%",
             margin: '0 auto',
             padding: '20px',
-            minHeight: '100vh',
+            minHeight: 'calc(100vh - 160px)',
             backgroundColor: '#0a0a0a'
         }}>
             <Card

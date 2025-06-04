@@ -167,7 +167,7 @@ interface EpisodeContextType {
         loadStageEpisodes: (stageId: string) => Promise<void>;
         expandStage: (stageId: string) => void;
         setExpandedKeys: (keys: string[]) => void;
-        startEpisodeGeneration: (stageId: string, numberOfEpisodes: number, customRequirements?: string) => Promise<void>;
+        startEpisodeGeneration: (stageId: string, numberOfEpisodes: number, customRequirements?: string, cascadedParams?: any) => Promise<void>;
         stopEpisodeGeneration: (stageId: string) => Promise<void>;
     };
 }
@@ -175,7 +175,7 @@ interface EpisodeContextType {
 const EpisodeContext = createContext<EpisodeContextType | null>(null);
 
 // API Service
-class EpisodeApiService {
+export class EpisodeApiService {
     static async getStageArtifacts(outlineSessionId: string): Promise<StageData[]> {
         const response = await fetch(`/api/episodes/outlines/${outlineSessionId}/stages`, {
             credentials: 'include'
@@ -209,13 +209,18 @@ class EpisodeApiService {
     static async startEpisodeGeneration(
         stageId: string,
         numberOfEpisodes: number,
-        customRequirements?: string
+        customRequirements?: string,
+        cascadedParams?: any
     ): Promise<{ sessionId: string; transformId: string }> {
         const response = await fetch(`/api/episodes/stages/${stageId}/episodes/generate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify({ numberOfEpisodes, customRequirements })
+            body: JSON.stringify({ 
+                numberOfEpisodes, 
+                customRequirements,
+                cascadedParams 
+            })
         });
 
         if (!response.ok) {
@@ -233,6 +238,62 @@ class EpisodeApiService {
 
         if (!response.ok) {
             throw new Error('Failed to stop episode generation');
+        }
+    }
+
+    static async getCascadedParams(outlineSessionId: string): Promise<any> {
+        try {
+            console.log('🔍 [DEBUG] Loading cascaded params for outline session:', outlineSessionId);
+            
+            // Get brainstorm params for platform, genre, requirements
+            const brainstormResponse = await fetch(`/api/artifacts?type=brainstorm_params&sessionId=${outlineSessionId}`, {
+                credentials: 'include'
+            });
+
+            // Get outline job params for totalEpisodes and episodeDuration
+            const outlineJobResponse = await fetch(`/api/artifacts?type=outline_job_params&sessionId=${outlineSessionId}`, {
+                credentials: 'include'
+            });
+
+            const cascadedParams: any = {};
+
+            // Extract from brainstorm params
+            if (brainstormResponse.ok) {
+                const brainstormArtifacts = await brainstormResponse.json();
+                console.log('🔍 [DEBUG] Brainstorm artifacts found:', brainstormArtifacts.length);
+                if (brainstormArtifacts.length > 0) {
+                    const latestBrainstorm = brainstormArtifacts[0];
+                    console.log('🔍 [DEBUG] Brainstorm data:', latestBrainstorm.data);
+                    cascadedParams.platform = latestBrainstorm.data.platform;
+                    cascadedParams.genre_paths = latestBrainstorm.data.genre_paths;
+                    cascadedParams.genre_proportions = latestBrainstorm.data.genre_proportions;
+                    cascadedParams.requirements = latestBrainstorm.data.requirements;
+                }
+            }
+
+            // Extract from outline job params
+            if (outlineJobResponse.ok) {
+                const outlineJobArtifacts = await outlineJobResponse.json();
+                console.log('🔍 [DEBUG] Outline job artifacts found:', outlineJobArtifacts.length);
+                if (outlineJobArtifacts.length > 0) {
+                    const latestOutlineJob = outlineJobArtifacts[0];
+                    console.log('🔍 [DEBUG] Outline job data:', latestOutlineJob.data);
+                    cascadedParams.totalEpisodes = latestOutlineJob.data.totalEpisodes;
+                    cascadedParams.episodeDuration = latestOutlineJob.data.episodeDuration;
+                }
+            }
+
+            console.log('🔍 [DEBUG] Final cascaded params:', cascadedParams);
+
+            // Return null if no meaningful data was found
+            if (Object.keys(cascadedParams).length === 0) {
+                return null;
+            }
+
+            return cascadedParams;
+        } catch (error) {
+            console.warn('Failed to load cascaded parameters:', error);
+            return null;
         }
     }
 }
@@ -407,9 +468,9 @@ export const EpisodeProvider: React.FC<{ children: ReactNode }> = ({ children })
             dispatch({ type: 'SET_EXPANDED_KEYS', payload: keys });
         },
 
-        startEpisodeGeneration: async (stageId: string, numberOfEpisodes: number, customRequirements?: string) => {
+        startEpisodeGeneration: async (stageId: string, numberOfEpisodes: number, customRequirements?: string, cascadedParams?: any) => {
             try {
-                const result = await EpisodeApiService.startEpisodeGeneration(stageId, numberOfEpisodes, customRequirements);
+                const result = await EpisodeApiService.startEpisodeGeneration(stageId, numberOfEpisodes, customRequirements, cascadedParams);
 
                 // Update state to show streaming
                 dispatch({

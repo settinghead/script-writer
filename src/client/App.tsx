@@ -252,7 +252,7 @@ const AppContent: React.FC = () => {
             <div style={{
               flexGrow: 1,
               overflow: 'hidden',
-              padding: '20px',
+              padding: location.pathname.includes('/scripts/') ? '0' : '20px',
               display: 'flex',
               flexDirection: 'column'
             }}>

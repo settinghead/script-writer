@@ -757,6 +757,8 @@ export class StreamingTransformExecutor {
             const numberOfEpisodes = paramsArtifact?.data?.numberOfEpisodes || stageData.numberOfEpisodes;
             const customRequirements = paramsArtifact?.data?.customRequirements;
 
+
+
             // Get and render template
             const template = this.templateService.getTemplate('episode_synopsis_generation');
             if (!template) {
@@ -768,31 +770,48 @@ export class StreamingTransformExecutor {
                 ? `\n特殊要求：${customRequirements.trim()}`
                 : '';
 
-            // 🔥 NEW: Extract cascaded parameters from episode params artifact if available
-            let platform = '';
-            let genre = '';
-            let requirements = '';
-            let totalEpisodes = '';
-            let episodeDuration = '';
-            let stageNumber = '';
-
-            if (paramsArtifact?.data?.cascadedParams) {
-                const cascaded = paramsArtifact.data.cascadedParams;
-                platform = cascaded.platform || '';
-
-                // Build genre string from genre paths
-                if (cascaded.genre_paths && Array.isArray(cascaded.genre_paths)) {
-                    genre = cascaded.genre_paths.map((path: string[]) => path.join(' > ')).join(', ');
+            // 🔥 FIXED: Extract ALL required parameters without fallbacks
+            // These parameters MUST be available - no fallbacks allowed
+            if (!paramsArtifact?.data?.cascadedParams) {
+                console.log('🔍 [DEBUG] CRITICAL ERROR: Cascaded parameters not found!');
+                console.log('🔍 [DEBUG] - paramsArtifact exists:', !!paramsArtifact);
+                console.log('🔍 [DEBUG] - paramsArtifact.data exists:', !!paramsArtifact?.data);
+                console.log('🔍 [DEBUG] - cascadedParams exists:', !!paramsArtifact?.data?.cascadedParams);
+                
+                if (paramsArtifact?.data) {
+                    console.log('🔍 [DEBUG] Available data keys:', Object.keys(paramsArtifact.data));
                 }
-
-                requirements = cascaded.requirements || '';
-                totalEpisodes = cascaded.totalEpisodes?.toString() || '';
-                episodeDuration = cascaded.episodeDuration?.toString() || '';
+                
+                throw new Error('Cascaded parameters not found in episode params artifact');
             }
 
-            // Determine stage number from stage data or transform context
-            const stageNumberFromData = stageData.stageNumber || 1;
-            stageNumber = stageNumberFromData.toString();
+            const cascaded = paramsArtifact.data.cascadedParams;
+            
+            // Validate and extract required parameters - throw if missing
+            if (!cascaded.platform) {
+                throw new Error('Platform parameter is required but not found in cascaded params');
+            }
+            if (!cascaded.genre_paths || !Array.isArray(cascaded.genre_paths)) {
+                throw new Error('Genre paths parameter is required but not found in cascaded params');
+            }
+            if (!cascaded.totalEpisodes) {
+                throw new Error('Total episodes parameter is required but not found in cascaded params');
+            }
+            if (!cascaded.episodeDuration) {
+                throw new Error('Episode duration parameter is required but not found in cascaded params');
+            }
+
+            const platform = cascaded.platform;
+            const genre = cascaded.genre_paths.map((path: string[]) => path.join(' > ')).join(', ');
+            const requirements = cascaded.requirements || '';
+            const totalEpisodes = cascaded.totalEpisodes.toString();
+            const episodeDuration = cascaded.episodeDuration.toString();
+
+            // Determine stage number from stage data
+            if (!stageData.stageNumber) {
+                throw new Error('Stage number is required but not found in stage data');
+            }
+            const stageNumber = stageData.stageNumber.toString();
 
             // 🔥 NEW: Format enhanced keyPoints structure for the LLM
             const formatKeyPoints = (keyPoints: any[]): string => {
@@ -860,31 +879,107 @@ export class StreamingTransformExecutor {
                     : '';
             };
 
+            // 🔥 NEW: Calculate episode range and generate dynamic instructions
+            // We need to determine the starting episode number for this stage
+            let startingEpisodeNumber = 1;
+            
+            // Calculate starting episode number based on previous stages
+            // (This logic will be similar to what's in createEpisodeArtifacts)
+            const stageArtifactId = transform.execution_context?.stage_artifact_id;
+            if (stageArtifactId) {
+                try {
+                    const currentStageArtifact = await this.artifactRepo.getArtifact(stageArtifactId, transform.user_id);
+                    if (currentStageArtifact && currentStageArtifact.data) {
+                        const currentStageData = currentStageArtifact.data as any;
+                        const outlineSessionId = currentStageData.outlineSessionId;
+                        const currentStageNumber = currentStageData.stageNumber;
+                        
+                        if (outlineSessionId && currentStageNumber) {
+                            const allStageArtifacts = await this.artifactRepo.getArtifactsByType(
+                                transform.user_id,
+                                'outline_synopsis_stage'
+                            );
+                            
+                            const relevantStages = allStageArtifacts
+                                .filter(artifact => (artifact.data as any).outlineSessionId === outlineSessionId)
+                                .sort((a, b) => (a.data as any).stageNumber - (b.data as any).stageNumber);
+                            
+                            // Calculate starting episode number
+                            for (const stageArtifact of relevantStages) {
+                                const stageData = stageArtifact.data as any;
+                                if (stageData.stageNumber < currentStageNumber) {
+                                    startingEpisodeNumber += stageData.numberOfEpisodes || 0;
+                                } else {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.warn('Failed to calculate starting episode number for prompt, defaulting to 1:', error);
+                }
+            }
+
+            const endingEpisodeNumber = startingEpisodeNumber + numberOfEpisodes - 1;
+            
+            // Generate episode-specific instructions dynamically
+            const episodeSpecificInstructions = this.templateService.generateEpisodeSpecificInstructions(
+                startingEpisodeNumber, 
+                endingEpisodeNumber
+            );
+
+            console.log('🔍 [DEBUG] Episode range for generation:', {
+                startingEpisode: startingEpisodeNumber,
+                endingEpisode: endingEpisodeNumber,
+                numberOfEpisodes,
+                hasSpecialInstructions: episodeSpecificInstructions.length > 0
+            });
+
+            // 🔥 FIXED: Pass ALL required parameters - no missing values allowed
+            const templateParams = {
+                numberOfEpisodes,
+                stageSynopsis: stageData.stageSynopsis,
+                customRequirements: requirementsSection,
+                // Enhanced stage parameters - all required
+                timeframe: stageData.timeframe || '',
+                startingCondition: stageData.startingCondition || '',
+                endingCondition: stageData.endingCondition || '',
+                stageStartEvent: stageData.stageStartEvent || '',
+                stageEndEvent: stageData.stageEndEvent || '',
+                // 🔥 NEW: Pass formatted enhanced keyPoints structure
+                keyPoints: formatKeyPoints(stageData.keyPoints || []),
+                // 🔥 NEW: Pass extracted relationship and emotional summaries
+                relationshipLevel: extractRelationshipSummary(stageData.keyPoints || []),
+                emotionalArc: extractEmotionalSummary(stageData.keyPoints || []),
+                externalPressure: stageData.externalPressure || '',
+                // 🔥 FIXED: All cascaded parameters - no fallbacks
+                platform,
+                genre,
+                requirements,
+                totalEpisodes,
+                episodeDuration,
+                stageNumber,
+                // 🔥 NEW: Dynamic episode range and instructions
+                startingEpisode: startingEpisodeNumber,
+                endingEpisode: endingEpisodeNumber,
+                episodeSpecificInstructions
+            };
+
+            console.log('🔍 [DEBUG] Template parameters being passed:', {
+                platform,
+                genre,
+                requirements,
+                totalEpisodes,
+                episodeDuration,
+                stageNumber,
+                numberOfEpisodes,
+                startingEpisode: startingEpisodeNumber,
+                endingEpisode: endingEpisodeNumber
+            });
+
             return await this.templateService.renderTemplate(template, {
                 artifacts: {},
-                params: {
-                    numberOfEpisodes,
-                    stageSynopsis: stageData.stageSynopsis,
-                    customRequirements: requirementsSection,
-                    // Enhanced stage parameters
-                    timeframe: stageData.timeframe || '',
-                    startingCondition: stageData.startingCondition || '',
-                    endingCondition: stageData.endingCondition || '',
-                    stageStartEvent: stageData.stageStartEvent || '',
-                    stageEndEvent: stageData.stageEndEvent || '',
-                    // 🔥 NEW: Pass formatted enhanced keyPoints structure
-                    keyPoints: formatKeyPoints(stageData.keyPoints || []),
-                    // 🔥 NEW: Pass extracted relationship and emotional summaries
-                    relationshipLevel: extractRelationshipSummary(stageData.keyPoints || []),
-                    emotionalArc: extractEmotionalSummary(stageData.keyPoints || []),
-                    externalPressure: stageData.externalPressure || '',
-                    platform,
-                    genre,
-                    requirements,
-                    totalEpisodes,
-                    episodeDuration,
-                    stageNumber
-                }
+                params: templateParams
             });
         };
 
@@ -1110,25 +1205,123 @@ export class StreamingTransformExecutor {
         try {
             // Get episode generation session ID from transform context
             const sessionId = transform.execution_context?.episode_generation_session_id;
+            const stageArtifactId = transform.execution_context?.stage_artifact_id;
+
+            console.log(`🔍 [DEBUG] Transform execution context:`, {
+                transformId: transform.id,
+                sessionId,
+                stageArtifactId,
+                fullContext: transform.execution_context
+            });
 
             if (!sessionId) {
-                console.warn('No episode generation session ID found in transform context, using fallback');
+                console.warn('🔍 [DEBUG] No episode generation session ID found in transform context, using fallback');
             }
 
-            // Create individual episode synopsis artifacts
+            // 🔥 FIXED: Calculate the starting episode number by summing up episodes from all previous stages
+            let startingEpisodeNumber = 1;
+            
+            console.log(`🔍 [DEBUG] Starting episode numbering calculation for transform ${transform.id}`);
+            console.log(`🔍 [DEBUG] Stage artifact ID: ${stageArtifactId}`);
+            
+            if (stageArtifactId) {
+                try {
+                    // Get current stage artifact to find its stage number and outlineSessionId
+                    const currentStageArtifact = await this.artifactRepo.getArtifact(stageArtifactId, userId);
+                    console.log(`🔍 [DEBUG] Current stage artifact:`, currentStageArtifact ? 'found' : 'not found');
+                    
+                    if (currentStageArtifact && currentStageArtifact.data) {
+                        const currentStageData = currentStageArtifact.data as any;
+                        const outlineSessionId = currentStageData.outlineSessionId;
+                        const currentStageNumber = currentStageData.stageNumber;
+                        
+                        console.log(`🔍 [DEBUG] Current stage data:`, {
+                            outlineSessionId,
+                            currentStageNumber,
+                            numberOfEpisodes: currentStageData.numberOfEpisodes,
+                            title: currentStageData.title
+                        });
+                        
+                        if (outlineSessionId && currentStageNumber) {
+                            // Get all stage artifacts for this outline session
+                            const allStageArtifacts = await this.artifactRepo.getArtifactsByType(
+                                userId,
+                                'outline_synopsis_stage'
+                            );
+                            
+                            console.log(`🔍 [DEBUG] Total stage artifacts found: ${allStageArtifacts.length}`);
+                            
+                            // Filter stages for this outline session and sum episodes from previous stages
+                            const relevantStages = allStageArtifacts
+                                .filter(artifact => (artifact.data as any).outlineSessionId === outlineSessionId)
+                                .sort((a, b) => (a.data as any).stageNumber - (b.data as any).stageNumber);
+                            
+                            console.log(`🔍 [DEBUG] Relevant stages for outline session ${outlineSessionId}:`, 
+                                relevantStages.map(s => ({
+                                    id: s.id,
+                                    stageNumber: (s.data as any).stageNumber,
+                                    numberOfEpisodes: (s.data as any).numberOfEpisodes,
+                                    title: (s.data as any).title
+                                }))
+                            );
+                            
+                            // Calculate starting episode number by summing episodes from previous stages
+                            let episodeSumDebug = [];
+                            for (const stageArtifact of relevantStages) {
+                                const stageData = stageArtifact.data as any;
+                                if (stageData.stageNumber < currentStageNumber) {
+                                    const episodeCount = stageData.numberOfEpisodes || 0;
+                                    episodeSumDebug.push(`Stage ${stageData.stageNumber}: +${episodeCount} episodes`);
+                                    startingEpisodeNumber += episodeCount;
+                                } else {
+                                    break; // We've reached the current stage
+                                }
+                            }
+                            
+                            console.log(`🔍 [DEBUG] Episode calculation breakdown:`);
+                            console.log(`🔍 [DEBUG] Base starting number: 1`);
+                            episodeSumDebug.forEach(debug => console.log(`🔍 [DEBUG] ${debug}`));
+                            console.log(`🔍 [DEBUG] Final starting episode number for stage ${currentStageNumber}: ${startingEpisodeNumber}`);
+                        } else {
+                            console.log(`🔍 [DEBUG] Missing required data - outlineSessionId: ${outlineSessionId}, currentStageNumber: ${currentStageNumber}`);
+                        }
+                    } else {
+                        console.log(`🔍 [DEBUG] Current stage artifact or data is null`);
+                    }
+                } catch (error) {
+                    console.warn('🔍 [DEBUG] Failed to calculate starting episode number, defaulting to 1:', error);
+                    startingEpisodeNumber = 1;
+                }
+            } else {
+                console.log(`🔍 [DEBUG] No stage artifact ID provided in transform context`);
+            }
+
+            // Create individual episode synopsis artifacts with correct numbering
+            console.log(`🔍 [DEBUG] Creating ${episodeData.length} episodes starting from episode ${startingEpisodeNumber}`);
+            
             for (let i = 0; i < episodeData.length; i++) {
                 const episode = episodeData[i];
+                const correctEpisodeNumber = startingEpisodeNumber + i;
+
+                console.log(`🔍 [DEBUG] Creating episode ${i + 1}/${episodeData.length}: stage-local=${i + 1}, global-episode=${correctEpisodeNumber}`);
+                console.log(`🔍 [DEBUG] Episode data:`, {
+                    title: episode.title,
+                    synopsis: episode.synopsis?.substring(0, 100) + '...',
+                    keyEventsCount: episode.keyEvents?.length || 0,
+                    emotionDevelopmentsCount: episode.emotionDevelopments?.length || 0,
+                    relationshipDevelopmentsCount: episode.relationshipDevelopments?.length || 0
+                });
 
                 const episodeArtifact = await this.artifactRepo.createArtifact(
                     userId,
                     'episode_synopsis',
                     {
-                        episodeNumber: episode.episodeNumber || (i + 1),
-                        title: episode.title || `第${i + 1}集`,
+                        episodeNumber: correctEpisodeNumber,
+                        title: episode.title || `第${correctEpisodeNumber}集`,
                         briefSummary: episode.synopsis || episode.briefSummary || '',
                         keyEvents: episode.keyEvents || [],
                         hooks: episode.endHook || episode.hooks || '',
-                        stageArtifactId: '',
+                        stageArtifactId: stageArtifactId || '',
                         episodeGenerationSessionId: sessionId,
                         // 🔥 NEW: Include emotion and relationship developments
                         emotionDevelopments: episode.emotionDevelopments || [],
@@ -1137,17 +1330,20 @@ export class StreamingTransformExecutor {
                     'v1',
                     {
                         transform_id: transform.id,
-                        episode_number: episode.episodeNumber || (i + 1)
+                        episode_number: correctEpisodeNumber
                     }
                 );
 
                 // Link artifact as transform output
                 await this.transformRepo.addTransformOutputs(transform.id, [
-                    { artifactId: episodeArtifact.id, outputRole: `episode_${episode.episodeNumber || (i + 1)}` }
+                    { artifactId: episodeArtifact.id, outputRole: `episode_${correctEpisodeNumber}` }
                 ]);
 
-                console.log(`Created episode artifact ${episodeArtifact.id} for episode ${episode.episodeNumber || (i + 1)}`);
+                console.log(`🔍 [DEBUG] ✅ Created episode artifact ${episodeArtifact.id} for episode ${correctEpisodeNumber} (stage-local index ${i + 1})`);
             }
+            
+            console.log(`🔍 [DEBUG] ✅ Completed creating all episodes. Range: ${startingEpisodeNumber} to ${startingEpisodeNumber + episodeData.length - 1}`);
+        
 
             // Update episode generation session status to completed
             if (sessionId) {
@@ -1206,14 +1402,28 @@ export class StreamingTransformExecutor {
 
         // For episode generation, we need to handle multiple input roles
         if (templateId === 'episode_synopsis_generation') {
+            console.log('🔍 [DEBUG] ===== GENERIC STREAMING JOB EPISODE DEBUG =====');
+            console.log('🔍 [DEBUG] Transform inputs from database:', JSON.stringify(inputs, null, 2));
+            
             const stageInput = inputs.find(input => input.input_role === 'stage_data');
             const paramsInput = inputs.find(input => input.input_role === 'episode_params');
+
+            console.log('🔍 [DEBUG] Stage input found:', !!stageInput);
+            console.log('🔍 [DEBUG] Params input found:', !!paramsInput);
+            
+            if (stageInput) {
+                console.log('🔍 [DEBUG] Stage input artifact ID:', stageInput.artifact_id);
+            }
+            if (paramsInput) {
+                console.log('🔍 [DEBUG] Params input artifact ID:', paramsInput.artifact_id);
+            }
 
             if (!stageInput) {
                 throw new Error('Stage data not found for episode generation');
             }
 
             const stageArtifact = await this.artifactRepo.getArtifact(stageInput.artifact_id, transform.user_id);
+            console.log('🔍 [DEBUG] Stage artifact loaded:', !!stageArtifact);
             if (!stageArtifact) {
                 throw new Error('Stage artifact not found');
             }
@@ -1221,10 +1431,24 @@ export class StreamingTransformExecutor {
             let paramsArtifact: any = null;
             if (paramsInput) {
                 paramsArtifact = await this.artifactRepo.getArtifact(paramsInput.artifact_id, transform.user_id);
+                console.log('🔍 [DEBUG] Params artifact loaded:', !!paramsArtifact);
+                if (paramsArtifact) {
+                    console.log('🔍 [DEBUG] Params artifact type:', paramsArtifact.type);
+                    console.log('🔍 [DEBUG] Params artifact data keys:', Object.keys(paramsArtifact.data || {}));
+                    console.log('🔍 [DEBUG] Params artifact full data:', JSON.stringify(paramsArtifact.data, null, 2));
+                }
+            } else {
+                console.log('🔍 [DEBUG] No params input found - this could be the problem!');
             }
 
             // Build prompt using the provided builder function with stage and params artifacts
             const prompt = await promptBuilder(null, stageArtifact, paramsArtifact);
+
+            // 🔥 DEBUG: Log the actual prompt being sent to LLM
+            console.log('🔍 [DEBUG] Generated prompt for episode generation:');
+            console.log('🔍 [DEBUG] Prompt length:', prompt.length);
+            console.log('🔍 [DEBUG] Prompt snippet (first 500 chars):', prompt.substring(0, 500));
+            console.log('🔍 [DEBUG] Checking if numberOfEpisodes appears in prompt:', prompt.includes('numberOfEpisodes') || prompt.includes('12集') || prompt.includes('总集数'));
 
             // Get model name from credentials
             const { modelName } = getLLMCredentials();
