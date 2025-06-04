@@ -241,7 +241,7 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
                         percent={progress}
                         status={isActiveStreaming ? "active" : "normal"}
                         showInfo={false}
-                        size="small"
+                    size="small"
                         strokeWidth={2}
                         strokeColor={isActiveStreaming ? {
                             '0%': '#1890ff',
@@ -249,7 +249,7 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
                             '100%': '#faad14'
                         } : '#52c41a'}
                         trailColor="rgba(255, 255, 255, 0.1)"
-                        style={{ 
+                    style={{
                             margin: 0,
                             padding: 0
                         }}
@@ -428,9 +428,9 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
                                                         </Text>
                                                     </div>
                                                 ))}
-                                            </div>
+                    </div>
                                         )}
-                                    </Card>
+                </Card>
                                 ))}
                             </div>
                             <Alert
@@ -443,94 +443,94 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
                         </>
                     )}
 
-                    <Divider />
+                <Divider />
 
-                    {/* Generation Parameters */}
-                    <div style={{ marginBottom: '20px' }}>
-                        <Title level={5}>生成参数</Title>
-                        <Space direction="vertical" style={{ width: '100%' }}>
-                            <div>
-                                <Text strong>剧集数量: </Text>
-                                {editMode ? (
-                                    <InputNumber
-                                        min={1}
-                                        max={20}
-                                        value={editedEpisodes}
-                                        onChange={value => setEditedEpisodes(value || 1)}
-                                    />
-                                ) : (
-                                    <Text>{expectedEpisodes}集</Text>
-                                )}
-                            </div>
+                {/* Generation Parameters */}
+                <div style={{ marginBottom: '20px' }}>
+                    <Title level={5}>生成参数</Title>
+                    <Space direction="vertical" style={{ width: '100%' }}>
+                        <div>
+                            <Text strong>剧集数量: </Text>
+                            {editMode ? (
+                                <InputNumber
+                                    min={1}
+                                    max={20}
+                                    value={editedEpisodes}
+                                    onChange={value => setEditedEpisodes(value || 1)}
+                                />
+                            ) : (
+                                <Text>{expectedEpisodes}集</Text>
+                            )}
+                        </div>
 
-                            <div>
-                                <Text strong>特殊要求: </Text>
-                                {editMode ? (
-                                    <TextArea
-                                        rows={3}
-                                        placeholder="输入对剧集生成的特殊要求..."
-                                        value={editedRequirements}
-                                        onChange={e => setEditedRequirements(e.target.value)}
-                                    />
-                                ) : (
-                                    <Text style={{ color: '#666' }}>
-                                        {editedRequirements || '无特殊要求'}
-                                    </Text>
-                                )}
-                            </div>
-                        </Space>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <Space>
-                        {editMode ? (
-                            <>
-                                <Button type="primary" onClick={handleSaveParameters}>
-                                    保存参数
-                                </Button>
-                                <Button onClick={() => setEditMode(false)}>
-                                    取消
-                                </Button>
-                            </>
-                        ) : (
-                            <Button
-                                icon={<EditOutlined />}
-                                onClick={() => setEditMode(true)}
-                            >
-                                编辑参数
-                            </Button>
-                        )}
-
-                        {!isActiveStreaming ? (
-                            <Button
-                                type="primary"
-                                icon={<PlayCircleOutlined />}
-                                onClick={handleStartGeneration}
-                                disabled={editMode}
-                            >
-                                {episodes.length > 0 ? '重新生成剧集' : '开始生成剧集'}
-                            </Button>
-                        ) : (
-                            <Button
-                                type="primary"
-                                danger
-                                icon={<StopOutlined />}
-                                onClick={handleStopGeneration}
-                                disabled={true}
-                            >
-                                停止生成
-                            </Button>
-                        )}
-
-                        {episodes.length > 0 && (
-                            <Button
-                                icon={<ExportOutlined />}
-                                onClick={handleExport}
-                            >
-                                导出剧集
-                            </Button>
-                        )}
+                        <div>
+                            <Text strong>特殊要求: </Text>
+                            {editMode ? (
+                                <TextArea
+                                    rows={3}
+                                    placeholder="输入对剧集生成的特殊要求..."
+                                    value={editedRequirements}
+                                    onChange={e => setEditedRequirements(e.target.value)}
+                                />
+                            ) : (
+                                <Text style={{ color: '#666' }}>
+                                    {editedRequirements || '无特殊要求'}
+                                </Text>
+                            )}
+                        </div>
                     </Space>
+                </div>
+
+                {/* Action Buttons */}
+                <Space>
+                    {editMode ? (
+                        <>
+                            <Button type="primary" onClick={handleSaveParameters}>
+                                保存参数
+                            </Button>
+                            <Button onClick={() => setEditMode(false)}>
+                                取消
+                            </Button>
+                        </>
+                    ) : (
+                        <Button
+                            icon={<EditOutlined />}
+                            onClick={() => setEditMode(true)}
+                        >
+                            编辑参数
+                        </Button>
+                    )}
+
+                    {!isActiveStreaming ? (
+                        <Button
+                            type="primary"
+                            icon={<PlayCircleOutlined />}
+                            onClick={handleStartGeneration}
+                            disabled={editMode}
+                        >
+                                {episodes.length > 0 ? '重新生成剧集' : '开始生成剧集'}
+                        </Button>
+                    ) : (
+                        <Button
+                            type="primary"
+                            danger
+                            icon={<StopOutlined />}
+                            onClick={handleStopGeneration}
+                                disabled={true}
+                        >
+                            停止生成
+                        </Button>
+                    )}
+
+                    {episodes.length > 0 && (
+                        <Button
+                            icon={<ExportOutlined />}
+                            onClick={handleExport}
+                        >
+                            导出剧集
+                        </Button>
+                    )}
+                </Space>
                 </Panel>
             </Collapse>
 
@@ -565,18 +565,18 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
                             >
                                 <div style={{ width: '100%' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                                        <Text strong>第{episode.episodeNumber}集: {episode.title}</Text>
-                                        {isActiveStreaming && index === episodes.length - 1 && (
-                                            <Tag color="processing">正在生成</Tag>
-                                        )}
+                                            <Text strong>第{episode.episodeNumber}集: {episode.title}</Text>
+                                            {isActiveStreaming && index === episodes.length - 1 && (
+                                                <Tag color="processing">正在生成</Tag>
+                                            )}
                                         <Tag color="blue" style={{ fontSize: '11px' }}>点击生成剧本</Tag>
-                                    </div>
+                                        </div>
                                     
                                     {/* Episode Summary */}
                                     <div style={{ marginBottom: '12px' }}>
-                                        <Paragraph ellipsis={{ rows: 2, expandable: true }}>
-                                            {episode.briefSummary}
-                                        </Paragraph>
+                                            <Paragraph ellipsis={{ rows: 2, expandable: true }}>
+                                                {episode.briefSummary}
+                                            </Paragraph>
                                     </div>
 
                                     {/* Key Events */}
@@ -639,7 +639,7 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
                                                     <>
                                                         <Text strong style={{ color: '#1890ff', fontSize: '14px' }}>
                                                             💙 关系发展:
-                                                        </Text>
+                                                </Text>
                                                         <div style={{ marginTop: '4px' }}>
                                                             {episode.relationshipDevelopments.map((dev, devIndex) => (
                                                                 <div key={devIndex} style={{ 
@@ -682,13 +682,13 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
                 </Card>
             )}
 
-                {/* Export Modal */}
-                <OutlineExportModal
-                    visible={isExportModalVisible}
-                    onClose={() => setIsExportModalVisible(false)}
-                    exportText={exportText}
-                    title="剧集大纲导出"
-                />
+            {/* Export Modal */}
+            <OutlineExportModal
+                visible={isExportModalVisible}
+                onClose={() => setIsExportModalVisible(false)}
+                exportText={exportText}
+                title="剧集大纲导出"
+            />
             </div>
         </div>
     );

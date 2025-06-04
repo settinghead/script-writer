@@ -82,8 +82,13 @@ export const EpisodeScriptGeneration: React.FC = () => {
             
             message.success('剧本生成已开始，正在跳转到剧本页面...');
             
-            // Navigate to script display page
-            navigate(`/scripts/${scriptId}/stages/${stageId}/episodes/${episodeId}/script`);
+            // Navigate to script display page with transformId in state
+            navigate(`/scripts/${scriptId}/stages/${stageId}/episodes/${episodeId}/script`, {
+                state: { 
+                    transformId: result.transformId,
+                    sessionId: result.sessionId 
+                }
+            });
 
         } catch (error) {
             console.error('Error generating script:', error);
@@ -307,4 +312,4 @@ export const EpisodeScriptGeneration: React.FC = () => {
                 </div>
             </div>
     );
-}; 
+};

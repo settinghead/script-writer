@@ -1,5 +1,5 @@
 import express from 'express';
-import { requireAuth } from '../middleware/authMiddleware.js';
+import { AuthMiddleware } from '../middleware/auth.js';
 import { ScriptGenerationService } from '../services/ScriptGenerationService.js';
 import { ArtifactRepository } from '../repositories/ArtifactRepository.js';
 import { TransformRepository } from '../repositories/TransformRepository.js';
@@ -7,23 +7,26 @@ import { StreamingTransformExecutor } from '../services/streaming/StreamingTrans
 import { TemplateService } from '../services/templates/TemplateService.js';
 import { ScriptGenerateRequest, ScriptGenerateResponse } from '../../common/streaming/types.js';
 
-const router = express.Router();
+export function createScriptRoutes(
+    artifactRepo: ArtifactRepository,
+    transformRepo: TransformRepository,
+    authMiddleware: AuthMiddleware
+) {
+    const router = express.Router();
+    
+    // Dependencies
+    const templateService = new TemplateService();
+    const streamingExecutor = new StreamingTransformExecutor(artifactRepo, transformRepo, templateService);
 
-// Dependencies
-const artifactRepo = new ArtifactRepository();
-const transformRepo = new TransformRepository();
-const templateService = new TemplateService();
-const streamingExecutor = new StreamingTransformExecutor(artifactRepo, transformRepo, templateService);
+    const scriptService = new ScriptGenerationService(
+        artifactRepo,
+        transformRepo,
+        streamingExecutor,
+        templateService
+    );
 
-const scriptService = new ScriptGenerationService(
-    artifactRepo,
-    transformRepo,
-    streamingExecutor,
-    templateService
-);
-
-// Generate script for an episode
-router.post('/generate', requireAuth, async (req, res) => {
+    // Generate script for an episode
+    router.post('/generate', authMiddleware.authenticate, async (req, res) => {
     try {
         const userId = req.user!.id;
         const { episodeId, stageId, userRequirements }: ScriptGenerateRequest = req.body;
@@ -51,8 +54,8 @@ router.post('/generate', requireAuth, async (req, res) => {
     }
 });
 
-// Get generated script
-router.get('/:episodeId/:stageId', requireAuth, async (req, res) => {
+    // Get generated script
+    router.get('/:episodeId/:stageId', authMiddleware.authenticate, async (req, res) => {
     try {
         const userId = req.user!.id;
         const { episodeId, stageId } = req.params;
@@ -70,8 +73,8 @@ router.get('/:episodeId/:stageId', requireAuth, async (req, res) => {
     }
 });
 
-// Check if script exists
-router.get('/:episodeId/:stageId/exists', requireAuth, async (req, res) => {
+    // Check if script exists
+    router.get('/:episodeId/:stageId/exists', authMiddleware.authenticate, async (req, res) => {
     try {
         const userId = req.user!.id;
         const { episodeId, stageId } = req.params;
@@ -85,4 +88,5 @@ router.get('/:episodeId/:stageId/exists', requireAuth, async (req, res) => {
     }
 });
 
-export default router; 
+    return router;
+} 

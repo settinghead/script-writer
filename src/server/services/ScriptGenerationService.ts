@@ -18,28 +18,31 @@ export class ScriptGenerationService {
         stageId: string,
         userRequirements?: string
     ): Promise<{ transformId: string; sessionId: string }> {
-        // Get episode synopsis artifact
-        const episodeSynopsisArtifacts = await this.artifactRepo.findByContext(
+        // Get episode synopsis artifact that matches the episodeId and stageId
+        const episodeSynopsisArtifacts = await this.artifactRepo.getArtifactsByType(
             userId,
-            'episode_synopsis',
-            { episodeId, stageId }
+            'episode_synopsis'
         );
 
-        if (episodeSynopsisArtifacts.length === 0) {
-            throw new Error('Episode synopsis not found');
+        // Filter by episodeId (episodeNumber) and find the one that belongs to the correct stage
+        const matchingEpisode = episodeSynopsisArtifacts.find(artifact => {
+            const synopsisData = artifact.data as EpisodeSynopsisV1;
+            return synopsisData.episodeNumber.toString() === episodeId;
+        });
+
+        if (!matchingEpisode) {
+            throw new Error(`Episode synopsis not found for episode ${episodeId}`);
         }
 
-        const latestSynopsis = episodeSynopsisArtifacts
-            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+        const latestSynopsis = matchingEpisode;
 
         // Get cascaded parameters
         const cascadedParams = await this.getCascadedParams(userId, stageId);
 
         // Get outline for character information
-        const outlineArtifacts = await this.artifactRepo.findByContext(
+        const outlineArtifacts = await this.artifactRepo.getArtifactsByType(
             userId,
-            'outline',
-            { stageId }
+            'outline'
         );
 
         let charactersInfo = '';
@@ -60,31 +63,22 @@ export class ScriptGenerationService {
             ...cascadedParams,
             episode_synopsis: JSON.stringify(latestSynopsis.data),
             characters_info: charactersInfo,
-            user_requirements: userRequirements || '无特殊要求'
+            user_requirements: userRequirements || '无特殊要求',
+            episode_number: parseInt(episodeId)
         };
 
         // Generate session ID
         const sessionId = `script-${userId}-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
 
-        // Execute streaming transform
-        const result = await this.streamingExecutor.executeStreamingTransform({
+        // Execute streaming script generation job
+        const result = await this.streamingExecutor.startScriptGenerationJob(
             userId,
-            templateId: 'script_generation',
-            inputArtifactIds: [latestSynopsis.id],
-            outputType: 'episode_script',
-            outputContext: {
-                episodeId,
-                stageId,
-                sessionId,
-                episodeSynopsisArtifactId: latestSynopsis.id
-            },
-            templateParams,
-            sessionId
-        });
+            templateParams
+        );
 
         return {
             transformId: result.transformId,
-            sessionId
+            sessionId: result.scriptSessionId
         };
     }
 
@@ -93,21 +87,22 @@ export class ScriptGenerationService {
         episodeId: string,
         stageId: string
     ): Promise<EpisodeScriptV1 | null> {
-        const scriptArtifacts = await this.artifactRepo.findByContext(
+        const scriptArtifacts = await this.artifactRepo.getArtifactsByType(
             userId,
-            'episode_script',
-            { episodeId, stageId }
+            'episode_script'
         );
 
-        if (scriptArtifacts.length === 0) {
+        // Filter by episodeNumber to find the script for this specific episode
+        const matchingScript = scriptArtifacts.find(artifact => {
+            const scriptData = artifact.data as EpisodeScriptV1;
+            return scriptData.episodeNumber.toString() === episodeId;
+        });
+
+        if (!matchingScript) {
             return null;
         }
 
-        // Get the latest script
-        const latestScript = scriptArtifacts
-            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
-
-        return latestScript.data as EpisodeScriptV1;
+        return matchingScript.data as EpisodeScriptV1;
     }
 
     async checkScriptExists(
@@ -115,18 +110,23 @@ export class ScriptGenerationService {
         episodeId: string,
         stageId: string
     ): Promise<boolean> {
-        const scriptArtifacts = await this.artifactRepo.findByContext(
+        const scriptArtifacts = await this.artifactRepo.getArtifactsByType(
             userId,
-            'episode_script',
-            { episodeId, stageId }
+            'episode_script'
         );
 
-        return scriptArtifacts.length > 0;
+        // Check if there's a script for this specific episode
+        const matchingScript = scriptArtifacts.find(artifact => {
+            const scriptData = artifact.data as EpisodeScriptV1;
+            return scriptData.episodeNumber.toString() === episodeId;
+        });
+
+        return !!matchingScript;
     }
 
     private async getCascadedParams(userId: string, stageId: string) {
         // Get brainstorm params
-        const brainstormParamsArtifacts = await this.artifactRepo.findByType(userId, 'brainstorm_params');
+        const brainstormParamsArtifacts = await this.artifactRepo.getArtifactsByType(userId, 'brainstorm_params');
         let brainstormParams: BrainstormParamsV1 | null = null;
         
         if (brainstormParamsArtifacts.length > 0) {
@@ -136,10 +136,9 @@ export class ScriptGenerationService {
         }
 
         // Get outline job params
-        const outlineJobParamsArtifacts = await this.artifactRepo.findByContext(
+        const outlineJobParamsArtifacts = await this.artifactRepo.getArtifactsByType(
             userId,
-            'outline_job_params',
-            { stageId }
+            'outline_job_params'
         );
         let outlineJobParams: OutlineJobParamsV1 | null = null;
 

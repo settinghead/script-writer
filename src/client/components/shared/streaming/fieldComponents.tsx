@@ -1724,7 +1724,7 @@ export const EditableSynopsisStagesField: React.FC<ExtendedFieldProps & {
               }
               if (!newStages[index].keyPoints[pointIndex][arrayField][arrayIndex]) {
                 newStages[index].keyPoints[pointIndex][arrayField][arrayIndex] = { characters: [], content: '' };
-              }
+          }
               newStages[index].keyPoints[pointIndex][arrayField][arrayIndex][subField] = newValue;
             }
           } else {
@@ -2053,49 +2053,49 @@ export const EditableSynopsisStagesField: React.FC<ExtendedFieldProps & {
                       <div key={pIndex} style={{ marginBottom: '16px', padding: '12px', backgroundColor: '#262626', borderRadius: '6px', border: '1px solid #404040' }}>
                         {/* Basic Event Info */}
                         <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-                          <Input
+                        <Input
                             value={point.event || ''}
                             onChange={(e) => updateStage(index, `keyPoints[${pIndex}].event`, e.target.value)}
-                            placeholder="关键事件节点"
-                            disabled={disabled}
-                            style={{
+                          placeholder="关键事件节点"
+                          disabled={disabled}
+                          style={{
                               flex: 2,
-                              backgroundColor: '#1f1f1f',
-                              borderColor: '#404040',
-                              color: '#fff',
-                              fontSize: '12px'
-                            }}
-                          />
-                          <Input
+                            backgroundColor: '#1f1f1f',
+                            borderColor: '#404040',
+                            color: '#fff',
+                            fontSize: '12px'
+                          }}
+                        />
+                        <Input
                             value={point.timeSpan || ''}
                             onChange={(e) => updateStage(index, `keyPoints[${pIndex}].timeSpan`, e.target.value)}
-                            placeholder="时间跨度"
-                            disabled={disabled}
-                            style={{
-                              flex: 1,
-                              backgroundColor: '#1f1f1f',
-                              borderColor: '#404040',
-                              color: '#fff',
-                              fontSize: '12px'
-                            }}
-                          />
-                          <Button
-                            type="text"
-                            size="small"
+                          placeholder="时间跨度"
+                          disabled={disabled}
+                          style={{
+                            flex: 1,
+                            backgroundColor: '#1f1f1f',
+                            borderColor: '#404040',
+                            color: '#fff',
+                            fontSize: '12px'
+                          }}
+                        />
+                        <Button
+                          type="text"
+                          size="small"
                             onClick={() => removeKeyPoint(index, pIndex)}
-                            disabled={disabled}
-                            style={{ color: '#ff4d4f' }}
-                          >
-                            ×
-                          </Button>
-                        </div>
+                          disabled={disabled}
+                          style={{ color: '#ff4d4f' }}
+                        >
+                          ×
+                        </Button>
+                </div>
 
                         {/* Emotion Arcs */}
                         <div style={{ marginBottom: '12px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
                             <Text style={{ color: '#52c41a', fontSize: '11px', fontWeight: 'bold' }}>
                               情感发展
-                            </Text>
+                  </Text>
                             <Button
                               type="text"
                               size="small"
@@ -2108,11 +2108,11 @@ export const EditableSynopsisStagesField: React.FC<ExtendedFieldProps & {
                           </div>
                           {(point.emotionArcs || []).map((arc: any, aIndex: number) => (
                             <div key={aIndex} style={{ display: 'flex', gap: '6px', marginBottom: '6px' }}>
-                              <Input
+                      <Input
                                 value={(arc.characters || []).join(', ')}
                                 onChange={(e) => updateStage(index, `keyPoints[${pIndex}].emotionArcs[${aIndex}].characters`, e.target.value.split(',').map((s: string) => s.trim()).filter(Boolean))}
                                 placeholder="角色名 (用逗号分隔)"
-                                disabled={disabled}
+                        disabled={disabled}
                                 style={{
                                   flex: 1,
                                   backgroundColor: '#1a1a1a',
@@ -2143,16 +2143,16 @@ export const EditableSynopsisStagesField: React.FC<ExtendedFieldProps & {
                               >
                                 ×
                               </Button>
-                            </div>
+                    </div>
                           ))}
                         </div>
 
                         {/* Relationship Developments */}
-                        <div>
+                    <div>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
                             <Text style={{ color: '#1890ff', fontSize: '11px', fontWeight: 'bold' }}>
                               关系发展
-                            </Text>
+                      </Text>
                             <Button
                               type="text"
                               size="small"
@@ -2165,11 +2165,11 @@ export const EditableSynopsisStagesField: React.FC<ExtendedFieldProps & {
                           </div>
                           {(point.relationshipDevelopments || []).map((dev: any, dIndex: number) => (
                             <div key={dIndex} style={{ display: 'flex', gap: '6px', marginBottom: '6px' }}>
-                              <Input
+                      <Input
                                 value={(dev.characters || []).join(', ')}
                                 onChange={(e) => updateStage(index, `keyPoints[${pIndex}].relationshipDevelopments[${dIndex}].characters`, e.target.value.split(',').map((s: string) => s.trim()).filter(Boolean))}
                                 placeholder="角色名 (用逗号分隔)"
-                                disabled={disabled}
+                        disabled={disabled}
                                 style={{
                                   flex: 1,
                                   backgroundColor: '#1a1a1a',
@@ -2200,7 +2200,7 @@ export const EditableSynopsisStagesField: React.FC<ExtendedFieldProps & {
                               >
                                 ×
                               </Button>
-                            </div>
+                    </div>
                           ))}
                         </div>
                       </div>
@@ -2213,17 +2213,17 @@ export const EditableSynopsisStagesField: React.FC<ExtendedFieldProps & {
                   <Text strong style={{ color: '#fa8c16', display: 'block', marginBottom: '12px', fontSize: '14px' }}>
                     🟠 外部环境
                   </Text>
-                  <div>
-                    <Text style={{ color: '#d9d9d9', display: 'block', marginBottom: '4px', fontSize: '12px' }}>
-                      外部压力
-                    </Text>
-                    <Input
-                      value={stage.externalPressure || ''}
-                      onChange={(e) => updateStage(index, 'externalPressure', e.target.value)}
-                      placeholder="外部环境压力"
-                      disabled={disabled}
-                      style={{ backgroundColor: '#1f1f1f', borderColor: '#404040', color: '#fff' }}
-                    />
+                    <div>
+                      <Text style={{ color: '#d9d9d9', display: 'block', marginBottom: '4px', fontSize: '12px' }}>
+                        外部压力
+                      </Text>
+                      <Input
+                        value={stage.externalPressure || ''}
+                        onChange={(e) => updateStage(index, 'externalPressure', e.target.value)}
+                        placeholder="外部环境压力"
+                        disabled={disabled}
+                        style={{ backgroundColor: '#1f1f1f', borderColor: '#404040', color: '#fff' }}
+                      />
                   </div>
                 </div>
               </Card>

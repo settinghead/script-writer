@@ -244,6 +244,19 @@ export interface EpisodeGenerationParamsV1 {
     };
 }
 
+export interface ScriptGenerationJobParamsV1 {
+    platform: string;
+    genre_paths: string[][];
+    genre_proportions: number[];
+    requirements: string;
+    totalEpisodes: number;
+    episodeDuration: number;
+    episode_synopsis: string;
+    characters_info: string;
+    user_requirements: string;
+    episode_number: number;
+}
+
 // Workflow context for carrying parameters between stages
 export interface WorkflowContextV1 {
     totalEpisodes?: number;
@@ -302,6 +315,8 @@ export function validateArtifactData(type: string, typeVersion: string, data: an
             return isEpisodeSynopsisV1(data);
         case 'episode_generation_params:v1':
             return isEpisodeGenerationParamsV1(data);
+        case 'script_generation_job_params:v1':
+            return isScriptGenerationJobParamsV1(data);
         default:
             return false;
     }
@@ -501,4 +516,18 @@ function isEpisodeGenerationParamsV1(data: any): data is EpisodeGenerationParams
         typeof data.numberOfEpisodes === 'number' &&
         typeof data.stageSynopsis === 'string' &&
         (data.customRequirements === undefined || typeof data.customRequirements === 'string');
+}
+
+function isScriptGenerationJobParamsV1(data: any): data is ScriptGenerationJobParamsV1 {
+    return typeof data === 'object' &&
+        typeof data.platform === 'string' &&
+        Array.isArray(data.genre_paths) &&
+        Array.isArray(data.genre_proportions) &&
+        typeof data.requirements === 'string' &&
+        typeof data.totalEpisodes === 'number' &&
+        typeof data.episodeDuration === 'number' &&
+        typeof data.episode_synopsis === 'string' &&
+        typeof data.characters_info === 'string' &&
+        typeof data.user_requirements === 'string' &&
+        typeof data.episode_number === 'number';
 } 

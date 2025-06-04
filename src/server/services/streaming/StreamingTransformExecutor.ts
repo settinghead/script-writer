@@ -297,6 +297,15 @@ export class StreamingTransformExecutor {
                                 // Default to brainstorming handling
                                 await this.createOutputArtifacts(userId, transform, parsedData, text);
                             }
+                        } else if (outputFormat === 'json') {
+                            // Handle single JSON object output formats
+                            const templateId = transform.execution_context?.template_id;
+                            if (templateId === 'script_generation') {
+                                await this.createScriptArtifacts(userId, transform, parsedData);
+                            } else {
+                                // Default handling
+                                await this.createOutputArtifacts(userId, transform, [parsedData], text);
+                            }
                         } else {
                             // Default to array handling (brainstorming)
                             await this.createOutputArtifacts(userId, transform, parsedData, text);
@@ -446,7 +455,7 @@ export class StreamingTransformExecutor {
         // 5. Start the streaming job immediately in the background
         const jobExecutor = templateId === 'brainstorming'
             ? this.executeStreamingJobWithRetries.bind(this)
-            : this.executeOutlineJobWithRetries.bind(this);
+            : this.executeStreamingJobWithRetries.bind(this);
 
         jobExecutor(transform.id)
             .catch(error => {
@@ -526,6 +535,9 @@ export class StreamingTransformExecutor {
                     break;
                 case 'episode_synopsis_generation':
                     await this.executeStreamingEpisodeGeneration(transform, res);
+                    break;
+                case 'script_generation':
+                    await this.executeStreamingScriptGeneration(transform, res);
                     break;
                 default:
                     throw new Error(`Unknown template_id: ${templateId}`);
@@ -669,6 +681,28 @@ export class StreamingTransformExecutor {
 
         return {
             outlineSessionId,
+            transformId
+        };
+    }
+
+    async startScriptGenerationJob(
+        userId: string,
+        jobParams: any
+    ): Promise<{ scriptSessionId: string; transformId: string }> {
+        // 1. Generate session ID for script generation
+        const scriptSessionId = `script-${userId}-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+
+        // 2. Use generalized job creation
+        const { transformId } = await this.createStreamingJob(
+            userId,
+            'script_generation',
+            jobParams,
+            [], // No additional inputs for script generation (will load source artifacts from job params)
+            { scriptSessionId }
+        );
+
+        return {
+            scriptSessionId,
             transformId
         };
     }
@@ -923,15 +957,15 @@ export class StreamingTransformExecutor {
 
             // 🔥 FIXED: Pass ALL required parameters - no missing values allowed
             const templateParams = {
-                numberOfEpisodes,
-                stageSynopsis: stageData.stageSynopsis,
-                customRequirements: requirementsSection,
+                    numberOfEpisodes,
+                    stageSynopsis: stageData.stageSynopsis,
+                    customRequirements: requirementsSection,
                 // Enhanced stage parameters - all required
-                timeframe: stageData.timeframe || '',
-                startingCondition: stageData.startingCondition || '',
-                endingCondition: stageData.endingCondition || '',
-                stageStartEvent: stageData.stageStartEvent || '',
-                stageEndEvent: stageData.stageEndEvent || '',
+                    timeframe: stageData.timeframe || '',
+                    startingCondition: stageData.startingCondition || '',
+                    endingCondition: stageData.endingCondition || '',
+                    stageStartEvent: stageData.stageStartEvent || '',
+                    stageEndEvent: stageData.stageEndEvent || '',
                 // 🔥 NEW: Pass formatted enhanced keyPoints structure
                 keyPoints: formatKeyPoints(stageData.keyPoints || []),
                 // 🔥 NEW: Pass extracted relationship and emotional summaries
@@ -964,6 +998,29 @@ export class StreamingTransformExecutor {
             'episode_synopsis_generation',
             episodePromptBuilder,
             'json_array',
+            res
+        );
+    }
+
+    private async executeStreamingScriptGeneration(transform: any, res?: Response): Promise<void> {
+        const scriptPromptBuilder = async (jobParams: any) => {
+            // Get and render template
+            const template = this.templateService.getTemplate('script_generation');
+            if (!template) {
+                throw new Error('Script generation template not found');
+            }
+
+            return await this.templateService.renderTemplate(template, {
+                artifacts: {},
+                params: jobParams
+            });
+        };
+
+        await this.executeGenericStreamingJob(
+            transform,
+            'script_generation',
+            scriptPromptBuilder,
+            'json',
             res
         );
     }
@@ -1359,6 +1416,41 @@ export class StreamingTransformExecutor {
                     // Don't throw - episode creation succeeded, session update is not critical
                 }
             }
+
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    private async createScriptArtifacts(
+        userId: string,
+        transform: any,
+        scriptData: any
+    ): Promise<void> {
+        try {
+            // Create episode script artifact from the generated script data
+            const scriptArtifact = await this.artifactRepo.createArtifact(
+                userId,
+                'episode_script',
+                {
+                    episodeNumber: scriptData.episodeNumber || 1,
+                    title: scriptData.title || '未命名剧本',
+                    scenes: scriptData.scenes || [],
+                    characterList: scriptData.characterList || [],
+                    estimatedDuration: scriptData.estimatedDuration || 0,
+                    summary: scriptData.summary || '',
+                    totalDialogueLines: scriptData.totalDialogueLines || 0
+                },
+                'v1',
+                { transform_id: transform.id }
+            );
+
+            // Link artifact as transform output
+            await this.transformRepo.addTransformOutputs(transform.id, [
+                { artifactId: scriptArtifact.id, outputRole: 'episode_script' }
+            ]);
+
+            console.log(`✅ Created script artifact ${scriptArtifact.id} for episode ${scriptData.episodeNumber}`);
 
         } catch (error) {
             throw error;

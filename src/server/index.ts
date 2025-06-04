@@ -860,8 +860,8 @@ const { createEpisodeRoutes } = require('./routes/episodes');
 app.use('/api/episodes', createEpisodeRoutes(artifactRepo, transformRepo, authMiddleware));
 
 // Mount script routes
-import scriptRoutes from './routes/scriptRoutes.js';
-app.use('/api/scripts', scriptRoutes);
+import { createScriptRoutes } from './routes/scriptRoutes.js';
+app.use('/api/scripts', createScriptRoutes(artifactRepo, transformRepo, authMiddleware));
 
 // ========== STREAMING ENDPOINTS ==========
 

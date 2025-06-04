@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Typography, message, Spin, Breadcrumb, Space, Button } from 'antd';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { Card, Typography, message, Spin, Breadcrumb, Space, Button, Alert } from 'antd';
 import { ArrowLeftOutlined, FileTextOutlined, LoadingOutlined } from '@ant-design/icons';
 import { createEditor, Descendant } from 'slate';
 import { Slate, Editable, withReact } from 'slate-react';
 import type { EpisodeScriptV1 } from '../../common/streaming/types';
+import { useLLMStreaming } from '../hooks/useLLMStreaming';
+import { ScriptStreamingService, StreamingScript } from '../services/implementations/ScriptStreamingService';
 
 const { Title, Text } = Typography;
 
@@ -21,17 +23,59 @@ export const ScriptDisplayPage: React.FC = () => {
         episodeId: string;
     }>();
     const navigate = useNavigate();
+    const location = useLocation();
+
+    // Get transformId from navigation state
+    const { transformId, sessionId } = (location.state as any) || {};
 
     const [scriptData, setScriptData] = useState<EpisodeScriptV1 | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    // Create streaming service
+    const streamingService = useMemo(() => new ScriptStreamingService(), []);
+
+    // Use streaming hook to monitor generation progress
+    const { 
+        status: streamingStatus,
+        items: streamingItems,
+        isStreaming, 
+        isComplete, 
+        error: streamingError 
+    } = useLLMStreaming(streamingService, { transformId });
+
     // Create a read-only Slate editor
     const editor = useMemo(() => withReact(createEditor()), []);
 
     useEffect(() => {
-        loadScript();
-    }, [episodeId, stageId]);
+        // Only try to load script when generation is complete
+        if (isComplete && !scriptData) {
+            loadScript();
+        }
+        // If no transformId, try to load script directly (for existing scripts)
+        else if (!transformId) {
+            loadScript();
+        }
+    }, [episodeId, stageId, isComplete, transformId, scriptData]);
+
+    // Use streaming script data if available
+    const currentScriptContent = useMemo(() => {
+        // If we have streaming items, use the latest one
+        if (streamingItems && streamingItems.length > 0) {
+            const latestScript = streamingItems[streamingItems.length - 1];
+            return latestScript.scriptContent;
+        }
+        // Otherwise use loaded script data
+        return scriptData?.scriptContent || '';
+    }, [streamingItems, scriptData?.scriptContent]);
+
+    // Update loading state when streaming content becomes available
+    useEffect(() => {
+        if (streamingItems && streamingItems.length > 0 && loading) {
+            setLoading(false);
+            setError(null);
+        }
+    }, [streamingItems, loading]);
 
     const loadScript = async () => {
         if (!episodeId || !stageId) return;
@@ -68,17 +112,17 @@ export const ScriptDisplayPage: React.FC = () => {
 
     // Convert script content to Slate format
     const slateValue: Descendant[] = useMemo(() => {
-        if (!scriptData?.scriptContent) {
+        if (!currentScriptContent) {
             return [
                 {
                     type: 'paragraph',
-                    children: [{ text: '剧本生成中...' }]
+                    children: [{ text: isStreaming ? '剧本生成中...' : '暂无内容' }]
                 }
             ] as Descendant[];
         }
 
         // Parse script content into structured format
-        const lines = scriptData.scriptContent.split('\n');
+        const lines = currentScriptContent.split('\n');
         const nodes: Descendant[] = [];
 
         for (const line of lines) {
@@ -127,7 +171,7 @@ export const ScriptDisplayPage: React.FC = () => {
                 children: [{ text: '暂无内容' }]
             }
         ] as Descendant[];
-    }, [scriptData?.scriptContent]);
+    }, [currentScriptContent, isStreaming]);
 
     // Render different element types
     const renderElement = (props: any) => {
@@ -204,7 +248,8 @@ export const ScriptDisplayPage: React.FC = () => {
         }
     ];
 
-    if (loading) {
+    // Show loading states
+    if (isStreaming || (loading && !scriptData)) {
         return (
             <div style={{
                 height: '100%',
@@ -213,11 +258,26 @@ export const ScriptDisplayPage: React.FC = () => {
                 justifyContent: 'center',
                 backgroundColor: '#0a0a0a'
             }}>
-                <Space direction="vertical" align="center" size="large">
+                <Space direction="vertical" align="center" size="large" style={{ textAlign: 'center' }}>
                     <Spin size="large" indicator={<LoadingOutlined style={{ fontSize: 48, color: '#1890ff' }} />} />
                     <Text style={{ color: '#fff', fontSize: '16px' }}>
-                        {error || '加载剧本中...'}
+                        {isStreaming ? '剧本生成中...' : (error || '加载剧本中...')}
                     </Text>
+                    {isStreaming && (
+                        <div style={{ maxWidth: '400px' }}>
+                            <Text style={{ color: '#888', fontSize: '14px' }}>
+                                正在根据剧集大纲生成详细剧本内容，请稍候...
+                            </Text>
+                        </div>
+                    )}
+                    {streamingError && (
+                        <Alert
+                            message="生成失败"
+                            description={streamingError}
+                            type="error"
+                            style={{ maxWidth: '400px' }}
+                        />
+                    )}
                 </Space>
             </div>
         );
@@ -317,4 +377,4 @@ export const ScriptDisplayPage: React.FC = () => {
             </div>
         </div>
     );
-}; 
+};
