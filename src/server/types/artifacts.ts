@@ -103,13 +103,27 @@ export interface BrainstormingJobParamsV1 {
     requestedAt: string; // ISO timestamp
 }
 
-// Job parameters for outline generation (persistent across refreshes)
+// ========== WORKFLOW CASCADING PARAMETERS ==========
+
+// Common parameters that cascade through workflow stages
+export interface WorkflowCascadingParamsV1 {
+    platform: string;
+    genre_paths: string[][];
+    genre_proportions: number[];
+    requirements: string;
+    // Add more cascading params as needed
+}
+
+// Extended job parameters for outline generation with cascading params
 export interface OutlineJobParamsV1 {
     sourceArtifactId: string;
     totalEpisodes?: number;
     episodeDuration?: number;
-    requestedAt: string; // ISO timestamp
+    requestedAt: string;
     workflowContext?: WorkflowContextV1;
+
+    // 🔥 NEW: Cascaded parameters from brainstorming (user can modify)
+    cascadedParams?: WorkflowCascadingParamsV1;
 }
 
 // User input/selection (for user-modified or manually entered content)
@@ -206,11 +220,19 @@ export interface EpisodeSynopsisV1 {
     episodeGenerationSessionId: string;
 }
 
+// Extended parameters for episode generation with cascading params
 export interface EpisodeGenerationParamsV1 {
     stageArtifactId: string;
     numberOfEpisodes: number;
     stageSynopsis: string;
     customRequirements?: string;
+
+    // 🔥 NEW: Cascaded parameters from previous stages (user can modify)
+    cascadedParams?: WorkflowCascadingParamsV1 & {
+        // Additional episode-specific cascaded params
+        totalEpisodes?: number;
+        episodeDuration?: number;
+    };
 }
 
 // Workflow context for carrying parameters between stages

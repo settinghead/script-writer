@@ -76,6 +76,11 @@ export class TemplateService {
       promptTemplate: `你是一位深耕短剧创作的资深编剧，尤其擅长创作引人入胜、节奏明快、反转强烈的爆款短剧。
 根据用户提供的故事灵感，请创作一个**单集完结**的短剧大纲。{params.episodeInfo}
 
+**📺 制作规格**：
+- **目标平台**: {params.platform}
+- **故事类型**: {params.genre}
+- **特殊要求**: {params.requirements}
+
 故事灵感：{params.userInput}
 
 **重要时间规划原则**：
@@ -93,6 +98,46 @@ export class TemplateService {
    - 明确标注具体日期范围（如"第1-3天"而非笼统的"前期"）
    - 事件数量必须与时间跨度相匹配
    - 考虑事件的现实执行时间（如调查需要时间、恢复需要时间）
+
+**📱 平台化创作指导（基于{params.platform}）**：
+
+**如果是抖音/快手**：
+- 注重视觉冲击力和快节奏剪辑适配
+- 每集必须有1-2个强烈的情绪爆点
+- 适合竖屏拍摄的场景设计
+- 台词简洁有力，易于记忆和传播
+
+**如果是小红书**：
+- 突出生活质感和治愈系元素
+- 关注颜值经济和精致生活方式
+- 适合年轻女性的情感共鸣点
+- 场景美学要求较高
+
+**如果是B站**：
+- 可以有更复杂的叙事结构
+- 适合有文化内涵和梗的内容
+- 弹幕互动性和讨论性要强
+- 可以有更长的单集时长
+
+**🎭 类型化创作要求（基于{params.genre}）**：
+
+**如果是古装/穿越类**：
+- 强化男女主的身份差距与命运纠葛
+- 突出现代思维与古代环境的强烈反差
+- 重视权谋斗争与情感线的平衡发展
+- 每集必须有男女主的核心互动时刻
+
+**如果是现代言情类**：
+- 聚焦职场、校园或都市生活的真实场景
+- 突出代际矛盾、阶层差异等现实议题
+- 强调情感成长和自我价值实现
+- 融入当下热门社会话题
+
+**如果是悬疑推理类**：
+- 每集必须有新线索的发现和推理过程
+- 保持紧张刺激的节奏和反转设计
+- 逻辑链条要严密，避免明显漏洞
+- 适度控制恐怖元素，符合平台规范
 
 请严格按照以下要求和JSON格式输出：
 
@@ -162,7 +207,7 @@ export class TemplateService {
         - **endingCondition**: 阶段结束时必须达到的状态（如"初步建立假恋爱关系，周围人开始怀疑"）
         - **stageStartEvent**: 触发该阶段的关键事件（如"母亲催婚电话打来"）
         - **stageEndEvent**: 结束该阶段的标志性事件（如"邻居开始议论他们的关系"）
-        - **keyMilestones**: 该阶段的3-4个重要里程碑，每个包含事件描述和具体时间跨度（如[{"event":"首次请求帮助","timeSpan":"第1天"},{"event":"达成协议","timeSpan":"第2天"},{"event":"第一次练习","timeSpan":"第3天"}]）
+        - **keyPoints**: 该阶段的3-4个重要事件节点，每个包含事件描述、时间跨度、情感发展和关系变化（如[{"event":"首次请求帮助","timeSpan":"第1天","emotionArcs":[{"characters":["男主","女主"],"content":"从尴尬紧张转为初步信任"}],"relationshipDevelopments":[{"characters":["男主","女主"],"content":"从陌生邻居升级为合作伙伴"}]}]）
         - **relationshipLevel**: 人物关系的变化（如"陌生邻居 → 合作伙伴"）
         - **emotionalArc**: 情感变化轨迹（如"尴尬紧张 → 初步信任"）
         - **externalPressure**: 外部压力状况（如"家庭催婚压力初现"）
@@ -174,7 +219,7 @@ export class TemplateService {
         - **endingCondition**: 该阶段必须达到的新状态（不能超前到后续阶段）
         - **stageStartEvent**: 从上一阶段自然过渡的事件
         - **stageEndEvent**: 为下一阶段做铺垫的事件
-        - **keyMilestones**: 该阶段的重要进展节点，每个包含事件和时间跨度
+        - **keyPoints**: 该阶段的重要进展节点，每个包含事件、时间跨度、情感发展和关系变化
         - **relationshipLevel**: 关系的进一步发展
         - **emotionalArc**: 情感的复杂化过程
         - **externalPressure**: 外部压力的升级
@@ -247,135 +292,127 @@ export class TemplateService {
       "key_scenes": ["[string] 重要场景1", "[string] 重要场景2"]
     }
   ],
-  "synopsis_stages": [
+  "synopsis_stages": ["[string] 第一阶段梗概（约400字符）", "[string] 第二阶段梗概（约400字符）", "[string] 第三阶段梗概（约400字符）", "[string] 第四阶段梗概（约400字符）", "[string] 第五阶段梗概（约400字符）"],
+  "stages": [
     {
-      "stageSynopsis": "[string] 第一阶段内容（约400字符）",
+      "title": "[string] 第一阶段标题",
+      "stageSynopsis": "[string] 第一阶段梗概（约400字符）",
       "numberOfEpisodes": "[number] 该阶段覆盖的集数",
-      "timeframe": "[string] 具体时间跨度，如'第1-3天'",
-      "startingCondition": "[string] 阶段开始时的具体状况",
-      "endingCondition": "[string] 阶段结束时必须达到的状态",
+      "timeframe": "[string] 具体时间跨度（如'第1-5天'）",
+      "startingCondition": "[string] 阶段开始条件",
+      "endingCondition": "[string] 阶段结束条件",
       "stageStartEvent": "[string] 触发该阶段的关键事件",
       "stageEndEvent": "[string] 结束该阶段的标志性事件",
-      "keyMilestones": [
+      "keyPoints": [
         {
-          "event": "[string] 里程碑事件1",
-          "timeSpan": "[string] 时间跨度1"
+          "event": "[string] 关键事件内容",
+          "timeSpan": "[string] 事件时间跨度",
+          "emotionArcs": [
+            {
+              "characters": ["[string] 角色名"],
+              "content": "[string] 该事件引发的情感变化描述"
+            }
+          ],
+          "relationshipDevelopments": [
+            {
+              "characters": ["[string] 角色名1", "[string] 角色名2"],
+              "content": "[string] 该事件导致的关系发展描述"
+            }
+          ]
         },
         {
-          "event": "[string] 里程碑事件2",
-          "timeSpan": "[string] 时间跨度2"
-        },
-        {
-          "event": "[string] 里程碑事件3",
-          "timeSpan": "[string] 时间跨度3"
+          "event": "[string] 关键事件2内容",
+          "timeSpan": "[string] 事件时间跨度",
+          "emotionArcs": [
+            {
+              "characters": ["[string] 角色名"],
+              "content": "[string] 该事件引发的情感变化描述"
+            }
+          ],
+          "relationshipDevelopments": [
+            {
+              "characters": ["[string] 角色名1", "[string] 角色名2"],
+              "content": "[string] 该事件导致的关系发展描述"
+            }
+          ]
         }
       ],
-      "relationshipLevel": "[string] 人物关系变化，如'陌生邻居 → 合作伙伴'",
-      "emotionalArc": "[string] 情感变化轨迹，如'尴尬紧张 → 初步信任'",
       "externalPressure": "[string] 外部压力状况"
     },
     {
-      "stageSynopsis": "[string] 第二阶段内容（约400字符）", 
-      "numberOfEpisodes": "[number] 该阶段覆盖的集数",
-      "timeframe": "[string] 具体时间跨度",
-      "startingCondition": "[string] 承接上一阶段的结束状态",
-      "endingCondition": "[string] 该阶段必须达到的新状态",
-      "stageStartEvent": "[string] 从上一阶段自然过渡的事件",
-      "stageEndEvent": "[string] 为下一阶段做铺垫的事件",
-      "keyMilestones": [
-        {
-          "event": "[string] 里程碑事件1",
-          "timeSpan": "[string] 时间跨度1"
-        },
-        {
-          "event": "[string] 里程碑事件2",
-          "timeSpan": "[string] 时间跨度2"
-        },
-        {
-          "event": "[string] 里程碑事件3",
-          "timeSpan": "[string] 时间跨度3"
-        }
-      ],
-      "relationshipLevel": "[string] 关系的进一步发展",
-      "emotionalArc": "[string] 情感的复杂化过程",
-      "externalPressure": "[string] 外部压力的升级"
-    },
-    {
-      "stageSynopsis": "[string] 第三阶段内容（约400字符）",
+      "title": "[string] 第二阶段标题",
+      "stageSynopsis": "[string] 第二阶段梗概（约400字符）",
       "numberOfEpisodes": "[number] 该阶段覆盖的集数",
       "timeframe": "[string] 具体时间跨度",
       "startingCondition": "[string] 阶段开始条件",
       "endingCondition": "[string] 阶段结束条件",
       "stageStartEvent": "[string] 触发事件",
       "stageEndEvent": "[string] 结束事件",
-      "keyMilestones": [
+      "keyPoints": [
         {
-          "event": "[string] 里程碑事件1",
-          "timeSpan": "[string] 时间跨度1"
-        },
-        {
-          "event": "[string] 里程碑事件2",
-          "timeSpan": "[string] 时间跨度2"
-        },
-        {
-          "event": "[string] 里程碑事件3",
-          "timeSpan": "[string] 时间跨度3"
+          "event": "[string] 关键事件内容",
+          "timeSpan": "[string] 时间跨度",
+          "emotionArcs": [{"characters": ["[string] 角色名"], "content": "[string] 情感变化描述"}],
+          "relationshipDevelopments": [{"characters": ["[string] 角色名1", "[string] 角色名2"], "content": "[string] 关系发展描述"}]
         }
       ],
-      "relationshipLevel": "[string] 关系发展",
-      "emotionalArc": "[string] 情感轨迹",
       "externalPressure": "[string] 外部压力"
     },
     {
-      "stageSynopsis": "[string] 第四阶段内容（约400字符）",
+      "title": "[string] 第三阶段标题",
+      "stageSynopsis": "[string] 第三阶段梗概（约400字符）",
       "numberOfEpisodes": "[number] 该阶段覆盖的集数",
       "timeframe": "[string] 具体时间跨度",
       "startingCondition": "[string] 阶段开始条件",
       "endingCondition": "[string] 阶段结束条件",
       "stageStartEvent": "[string] 触发事件",
       "stageEndEvent": "[string] 结束事件",
-      "keyMilestones": [
+      "keyPoints": [
         {
-          "event": "[string] 里程碑事件1",
-          "timeSpan": "[string] 时间跨度1"
-        },
-        {
-          "event": "[string] 里程碑事件2",
-          "timeSpan": "[string] 时间跨度2"
-        },
-        {
-          "event": "[string] 里程碑事件3",
-          "timeSpan": "[string] 时间跨度3"
+          "event": "[string] 关键事件内容",
+          "timeSpan": "[string] 时间跨度",
+          "emotionArcs": [{"characters": ["[string] 角色名"], "content": "[string] 情感变化描述"}],
+          "relationshipDevelopments": [{"characters": ["[string] 角色名1", "[string] 角色名2"], "content": "[string] 关系发展描述"}]
         }
       ],
-      "relationshipLevel": "[string] 关系发展",
-      "emotionalArc": "[string] 情感轨迹",
       "externalPressure": "[string] 外部压力"
     },
     {
-      "stageSynopsis": "[string] 第五阶段内容（约400字符）",
+      "title": "[string] 第四阶段标题",
+      "stageSynopsis": "[string] 第四阶段梗概（约400字符）",
       "numberOfEpisodes": "[number] 该阶段覆盖的集数",
       "timeframe": "[string] 具体时间跨度",
       "startingCondition": "[string] 阶段开始条件",
       "endingCondition": "[string] 阶段结束条件",
       "stageStartEvent": "[string] 触发事件",
       "stageEndEvent": "[string] 结束事件",
-      "keyMilestones": [
+      "keyPoints": [
         {
-          "event": "[string] 里程碑事件1",
-          "timeSpan": "[string] 时间跨度1"
-        },
-        {
-          "event": "[string] 里程碑事件2",
-          "timeSpan": "[string] 时间跨度2"
-        },
-        {
-          "event": "[string] 里程碑事件3",
-          "timeSpan": "[string] 时间跨度3"
+          "event": "[string] 关键事件内容",
+          "timeSpan": "[string] 时间跨度",
+          "emotionArcs": [{"characters": ["[string] 角色名"], "content": "[string] 情感变化描述"}],
+          "relationshipDevelopments": [{"characters": ["[string] 角色名1", "[string] 角色名2"], "content": "[string] 关系发展描述"}]
         }
       ],
-      "relationshipLevel": "[string] 关系发展",
-      "emotionalArc": "[string] 情感轨迹",
+      "externalPressure": "[string] 外部压力"
+    },
+    {
+      "title": "[string] 第五阶段标题",
+      "stageSynopsis": "[string] 第五阶段梗概（约400字符）",
+      "numberOfEpisodes": "[number] 该阶段覆盖的集数",
+      "timeframe": "[string] 具体时间跨度",
+      "startingCondition": "[string] 阶段开始条件",
+      "endingCondition": "[string] 阶段结束条件",
+      "stageStartEvent": "[string] 触发事件",
+      "stageEndEvent": "[string] 结束事件",
+      "keyPoints": [
+        {
+          "event": "[string] 关键事件内容",
+          "timeSpan": "[string] 时间跨度",
+          "emotionArcs": [{"characters": ["[string] 角色名"], "content": "[string] 情感变化描述"}],
+          "relationshipDevelopments": [{"characters": ["[string] 角色名1", "[string] 角色名2"], "content": "[string] 关系发展描述"}]
+        }
+      ],
       "externalPressure": "[string] 外部压力"
     }
   ]
@@ -384,7 +421,7 @@ export class TemplateService {
 **CRITICAL: 只输出纯JSON格式，绝对不要在JSON后添加任何解释、设计说明、补充内容或其他文本。JSON结构必须完整且正确。**`,
       outputFormat: 'json',
       responseWrapper: '```json',
-      variables: ['params.episodeInfo', 'params.userInput', 'params.totalEpisodes']
+      variables: ['params.episodeInfo', 'params.userInput', 'params.totalEpisodes', 'params.platform', 'params.genre', 'params.requirements']
     });
 
     // Register episode synopsis generation template
@@ -395,7 +432,15 @@ export class TemplateService {
 
 **重要提醒：这是故事中的一个特定阶段，不是完整故事。你只需要为这个阶段的内容生成剧集，不能超出该阶段的范围！**
 
-根据以下信息，请为该阶段生成 {params.numberOfEpisodes} 集的详细剧集大纲：
+**📺 整体制作规格（继承自前序阶段）**：
+- **目标平台**: {params.platform}
+- **故事类型**: {params.genre}
+- **特殊要求**: {params.requirements}
+- **总集数**: {params.totalEpisodes}集
+- **每集时长**: {params.episodeDuration}分钟
+
+**🎬 当前阶段要求**：
+根据以上整体制作规格，为第{params.stageNumber}阶段生成 {params.numberOfEpisodes} 集的详细剧集大纲：
 
 **阶段信息**：
 - **阶段梗概**: {params.stageSynopsis}
@@ -404,14 +449,64 @@ export class TemplateService {
 - **结束状态**: {params.endingCondition}
 - **起始事件**: {params.stageStartEvent}
 - **结束事件**: {params.stageEndEvent}
-- **关键里程碑**: {params.keyMilestones}
+- **关键事件**: {params.keyPoints}
 - **关系发展**: {params.relationshipLevel}
 - **情感轨迹**: {params.emotionalArc}
 - **外部压力**: {params.externalPressure}
 
+**🎭 类型化剧集创作要求（基于{params.genre}）**：
+
+**如果是古装/穿越类**：
+- 每集必须推进男女主的情感关系发展
+- 突出身份悬殊带来的矛盾和张力
+- 宫廷/江湖势力变化要与个人命运紧密相关
+- 现代思维与古代礼制的冲突要具体化
+- 钩子设置要符合古装剧观众的期待节奏
+
+**如果是现代言情类**：
+- 聚焦职场竞争、阶层差异的具体事件
+- 每集要有明确的情感进展或冲突升级
+- 融入当代社会热点话题（如房价、内卷等）
+- 角色成长要体现在具体的选择和行动上
+- 钩子要与现实生活有强烈共鸣
+
+**如果是悬疑推理类**：
+- 每集必须有新线索发现和推理环节
+- 保持紧张节奏，避免拖沓的日常情节
+- 反转要合理且震撼，不能为了反转而反转
+- 人物关系要服务于悬疑主线
+- 钩子要制造强烈的悬念感
+
+**📱 平台化剧集指导（基于{params.platform}）**：
+
+**如果是抖音/快手**：
+- 每集开头3秒内必须有强烈视觉冲击
+- 对话要简洁有力，适合竖屏观看
+- 每集至少1个可以独立传播的金句或场面
+- 钩子要在15秒内建立，符合短视频习惯
+
+**如果是小红书**：
+- 注重场景的美学价值和生活质感
+- 融入时尚、美妆、生活方式等元素
+- 人物造型和场景设计要精致
+- 情节要有一定的治愈和正能量
+
+**如果是B站**：
+- 可以有更复杂的情节设计和文化内涵
+- 适当加入网络梗和时下流行元素
+- 钩子可以更有创意和讨论性
+- 单集时长可以更长，信息密度更高
+
 **生成要求**：
 - 集数：{params.numberOfEpisodes} 集
-- 每集时长：约45分钟{params.customRequirements}
+- 每集时长：约{params.episodeDuration}分钟{params.customRequirements}
+
+**🔥 情感线发展要求（解决专业编剧反馈的核心问题）**：
+1. **男女主关系必须是核心**：每集都要有男女主的直接互动和情感推进
+2. **角色连续性**：主要角色不能无故消失，配角出现要有合理动机
+3. **钩子解决时间**：本阶段内的悬念必须在3集内给出解答或实质性进展
+4. **关系发展节奏**：情感关系要有明确的推进层次，不能原地踏步
+5. **冲突合理化**：所有冲突都要服务于主线和角色成长
 
 **核心约束条件**：
 1. **严格限制在阶段范围内**：生成的所有剧集必须严格按照上述阶段信息进行，不能引入该阶段之外的情节
@@ -491,7 +586,7 @@ export class TemplateService {
 **重要**：只输出纯JSON数组，不要任何解释、说明、或其他文本。确保JSON格式正确且完整。所有内容必须严格限制在给定的阶段信息范围内，不能超出该阶段的故事发展。`,
       outputFormat: 'json_array',
       responseWrapper: '```json',
-      variables: ['params.numberOfEpisodes', 'params.stageSynopsis', 'params.customRequirements', 'params.timeframe', 'params.startingCondition', 'params.endingCondition', 'params.stageStartEvent', 'params.stageEndEvent', 'params.keyMilestones', 'params.relationshipLevel', 'params.emotionalArc', 'params.externalPressure']
+      variables: ['params.numberOfEpisodes', 'params.stageSynopsis', 'params.customRequirements', 'params.timeframe', 'params.startingCondition', 'params.endingCondition', 'params.stageStartEvent', 'params.stageEndEvent', 'params.keyPoints', 'params.relationshipLevel', 'params.emotionalArc', 'params.externalPressure', 'params.platform', 'params.genre', 'params.requirements', 'params.totalEpisodes', 'params.episodeDuration', 'params.stageNumber']
     });
   }
 

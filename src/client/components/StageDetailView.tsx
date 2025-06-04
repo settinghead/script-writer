@@ -50,6 +50,25 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
     const isStreaming = stageEpisodeData?.isStreaming || false;
     const sessionData = stageEpisodeData?.sessionData;
 
+    // 🔥 DEBUG: Log stage data to see what fields are available
+    React.useEffect(() => {
+        if (stageData) {
+            console.log('🔍 StageDetailView - Current stage data:', stageData);
+            console.log('🔍 Available fields:', Object.keys(stageData));
+            console.log('🔍 keyPoints:', stageData.keyPoints);
+            console.log('🔍 timeframe:', stageData.timeframe);
+            console.log('🔍 Enhanced fields present:', {
+                hasKeyPoints: !!stageData.keyPoints,
+                hasTimeframe: !!stageData.timeframe,
+                hasStartingCondition: !!stageData.startingCondition,
+                hasEndingCondition: !!stageData.endingCondition,
+                hasStageStartEvent: !!stageData.stageStartEvent,
+                hasStageEndEvent: !!stageData.stageEndEvent,
+                hasExternalPressure: !!stageData.externalPressure
+            });
+        }
+    }, [stageData]);
+
     // Check if this stage is currently streaming
     const isActiveStreaming = state.activeStreamingStageId === stageId;
 
@@ -177,6 +196,126 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
             {/* Stage Information */}
             <Card title={`第${stageData.stageNumber}阶段`} style={{ marginBottom: '20px' }}>
                 <Paragraph>{stageData.stageSynopsis}</Paragraph>
+
+                {/* 🔥 NEW: Enhanced Stage Context Display */}
+                {(stageData.timeframe || stageData.startingCondition || stageData.endingCondition) && (
+                    <>
+                        <Divider />
+                        <Title level={5}>阶段背景</Title>
+                        <Space direction="vertical" style={{ width: '100%' }}>
+                            {stageData.timeframe && (
+                                <div>
+                                    <Text strong>时间跨度：</Text>
+                                    <Text>{stageData.timeframe}</Text>
+                                </div>
+                            )}
+                            {stageData.startingCondition && (
+                                <div>
+                                    <Text strong>开始状态：</Text>
+                                    <Text>{stageData.startingCondition}</Text>
+                                </div>
+                            )}
+                            {stageData.endingCondition && (
+                                <div>
+                                    <Text strong>结束状态：</Text>
+                                    <Text>{stageData.endingCondition}</Text>
+                                </div>
+                            )}
+                            {stageData.stageStartEvent && (
+                                <div>
+                                    <Text strong>起始事件：</Text>
+                                    <Text>{stageData.stageStartEvent}</Text>
+                                </div>
+                            )}
+                            {stageData.stageEndEvent && (
+                                <div>
+                                    <Text strong>结束事件：</Text>
+                                    <Text>{stageData.stageEndEvent}</Text>
+                                </div>
+                            )}
+                            {stageData.externalPressure && (
+                                <div>
+                                    <Text strong>外部压力：</Text>
+                                    <Text>{stageData.externalPressure}</Text>
+                                </div>
+                            )}
+                        </Space>
+                    </>
+                )}
+
+                {/* 🔥 NEW: Enhanced Key Points Display */}
+                {stageData.keyPoints && Array.isArray(stageData.keyPoints) && stageData.keyPoints.length > 0 && (
+                    <>
+                        <Divider />
+                        <Title level={5}>关键故事节点（将传递给AI生成剧集）</Title>
+                        <div style={{ marginBottom: '16px' }}>
+                            {stageData.keyPoints.map((point: any, index: number) => (
+                                <Card 
+                                    key={index} 
+                                    size="small" 
+                                    style={{ 
+                                        marginBottom: '12px',
+                                        backgroundColor: '#1f1f1f',
+                                        borderColor: '#404040'
+                                    }}
+                                    title={
+                                        <div style={{ color: '#e6edf3' }}>
+                                            <Text strong style={{ color: '#58a6ff' }}>
+                                                节点 {index + 1}: {point.event}
+                                            </Text>
+                                            {point.timeSpan && (
+                                                <Tag color="blue" style={{ marginLeft: '8px' }}>
+                                                    {point.timeSpan}
+                                                </Tag>
+                                            )}
+                                        </div>
+                                    }
+                                >
+                                    {/* Emotion Arcs */}
+                                    {point.emotionArcs && Array.isArray(point.emotionArcs) && point.emotionArcs.length > 0 && (
+                                        <div style={{ marginBottom: '12px' }}>
+                                            <Text strong style={{ color: '#f85149' }}>情感发展：</Text>
+                                            {point.emotionArcs.map((arc: any, arcIndex: number) => (
+                                                <div key={arcIndex} style={{ marginLeft: '16px', marginTop: '4px' }}>
+                                                    <Text style={{ color: '#e6edf3' }}>
+                                                        <Text style={{ color: '#ffa657' }}>
+                                                            {Array.isArray(arc.characters) ? arc.characters.join('、') : arc.characters}
+                                                        </Text>
+                                                        : {arc.content}
+                                                    </Text>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Relationship Developments */}
+                                    {point.relationshipDevelopments && Array.isArray(point.relationshipDevelopments) && point.relationshipDevelopments.length > 0 && (
+                                        <div>
+                                            <Text strong style={{ color: '#a5f3fc' }}>关系发展：</Text>
+                                            {point.relationshipDevelopments.map((rel: any, relIndex: number) => (
+                                                <div key={relIndex} style={{ marginLeft: '16px', marginTop: '4px' }}>
+                                                    <Text style={{ color: '#e6edf3' }}>
+                                                        <Text style={{ color: '#ffa657' }}>
+                                                            {Array.isArray(rel.characters) ? rel.characters.join('、') : rel.characters}
+                                                        </Text>
+                                                        : {rel.content}
+                                                    </Text>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </Card>
+                            ))}
+                        </div>
+                        <Alert
+                            message="AI剧集生成上下文"
+                            description="以上详细的角色情感发展和关系变化信息将被传递给AI，用于生成具有连贯性和深度的分集剧情。这确保了每集都能推进角色发展和情感线。"
+                            type="info"
+                            showIcon
+                            style={{ marginBottom: '16px' }}
+                        />
+                    </>
+                )}
 
                 <Divider />
 

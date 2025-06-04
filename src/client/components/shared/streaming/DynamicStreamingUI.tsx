@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Space, Button, Spin, Row, Col } from 'antd';
 import { StopOutlined } from '@ant-design/icons';
-import { 
-  DynamicStreamingUIProps, 
-  RenderedField, 
+import {
+  DynamicStreamingUIProps,
+  RenderedField,
   FieldUpdate,
   FieldDefinition
 } from './types';
@@ -117,14 +117,14 @@ export const DynamicStreamingUI: React.FC<DynamicStreamingUIProps> = ({
 
   const processData = (partialData: any, isStreaming: boolean) => {
     setIsProcessing(true);
-    
+
     console.log('[DynamicStreamingUI] Processing data:', partialData);
-    
+
     try {
       const updates = detector.current.processChunk(partialData);
-      
+
       console.log('[DynamicStreamingUI] Field updates:', updates);
-      
+
       updates.forEach(update => {
         if (update.type === 'new-field') {
           handleNewField(update, isStreaming);
@@ -141,11 +141,11 @@ export const DynamicStreamingUI: React.FC<DynamicStreamingUIProps> = ({
 
   const handleNewField = (update: FieldUpdate, isStreaming: boolean) => {
     const pathMatch = PathMatcher.findMatchingDefinition(update.path, fieldRegistry);
-    
+
     if (pathMatch) {
       const fieldId = PathMatcher.generateFieldId(
-        update.path, 
-        pathMatch.definition, 
+        update.path,
+        pathMatch.definition,
         update.value
       );
 
@@ -268,10 +268,10 @@ export const DynamicStreamingUI: React.FC<DynamicStreamingUIProps> = ({
           className="mb-4"
         />
       ) : isStreaming && (
-        <div style={{ 
-          marginBottom: '16px', 
-          padding: '12px', 
-          backgroundColor: '#1a1a1a', 
+        <div style={{
+          marginBottom: '16px',
+          padding: '12px',
+          backgroundColor: '#1a1a1a',
           border: '1px solid #1890ff',
           borderRadius: '6px',
           display: 'flex',
@@ -317,18 +317,18 @@ export const DynamicStreamingUI: React.FC<DynamicStreamingUIProps> = ({
             const { groupKey, fields } = section.content;
             const layoutConfig = fields[0]?.definition?.layout;
             const useGrid = layoutConfig?.columns;
-            
+
             return (
               <div key={groupKey} style={{ marginTop: section.order === 1 ? '0' : '16px' }}>
-                <div style={{ 
-                  marginBottom: '8px', 
-                  fontSize: '14px', 
-                  fontWeight: 'bold', 
-                  color: '#fff' 
+                <div style={{
+                  marginBottom: '8px',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                  color: '#fff'
                 }}>
                   {formatGroupTitle(groupKey)}
                 </div>
-                
+
                 {useGrid ? (
                   <Row gutter={[16, 16]}>
                     {sortFields(fields).map(field => (
@@ -359,10 +359,10 @@ export const DynamicStreamingUI: React.FC<DynamicStreamingUIProps> = ({
 
       {/* Loading state when processing but no fields yet */}
       {isProcessing && !hasFields && (
-        <div style={{ 
-          textAlign: 'center', 
-          padding: '40px', 
-          color: '#666' 
+        <div style={{
+          textAlign: 'center',
+          padding: '40px',
+          color: '#666'
         }}>
           <Spin size="large" />
           <div style={{ marginTop: '16px' }}>正在处理数据...</div>
@@ -371,10 +371,10 @@ export const DynamicStreamingUI: React.FC<DynamicStreamingUIProps> = ({
 
       {/* Empty state */}
       {!hasFields && !isStreaming && !isProcessing && (
-        <div style={{ 
-          textAlign: 'center', 
-          padding: '40px', 
-          color: '#666' 
+        <div style={{
+          textAlign: 'center',
+          padding: '40px',
+          color: '#666'
         }}>
           暂无数据
         </div>
@@ -393,7 +393,7 @@ function formatGroupTitle(groupKey: string): string {
     'selling_points': '产品卖点',
     'satisfaction_points': '情感爽点'
   };
-  
+
   return titleMap[groupKey] || groupKey;
 }
 

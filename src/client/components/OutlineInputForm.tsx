@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Button, Card, Typography, Alert, Space, message, InputNumber, Row, Col } from 'antd';
+import { Button, Card, Typography, Alert, Space, message, InputNumber, Row, Col, Select } from 'antd';
 import { SaveOutlined, FileTextOutlined } from '@ant-design/icons';
 import TextareaAutosize from 'react-textarea-autosize';
 import { apiService } from '../services/apiService';
-import { Artifact, getArtifactTextContent } from '../../common/types';
+import { Artifact, getArtifactTextContent, BrainstormParamsV1 } from '../../common/types';
+import GenreSelectionPopup from './GenreSelectionPopup';
+import PlatformSelection from './PlatformSelection';
 
 const { Title, Text } = Typography;
 
@@ -16,6 +18,14 @@ export const OutlineInputForm: React.FC = () => {
     const [text, setText] = useState('');
     const [totalEpisodes, setTotalEpisodes] = useState<number>(60);
     const [episodeDuration, setEpisodeDuration] = useState<number>(2);
+
+    // 🔥 NEW: Cascaded parameters
+    const [selectedPlatform, setSelectedPlatform] = useState<string>('通用');
+    const [selectedGenrePaths, setSelectedGenrePaths] = useState<string[][]>([]);
+    const [genreProportions, setGenreProportions] = useState<number[]>([]);
+    const [requirements, setRequirements] = useState<string>('');
+    const [genrePopupVisible, setGenrePopupVisible] = useState(false);
+
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
@@ -29,21 +39,27 @@ export const OutlineInputForm: React.FC = () => {
         }
     }, [artifact_id]);
 
-    const loadArtifact = async (artifactId: string) => {
+    const loadArtifact = async (id: string) => {
         try {
             setIsLoading(true);
             setError('');
 
-            const response = await fetch(`/api/artifacts/${artifactId}`);
+            const response = await fetch(`/api/artifacts/${id}`, {
+                credentials: 'include'
+            });
+
             if (!response.ok) {
-                throw new Error(`Failed to fetch artifact: ${response.status}`);
+                throw new Error(`Failed to load artifact: ${response.status}`);
             }
-            const artifact = await response.json();
+
+            const artifact: Artifact = await response.json();
             setSourceArtifact(artifact);
 
-            // Use the shared helper function to get text content
-            const textToSet = getArtifactTextContent(artifact);
-            setText(textToSet);
+            const textContent = getArtifactTextContent(artifact);
+            setText(textContent);
+
+            // 🔥 NEW: Load cascaded parameters from brainstorming if available
+            await loadCascadedParameters(artifact);
 
         } catch (error: any) {
             console.error('Error loading artifact:', error);
@@ -53,20 +69,88 @@ export const OutlineInputForm: React.FC = () => {
         }
     };
 
+    // 🔥 NEW: Load cascaded parameters from related brainstorming artifacts  
+    const loadCascadedParameters = async (artifact: Artifact) => {
+        console.log('🔍 Loading cascaded parameters for artifact:', artifact.id, artifact.type);
+        try {
+            // Find brainstorm_params in the lineage of this specific artifact
+            const url = `/api/artifacts?type=brainstorm_params&sourceArtifactId=${artifact.id}`;
+            console.log('🔍 Making API call:', url);
+
+            const response = await fetch(url, {
+                credentials: 'include'
+            });
+
+            console.log('🔍 API response status:', response.status);
+
+            if (response.ok) {
+                const brainstormArtifacts = await response.json();
+                console.log('🔍 Found brainstorm artifacts:', brainstormArtifacts.length, brainstormArtifacts);
+
+                // Get the most recent related brainstorm params
+                if (brainstormArtifacts.length > 0) {
+                    const latestBrainstorm = brainstormArtifacts[0]; // Already sorted by created_at desc
+                    const brainstormData = latestBrainstorm.data as BrainstormParamsV1;
+
+                    console.log('🔍 Setting cascaded parameters:', {
+                        platform: brainstormData.platform || '通用',
+                        genre_paths: brainstormData.genre_paths || [],
+                        genre_proportions: brainstormData.genre_proportions || [],
+                        requirements: brainstormData.requirements || ''
+                    });
+
+                    setSelectedPlatform(brainstormData.platform || '通用');
+                    setSelectedGenrePaths(brainstormData.genre_paths || []);
+                    setGenreProportions(brainstormData.genre_proportions || []);
+                    setRequirements(brainstormData.requirements || '');
+                } else {
+                    console.log('🔍 No brainstorm artifacts found, using defaults');
+                }
+            } else {
+                const errorText = await response.text();
+                console.error('🔍 API call failed:', response.status, errorText);
+            }
+        } catch (error) {
+            console.error('🔍 Error loading cascaded parameters:', error);
+            // This is expected when creating outline from scratch
+        }
+    };
+
     const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         setText(e.target.value);
         setHasUnsavedChanges(true);
     };
 
+    const handleGenreSelectionConfirm = (selection: { paths: string[][]; proportions: number[] }) => {
+        setSelectedGenrePaths(selection.paths);
+        setGenreProportions(selection.proportions);
+        setGenrePopupVisible(false);
+        setHasUnsavedChanges(true);
+    };
+
+    const buildGenreDisplayElements = (): (React.ReactElement | string)[] => {
+        return selectedGenrePaths.map((path, index) => {
+            const genreText = path.join(' > ');
+            const proportion = genreProportions[index];
+            const proportionText = proportion ? ` (${proportion}%)` : '';
+
+            return (
+                <span key={index} style={{ marginRight: '8px', marginBottom: '4px', display: 'inline-block' }}>
+                    {genreText}{proportionText}
+                    {index < selectedGenrePaths.length - 1 && ', '}
+                </span>
+            );
+        });
+    };
+
     const saveChanges = async () => {
         if (!text.trim()) {
-            message.error('内容不能为空');
+            message.error('请输入主题/灵感内容');
             return;
         }
 
         try {
-            if (sourceArtifact) {
-                // Create a new user_input artifact when editing an existing artifact
+            setIsLoading(true);
                 const response = await fetch('/api/artifacts/user-input', {
                     method: 'POST',
                     headers: {
@@ -74,21 +158,24 @@ export const OutlineInputForm: React.FC = () => {
                     },
                     body: JSON.stringify({
                         text: text.trim(),
-                        sourceArtifactId: sourceArtifact.id
+                    sourceArtifactId: sourceArtifact?.id
                     })
                 });
 
                 if (!response.ok) {
-                    throw new Error(`Failed to save: ${response.status}`);
-                }
+                throw new Error(`Failed to save artifact: ${response.status}`);
             }
 
+            const newArtifact = await response.json();
+            setSourceArtifact(newArtifact);
             setHasUnsavedChanges(false);
             message.success('保存成功');
 
         } catch (error: any) {
-            console.error('Error saving changes:', error);
+            console.error('Error saving:', error);
             message.error(`保存失败: ${error.message}`);
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -128,11 +215,18 @@ export const OutlineInputForm: React.FC = () => {
                 artifactToUse = sourceArtifact;
             }
 
-            // Generate outline using the common interface
+            // 🔥 NEW: Generate outline with cascaded parameters
             const result = await apiService.generateOutline({
                 sourceArtifactId: artifactToUse.id,
                 totalEpisodes: totalEpisodes,
-                episodeDuration: episodeDuration
+                episodeDuration: episodeDuration,
+                // Include cascaded parameters
+                cascadedParams: {
+                    platform: selectedPlatform,
+                    genre_paths: selectedGenrePaths,
+                    genre_proportions: genreProportions,
+                    requirements: requirements
+                }
             });
 
             // Navigate to the streaming outline page
@@ -148,33 +242,25 @@ export const OutlineInputForm: React.FC = () => {
 
     if (isLoading) {
         return (
-            <div style={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                minHeight: '200px'
-            }}>
-                <Space direction="vertical" align="center">
-                    <FileTextOutlined style={{ fontSize: '48px', color: '#1890ff' }} />
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
                     <Text style={{ color: '#fff' }}>加载中...</Text>
-                </Space>
             </div>
         );
     }
 
     return (
-        <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px' }}>
-            <Card
-                style={{
-                    backgroundColor: '#2a2a2a',
-                    border: '1px solid #404040'
-                }}
-                headStyle={{
-                    backgroundColor: '#1f1f1f',
-                    borderBottom: '1px solid #404040'
-                }}
-                bodyStyle={{ backgroundColor: '#2a2a2a' }}
-            >
+        <div style={{
+            width: '900px',
+            maxWidth: "100%",
+            margin: '0 auto',
+            overflowY: 'auto',
+            padding: '20px'
+        }}>
+            <Card style={{
+                backgroundColor: '#1a1a1a',
+                border: '1px solid #404040',
+                borderRadius: '12px'
+            }}>
                 <Space direction="vertical" size="large" style={{ width: '100%' }}>
                     <div style={{ textAlign: 'center' }}>
                         <Title level={2} style={{ color: '#fff', marginBottom: '8px' }}>
@@ -227,49 +313,151 @@ export const OutlineInputForm: React.FC = () => {
                         </Text>
                     </div>
 
+                    {/* 🔥 NEW: Cascaded Parameters Section */}
+                    <div style={{
+                        backgroundColor: '#262626',
+                        border: '1px solid #404040',
+                        borderRadius: '8px',
+                        padding: '16px'
+                    }}>
+                        <Text strong style={{ color: '#fff', marginBottom: '16px', display: 'block' }}>
+                            制作规格 (继承自灵感阶段，可修改)
+                        </Text>
+                        {/* Debug info */}
+                        <div style={{ fontSize: '12px', color: '#666', marginBottom: '12px' }}>
+                            Debug: Platform={selectedPlatform}, Genres={selectedGenrePaths.length}, Requirements={requirements.length}
+                        </div>
+
+                        <Row gutter={[16, 16]}>
+                            {/* Platform Selection */}
+                            <Col xs={24} sm={12}>
+                                <div>
+                                    <Text strong style={{ color: '#fff', marginBottom: '8px', display: 'block' }}>
+                                        目标平台
+                                    </Text>
+                                    <PlatformSelection
+                                        selectedPlatform={selectedPlatform}
+                                        onPlatformChange={setSelectedPlatform}
+                                    />
+                                </div>
+                            </Col>
+
+                            {/* Genre Selection */}
+                            <Col xs={24} sm={12}>
+                                <div>
+                                    <Text strong style={{ color: '#fff', marginBottom: '8px', display: 'block' }}>
+                                        故事类型
+                                    </Text>
+                                    <div
+                                        onClick={() => setGenrePopupVisible(true)}
+                                        style={{
+                                            border: '1px solid #404040',
+                                            borderRadius: '6px',
+                                            padding: '8px 12px',
+                                            minHeight: '32px',
+                                            cursor: 'pointer',
+                                            background: '#1f1f1f',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
+                                            transition: 'all 0.3s'
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.borderColor = '#1890ff'}
+                                        onMouseLeave={(e) => e.currentTarget.style.borderColor = '#404040'}
+                                    >
+                                        {selectedGenrePaths.length > 0 ? (
+                                            <span style={{ color: '#d9d9d9', cursor: 'pointer' }}>
+                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                                                    {buildGenreDisplayElements()}
+                                                </div>
+                                            </span>
+                                        ) : (
+                                            <span style={{ color: '#666', cursor: 'pointer' }}>
+                                                点击选择故事类型 (可多选, 最多3个)
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            </Col>
+
+                            {/* Requirements */}
+                            <Col span={24}>
+                                <div>
+                                    <Text strong style={{ color: '#fff', marginBottom: '8px', display: 'block' }}>
+                                        特殊要求
+                                    </Text>
+                                    <TextareaAutosize
+                                        value={requirements}
+                                        onChange={(e) => {
+                                            setRequirements(e.target.value);
+                                            setHasUnsavedChanges(true);
+                                        }}
+                                        placeholder="请输入对故事的特殊要求..."
+                                        minRows={3}
+                                        maxRows={8}
+                                        style={{
+                                            width: '100%',
+                                            backgroundColor: '#1f1f1f',
+                                            border: '1px solid #404040',
+                                            borderRadius: '6px',
+                                            color: '#fff',
+                                            padding: '12px',
+                                            fontSize: '14px',
+                                            lineHeight: '1.6',
+                                            resize: 'none',
+                                            outline: 'none'
+                                        }}
+                                    />
+                                </div>
+                            </Col>
+                        </Row>
+                    </div>
+
                     {/* Episode Configuration */}
                     <div>
-                        <Text strong style={{ color: '#fff', marginBottom: '12px', display: 'block' }}>
+                        <Text strong style={{ color: '#fff', marginBottom: '16px', display: 'block' }}>
                             剧集配置
                         </Text>
                         <Row gutter={16}>
-                            <Col span={12}>
+                            <Col xs={24} sm={12}>
                                 <div>
-                                    <Text style={{ color: '#fff', marginBottom: '8px', display: 'block' }}>
+                                    <Text strong style={{ color: '#fff', marginBottom: '8px', display: 'block' }}>
                                         总集数
                                     </Text>
                                     <InputNumber
                                         value={totalEpisodes}
                                         onChange={(value) => setTotalEpisodes(value || 60)}
-                                        min={1}
+                                        min={6}
                                         max={200}
+                                        step={1}
                                         style={{
                                             width: '100%',
                                             backgroundColor: '#1f1f1f',
                                             borderColor: '#404040',
                                             color: '#fff'
                                         }}
-                                        addonAfter="集"
+                                        suffix="集"
                                     />
                                 </div>
                             </Col>
-                            <Col span={12}>
+                            <Col xs={24} sm={12}>
                                 <div>
-                                    <Text style={{ color: '#fff', marginBottom: '8px', display: 'block' }}>
+                                    <Text strong style={{ color: '#fff', marginBottom: '8px', display: 'block' }}>
                                         每集时长
                                     </Text>
                                     <InputNumber
                                         value={episodeDuration}
                                         onChange={(value) => setEpisodeDuration(value || 2)}
                                         min={1}
-                                        max={60}
+                                        max={30}
+                                        step={1}
                                         style={{
                                             width: '100%',
                                             backgroundColor: '#1f1f1f',
                                             borderColor: '#404040',
                                             color: '#fff'
                                         }}
-                                        addonAfter="分钟"
+                                        suffix="分钟"
                                     />
                                 </div>
                             </Col>
@@ -316,6 +504,13 @@ export const OutlineInputForm: React.FC = () => {
                     </div>
                 </Space>
             </Card>
+
+            <GenreSelectionPopup
+                visible={genrePopupVisible}
+                onClose={() => setGenrePopupVisible(false)}
+                onSelect={handleGenreSelectionConfirm}
+                currentSelectionPaths={selectedGenrePaths}
+            />
         </div>
     );
 }; 

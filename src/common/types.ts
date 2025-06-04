@@ -1,3 +1,13 @@
+import {
+    EnhancedOutlineStage,
+    EnhancedKeyPoint,
+    CharacterEmotionArc,
+    RelationshipDevelopment,
+    OutlineCharacterV2,
+    LegacyKeyMilestone,
+    LegacyOutlineStage
+} from './llm/outlineTypes.js';
+
 // ========== SHARED TYPES FOR CLIENT AND SERVER ==========
 
 // Base artifact interface
@@ -58,6 +68,17 @@ export interface BrainstormingJobParamsV1 {
     requestedAt: string;
 }
 
+// ========== WORKFLOW CASCADING PARAMETERS ==========
+
+// Common parameters that cascade through workflow stages
+export interface WorkflowCascadingParamsV1 {
+    platform: string;
+    genre_paths: string[][];
+    genre_proportions: number[];
+    requirements: string;
+    // Add more cascading params as needed
+}
+
 // Job parameters for outline generation
 export interface OutlineJobParamsV1 {
     sourceArtifactId: string;
@@ -65,6 +86,9 @@ export interface OutlineJobParamsV1 {
     episodeDuration?: number;
     requestedAt: string;
     workflowContext?: WorkflowContextV1;
+
+    // 🔥 NEW: Cascaded parameters from brainstorming (user can modify)
+    cascadedParams?: WorkflowCascadingParamsV1;
 }
 
 // Outline session container
@@ -144,6 +168,13 @@ export interface EpisodeGenerationParamsV1 {
     numberOfEpisodes: number;
     stageSynopsis: string;
     customRequirements?: string;
+
+    // 🔥 NEW: Cascaded parameters from previous stages (user can modify)
+    cascadedParams?: WorkflowCascadingParamsV1 & {
+        // Additional episode-specific cascaded params
+        totalEpisodes?: number;
+        episodeDuration?: number;
+    };
 }
 
 export interface OutlineCharacter {
@@ -222,22 +253,17 @@ export interface WorkflowContextV1 {
 }
 
 // Enhanced stage structure interface with comprehensive constraints
-export interface StageStructure {
-    stageSynopsis: string;
-    numberOfEpisodes: number;
-    // Option A: Temporal Constraints
-    timeframe: string;
-    startingCondition: string;
-    endingCondition: string;
-    // Option B: Event-Based Stage Boundaries
-    stageStartEvent: string;
-    stageEndEvent: string;
-    keyMilestones: Array<{
-        event: string;
-        timeSpan: string;
-    }>;
-    // Option C: Relationship Progression Levels
-    relationshipLevel: string;
-    emotionalArc: string;
-    externalPressure: string;
-} 
+export interface StageStructure extends EnhancedOutlineStage {
+    // This now extends the enhanced structure from LLM types
+}
+
+// Re-export enhanced types for convenience
+export type {
+    EnhancedOutlineStage,
+    EnhancedKeyPoint,
+    CharacterEmotionArc,
+    RelationshipDevelopment,
+    OutlineCharacterV2,
+    LegacyKeyMilestone,
+    LegacyOutlineStage
+}; 

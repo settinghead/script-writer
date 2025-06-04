@@ -768,6 +768,98 @@ export class StreamingTransformExecutor {
                 ? `\n特殊要求：${customRequirements.trim()}`
                 : '';
 
+            // 🔥 NEW: Extract cascaded parameters from episode params artifact if available
+            let platform = '';
+            let genre = '';
+            let requirements = '';
+            let totalEpisodes = '';
+            let episodeDuration = '';
+            let stageNumber = '';
+
+            if (paramsArtifact?.data?.cascadedParams) {
+                const cascaded = paramsArtifact.data.cascadedParams;
+                platform = cascaded.platform || '';
+
+                // Build genre string from genre paths
+                if (cascaded.genre_paths && Array.isArray(cascaded.genre_paths)) {
+                    genre = cascaded.genre_paths.map((path: string[]) => path.join(' > ')).join(', ');
+                }
+
+                requirements = cascaded.requirements || '';
+                totalEpisodes = cascaded.totalEpisodes?.toString() || '';
+                episodeDuration = cascaded.episodeDuration?.toString() || '';
+            }
+
+            // Determine stage number from stage data or transform context
+            const stageNumberFromData = stageData.stageNumber || 1;
+            stageNumber = stageNumberFromData.toString();
+
+            // 🔥 NEW: Format enhanced keyPoints structure for the LLM
+            const formatKeyPoints = (keyPoints: any[]): string => {
+                if (!keyPoints || !Array.isArray(keyPoints)) {
+                    return '';
+                }
+
+                return keyPoints.map((point, index) => {
+                    let formatted = `${index + 1}. ${point.event}`;
+
+                    if (point.timeSpan) {
+                        formatted += ` (${point.timeSpan})`;
+                    }
+
+                    // Add emotion arcs
+                    if (point.emotionArcs && Array.isArray(point.emotionArcs) && point.emotionArcs.length > 0) {
+                        formatted += '\n   情感发展：';
+                        point.emotionArcs.forEach((arc: any) => {
+                            formatted += `\n   - ${arc.characters.join('、')}: ${arc.content}`;
+                        });
+                    }
+
+                    // Add relationship developments
+                    if (point.relationshipDevelopments && Array.isArray(point.relationshipDevelopments) && point.relationshipDevelopments.length > 0) {
+                        formatted += '\n   关系发展：';
+                        point.relationshipDevelopments.forEach((rel: any) => {
+                            formatted += `\n   - ${rel.characters.join('、')}: ${rel.content}`;
+                        });
+                    }
+
+                    return formatted;
+                }).join('\n\n');
+            };
+
+            // 🔥 NEW: Extract relationship and emotional summary from keyPoints
+            const extractRelationshipSummary = (keyPoints: any[]): string => {
+                if (!keyPoints || !Array.isArray(keyPoints)) {
+                    return '';
+                }
+
+                const relationshipChanges = keyPoints.flatMap(point =>
+                    (point.relationshipDevelopments || []).map((rel: any) =>
+                        `${rel.characters.join('、')}: ${rel.content}`
+                    )
+                );
+
+                return relationshipChanges.length > 0
+                    ? relationshipChanges.join('\n')
+                    : '';
+            };
+
+            const extractEmotionalSummary = (keyPoints: any[]): string => {
+                if (!keyPoints || !Array.isArray(keyPoints)) {
+                    return '';
+                }
+
+                const emotionChanges = keyPoints.flatMap(point =>
+                    (point.emotionArcs || []).map((arc: any) =>
+                        `${arc.characters.join('、')}: ${arc.content}`
+                    )
+                );
+
+                return emotionChanges.length > 0
+                    ? emotionChanges.join('\n')
+                    : '';
+            };
+
             return await this.templateService.renderTemplate(template, {
                 artifacts: {},
                 params: {
@@ -780,10 +872,18 @@ export class StreamingTransformExecutor {
                     endingCondition: stageData.endingCondition || '',
                     stageStartEvent: stageData.stageStartEvent || '',
                     stageEndEvent: stageData.stageEndEvent || '',
-                    keyMilestones: Array.isArray(stageData.keyMilestones) ? stageData.keyMilestones.join('\n') : (stageData.keyMilestones || ''),
-                    relationshipLevel: stageData.relationshipLevel || '',
-                    emotionalArc: stageData.emotionalArc || '',
-                    externalPressure: stageData.externalPressure || ''
+                    // 🔥 NEW: Pass formatted enhanced keyPoints structure
+                    keyPoints: formatKeyPoints(stageData.keyPoints || []),
+                    // 🔥 NEW: Pass extracted relationship and emotional summaries
+                    relationshipLevel: extractRelationshipSummary(stageData.keyPoints || []),
+                    emotionalArc: extractEmotionalSummary(stageData.keyPoints || []),
+                    externalPressure: stageData.externalPressure || '',
+                    platform,
+                    genre,
+                    requirements,
+                    totalEpisodes,
+                    episodeDuration,
+                    stageNumber
                 }
             });
         };
@@ -939,35 +1039,44 @@ export class StreamingTransformExecutor {
                 ]);
             }
 
-            // 9. Synopsis Stages - Create individual stage artifacts
-            if (outlineData.synopsis_stages && Array.isArray(outlineData.synopsis_stages)) {
+            // 9. Synopsis Stages - Create individual stage artifacts from enhanced structure
+            // 🔥 FIX: Use the new enhanced stages structure instead of old synopsis_stages
+            const stagesToProcess = outlineData.stages || outlineData.synopsis_stages;
+            
+            if (stagesToProcess && Array.isArray(stagesToProcess)) {
                 // Get outline session ID from transform context
                 const outlineSessionId = transform.execution_context?.outline_session_id;
 
                 if (!outlineSessionId) {
                     console.warn('No outline session ID found in transform context, skipping stage artifacts creation');
                 } else {
+                    console.log(`Creating ${stagesToProcess.length} stage artifacts from enhanced structure`);
+                    
                     // Create individual stage artifacts
-                    for (let i = 0; i < outlineData.synopsis_stages.length; i++) {
-                        const stage = outlineData.synopsis_stages[i];
+                    for (let i = 0; i < stagesToProcess.length; i++) {
+                        const stage = stagesToProcess[i];
+
+                        // Handle both enhanced format (stages) and legacy format (synopsis_stages)
+                        const isEnhancedFormat = stage.hasOwnProperty('keyPoints') || stage.hasOwnProperty('timeframe');
+                        
+                        console.log(`Creating stage ${i + 1} - Enhanced format: ${isEnhancedFormat}`);
 
                         const stageArtifact = await this.artifactRepo.createArtifact(
                             userId,
                             'outline_synopsis_stage',
                             {
                                 stageNumber: i + 1,
-                                stageSynopsis: stage.stageSynopsis || stage,
+                                stageSynopsis: stage.stageSynopsis || stage.title || `Stage ${i + 1}`,
                                 numberOfEpisodes: stage.numberOfEpisodes || 1,
                                 outlineSessionId: outlineSessionId,
-                                // Enhanced stage structure fields
+                                // 🔥 ENHANCED: Store the full enhanced structure
                                 timeframe: stage.timeframe || '',
                                 startingCondition: stage.startingCondition || '',
                                 endingCondition: stage.endingCondition || '',
                                 stageStartEvent: stage.stageStartEvent || '',
                                 stageEndEvent: stage.stageEndEvent || '',
-                                keyMilestones: stage.keyMilestones || [],
-                                relationshipLevel: stage.relationshipLevel || '',
-                                emotionalArc: stage.emotionalArc || '',
+                                // 🔥 KEY FIX: Store the enhanced keyPoints structure
+                                keyPoints: stage.keyPoints || [],
                                 externalPressure: stage.externalPressure || ''
                             },
                             'v1',
@@ -981,7 +1090,7 @@ export class StreamingTransformExecutor {
                             { artifactId: stageArtifact.id, outputRole: 'synopsis_stage' }
                         ]);
 
-                        console.log(`Created stage artifact ${stageArtifact.id} for stage ${i + 1}`);
+                        console.log(`✅ Created enhanced stage artifact ${stageArtifact.id} for stage ${i + 1} with ${stage.keyPoints?.length || 0} keyPoints`);
                     }
                 }
             }

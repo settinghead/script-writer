@@ -12,13 +12,59 @@ export function createEpisodeRoutes(
     const router = express.Router();
     const episodeService = new EpisodeGenerationService(artifactRepo, transformRepo);
 
-    // Start episode generation for a stage
+    // 🔥 NEW: General episode generation endpoint (called by EpisodeGenerationForm)
+    router.post('/generate',
+        authMiddleware.authenticate,
+        async (req, res): Promise<void> => {
+            const userId = req.user?.id;
+            const {
+                outlineSessionId,
+                episode_count,
+                episode_duration,
+                custom_requirements,
+                cascadedParams
+            } = req.body;
+
+            if (!userId) {
+                res.status(401).json({ error: 'Unauthorized' });
+                return;
+            }
+
+            try {
+                // Get stages for this outline session
+                const stages = await episodeService.getStageArtifacts(userId, outlineSessionId);
+
+                if (!stages || stages.length === 0) {
+                    res.status(404).json({ error: 'No stages found for outline session' });
+                    return;
+                }
+
+                // For now, generate for first stage (can be extended to handle all stages)
+                const firstStage = stages[0];
+
+                const result = await episodeService.startEpisodeGeneration(
+                    userId,
+                    firstStage.artifactId,
+                    episode_count,
+                    custom_requirements,
+                    cascadedParams // 🔥 NEW: Pass cascaded parameters
+                );
+
+                res.json(result);
+            } catch (error: any) {
+                console.error('Error generating episodes:', error);
+                res.status(500).json({ error: error.message });
+            }
+        }
+    );
+
+    // Start episode generation for a specific stage
     router.post('/stages/:stageId/episodes/generate',
         authMiddleware.authenticate,
         async (req, res): Promise<void> => {
             const userId = req.user?.id;
             const { stageId } = req.params;
-            const { numberOfEpisodes, customRequirements } = req.body;
+            const { numberOfEpisodes, customRequirements, cascadedParams } = req.body; // 🔥 NEW: Extract cascadedParams
 
             if (!userId) {
                 res.status(401).json({ error: 'Unauthorized' });
@@ -30,7 +76,8 @@ export function createEpisodeRoutes(
                     userId,
                     stageId,
                     numberOfEpisodes,
-                    customRequirements
+                    customRequirements,
+                    cascadedParams // 🔥 NEW: Pass cascaded parameters
                 );
                 res.json(result);
             } catch (error: any) {

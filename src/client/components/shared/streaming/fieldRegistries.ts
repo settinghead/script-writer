@@ -17,7 +17,7 @@ import {
 } from './fieldComponents';
 
 /**
- * Field registry for outline generation
+ * Field registry for outline generation - Updated for new data structure
  */
 export const outlineFieldRegistry: FieldDefinition[] = [
   // 1. Title (matches LLM streaming order)
@@ -52,7 +52,7 @@ export const outlineFieldRegistry: FieldDefinition[] = [
     order: 4
   },
 
-  // 4. Selling points
+  // 4. Selling points - handle both string and array formats
   {
     path: "selling_points",
     component: AutoSaveTextAreaField,
@@ -68,37 +68,29 @@ export const outlineFieldRegistry: FieldDefinition[] = [
     order: 6
   },
 
-  // 6. Setting
+  // 6. Setting - handle both string and object formats
   {
-    path: "setting.core_setting_summary",
+    path: "setting",
     component: AutoSaveTextAreaField,
-    label: "核心设定",
+    label: "故事设定",
     order: 7
   },
-  {
-    path: "setting.key_scenes",
-    component: EditableTextListField,
-    label: "关键场景",
-    order: 8
-  },
 
-  // 7. Characters - now editable array
+  // 7. Characters - now editable array with enhanced structure
   {
     path: "characters",
     component: EditableCharacterArrayField,
     label: "角色",
-    order: 9
+    order: 8
   },
 
-  // 8. Synopsis stages - now editable
+  // 8. Enhanced stages structure with progressive streaming support
   {
-    path: "synopsis_stages",
+    path: "stages",
     component: EditableSynopsisStagesField,
     label: "分段故事梗概",
-    order: 10
-  },
-
-
+    order: 9
+  }
 ];
 
 /**

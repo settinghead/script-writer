@@ -30,6 +30,12 @@ export interface OutlineGenerateRequest {
     sourceArtifactId: string;
     totalEpisodes?: number;
     episodeDuration?: number;
+    cascadedParams?: {
+        platform: string;
+        genre_paths: string[][];
+        genre_proportions: number[];
+        requirements: string;
+    };
 }
 
 export interface OutlineGenerateResponse {

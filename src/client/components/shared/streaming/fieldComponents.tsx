@@ -2,7 +2,23 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Card, Typography, Tag, Input, Row, Col, Spin, Button, Select, InputNumber } from 'antd';
 import { FieldProps } from './types';
 import TextareaAutosize from 'react-textarea-autosize';
-import { debounce } from 'lodash';
+import { debounce } from "lodash";
+// Local type definitions for key points structure
+interface RelationshipDevelopment {
+  characters: string[];
+  content: string;
+}
+
+interface EmotionArcDevelopment {
+  characters: string[];
+  content: string;
+}
+
+interface KeyPointObject {
+  event: string;
+  relationshipDevelopment: RelationshipDevelopment[];
+  emotionArcDevelopment: EmotionArcDevelopment[];
+}
 
 const { Text, Title } = Typography;
 const { Option } = Select;
@@ -1608,7 +1624,16 @@ export const EditableSynopsisStagesField: React.FC<ExtendedFieldProps & {
   ...props
 }) => {
     const [localStages, setLocalStages] = useState<Array<any>>(() => {
-      return Array.isArray(value) ? value : [];
+      // Handle different value types during streaming
+      if (Array.isArray(value)) {
+        return value;
+      } else if (value && typeof value === 'object') {
+        // If value is an object, it might be streaming data
+        console.log('[EditableSynopsisStagesField] Received object value:', value);
+        return [];
+      } else {
+        return [];
+      }
     });
     const [isSaving, setIsSaving] = useState(false);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -1616,7 +1641,17 @@ export const EditableSynopsisStagesField: React.FC<ExtendedFieldProps & {
 
     // Update local value when prop changes
     useEffect(() => {
-      const newStages = Array.isArray(value) ? value : [];
+      // Handle different value types during streaming
+      let newStages: Array<any> = [];
+
+      if (Array.isArray(value)) {
+        newStages = value;
+      } else if (value && typeof value === 'object') {
+        // If value is an object, it might be streaming data - log for debugging
+        console.log('[EditableSynopsisStagesField] Received non-array value:', value);
+        newStages = [];
+      }
+
       setLocalStages(newStages);
       setHasUnsavedChanges(false);
     }, [value]);
@@ -1658,19 +1693,43 @@ export const EditableSynopsisStagesField: React.FC<ExtendedFieldProps & {
 
     const updateStage = (index: number, field: string, newValue: any) => {
       const newStages = [...localStages];
-      if (field.includes('keyMilestones[')) {
-        // Handle milestone fields like keyMilestones[0].event or keyMilestones[0].timeSpan
-        const match = field.match(/keyMilestones\[(\d+)\]\.(.+)/);
+      if (field.includes('keyPoints[')) {
+        // Handle enhanced key point fields like keyPoints[0].event or keyPoints[0].emotionArcs[0].content
+        const match = field.match(/keyPoints\[(\d+)\]\.(.+)/);
         if (match) {
-          const milestoneIndex = parseInt(match[1]);
-          const milestoneField = match[2];
-          if (!newStages[index].keyMilestones) {
-            newStages[index].keyMilestones = [];
+          const pointIndex = parseInt(match[1]);
+          const pointField = match[2];
+          if (!newStages[index].keyPoints) {
+            newStages[index].keyPoints = [];
           }
-          if (!newStages[index].keyMilestones[milestoneIndex]) {
-            newStages[index].keyMilestones[milestoneIndex] = { event: '', timeSpan: '' };
+          if (!newStages[index].keyPoints[pointIndex]) {
+            newStages[index].keyPoints[pointIndex] = {
+              event: '',
+              timeSpan: '',
+              emotionArcs: [],
+              relationshipDevelopments: []
+            };
           }
-          newStages[index].keyMilestones[milestoneIndex][milestoneField] = newValue;
+
+          // Handle nested fields like emotionArcs[0].content
+          if (pointField.includes('[')) {
+            const nestedMatch = pointField.match(/(\w+)\[(\d+)\]\.(\w+)/);
+            if (nestedMatch) {
+              const arrayField = nestedMatch[1];
+              const arrayIndex = parseInt(nestedMatch[2]);
+              const subField = nestedMatch[3];
+
+              if (!newStages[index].keyPoints[pointIndex][arrayField]) {
+                newStages[index].keyPoints[pointIndex][arrayField] = [];
+              }
+              if (!newStages[index].keyPoints[pointIndex][arrayField][arrayIndex]) {
+                newStages[index].keyPoints[pointIndex][arrayField][arrayIndex] = { characters: [], content: '' };
+              }
+              newStages[index].keyPoints[pointIndex][arrayField][arrayIndex][subField] = newValue;
+            }
+          } else {
+            newStages[index].keyPoints[pointIndex][pointField] = newValue;
+          }
         }
       } else {
         newStages[index] = { ...newStages[index], [field]: newValue };
@@ -1678,25 +1737,65 @@ export const EditableSynopsisStagesField: React.FC<ExtendedFieldProps & {
       setLocalStages(newStages);
     };
 
-    const addMilestone = (stageIndex: number) => {
+    const addKeyPoint = (stageIndex: number) => {
       const newStages = [...localStages];
-      if (!newStages[stageIndex].keyMilestones) {
-        newStages[stageIndex].keyMilestones = [];
+      if (!newStages[stageIndex].keyPoints) {
+        newStages[stageIndex].keyPoints = [];
       }
-      newStages[stageIndex].keyMilestones.push({ event: '', timeSpan: '' });
+      newStages[stageIndex].keyPoints.push({
+        event: '',
+        timeSpan: '',
+        emotionArcs: [],
+        relationshipDevelopments: []
+      });
       setLocalStages(newStages);
     };
 
-    const removeMilestone = (stageIndex: number, milestoneIndex: number) => {
+    const removeKeyPoint = (stageIndex: number, pointIndex: number) => {
       const newStages = [...localStages];
-      if (newStages[stageIndex].keyMilestones) {
-        newStages[stageIndex].keyMilestones.splice(milestoneIndex, 1);
+      if (newStages[stageIndex].keyPoints) {
+        newStages[stageIndex].keyPoints.splice(pointIndex, 1);
+      }
+      setLocalStages(newStages);
+    };
+
+    const addEmotionArc = (stageIndex: number, pointIndex: number) => {
+      const newStages = [...localStages];
+      if (!newStages[stageIndex].keyPoints[pointIndex].emotionArcs) {
+        newStages[stageIndex].keyPoints[pointIndex].emotionArcs = [];
+      }
+      newStages[stageIndex].keyPoints[pointIndex].emotionArcs.push({ characters: [], content: '' });
+      setLocalStages(newStages);
+    };
+
+    const removeEmotionArc = (stageIndex: number, pointIndex: number, arcIndex: number) => {
+      const newStages = [...localStages];
+      if (newStages[stageIndex].keyPoints[pointIndex].emotionArcs) {
+        newStages[stageIndex].keyPoints[pointIndex].emotionArcs.splice(arcIndex, 1);
+      }
+      setLocalStages(newStages);
+    };
+
+    const addRelationshipDevelopment = (stageIndex: number, pointIndex: number) => {
+      const newStages = [...localStages];
+      if (!newStages[stageIndex].keyPoints[pointIndex].relationshipDevelopments) {
+        newStages[stageIndex].keyPoints[pointIndex].relationshipDevelopments = [];
+      }
+      newStages[stageIndex].keyPoints[pointIndex].relationshipDevelopments.push({ characters: [], content: '' });
+      setLocalStages(newStages);
+    };
+
+    const removeRelationshipDevelopment = (stageIndex: number, pointIndex: number, devIndex: number) => {
+      const newStages = [...localStages];
+      if (newStages[stageIndex].keyPoints[pointIndex].relationshipDevelopments) {
+        newStages[stageIndex].keyPoints[pointIndex].relationshipDevelopments.splice(devIndex, 1);
       }
       setLocalStages(newStages);
     };
 
     const addStage = () => {
       const newStage = {
+        title: '',
         stageSynopsis: '',
         numberOfEpisodes: 1,
         timeframe: '',
@@ -1704,9 +1803,7 @@ export const EditableSynopsisStagesField: React.FC<ExtendedFieldProps & {
         endingCondition: '',
         stageStartEvent: '',
         stageEndEvent: '',
-        keyMilestones: [],
-        relationshipLevel: '',
-        emotionalArc: '',
+        keyPoints: [],
         externalPressure: ''
       };
       setLocalStages([...localStages, newStage]);
@@ -1773,7 +1870,7 @@ export const EditableSynopsisStagesField: React.FC<ExtendedFieldProps & {
                 title={
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <Text strong style={{ color: '#fff' }}>
-                      第{index + 1}阶段 (第{episodeRange.start}-{episodeRange.end}集)
+                      {stage.title || `第${index + 1}阶段`} (第{episodeRange.start}-{episodeRange.end}集)
                     </Text>
                     <Button
                       type="text"
@@ -1788,6 +1885,24 @@ export const EditableSynopsisStagesField: React.FC<ExtendedFieldProps & {
                   </div>
                 }
               >
+                {/* Stage Title */}
+                <div style={{ marginBottom: '16px' }}>
+                  <Text strong style={{ color: '#fff', display: 'block', marginBottom: '8px' }}>
+                    阶段标题
+                  </Text>
+                  <Input
+                    value={stage.title || ''}
+                    onChange={(e) => updateStage(index, 'title', e.target.value)}
+                    placeholder="阶段标题"
+                    disabled={disabled}
+                    style={{
+                      backgroundColor: '#1f1f1f',
+                      borderColor: '#404040',
+                      color: '#fff'
+                    }}
+                  />
+                </div>
+
                 {/* Basic Info */}
                 <div style={{ marginBottom: '20px' }}>
                   <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
@@ -1927,97 +2042,188 @@ export const EditableSynopsisStagesField: React.FC<ExtendedFieldProps & {
                       <Button
                         type="text"
                         size="small"
-                        onClick={() => addMilestone(index)}
+                        onClick={() => addKeyPoint(index)}
                         disabled={disabled}
                         style={{ color: '#1890ff', fontSize: '12px' }}
                       >
                         + 添加
                       </Button>
                     </div>
-                    {stage.keyMilestones && stage.keyMilestones.map((milestone: any, mIndex: number) => (
-                      <div key={mIndex} style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-                        <Input
-                          value={milestone.event || ''}
-                          onChange={(e) => updateStage(index, `keyMilestones[${mIndex}].event`, e.target.value)}
-                          placeholder="关键事件节点"
-                          disabled={disabled}
-                          style={{
-                            flex: 1,
-                            backgroundColor: '#1f1f1f',
-                            borderColor: '#404040',
-                            color: '#fff',
-                            fontSize: '12px'
-                          }}
-                        />
-                        <Input
-                          value={milestone.timeSpan || ''}
-                          onChange={(e) => updateStage(index, `keyMilestones[${mIndex}].timeSpan`, e.target.value)}
-                          placeholder="时间跨度"
-                          disabled={disabled}
-                          style={{
-                            flex: 1,
-                            backgroundColor: '#1f1f1f',
-                            borderColor: '#404040',
-                            color: '#fff',
-                            fontSize: '12px'
-                          }}
-                        />
-                        <Button
-                          type="text"
-                          size="small"
-                          onClick={() => removeMilestone(index, mIndex)}
-                          disabled={disabled}
-                          style={{ color: '#ff4d4f' }}
-                        >
-                          ×
-                        </Button>
+                    {(stage.keyPoints || []).map((point: any, pIndex: number) => (
+                      <div key={pIndex} style={{ marginBottom: '16px', padding: '12px', backgroundColor: '#262626', borderRadius: '6px', border: '1px solid #404040' }}>
+                        {/* Basic Event Info */}
+                        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                          <Input
+                            value={point.event || ''}
+                            onChange={(e) => updateStage(index, `keyPoints[${pIndex}].event`, e.target.value)}
+                            placeholder="关键事件节点"
+                            disabled={disabled}
+                            style={{
+                              flex: 2,
+                              backgroundColor: '#1f1f1f',
+                              borderColor: '#404040',
+                              color: '#fff',
+                              fontSize: '12px'
+                            }}
+                          />
+                          <Input
+                            value={point.timeSpan || ''}
+                            onChange={(e) => updateStage(index, `keyPoints[${pIndex}].timeSpan`, e.target.value)}
+                            placeholder="时间跨度"
+                            disabled={disabled}
+                            style={{
+                              flex: 1,
+                              backgroundColor: '#1f1f1f',
+                              borderColor: '#404040',
+                              color: '#fff',
+                              fontSize: '12px'
+                            }}
+                          />
+                          <Button
+                            type="text"
+                            size="small"
+                            onClick={() => removeKeyPoint(index, pIndex)}
+                            disabled={disabled}
+                            style={{ color: '#ff4d4f' }}
+                          >
+                            ×
+                          </Button>
+                        </div>
+
+                        {/* Emotion Arcs */}
+                        <div style={{ marginBottom: '12px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                            <Text style={{ color: '#52c41a', fontSize: '11px', fontWeight: 'bold' }}>
+                              情感发展
+                            </Text>
+                            <Button
+                              type="text"
+                              size="small"
+                              onClick={() => addEmotionArc(index, pIndex)}
+                              disabled={disabled}
+                              style={{ color: '#52c41a', fontSize: '10px' }}
+                            >
+                              + 添加
+                            </Button>
+                          </div>
+                          {(point.emotionArcs || []).map((arc: any, aIndex: number) => (
+                            <div key={aIndex} style={{ display: 'flex', gap: '6px', marginBottom: '6px' }}>
+                              <Input
+                                value={(arc.characters || []).join(', ')}
+                                onChange={(e) => updateStage(index, `keyPoints[${pIndex}].emotionArcs[${aIndex}].characters`, e.target.value.split(',').map((s: string) => s.trim()).filter(Boolean))}
+                                placeholder="角色名 (用逗号分隔)"
+                                disabled={disabled}
+                                style={{
+                                  flex: 1,
+                                  backgroundColor: '#1a1a1a',
+                                  borderColor: '#303030',
+                                  color: '#fff',
+                                  fontSize: '11px'
+                                }}
+                              />
+                              <Input
+                                value={arc.content || ''}
+                                onChange={(e) => updateStage(index, `keyPoints[${pIndex}].emotionArcs[${aIndex}].content`, e.target.value)}
+                                placeholder="情感变化描述"
+                                disabled={disabled}
+                                style={{
+                                  flex: 2,
+                                  backgroundColor: '#1a1a1a',
+                                  borderColor: '#303030',
+                                  color: '#fff',
+                                  fontSize: '11px'
+                                }}
+                              />
+                              <Button
+                                type="text"
+                                size="small"
+                                onClick={() => removeEmotionArc(index, pIndex, aIndex)}
+                                disabled={disabled}
+                                style={{ color: '#ff4d4f', fontSize: '10px' }}
+                              >
+                                ×
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Relationship Developments */}
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                            <Text style={{ color: '#1890ff', fontSize: '11px', fontWeight: 'bold' }}>
+                              关系发展
+                            </Text>
+                            <Button
+                              type="text"
+                              size="small"
+                              onClick={() => addRelationshipDevelopment(index, pIndex)}
+                              disabled={disabled}
+                              style={{ color: '#1890ff', fontSize: '10px' }}
+                            >
+                              + 添加
+                            </Button>
+                          </div>
+                          {(point.relationshipDevelopments || []).map((dev: any, dIndex: number) => (
+                            <div key={dIndex} style={{ display: 'flex', gap: '6px', marginBottom: '6px' }}>
+                              <Input
+                                value={(dev.characters || []).join(', ')}
+                                onChange={(e) => updateStage(index, `keyPoints[${pIndex}].relationshipDevelopments[${dIndex}].characters`, e.target.value.split(',').map((s: string) => s.trim()).filter(Boolean))}
+                                placeholder="角色名 (用逗号分隔)"
+                                disabled={disabled}
+                                style={{
+                                  flex: 1,
+                                  backgroundColor: '#1a1a1a',
+                                  borderColor: '#303030',
+                                  color: '#fff',
+                                  fontSize: '11px'
+                                }}
+                              />
+                              <Input
+                                value={dev.content || ''}
+                                onChange={(e) => updateStage(index, `keyPoints[${pIndex}].relationshipDevelopments[${dIndex}].content`, e.target.value)}
+                                placeholder="关系发展描述"
+                                disabled={disabled}
+                                style={{
+                                  flex: 2,
+                                  backgroundColor: '#1a1a1a',
+                                  borderColor: '#303030',
+                                  color: '#fff',
+                                  fontSize: '11px'
+                                }}
+                              />
+                              <Button
+                                type="text"
+                                size="small"
+                                onClick={() => removeRelationshipDevelopment(index, pIndex, dIndex)}
+                                disabled={disabled}
+                                style={{ color: '#ff4d4f', fontSize: '10px' }}
+                              >
+                                ×
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                {/* Relationship Progression */}
+                {/* External Pressure */}
                 <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: '#1a0d00', borderRadius: '8px', border: '1px solid #5a2d00' }}>
                   <Text strong style={{ color: '#fa8c16', display: 'block', marginBottom: '12px', fontSize: '14px' }}>
-                    🟠 关系发展
+                    🟠 外部环境
                   </Text>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
-                    <div>
-                      <Text style={{ color: '#d9d9d9', display: 'block', marginBottom: '4px', fontSize: '12px' }}>
-                        关系层次
-                      </Text>
-                      <Input
-                        value={stage.relationshipLevel || ''}
-                        onChange={(e) => updateStage(index, 'relationshipLevel', e.target.value)}
-                        placeholder="如: 陌生 → 敌意"
-                        disabled={disabled}
-                        style={{ backgroundColor: '#1f1f1f', borderColor: '#404040', color: '#fff' }}
-                      />
-                    </div>
-                    <div>
-                      <Text style={{ color: '#d9d9d9', display: 'block', marginBottom: '4px', fontSize: '12px' }}>
-                        情感弧线
-                      </Text>
-                      <Input
-                        value={stage.emotionalArc || ''}
-                        onChange={(e) => updateStage(index, 'emotionalArc', e.target.value)}
-                        placeholder="如: 压抑 → 爆发"
-                        disabled={disabled}
-                        style={{ backgroundColor: '#1f1f1f', borderColor: '#404040', color: '#fff' }}
-                      />
-                    </div>
-                    <div>
-                      <Text style={{ color: '#d9d9d9', display: 'block', marginBottom: '4px', fontSize: '12px' }}>
-                        外部压力
-                      </Text>
-                      <Input
-                        value={stage.externalPressure || ''}
-                        onChange={(e) => updateStage(index, 'externalPressure', e.target.value)}
-                        placeholder="外部环境压力"
-                        disabled={disabled}
-                        style={{ backgroundColor: '#1f1f1f', borderColor: '#404040', color: '#fff' }}
-                      />
-                    </div>
+                  <div>
+                    <Text style={{ color: '#d9d9d9', display: 'block', marginBottom: '4px', fontSize: '12px' }}>
+                      外部压力
+                    </Text>
+                    <Input
+                      value={stage.externalPressure || ''}
+                      onChange={(e) => updateStage(index, 'externalPressure', e.target.value)}
+                      placeholder="外部环境压力"
+                      disabled={disabled}
+                      style={{ backgroundColor: '#1f1f1f', borderColor: '#404040', color: '#fff' }}
+                    />
                   </div>
                 </div>
               </Card>

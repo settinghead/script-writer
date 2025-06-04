@@ -30,7 +30,8 @@ export class EpisodeGenerationService {
         userId: string,
         stageArtifactId: string,
         numberOfEpisodes?: number,
-        customRequirements?: string
+        customRequirements?: string,
+        cascadedParams?: any
     ): Promise<{ sessionId: string; transformId: string }> {
         // 1. Get stage artifact and validate ownership
         const stageArtifact = await this.artifactRepo.getArtifact(stageArtifactId, userId);
@@ -42,7 +43,7 @@ export class EpisodeGenerationService {
 
         // 2. Create or get user_input artifact if modifications exist
         let paramsArtifact;
-        if (numberOfEpisodes !== stageData.numberOfEpisodes || customRequirements) {
+        if (numberOfEpisodes !== stageData.numberOfEpisodes || customRequirements || cascadedParams) {
             // Create human transform for modifications
             const humanTransform = await this.transformRepo.createTransform(
                 userId, 'human', 'v1', 'completed',
@@ -57,7 +58,8 @@ export class EpisodeGenerationService {
                     stageArtifactId,
                     numberOfEpisodes: numberOfEpisodes || stageData.numberOfEpisodes,
                     stageSynopsis: stageData.stageSynopsis,
-                    customRequirements
+                    customRequirements,
+                    cascadedParams
                 } as EpisodeGenerationParamsV1,
                 'v1'
             );

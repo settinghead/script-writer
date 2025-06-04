@@ -30,10 +30,35 @@ interface DynamicOutlineResultsProps {
             demographic?: string;
             core_themes?: string[];
         };
-        selling_points?: string;
+        selling_points?: string | string[];
         satisfaction_points?: string[];
         setting?: string;
         synopsis?: string;
+        // New enhanced stages structure
+        stages?: Array<{
+            title?: string;
+            stageSynopsis?: string;
+            numberOfEpisodes?: number;
+            timeframe?: string;
+            startingCondition?: string;
+            endingCondition?: string;
+            stageStartEvent?: string;
+            stageEndEvent?: string;
+            keyPoints?: Array<{
+                event: string;
+                timeSpan?: string;
+                emotionArcs?: Array<{
+                    characters: string[];
+                    content: string;
+                }>;
+                relationshipDevelopments?: Array<{
+                    characters: string[];
+                    content: string;
+                }>;
+            }>;
+            externalPressure?: string;
+        }>;
+        // Legacy synopsis_stages for backward compatibility
         synopsis_stages?: Array<{
             stageSynopsis: string;
             numberOfEpisodes: number;
@@ -46,10 +71,8 @@ interface DynamicOutlineResultsProps {
                 event: string;
                 timeSpan: string;
             }>;
-            relationshipLevel?: string;
-            emotionalArc?: string;
             externalPressure?: string;
-        }>;
+        }> | string[];
         characters?: OutlineCharacter[];
     };
     status: 'active' | 'completed' | 'failed';
@@ -193,7 +216,7 @@ export const DynamicOutlineResults: React.FC<DynamicOutlineResultsProps> = ({
         if (path === 'satisfaction_points') return 'satisfaction_points';
         if (path.startsWith('setting')) return 'setting';
         if (path === 'synopsis') return 'synopsis';
-        if (path === 'synopsis_stages') return 'synopsis_stages';
+        if (path === 'stages' || path === 'synopsis_stages') return 'synopsis_stages';
         if (path.startsWith('characters')) return 'characters';
         return 'unknown';
     };
@@ -221,36 +244,108 @@ export const DynamicOutlineResults: React.FC<DynamicOutlineResultsProps> = ({
         // Otherwise use components data
         if (!components) return [];
 
-        // Convert the components object into a format that matches the streaming structure
+        // 🔥 FIX: Convert synopsis_stages to enhanced stages format for streaming
+        let enhancedStages = [];
+        
+        if (components.stages && Array.isArray(components.stages)) {
+            // Already in enhanced format
+            enhancedStages = components.stages;
+        } else if (components.synopsis_stages && Array.isArray(components.synopsis_stages)) {
+            // Convert legacy synopsis_stages to enhanced stages format
+            enhancedStages = components.synopsis_stages.map((stage, index) => {
+                // Handle both legacy array format and object format
+                if (typeof stage === 'string') {
+                    // Legacy string array format
+                    return {
+                        title: `第${index + 1}阶段`,
+                        stageSynopsis: stage,
+                        numberOfEpisodes: 1,
+                        timeframe: '',
+                        startingCondition: '',
+                        endingCondition: '',
+                        stageStartEvent: '',
+                        stageEndEvent: '',
+                        keyPoints: [],
+                        externalPressure: ''
+                    };
+                } else {
+                    // Enhanced object format but stored in synopsis_stages
+                    return {
+                        title: stage.title || `第${index + 1}阶段`,
+                        stageSynopsis: stage.stageSynopsis || '',
+                        numberOfEpisodes: stage.numberOfEpisodes || 1,
+                        timeframe: stage.timeframe || '',
+                        startingCondition: stage.startingCondition || '',
+                        endingCondition: stage.endingCondition || '',
+                        stageStartEvent: stage.stageStartEvent || '',
+                        stageEndEvent: stage.stageEndEvent || '',
+                        // 🔥 ENHANCED: Convert keyMilestones to keyPoints if available
+                        keyPoints: stage.keyMilestones ? stage.keyMilestones.map(milestone => ({
+                            event: typeof milestone === 'string' ? milestone : milestone.event,
+                            timeSpan: typeof milestone === 'object' ? milestone.timeSpan : '',
+                            emotionArcs: [],
+                            relationshipDevelopments: []
+                        })) : stage.keyPoints || [],
+                        externalPressure: stage.externalPressure || ''
+                    };
+                }
+            });
+        }
+
+        // Convert the components object into a format that matches the new streaming structure
         const transformedData = {
             ...components,
-            // Convert selling_points from string to array if needed
-            selling_points: typeof components.selling_points === 'string'
-                ? components.selling_points.split('\n').filter(p => p.trim())
-                : components.selling_points,
-            // Handle setting: if it's a string, wrap it in the expected object structure
-            setting: typeof components.setting === 'string'
-                ? { core_setting_summary: components.setting }
-                : components.setting,
-            // Ensure other arrays are properly formatted
+            // Keep selling_points as is - let the field component handle string vs array
+            selling_points: components.selling_points,
+            // Keep setting as is - let the field component handle string vs object
+            setting: components.setting,
+            // Ensure satisfaction_points is an array
             satisfaction_points: components.satisfaction_points || [],
-            // Handle synopsis_stages: ensure it's in the new format
-            synopsis_stages: components.synopsis_stages ?
-                (Array.isArray(components.synopsis_stages) && components.synopsis_stages.length > 0 &&
-                    typeof components.synopsis_stages[0] === 'object' && 'stageSynopsis' in components.synopsis_stages[0]
-                    ? components.synopsis_stages // Already in new format
-                    : (components.synopsis_stages as unknown as string[]).map((stage, index) => ({ // Convert from old format
-                        stageSynopsis: stage,
-                        numberOfEpisodes: Math.ceil(12 / (components.synopsis_stages as unknown as string[]).length) // Distribute episodes evenly
-                    }))
-                ) : [],
+            // 🔥 FIX: Use the converted enhanced stages
+            stages: enhancedStages,
+            // Ensure characters array is properly formatted
             characters: components.characters || []
         };
+
+        // Debug logging to understand the data structure
+        console.log('[DynamicOutlineResults] Debug - original components.stages:', components.stages?.length, 'items');
+        console.log('[DynamicOutlineResults] Debug - original components.synopsis_stages:', components.synopsis_stages?.length, 'items');
+        console.log('[DynamicOutlineResults] Debug - converted transformedData.stages:', transformedData.stages?.length, 'items');
+        if (transformedData.stages?.[0]) {
+            console.log('[DynamicOutlineResults] Debug - first converted stage:', transformedData.stages[0]);
+        }
 
         return [transformedData];
     }, [components, streamingItems, isStreaming]);
 
     const handleExport = () => {
+        // Convert new format to export format
+        const exportComponents = {
+            ...components,
+            // Convert selling_points to string if it's an array
+            selling_points: Array.isArray(components.selling_points)
+                ? components.selling_points.join('\n')
+                : components.selling_points,
+            // Convert stages to synopsis_stages format for export
+            synopsis_stages: components.stages ? components.stages.map(stage => ({
+                stageSynopsis: stage.stageSynopsis || stage.title || '',
+                numberOfEpisodes: stage.numberOfEpisodes || 1,
+                timeframe: stage.timeframe,
+                startingCondition: stage.startingCondition || '',
+                endingCondition: stage.endingCondition || '',
+                stageStartEvent: stage.stageStartEvent || '',
+                stageEndEvent: stage.stageEndEvent || '',
+                keyMilestones: stage.keyPoints ? stage.keyPoints.map(point => ({
+                    event: point.event,
+                    timeSpan: point.timeSpan || ''
+                })) : [],
+                externalPressure: stage.externalPressure || ''
+            })) : components.synopsis_stages
+        };
+
+        // Remove the new stages field for export
+        delete exportComponents.stages;
+
         // Prepare export data
         const exportData: OutlineExportData = {
             sessionId,
@@ -260,7 +355,7 @@ export const DynamicOutlineResults: React.FC<DynamicOutlineResultsProps> = ({
             },
             totalEpisodes,
             episodeDuration,
-            components,
+            components: exportComponents as any,
             createdAt: createdAt || new Date().toISOString()
         };
 
@@ -279,7 +374,7 @@ export const DynamicOutlineResults: React.FC<DynamicOutlineResultsProps> = ({
         if (components.satisfaction_points && components.satisfaction_points.length > 0) count++;
         if (components.setting) count++;
         if (components.synopsis) count++;
-        if (components.synopsis_stages && components.synopsis_stages.length > 0) count++;
+        if ((components.stages && components.stages.length > 0) || (components.synopsis_stages && components.synopsis_stages.length > 0)) count++;
         if (components.characters && components.characters.length > 0) count++;
         return count;
     };

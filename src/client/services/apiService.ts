@@ -116,6 +116,14 @@ class ApiService {
         generation_strategy: 'sequential' | 'batch';
         custom_requirements?: string;
         use_modified_outline: boolean;
+        cascadedParams?: {
+            platform: string;
+            genre_paths: string[][];
+            genre_proportions: number[];
+            requirements: string;
+            totalEpisodes?: number;
+            episodeDuration?: number;
+        };
     }): Promise<{ sessionId: string; transformId: string }> {
         const response = await fetch(`${this.baseUrl}/episodes/generate`, {
             method: 'POST',
