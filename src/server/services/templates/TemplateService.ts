@@ -352,7 +352,6 @@ export class TemplateService {
 
 **⚠️ 重要：请确保输出的JSON数组包含exactly %%params.numberOfEpisodes%% 个完整的episode对象，从第%%params.startingEpisode%%集到第%%params.endingEpisode%%集，缺一不可！**
 
-%%params.episodeSpecificInstructions%%
 
 **🔥 情感线发展要求（解决专业编剧反馈的核心问题）**：
 1. **男女主关系必须是核心**：每集都要有男女主的直接互动和情感推进
@@ -391,6 +390,9 @@ export class TemplateService {
    - 要与剧情发展紧密相关，为下集做铺垫
    - 要有足够的吸引力让观众想继续观看
    - **不能设置超出当前阶段范围的悬念**
+
+%%params.episodeSpecificInstructions%%
+
 
 **内容分配策略**：
 - 将阶段里程碑按集数合理分配（如4集阶段，每集实现1个里程碑）
