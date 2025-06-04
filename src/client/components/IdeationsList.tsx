@@ -162,11 +162,18 @@ const IdeationsList: React.FC = () => {
         }
 
         if (ideation.genre_paths && ideation.genre_paths.length > 0) {
-            const primaryGenre = ideation.genre_paths[0];
-            if (primaryGenre && primaryGenre.length > 0) {
-                // Use the most specific genre (last element)
-                const specificGenre = primaryGenre[primaryGenre.length - 1];
-                parts.push(specificGenre);
+            const genreStrings = [];
+            ideation.genre_paths.forEach(path => {
+                if (path && path.length > 0) {
+                    // Use the most specific genre (last element)
+                    const specificGenre = path[path.length - 1];
+                    genreStrings.push(specificGenre);
+                }
+            });
+            
+            // Add all genres to the title
+            if (genreStrings.length > 0) {
+                parts.push(...genreStrings);
             }
         }
 
