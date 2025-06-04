@@ -1,9 +1,8 @@
 import knex, { Knex } from 'knex';
-const config = require('./knexfile.js');
+import config from "./knexfile.js";
 
 const environment = process.env.NODE_ENV || 'development';
-const knexConfig = config[environment];
-
+const knexConfig = (config as any)[environment];
 // Create the database connection
 export const db: Knex = knex(knexConfig);
 
