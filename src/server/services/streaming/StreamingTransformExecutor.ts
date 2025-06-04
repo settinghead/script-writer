@@ -770,18 +770,9 @@ export class StreamingTransformExecutor {
                 ? `\n特殊要求：${customRequirements.trim()}`
                 : '';
 
-            // 🔥 FIXED: Extract ALL required parameters without fallbacks
+            // Extract ALL required parameters without fallbacks
             // These parameters MUST be available - no fallbacks allowed
             if (!paramsArtifact?.data?.cascadedParams) {
-                console.log('🔍 [DEBUG] CRITICAL ERROR: Cascaded parameters not found!');
-                console.log('🔍 [DEBUG] - paramsArtifact exists:', !!paramsArtifact);
-                console.log('🔍 [DEBUG] - paramsArtifact.data exists:', !!paramsArtifact?.data);
-                console.log('🔍 [DEBUG] - cascadedParams exists:', !!paramsArtifact?.data?.cascadedParams);
-                
-                if (paramsArtifact?.data) {
-                    console.log('🔍 [DEBUG] Available data keys:', Object.keys(paramsArtifact.data));
-                }
-                
                 throw new Error('Cascaded parameters not found in episode params artifact');
             }
 
@@ -928,12 +919,7 @@ export class StreamingTransformExecutor {
                 endingEpisodeNumber
             );
 
-            console.log('🔍 [DEBUG] Episode range for generation:', {
-                startingEpisode: startingEpisodeNumber,
-                endingEpisode: endingEpisodeNumber,
-                numberOfEpisodes,
-                hasSpecialInstructions: episodeSpecificInstructions.length > 0
-            });
+
 
             // 🔥 FIXED: Pass ALL required parameters - no missing values allowed
             const templateParams = {
@@ -965,17 +951,7 @@ export class StreamingTransformExecutor {
                 episodeSpecificInstructions
             };
 
-            console.log('🔍 [DEBUG] Template parameters being passed:', {
-                platform,
-                genre,
-                requirements,
-                totalEpisodes,
-                episodeDuration,
-                stageNumber,
-                numberOfEpisodes,
-                startingEpisode: startingEpisodeNumber,
-                endingEpisode: endingEpisodeNumber
-            });
+
 
             return await this.templateService.renderTemplate(template, {
                 artifacts: {},
@@ -1402,28 +1378,14 @@ export class StreamingTransformExecutor {
 
         // For episode generation, we need to handle multiple input roles
         if (templateId === 'episode_synopsis_generation') {
-            console.log('🔍 [DEBUG] ===== GENERIC STREAMING JOB EPISODE DEBUG =====');
-            console.log('🔍 [DEBUG] Transform inputs from database:', JSON.stringify(inputs, null, 2));
-            
             const stageInput = inputs.find(input => input.input_role === 'stage_data');
             const paramsInput = inputs.find(input => input.input_role === 'episode_params');
-
-            console.log('🔍 [DEBUG] Stage input found:', !!stageInput);
-            console.log('🔍 [DEBUG] Params input found:', !!paramsInput);
-            
-            if (stageInput) {
-                console.log('🔍 [DEBUG] Stage input artifact ID:', stageInput.artifact_id);
-            }
-            if (paramsInput) {
-                console.log('🔍 [DEBUG] Params input artifact ID:', paramsInput.artifact_id);
-            }
 
             if (!stageInput) {
                 throw new Error('Stage data not found for episode generation');
             }
 
             const stageArtifact = await this.artifactRepo.getArtifact(stageInput.artifact_id, transform.user_id);
-            console.log('🔍 [DEBUG] Stage artifact loaded:', !!stageArtifact);
             if (!stageArtifact) {
                 throw new Error('Stage artifact not found');
             }
@@ -1431,24 +1393,10 @@ export class StreamingTransformExecutor {
             let paramsArtifact: any = null;
             if (paramsInput) {
                 paramsArtifact = await this.artifactRepo.getArtifact(paramsInput.artifact_id, transform.user_id);
-                console.log('🔍 [DEBUG] Params artifact loaded:', !!paramsArtifact);
-                if (paramsArtifact) {
-                    console.log('🔍 [DEBUG] Params artifact type:', paramsArtifact.type);
-                    console.log('🔍 [DEBUG] Params artifact data keys:', Object.keys(paramsArtifact.data || {}));
-                    console.log('🔍 [DEBUG] Params artifact full data:', JSON.stringify(paramsArtifact.data, null, 2));
-                }
-            } else {
-                console.log('🔍 [DEBUG] No params input found - this could be the problem!');
             }
 
             // Build prompt using the provided builder function with stage and params artifacts
             const prompt = await promptBuilder(null, stageArtifact, paramsArtifact);
-
-            // 🔥 DEBUG: Log the actual prompt being sent to LLM
-            console.log('🔍 [DEBUG] Generated prompt for episode generation:');
-            console.log('🔍 [DEBUG] Prompt length:', prompt.length);
-            console.log('🔍 [DEBUG] Prompt snippet (first 500 chars):', prompt.substring(0, 500));
-            console.log('🔍 [DEBUG] Checking if numberOfEpisodes appears in prompt:', prompt.includes('numberOfEpisodes') || prompt.includes('12集') || prompt.includes('总集数'));
 
             // Get model name from credentials
             const { modelName } = getLLMCredentials();

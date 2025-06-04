@@ -243,8 +243,6 @@ export class EpisodeApiService {
 
     static async getCascadedParams(outlineSessionId: string): Promise<any> {
         try {
-            console.log('🔍 [DEBUG] Loading cascaded params for outline session:', outlineSessionId);
-            
             // Get brainstorm params for platform, genre, requirements
             const brainstormResponse = await fetch(`/api/artifacts?type=brainstorm_params&sessionId=${outlineSessionId}`, {
                 credentials: 'include'
@@ -260,10 +258,8 @@ export class EpisodeApiService {
             // Extract from brainstorm params
             if (brainstormResponse.ok) {
                 const brainstormArtifacts = await brainstormResponse.json();
-                console.log('🔍 [DEBUG] Brainstorm artifacts found:', brainstormArtifacts.length);
                 if (brainstormArtifacts.length > 0) {
                     const latestBrainstorm = brainstormArtifacts[0];
-                    console.log('🔍 [DEBUG] Brainstorm data:', latestBrainstorm.data);
                     cascadedParams.platform = latestBrainstorm.data.platform;
                     cascadedParams.genre_paths = latestBrainstorm.data.genre_paths;
                     cascadedParams.genre_proportions = latestBrainstorm.data.genre_proportions;
@@ -274,16 +270,12 @@ export class EpisodeApiService {
             // Extract from outline job params
             if (outlineJobResponse.ok) {
                 const outlineJobArtifacts = await outlineJobResponse.json();
-                console.log('🔍 [DEBUG] Outline job artifacts found:', outlineJobArtifacts.length);
                 if (outlineJobArtifacts.length > 0) {
                     const latestOutlineJob = outlineJobArtifacts[0];
-                    console.log('🔍 [DEBUG] Outline job data:', latestOutlineJob.data);
                     cascadedParams.totalEpisodes = latestOutlineJob.data.totalEpisodes;
                     cascadedParams.episodeDuration = latestOutlineJob.data.episodeDuration;
                 }
             }
-
-            console.log('🔍 [DEBUG] Final cascaded params:', cascadedParams);
 
             // Return null if no meaningful data was found
             if (Object.keys(cascadedParams).length === 0) {

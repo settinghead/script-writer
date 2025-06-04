@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
     Card,
     Typography,
@@ -25,17 +26,20 @@ const { TextArea } = Input;
 const { Panel } = Collapse;
 
 interface StageDetailViewProps {
-    scriptId: string;
-    stageId: string | null;
-    selectedEpisodeId?: string | null;
+    selectedStageId: string | null;
+    stages: any[];
+    stageEpisodeData: Record<string, any>;
+    onEpisodeSelect?: (episodeNumber: number) => void;
 }
 
 export const StageDetailView: React.FC<StageDetailViewProps> = ({
-    scriptId,
-    stageId,
-    selectedEpisodeId
+    stages,
+    stageEpisodeData,
+    onEpisodeSelect
 }) => {
-    const { state, actions } = useEpisodeContext();
+    const { actions } = useEpisodeContext();
+    const { scriptId, stageId } = useParams<{ scriptId: string; stageId: string }>();
+    const navigate = useNavigate();
     const [editMode, setEditMode] = useState(false);
     const [isExportModalVisible, setIsExportModalVisible] = useState(false);
     const [exportText, setExportText] = useState('');
@@ -47,12 +51,12 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
     const [editedRequirements, setEditedRequirements] = useState<string>('');
 
     // Get current stage data and episode data
-    const stageData = state.stages.find(s => s.artifactId === stageId);
-    const stageEpisodeData = stageId ? state.stageEpisodeData[stageId] : undefined;
-    const episodes = stageEpisodeData?.episodes || [];
-    const isLoading = stageEpisodeData?.loading || false;
-    const isStreaming = stageEpisodeData?.isStreaming || false;
-    const sessionData = stageEpisodeData?.sessionData;
+    const stageData = stages.find(s => s.artifactId === stageId);
+    const currentStageEpisodeData = stageId ? stageEpisodeData[stageId] : undefined;
+    const episodes = currentStageEpisodeData?.episodes || [];
+    const isLoading = currentStageEpisodeData?.loading || false;
+    const isStreaming = currentStageEpisodeData?.isStreaming || false;
+    const sessionData = currentStageEpisodeData?.sessionData;
 
     // 🔥 DEBUG: Log stage data to see what fields are available
     React.useEffect(() => {
@@ -89,11 +93,9 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
     }, [episodes]);
 
     // Check if this stage is currently streaming
-    const isActiveStreaming = state.activeStreamingStageId === stageId;
+    const isActiveStreaming = isStreaming;
 
-    // Find selected episode if selectedEpisodeId is provided
-    const selectedEpisode = selectedEpisodeId ?
-        episodes.find(ep => ep.episodeNumber.toString() === selectedEpisodeId) : null;
+    // Episode selection is handled by parent component
 
     // Initialize editable parameters when stage data loads
     React.useEffect(() => {
@@ -119,10 +121,8 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
         if (!stageData) return;
 
         try {
-            // 🔥 FIXED: Fetch cascaded parameters before starting generation
+            // Fetch cascaded parameters before starting generation
             const cascadedParams = await EpisodeApiService.getCascadedParams(stageData.outlineSessionId);
-            
-            console.log('🔍 [DEBUG] Fetched cascaded params for regeneration:', cascadedParams);
             
             await actions.startEpisodeGeneration(
                 stageData.artifactId, 
@@ -292,25 +292,7 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
 
             {/* Main Content */}
             <div style={{ padding: '20px 40px' }}>
-                {/* Selected Episode Highlight */}
-                {selectedEpisode && (
-                <Card
-                    size="small"
-                    style={{
-                        marginBottom: '20px',
-                        borderColor: '#1890ff',
-                        backgroundColor: '#f6ffed'
-                    }}
-                >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Tag color="blue">选中剧集</Tag>
-                        <Text strong>第{selectedEpisode.episodeNumber}集: {selectedEpisode.title}</Text>
-                    </div>
-                    <Paragraph style={{ margin: '8px 0 0 0', fontSize: '14px' }}>
-                        {selectedEpisode.briefSummary}
-                    </Paragraph>
-                </Card>
-            )}
+                {/* Episode selection is handled by navigation now */}
 
             {/* Collapsible Stage Information */}
             <Collapse
@@ -563,10 +545,22 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
                             <List.Item
                                 key={episode.episodeNumber}
                                 style={{
-                                    backgroundColor: selectedEpisode?.episodeNumber === episode.episodeNumber ? '#f6ffed' : undefined,
-                                    borderRadius: selectedEpisode?.episodeNumber === episode.episodeNumber ? '4px' : undefined,
                                     padding: '12px',
-                                    margin: '4px 0'
+                                    margin: '4px 0',
+                                    cursor: 'pointer',
+                                    borderRadius: '6px',
+                                    transition: 'background-color 0.2s'
+                                }}
+                                onClick={() => {
+                                    if (scriptId && stageId) {
+                                        navigate(`/scripts/${scriptId}/stages/${stageId}/episodes/${episode.episodeNumber}`);
+                                    }
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = '#1a1a1a';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'transparent';
                                 }}
                             >
                                 <div style={{ width: '100%' }}>
@@ -575,6 +569,7 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
                                         {isActiveStreaming && index === episodes.length - 1 && (
                                             <Tag color="processing">正在生成</Tag>
                                         )}
+                                        <Tag color="blue" style={{ fontSize: '11px' }}>点击生成剧本</Tag>
                                     </div>
                                     
                                     {/* Episode Summary */}

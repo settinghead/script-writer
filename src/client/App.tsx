@@ -16,6 +16,10 @@ import { OutlineTab } from './components/OutlineTab';
 import ChatTab from './components/ChatTab';
 import ScriptTab from './components/ScriptTab';
 import { EpisodeGenerationPage } from './components/EpisodeGenerationPage';
+import { ScriptLayout } from './components/ScriptLayout';
+import { ScriptOverview } from './components/ScriptOverview';
+import { StageDetail } from './components/StageDetail';
+import { EpisodeScriptGeneration } from './components/EpisodeScriptGeneration';
 import Breadcrumb from './components/Breadcrumb';
 import StagewiseToolbar from './components/StagewiseToolbar';
 
@@ -228,10 +232,10 @@ const AppContent: React.FC = () => {
                     <ScriptTab />
                   </ProtectedRoute>
                 } />
-                <Route path="/scripts/:scriptId" element={
+                <Route path="/scripts/:scriptId/*" element={
                   <ProtectedRoute>
                     <EpisodeProvider>
-                      <EpisodeGenerationPage />
+                      <ScriptLayout />
                     </EpisodeProvider>
                   </ProtectedRoute>
                 } />
@@ -298,10 +302,10 @@ const AppContent: React.FC = () => {
                     <ScriptTab />
                   </ProtectedRoute>
                 } />
-                <Route path="/scripts/:scriptId" element={
+                <Route path="/scripts/:scriptId/*" element={
                   <ProtectedRoute>
                     <EpisodeProvider>
-                      <EpisodeGenerationPage />
+                      <ScriptLayout />
                     </EpisodeProvider>
                   </ProtectedRoute>
                 } />
