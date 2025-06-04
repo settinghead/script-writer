@@ -7,11 +7,11 @@ const config = {
         },
         useNullAsDefault: true,
         migrations: {
-            directory: './src/migrations',
+            directory: './src/server/database/migrations',
             extension: 'js'
         },
         seeds: {
-            directory: './src/seeds',
+            directory: './src/server/database/seeds',
             extension: 'js'
         },
         pool: {
@@ -29,11 +29,11 @@ const config = {
         },
         useNullAsDefault: true,
         migrations: {
-            directory: './src/migrations',
+            directory: './src/server/database/migrations',
             extension: 'js'
         },
         seeds: {
-            directory: './src/seeds',
+            directory: './src/server/database/seeds',
             extension: 'js'
         },
         pool: {
