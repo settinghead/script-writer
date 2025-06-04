@@ -54,4 +54,50 @@ export interface BrainstormingGenerateRequest {
 export interface BrainstormingGenerateResponse {
     ideationRunId: string;
     transformId: string;
+}
+
+// Script generation types
+export interface ScriptGenerateRequest {
+    episodeId: string;
+    stageId: string;
+    userRequirements?: string;
+}
+
+export interface ScriptGenerateResponse {
+    sessionId: string;
+    transformId: string;
+}
+
+export interface DialogueLineV1 {
+    character: string;
+    line: string;
+    direction?: string; // action/emotional direction
+}
+
+export interface SceneV1 {
+    sceneNumber: number;
+    location: string;
+    timeOfDay: string;
+    characters: string[];
+    action: string;
+    dialogue: DialogueLineV1[];
+}
+
+export interface EpisodeScriptV1 {
+    episodeNumber: number;
+    stageArtifactId: string;
+    episodeGenerationSessionId: string;
+    
+    // Script content
+    scriptContent: string;
+    scenes: SceneV1[];
+    
+    // Metadata
+    wordCount: number;
+    estimatedDuration: number; // in minutes
+    generatedAt: string;
+    
+    // Source references
+    episodeSynopsisArtifactId: string;
+    userRequirements?: string;
 } 

@@ -4,12 +4,32 @@ import { Tree, Empty, Typography, Spin, Alert, Button } from 'antd';
 import type { DataNode } from 'antd/es/tree';
 import { StageDetailView } from './StageDetailView';
 import { EpisodeScriptGeneration } from './EpisodeScriptGeneration';
+import { ScriptDisplayPage } from './ScriptDisplayPage';
 import { useEpisodeContext } from '../contexts/EpisodeContext';
 import { OutlineExportModal } from './shared/OutlineExportModal';
 import { formatMultiStageEpisodesForExport, type MultiStageEpisodeExportData } from '../utils/episodeExporter';
-import { ExportOutlined } from '@ant-design/icons';
+import { 
+    ExportOutlined, 
+    CheckCircleFilled, 
+    LoadingOutlined, 
+    PlayCircleOutlined
+} from '@ant-design/icons';
 
 const { Title } = Typography;
+
+// Simple dotted circle component
+const DottedCircle: React.FC<{ style?: React.CSSProperties }> = ({ style }) => (
+    <span 
+        style={{
+            display: 'inline-block',
+            width: '12px',
+            height: '12px',
+            border: '1.5px dotted #666',
+            borderRadius: '50%',
+            ...style
+        }}
+    />
+);
 
 interface EpisodeNode extends DataNode {
     episodeNumber: number;
@@ -86,20 +106,29 @@ export const ScriptLayout: React.FC = () => {
 
             const stageKey = stage.artifactId;
 
-            const children: DataNode[] = episodes.map(episode => ({
-                key: `episode-${stageKey}-${episode.episodeNumber}`,
-                title: `第${episode.episodeNumber}集: ${episode.title || '无标题'}`,
-                isLeaf: true,
-                style: { color: '#d9d9d9' }
-            }));
+            const children: DataNode[] = episodes.map(episode => {
+                // For episodes, always show dotted circle since script generation is not yet implemented for status tracking
+                return {
+                    key: `episode-${stageKey}-${episode.episodeNumber}`,
+                    title: (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <DottedCircle />
+                            <span>第{episode.episodeNumber}集: {episode.title || '无标题'}</span>
+                        </span>
+                    ),
+                    isLeaf: true,
+                    style: { color: '#d9d9d9' }
+                };
+            });
 
             // Add loading indicator if needed
             if (isLoading || isStreaming) {
                 children.push({
                     key: `loading-${stageKey}`,
                     title: (
-                        <span style={{ color: '#666', fontStyle: 'italic' }}>
-                            {isStreaming ? '生成中...' : '加载中...'}
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#666', fontStyle: 'italic' }}>
+                            <LoadingOutlined style={{ color: '#1890ff', fontSize: '12px' }} />
+                            <span>{isStreaming ? '生成中...' : '加载中...'}</span>
                         </span>
                     ),
                     isLeaf: true,
@@ -107,19 +136,37 @@ export const ScriptLayout: React.FC = () => {
                 });
             }
 
-            let title = `第${stage.stageNumber}阶段 (${stage.numberOfEpisodes}集)`;
+            // Determine stage status icon
+            let statusIcon;
+            let statusColor;
+            
             if (isStreaming) {
-                title += ' 🔄';
+                statusIcon = <LoadingOutlined style={{ color: '#1890ff', fontSize: '12px' }} />;
+                statusColor = '#1890ff';
             } else if (episodes.length > 0) {
-                title += ` ✅ ${episodes.length}/${stage.numberOfEpisodes}`;
+                statusIcon = <CheckCircleFilled style={{ color: '#52c41a', fontSize: '12px' }} />;
+                statusColor = '#52c41a';
+            } else {
+                statusIcon = <DottedCircle />;
+                statusColor = '#666';
             }
+
+            const title = (
+                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {statusIcon}
+                    <span>
+                        第{stage.stageNumber}阶段 ({stage.numberOfEpisodes}集)
+                        {episodes.length > 0 && ` - ${episodes.length}/${stage.numberOfEpisodes}`}
+                    </span>
+                </span>
+            );
 
             return {
                 key: stageKey,
                 title,
                 children: children.length > 0 ? children : undefined,
                 isLeaf: children.length === 0 && !isLoading && !isStreaming,
-                style: { color: isStreaming ? '#1890ff' : episodes.length > 0 ? '#52c41a' : '#d9d9d9' }
+                style: { color: statusColor }
             };
         });
     }, [state.stages, state.stageEpisodeData]);
@@ -322,6 +369,9 @@ export const ScriptLayout: React.FC = () => {
                     
                     {/* Episode script generation route */}
                     <Route path="stages/:stageId/episodes/:episodeId" element={<EpisodeScriptGeneration />} />
+                    
+                    {/* Script display route */}
+                    <Route path="stages/:stageId/episodes/:episodeId/script" element={<ScriptDisplayPage />} />
                 </Routes>
             </div>
 

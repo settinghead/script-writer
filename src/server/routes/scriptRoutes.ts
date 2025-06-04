@@ -1,0 +1,88 @@
+import express from 'express';
+import { requireAuth } from '../middleware/authMiddleware.js';
+import { ScriptGenerationService } from '../services/ScriptGenerationService.js';
+import { ArtifactRepository } from '../repositories/ArtifactRepository.js';
+import { TransformRepository } from '../repositories/TransformRepository.js';
+import { StreamingTransformExecutor } from '../services/streaming/StreamingTransformExecutor.js';
+import { TemplateService } from '../services/templates/TemplateService.js';
+import { ScriptGenerateRequest, ScriptGenerateResponse } from '../../common/streaming/types.js';
+
+const router = express.Router();
+
+// Dependencies
+const artifactRepo = new ArtifactRepository();
+const transformRepo = new TransformRepository();
+const templateService = new TemplateService();
+const streamingExecutor = new StreamingTransformExecutor(artifactRepo, transformRepo, templateService);
+
+const scriptService = new ScriptGenerationService(
+    artifactRepo,
+    transformRepo,
+    streamingExecutor,
+    templateService
+);
+
+// Generate script for an episode
+router.post('/generate', requireAuth, async (req, res) => {
+    try {
+        const userId = req.user!.id;
+        const { episodeId, stageId, userRequirements }: ScriptGenerateRequest = req.body;
+
+        if (!episodeId || !stageId) {
+            return res.status(400).json({ error: 'episodeId and stageId are required' });
+        }
+
+        const result = await scriptService.generateScript(
+            userId,
+            episodeId,
+            stageId,
+            userRequirements
+        );
+
+        const response: ScriptGenerateResponse = {
+            sessionId: result.sessionId,
+            transformId: result.transformId
+        };
+
+        res.json(response);
+    } catch (error) {
+        console.error('Error generating script:', error);
+        res.status(500).json({ error: 'Failed to generate script' });
+    }
+});
+
+// Get generated script
+router.get('/:episodeId/:stageId', requireAuth, async (req, res) => {
+    try {
+        const userId = req.user!.id;
+        const { episodeId, stageId } = req.params;
+
+        const script = await scriptService.getGeneratedScript(userId, episodeId, stageId);
+
+        if (!script) {
+            return res.status(404).json({ error: 'Script not found' });
+        }
+
+        res.json(script);
+    } catch (error) {
+        console.error('Error getting script:', error);
+        res.status(500).json({ error: 'Failed to get script' });
+    }
+});
+
+// Check if script exists
+router.get('/:episodeId/:stageId/exists', requireAuth, async (req, res) => {
+    try {
+        const userId = req.user!.id;
+        const { episodeId, stageId } = req.params;
+
+        const exists = await scriptService.checkScriptExists(userId, episodeId, stageId);
+
+        res.json({ exists });
+    } catch (error) {
+        console.error('Error checking script existence:', error);
+        res.status(500).json({ error: 'Failed to check script existence' });
+    }
+});
+
+export default router; 

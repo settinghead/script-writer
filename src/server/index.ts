@@ -859,6 +859,10 @@ app.use('/api', createOutlineRoutes(authMiddleware, unifiedStreamingService, art
 const { createEpisodeRoutes } = require('./routes/episodes');
 app.use('/api/episodes', createEpisodeRoutes(artifactRepo, transformRepo, authMiddleware));
 
+// Mount script routes
+import scriptRoutes from './routes/scriptRoutes.js';
+app.use('/api/scripts', scriptRoutes);
+
 // ========== STREAMING ENDPOINTS ==========
 
 // Streaming endpoint for plot generation

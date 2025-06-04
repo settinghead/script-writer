@@ -59,21 +59,31 @@ export const EpisodeScriptGeneration: React.FC = () => {
         try {
             setIsGenerating(true);
 
-            // TODO: Implement script generation API call
-            console.log('Generating script with parameters:', {
-                scriptId,
-                stageId,
-                episodeId,
-                episode: currentEpisode,
-                scriptLength,
-                includeDialogue,
-                includeActionLines,
-                includeSceneDescriptions,
-                customRequirements
+            // Call script generation API
+            const response = await fetch('/api/scripts/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    episodeId,
+                    stageId,
+                    userRequirements: customRequirements || undefined
+                })
             });
 
-            // Placeholder - this will be implemented later
-            message.success('剧本生成功能即将推出！');
+            if (!response.ok) {
+                throw new Error('生成失败');
+            }
+
+            const result = await response.json();
+            console.log('Script generation started:', result);
+            
+            message.success('剧本生成已开始，正在跳转到剧本页面...');
+            
+            // Navigate to script display page
+            navigate(`/scripts/${scriptId}/stages/${stageId}/episodes/${episodeId}/script`);
 
         } catch (error) {
             console.error('Error generating script:', error);
