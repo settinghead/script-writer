@@ -1129,7 +1129,10 @@ export class StreamingTransformExecutor {
                         keyEvents: episode.keyEvents || [],
                         hooks: episode.endHook || episode.hooks || '',
                         stageArtifactId: '',
-                        episodeGenerationSessionId: sessionId
+                        episodeGenerationSessionId: sessionId,
+                        // 🔥 NEW: Include emotion and relationship developments
+                        emotionDevelopments: episode.emotionDevelopments || [],
+                        relationshipDevelopments: episode.relationshipDevelopments || []
                     },
                     'v1',
                     {

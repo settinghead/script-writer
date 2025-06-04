@@ -218,6 +218,15 @@ export interface EpisodeSynopsisV1 {
     hooks: string;        // End-of-episode hook to next episode
     stageArtifactId: string;
     episodeGenerationSessionId: string;
+    // 🔥 NEW: Episode-level emotion and relationship development tracking
+    emotionDevelopments?: Array<{
+        characters: string[];  // Characters involved in this emotion development
+        content: string;       // Detailed description of emotional change/progression
+    }>;
+    relationshipDevelopments?: Array<{
+        characters: string[];  // Characters involved in this relationship development
+        content: string;       // Detailed description of relationship change/progression
+    }>;
 }
 
 // Extended parameters for episode generation with cascading params
@@ -448,7 +457,7 @@ function isEpisodeGenerationSessionV1(data: any): data is EpisodeGenerationSessi
 }
 
 function isEpisodeSynopsisV1(data: any): data is EpisodeSynopsisV1 {
-    return typeof data === 'object' &&
+    const isValid = typeof data === 'object' &&
         typeof data.episodeNumber === 'number' &&
         typeof data.title === 'string' &&
         typeof data.briefSummary === 'string' &&
@@ -456,6 +465,34 @@ function isEpisodeSynopsisV1(data: any): data is EpisodeSynopsisV1 {
         typeof data.hooks === 'string' &&
         typeof data.stageArtifactId === 'string' &&
         typeof data.episodeGenerationSessionId === 'string';
+
+    if (!isValid) return false;
+
+    // Validate optional emotionDevelopments field
+    if (data.emotionDevelopments !== undefined) {
+        if (!Array.isArray(data.emotionDevelopments)) return false;
+        for (const dev of data.emotionDevelopments) {
+            if (typeof dev !== 'object' ||
+                !Array.isArray(dev.characters) ||
+                typeof dev.content !== 'string') {
+                return false;
+            }
+        }
+    }
+
+    // Validate optional relationshipDevelopments field
+    if (data.relationshipDevelopments !== undefined) {
+        if (!Array.isArray(data.relationshipDevelopments)) return false;
+        for (const dev of data.relationshipDevelopments) {
+            if (typeof dev !== 'object' ||
+                !Array.isArray(dev.characters) ||
+                typeof dev.content !== 'string') {
+                return false;
+            }
+        }
+    }
+
+    return true;
 }
 
 function isEpisodeGenerationParamsV1(data: any): data is EpisodeGenerationParamsV1 {

@@ -32,6 +32,7 @@ export class TemplateService {
 {params.requirementsSection}
 
 要求：
+- 题材不要老旧，要新颖有创意
 - 每个创意包含一个标题（3-7个字符）和一个完整的故事梗概灵感（50-80字）
 - 故事梗概包含完整的起承转合结构
 - 有明确的主角、冲突、发展和结局
@@ -568,7 +569,23 @@ export class TemplateService {
       "具体事件2：描述发生的具体事情",
       "具体事件3：描述发生的具体事情"
     ],
-    "endHook": "结尾悬念事件：描述具体发生的悬念事件"
+    "endHook": "结尾悬念事件：描述具体发生的悬念事件",
+    "emotionDevelopments": [
+      {
+        "characters": ["角色名1"],
+        "content": "具体的情感变化描述，比大纲中的情感发展更详细具体，关注该集中的微妙变化"
+      },
+      {
+        "characters": ["角色名1", "角色名2"],
+        "content": "角色间的情感互动变化，描述具体的情感转变和内心活动"
+      }
+    ],
+    "relationshipDevelopments": [
+      {
+        "characters": ["角色名1", "角色名2"],
+        "content": "关系发展的具体描述，比大纲层面更加细致，聚焦该集中的关系变化"
+      }
+    ]
   },
   {
     "episodeNumber": 2,
@@ -579,11 +596,51 @@ export class TemplateService {
       "具体事件2：描述发生的具体事情",
       "具体事件3：描述发生的具体事情"
     ],
-    "endHook": "结尾悬念事件：描述具体发生的悬念事件"
+    "endHook": "结尾悬念事件：描述具体发生的悬念事件",
+    "emotionDevelopments": [
+      {
+        "characters": ["角色名"],
+        "content": "该集中角色的情感变化"
+      }
+    ],
+    "relationshipDevelopments": [
+      {
+        "characters": ["角色名1", "角色名2"],
+        "content": "该集中关系的发展变化"
+      }
+    ]
   }
 ]
 
-**重要**：只输出纯JSON数组，不要任何解释、说明、或其他文本。确保JSON格式正确且完整。所有内容必须严格限制在给定的阶段信息范围内，不能超出该阶段的故事发展。`,
+**🎭 情感与关系发展追踪要求**：
+
+**emotionDevelopments（情感发展）**：
+- **比大纲级别更细致**：每集要关注角色在该集中的具体情感变化，不是大的情感弧线，而是微妙的情感转变
+- **具体化描述**：避免"开心"、"难过"等简单词汇，要描述具体的情感状态和变化过程
+- **单角色焦点**：每个条目主要关注一个角色的内心世界，但可以包括与其他角色互动时的情感反应
+- **承接性**：要与前一集的情感状态有逻辑连接，体现情感发展的连续性
+- **事件驱动**：情感变化必须有具体事件作为触发，不能凭空产生
+
+**relationshipDevelopments（关系发展）**：
+- **双向互动**：关注两个或多个角色之间关系的具体变化，不是单方面的感受
+- **层次递进**：关系发展要有明确的层次变化，如从陌生到熟悉、从误解到理解、从敌对到合作等
+- **行为体现**：关系变化要通过具体的对话、行为、互动来体现，不能只是内心感受
+- **冲突与和解**：要包括关系中的张力和缓解，体现关系发展的真实性
+- **多维度**：可以包括情感关系、利益关系、权力关系等多个维度的变化
+
+**细致度要求**：
+- **时间颗粒度**：聚焦该集中发生的变化，不要跨集描述
+- **情感层次**：区分表面情感和深层情感，包括角色的内心挣扎和矛盾
+- **互动细节**：描述角色间对话、眼神、肢体语言等微妙互动中的情感和关系变化
+- **成长痕迹**：每个角色的情感成长要有可追踪的轨迹，避免突然的性格转变
+
+**数量指导**：
+- 每集建议2-4个情感发展条目
+- 每集建议1-3个关系发展条目
+- 主要角色每集都应该有情感或关系的变化追踪
+- 重要配角的发展也要适当关注
+
+**重要**：只输出纯JSON数组，不要任何解释、说明、或其他文本。确保JSON格式正确且完整。所有内容必须严格限制在给定的阶段信息范围内，不能超出该阶段的故事发展。情感和关系发展必须与剧情事件紧密结合，体现人物的真实成长轨迹。`,
       outputFormat: 'json_array',
       responseWrapper: '```json',
       variables: ['params.numberOfEpisodes', 'params.stageSynopsis', 'params.customRequirements', 'params.timeframe', 'params.startingCondition', 'params.endingCondition', 'params.stageStartEvent', 'params.stageEndEvent', 'params.keyPoints', 'params.relationshipLevel', 'params.emotionalArc', 'params.externalPressure', 'params.platform', 'params.genre', 'params.requirements', 'params.totalEpisodes', 'params.episodeDuration', 'params.stageNumber']

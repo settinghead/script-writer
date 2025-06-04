@@ -69,6 +69,21 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
         }
     }, [stageData]);
 
+    // 🔥 NEW: Debug episode data to see if new fields are present
+    React.useEffect(() => {
+        if (episodes.length > 0) {
+            console.log('🔍 StageDetailView - Episodes data:', episodes);
+            console.log('🔍 First episode structure:', episodes[0]);
+            console.log('🔍 Episode fields available:', Object.keys(episodes[0]));
+            console.log('🔍 Enhanced episode fields present:', {
+                hasEmotionDevelopments: !!episodes[0].emotionDevelopments,
+                hasRelationshipDevelopments: !!episodes[0].relationshipDevelopments,
+                emotionDevelopmentsLength: episodes[0].emotionDevelopments?.length || 0,
+                relationshipDevelopmentsLength: episodes[0].relationshipDevelopments?.length || 0
+            });
+        }
+    }, [episodes]);
+
     // Check if this stage is currently streaming
     const isActiveStreaming = state.activeStreamingStageId === stageId;
 
@@ -442,28 +457,103 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
                                     margin: '4px 0'
                                 }}
                             >
-                                <List.Item.Meta
-                                    title={
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <Text strong>第{episode.episodeNumber}集: {episode.title}</Text>
-                                            {isActiveStreaming && index === episodes.length - 1 && (
-                                                <Tag color="processing">正在生成</Tag>
-                                            )}
+                                <div style={{ width: '100%' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                        <Text strong>第{episode.episodeNumber}集: {episode.title}</Text>
+                                        {isActiveStreaming && index === episodes.length - 1 && (
+                                            <Tag color="processing">正在生成</Tag>
+                                        )}
+                                    </div>
+                                    
+                                    {/* Episode Summary */}
+                                    <div style={{ marginBottom: '12px' }}>
+                                        <Paragraph ellipsis={{ rows: 2, expandable: true }}>
+                                            {episode.briefSummary}
+                                        </Paragraph>
+                                    </div>
+
+                                    {/* Key Events */}
+                                    {episode.keyEvents && episode.keyEvents.length > 0 && (
+                                        <div style={{ marginBottom: '12px' }}>
+                                            <Text strong style={{ color: '#1890ff', fontSize: '12px' }}>
+                                                📋 关键事件:
+                                            </Text>
+                                            <ul style={{ margin: '4px 0 0 16px', padding: 0 }}>
+                                                {episode.keyEvents.map((event, eventIndex) => (
+                                                    <li key={eventIndex} style={{ fontSize: '12px', color: '#666', marginBottom: '2px' }}>
+                                                        {event}
+                                                    </li>
+                                                ))}
+                                            </ul>
                                         </div>
-                                    }
-                                    description={
-                                        <div>
-                                            <Paragraph ellipsis={{ rows: 2, expandable: true }}>
-                                                {episode.briefSummary}
-                                            </Paragraph>
-                                            {episode.keyEvents && (
-                                                <Text type="secondary">
-                                                    关键情节: {episode.keyEvents}
-                                                </Text>
-                                            )}
+                                    )}
+
+                                    {/* 🔥 NEW: Emotion Developments */}
+                                    {episode.emotionDevelopments && episode.emotionDevelopments.length > 0 && (
+                                        <div style={{ marginBottom: '12px' }}>
+                                            <Text strong style={{ color: '#52c41a', fontSize: '12px' }}>
+                                                💚 情感发展:
+                                            </Text>
+                                            <div style={{ marginTop: '4px' }}>
+                                                {episode.emotionDevelopments.map((dev, devIndex) => (
+                                                    <div key={devIndex} style={{ 
+                                                        backgroundColor: '#0a2000', 
+                                                        border: '1px solid #237a00',
+                                                        borderRadius: '4px',
+                                                        padding: '8px',
+                                                        marginBottom: '4px'
+                                                    }}>
+                                                        <div style={{ fontSize: '11px', color: '#52c41a', marginBottom: '2px' }}>
+                                                            角色: {dev.characters.join(', ')}
+                                                        </div>
+                                                        <div style={{ fontSize: '12px', color: '#d9d9d9' }}>
+                                                            {dev.content}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div>
-                                    }
-                                />
+                                    )}
+
+                                    {/* 🔥 NEW: Relationship Developments */}
+                                    {episode.relationshipDevelopments && episode.relationshipDevelopments.length > 0 && (
+                                        <div style={{ marginBottom: '12px' }}>
+                                            <Text strong style={{ color: '#1890ff', fontSize: '12px' }}>
+                                                💙 关系发展:
+                                            </Text>
+                                            <div style={{ marginTop: '4px' }}>
+                                                {episode.relationshipDevelopments.map((dev, devIndex) => (
+                                                    <div key={devIndex} style={{ 
+                                                        backgroundColor: '#001529', 
+                                                        border: '1px solid #1890ff',
+                                                        borderRadius: '4px',
+                                                        padding: '8px',
+                                                        marginBottom: '4px'
+                                                    }}>
+                                                        <div style={{ fontSize: '11px', color: '#1890ff', marginBottom: '2px' }}>
+                                                            角色: {dev.characters.join(', ')}
+                                                        </div>
+                                                        <div style={{ fontSize: '12px', color: '#d9d9d9' }}>
+                                                            {dev.content}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* End Hook */}
+                                    {episode.hooks && (
+                                        <div style={{ marginTop: '8px' }}>
+                                            <Text strong style={{ color: '#ff7a45', fontSize: '12px' }}>
+                                                🎬 结尾悬念:
+                                            </Text>
+                                            <div style={{ fontSize: '12px', color: '#888', fontStyle: 'italic', marginTop: '2px' }}>
+                                                {episode.hooks}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             </List.Item>
                         )}
                     />

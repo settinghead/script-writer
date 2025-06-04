@@ -2247,4 +2247,410 @@ export const EditableSynopsisStagesField: React.FC<ExtendedFieldProps & {
         </div>
       </div>
     );
+  };
+
+// Editable emotion developments field for episodes
+export const EditableEmotionDevelopmentsField: React.FC<ExtendedFieldProps & {
+  label?: string;
+  onSave?: (value: Array<any>) => Promise<void>;
+  debounceMs?: number;
+}> = ({
+  value,
+  onSave,
+  debounceMs = 1000,
+  label,
+  disabled = false,
+  style,
+  ...props
+}) => {
+    const [localDevelopments, setLocalDevelopments] = useState<Array<any>>(() => {
+      return Array.isArray(value) ? value : [];
+    });
+    const [isSaving, setIsSaving] = useState(false);
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
+
+    // Update local value when prop changes
+    useEffect(() => {
+      const newDevelopments = Array.isArray(value) ? value : [];
+      setLocalDevelopments(newDevelopments);
+      setHasUnsavedChanges(false);
+    }, [value]);
+
+    // Debounced save function
+    const debouncedSave = useMemo(
+      () => debounce(async (newDevelopments: Array<any>) => {
+        if (onSave && JSON.stringify(newDevelopments) !== JSON.stringify(value)) {
+          setIsSaving(true);
+          setSaveError(null);
+          try {
+            await onSave(newDevelopments);
+            setHasUnsavedChanges(false);
+          } catch (error) {
+            console.error('Auto-save failed:', error);
+            setSaveError('保存失败');
+          } finally {
+            setIsSaving(false);
+          }
+        }
+      }, debounceMs),
+      [onSave, value, debounceMs]
+    );
+
+    // Auto-save on developments change
+    useEffect(() => {
+      if (JSON.stringify(localDevelopments) !== JSON.stringify(value)) {
+        setHasUnsavedChanges(true);
+        debouncedSave(localDevelopments);
+      }
+    }, [localDevelopments, debouncedSave, value]);
+
+    // Cleanup debounce on unmount
+    useEffect(() => {
+      return () => {
+        debouncedSave.cancel();
+      };
+    }, [debouncedSave]);
+
+    const updateDevelopment = (index: number, field: string, newValue: any) => {
+      const newDevelopments = [...localDevelopments];
+      newDevelopments[index] = { ...newDevelopments[index], [field]: newValue };
+      setLocalDevelopments(newDevelopments);
+    };
+
+    const addDevelopment = () => {
+      const newDevelopment = {
+        characters: [],
+        content: ''
+      };
+      setLocalDevelopments([...localDevelopments, newDevelopment]);
+    };
+
+    const removeDevelopment = (index: number) => {
+      const newDevelopments = localDevelopments.filter((_, i) => i !== index);
+      setLocalDevelopments(newDevelopments);
+    };
+
+    return (
+      <div style={{ marginBottom: '16px', ...style }}>
+        {label && (
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
+            <Text strong style={{ color: '#52c41a', fontSize: '14px' }}>
+              💚 {label}
+            </Text>
+            <div style={{ marginLeft: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {isSaving && (
+                <Spin size="small" />
+              )}
+              {hasUnsavedChanges && !isSaving && (
+                <Text type="secondary" style={{ fontSize: '12px' }}>
+                  未保存
+                </Text>
+              )}
+              {saveError && (
+                <Text type="danger" style={{ fontSize: '12px' }}>
+                  {saveError}
+                </Text>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div>
+          {localDevelopments.map((development, index) => (
+            <Card
+              key={index}
+              size="small"
+              style={{
+                backgroundColor: '#0a2000',
+                border: '1px solid #237a00',
+                marginBottom: '12px'
+              }}
+              bodyStyle={{ padding: '12px' }}
+              title={
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Text style={{ color: '#52c41a', fontSize: '12px' }}>
+                    情感发展 #{index + 1}
+                  </Text>
+                  <Button
+                    type="text"
+                    danger
+                    size="small"
+                    onClick={() => removeDevelopment(index)}
+                    disabled={disabled}
+                    style={{ color: '#ff4d4f' }}
+                  >
+                    删除
+                  </Button>
+                </div>
+              }
+            >
+              {/* Characters */}
+              <div style={{ marginBottom: '12px' }}>
+                <Text style={{ color: '#d9d9d9', display: 'block', marginBottom: '4px', fontSize: '12px' }}>
+                  角色（用逗号分隔）
+                </Text>
+                <Input
+                  value={(development.characters || []).join(', ')}
+                  onChange={(e) => updateDevelopment(index, 'characters', e.target.value.split(',').map((s: string) => s.trim()).filter(Boolean))}
+                  placeholder="如：林晚晴, 顾沉舟"
+                  disabled={disabled}
+                  style={{
+                    backgroundColor: '#1f1f1f',
+                    borderColor: '#404040',
+                    color: '#fff'
+                  }}
+                />
+              </div>
+
+              {/* Content */}
+              <div>
+                <Text style={{ color: '#d9d9d9', display: 'block', marginBottom: '4px', fontSize: '12px' }}>
+                  情感变化描述
+                </Text>
+                <TextareaAutosize
+                  value={development.content || ''}
+                  onChange={(e) => updateDevelopment(index, 'content', e.target.value)}
+                  placeholder="描述该集中角色的具体情感变化，比大纲层面更加细致..."
+                  disabled={disabled}
+                  minRows={2}
+                  maxRows={6}
+                  style={{
+                    width: '100%',
+                    backgroundColor: '#1f1f1f',
+                    border: '1px solid #404040',
+                    borderRadius: '6px',
+                    color: '#fff',
+                    padding: '8px 12px',
+                    fontSize: '12px',
+                    lineHeight: '1.5715',
+                    resize: 'none',
+                    outline: 'none',
+                    fontFamily: 'inherit'
+                  }}
+                />
+              </div>
+            </Card>
+          ))}
+
+          <Button
+            type="dashed"
+            onClick={addDevelopment}
+            disabled={disabled}
+            style={{
+              width: '100%',
+              backgroundColor: 'transparent',
+              borderColor: '#52c41a',
+              color: '#52c41a',
+              borderStyle: 'dashed'
+            }}
+          >
+            + 添加情感发展
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
+// Editable relationship developments field for episodes
+export const EditableRelationshipDevelopmentsField: React.FC<ExtendedFieldProps & {
+  label?: string;
+  onSave?: (value: Array<any>) => Promise<void>;
+  debounceMs?: number;
+}> = ({
+  value,
+  onSave,
+  debounceMs = 1000,
+  label,
+  disabled = false,
+  style,
+  ...props
+}) => {
+    const [localDevelopments, setLocalDevelopments] = useState<Array<any>>(() => {
+      return Array.isArray(value) ? value : [];
+    });
+    const [isSaving, setIsSaving] = useState(false);
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
+
+    // Update local value when prop changes
+    useEffect(() => {
+      const newDevelopments = Array.isArray(value) ? value : [];
+      setLocalDevelopments(newDevelopments);
+      setHasUnsavedChanges(false);
+    }, [value]);
+
+    // Debounced save function
+    const debouncedSave = useMemo(
+      () => debounce(async (newDevelopments: Array<any>) => {
+        if (onSave && JSON.stringify(newDevelopments) !== JSON.stringify(value)) {
+          setIsSaving(true);
+          setSaveError(null);
+          try {
+            await onSave(newDevelopments);
+            setHasUnsavedChanges(false);
+          } catch (error) {
+            console.error('Auto-save failed:', error);
+            setSaveError('保存失败');
+          } finally {
+            setIsSaving(false);
+          }
+        }
+      }, debounceMs),
+      [onSave, value, debounceMs]
+    );
+
+    // Auto-save on developments change
+    useEffect(() => {
+      if (JSON.stringify(localDevelopments) !== JSON.stringify(value)) {
+        setHasUnsavedChanges(true);
+        debouncedSave(localDevelopments);
+      }
+    }, [localDevelopments, debouncedSave, value]);
+
+    // Cleanup debounce on unmount
+    useEffect(() => {
+      return () => {
+        debouncedSave.cancel();
+      };
+    }, [debouncedSave]);
+
+    const updateDevelopment = (index: number, field: string, newValue: any) => {
+      const newDevelopments = [...localDevelopments];
+      newDevelopments[index] = { ...newDevelopments[index], [field]: newValue };
+      setLocalDevelopments(newDevelopments);
+    };
+
+    const addDevelopment = () => {
+      const newDevelopment = {
+        characters: [],
+        content: ''
+      };
+      setLocalDevelopments([...localDevelopments, newDevelopment]);
+    };
+
+    const removeDevelopment = (index: number) => {
+      const newDevelopments = localDevelopments.filter((_, i) => i !== index);
+      setLocalDevelopments(newDevelopments);
+    };
+
+    return (
+      <div style={{ marginBottom: '16px', ...style }}>
+        {label && (
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
+            <Text strong style={{ color: '#1890ff', fontSize: '14px' }}>
+              💙 {label}
+            </Text>
+            <div style={{ marginLeft: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {isSaving && (
+                <Spin size="small" />
+              )}
+              {hasUnsavedChanges && !isSaving && (
+                <Text type="secondary" style={{ fontSize: '12px' }}>
+                  未保存
+                </Text>
+              )}
+              {saveError && (
+                <Text type="danger" style={{ fontSize: '12px' }}>
+                  {saveError}
+                </Text>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div>
+          {localDevelopments.map((development, index) => (
+            <Card
+              key={index}
+              size="small"
+              style={{
+                backgroundColor: '#001529',
+                border: '1px solid #1890ff',
+                marginBottom: '12px'
+              }}
+              bodyStyle={{ padding: '12px' }}
+              title={
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Text style={{ color: '#1890ff', fontSize: '12px' }}>
+                    关系发展 #{index + 1}
+                  </Text>
+                  <Button
+                    type="text"
+                    danger
+                    size="small"
+                    onClick={() => removeDevelopment(index)}
+                    disabled={disabled}
+                    style={{ color: '#ff4d4f' }}
+                  >
+                    删除
+                  </Button>
+                </div>
+              }
+            >
+              {/* Characters */}
+              <div style={{ marginBottom: '12px' }}>
+                <Text style={{ color: '#d9d9d9', display: 'block', marginBottom: '4px', fontSize: '12px' }}>
+                  角色（用逗号分隔）
+                </Text>
+                <Input
+                  value={(development.characters || []).join(', ')}
+                  onChange={(e) => updateDevelopment(index, 'characters', e.target.value.split(',').map((s: string) => s.trim()).filter(Boolean))}
+                  placeholder="如：林晚晴, 顾沉舟"
+                  disabled={disabled}
+                  style={{
+                    backgroundColor: '#1f1f1f',
+                    borderColor: '#404040',
+                    color: '#fff'
+                  }}
+                />
+              </div>
+
+              {/* Content */}
+              <div>
+                <Text style={{ color: '#d9d9d9', display: 'block', marginBottom: '4px', fontSize: '12px' }}>
+                  关系发展描述
+                </Text>
+                <TextareaAutosize
+                  value={development.content || ''}
+                  onChange={(e) => updateDevelopment(index, 'content', e.target.value)}
+                  placeholder="描述该集中角色间关系的具体变化，比大纲层面更加细致..."
+                  disabled={disabled}
+                  minRows={2}
+                  maxRows={6}
+                  style={{
+                    width: '100%',
+                    backgroundColor: '#1f1f1f',
+                    border: '1px solid #404040',
+                    borderRadius: '6px',
+                    color: '#fff',
+                    padding: '8px 12px',
+                    fontSize: '12px',
+                    lineHeight: '1.5715',
+                    resize: 'none',
+                    outline: 'none',
+                    fontFamily: 'inherit'
+                  }}
+                />
+              </div>
+            </Card>
+          ))}
+
+          <Button
+            type="dashed"
+            onClick={addDevelopment}
+            disabled={disabled}
+            style={{
+              width: '100%',
+              backgroundColor: 'transparent',
+              borderColor: '#1890ff',
+              color: '#1890ff',
+              borderStyle: 'dashed'
+            }}
+          >
+            + 添加关系发展
+          </Button>
+        </div>
+      </div>
+    );
   }; 

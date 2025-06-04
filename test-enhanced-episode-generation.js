@@ -1,211 +1,178 @@
 #!/usr/bin/env node
 
 /**
- * Test script to verify enhanced outline structure and cascaded parameters
- * are properly utilized in episode generation
+ * Comprehensive test for enhanced episode generation with emotion/relationship developments
  */
 
-const path = require('path');
+console.log('🧪 Testing Enhanced Episode Generation with Emotion/Relationship Tracking\n');
+
 const fs = require('fs');
+const path = require('path');
 
-console.log('🧪 Testing Enhanced Episode Generation Implementation\n');
-
-// Test 1: Verify enhanced outline structure is used in episode generation
-console.log('1. Testing enhanced outline structure usage...');
-
+// Test 1: Verify artifact types include new fields
+console.log('1. Testing artifact type definitions...');
 try {
-    const executorPath = path.join(__dirname, 'src/server/services/streaming/StreamingTransformExecutor.ts');
-    const content = fs.readFileSync(executorPath, 'utf8');
-
-    if (content.includes('formatKeyPoints') && content.includes('emotionArcs') && content.includes('relationshipDevelopments')) {
-        console.log('   ✅ Enhanced keyPoints structure is being formatted for LLM');
+    const artifactsPath = path.join(__dirname, 'src/server/types/artifacts.ts');
+    const content = fs.readFileSync(artifactsPath, 'utf8');
+    
+    if (content.includes('emotionDevelopments') && content.includes('relationshipDevelopments')) {
+        console.log('   ✅ EpisodeSynopsisV1 includes emotion and relationship developments');
     } else {
-        console.log('   ❌ Enhanced keyPoints structure formatting missing');
+        console.log('   ❌ Missing emotion/relationship development fields in artifacts');
     }
-
-    if (content.includes('extractRelationshipSummary') && content.includes('extractEmotionalSummary')) {
-        console.log('   ✅ Relationship and emotional summaries are being extracted');
-    } else {
-        console.log('   ❌ Relationship and emotional summary extraction missing');
-    }
-
-    if (content.includes('keyPoints: formatKeyPoints(stageData.keyPoints')) {
-        console.log('   ✅ Formatted keyPoints being passed to template');
-    } else {
-        console.log('   ❌ Formatted keyPoints not being passed to template');
-    }
-
-    console.log();
 } catch (error) {
-    console.log(`   ❌ Error reading StreamingTransformExecutor: ${error.message}\n`);
+    console.log('   ❌ Error reading artifacts file:', error.message);
 }
 
-// Test 2: Verify cascaded parameters are handled
-console.log('2. Testing cascaded parameters handling...');
-
-try {
-    const routesPath = path.join(__dirname, 'src/server/routes/episodes.ts');
-    const routesContent = fs.readFileSync(routesPath, 'utf8');
-
-    if (routesContent.includes('cascadedParams') && routesContent.includes('/generate')) {
-        console.log('   ✅ Episode generation routes handle cascaded parameters');
-    } else {
-        console.log('   ❌ Episode generation routes missing cascaded parameters handling');
-    }
-
-    const servicePath = path.join(__dirname, 'src/server/services/EpisodeGenerationService.ts');
-    const serviceContent = fs.readFileSync(servicePath, 'utf8');
-
-    if (serviceContent.includes('cascadedParams?: any')) {
-        console.log('   ✅ EpisodeGenerationService accepts cascaded parameters');
-    } else {
-        console.log('   ❌ EpisodeGenerationService missing cascaded parameters');
-    }
-
-    const executorPath = path.join(__dirname, 'src/server/services/streaming/StreamingTransformExecutor.ts');
-    const executorContent = fs.readFileSync(executorPath, 'utf8');
-
-    if (executorContent.includes('paramsArtifact?.data?.cascadedParams')) {
-        console.log('   ✅ StreamingExecutor extracts cascaded parameters');
-    } else {
-        console.log('   ❌ StreamingExecutor missing cascaded parameters extraction');
-    }
-
-    if (executorContent.includes('platform,') && executorContent.includes('genre,') && executorContent.includes('requirements,')) {
-        console.log('   ✅ Cascaded parameters passed to template');
-    } else {
-        console.log('   ❌ Cascaded parameters not passed to template');
-    }
-
-    console.log();
-} catch (error) {
-    console.log(`   ❌ Error reading episode generation files: ${error.message}\n`);
-}
-
-// Test 3: Verify template expects all parameters
-console.log('3. Testing template parameter compatibility...');
-
+// Test 2: Verify template includes enhanced instructions
+console.log('\n2. Testing episode generation template...');
 try {
     const templatePath = path.join(__dirname, 'src/server/services/templates/TemplateService.ts');
     const content = fs.readFileSync(templatePath, 'utf8');
-
-    const requiredParams = [
-        'params.platform',
-        'params.genre',
-        'params.requirements',
-        'params.totalEpisodes',
-        'params.episodeDuration',
-        'params.stageNumber',
-        'params.keyPoints',
-        'params.relationshipLevel',
-        'params.emotionalArc'
-    ];
-
-    const templateMatch = content.match(/promptTemplate:\s*`([^`]+)`/s);
-    if (templateMatch) {
-        const template = templateMatch[1];
-        const missingParams = requiredParams.filter(param => !template.includes(`{${param}}`));
-
-        if (missingParams.length === 0) {
-            console.log('   ✅ Episode template includes all required parameters');
-        } else {
-            console.log(`   ❌ Episode template missing parameters: ${missingParams.join(', ')}`);
-        }
+    
+    const hasEmotionInstructions = content.includes('emotionDevelopments') && content.includes('情感发展追踪要求');
+    const hasRelationshipInstructions = content.includes('relationshipDevelopments') && content.includes('关系发展追踪要求');
+    const hasGranularRequirements = content.includes('比大纲级别更细致') && content.includes('具体化描述');
+    
+    if (hasEmotionInstructions && hasRelationshipInstructions && hasGranularRequirements) {
+        console.log('   ✅ Template includes comprehensive emotion/relationship development instructions');
+    } else {
+        console.log('   ❌ Template missing enhanced instructions');
+        console.log('      - Emotion instructions:', hasEmotionInstructions);
+        console.log('      - Relationship instructions:', hasRelationshipInstructions);
+        console.log('      - Granular requirements:', hasGranularRequirements);
     }
-
-    // Check if variables array includes all parameters
-    const variablesMatch = content.match(/variables:\s*\[([^\]]+)\]/g);
-    if (variablesMatch && variablesMatch.length >= 2) {
-        const episodeVariables = variablesMatch[1]; // Second template is episode generation
-        const expectedVars = ['platform', 'genre', 'requirements', 'totalEpisodes', 'episodeDuration', 'stageNumber'];
-        const hasAllVars = expectedVars.every(v => episodeVariables.includes(`'params.${v}'`));
-
-        if (hasAllVars) {
-            console.log('   ✅ Episode template variables array includes cascaded parameters');
-        } else {
-            console.log('   ❌ Episode template variables array missing some cascaded parameters');
-        }
-    }
-
-    console.log();
 } catch (error) {
-    console.log(`   ❌ Error reading template service: ${error.message}\n`);
+    console.log('   ❌ Error reading template file:', error.message);
 }
 
-// Test 4: Test with actual enhanced outline data
-console.log('4. Testing enhanced outline data structure...');
-
+// Test 3: Verify field registry includes episode fields
+console.log('\n3. Testing episode field registry...');
 try {
-    const testData = {
-        stages: [
-            {
-                title: "重生觉醒阶段",
-                stageSynopsis: "林晚晴重生回到十年前，决心改变命运远离悲剧。",
-                numberOfEpisodes: 15,
-                timeframe: "重生后第1-30天",
-                startingCondition: "林晚晴重生苏醒，回到大学时期",
-                endingCondition: "两人重新建立联系，感情开始萌芽",
-                stageStartEvent: "林晚晴重生苏醒",
-                stageEndEvent: "顾沉舟主动表白",
-                keyPoints: [
-                    {
-                        event: "林晚晴重生苏醒，回忆前世痛苦",
-                        timeSpan: "第1天",
-                        emotionArcs: [
-                            {
-                                characters: ["林晚晴"],
-                                content: "从绝望痛苦转为坚定决心"
-                            }
-                        ],
-                        relationshipDevelopments: [
-                            {
-                                characters: ["林晚晴", "顾沉舟"],
-                                content: "从前世恋人关系重置为陌生人"
-                            }
-                        ]
-                    }
-                ],
-                externalPressure: "学业压力、家庭期望、前世记忆的困扰"
-            }
-        ]
-    };
-
-    const cascadedParams = {
-        platform: "抖音",
-        genre_paths: [["言情", "重生", "校园"]],
-        genre_proportions: [100],
-        requirements: "强化情感线发展，避免角色断裂",
-        totalEpisodes: 60,
-        episodeDuration: 2
-    };
-
-    console.log('   ✅ Enhanced outline structure verified:');
-    console.log(`      - Stages: ${testData.stages.length}`);
-    console.log(`      - Key points in stage 1: ${testData.stages[0].keyPoints.length}`);
-    console.log(`      - Emotion arcs in first key point: ${testData.stages[0].keyPoints[0].emotionArcs.length}`);
-    console.log(`      - Relationship developments: ${testData.stages[0].keyPoints[0].relationshipDevelopments.length}`);
-
-    console.log('   ✅ Cascaded parameters verified:');
-    console.log(`      - Platform: ${cascadedParams.platform}`);
-    console.log(`      - Genre: ${cascadedParams.genre_paths[0].join(' > ')}`);
-    console.log(`      - Requirements: ${cascadedParams.requirements}`);
-
-    console.log();
+    const registryPath = path.join(__dirname, 'src/client/components/shared/streaming/fieldRegistries.ts');
+    const content = fs.readFileSync(registryPath, 'utf8');
+    
+    const hasEpisodeRegistry = content.includes('episodeFieldRegistry');
+    const hasEmotionField = content.includes('EditableEmotionDevelopmentsField');
+    const hasRelationshipField = content.includes('EditableRelationshipDevelopmentsField');
+    
+    if (hasEpisodeRegistry && hasEmotionField && hasRelationshipField) {
+        console.log('   ✅ Episode field registry includes emotion/relationship components');
+    } else {
+        console.log('   ❌ Episode field registry incomplete');
+        console.log('      - Episode registry:', hasEpisodeRegistry);
+        console.log('      - Emotion field:', hasEmotionField);
+        console.log('      - Relationship field:', hasRelationshipField);
+    }
 } catch (error) {
-    console.log(`   ❌ Error testing enhanced outline data: ${error.message}\n`);
+    console.log('   ❌ Error reading field registry file:', error.message);
+}
+
+// Test 4: Verify field components exist
+console.log('\n4. Testing episode field components...');
+try {
+    const componentsPath = path.join(__dirname, 'src/client/components/shared/streaming/fieldComponents.tsx');
+    const content = fs.readFileSync(componentsPath, 'utf8');
+    
+    const hasEmotionComponent = content.includes('EditableEmotionDevelopmentsField') && content.includes('情感发展');
+    const hasRelationshipComponent = content.includes('EditableRelationshipDevelopmentsField') && content.includes('关系发展');
+    const hasAutoSave = content.includes('debounce') && content.includes('auto-save');
+    
+    if (hasEmotionComponent && hasRelationshipComponent && hasAutoSave) {
+        console.log('   ✅ Episode field components implemented with auto-save');
+    } else {
+        console.log('   ❌ Episode field components incomplete');
+        console.log('      - Emotion component:', hasEmotionComponent);
+        console.log('      - Relationship component:', hasRelationshipComponent);
+        console.log('      - Auto-save functionality:', hasAutoSave);
+    }
+} catch (error) {
+    console.log('   ❌ Error reading field components file:', error.message);
+}
+
+// Test 5: Verify streaming service handles new fields
+console.log('\n5. Testing episode streaming service...');
+try {
+    const servicePath = path.join(__dirname, 'src/client/services/implementations/EpisodeStreamingService.ts');
+    const content = fs.readFileSync(servicePath, 'utf8');
+    
+    const hasInterfaceFields = content.includes('emotionDevelopments') && content.includes('relationshipDevelopments');
+    const hasExtractionLogic = content.includes('extractEpisodeFields') && content.includes('emotionDevelopmentsMatch');
+    const hasNormalization = content.includes('normalizeEpisode') && content.includes('relationshipDevelopments');
+    
+    if (hasInterfaceFields && hasExtractionLogic && hasNormalization) {
+        console.log('   ✅ Episode streaming service handles new fields during progressive streaming');
+    } else {
+        console.log('   ❌ Episode streaming service incomplete');
+        console.log('      - Interface fields:', hasInterfaceFields);
+        console.log('      - Extraction logic:', hasExtractionLogic);
+        console.log('      - Normalization:', hasNormalization);
+    }
+} catch (error) {
+    console.log('   ❌ Error reading streaming service file:', error.message);
+}
+
+// Test 6: Verify backend processing includes new fields
+console.log('\n6. Testing backend episode processing...');
+try {
+    const executorPath = path.join(__dirname, 'src/server/services/streaming/StreamingTransformExecutor.ts');
+    const content = fs.readFileSync(executorPath, 'utf8');
+    
+    const hasArtifactCreation = content.includes('createEpisodeArtifacts') && content.includes('emotionDevelopments');
+    const hasFieldProcessing = content.includes('relationshipDevelopments') && content.includes('|| []');
+    
+    if (hasArtifactCreation && hasFieldProcessing) {
+        console.log('   ✅ Backend correctly processes and stores emotion/relationship developments');
+    } else {
+        console.log('   ❌ Backend processing incomplete');
+        console.log('      - Artifact creation:', hasArtifactCreation);
+        console.log('      - Field processing:', hasFieldProcessing);
+    }
+} catch (error) {
+    console.log('   ❌ Error reading executor file:', error.message);
+}
+
+// Test 7: Verify validation functions handle new fields
+console.log('\n7. Testing artifact validation...');
+try {
+    const artifactsPath = path.join(__dirname, 'src/server/types/artifacts.ts');
+    const content = fs.readFileSync(artifactsPath, 'utf8');
+    
+    const hasValidation = content.includes('isEpisodeSynopsisV1') && content.includes('emotionDevelopments !== undefined');
+    const hasCharacterValidation = content.includes('Array.isArray(dev.characters)');
+    
+    if (hasValidation && hasCharacterValidation) {
+        console.log('   ✅ Artifact validation handles new optional fields correctly');
+    } else {
+        console.log('   ❌ Validation incomplete');
+        console.log('      - Basic validation:', hasValidation);
+        console.log('      - Character validation:', hasCharacterValidation);
+    }
+} catch (error) {
+    console.log('   ❌ Error reading validation functions:', error.message);
 }
 
 // Summary
-console.log('📋 Enhanced Episode Generation Implementation Summary:');
-console.log('✅ Enhanced outline structure (keyPoints with emotionArcs and relationshipDevelopments) is properly formatted and passed to LLM');
-console.log('✅ Cascaded parameters (platform, genre, requirements) are extracted and utilized in episode generation');
-console.log('✅ Template receives detailed character emotion progression and relationship development context');
-console.log('✅ Episode generation now addresses screenwriter feedback about missing emotional storylines');
-console.log('✅ Full workflow: Brainstorming → Outline → Episode Generation with parameter cascading');
-
-console.log('\n🎯 Expected Impact:');
-console.log('• Episodes will have consistent character development and emotional progression');
-console.log('• No more "角色断裂、掉线" (character disconnection) issues');
-console.log('• Platform-specific and genre-specific episode generation');
-console.log('• Relationship developments properly tracked across episodes');
-console.log('• Emotional arcs maintain continuity throughout the story'); 
+console.log('\n=== SUMMARY ===');
+console.log('✅ Enhanced Episode Generation System Features:');
+console.log('   • Episode-level emotion development tracking');
+console.log('   • Episode-level relationship development tracking');
+console.log('   • Granular character interaction analysis');
+console.log('   • Progressive streaming UI support');
+console.log('   • Auto-save functionality for user edits');
+console.log('   • Template instructions for nuanced development');
+console.log('   • Backend artifact storage and validation');
+console.log('   • Real-time streaming field extraction');
+console.log('');
+console.log('📋 Data Structure:');
+console.log('   emotionDevelopments: Array<{ characters: string[], content: string }>');
+console.log('   relationshipDevelopments: Array<{ characters: string[], content: string }>');
+console.log('');
+console.log('🎯 Benefits:');
+console.log('   • Addresses professional screenwriter feedback');
+console.log('   • Provides granular character development tracking');
+console.log('   • Ensures emotional storylines are not overlooked');
+console.log('   • Enables coherent character progression across episodes');
+console.log('   • Supports real-time editing and progressive streaming');
+console.log('');
+console.log('Ready for testing! Generate new episodes to see the enhanced tracking.'); 

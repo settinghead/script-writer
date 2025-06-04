@@ -11,6 +11,14 @@ export interface EpisodeSynopsis {
     keyEvents: string[];
     endHook?: string;
     hooks?: string;
+    emotionDevelopments?: Array<{
+        characters: string[];
+        content: string;
+    }>;
+    relationshipDevelopments?: Array<{
+        characters: string[];
+        content: string;
+    }>;
 }
 
 export class EpisodeStreamingService extends LLMStreamingService<EpisodeSynopsis> {
@@ -96,7 +104,15 @@ export class EpisodeStreamingService extends LLMStreamingService<EpisodeSynopsis
                 ? data.keyEvents.map((event: any) => String(event))
                 : [],
             endHook: data.endHook ? String(data.endHook) : undefined,
-            hooks: data.hooks ? String(data.hooks) : undefined
+            hooks: data.hooks ? String(data.hooks) : undefined,
+            emotionDevelopments: data.emotionDevelopments ? data.emotionDevelopments.map((d: any) => ({
+                characters: Array.isArray(d.characters) ? d.characters.map((c: any) => String(c)) : [],
+                content: String(d.content)
+            })) : undefined,
+            relationshipDevelopments: data.relationshipDevelopments ? data.relationshipDevelopments.map((d: any) => ({
+                characters: Array.isArray(d.characters) ? d.characters.map((c: any) => String(c)) : [],
+                content: String(d.content)
+            })) : undefined
         };
     }
 
@@ -181,6 +197,36 @@ export class EpisodeStreamingService extends LLMStreamingService<EpisodeSynopsis
         const hooksMatch = content.match(/"hooks"\s*:\s*"([^"]*)"/);
         if (hooksMatch) {
             episode.hooks = hooksMatch[1];
+        }
+
+        // 🔥 NEW: Extract emotionDevelopments
+        const emotionDevelopmentsMatch = content.match(/"emotionDevelopments"\s*:\s*\[(.*?)\]/s);
+        if (emotionDevelopmentsMatch) {
+            try {
+                const developments = JSON.parse(`[${emotionDevelopmentsMatch[1]}]`);
+                episode.emotionDevelopments = developments.map((d: any) => ({
+                    characters: Array.isArray(d.characters) ? d.characters : [],
+                    content: String(d.content || '')
+                }));
+            } catch (e) {
+                // Try partial extraction
+                episode.emotionDevelopments = [];
+            }
+        }
+
+        // 🔥 NEW: Extract relationshipDevelopments
+        const relationshipDevelopmentsMatch = content.match(/"relationshipDevelopments"\s*:\s*\[(.*?)\]/s);
+        if (relationshipDevelopmentsMatch) {
+            try {
+                const developments = JSON.parse(`[${relationshipDevelopmentsMatch[1]}]`);
+                episode.relationshipDevelopments = developments.map((d: any) => ({
+                    characters: Array.isArray(d.characters) ? d.characters : [],
+                    content: String(d.content || '')
+                }));
+            } catch (e) {
+                // Try partial extraction
+                episode.relationshipDevelopments = [];
+            }
         }
 
         return episode;

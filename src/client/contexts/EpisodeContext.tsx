@@ -261,7 +261,9 @@ export const EpisodeProvider: React.FC<{ children: ReactNode }> = ({ children })
                 keyEvents: ep.keyEvents,
                 hooks: ep.endHook || ep.hooks || '',
                 stageArtifactId: state.activeStreamingStageId!,
-                episodeGenerationSessionId: ''
+                episodeGenerationSessionId: '',
+                emotionDevelopments: ep.emotionDevelopments || [],
+                relationshipDevelopments: ep.relationshipDevelopments || []
             }));
 
             dispatch({

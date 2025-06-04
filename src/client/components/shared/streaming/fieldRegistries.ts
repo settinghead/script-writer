@@ -13,7 +13,9 @@ import {
   EditableTagListField,
   EditableCharacterCard,
   EditableCharacterArrayField,
-  EditableSynopsisStagesField
+  EditableSynopsisStagesField,
+  EditableEmotionDevelopmentsField,
+  EditableRelationshipDevelopmentsField
 } from './fieldComponents';
 
 /**
@@ -94,6 +96,79 @@ export const outlineFieldRegistry: FieldDefinition[] = [
 ];
 
 /**
+ * Field registry for episode generation streaming
+ */
+export const episodeFieldRegistry: FieldDefinition[] = [
+  // 1. Episode Number
+  {
+    path: "episodeNumber",
+    component: AutoSaveTextField,
+    label: "集数",
+    order: 1
+  },
+
+  // 2. Title
+  {
+    path: "title",
+    component: AutoSaveTextField,
+    label: "剧集标题",
+    order: 2
+  },
+
+  // 3. Synopsis/Brief Summary
+  {
+    path: "briefSummary",
+    component: AutoSaveTextAreaField,
+    label: "剧情简介",
+    order: 3
+  },
+  {
+    path: "synopsis",
+    component: AutoSaveTextAreaField,
+    label: "详细剧情",
+    order: 4
+  },
+
+  // 4. Key Events
+  {
+    path: "keyEvents",
+    component: EditableTextListField,
+    label: "关键事件",
+    order: 5
+  },
+
+  // 5. End Hook
+  {
+    path: "hooks",
+    component: AutoSaveTextAreaField,
+    label: "结尾悬念",
+    order: 6
+  },
+  {
+    path: "endHook",
+    component: AutoSaveTextAreaField,
+    label: "集尾钩子",
+    order: 7
+  },
+
+  // 6. 🔥 NEW: Emotion Developments
+  {
+    path: "emotionDevelopments",
+    component: EditableEmotionDevelopmentsField,
+    label: "情感发展",
+    order: 8
+  },
+
+  // 7. 🔥 NEW: Relationship Developments
+  {
+    path: "relationshipDevelopments",
+    component: EditableRelationshipDevelopmentsField,
+    label: "关系发展",
+    order: 9
+  }
+];
+
+/**
  * Field registry for brainstorming (ideas array)
  */
 export const brainstormFieldRegistry: FieldDefinition[] = [
@@ -122,12 +197,14 @@ export const brainstormFieldRegistry: FieldDefinition[] = [
 /**
  * Helper function to get the appropriate registry based on content type
  */
-export function getFieldRegistry(contentType: 'outline' | 'brainstorm'): FieldDefinition[] {
+export function getFieldRegistry(contentType: 'outline' | 'brainstorm' | 'episode'): FieldDefinition[] {
   switch (contentType) {
     case 'outline':
       return outlineFieldRegistry;
     case 'brainstorm':
       return brainstormFieldRegistry;
+    case 'episode':
+      return episodeFieldRegistry;
     default:
       return [];
   }

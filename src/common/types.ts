@@ -161,6 +161,15 @@ export interface EpisodeSynopsisV1 {
     hooks: string;
     stageArtifactId: string;
     episodeGenerationSessionId: string;
+    // 🔥 NEW: Episode-level emotion and relationship development tracking
+    emotionDevelopments?: Array<{
+        characters: string[];  // Characters involved in this emotion development
+        content: string;       // Detailed description of emotional change/progression
+    }>;
+    relationshipDevelopments?: Array<{
+        characters: string[];  // Characters involved in this relationship development
+        content: string;       // Detailed description of relationship change/progression
+    }>;
 }
 
 export interface EpisodeGenerationParamsV1 {
