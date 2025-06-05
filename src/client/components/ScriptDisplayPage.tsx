@@ -66,7 +66,13 @@ export const ScriptDisplayPage: React.FC = () => {
             streamingItemsLength: streamingItems?.length || 0,
             isStreaming,
             hasScriptData: !!scriptData,
-            streamingItems: streamingItems?.slice(0, 1) // Show first item for debugging
+            streamingStatus,
+            firstStreamingItem: streamingItems?.[0] ? {
+                episodeNumber: streamingItems[0].episodeNumber,
+                scriptContentLength: streamingItems[0].scriptContent?.length || 0,
+                scriptContentPreview: streamingItems[0].scriptContent?.substring(0, 50) || 'no content',
+                scenesCount: streamingItems[0].scenes?.length || 0
+            } : null
         });
 
         // Helper function to convert scenes array to script text
@@ -99,17 +105,35 @@ export const ScriptDisplayPage: React.FC = () => {
             const latestScript = streamingItems[streamingItems.length - 1] as StreamingScript;
             let scriptContent = latestScript.scriptContent || '';
             
-            // 🔥 FALLBACK: If scriptContent is empty or placeholder, convert from scenes
-            if (!scriptContent || scriptContent.length < 10 || 
-                scriptContent.includes('完整剧本文本') || scriptContent.includes('剧本内容')) {
-                console.log('[ScriptDisplayPage] scriptContent is placeholder, converting from scenes');
+            // 🔥 NEW: Show streaming content even if partial/placeholder during streaming
+            if (isStreaming) {
+                // During streaming, show whatever content we have, even if it's partial
+                console.log('[ScriptDisplayPage] Streaming mode - showing partial content');
+                if (scriptContent && scriptContent.length > 0) {
+                    // Show the partial scriptContent as-is during streaming
+                    return scriptContent;
+                }
+                // If no scriptContent yet, try scenes fallback
                 scriptContent = convertScenesToText(latestScript.scenes || []);
+                if (scriptContent && scriptContent.length > 0) {
+                    return scriptContent;
+                }
+                // Show loading message if no content yet
+                return '剧本生成中...';
+            } else {
+                // 🔥 FALLBACK: Only after streaming is complete, convert from scenes if needed
+                if (!scriptContent || scriptContent.length < 10 || 
+                    scriptContent.includes('完整剧本文本') || scriptContent.includes('剧本内容')) {
+                    console.log('[ScriptDisplayPage] scriptContent is placeholder, converting from scenes');
+                    scriptContent = convertScenesToText(latestScript.scenes || []);
+                }
             }
             
             console.log('[ScriptDisplayPage] Using streaming content:', {
                 contentLength: scriptContent.length,
                 contentPreview: scriptContent.substring(0, 100) || 'no content',
-                usedFallback: scriptContent !== latestScript.scriptContent
+                isStreaming,
+                usedFallback: !isStreaming && scriptContent !== latestScript.scriptContent
             });
             return scriptContent;
         }

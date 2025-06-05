@@ -552,12 +552,16 @@ export class StreamingTransformExecutor {
         transformId: string,
         error: Error
     ): Promise<void> {
+        console.error(`🚨 [StreamingTransformExecutor] Job failure for transform ${transformId}:`, error);
+        console.error(`🚨 [StreamingTransformExecutor] Error stack:`, error.stack);
+        
         const transform = await this.transformRepo.getTransform(transformId);
         if (!transform) {
             throw new Error(`Transform ${transformId} not found`);
         }
 
         if (transform.retry_count < transform.max_retries) {
+            console.log(`🔄 [StreamingTransformExecutor] Retrying transform ${transformId} (attempt ${transform.retry_count + 1}/${transform.max_retries})`);
             // Increment retry count and retry
             await this.transformRepo.updateTransform(transformId, {
                 retry_count: transform.retry_count + 1,
@@ -571,6 +575,7 @@ export class StreamingTransformExecutor {
                 this.retryStreamingJob(transformId);
             }, delay);
         } else {
+            console.error(`❌ [StreamingTransformExecutor] Transform ${transformId} failed permanently after ${transform.max_retries} retries`);
             // Mark as failed
             await this.updateTransformStatus(transformId, 'failed');
         }
@@ -581,7 +586,8 @@ export class StreamingTransformExecutor {
             // Important: Don't pass response object to retries since the original connection may be closed
             await this.executeStreamingJobWithRetries(transformId, undefined);
         } catch (error) {
-            // Silent fail for retries
+            console.error(`🚨 [StreamingTransformExecutor] Retry failed for transform ${transformId}:`, error);
+            await this.handleJobFailure(transformId, error as Error);
         }
     }
 
@@ -1428,12 +1434,17 @@ export class StreamingTransformExecutor {
         scriptData: any
     ): Promise<void> {
         try {
+            // Validate required fields
+            if (!scriptData.episodeNumber) {
+                throw new Error(`Missing episodeNumber in scriptData: ${JSON.stringify(scriptData, null, 2)}`);
+            }
+
             // Create episode script artifact from the generated script data
             const scriptArtifact = await this.artifactRepo.createArtifact(
                 userId,
                 'episode_script',
                 {
-                    episodeNumber: scriptData.episodeNumber || 1,
+                    episodeNumber: scriptData.episodeNumber,
                     scriptContent: scriptData.scriptContent || '', // 🔥 FIX: Include the actual script content!
                     scenes: scriptData.scenes || [],
                     wordCount: scriptData.wordCount || 0,

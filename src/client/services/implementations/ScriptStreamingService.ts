@@ -175,7 +175,8 @@ export class ScriptStreamingService extends LLMStreamingService<StreamingScript>
             console.log('[ScriptStreamingService] Extracted partial script:', {
                 episodeNumber: script.episodeNumber,
                 title: script.title,
-                contentLength: script.scriptContent.length
+                contentLength: script.scriptContent.length,
+                contentPreview: script.scriptContent.substring(0, 50)
             });
 
             return script;

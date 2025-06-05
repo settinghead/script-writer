@@ -2,7 +2,8 @@ import { ArtifactRepository } from '../repositories/ArtifactRepository.js';
 import { TransformRepository } from '../repositories/TransformRepository.js';
 import { StreamingTransformExecutor } from './streaming/StreamingTransformExecutor.js';
 import { TemplateService } from './templates/TemplateService.js';
-import { EpisodeSynopsisV1, OutlineV1, BrainstormParamsV1, OutlineJobParamsV1, EpisodeScriptV1 } from '../../common/streaming/types.js';
+import { EpisodeSynopsisV1, PlotOutlineV1, BrainstormParamsV1, OutlineJobParamsV1 } from '../types/artifacts.js';
+import { EpisodeScriptV1 } from '../../common/streaming/types.js';
 
 export class ScriptGenerationService {
     constructor(
@@ -39,20 +40,22 @@ export class ScriptGenerationService {
         // Get cascaded parameters
         const cascadedParams = await this.getCascadedParams(userId, stageId);
 
-        // Get outline for character information
-        const outlineArtifacts = await this.artifactRepo.getArtifactsByType(
+        // Get outline character information  
+        const characterArtifacts = await this.artifactRepo.getArtifactsByType(
             userId,
-            'outline'
+            'outline_characters'
         );
 
         let charactersInfo = '';
-        if (outlineArtifacts.length > 0) {
-            const latestOutline = outlineArtifacts
+        if (characterArtifacts.length > 0) {
+            const latestCharacters = characterArtifacts
                 .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
-            const outlineData = latestOutline.data as OutlineV1;
             
-            if (outlineData.characters && outlineData.characters.length > 0) {
-                charactersInfo = outlineData.characters.map(char => 
+            // Import the type from common/types
+            const charactersData = latestCharacters.data as any;
+            
+            if (charactersData.characters && charactersData.characters.length > 0) {
+                charactersInfo = charactersData.characters.map((char: any) => 
                     `**${char.name}** (${char.type}): ${char.description}`
                 ).join('\n');
             }

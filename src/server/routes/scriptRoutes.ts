@@ -26,13 +26,14 @@ export function createScriptRoutes(
     );
 
     // Generate script for an episode
-    router.post('/generate', authMiddleware.authenticate, async (req, res) => {
+    router.post('/generate', authMiddleware.authenticate, async (req, res): Promise<void> => {
     try {
         const userId = req.user!.id;
         const { episodeId, stageId, userRequirements }: ScriptGenerateRequest = req.body;
 
         if (!episodeId || !stageId) {
-            return res.status(400).json({ error: 'episodeId and stageId are required' });
+            res.status(400).json({ error: 'episodeId and stageId are required' });
+            return;
         }
 
         const result = await scriptService.generateScript(
@@ -55,7 +56,7 @@ export function createScriptRoutes(
 });
 
     // Get generated script
-    router.get('/:episodeId/:stageId', authMiddleware.authenticate, async (req, res) => {
+    router.get('/:episodeId/:stageId', authMiddleware.authenticate, async (req, res): Promise<void> => {
     try {
         const userId = req.user!.id;
         const { episodeId, stageId } = req.params;
@@ -63,7 +64,8 @@ export function createScriptRoutes(
         const script = await scriptService.getGeneratedScript(userId, episodeId, stageId);
 
         if (!script) {
-            return res.status(404).json({ error: 'Script not found' });
+            res.status(404).json({ error: 'Script not found' });
+            return;
         }
 
         res.json(script);
