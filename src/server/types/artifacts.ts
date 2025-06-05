@@ -350,6 +350,25 @@ export function validateArtifactData(type: string, typeVersion: string, data: an
             return isScriptGenerationJobParamsV1(data);
         case 'episode_script:v1':
             return isEpisodeScriptV1(data);
+        // Edit artifact types
+        case 'title_edit:v1':
+            return isOutlineTitleEditV1(data);
+        case 'genre_edit:v1':
+            return isOutlineGenreEditV1(data);
+        case 'selling_points_edit:v1':
+            return isOutlineSellingPointsEditV1(data);
+        case 'setting_edit:v1':
+            return isOutlineSettingEditV1(data);
+        case 'synopsis_edit:v1':
+            return isOutlineSynopsisEditV1(data);
+        case 'target_audience_edit:v1':
+            return isOutlineTargetAudienceEditV1(data);
+        case 'satisfaction_points_edit:v1':
+            return isOutlineSatisfactionPointsEditV1(data);
+        case 'characters_edit:v1':
+            return isOutlineCharactersEditV1(data);
+        case 'synopsis_stages_edit:v1':
+            return isOutlineSynopsisStagesEditV1(data);
         default:
             return false;
     }
@@ -577,4 +596,136 @@ function isEpisodeScriptV1(data: any): data is EpisodeScriptV1 {
         typeof data.generatedAt === 'string' &&
         typeof data.episodeSynopsisArtifactId === 'string' &&
         (data.userRequirements === undefined || typeof data.userRequirements === 'string');
+}
+
+// Edit artifact validation functions
+function isOutlineTitleEditV1(data: any): boolean {
+    return typeof data === 'object' &&
+        typeof data.title === 'string' &&
+        typeof data.outline_session_id === 'string' &&
+        typeof data.edited_at === 'string';
+}
+
+function isOutlineGenreEditV1(data: any): boolean {
+    return typeof data === 'object' &&
+        typeof data.genre === 'string' &&
+        typeof data.outline_session_id === 'string' &&
+        typeof data.edited_at === 'string';
+}
+
+function isOutlineSellingPointsEditV1(data: any): boolean {
+    return typeof data === 'object' &&
+        typeof data.selling_points === 'string' &&
+        typeof data.outline_session_id === 'string' &&
+        typeof data.edited_at === 'string';
+}
+
+function isOutlineSettingEditV1(data: any): boolean {
+    return typeof data === 'object' &&
+        typeof data.setting === 'string' &&
+        typeof data.outline_session_id === 'string' &&
+        typeof data.edited_at === 'string';
+}
+
+function isOutlineSynopsisEditV1(data: any): boolean {
+    return typeof data === 'object' &&
+        typeof data.synopsis === 'string' &&
+        typeof data.outline_session_id === 'string' &&
+        typeof data.edited_at === 'string';
+}
+
+function isOutlineTargetAudienceEditV1(data: any): boolean {
+    if (typeof data !== 'object' || 
+        typeof data.outline_session_id !== 'string' || 
+        typeof data.edited_at !== 'string') {
+        return false;
+    }
+    
+    // Accept both object and stringified JSON for target_audience
+    if (typeof data.target_audience === 'object' && data.target_audience !== null) {
+        return true;
+    }
+    
+    if (typeof data.target_audience === 'string') {
+        try {
+            const parsed = JSON.parse(data.target_audience);
+            return typeof parsed === 'object' && parsed !== null;
+        } catch {
+            return false;
+        }
+    }
+    
+    return false;
+}
+
+function isOutlineSatisfactionPointsEditV1(data: any): boolean {
+    if (typeof data !== 'object' || 
+        typeof data.outline_session_id !== 'string' || 
+        typeof data.edited_at !== 'string') {
+        return false;
+    }
+    
+    // Accept both array and stringified JSON for satisfaction_points
+    if (Array.isArray(data.satisfaction_points)) {
+        return true;
+    }
+    
+    if (typeof data.satisfaction_points === 'string') {
+        try {
+            const parsed = JSON.parse(data.satisfaction_points);
+            return Array.isArray(parsed);
+        } catch {
+            return false;
+        }
+    }
+    
+    return false;
+}
+
+function isOutlineCharactersEditV1(data: any): boolean {
+    if (typeof data !== 'object' || 
+        typeof data.outline_session_id !== 'string' || 
+        typeof data.edited_at !== 'string') {
+        return false;
+    }
+    
+    // Accept both array and stringified JSON for characters
+    if (Array.isArray(data.characters)) {
+        return true;
+    }
+    
+    if (typeof data.characters === 'string') {
+        try {
+            const parsed = JSON.parse(data.characters);
+            return Array.isArray(parsed);
+        } catch {
+            return false;
+        }
+    }
+    
+    return false;
+}
+
+function isOutlineSynopsisStagesEditV1(data: any): boolean {
+    if (typeof data !== 'object' || 
+        typeof data.outline_session_id !== 'string' || 
+        typeof data.edited_at !== 'string') {
+        return false;
+    }
+    
+    // Accept both array and stringified JSON for synopsis_stages
+    if (Array.isArray(data.synopsis_stages)) {
+        return true;
+    }
+    
+    if (typeof data.synopsis_stages === 'string') {
+        try {
+            const parsed = JSON.parse(data.synopsis_stages);
+            return Array.isArray(parsed);
+        } catch {
+            return false;
+        }
+    }
+    
+    return false;
 } 
