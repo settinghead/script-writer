@@ -112,7 +112,8 @@ export const DynamicOutlineResults: React.FC<DynamicOutlineResultsProps> = ({
     sourceArtifact,
     totalEpisodes,
     episodeDuration,
-    createdAt
+    createdAt,
+    reasoningEvent
 }) => {
     const [isExportModalVisible, setIsExportModalVisible] = useState(false);
     const [exportText, setExportText] = useState('');
