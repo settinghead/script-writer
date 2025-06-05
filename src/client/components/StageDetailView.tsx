@@ -38,7 +38,7 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
     onEpisodeSelect
 }) => {
     const { actions } = useEpisodeContext();
-    const { scriptId, stageId } = useParams<{ scriptId: string; stageId: string }>();
+    const { id, stageId } = useParams<{ id: string; stageId: string }>();
     const navigate = useNavigate();
     const [editMode, setEditMode] = useState(false);
     const [isExportModalVisible, setIsExportModalVisible] = useState(false);
@@ -538,8 +538,8 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
                                     transition: 'background-color 0.2s'
                                 }}
                                 onClick={() => {
-                                    if (scriptId && stageId) {
-                                        navigate(`/projects/${scriptId}/stages/${stageId}/episodes/${episode.episodeNumber}`);
+                                    if (id && stageId) {
+                                        navigate(`/projects/${id}/stages/${stageId}/episodes/${episode.episodeNumber}`);
                                     }
                                 }}
                                 onMouseEnter={(e) => {

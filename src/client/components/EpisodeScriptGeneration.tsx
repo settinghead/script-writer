@@ -9,8 +9,8 @@ import type { EpisodeSynopsisV1 } from '../../common/types';
 const { Title, Text } = Typography;
 
 export const EpisodeScriptGeneration: React.FC = () => {
-    const { scriptId, stageId, episodeId } = useParams<{ 
-        scriptId: string; 
+    const { id, stageId, episodeId } = useParams<{ 
+        id: string; 
         stageId: string; 
         episodeId: string; 
     }>();
@@ -34,11 +34,11 @@ export const EpisodeScriptGeneration: React.FC = () => {
 
     // Initialize data if needed
     useEffect(() => {
-        if (scriptId && scriptId !== state.scriptId) {
-            actions.setScriptId(scriptId);
-            actions.loadStages(scriptId);
+        if (id && id !== state.scriptId) {
+            actions.setScriptId(id);
+            actions.loadStages(id);
         }
-    }, [scriptId, state.scriptId, actions]);
+    }, [id, state.scriptId, actions]);
 
     // Set selected stage and episode
     useEffect(() => {
@@ -51,7 +51,7 @@ export const EpisodeScriptGeneration: React.FC = () => {
     }, [stageId, episodeId, state.selectedStageId, state.selectedEpisodeId, actions]);
 
     const handleGenerateScript = async () => {
-        if (!scriptId || !stageId || !episodeId || !currentEpisode) {
+        if (!id || !stageId || !episodeId || !currentEpisode) {
             message.error('缺少必要参数');
             return;
         }
@@ -83,7 +83,7 @@ export const EpisodeScriptGeneration: React.FC = () => {
             message.success('剧本生成已开始，正在跳转到剧本页面...');
             
             // Navigate to script display page with transformId in state
-            navigate(`/projects/${scriptId}/stages/${stageId}/episodes/${episodeId}/script`, {
+            navigate(`/projects/${id}/stages/${stageId}/episodes/${episodeId}/script`, {
                 state: { 
                     transformId: result.transformId,
                     sessionId: result.sessionId 
@@ -98,7 +98,7 @@ export const EpisodeScriptGeneration: React.FC = () => {
         }
     };
 
-    if (!scriptId || !stageId || !episodeId) {
+    if (!id || !stageId || !episodeId) {
         return (
             <Alert
                 message="参数错误"

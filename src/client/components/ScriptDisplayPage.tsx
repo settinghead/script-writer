@@ -21,10 +21,10 @@ interface ScriptNode {
 }
 
 export const ScriptDisplayPage: React.FC = () => {
-    const { scriptId, stageId, episodeId } = useParams<{
-        scriptId: string;
-        stageId: string;
-        episodeId: string;
+    const { id, stageId, episodeId } = useParams<{ 
+        id: string; 
+        stageId: string; 
+        episodeId: string; 
     }>();
     const navigate = useNavigate();
     const location = useLocation();
@@ -536,7 +536,7 @@ export const ScriptDisplayPage: React.FC = () => {
                 <Button 
                     type="link" 
                     icon={<ArrowLeftOutlined />}
-                    onClick={() => navigate(`/projects/${scriptId}/stages/${stageId}/episodes/${episodeId}`)}
+                    onClick={() => navigate(`/projects/${id}/stages/${stageId}/episodes/${episodeId}`)}
                     style={{ color: '#1890ff', padding: 0 }}
                 >
                     返回剧集
