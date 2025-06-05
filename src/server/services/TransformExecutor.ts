@@ -4,12 +4,20 @@ import { ArtifactRepository } from '../repositories/ArtifactRepository';
 import { TransformRepository } from '../repositories/TransformRepository';
 import { Artifact } from '../types/artifacts';
 import { getLLMCredentials } from './LLMConfig';
+import { LLMService } from './LLMService';
+import { UnifiedStreamingService } from './UnifiedStreamingService';
+import { ReasoningEvent } from '../../common/streaming/types';
 
 export class TransformExecutor {
+    private llmService: LLMService;
+
     constructor(
         private artifactRepo: ArtifactRepository,
-        private transformRepo: TransformRepository
-    ) { }
+        private transformRepo: TransformRepository,
+        private unifiedStreamingService?: UnifiedStreamingService
+    ) {
+        this.llmService = new LLMService();
+    }
 
     // Execute an LLM transform
     async executeLLMTransform(
@@ -54,22 +62,15 @@ export class TransformExecutor {
                 { promptText: finalPrompt, promptRole: 'primary' }
             ]);
 
-            // Execute the LLM call
-            const llmAI = createOpenAI({
-                apiKey,
-                baseURL: baseUrl,
-            });
-
-            const result = await generateText({
-                model: llmAI(modelName),
-                messages: [{ role: 'user', content: finalPrompt }]
-            });
+            // Execute the LLM call with reasoning support
+            const result = await this.llmService.generateText(finalPrompt, modelName);
 
             // Store LLM metadata
             await this.transformRepo.addLLMTransform({
                 transform_id: transform.id,
                 model_name: modelName,
                 raw_response: result.text,
+                reasoning_response: result.reasoning || null,
                 token_usage: result.usage ? {
                     prompt_tokens: result.usage.promptTokens,
                     completion_tokens: result.usage.completionTokens,
@@ -331,17 +332,52 @@ export class TransformExecutor {
                         transformId: transform.id
                     });
 
-                    // Execute the streaming LLM call
-                    const llmAI = createOpenAI({
-                        apiKey,
-                        baseURL: baseUrl,
-                    });
+                    // Determine phase for reasoning events
+                    const phase = this.getPhaseFromArtifactType(outputArtifactType);
 
-                    const result = await streamText({
-                        model: llmAI(modelName),
-                        temperature: 1.3,
-                        messages: [{ role: 'user', content: finalPrompt }]
-                    });
+                    // Set up reasoning event callbacks
+                    const onReasoningStart = (phase: string) => {
+                        if (this.unifiedStreamingService) {
+                            const event: ReasoningEvent = {
+                                type: 'reasoning_start',
+                                phase: phase as any,
+                                timestamp: Date.now(),
+                                modelName
+                            };
+                            this.unifiedStreamingService.broadcastReasoningEvent(transform.id, event);
+                        }
+                        dataStream.writeData({
+                            type: 'reasoning',
+                            status: 'start',
+                            phase,
+                            message: this.getReasoningMessage(phase as any)
+                        });
+                    };
+
+                    const onReasoningEnd = (phase: string) => {
+                        if (this.unifiedStreamingService) {
+                            const event: ReasoningEvent = {
+                                type: 'reasoning_end',
+                                phase: phase as any,
+                                timestamp: Date.now(),
+                                modelName
+                            };
+                            this.unifiedStreamingService.broadcastReasoningEvent(transform.id, event);
+                        }
+                        dataStream.writeData({
+                            type: 'reasoning',
+                            status: 'end',
+                            phase
+                        });
+                    };
+
+                    // Execute the streaming LLM call with reasoning support
+                    const result = await this.llmService.streamText(
+                        finalPrompt,
+                        onReasoningStart,
+                        onReasoningEnd,
+                        modelName
+                    );
 
                     // Set up content accumulation and streaming
                     let accumulatedContent = '';
@@ -620,5 +656,41 @@ export class TransformExecutor {
         });
 
         return { transform };
+    }
+
+    /**
+     * Determine the generation phase from the artifact type
+     */
+    private getPhaseFromArtifactType(artifactType: string): string {
+        switch (artifactType) {
+            case 'brainstorm_idea':
+                return 'brainstorming';
+            case 'outline_components':
+                return 'outline';
+            case 'episode_synopsis':
+                return 'synopsis';
+            case 'episode_script':
+                return 'script';
+            default:
+                return 'generation';
+        }
+    }
+
+    /**
+     * Get contextual reasoning message for each phase
+     */
+    private getReasoningMessage(phase: 'brainstorming' | 'outline' | 'synopsis' | 'script'): string {
+        switch (phase) {
+            case 'brainstorming':
+                return 'Exploring creative possibilities...';
+            case 'outline':
+                return 'Structuring your story...';
+            case 'synopsis':
+                return 'Weaving narrative threads...';
+            case 'script':
+                return 'Bringing characters to life...';
+            default:
+                return 'Deep thinking in progress...';
+        }
     }
 } 

@@ -106,14 +106,15 @@ export function createIdeationRoutes(
             const sessionId = req.params.id;
 
             // Use injected dependencies
-            const transformExecutor = new TransformExecutor(
+            const unifiedStreamingService = new UnifiedStreamingService(
                 artifactRepo,
                 transformRepo
             );
 
-            const unifiedStreamingService = new UnifiedStreamingService(
+            const transformExecutor = new TransformExecutor(
                 artifactRepo,
-                transformRepo
+                transformRepo,
+                unifiedStreamingService
             );
 
             const ideationService = new IdeationService(artifactRepo, transformRepo, transformExecutor, unifiedStreamingService);

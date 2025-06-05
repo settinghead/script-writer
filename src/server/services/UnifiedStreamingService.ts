@@ -1,6 +1,7 @@
 import { ArtifactRepository } from '../repositories/ArtifactRepository';
 import { TransformRepository } from '../repositories/TransformRepository';
 import { JobBroadcaster } from './streaming/JobBroadcaster';
+import { ReasoningEvent } from '../../common/streaming/types';
 
 // Unified streaming state interface
 export interface StreamingState {
@@ -342,6 +343,22 @@ export class UnifiedStreamingService {
     } catch (error) {
       console.error(`[UnifiedStreamingService] Error completing streaming for ${transformId}:`, error);
       throw error;
+    }
+  }
+
+  /**
+   * Broadcast reasoning event to connected clients
+   */
+  async broadcastReasoningEvent(transformId: string, event: ReasoningEvent): Promise<void> {
+    try {
+      const broadcaster = JobBroadcaster.getInstance();
+      const eventData = JSON.stringify({
+        type: 'reasoning_event',
+        ...event
+      });
+      broadcaster.broadcast(transformId, eventData);
+    } catch (error) {
+      console.error(`[UnifiedStreamingService] Error broadcasting reasoning event for ${transformId}:`, error);
     }
   }
 

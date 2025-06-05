@@ -1,0 +1,187 @@
+import { createOpenAI } from '@ai-sdk/openai';
+import { generateText, streamText, wrapLanguageModel, extractReasoningMiddleware } from 'ai';
+import { getLLMCredentials } from './LLMConfig';
+
+export interface LLMModelInfo {
+    name: string;
+    supportsReasoning: boolean;
+    provider: string;
+}
+
+export interface ReasoningResult {
+    reasoning?: string;
+    text: string;
+    usage?: {
+        promptTokens: number;
+        completionTokens: number;
+        totalTokens: number;
+    };
+}
+
+export class LLMService {
+    private modelCache = new Map<string, any>();
+    private reasoningModelCache = new Map<string, any>();
+
+    /**
+     * Detect if a model supports reasoning based on its name
+     */
+    isReasoningModel(modelName: string): boolean {
+        // Known reasoning models
+        const reasoningPatterns = [
+            /deepseek-r1/i,
+            /deepseek-r1-distill/i,
+            /.*-r1(-.*)?$/i,  // Any model ending with -r1 or -r1-something
+        ];
+
+        return reasoningPatterns.some(pattern => pattern.test(modelName));
+    }
+
+    /**
+     * Get model information including reasoning capability
+     */
+    getModelInfo(modelName?: string): LLMModelInfo {
+        const { modelName: defaultModelName } = getLLMCredentials();
+        const actualModelName = modelName || defaultModelName;
+        
+        return {
+            name: actualModelName,
+            supportsReasoning: this.isReasoningModel(actualModelName),
+            provider: 'openai' // For now, assuming OpenAI-compatible
+        };
+    }
+
+    /**
+     * Get or create a standard model instance
+     */
+    private getModel(modelName?: string) {
+        const { apiKey, baseUrl, modelName: defaultModelName } = getLLMCredentials();
+        const actualModelName = modelName || defaultModelName;
+
+        if (!this.modelCache.has(actualModelName)) {
+            const llmAI = createOpenAI({
+                apiKey,
+                baseURL: baseUrl,
+            });
+            this.modelCache.set(actualModelName, llmAI(actualModelName));
+        }
+
+        return this.modelCache.get(actualModelName);
+    }
+
+    /**
+     * Get or create a reasoning-enhanced model instance
+     */
+    private getReasoningModel(modelName?: string) {
+        const { modelName: defaultModelName } = getLLMCredentials();
+        const actualModelName = modelName || defaultModelName;
+
+        if (!this.reasoningModelCache.has(actualModelName)) {
+            const baseModel = this.getModel(actualModelName);
+            const enhancedModel = wrapLanguageModel({
+                model: baseModel,
+                middleware: extractReasoningMiddleware({ tagName: 'think' }),
+            });
+            this.reasoningModelCache.set(actualModelName, enhancedModel);
+        }
+
+        return this.reasoningModelCache.get(actualModelName);
+    }
+
+    /**
+     * Generate text with automatic reasoning detection
+     */
+    async generateText(
+        prompt: string,
+        modelName?: string
+    ): Promise<ReasoningResult> {
+        const modelInfo = this.getModelInfo(modelName);
+        
+        if (modelInfo.supportsReasoning) {
+            const reasoningModel = this.getReasoningModel(modelName);
+            const result = await generateText({
+                model: reasoningModel,
+                messages: [{ role: 'user', content: prompt }]
+            });
+
+            return {
+                reasoning: (result as any).reasoning,
+                text: result.text,
+                usage: result.usage ? {
+                    promptTokens: result.usage.promptTokens,
+                    completionTokens: result.usage.completionTokens,
+                    totalTokens: result.usage.totalTokens
+                } : undefined
+            };
+        } else {
+            const standardModel = this.getModel(modelName);
+            const result = await generateText({
+                model: standardModel,
+                messages: [{ role: 'user', content: prompt }]
+            });
+
+            return {
+                text: result.text,
+                usage: result.usage ? {
+                    promptTokens: result.usage.promptTokens,
+                    completionTokens: result.usage.completionTokens,
+                    totalTokens: result.usage.totalTokens
+                } : undefined
+            };
+        }
+    }
+
+    /**
+     * Stream text with automatic reasoning detection and event callbacks
+     */
+    async streamText(
+        prompt: string,
+        onReasoningStart?: (phase: string) => void,
+        onReasoningEnd?: (phase: string) => void,
+        modelName?: string
+    ) {
+        const modelInfo = this.getModelInfo(modelName);
+        
+        if (modelInfo.supportsReasoning) {
+            const reasoningModel = this.getReasoningModel(modelName);
+            
+            // Emit reasoning start event
+            onReasoningStart?.('generation');
+            
+            const stream = streamText({
+                model: reasoningModel,
+                messages: [{ role: 'user', content: prompt }]
+            });
+
+            // Create a wrapper that emits reasoning end when first content arrives
+            let hasEmittedReasoningEnd = false;
+            const originalStream = stream.textStream;
+            
+            return {
+                ...stream,
+                textStream: (async function* () {
+                    for await (const chunk of originalStream) {
+                        if (!hasEmittedReasoningEnd) {
+                            onReasoningEnd?.('generation');
+                            hasEmittedReasoningEnd = true;
+                        }
+                        yield chunk;
+                    }
+                })()
+            };
+        } else {
+            const standardModel = this.getModel(modelName);
+            return streamText({
+                model: standardModel,
+                messages: [{ role: 'user', content: prompt }]
+            });
+        }
+    }
+
+    /**
+     * Clear model caches (useful for testing or when credentials change)
+     */
+    clearCache(): void {
+        this.modelCache.clear();
+        this.reasoningModelCache.clear();
+    }
+} 

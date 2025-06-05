@@ -25,6 +25,14 @@ export interface StreamingResponse<T> {
     };
 }
 
+// Reasoning event types
+export interface ReasoningEvent {
+    type: 'reasoning_start' | 'reasoning_end';
+    phase: 'brainstorming' | 'outline' | 'synopsis' | 'script';
+    timestamp: number;
+    modelName?: string;
+}
+
 // Outline generation types
 export interface OutlineGenerateRequest {
     sourceArtifactId: string;

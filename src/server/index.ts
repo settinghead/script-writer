@@ -59,7 +59,7 @@ const transformRepo = new TransformRepository(db);
 const unifiedStreamingService = new UnifiedStreamingService(artifactRepo, transformRepo);
 
 // Initialize services with unified streaming
-const transformExecutor = new TransformExecutor(artifactRepo, transformRepo);
+const transformExecutor = new TransformExecutor(artifactRepo, transformRepo, unifiedStreamingService);
 const ideationService = new IdeationService(artifactRepo, transformRepo, transformExecutor, unifiedStreamingService);
 const outlineService = new OutlineService(artifactRepo, transformRepo, unifiedStreamingService);
 const scriptService = new ScriptService(artifactRepo, transformExecutor);
