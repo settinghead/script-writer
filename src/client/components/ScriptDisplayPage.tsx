@@ -857,32 +857,60 @@ export const ScriptDisplayPage: React.FC = () => {
                         whiteSpace: 'pre-wrap',
                         minHeight: '500px'
                     }}>
-                        {/* Show streaming progress info when streaming */}
+                        {/* Show streaming content when streaming */}
                         {(isStreaming || streamingStatus === 'streaming') ? (
-                            <div style={{
-                                color: '#888',
-                                fontSize: '14px',
-                                padding: '12px',
-                                backgroundColor: '#262626',
-                                borderRadius: '6px',
-                                borderLeft: '3px solid #1890ff',
-                                textAlign: 'center',
-                                height: '500px',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                justifyContent: 'center',
-                                alignItems: 'center'
-                            }}>
-                                <div style={{ marginBottom: '16px', fontSize: '16px', color: '#fff' }}>
-                                    正在根据剧集大纲生成详细剧本内容，请稍候...
-                                </div>
-                                {streamingItems && streamingItems.length > 0 && (
-                                    <div style={{ fontSize: '14px' }}>
-                                        已生成内容：{currentScriptContent.length} 字符
+                            <div>
+                                {/* Streaming progress header */}
+                                <div style={{
+                                    color: '#888',
+                                    fontSize: '14px',
+                                    marginBottom: '16px',
+                                    padding: '12px',
+                                    backgroundColor: '#262626',
+                                    borderRadius: '6px',
+                                    borderLeft: '3px solid #1890ff',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px'
+                                }}>
+                                    <Spin size="small" />
+                                    <div>
+                                        <div style={{ marginBottom: '4px', color: '#fff' }}>
+                                            正在根据剧集大纲生成详细剧本内容...
+                                        </div>
+                                        {streamingItems && streamingItems.length > 0 && (
+                                            <div style={{ fontSize: '12px' }}>
+                                                已生成内容：{currentScriptContent.length} 字符
+                                            </div>
+                                        )}
                                     </div>
-                                )}
-                                <div style={{ marginTop: '20px' }}>
-                                    <Spin size="large" indicator={<LoadingOutlined style={{ fontSize: 32, color: '#1890ff' }} />} />
+                                </div>
+                                
+                                {/* Streaming content display */}
+                                <div style={{
+                                    backgroundColor: '#1f1f1f',
+                                    borderRadius: '8px',
+                                    fontFamily: 'monospace',
+                                    fontSize: '14px',
+                                    lineHeight: '1.6',
+                                    color: '#fff',
+                                    whiteSpace: 'pre-wrap',
+                                    minHeight: '500px',
+                                    maxHeight: '800px',
+                                    overflow: 'auto',
+                                    padding: '20px',
+                                    border: '1px solid #404040'
+                                }}>
+                                    {currentScriptContent || '等待内容生成...'}
+                                    {(isStreaming || streamingStatus === 'streaming') && (
+                                        <span style={{ 
+                                            color: '#1890ff', 
+                                            animation: 'pulse 1s infinite',
+                                            marginLeft: '2px'
+                                        }}>
+                                            ▋
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                         ) : (
