@@ -480,12 +480,19 @@ export const DynamicOutlineResults: React.FC<DynamicOutlineResultsProps> = ({
                 />
             )}
 
+            {/* Reasoning indicator */}
+            <ReasoningIndicator
+                isVisible={reasoningEvent?.type === 'reasoning_start'}
+                phase="outline"
+                className="mb-4"
+            />
+
             {/* Dynamic streaming UI with auto-save */}
             <DynamicStreamingUI
                 fieldRegistry={enhancedFieldRegistry}
                 streamingData={streamingData}
                 streamingStatus={streamingStatus}
-                isThinking={isThinking}
+                isThinking={isThinking && reasoningEvent?.type !== 'reasoning_start'}
                 onStopStreaming={onStopStreaming}
                 onFieldEdit={handleFieldEdit}
                 className="outline-results"
