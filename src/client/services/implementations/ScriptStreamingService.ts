@@ -1,6 +1,4 @@
 import { LLMStreamingService } from '../streaming/LLMStreamingService';
-import { jsonrepair } from 'jsonrepair';
-import { cleanLLMContent, extractJSONFromContent } from '../../../common/utils/textCleaning';
 import type { EpisodeScriptV1 } from '../../../common/streaming/types';
 
 // Interface for script structure during streaming
@@ -34,87 +32,21 @@ export class ScriptStreamingService extends LLMStreamingService<StreamingScript>
     }
 
     parsePartial(content: string): StreamingScript[] {
-        if (!content.trim()) return [];
+        return this.parseWithCommonFlow(content, 'ScriptStreamingService');
+    }
 
-        console.log('[ScriptStreamingService] Original content length:', content.length);
-        console.log('[ScriptStreamingService] Original content preview:',
-            content.substring(0, 200) + (content.length > 200 ? '...' : ''));
-
-        // Clean the content first
-        const cleanedContent = this.cleanContent(content);
-        console.log('[ScriptStreamingService] After cleaning, length:', cleanedContent.length);
-
-        // Try to find the script object - could be direct object or array with one script
-        let processableContent = cleanedContent;
-
-        // Look for script object or array start
-        const objectStart = processableContent.indexOf('{');
-        const arrayStart = processableContent.indexOf('[');
-        
-        if (arrayStart >= 0 && (objectStart < 0 || arrayStart < objectStart)) {
-            // Array format
-            processableContent = processableContent.substring(arrayStart);
-            console.log('[ScriptStreamingService] Found array start, processing from position:', arrayStart);
-        } else if (objectStart >= 0) {
-            // Direct object format
-            processableContent = processableContent.substring(objectStart);
-            console.log('[ScriptStreamingService] Found object start, processing from position:', objectStart);
-        } else {
-            console.log('[ScriptStreamingService] No valid JSON start found, content:', processableContent);
-            return [];
-        }
-
-        // Try to parse as complete JSON first
+    protected normalizeItem(data: any): StreamingScript | null {
         try {
-            const extractedJSON = this.extractJSON(processableContent);
-            console.log('[ScriptStreamingService] Extracted JSON length:', extractedJSON.length);
-            const parsed = JSON.parse(extractedJSON);
-            
-            if (Array.isArray(parsed)) {
-                console.log('[ScriptStreamingService] Successfully parsed array with', parsed.length, 'scripts');
-                const scripts = parsed
-                    .map(script => this.normalizeScript(script))
-                    .filter(script => this.validate(script));
-                console.log('[ScriptStreamingService] Returning', scripts.length, 'valid scripts');
-                return scripts;
-            } else if (typeof parsed === 'object') {
-                console.log('[ScriptStreamingService] Successfully parsed single script object');
-                const script = this.normalizeScript(parsed);
-                if (this.validate(script)) {
-                    return [script];
-                }
-            }
+            return this.normalizeScript(data);
         } catch (error) {
-            console.log('[ScriptStreamingService] Failed to parse complete JSON:', error.message);
+            console.warn('Failed to normalize script:', data, error);
+            return null;
         }
+    }
 
-        // Try jsonrepair for incomplete JSON
-        try {
-            const repaired = jsonrepair(processableContent);
-            console.log('[ScriptStreamingService] JSON repair attempted, length:', repaired.length);
-            const parsed = JSON.parse(repaired);
-            
-            if (Array.isArray(parsed)) {
-                console.log('[ScriptStreamingService] Successfully parsed repaired array with', parsed.length, 'scripts');
-                const scripts = parsed
-                    .map(script => this.normalizeScript(script))
-                    .filter(script => this.validate(script));
-                console.log('[ScriptStreamingService] Returning', scripts.length, 'valid scripts from repair');
-                return scripts;
-            } else if (typeof parsed === 'object') {
-                console.log('[ScriptStreamingService] Successfully parsed repaired script object');
-                const script = this.normalizeScript(parsed);
-                if (this.validate(script)) {
-                    return [script];
-                }
-            }
-        } catch (repairError) {
-            console.log('[ScriptStreamingService] JSON repair failed:', repairError.message);
-        }
-
+    protected extractPartialItems(content: string): StreamingScript[] {
         // Try to extract partial script data
-        console.log('[ScriptStreamingService] Falling back to partial script extraction');
-        const partialScript = this.extractPartialScript(processableContent);
+        const partialScript = this.extractPartialScript(content);
         return partialScript ? [partialScript] : [];
     }
 
@@ -184,14 +116,6 @@ export class ScriptStreamingService extends LLMStreamingService<StreamingScript>
             console.log('[ScriptStreamingService] Error extracting partial script:', error);
             return null;
         }
-    }
-
-    cleanContent(content: string): string {
-        return cleanLLMContent(content);
-    }
-
-    private extractJSON(content: string): string {
-        return extractJSONFromContent(content);
     }
 
     protected convertArtifactToItem(artifactData: any): StreamingScript | null {

@@ -1,6 +1,4 @@
-import { jsonrepair } from 'jsonrepair';
 import { LLMStreamingService } from '../streaming/LLMStreamingService';
-import { cleanLLMContent, extractJSONFromContent } from '../../../common/utils/textCleaning';
 
 export interface IdeaWithTitle {
     title: string;
@@ -18,29 +16,23 @@ export class BrainstormingStreamingService extends LLMStreamingService<IdeaWithT
     }
 
     parsePartial(content: string): IdeaWithTitle[] {
-        if (!content.trim()) return [];
+        return this.parseWithCommonFlow(content, 'BrainstormingStreamingService');
+    }
 
+    protected normalizeItem(data: any): IdeaWithTitle | null {
         try {
-            // Extract clean JSON from content that may have additional text
-            const extractedJSON = this.extractJSON(content);
-            const parsed = JSON.parse(extractedJSON);
-
-            if (Array.isArray(parsed)) {
-                const ideas = parsed.map(item => ({
-                    title: item.title || '无标题',
-                    body: item.body || item.text || String(item)
-                }));
-                return ideas;
-            }
-
-            return [];
+            return {
+                title: data.title || '无标题',
+                body: data.body || data.text || String(data),
+                artifactId: data.artifactId || data.id
+            };
         } catch (error) {
-            // Try to extract valid JSON objects using regex
-            return this.extractValidObjects(content);
+            console.warn('Failed to normalize brainstorming idea:', data, error);
+            return null;
         }
     }
 
-    private extractValidObjects(content: string): IdeaWithTitle[] {
+    protected extractPartialItems(content: string): IdeaWithTitle[] {
         const items: IdeaWithTitle[] = [];
 
         // Match complete JSON objects in the content
@@ -51,8 +43,9 @@ export class BrainstormingStreamingService extends LLMStreamingService<IdeaWithT
             for (const match of matches) {
                 try {
                     const parsed = JSON.parse(match);
-                    if (this.validate(parsed)) {
-                        items.push(parsed);
+                    const normalized = this.normalizeItem(parsed);
+                    if (normalized && this.validate(normalized)) {
+                        items.push(normalized);
                     }
                 } catch (e) {
                     // Skip invalid JSON
@@ -61,14 +54,6 @@ export class BrainstormingStreamingService extends LLMStreamingService<IdeaWithT
         }
 
         return items;
-    }
-
-    cleanContent(content: string): string {
-        return cleanLLMContent(content);
-    }
-
-    private extractJSON(content: string): string {
-        return extractJSONFromContent(content);
     }
 
     // Override to handle completed transforms and extract artifact IDs
@@ -159,7 +144,7 @@ export class BrainstormingStreamingService extends LLMStreamingService<IdeaWithT
         return this.artifactIdMap.get(ideaText);
     }
 
-    // NEW: Convert artifact data to IdeaWithTitle format
+    // Convert artifact data to IdeaWithTitle format
     protected convertArtifactToItem(artifactData: any): IdeaWithTitle | null {
         try {
             // Handle brainstorm_idea artifact format

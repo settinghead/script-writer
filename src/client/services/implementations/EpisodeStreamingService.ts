@@ -1,6 +1,4 @@
 import { LLMStreamingService } from '../streaming/LLMStreamingService';
-import { jsonrepair } from 'jsonrepair';
-import { cleanLLMContent, extractJSONFromContent } from '../../../common/utils/textCleaning';
 
 // Interface for episode synopsis structure
 export interface EpisodeSynopsis {
@@ -30,68 +28,43 @@ export class EpisodeStreamingService extends LLMStreamingService<EpisodeSynopsis
     }
 
     parsePartial(content: string): EpisodeSynopsis[] {
-        if (!content.trim()) return [];
+        return this.parseWithCommonFlow(content, 'EpisodeStreamingService');
+    }
 
-        console.log('[EpisodeStreamingService] Original content length:', content.length);
-        console.log('[EpisodeStreamingService] Original content preview:',
-            content.substring(0, 100) + (content.length > 100 ? '...' : ''));
-
-        // Clean the content first
-        const cleanedContent = this.cleanContent(content);
-        console.log('[EpisodeStreamingService] After cleaning, length:', cleanedContent.length);
-
-        // Try to find JSON array
-        let processableContent = cleanedContent;
-
-        // Find the start of the JSON array
-        const arrayStart = processableContent.indexOf('[');
-        if (arrayStart >= 0) {
-            processableContent = processableContent.substring(arrayStart);
-            console.log('[EpisodeStreamingService] Found array start, processing from position:', arrayStart);
-        } else {
-            console.log('[EpisodeStreamingService] No array start found, content:', processableContent);
-            return [];
-        }
-
-        // Try to parse as complete array first
+    protected normalizeItem(data: any): EpisodeSynopsis | null {
         try {
-            const extractedJSON = this.extractJSON(processableContent);
-            console.log('[EpisodeStreamingService] Extracted JSON length:', extractedJSON.length);
-            const parsed = JSON.parse(extractedJSON);
-            if (Array.isArray(parsed)) {
-                console.log('[EpisodeStreamingService] Successfully parsed complete array with', parsed.length, 'episodes');
-                const episodes = parsed
-                    .map(episode => this.normalizeEpisode(episode))
-                    .filter(episode => this.validate(episode));
-                console.log('[EpisodeStreamingService] Returning', episodes.length, 'valid episodes');
-                return episodes;
-            }
+            return this.normalizeEpisode(data);
         } catch (error) {
-            console.log('[EpisodeStreamingService] Failed to parse complete JSON:', error.message);
+            console.warn('Failed to normalize episode:', data, error);
+            return null;
         }
+    }
 
-        // Try jsonrepair for incomplete JSON
-        try {
-            const repaired = jsonrepair(processableContent);
-            console.log('[EpisodeStreamingService] JSON repair attempted, length:', repaired.length);
-            const parsed = JSON.parse(repaired);
-            if (Array.isArray(parsed)) {
-                console.log('[EpisodeStreamingService] Successfully parsed repaired JSON with', parsed.length, 'episodes');
-                const episodes = parsed
-                    .map(episode => this.normalizeEpisode(episode))
-                    .filter(episode => this.validate(episode));
-                console.log('[EpisodeStreamingService] Returning', episodes.length, 'valid episodes from repair');
-                return episodes;
+    protected extractPartialItems(content: string): EpisodeSynopsis[] {
+        const episodes: EpisodeSynopsis[] = [];
+
+        // Find individual episode objects using regex
+        const episodeMatches = content.match(/\{[^{}]*?"episodeNumber"\s*:\s*\d+[^{}]*?\}/g);
+
+        if (episodeMatches) {
+            for (const match of episodeMatches) {
+                try {
+                    const episode = JSON.parse(match);
+                    const normalized = this.normalizeItem(episode);
+                    if (normalized && this.validate(normalized)) {
+                        episodes.push(normalized);
+                    }
+                } catch (e) {
+                    // Try to extract fields manually
+                    const partial = this.extractEpisodeFields(match);
+                    if (partial && this.validate(partial)) {
+                        episodes.push(partial);
+                    }
+                }
             }
-        } catch (repairError) {
-            console.log('[EpisodeStreamingService] JSON repair failed:', repairError.message);
         }
 
-        // Try to extract individual complete episodes
-        console.log('[EpisodeStreamingService] Falling back to partial episode extraction');
-        const partialEpisodes = this.extractPartialEpisodes(processableContent);
-        console.log('[EpisodeStreamingService] Extracted', partialEpisodes.length, 'partial episodes');
-        return partialEpisodes;
+        return episodes;
     }
 
     private normalizeEpisode(data: any): EpisodeSynopsis {
@@ -114,33 +87,6 @@ export class EpisodeStreamingService extends LLMStreamingService<EpisodeSynopsis
                 content: String(d.content)
             })) : undefined
         };
-    }
-
-    private extractPartialEpisodes(content: string): EpisodeSynopsis[] {
-        const episodes: EpisodeSynopsis[] = [];
-
-        // Find individual episode objects using regex
-        const episodeMatches = content.match(/\{[^{}]*?"episodeNumber"\s*:\s*\d+[^{}]*?\}/g);
-
-        if (episodeMatches) {
-            for (const match of episodeMatches) {
-                try {
-                    const episode = JSON.parse(match);
-                    const normalized = this.normalizeEpisode(episode);
-                    if (this.validate(normalized)) {
-                        episodes.push(normalized);
-                    }
-                } catch (e) {
-                    // Try to extract fields manually
-                    const partial = this.extractEpisodeFields(match);
-                    if (partial && this.validate(partial)) {
-                        episodes.push(partial);
-                    }
-                }
-            }
-        }
-
-        return episodes;
     }
 
     private extractEpisodeFields(content: string): EpisodeSynopsis | null {
@@ -199,7 +145,7 @@ export class EpisodeStreamingService extends LLMStreamingService<EpisodeSynopsis
             episode.hooks = hooksMatch[1];
         }
 
-        // 🔥 NEW: Extract emotionDevelopments
+        // Extract emotionDevelopments
         const emotionDevelopmentsMatch = content.match(/"emotionDevelopments"\s*:\s*\[(.*?)\]/s);
         if (emotionDevelopmentsMatch) {
             try {
@@ -214,7 +160,7 @@ export class EpisodeStreamingService extends LLMStreamingService<EpisodeSynopsis
             }
         }
 
-        // 🔥 NEW: Extract relationshipDevelopments
+        // Extract relationshipDevelopments
         const relationshipDevelopmentsMatch = content.match(/"relationshipDevelopments"\s*:\s*\[(.*?)\]/s);
         if (relationshipDevelopmentsMatch) {
             try {
@@ -230,29 +176,6 @@ export class EpisodeStreamingService extends LLMStreamingService<EpisodeSynopsis
         }
 
         return episode;
-    }
-
-    cleanContent(content: string): string {
-        // Remove streaming protocol prefixes like '0:"' and decode JSON strings
-        let cleaned = content
-            .replace(/^\d+:"/, '') // Remove streaming protocol prefix like '0:"'
-            .replace(/\\n/g, '\n')  // Decode newlines
-            .replace(/\\"/g, '"')   // Decode quotes
-            .replace(/\\t/g, '\t')  // Decode tabs
-            .replace(/\\""/g, '"')  // Fix double-escaped quotes
-            .trim();
-
-        // Use the common text cleaning utility
-        cleaned = cleanLLMContent(cleaned);
-
-        console.log('[EpisodeStreamingService] Cleaned content preview:',
-            cleaned.substring(0, 200) + (cleaned.length > 200 ? '...' : ''));
-
-        return cleaned;
-    }
-
-    private extractJSON(content: string): string {
-        return extractJSONFromContent(content);
     }
 
     protected convertArtifactToItem(artifactData: any): EpisodeSynopsis | null {

@@ -1,6 +1,4 @@
 import { LLMStreamingService } from '../streaming/LLMStreamingService';
-import { jsonrepair } from 'jsonrepair';
-import { cleanLLMContent, extractJSONFromContent } from '../../../common/utils/textCleaning';
 
 // Character interface with normalized structure
 export interface OutlineCharacter {
@@ -56,49 +54,25 @@ export class OutlineStreamingService extends LLMStreamingService<OutlineSection>
     }
 
     parsePartial(content: string): OutlineSection[] {
-        if (!content.trim()) return [];
+        return this.parseWithCommonFlow(content, 'OutlineStreamingService');
+    }
 
-        // Clean the content first
-        const cleanedContent = this.cleanContent(content);
-
-        // Try to ensure we have a complete JSON structure
-        let processableContent = cleanedContent;
-
-        // Find the start of the JSON object
-        const jsonStart = processableContent.indexOf('{');
-        if (jsonStart > 0) {
-            processableContent = processableContent.substring(jsonStart);
-        }
-
-        // If content doesn't look like it starts with a JSON object, return empty
-        if (!processableContent.trim().startsWith('{')) {
-            return [];
-        }
-
-        // Fallback to single object parsing
+    protected normalizeItem(data: any): OutlineSection | null {
         try {
-            // Extract clean JSON from content that may have additional text
-            const extractedJSON = this.extractJSON(processableContent);
-            const parsed = JSON.parse(extractedJSON);
-            const normalized = this.normalizeOutline(parsed);
-            return [normalized];
+            return this.normalizeOutline(data);
         } catch (error) {
-            // Try jsonrepair for incomplete JSON
-            try {
-                const repaired = jsonrepair(processableContent);
-                const parsed = JSON.parse(repaired);
-                const normalized = this.normalizeOutline(parsed);
-                return [normalized];
-            } catch (repairError) {
-                // Try to extract partial fields
-                const partial = this.extractPartialOutline(processableContent);
-                if (Object.keys(partial).length > 0) {
-                    return [partial];
-                }
-
-                return [];
-            }
+            console.warn('Failed to normalize outline:', data, error);
+            return null;
         }
+    }
+
+    protected extractPartialItems(content: string): OutlineSection[] {
+        // Try to extract partial outline fields
+        const partial = this.extractPartialOutline(content);
+        if (Object.keys(partial).length > 0) {
+            return [partial];
+        }
+        return [];
     }
 
     private normalizeOutline(data: any): OutlineSection {
@@ -267,13 +241,7 @@ export class OutlineStreamingService extends LLMStreamingService<OutlineSection>
         return outline;
     }
 
-    cleanContent(content: string): string {
-        return cleanLLMContent(content);
-    }
 
-    private extractJSON(content: string): string {
-        return extractJSONFromContent(content);
-    }
 
     // Override to handle outline artifact format
     protected convertArtifactToItem(artifactData: any): OutlineSection | null {

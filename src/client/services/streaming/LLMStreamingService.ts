@@ -26,7 +26,8 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 import { JSONStreamable } from '../../../common/streaming/interfaces';
 import { StreamConfig, StreamingRequest, StreamingResponse, ReasoningEvent } from '../../../common/streaming/types';
-import { processStreamingContent } from '../../../common/utils/textCleaning';
+import { processStreamingContent, cleanLLMContent, extractJSONFromContent } from '../../../common/utils/textCleaning';
+import { jsonrepair } from 'jsonrepair';
 
 export type StreamingStatus = 'idle' | 'connected' | 'streaming' | 'thinking' | 'completed' | 'error';
 
@@ -445,5 +446,135 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
     // Abstract methods for implementation
     abstract validate(item: any): item is T;
     abstract parsePartial(content: string): T[];
-    abstract cleanContent(content: string): string;
+
+    /**
+     * Clean content using common text cleaning utilities
+     */
+    protected cleanContent(content: string): string {
+        return cleanLLMContent(content);
+    }
+
+    /**
+     * Extract JSON from content that may have additional text
+     */
+    protected extractJSON(content: string): string {
+        return extractJSONFromContent(content);
+    }
+
+    /**
+     * Common JSON parsing with fallback strategies
+     */
+    protected parseJSONWithFallback(content: string): any {
+        // Try direct parsing first
+        try {
+            const extractedJSON = this.extractJSON(content);
+            return JSON.parse(extractedJSON);
+        } catch (error) {
+            // Try jsonrepair for incomplete JSON
+            try {
+                const repaired = jsonrepair(content);
+                return JSON.parse(repaired);
+            } catch (repairError) {
+                throw new Error(`Failed to parse JSON: ${error.message}, Repair failed: ${repairError.message}`);
+            }
+        }
+    }
+
+    /**
+     * Find and extract JSON starting position (array or object)
+     */
+    protected findJSONStart(content: string): { content: string, type: 'array' | 'object' | null } {
+        const objectStart = content.indexOf('{');
+        const arrayStart = content.indexOf('[');
+        
+        if (arrayStart >= 0 && (objectStart < 0 || arrayStart < objectStart)) {
+            return {
+                content: content.substring(arrayStart),
+                type: 'array'
+            };
+        } else if (objectStart >= 0) {
+            return {
+                content: content.substring(objectStart),
+                type: 'object'
+            };
+        }
+        
+        return { content, type: null };
+    }
+
+    /**
+     * Common parsing flow with logging and fallbacks
+     */
+    protected parseWithCommonFlow(content: string, serviceName: string): T[] {
+        if (!content.trim()) return [];
+
+        console.log(`[${serviceName}] Original content length:`, content.length);
+        console.log(`[${serviceName}] Original content preview:`,
+            content.substring(0, 100) + (content.length > 100 ? '...' : ''));
+
+        // Clean the content first
+        const cleanedContent = this.cleanContent(content);
+        console.log(`[${serviceName}] After cleaning, length:`, cleanedContent.length);
+
+        // Find JSON start
+        const { content: processableContent, type } = this.findJSONStart(cleanedContent);
+        
+        if (!type) {
+            console.log(`[${serviceName}] No valid JSON start found`);
+            return [];
+        }
+
+        console.log(`[${serviceName}] Found ${type} start, processing...`);
+
+        // Try complete JSON parsing
+        try {
+            const parsed = this.parseJSONWithFallback(processableContent);
+            
+            if (Array.isArray(parsed)) {
+                console.log(`[${serviceName}] Successfully parsed array with`, parsed.length, 'items');
+                const items = this.normalizeAndValidateArray(parsed);
+                console.log(`[${serviceName}] Returning`, items.length, 'valid items');
+                return items;
+            } else if (typeof parsed === 'object' && parsed !== null) {
+                console.log(`[${serviceName}] Successfully parsed single object`);
+                const item = this.normalizeAndValidateSingle(parsed);
+                return item ? [item] : [];
+            }
+        } catch (error) {
+            console.log(`[${serviceName}] JSON parsing failed:`, error.message);
+        }
+
+        // Fallback to partial extraction
+        console.log(`[${serviceName}] Falling back to partial extraction`);
+        return this.extractPartialItems(processableContent);
+    }
+
+    /**
+     * Normalize and validate an array of raw items
+     */
+    protected normalizeAndValidateArray(items: any[]): T[] {
+        return items
+            .map(item => this.normalizeItem(item))
+            .filter(item => item !== null && this.validate(item)) as T[];
+    }
+
+    /**
+     * Normalize and validate a single raw item
+     */
+    protected normalizeAndValidateSingle(item: any): T | null {
+        const normalized = this.normalizeItem(item);
+        return normalized && this.validate(normalized) ? normalized : null;
+    }
+
+    /**
+     * Normalize a raw item to the target type
+     * Subclasses should implement this to handle their specific data structure
+     */
+    protected abstract normalizeItem(data: any): T | null;
+
+    /**
+     * Extract partial items when complete JSON parsing fails
+     * Subclasses should implement this for their specific partial extraction logic
+     */
+    protected abstract extractPartialItems(content: string): T[];
 } 
