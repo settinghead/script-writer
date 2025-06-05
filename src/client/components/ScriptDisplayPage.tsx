@@ -536,7 +536,7 @@ export const ScriptDisplayPage: React.FC = () => {
                 <Button 
                     type="link" 
                     icon={<ArrowLeftOutlined />}
-                    onClick={() => navigate(`/scripts/${scriptId}/stages/${stageId}/episodes/${episodeId}`)}
+                    onClick={() => navigate(`/projects/${scriptId}/stages/${stageId}/episodes/${episodeId}`)}
                     style={{ color: '#1890ff', padding: 0 }}
                 >
                     返回剧集

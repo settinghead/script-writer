@@ -1,7 +1,7 @@
 import React from 'react';
 import { Breadcrumb as AntBreadcrumb } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { HomeOutlined, BulbOutlined, MessageOutlined, EditOutlined, HistoryOutlined, FileTextOutlined } from '@ant-design/icons';
+import { HomeOutlined, BulbOutlined, MessageOutlined, EditOutlined, HistoryOutlined, FileTextOutlined, PlayCircleOutlined } from '@ant-design/icons';
 
 interface BreadcrumbItem {
     title: string;
@@ -67,6 +67,85 @@ const Breadcrumb: React.FC = () => {
             if (outlineId) {
                 items.push({
                     title: `大纲详情 (${outlineId.slice(0, 8)}...)`,
+                    icon: <FileTextOutlined />
+                });
+            }
+        } else if (location.pathname.startsWith('/projects/')) {
+            const pathParts = location.pathname.split('/');
+            const projectId = pathParts[2];
+            const section = pathParts[3];
+            
+            items.push({
+                title: '创作工作台',
+                icon: <HistoryOutlined />,
+                onClick: () => navigate('/ideations')
+            });
+            
+            if (section === 'outline') {
+                items.push({
+                    title: `项目大纲 (${projectId.slice(0, 8)}...)`,
+                    icon: <FileTextOutlined />,
+                    onClick: () => navigate(`/projects/${projectId}/outline`)
+                });
+                
+                const subsection = pathParts[4];
+                if (subsection) {
+                    const sectionNames: { [key: string]: string } = {
+                        'title': '剧本标题',
+                        'genre': '剧本类型',
+                        'target-audience': '目标受众',
+                        'selling-points': '产品卖点',
+                        'satisfaction-points': '情感爽点',
+                        'setting': '故事设定',
+                        'synopsis-stages': '分段故事梗概',
+                        'characters': '角色设定'
+                    };
+                    items.push({
+                        title: sectionNames[subsection] || subsection,
+                        icon: <FileTextOutlined />
+                    });
+                }
+            } else if (section === 'episodes') {
+                items.push({
+                    title: `剧集结构 (${projectId.slice(0, 8)}...)`,
+                    icon: <PlayCircleOutlined />,
+                    onClick: () => navigate(`/projects/${projectId}/episodes`)
+                });
+            } else if (section === 'stages') {
+                const stageId = pathParts[4];
+                items.push({
+                    title: `剧集结构 (${projectId.slice(0, 8)}...)`,
+                    icon: <PlayCircleOutlined />,
+                    onClick: () => navigate(`/projects/${projectId}/episodes`)
+                });
+                
+                if (stageId) {
+                    items.push({
+                        title: `阶段详情`,
+                        icon: <PlayCircleOutlined />,
+                        onClick: () => navigate(`/projects/${projectId}/stages/${stageId}`)
+                    });
+                    
+                    const episodeSection = pathParts[5];
+                    const episodeId = pathParts[6];
+                    if (episodeSection === 'episodes' && episodeId) {
+                        items.push({
+                            title: `第${episodeId}集`,
+                            icon: <PlayCircleOutlined />,
+                            onClick: () => navigate(`/projects/${projectId}/stages/${stageId}/episodes/${episodeId}`)
+                        });
+                        
+                        if (pathParts[7] === 'script') {
+                            items.push({
+                                title: '剧本内容',
+                                icon: <EditOutlined />
+                            });
+                        }
+                    }
+                }
+            } else {
+                items.push({
+                    title: `项目详情 (${projectId.slice(0, 8)}...)`,
                     icon: <FileTextOutlined />
                 });
             }

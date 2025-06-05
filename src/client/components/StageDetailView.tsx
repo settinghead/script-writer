@@ -557,7 +557,7 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
                                 }}
                                 onClick={() => {
                                     if (scriptId && stageId) {
-                                        navigate(`/scripts/${scriptId}/stages/${stageId}/episodes/${episode.episodeNumber}`);
+                                        navigate(`/projects/${scriptId}/stages/${stageId}/episodes/${episode.episodeNumber}`);
                                     }
                                 }}
                                 onMouseEnter={(e) => {

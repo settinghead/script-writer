@@ -323,18 +323,20 @@ const ProjectContext = createContext<ProjectContextType>();
 
 ### Phase 7: Testing and Migration
 
-#### 7.1 Backward Compatibility
-During transition period, support both route patterns:
-- Old: `/outlines/:id` → redirect to `/projects/:id/outline`
-- New: `/projects/:id/outline` → primary route
+#### 7.1 Complete Route Replacement
+Replace old routes entirely without backward compatibility:
+- Remove: `/outlines/:id` route handler completely
+- Remove: `/scripts/:scriptId/*` route handler completely  
+- Add: `/projects/:id/*` as the single new route handler
 
-#### 7.2 URL Migration
-Add redirect logic in App.tsx:
+#### 7.2 Navigation Updates
+Update all navigation calls throughout the codebase:
 
 ```typescript
-<Route path="/outlines/:id" element={
-  <Navigate to="/projects/:id/outline" replace />
-} />
+// Update all instances like:
+navigate('/outlines/123') → navigate('/projects/123/outline')
+navigate('/scripts/123') → navigate('/projects/123/episodes')
+navigate('/scripts/123/stages/456/episodes/1') → navigate('/projects/123/stages/456/episodes/1')
 ```
 
 ## Updated Implementation Order
@@ -350,10 +352,10 @@ Add redirect logic in App.tsx:
 
 ### Extended Implementation (Phases 8-12)
 8. **Phase 8**: Component consolidation - merge `ScriptLayout`, refactor contexts
-9. **Phase 9**: Complex route handling - dynamic redirects, parameter preservation
+9. **Phase 9**: Clean route migration - complete route replacement, navigation updates
 10. **Phase 10**: State management refactor - unified context, cross-section data sharing
-11. **Phase 11**: Comprehensive testing - route matrix, streaming continuity, state persistence
-12. **Phase 12**: Gradual deployment - feature flags, A/B testing, user migration
+11. **Phase 11**: Comprehensive testing - functionality validation, streaming continuity
+12. **Phase 12**: Direct deployment - clean cut-over, component cleanup
 
 ### Critical Path Dependencies
 ```
@@ -366,7 +368,7 @@ Phase 3 → Phase 4 → Phase 5 → Phase 6 → Phase 7
 - Phases 3-7 can run in parallel with Phase 8
 - Phase 9-10 depend on Phase 8 completion
 - Phase 11 requires all previous phases
-- Phase 12 is deployment-only
+- Phase 12 is cleanup and deployment
 
 ## Key Benefits
 
@@ -449,22 +451,22 @@ Phase 3 → Phase 4 → Phase 5 → Phase 6 → Phase 7
 - Split into `OutlineInputForm` (for creation) and main layout
 - Move outline viewing logic to `ProjectLayout`
 
-#### Phase 9: Complex Route Handling
-**9.1 Dynamic Redirects**
+#### Phase 9: Clean Route Migration
+**9.1 Complete Route Replacement**
 ```typescript
-// In App.tsx - handle dynamic redirects
-<Route path="/outlines/:id" element={
-  <Navigate to={`/projects/${useParams().id}/outline`} replace />
-} />
-<Route path="/scripts/:scriptId" element={
-  <Navigate to={`/projects/${useParams().scriptId}/episodes`} replace />
-} />
+// In App.tsx - completely replace old routes
+// Remove these entirely:
+// <Route path="/outlines/:id" element={<OutlineTab />} />
+// <Route path="/scripts/:scriptId/*" element={<ScriptLayout />} />
+
+// Replace with:
+<Route path="/projects/:id/*" element={<ProjectLayout />} />
 ```
 
-**9.2 URL Parameter Preservation**
-- Maintain query parameters during redirects
-- Preserve streaming transform IDs
-- Handle browser back/forward correctly
+**9.2 No Backward Compatibility Required**
+- Remove all old route handlers completely
+- Update all navigation calls to use new routes
+- Clean up unused route-related code
 
 #### Phase 10: State Management Refactor
 **10.1 Create ProjectContext**
@@ -486,13 +488,14 @@ interface ProjectContextType {
 ### Testing Strategy
 
 #### Phase 11: Comprehensive Testing
-**11.1 Route Testing Matrix**
+**11.1 Functionality Testing Matrix**
 ```bash
-# Test all old routes redirect correctly
-/outlines/session-123 → /projects/session-123/outline
-/scripts/session-123 → /projects/session-123/episodes
-/scripts/session-123/stages/stage-456/episodes/1 → /projects/session-123/stages/stage-456/episodes/1
-/scripts/session-123/stages/stage-456/episodes/1/script → /projects/session-123/stages/stage-456/episodes/1/script
+# Test all new routes work correctly
+✅ /projects/session-123/outline - displays outline with accordion navigation
+✅ /projects/session-123/outline/characters - highlights characters section
+✅ /projects/session-123/episodes - displays episode tree structure
+✅ /projects/session-123/stages/stage-456/episodes/1 - episode details
+✅ /projects/session-123/stages/stage-456/episodes/1/script - script display
 ```
 
 **11.2 Streaming Continuity Testing**
@@ -508,21 +511,23 @@ interface ProjectContextType {
 
 ### Deployment Strategy
 
-#### Phase 12: Gradual Migration
-**12.1 Feature Flag Support**
+#### Phase 12: Direct Migration
+**12.1 Clean Cut-Over**
 ```typescript
-// Add feature flag for new layout
-const useNewProjectLayout = process.env.REACT_APP_NEW_LAYOUT === 'true';
+// No feature flags needed - direct replacement
+<Route path="/projects/:id/*" element={<ProjectLayout />} />
 
-<Route path="/projects/:id/*" element={
-  useNewProjectLayout ? <ProjectLayout /> : <LegacyRedirect />
-} />
+// Remove old components entirely:
+// - ScriptLayout.tsx
+// - EpisodeGenerationPage.tsx (if redundant)
+// - Legacy OutlineTab logic
 ```
 
-**12.2 A/B Testing Support**
-- Allow users to opt-in to new layout
-- Maintain old routes during transition
-- Gradual user migration
+**12.2 Database and Data Structure**
+- ✅ **No database changes required** - this is a UI-only refactor
+- ✅ **Artifact relationships remain unchanged** - all UUIDs preserved
+- ✅ **API endpoints unchanged** - backend routes use IDs, not URL patterns
+- ✅ **Streaming sessions preserved** - transform IDs and WebSocket connections unaffected
 
 ## Risk Mitigation
 
@@ -532,5 +537,6 @@ const useNewProjectLayout = process.env.REACT_APP_NEW_LAYOUT === 'true';
 4. **Mobile UX**: Test accordion behavior on small screens
 5. **WebSocket Continuity**: Ensure streaming sessions survive route changes
 6. **Data Consistency**: Validate all UUID-based relationships remain intact
-7. **Backward Compatibility**: Support old URLs during transition period
-8. **Context Conflicts**: Carefully manage nested context providers 
+7. **Navigation Updates**: Update all navigation calls to use new route patterns
+8. **Context Conflicts**: Carefully manage nested context providers
+9. **Component Cleanup**: Remove obsolete components and route handlers 

@@ -71,11 +71,13 @@ export const OutlineParameterSummary: React.FC<OutlineParameterSummaryProps> = (
                 backgroundColor: '#2a2a2a',
                 border: '1px solid #404040'
             }}
-            headStyle={{
-                backgroundColor: '#1f1f1f',
-                borderBottom: '1px solid #404040'
+            styles={{
+                header: {
+                    backgroundColor: '#1f1f1f',
+                    borderBottom: '1px solid #404040'
+                },
+                body: { backgroundColor: '#2a2a2a', padding: isCollapsed ? '12px 24px' : '24px' }
             }}
-            bodyStyle={{ backgroundColor: '#2a2a2a', padding: isCollapsed ? '12px 24px' : '24px' }}
         >
             <div style={{ cursor: 'pointer' }} onClick={() => setIsCollapsed(!isCollapsed)}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -112,7 +114,7 @@ export const OutlineParameterSummary: React.FC<OutlineParameterSummaryProps> = (
                                     backgroundColor: '#1f1f1f',
                                     border: '1px solid #404040'
                                 }}
-                                bodyStyle={{ backgroundColor: '#1f1f1f' }}
+                                styles={{ body: { backgroundColor: '#1f1f1f' } }}
                             >
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                     <div style={{ flex: 1 }}>
@@ -158,7 +160,7 @@ export const OutlineParameterSummary: React.FC<OutlineParameterSummaryProps> = (
                                             border: '1px solid #404040',
                                             textAlign: 'center'
                                         }}
-                                        bodyStyle={{ backgroundColor: '#1f1f1f', padding: '12px' }}
+                                        styles={{ body: { backgroundColor: '#1f1f1f', padding: '12px' } }}
                                     >
                                         <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '4px', color: '#888' }}>
                                             总集数
@@ -176,7 +178,7 @@ export const OutlineParameterSummary: React.FC<OutlineParameterSummaryProps> = (
                                             border: '1px solid #404040',
                                             textAlign: 'center'
                                         }}
-                                        bodyStyle={{ backgroundColor: '#1f1f1f', padding: '12px' }}
+                                        styles={{ body: { backgroundColor: '#1f1f1f', padding: '12px' } }}
                                     >
                                         <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '4px', color: '#888' }}>
                                             每集时长
@@ -200,7 +202,7 @@ export const OutlineParameterSummary: React.FC<OutlineParameterSummaryProps> = (
                                     backgroundColor: '#1f1f1f',
                                     border: '1px solid #404040'
                                 }}
-                                bodyStyle={{ backgroundColor: '#1f1f1f', padding: '12px' }}
+                                styles={{ body: { backgroundColor: '#1f1f1f', padding: '12px' } }}
                             >
                                 <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '4px', color: '#888' }}>
                                     创建时间

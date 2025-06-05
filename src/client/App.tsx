@@ -15,11 +15,7 @@ import HomePage from './components/HomePage';
 import { OutlineTab } from './components/OutlineTab';
 import ChatTab from './components/ChatTab';
 import ScriptTab from './components/ScriptTab';
-import { EpisodeGenerationPage } from './components/EpisodeGenerationPage';
-import { ScriptLayout } from './components/ScriptLayout';
-import { ScriptOverview } from './components/ScriptOverview';
-import { StageDetail } from './components/StageDetail';
-import { EpisodeScriptGeneration } from './components/EpisodeScriptGeneration';
+import { ProjectLayout } from './components/ProjectLayout';
 import Breadcrumb from './components/Breadcrumb';
 import StagewiseToolbar from './components/StagewiseToolbar';
 
@@ -84,8 +80,6 @@ const AppContent: React.FC = () => {
       onClick: () => handleMenuClick('/script')
     }
   ];
-
-
 
   return (
     <Layout style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -212,11 +206,6 @@ const AppContent: React.FC = () => {
                     <OutlineTab />
                   </ProtectedRoute>
                 } />
-                <Route path="/outlines/:id" element={
-                  <ProtectedRoute>
-                    <OutlineTab />
-                  </ProtectedRoute>
-                } />
                 <Route path="/outlines" element={
                   <ProtectedRoute>
                     <OutlineTab />
@@ -232,17 +221,10 @@ const AppContent: React.FC = () => {
                     <ScriptTab />
                   </ProtectedRoute>
                 } />
-                <Route path="/scripts/:scriptId/*" element={
+                <Route path="/projects/:id/*" element={
                   <ProtectedRoute>
                     <EpisodeProvider>
-                      <ScriptLayout />
-                    </EpisodeProvider>
-                  </ProtectedRoute>
-                } />
-                <Route path="/episode-generation" element={
-                  <ProtectedRoute>
-                    <EpisodeProvider>
-                      <EpisodeGenerationPage />
+                      <ProjectLayout />
                     </EpisodeProvider>
                   </ProtectedRoute>
                 } />
@@ -256,7 +238,7 @@ const AppContent: React.FC = () => {
             <div style={{
               flexGrow: 1,
               overflow: 'hidden',
-              padding: location.pathname.includes('/scripts/') ? '0' : '20px',
+              padding: location.pathname.includes('/projects/') ? '0' : '20px',
               display: 'flex',
               flexDirection: 'column'
             }}>
@@ -282,11 +264,6 @@ const AppContent: React.FC = () => {
                     <OutlineTab />
                   </ProtectedRoute>
                 } />
-                <Route path="/outlines/:id" element={
-                  <ProtectedRoute>
-                    <OutlineTab />
-                  </ProtectedRoute>
-                } />
                 <Route path="/outlines" element={
                   <ProtectedRoute>
                     <OutlineTab />
@@ -302,17 +279,10 @@ const AppContent: React.FC = () => {
                     <ScriptTab />
                   </ProtectedRoute>
                 } />
-                <Route path="/scripts/:scriptId/*" element={
+                <Route path="/projects/:id/*" element={
                   <ProtectedRoute>
                     <EpisodeProvider>
-                      <ScriptLayout />
-                    </EpisodeProvider>
-                  </ProtectedRoute>
-                } />
-                <Route path="/episode-generation" element={
-                  <ProtectedRoute>
-                    <EpisodeProvider>
-                      <EpisodeGenerationPage />
+                      <ProjectLayout />
                     </EpisodeProvider>
                   </ProtectedRoute>
                 } />

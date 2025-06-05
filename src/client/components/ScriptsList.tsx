@@ -61,12 +61,12 @@ const ScriptsList: React.FC = () => {
 
     const handleViewScript = (script: OutlineSessionSummary) => {
         // Navigate to the script detail view
-        navigate(`/scripts/${script.id}`);
+        navigate(`/projects/${script.id}/episodes`);
     };
 
     const handleStartEpisodeGeneration = (script: OutlineSessionSummary) => {
         // Navigate to episode generation page
-        navigate(`/scripts/${script.id}/episodes`);
+        navigate(`/projects/${script.id}/episodes`);
     };
 
     return (

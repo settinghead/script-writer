@@ -202,7 +202,7 @@ export const DynamicOutlineResults: React.FC<DynamicOutlineResultsProps> = ({
     };
 
     const handleGenerateEpisodes = () => {
-        navigate(`/scripts/${sessionId}`);
+                                navigate(`/projects/${sessionId}/episodes`);
     };
 
     const hasModifications = modifiedFields.size > 0;

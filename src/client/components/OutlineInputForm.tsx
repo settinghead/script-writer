@@ -230,7 +230,7 @@ export const OutlineInputForm: React.FC = () => {
             });
 
             // Navigate to the streaming outline page
-            navigate(`/outlines/${result.sessionId}?transform=${result.transformId}`);
+                            navigate(`/projects/${result.sessionId}/outline?transform=${result.transformId}`);
 
         } catch (error: any) {
             console.error('Error generating outline:', error);

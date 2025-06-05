@@ -73,7 +73,7 @@ export const OutlinesList: React.FC = () => {
     };
 
     const handleViewOutline = (sessionId: string) => {
-        navigate(`/outlines/${sessionId}`);
+                                navigate(`/projects/${sessionId}/outline`);
     };
 
     const handleViewSourceIdea = (sessionId: string) => {

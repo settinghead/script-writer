@@ -84,7 +84,7 @@ export const OutlineTab: React.FC = () => {
                     const activeJob = await apiService.checkActiveStreamingJob(sessionId);
                     if (activeJob) {
                         // Navigate to the streaming URL to trigger streaming
-                        navigate(`/outlines/${sessionId}?transform=${activeJob.transformId}`, { replace: true });
+                        navigate(`/projects/${sessionId}/outline?transform=${activeJob.transformId}`, { replace: true });
                     }
                 } catch (error) {
                     // Expected for completed sessions
