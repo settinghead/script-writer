@@ -722,7 +722,7 @@ export const ScriptDisplayPage: React.FC = () => {
                 </Collapse>
 
                 {/* Script Header */}
-                {scriptData && (
+                {scriptData && !currentTransformId && !(isStreaming || streamingStatus === 'streaming') && (
                     <Card
                         style={{
                             backgroundColor: '#1a1a1a',
