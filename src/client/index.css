@@ -279,3 +279,31 @@ body {
   padding: 20px;
   transition: background-color 0.3s ease;
 }
+
+/* Streaming cursor animation */
+@keyframes pulse {
+
+  0%,
+  50% {
+    opacity: 1;
+  }
+
+  51%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Tree node styling for disabled/missing episodes */
+.ant-tree-node-content-wrapper[aria-disabled="true"] {
+  cursor: not-allowed !important;
+  opacity: 0.5 !important;
+}
+
+.ant-tree-node-content-wrapper[aria-disabled="true"]:hover {
+  background-color: transparent !important;
+}
+
+.ant-tree-node-content-wrapper[aria-disabled="true"] .ant-tree-title {
+  color: #6e7681 !important;
+}
