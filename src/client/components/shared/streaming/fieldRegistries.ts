@@ -86,7 +86,13 @@ export const outlineFieldRegistry: FieldDefinition[] = [
     order: 8
   },
 
-
+  // 8. Enhanced stages structure with progressive streaming support
+  {
+    path: "stages",
+    component: EditableSynopsisStagesField,
+    label: "分段故事梗概",
+    order: 9
+  },
 
   // 8b. Legacy synopsis_stages for backward compatibility with streaming
   {
@@ -94,6 +100,56 @@ export const outlineFieldRegistry: FieldDefinition[] = [
     component: EditableSynopsisStagesField,
     label: "分段故事梗概",
     order: 9
+  },
+
+  // 8c. Individual synopsis stage fields for progressive streaming
+  {
+    path: "synopsis_stages[*].stageSynopsis",
+    component: AutoSaveTextAreaField,
+    label: "阶段梗概",
+    order: 9.1
+  },
+  {
+    path: "synopsis_stages[*].numberOfEpisodes",
+    component: AutoSaveTextField,
+    label: "集数",
+    order: 9.2
+  },
+  {
+    path: "synopsis_stages[*].timeframe",
+    component: AutoSaveTextField,
+    label: "时间跨度",
+    order: 9.3
+  },
+  {
+    path: "synopsis_stages[*].startingCondition",
+    component: AutoSaveTextAreaField,
+    label: "开始状态",
+    order: 9.4
+  },
+  {
+    path: "synopsis_stages[*].endingCondition",
+    component: AutoSaveTextAreaField,
+    label: "结束状态",
+    order: 9.5
+  },
+  {
+    path: "synopsis_stages[*].stageStartEvent",
+    component: AutoSaveTextAreaField,
+    label: "起始事件",
+    order: 9.6
+  },
+  {
+    path: "synopsis_stages[*].stageEndEvent",
+    component: AutoSaveTextAreaField,
+    label: "结束事件",
+    order: 9.7
+  },
+  {
+    path: "synopsis_stages[*].externalPressure",
+    component: AutoSaveTextAreaField,
+    label: "外部压力",
+    order: 9.8
   }
 ];
 

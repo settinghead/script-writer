@@ -174,11 +174,13 @@ export class AuthMiddleware {
     setAuthCookie(res: Response, token: string): void {
         const isProduction = process.env.NODE_ENV === 'production';
         const cookieDomain = process.env.COOKIE_DOMAIN || 'localhost';
+        // Allow HTTP in production for testing by setting ALLOW_HTTP_COOKIES=true
+        const allowHttp = process.env.ALLOW_HTTP_COOKIES === 'true';
 
         res.cookie('auth_token', token, {
             httpOnly: true,
-            secure: isProduction, // HTTPS only in production
-            sameSite: isProduction ? 'strict' : 'lax',
+            secure: isProduction && !allowHttp, // Only require HTTPS if not explicitly allowing HTTP
+            sameSite: isProduction && !allowHttp ? 'strict' : 'lax',
             domain: isProduction ? cookieDomain : undefined,
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
             path: '/'
@@ -189,11 +191,12 @@ export class AuthMiddleware {
     clearAuthCookie(res: Response): void {
         const isProduction = process.env.NODE_ENV === 'production';
         const cookieDomain = process.env.COOKIE_DOMAIN || 'localhost';
+        const allowHttp = process.env.ALLOW_HTTP_COOKIES === 'true';
 
         res.clearCookie('auth_token', {
             httpOnly: true,
-            secure: isProduction,
-            sameSite: isProduction ? 'strict' : 'lax',
+            secure: isProduction && !allowHttp,
+            sameSite: isProduction && !allowHttp ? 'strict' : 'lax',
             domain: isProduction ? cookieDomain : undefined,
             path: '/'
         });

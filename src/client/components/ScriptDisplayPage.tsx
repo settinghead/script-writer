@@ -329,11 +329,33 @@ export const ScriptDisplayPage: React.FC = () => {
             contentLength: currentScriptContent.length,
             isStreaming,
             streamingStatus,
-            contentPreview: currentScriptContent.substring(0, 100) || 'empty'
+            contentPreview: currentScriptContent.substring(0, 100) || 'empty',
+            hasTransformId: !!currentTransformId,
+            streamingItemsLength: streamingItems?.length || 0
         });
 
-        if (!currentScriptContent || currentScriptContent.length < 10) {
-            const message = (isStreaming || streamingStatus === 'streaming') ? '剧本生成中...' : '暂无内容';
+        // 🔥 FIX: Better handling of streaming vs no content states
+        const isInStreamingMode = currentTransformId && (isStreaming || streamingStatus === 'streaming');
+        const hasStreamingContent = streamingItems && streamingItems.length > 0;
+        
+        // If we're in streaming mode but don't have content yet, show loading message
+        if (isInStreamingMode && !hasStreamingContent) {
+            console.log('[ScriptDisplayPage] Streaming mode but no content yet, showing loading message');
+            return [
+                {
+                    type: 'paragraph',
+                    children: [{ text: '剧本生成中...' }]
+                }
+            ] as Descendant[];
+        }
+        
+        // If we're in streaming mode and have some content, show it even if it's short
+        if (isInStreamingMode && hasStreamingContent && currentScriptContent) {
+            console.log('[ScriptDisplayPage] Showing streaming content:', currentScriptContent.length, 'characters');
+            // Don't apply the length check for streaming content - show whatever we have
+        } else if (!currentScriptContent || currentScriptContent.length < 10) {
+            // Only show "no content" if we're not in streaming mode and truly have no content
+            const message = isInStreamingMode ? '剧本生成中...' : '暂无内容';
             console.log('[ScriptDisplayPage] No content, showing message:', message);
             return [
                 {
@@ -812,6 +834,21 @@ export const ScriptDisplayPage: React.FC = () => {
                         borderRadius: '12px',
                         minHeight: '600px'
                     }}
+                    extra={
+                        // 🔥 FIXED: Always show export button when there's content to export
+                        (currentScriptContent && currentScriptContent.length > 10 && 
+                         !currentScriptContent.includes('剧本生成中') && 
+                         !currentScriptContent.includes('暂无内容')) ? (
+                            <Button
+                                icon={<ExportOutlined />}
+                                onClick={handleExportScript}
+                                type="primary"
+                                size="small"
+                            >
+                                导出剧本
+                            </Button>
+                        ) : null
+                    }
                 >
                     <div style={{
                         padding: '20px',

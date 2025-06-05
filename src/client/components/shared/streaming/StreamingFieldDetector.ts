@@ -145,6 +145,12 @@ export class PathMatcher {
       return `\\[(\\d+)\\]`;
     });
     
+    // 🔍 DEBUG: Log path matching attempts for synopsis_stages
+    if (dataPath.includes('synopsis_stages') || registryPath.includes('synopsis_stages')) {
+      console.log(`🔍 [PathMatcher] Attempting to match dataPath: "${dataPath}" with registryPath: "${registryPath}"`);
+      console.log(`🔍 [PathMatcher] Generated regex pattern: "${regexPattern}"`);
+    }
+    
     const regex = new RegExp(`^${regexPattern}$`);
     const match = dataPath.match(regex);
     
@@ -154,7 +160,16 @@ export class PathMatcher {
         const key = `array_${i - 1}`;
         wildcards[key] = parseInt(match[i], 10);
       }
+      
+      if (dataPath.includes('synopsis_stages') || registryPath.includes('synopsis_stages')) {
+        console.log(`🔍 [PathMatcher] ✅ MATCH found! Wildcards:`, wildcards);
+      }
+      
       return wildcards;
+    }
+    
+    if (dataPath.includes('synopsis_stages') || registryPath.includes('synopsis_stages')) {
+      console.log(`🔍 [PathMatcher] ❌ No match found`);
     }
     
     return null;
