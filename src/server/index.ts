@@ -856,7 +856,7 @@ app.put("/api/artifacts/:artifactId",
 app.use('/api', createOutlineRoutes(authMiddleware, unifiedStreamingService, artifactRepo, transformRepo));
 
 // Mount episode routes
-const { createEpisodeRoutes } = require('./routes/episodes');
+import { createEpisodeRoutes } from './routes/episodes.js';
 app.use('/api/episodes', createEpisodeRoutes(artifactRepo, transformRepo, authMiddleware));
 
 // Mount script routes

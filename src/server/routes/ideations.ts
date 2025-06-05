@@ -4,6 +4,8 @@ import { BrainstormingJobParamsV1 } from '../types/artifacts';
 import { TransformRepository } from '../repositories/TransformRepository';
 import { ArtifactRepository } from '../repositories/ArtifactRepository';
 import { IdeationService } from '../services/IdeationService';
+import { TransformExecutor } from '../services/TransformExecutor';
+import { UnifiedStreamingService } from '../services/UnifiedStreamingService';
 
 export function createIdeationRoutes(
     authMiddleware: any,
@@ -104,12 +106,12 @@ export function createIdeationRoutes(
             const sessionId = req.params.id;
 
             // Use injected dependencies
-            const transformExecutor = new (require('../services/TransformExecutor').TransformExecutor)(
+            const transformExecutor = new TransformExecutor(
                 artifactRepo,
                 transformRepo
             );
 
-            const unifiedStreamingService = new (require('../services/UnifiedStreamingService').UnifiedStreamingService)(
+            const unifiedStreamingService = new UnifiedStreamingService(
                 artifactRepo,
                 transformRepo
             );

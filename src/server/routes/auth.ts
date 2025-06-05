@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
+import jwt from 'jsonwebtoken';
 import { AuthDatabase } from '../database/auth';
 import { AuthMiddleware } from '../middleware/auth';
 
@@ -103,7 +104,6 @@ export const createAuthRoutes = (authDB: AuthDatabase, authMiddleware: AuthMiddl
                     try {
                         const jwtSecret = process.env.JWT_SECRET;
                         if (jwtSecret) {
-                            const jwt = require('jsonwebtoken');
                             const decoded = jwt.verify(token, jwtSecret);
 
                             // Delete session from database
