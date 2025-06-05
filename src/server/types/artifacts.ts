@@ -257,6 +257,37 @@ export interface ScriptGenerationJobParamsV1 {
     episode_number: number;
 }
 
+// Episode script data structure (matches streaming types)
+export interface EpisodeScriptV1 {
+    episodeNumber: number;
+    stageArtifactId: string;
+    episodeGenerationSessionId: string;
+    
+    // Script content
+    scriptContent: string;
+    scenes: Array<{
+        sceneNumber: number;
+        location: string;
+        timeOfDay: string;
+        characters: string[];
+        action: string;
+        dialogue: Array<{
+            character: string;
+            line: string;
+            direction?: string;
+        }>;
+    }>;
+    
+    // Metadata
+    wordCount: number;
+    estimatedDuration: number;
+    generatedAt: string;
+    
+    // Source references
+    episodeSynopsisArtifactId: string;
+    userRequirements?: string;
+}
+
 // Workflow context for carrying parameters between stages
 export interface WorkflowContextV1 {
     totalEpisodes?: number;
@@ -317,6 +348,8 @@ export function validateArtifactData(type: string, typeVersion: string, data: an
             return isEpisodeGenerationParamsV1(data);
         case 'script_generation_job_params:v1':
             return isScriptGenerationJobParamsV1(data);
+        case 'episode_script:v1':
+            return isEpisodeScriptV1(data);
         default:
             return false;
     }
@@ -530,4 +563,18 @@ function isScriptGenerationJobParamsV1(data: any): data is ScriptGenerationJobPa
         typeof data.characters_info === 'string' &&
         typeof data.user_requirements === 'string' &&
         typeof data.episode_number === 'number';
+}
+
+function isEpisodeScriptV1(data: any): data is EpisodeScriptV1 {
+    return typeof data === 'object' &&
+        typeof data.episodeNumber === 'number' &&
+        typeof data.stageArtifactId === 'string' &&
+        typeof data.episodeGenerationSessionId === 'string' &&
+        typeof data.scriptContent === 'string' &&
+        Array.isArray(data.scenes) &&
+        typeof data.wordCount === 'number' &&
+        typeof data.estimatedDuration === 'number' &&
+        typeof data.generatedAt === 'string' &&
+        typeof data.episodeSynopsisArtifactId === 'string' &&
+        (data.userRequirements === undefined || typeof data.userRequirements === 'string');
 } 

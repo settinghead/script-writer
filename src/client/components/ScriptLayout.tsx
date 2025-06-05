@@ -8,10 +8,10 @@ import { ScriptDisplayPage } from './ScriptDisplayPage';
 import { useEpisodeContext } from '../contexts/EpisodeContext';
 import { OutlineExportModal } from './shared/OutlineExportModal';
 import { formatMultiStageEpisodesForExport, type MultiStageEpisodeExportData } from '../utils/episodeExporter';
-import { 
-    ExportOutlined, 
-    CheckCircleFilled, 
-    LoadingOutlined, 
+import {
+    ExportOutlined,
+    CheckCircleFilled,
+    LoadingOutlined,
     PlayCircleOutlined
 } from '@ant-design/icons';
 
@@ -19,7 +19,7 @@ const { Title } = Typography;
 
 // Simple dotted circle component
 const DottedCircle: React.FC<{ style?: React.CSSProperties }> = ({ style }) => (
-    <span 
+    <span
         style={{
             display: 'inline-block',
             width: '12px',
@@ -43,7 +43,7 @@ export const ScriptLayout: React.FC = () => {
     const { scriptId } = useParams<{ scriptId: string }>();
     const navigate = useNavigate();
     const { state, actions } = useEpisodeContext();
-    
+
     // Export modal state
     const [isExportModalVisible, setIsExportModalVisible] = useState(false);
     const [exportText, setExportText] = useState('');
@@ -84,7 +84,7 @@ export const ScriptLayout: React.FC = () => {
     };
 
     // Check if there are any generated episodes across all stages
-    const hasGeneratedEpisodes = state.stages.some(stage => 
+    const hasGeneratedEpisodes = state.stages.some(stage =>
         state.stageEpisodeData[stage.artifactId]?.episodes?.length > 0
     );
 
@@ -109,9 +109,9 @@ export const ScriptLayout: React.FC = () => {
             const children: DataNode[] = episodes.map(episode => {
                 // Check if script exists for this episode
                 const hasScript = episode.hasScript || false;
-                
+
                 // Show green checkmark if script exists, dotted circle otherwise
-                const statusIcon = hasScript ? 
+                const statusIcon = hasScript ?
                     <CheckCircleFilled style={{ color: '#52c41a', fontSize: '12px' }} /> :
                     <DottedCircle />;
 
@@ -147,7 +147,7 @@ export const ScriptLayout: React.FC = () => {
             // Determine stage status icon
             let statusIcon;
             let statusColor;
-            
+
             if (isStreaming) {
                 statusIcon = <LoadingOutlined style={{ color: '#1890ff', fontSize: '12px' }} />;
                 statusColor = '#1890ff';
@@ -188,15 +188,15 @@ export const ScriptLayout: React.FC = () => {
             const episodePrefix = 'episode-';
             const afterPrefix = nodeKey.substring(episodePrefix.length);
             const lastHyphenIndex = afterPrefix.lastIndexOf('-');
-            
+
             if (lastHyphenIndex !== -1) {
                 const stageId = afterPrefix.substring(0, lastHyphenIndex);
                 const episodeNumber = afterPrefix.substring(lastHyphenIndex + 1);
-                
+
                 // Check if script exists for this episode
                 const selectedNode = info.node;
                 const hasScript = selectedNode?.hasScript || false;
-                
+
                 if (hasScript) {
                     // Navigate to script display page
                     navigate(`/scripts/${scriptId}/stages/${stageId}/episodes/${episodeNumber}/script`);
@@ -280,7 +280,7 @@ export const ScriptLayout: React.FC = () => {
 
     return (
         <div style={{
-            height: '100vh',
+            height: 'calc(100vh - 160px)',
             display: 'flex',
             backgroundColor: '#0a0a0a'
         }}>
@@ -373,10 +373,10 @@ export const ScriptLayout: React.FC = () => {
                             </div>
                         </div>
                     } />
-                    
+
                     {/* Stage detail route - episode synopsis generation */}
                     <Route path="stages/:stageId" element={
-                        <StageDetailView 
+                        <StageDetailView
                             selectedStageId={undefined} // Will be read from URL params inside component
                             stages={state.stages}
                             stageEpisodeData={state.stageEpisodeData}
@@ -385,10 +385,10 @@ export const ScriptLayout: React.FC = () => {
                             }}
                         />
                     } />
-                    
+
                     {/* Episode script generation route */}
                     <Route path="stages/:stageId/episodes/:episodeId" element={<EpisodeScriptGeneration />} />
-                    
+
                     {/* Script display route */}
                     <Route path="stages/:stageId/episodes/:episodeId/script" element={<ScriptDisplayPage />} />
                 </Routes>

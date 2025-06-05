@@ -1024,9 +1024,20 @@ export class StreamingTransformExecutor {
                 throw new Error('Script generation template not found');
             }
 
+            // Generate episode-specific instructions based on episode number
+            const episodeSpecificInstructions = this.templateService.generateScriptEpisodeSpecificInstructions(
+                jobParams.episode_number || 1
+            );
+
+            // Add episode-specific instructions to job params
+            const enhancedParams = {
+                ...jobParams,
+                episodeSpecificInstructions
+            };
+
             return await this.templateService.renderTemplate(template, {
                 artifacts: {},
-                params: jobParams
+                params: enhancedParams
             });
         };
 
@@ -1447,22 +1458,36 @@ export class StreamingTransformExecutor {
                 throw new Error(`Missing episodeNumber in scriptData: ${JSON.stringify(scriptData, null, 2)}`);
             }
 
-            // Create episode script artifact from the generated script data
+            // Get transform inputs to find required context
+            const inputs = await this.transformRepo.getTransformInputs(transform.id);
+            const paramsInput = inputs.find(input => input.input_role === 'job_params');
+            
+            if (!paramsInput) {
+                throw new Error('Missing job params for script generation');
+            }
+
+            const paramsArtifact = await this.artifactRepo.getArtifact(paramsInput.artifact_id, userId);
+            if (!paramsArtifact) {
+                throw new Error('Job parameters artifact not found');
+            }
+
+            const jobParams = paramsArtifact.data;
+
+            // Create episode script artifact with proper EpisodeScriptV1 structure
             const scriptArtifact = await this.artifactRepo.createArtifact(
                 userId,
                 'episode_script',
                 {
                     episodeNumber: scriptData.episodeNumber,
-                    scriptContent: scriptData.scriptContent || '', // 🔥 FIX: Include the actual script content!
+                    stageArtifactId: jobParams.stageArtifactId || 'unknown', // Should be passed in job params
+                    episodeGenerationSessionId: jobParams.episodeGenerationSessionId || 'unknown', // Should be passed in job params
+                    scriptContent: scriptData.scriptContent || '',
                     scenes: scriptData.scenes || [],
                     wordCount: scriptData.wordCount || 0,
                     estimatedDuration: scriptData.estimatedDuration || 0,
                     generatedAt: new Date().toISOString(),
-                    // Legacy fields for compatibility
-                    title: scriptData.title || '未命名剧本',
-                    characterList: scriptData.characterList || [],
-                    summary: scriptData.summary || '',
-                    totalDialogueLines: scriptData.totalDialogueLines || 0
+                    episodeSynopsisArtifactId: jobParams.episodeSynopsisArtifactId || 'unknown', // Should be passed in job params
+                    userRequirements: jobParams.user_requirements || jobParams.userRequirements
                 },
                 'v1',
                 { transform_id: transform.id }

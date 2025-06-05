@@ -1,7 +1,7 @@
 import { brainstormingTemplate } from './brainstorming.js';
-import { outlineTemplate, generateEpisodeSpecificInstructions } from './outline.js';
-import { episodeSynopsisGenerationTemplate } from './episodeSynopsisGeneration.js';
-import { scriptGenerationTemplate } from './scriptGeneration.js';
+import { outlineTemplate } from './outline.js';
+import { generateEpisodeSpecificInstructions, episodeSynopsisGenerationTemplate } from './episodeSynopsisGeneration.js';
+import { scriptGenerationTemplate, generateScriptEpisodeSpecificInstructions } from './scriptGeneration.js';
 
 // Define types locally to avoid path issues
 interface LLMTemplate {
@@ -94,5 +94,13 @@ export class TemplateService {
    */
   generateEpisodeSpecificInstructions(startingEpisode: number, endingEpisode: number): string {
     return generateEpisodeSpecificInstructions(startingEpisode, endingEpisode);
+  }
+
+  /**
+   * Generate script-specific instructions for individual episode script generation
+   * This provides episode-specific guidance for script writing
+   */
+  generateScriptEpisodeSpecificInstructions(episodeNumber: number): string {
+    return generateScriptEpisodeSpecificInstructions(episodeNumber);
   }
 } 

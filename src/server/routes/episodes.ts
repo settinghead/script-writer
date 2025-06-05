@@ -239,5 +239,33 @@ export function createEpisodeRoutes(
         }
     );
 
+    // Get a specific episode synopsis
+    router.get('/stages/:stageId/episodes/:episodeId',
+        authMiddleware.authenticate,
+        async (req, res): Promise<void> => {
+            const userId = req.user?.id;
+            const { stageId, episodeId } = req.params;
+
+            if (!userId) {
+                res.status(401).json({ error: 'Unauthorized' });
+                return;
+            }
+
+            try {
+                const episode = await episodeService.getSpecificEpisode(userId, stageId, episodeId);
+
+                if (!episode) {
+                    res.status(404).json({ error: 'Episode not found' });
+                    return;
+                }
+
+                res.json(episode);
+            } catch (error: any) {
+                console.error('Error getting specific episode:', error);
+                res.status(500).json({ error: error.message });
+            }
+        }
+    );
+
     return router;
 } 

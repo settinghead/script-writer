@@ -1,7 +1,7 @@
 export const episodeSynopsisGenerationTemplate = {
-    id: 'episode_synopsis_generation',
-    name: 'Episode Synopsis Generation',
-    promptTemplate: `你是一位资深的短剧编剧，专门负责将故事阶段梗概展开为具体的分集剧情大纲。
+  id: 'episode_synopsis_generation',
+  name: 'Episode Synopsis Generation',
+  promptTemplate: `你是一位资深的短剧编剧，专门负责将故事阶段梗概展开为具体的分集剧情大纲。
 
 **重要提醒：这是故事中的一个特定阶段，不是完整故事。你只需要为这个阶段的内容生成剧集，不能超出该阶段的范围！**
 
@@ -101,6 +101,34 @@ export const episodeSynopsisGenerationTemplate = {
 - ✅ 情感变化是否符合指定弧线？
 - ✅ 外部压力是否保持一致？
 
+=== Examples ===
+
+第一集
+
+1.女主大婚当日，风光极盛。所有百姓都说今日盛京双喜临门：男主带兵凯旋，女主身为护国公府下嫁荣光将军。
+
+2.女主正甜蜜着，突遭人拦轿：男主进城之后直接进宫，用一身军功求来的一道退婚圣旨！要另娶边疆带回来的孤女，并且孤女……已经怀孕！
+
+3.婚轿停，女主掀开盖头，神色不可置信。
+
+第二集
+
+1.女主来到婆家，婆婆正为女主出气，婆婆（好角色）通过婆婆细数女主付出（台词信息比如女主下嫁，比如女主带彩礼，比如未婚就接济婆家），女反2（男2妹妹）阻拦，骂女主，婆婆用荆条狠狠抽男主，男主不为所动，执意要让女主退婚。
+
+2.女主上前质问，男主不为所动，说刺痛女主的话——都是女主一厢情愿，自己从未求娶过女主。
+
+3.女主愣住，心碎。
+
+第三集
+
+1.闪回——闪回1，女主被男主英雄救美。闪回2，男主出征当日，女主送男主亲手做的战袍，仆人台词带出女主为了做这个战袍多用心。【这两个闪回不能一笔带过】
+
+2.这时女反入场，女主发现女反穿着自己做的战袍（虐心），女反立人设，说不会介意如何如何，以退为进说都是自家姐妹，对男主好就可以。
+
+3.男主却执意退婚，所有人阻拦，男主见女主不理睬，着急，故意说退而求其次，让女主去当妾，所有人哗然。
+
+
+
 **输出格式**：
 请以JSON数组的格式返回，**必须包含完整的%%params.numberOfEpisodes%%集**，每个集数包含以下字段：
 
@@ -154,7 +182,8 @@ export const episodeSynopsisGenerationTemplate = {
         "content": "该集中关系的发展变化"
       }
     ]
-  }
+  },
+  ...
 ]
 
 **🎭 情感与关系发展追踪要求**：
@@ -194,29 +223,71 @@ export const episodeSynopsisGenerationTemplate = {
 6. **质量要求**：情感和关系发展必须与剧情事件紧密结合，体现人物的真实成长轨迹
 
 **再次强调：必须生成%%params.numberOfEpisodes%%集完整内容！**`,
-    outputFormat: 'json_array',
-    responseWrapper: '```json',
-    variables: [
-        'params.numberOfEpisodes',
-        'params.stageSynopsis',
-        'params.customRequirements',
-        'params.timeframe',
-        'params.startingCondition',
-        'params.endingCondition',
-        'params.stageStartEvent',
-        'params.stageEndEvent',
-        'params.keyPoints',
-        'params.relationshipLevel',
-        'params.emotionalArc',
-        'params.externalPressure',
-        'params.platform',
-        'params.genre',
-        'params.requirements',
-        'params.totalEpisodes',
-        'params.episodeDuration',
-        'params.stageNumber',
-        'params.startingEpisode',
-        'params.endingEpisode',
-        'params.episodeSpecificInstructions'
-    ]
+  outputFormat: 'json_array',
+  responseWrapper: '```json',
+  variables: [
+    'params.numberOfEpisodes',
+    'params.stageSynopsis',
+    'params.customRequirements',
+    'params.timeframe',
+    'params.startingCondition',
+    'params.endingCondition',
+    'params.stageStartEvent',
+    'params.stageEndEvent',
+    'params.keyPoints',
+    'params.relationshipLevel',
+    'params.emotionalArc',
+    'params.externalPressure',
+    'params.platform',
+    'params.genre',
+    'params.requirements',
+    'params.totalEpisodes',
+    'params.episodeDuration',
+    'params.stageNumber',
+    'params.startingEpisode',
+    'params.endingEpisode',
+    'params.episodeSpecificInstructions'
+  ]
 }; 
+
+
+
+/**
+ * Generate episode-specific instructions based on the episode range being generated
+ * This is extensible for future special episode requirements
+ */
+export function generateEpisodeSpecificInstructions(startingEpisode: number, endingEpisode: number): string {
+  const instructions: string[] = [];
+
+  // First episode special requirements
+  if (startingEpisode === 1) {
+      instructions.push(`
+**📺 第1集特殊要求**：
+- **开篇吸引力**：第一集的开头必须用吸引人， 高能量的方式，快速把主要人物的背景、剧中的初始关系都交代清楚
+- **人物碰撞设计**：开头场景选择一些人物短期快速能碰撞的场景，制造戏剧冲突和张力
+- **叙事技巧运用**：如果有交代的空缺，可以利用flashback（闪回）、倒序等手法来补充背景信息
+- **信息密度控制**：在保持节奏紧凑的同时，确保观众能快速理解人物关系和故事背景
+- **钩子前置**：开场3分钟内必须建立核心矛盾或悬念，抓住观众注意力`);
+  }
+
+  // Future: Add more conditional requirements here
+  // Example: Mid-season episodes, finale episodes, etc.
+  /*
+  if (endingEpisode >= 10 && endingEpisode <= 15) {
+    instructions.push(`
+**🔥 中期剧集要求**：
+- **情感深化**：深入挖掘人物内心世界和复杂情感
+- **关系转折**：准备重大关系转变的铺垫`);
+  }
+
+  if (endingEpisode >= 20) {
+    instructions.push(`
+**🎬 高潮剧集要求**：
+- **冲突激化**：将所有积累的矛盾推向高潮
+- **角色成长**：展现角色的重大成长和转变`);
+  }
+  */
+
+  // If no special instructions, return empty string
+  return instructions.length > 0 ? instructions.join('\n') : '';
+}

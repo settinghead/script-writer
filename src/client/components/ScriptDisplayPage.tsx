@@ -1,15 +1,18 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Card, Typography, message, Spin, Breadcrumb, Space, Button, Alert } from 'antd';
-import { ArrowLeftOutlined, FileTextOutlined, LoadingOutlined } from '@ant-design/icons';
+import { Card, Typography, message, Spin, Breadcrumb, Space, Button, Alert, Collapse, Input, Tag } from 'antd';
+import { ArrowLeftOutlined, FileTextOutlined, LoadingOutlined, ExportOutlined, PlayCircleOutlined, StopOutlined, EditOutlined } from '@ant-design/icons';
 import { createEditor, Descendant } from 'slate';
 import { Slate, Editable, withReact } from 'slate-react';
 import type { EpisodeScriptV1 } from '../../common/streaming/types';
 import { useLLMStreaming } from '../hooks/useLLMStreaming';
 import { ScriptStreamingService, StreamingScript } from '../services/implementations/ScriptStreamingService';
 import { useEpisodeContext } from '../contexts/EpisodeContext';
+import { OutlineExportModal } from './shared/OutlineExportModal';
 
-const { Title, Text } = Typography;
+const { Title, Text, Paragraph } = Typography;
+const { TextArea } = Input;
+const { Panel } = Collapse;
 
 interface ScriptNode {
     type: string;
@@ -28,11 +31,27 @@ export const ScriptDisplayPage: React.FC = () => {
     const { actions } = useEpisodeContext();
 
     // Get transformId from navigation state
-    const { transformId, sessionId } = (location.state as any) || {};
+    const { transformId: navigationTransformId, sessionId } = (location.state as any) || {};
 
     const [scriptData, setScriptData] = useState<EpisodeScriptV1 | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    // Local transform ID state that can override navigation state for regeneration
+    const [currentTransformId, setCurrentTransformId] = useState<string | undefined>(navigationTransformId);
+    
+    // Export modal state
+    const [isExportModalVisible, setIsExportModalVisible] = useState(false);
+    const [exportText, setExportText] = useState('');
+
+    // Script generation parameters state
+    const [scriptParametersCollapsed, setScriptParametersCollapsed] = useState(true);
+    const [editMode, setEditMode] = useState(false);
+    const [editedUserRequirements, setEditedUserRequirements] = useState('');
+    const [episodeSynopsis, setEpisodeSynopsis] = useState('');
+    const [hasAutoCollapsed, setHasAutoCollapsed] = useState(false);
+    const [pollCount, setPollCount] = useState(0);
+    const [maxPollAttempts] = useState(10); // Maximum 30 seconds of polling
+    const [pollTimeoutId, setPollTimeoutId] = useState<NodeJS.Timeout | null>(null);
 
     // Create streaming service
     const streamingService = useMemo(() => new ScriptStreamingService(), []);
@@ -44,21 +63,30 @@ export const ScriptDisplayPage: React.FC = () => {
         isStreaming, 
         isComplete, 
         error: streamingError 
-    } = useLLMStreaming(streamingService, { transformId });
+    } = useLLMStreaming(streamingService, { transformId: currentTransformId });
 
     // Create a read-only Slate editor
     const editor = useMemo(() => withReact(createEditor()), []);
 
     useEffect(() => {
+        // Reset poll count when episode/stage changes
+        setPollCount(0);
+        if (pollTimeoutId) {
+            clearTimeout(pollTimeoutId);
+            setPollTimeoutId(null);
+        }
+
         // Only try to load script when generation is complete
         if (isComplete && !scriptData) {
+            console.log('[ScriptDisplayPage] Loading script after completion');
             loadScript();
         }
         // If no transformId, try to load script directly (for existing scripts)
-        else if (!transformId) {
+        else if (!currentTransformId && !scriptData && !loading && !isStreaming) {
+            console.log('[ScriptDisplayPage] Loading script without transformId');
             loadScript();
         }
-    }, [episodeId, stageId, isComplete, transformId, scriptData]);
+    }, [episodeId, stageId, isComplete, currentTransformId]); // Removed scriptData and loading from dependencies to prevent loops
 
     // Use streaming script data if available
     const currentScriptContent = useMemo(() => {
@@ -100,60 +128,54 @@ export const ScriptDisplayPage: React.FC = () => {
             }).join('\n\n');
         };
 
-        // If we have streaming items, use the latest one
-        if (streamingItems && streamingItems.length > 0) {
-            const latestScript = streamingItems[streamingItems.length - 1] as StreamingScript;
-            let scriptContent = latestScript.scriptContent || '';
+        // 🔥 PRIORITY: If we're in streaming mode (actively streaming or have streaming transform), prioritize streaming content
+        if (currentTransformId && (isStreaming || streamingStatus === 'streaming' || streamingItems?.length > 0)) {
+            console.log('[ScriptDisplayPage] In streaming mode - prioritizing streaming content');
             
-            // 🔥 NEW: Show streaming content even if partial/placeholder during streaming
-            if (isStreaming) {
-                // During streaming, show whatever content we have, even if it's partial
-                console.log('[ScriptDisplayPage] Streaming mode - showing partial content');
-                if (scriptContent && scriptContent.length > 0) {
-                    // Show the partial scriptContent as-is during streaming
-                    return scriptContent;
-                }
-                // If no scriptContent yet, try scenes fallback
-                scriptContent = convertScenesToText(latestScript.scenes || []);
-                if (scriptContent && scriptContent.length > 0) {
-                    return scriptContent;
-                }
-                // Show loading message if no content yet
-                return '剧本生成中...';
-            } else {
-                // 🔥 FALLBACK: Only after streaming is complete, convert from scenes if needed
-                if (!scriptContent || scriptContent.length < 10 || 
-                    scriptContent.includes('完整剧本文本') || scriptContent.includes('剧本内容')) {
-                    console.log('[ScriptDisplayPage] scriptContent is placeholder, converting from scenes');
+            if (streamingItems && streamingItems.length > 0) {
+                // Use latest streaming item
+                const latestScript = streamingItems[streamingItems.length - 1] as StreamingScript;
+                let scriptContent = latestScript.scriptContent || '';
+                
+                if (!scriptContent || scriptContent.length < 10) {
                     scriptContent = convertScenesToText(latestScript.scenes || []);
                 }
+                
+                console.log('[ScriptDisplayPage] Using streaming content:', {
+                    contentLength: scriptContent.length,
+                    contentPreview: scriptContent.substring(0, 100) || 'no content',
+                    isStreaming
+                });
+                return scriptContent;
+            } else {
+                // Streaming mode but no items yet - show loading message
+                console.log('[ScriptDisplayPage] Streaming mode but no items yet');
+                return '剧本生成中...';
+            }
+        }
+        
+        // 🔥 FALLBACK: Only use loaded script data if not in streaming mode
+        if (scriptData) {
+            let loadedContent = scriptData.scriptContent || '';
+            
+            // Convert from scenes if scriptContent is empty or placeholder
+            if (!loadedContent || loadedContent.length < 10 || 
+                loadedContent.includes('完整剧本文本') || loadedContent.includes('剧本内容')) {
+                console.log('[ScriptDisplayPage] Loaded scriptContent is placeholder, converting from scenes');
+                loadedContent = convertScenesToText(scriptData.scenes || []);
             }
             
-            console.log('[ScriptDisplayPage] Using streaming content:', {
-                contentLength: scriptContent.length,
-                contentPreview: scriptContent.substring(0, 100) || 'no content',
-                isStreaming,
-                usedFallback: !isStreaming && scriptContent !== latestScript.scriptContent
+            console.log('[ScriptDisplayPage] Using loaded content:', {
+                contentLength: loadedContent.length,
+                contentPreview: loadedContent.substring(0, 100) || 'no content'
             });
-            return scriptContent;
+            return loadedContent;
         }
         
-        // Otherwise use loaded script data
-        let loadedContent = scriptData?.scriptContent || '';
-        
-        // 🔥 FALLBACK: If loaded scriptContent is empty or placeholder, convert from scenes
-        if (scriptData && (!loadedContent || loadedContent.length < 10 || 
-            loadedContent.includes('完整剧本文本') || loadedContent.includes('剧本内容'))) {
-            console.log('[ScriptDisplayPage] Loaded scriptContent is placeholder, converting from scenes');
-            loadedContent = convertScenesToText(scriptData.scenes || []);
-        }
-        
-        console.log('[ScriptDisplayPage] Using loaded content:', {
-            contentLength: loadedContent.length,
-            contentPreview: loadedContent.substring(0, 100) || 'no content'
-        });
-        return loadedContent;
-    }, [streamingItems, scriptData, isStreaming]);
+        // No content available
+        console.log('[ScriptDisplayPage] No content available');
+        return '';
+    }, [streamingItems, scriptData, isStreaming, currentTransformId, streamingStatus]);
 
     // Update loading state when streaming content becomes available
     useEffect(() => {
@@ -178,12 +200,81 @@ export const ScriptDisplayPage: React.FC = () => {
         }
     }, [isComplete, streamingItems, stageId, episodeId, actions]);
 
+    // Auto-collapse script parameters when generation starts or script is available
+    useEffect(() => {
+        // Auto-collapse when streaming starts
+        if (isStreaming && !scriptParametersCollapsed) {
+            setScriptParametersCollapsed(true);
+        }
+        // Auto-collapse when script is loaded (only once)
+        else if ((scriptData || streamingItems?.length) && !scriptParametersCollapsed && !hasAutoCollapsed) {
+            setScriptParametersCollapsed(true);
+            setHasAutoCollapsed(true);
+        }
+    }, [isStreaming, scriptData, streamingItems?.length, scriptParametersCollapsed, hasAutoCollapsed]);
+
+    // Load episode synopsis for script generation context
+    useEffect(() => {
+        const loadEpisodeSynopsis = async () => {
+            if (!stageId || !episodeId) return;
+
+            try {
+                const response = await fetch(`/api/episodes/stages/${stageId}/episodes/${episodeId}`, {
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const episode = await response.json();
+                    setEpisodeSynopsis(episode.synopsis || episode.briefSummary || '');
+                }
+            } catch (error) {
+                console.warn('Could not load episode synopsis:', error);
+            }
+        };
+
+        loadEpisodeSynopsis();
+    }, [stageId, episodeId]);
+
+    // Load script when component mounts or route parameters change
+    useEffect(() => {
+        if (stageId && episodeId) {
+            console.log('[ScriptDisplayPage] Component mounted or params changed, loading script');
+            setPollCount(0); // Reset poll count
+            loadScript();
+        }
+    }, [stageId, episodeId]);
+
+    // Update currentTransformId when navigation state changes
+    useEffect(() => {
+        setCurrentTransformId(navigationTransformId);
+    }, [navigationTransformId]);
+
+    // Cleanup timeout on unmount
+    useEffect(() => {
+        return () => {
+            if (pollTimeoutId) {
+                console.log('[ScriptDisplayPage] Cleaning up poll timeout');
+                clearTimeout(pollTimeoutId);
+            }
+        };
+    }, [pollTimeoutId]);
+
     const loadScript = async () => {
         if (!episodeId || !stageId) return;
+
+        // Prevent excessive polling
+        if (pollCount >= maxPollAttempts) {
+            console.log('[ScriptDisplayPage] Maximum poll attempts reached, stopping');
+            setError('剧本加载超时，请检查生成状态');
+            setLoading(false);
+            return;
+        }
 
         try {
             setLoading(true);
             setError(null);
+
+            console.log(`[ScriptDisplayPage] Loading script attempt ${pollCount + 1}/${maxPollAttempts}`);
 
             const response = await fetch(`/api/scripts/${episodeId}/${stageId}`, {
                 method: 'GET',
@@ -193,9 +284,18 @@ export const ScriptDisplayPage: React.FC = () => {
             if (!response.ok) {
                 if (response.status === 404) {
                     // Script not found, check if generation is in progress
+                    setPollCount(prev => prev + 1);
                     setError('剧本生成中，请稍候...');
-                    // Poll for completion
-                    setTimeout(loadScript, 3000);
+                    
+                    // Only continue polling if we haven't reached the limit
+                    if (pollCount + 1 < maxPollAttempts) {
+                        console.log(`[ScriptDisplayPage] Script not found, polling again in 3s (attempt ${pollCount + 1})`);
+                        const timeoutId = setTimeout(loadScript, 3000);
+                        setPollTimeoutId(timeoutId);
+                    } else {
+                        console.log('[ScriptDisplayPage] Reached max poll attempts');
+                        setError('剧本生成可能仍在进行中，请稍后手动刷新页面');
+                    }
                     return;
                 }
                 throw new Error('加载剧本失败');
@@ -203,6 +303,12 @@ export const ScriptDisplayPage: React.FC = () => {
 
             const script = await response.json();
             setScriptData(script);
+            setPollCount(0); // Reset poll count on success
+            if (pollTimeoutId) {
+                clearTimeout(pollTimeoutId);
+                setPollTimeoutId(null);
+            }
+            console.log('[ScriptDisplayPage] Script loaded successfully');
         } catch (err) {
             console.error('Error loading script:', err);
             setError(err instanceof Error ? err.message : '加载失败');
@@ -341,6 +447,83 @@ export const ScriptDisplayPage: React.FC = () => {
         return <span {...props.attributes}>{props.children}</span>;
     };
 
+    const handleExportScript = () => {
+        const contentToExport = currentScriptContent;
+        if (!contentToExport) {
+            message.warning('暂无可导出的剧本内容');
+            return;
+        }
+
+        // Format script for export
+        const episodeNumber = scriptData?.episodeNumber || parseInt(episodeId || '0');
+        const exportData = [
+            '================================================',
+            `第 ${episodeNumber} 集剧本`,
+            '================================================',
+            '',
+            '📋 剧本信息：',
+            `• 字数：${scriptData?.wordCount || '计算中'}`,
+            `• 预估时长：${scriptData?.estimatedDuration || '计算中'} 分钟`,
+            `• 生成时间：${scriptData?.generatedAt ? new Date(scriptData.generatedAt).toLocaleString() : '未知'}`,
+            '',
+            '📝 剧本内容：',
+            '================================================',
+            '',
+            contentToExport,
+            '',
+            '================================================',
+            `导出时间：${new Date().toLocaleString()}`,
+            '================================================'
+        ].join('\n');
+
+        setExportText(exportData);
+        setIsExportModalVisible(true);
+    };
+
+    const handleRegenerateScript = async () => {
+        if (!stageId || !episodeId) return;
+
+        try {
+            // Start script generation
+            const response = await fetch(`/api/scripts/generate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    episodeId: episodeId,
+                    stageId: stageId,
+                    userRequirements: editedUserRequirements.trim() || undefined
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('生成剧本失败');
+            }
+
+            const result = await response.json();
+            
+            // Clear old script data and connect to new streaming
+            setScriptData(null);
+            setError(null);
+            setLoading(false);
+            
+            // Connect to the new streaming transform by updating the transform ID
+            setCurrentTransformId(result.transformId);
+            
+            message.success('剧本重新生成已开始');
+        } catch (error) {
+            console.error('Error regenerating script:', error);
+            message.error('重新生成剧本失败');
+        }
+    };
+
+    const handleSaveParameters = () => {
+        setEditMode(false);
+        message.success('参数已保存');
+    };
+
     const breadcrumbItems = [
         {
             title: (
@@ -425,6 +608,113 @@ export const ScriptDisplayPage: React.FC = () => {
                     />
                 </div>
 
+                {/* Collapsible Script Generation Parameters */}
+                <Collapse
+                    activeKey={scriptParametersCollapsed ? [] : ['script-params']}
+                    onChange={(keys) => {
+                        setScriptParametersCollapsed(!keys.includes('script-params'));
+                        // Mark that user has manually interacted, preventing auto-collapse interference
+                        if (!hasAutoCollapsed) {
+                            setHasAutoCollapsed(true);
+                        }
+                    }}
+                    style={{ marginBottom: '20px' }}
+                    size="large"
+                >
+                    <Panel 
+                        header={`第${episodeId}集剧本生成参数`} 
+                        key="script-params"
+                        extra={
+                            <Space size="small">
+                                {scriptData && (
+                                    <Tag color="green">已生成剧本</Tag>
+                                )}
+                                {isStreaming && (
+                                    <Tag color="processing">生成中</Tag>
+                                )}
+                            </Space>
+                        }
+                    >
+                        {/* Episode Synopsis Context */}
+                        {episodeSynopsis && (
+                            <div style={{ marginBottom: '20px' }}>
+                                <Title level={5} style={{ color: '#fff' }}>剧集简介</Title>
+                                <Paragraph style={{ color: '#ccc', backgroundColor: '#262626', padding: '12px', borderRadius: '6px' }}>
+                                    {episodeSynopsis}
+                                </Paragraph>
+                            </div>
+                        )}
+
+                        {/* Generation Parameters */}
+                        <div style={{ marginBottom: '20px' }}>
+                            <Title level={5} style={{ color: '#fff' }}>生成参数</Title>
+                            <Space direction="vertical" style={{ width: '100%' }}>
+                                <div>
+                                    <Text strong style={{ color: '#fff' }}>特殊要求: </Text>
+                                    {editMode ? (
+                                        <TextArea
+                                            rows={3}
+                                            placeholder="输入对剧本生成的特殊要求..."
+                                            value={editedUserRequirements}
+                                            onChange={e => setEditedUserRequirements(e.target.value)}
+                                            style={{
+                                                backgroundColor: '#1f1f1f',
+                                                borderColor: '#404040',
+                                                color: '#fff'
+                                            }}
+                                        />
+                                    ) : (
+                                        <Text style={{ color: '#ccc' }}>
+                                            {editedUserRequirements || '无特殊要求'}
+                                        </Text>
+                                    )}
+                                </div>
+                            </Space>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <Space>
+                            {editMode ? (
+                                <>
+                                    <Button type="primary" onClick={handleSaveParameters}>
+                                        保存参数
+                                    </Button>
+                                    <Button onClick={() => setEditMode(false)}>
+                                        取消
+                                    </Button>
+                                </>
+                            ) : (
+                                <Button
+                                    icon={<EditOutlined />}
+                                    onClick={() => setEditMode(true)}
+                                >
+                                    编辑参数
+                                </Button>
+                            )}
+
+                            {!isStreaming ? (
+                                <Button
+                                    type="primary"
+                                    icon={<PlayCircleOutlined />}
+                                    onClick={handleRegenerateScript}
+                                    disabled={editMode}
+                                >
+                                    {scriptData || currentScriptContent ? '重新生成剧本' : '生成剧本'}
+                                </Button>
+                            ) : (
+                                <Button
+                                    type="primary"
+                                    danger
+                                    icon={<StopOutlined />}
+                                    disabled={true}
+                                >
+                                    停止生成
+                                </Button>
+                            )}
+                        </Space>
+                    </Panel>
+                </Collapse>
+
                 {/* Script Header */}
                 {scriptData && (
                     <Card
@@ -435,28 +725,37 @@ export const ScriptDisplayPage: React.FC = () => {
                             marginBottom: '20px'
                         }}
                     >
-                        <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                            <Title level={4} style={{ color: '#fff', marginBottom: '8px' }}>
-                                <FileTextOutlined style={{ marginRight: '8px' }} />
-                                第 {scriptData.episodeNumber} 集剧本
-                            </Title>
-                            <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
-                                <div>
-                                    <Text style={{ color: '#888' }}>字数：</Text>
-                                    <Text style={{ color: '#fff' }}>{scriptData.wordCount || '计算中'}</Text>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
+                            <Space direction="vertical" size="small" style={{ flex: 1 }}>
+                                <Title level={4} style={{ color: '#fff', marginBottom: '8px' }}>
+                                    <FileTextOutlined style={{ marginRight: '8px' }} />
+                                    第 {scriptData.episodeNumber} 集剧本
+                                </Title>
+                                <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
+                                    <div>
+                                        <Text style={{ color: '#888' }}>字数：</Text>
+                                        <Text style={{ color: '#fff' }}>{scriptData.wordCount || '计算中'}</Text>
+                                    </div>
+                                    <div>
+                                        <Text style={{ color: '#888' }}>预估时长：</Text>
+                                        <Text style={{ color: '#fff' }}>{scriptData.estimatedDuration || '计算中'} 分钟</Text>
+                                    </div>
+                                    <div>
+                                        <Text style={{ color: '#888' }}>生成时间：</Text>
+                                        <Text style={{ color: '#fff' }}>
+                                            {scriptData.generatedAt ? new Date(scriptData.generatedAt).toLocaleString() : '未知'}
+                                        </Text>
+                                    </div>
                                 </div>
-                                <div>
-                                    <Text style={{ color: '#888' }}>预估时长：</Text>
-                                    <Text style={{ color: '#fff' }}>{scriptData.estimatedDuration || '计算中'} 分钟</Text>
-                                </div>
-                                <div>
-                                    <Text style={{ color: '#888' }}>生成时间：</Text>
-                                    <Text style={{ color: '#fff' }}>
-                                        {scriptData.generatedAt ? new Date(scriptData.generatedAt).toLocaleString() : '未知'}
-                                    </Text>
-                                </div>
-                            </div>
-                        </Space>
+                            </Space>
+                            <Button
+                                icon={<ExportOutlined />}
+                                onClick={handleExportScript}
+                                style={{ marginLeft: '16px' }}
+                            >
+                                导出剧本
+                            </Button>
+                        </div>
                     </Card>
                 )}
 
@@ -470,20 +769,32 @@ export const ScriptDisplayPage: React.FC = () => {
                             marginBottom: '20px'
                         }}
                     >
-                        <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <LoadingOutlined style={{ color: '#1890ff' }} />
-                                <Text style={{ color: '#fff' }}>剧本生成中...</Text>
-                            </div>
-                            <div style={{ color: '#888', fontSize: '14px' }}>
-                                正在根据剧集大纲生成详细剧本内容，请稍候...
-                            </div>
-                            {streamingItems && streamingItems.length > 0 && (
-                                <div style={{ color: '#888', fontSize: '12px' }}>
-                                    已生成内容：{currentScriptContent.length} 字符
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
+                            <Space direction="vertical" size="small" style={{ flex: 1 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <LoadingOutlined style={{ color: '#1890ff' }} />
+                                    <Text style={{ color: '#fff' }}>剧本生成中...</Text>
                                 </div>
+                                <div style={{ color: '#888', fontSize: '14px' }}>
+                                    正在根据剧集大纲生成详细剧本内容，请稍候...
+                                </div>
+                                {streamingItems && streamingItems.length > 0 && (
+                                    <div style={{ color: '#888', fontSize: '12px' }}>
+                                        已生成内容：{currentScriptContent.length} 字符
+                                    </div>
+                                )}
+                            </Space>
+                            {currentScriptContent && currentScriptContent.length > 0 && (
+                                <Button
+                                    icon={<ExportOutlined />}
+                                    onClick={handleExportScript}
+                                    style={{ marginLeft: '16px' }}
+                                    size="small"
+                                >
+                                    导出当前内容
+                                </Button>
                             )}
-                        </Space>
+                        </div>
                     </Card>
                 )}
 
@@ -525,6 +836,14 @@ export const ScriptDisplayPage: React.FC = () => {
                     </div>
                 </Card>
             </div>
+
+            {/* Export Modal */}
+            <OutlineExportModal
+                visible={isExportModalVisible}
+                onClose={() => setIsExportModalVisible(false)}
+                exportText={exportText}
+                title="剧本导出"
+            />
         </div>
     );
 };

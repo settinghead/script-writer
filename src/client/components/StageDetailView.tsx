@@ -522,14 +522,7 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
                         </Button>
                     )}
 
-                    {episodes.length > 0 && (
-                        <Button
-                            icon={<ExportOutlined />}
-                            onClick={handleExport}
-                        >
-                            导出剧集
-                        </Button>
-                    )}
+
                 </Space>
                 </Panel>
             </Collapse>
@@ -538,7 +531,18 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
 
             {/* Episodes List */}
             {episodes.length > 0 && (
-                <Card title={`已生成剧集 (${episodes.length}集)`}>
+                <Card 
+                    title={`每集大纲 (${episodes.length}集)`}
+                    extra={
+                        <Button
+                            icon={<ExportOutlined />}
+                            onClick={handleExport}
+                            size="small"
+                        >
+                            导出剧集
+                        </Button>
+                    }
+                >
                     <List
                         dataSource={episodes}
                         renderItem={(episode, index) => (

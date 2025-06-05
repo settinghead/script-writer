@@ -406,4 +406,33 @@ export class EpisodeGenerationService {
             return [];
         }
     }
+
+    async getSpecificEpisode(
+        userId: string,
+        stageId: string,
+        episodeId: string
+    ): Promise<EpisodeSynopsisV1 | null> {
+        try {
+            // Get all episode synopsis artifacts for the user
+            const episodeArtifacts = await this.artifactRepo.getArtifactsByType(
+                userId,
+                'episode_synopsis'
+            );
+
+            // Find the episode that matches the episode number
+            const matchingEpisode = episodeArtifacts.find(artifact => {
+                const episodeData = artifact.data as EpisodeSynopsisV1;
+                return episodeData.episodeNumber.toString() === episodeId;
+            });
+
+            if (!matchingEpisode) {
+                return null;
+            }
+
+            return matchingEpisode.data as EpisodeSynopsisV1;
+        } catch (error) {
+            console.error('Error getting specific episode:', error);
+            throw error;
+        }
+    }
 } 

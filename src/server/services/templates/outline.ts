@@ -1,42 +1,3 @@
-/**
- * Generate episode-specific instructions based on the episode range being generated
- * This is extensible for future special episode requirements
- */
-export function generateEpisodeSpecificInstructions(startingEpisode: number, endingEpisode: number): string {
-    const instructions: string[] = [];
-
-    // First episode special requirements
-    if (startingEpisode === 1) {
-        instructions.push(`
-**📺 第1集特殊要求**：
-- **开篇吸引力**：第一集的开头必须用吸引人的方式，快速把主要人物的背景、剧中的初始关系都交代清楚
-- **人物碰撞设计**：开头场景选择一些人物短期快速能碰撞的场景，制造戏剧冲突和张力
-- **叙事技巧运用**：如果有交代的空缺，可以利用flashback（闪回）、倒序等手法来补充背景信息
-- **信息密度控制**：在保持节奏紧凑的同时，确保观众能快速理解人物关系和故事背景
-- **钩子前置**：开场3分钟内必须建立核心矛盾或悬念，抓住观众注意力`);
-    }
-
-    // Future: Add more conditional requirements here
-    // Example: Mid-season episodes, finale episodes, etc.
-    /*
-    if (endingEpisode >= 10 && endingEpisode <= 15) {
-      instructions.push(`
-  **🔥 中期剧集要求**：
-  - **情感深化**：深入挖掘人物内心世界和复杂情感
-  - **关系转折**：准备重大关系转变的铺垫`);
-    }
-  
-    if (endingEpisode >= 20) {
-      instructions.push(`
-  **🎬 高潮剧集要求**：
-  - **冲突激化**：将所有积累的矛盾推向高潮
-  - **角色成长**：展现角色的重大成长和转变`);
-    }
-    */
-
-    // If no special instructions, return empty string
-    return instructions.length > 0 ? instructions.join('\n') : '';
-}
 
 export const outlineTemplate = {
     id: 'outline',
@@ -227,7 +188,7 @@ export const outlineTemplate = {
 下一秒病房里的电视就开始播报，徐幼雪的家人发生空难全死了的消息，林飒莫名其妙成了徐家唯一的幸存者。
 因为徐家人都死了，徐氏集团的继承问题就被搬上了台面，徐幼雪的婆家司家开始打徐幼雪的主意，想在"徐幼雪"继承徐氏集团后，一点点将徐氏集团占为己有。
 
-=== 人物例子 ===
+=== 人物例子1  ===
 
 女主 盛沧澜
 
@@ -249,6 +210,20 @@ export const outlineTemplate = {
 
 盛云浩 女主的父亲，威风赫赫的镇国将军。
 柳沐言 女主的母亲，镇国公府的当家主母。
+
+=== 人物例子2  ===
+
+苏若水/林姝瑶：（女一）18岁，表面温柔小白花，实则果敢聪明黑莲花，三年前苏府遭受灭顶之灾，重伤的苏朗舟带着苏若水逃出苏家，命悬一线之际被林翰扬所救。因长相与林姝瑶有三分相像，便以林翰扬之女相称，后得知害得苏家家破人亡的就是林家，便开始复仇。
+
+傅淮景：（男一）22岁，大渝国二皇子，生母乃皇后的贴身宫女，小时候受尽欺凌，长大后乖觉狠戾，杀伐果断，疯批偏执，被人称为修罗王爷，但内心善良，有恩必报。曾受恩与左相苏策，与苏若水亦有一面之缘，在帮苏若水找害苏家的幕后凶手时也发现生母被害的事实，二人联手将罪魁祸首扳倒，感情也与日俱增。
+
+尹芊雪：（女二）18岁，尹氏长女，狐媚娇艳，立志要成为太子妃，便一直在三位皇子中摇摆不定，自大皇子双腿残疾后瞄上二皇子，奈何傅淮景对其漠视，再加之生母身份低微，便与三皇子明勾暗结，视林姝瑶为眼中盯。
+
+傅淮勋：（男二）20岁，大渝国三皇子，生母贵妃，林家有意与三皇子联姻，三皇子却对尹芊雪一见钟情，处处为难林姝瑶，最终自食恶果，与太子之位失之交臂。
+
+林翰扬：45岁左右，大渝国右相，权倾朝野，心狠手辣，一心想把控朝局，原本支持大皇子，与支持二皇子的苏策产生分歧，便设计害得苏家灭门，后又支持三皇子，便让苏若水假扮死去的女儿林姝瑶嫁给三皇子，从中又操控苏朗舟令苏若水乖乖听话，最后付出应有代价。
+
+苏朗舟：20岁，因为知道是林家害了苏家，被林父得知，便被折磨得疯傻，只剩下最后一口气，被救后与苏若水联手，共同铲除了林家。
 
 === 亮点/爆点 例子 ===
 
@@ -376,4 +351,5 @@ export const outlineTemplate = {
     outputFormat: 'json',
     responseWrapper: '```json',
     variables: ['params.episodeInfo', 'params.userInput', 'params.totalEpisodes', 'params.platform', 'params.genre', 'params.requirements']
-}; 
+};
+
