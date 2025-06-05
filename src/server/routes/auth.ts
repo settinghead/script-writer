@@ -2,7 +2,7 @@ import express, { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import jwt from 'jsonwebtoken';
 import { AuthDatabase } from '../database/auth';
-import { AuthMiddleware } from '../middleware/auth';
+import { AuthMiddleware, JWTPayload } from '../middleware/auth';
 
 export const createAuthRoutes = (authDB: AuthDatabase, authMiddleware: AuthMiddleware) => {
     const router = express.Router();
@@ -104,7 +104,7 @@ export const createAuthRoutes = (authDB: AuthDatabase, authMiddleware: AuthMiddl
                     try {
                         const jwtSecret = process.env.JWT_SECRET;
                         if (jwtSecret) {
-                            const decoded = jwt.verify(token, jwtSecret);
+                            const decoded = jwt.verify(token, jwtSecret) as JWTPayload;
 
                             // Delete session from database
                             await authDB.deleteSession(decoded.jti);
