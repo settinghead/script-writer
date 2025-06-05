@@ -1550,6 +1550,108 @@ app.post("/api/outlines/create-job",
   }
 );
 
+// NEW: Streaming endpoint for outline generation (MIGRATED TO STREAMOBJECT)
+app.post("/api/outline/generate/stream",
+  authMiddleware.authenticate,
+  async (req: any, res: any) => {
+    const { sourceArtifactId, totalEpisodes, episodeDuration, cascadedParams } = req.body;
+
+    const user = authMiddleware.getCurrentUser(req);
+    if (!user) {
+      return res.status(401).json({ error: "User not authenticated" });
+    }
+
+    // Validate required fields
+    if (!sourceArtifactId) {
+      return res.status(400).json({
+        error: "Missing sourceArtifactId",
+        details: "sourceArtifactId is required"
+      });
+    }
+
+    try {
+      // Import the new StreamObjectService
+      const { StreamObjectService } = await import('./services/streaming/StreamObjectService');
+      const streamService = new StreamObjectService(
+        artifactRepo,
+        transformRepo,
+        templateService
+      );
+
+      // Prepare parameters for the new service
+      const params = {
+        totalEpisodes: totalEpisodes || 30,
+        episodeDuration: episodeDuration || 2,
+        cascadedParams: cascadedParams || {}
+      };
+
+      // Use the new streamOutline method
+      await streamService.streamOutline(user.id, params, [sourceArtifactId], res);
+
+    } catch (error: any) {
+      console.error('Error in streaming outline generation:', error);
+      if (!res.headersSent) {
+        return res.status(500).json({
+          error: "Failed to generate outline",
+          details: error.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  }
+);
+
+// NEW: Streaming endpoint for episode generation (MIGRATED TO STREAMOBJECT)
+app.post("/api/episodes/generate/stream",
+  authMiddleware.authenticate,
+  async (req: any, res: any) => {
+    const { outlineSessionId, stageArtifactId, totalEpisodes, episodeDuration, customRequirements } = req.body;
+
+    const user = authMiddleware.getCurrentUser(req);
+    if (!user) {
+      return res.status(401).json({ error: "User not authenticated" });
+    }
+
+    // Validate required fields
+    if (!outlineSessionId || !stageArtifactId) {
+      return res.status(400).json({
+        error: "Missing required parameters",
+        details: "outlineSessionId and stageArtifactId are required"
+      });
+    }
+
+    try {
+      // Import the new StreamObjectService
+      const { StreamObjectService } = await import('./services/streaming/StreamObjectService');
+      const streamService = new StreamObjectService(
+        artifactRepo,
+        transformRepo,
+        templateService
+      );
+
+      // Prepare parameters for the episode service
+      const params = {
+        totalEpisodes: totalEpisodes || 30,
+        episodeDuration: episodeDuration || 2,
+        customRequirements: customRequirements || ''
+      };
+
+      // Use the new streamEpisodes method
+      await streamService.streamEpisodes(user.id, params, [outlineSessionId, stageArtifactId], res);
+
+    } catch (error: any) {
+      console.error('Error in streaming episode generation:', error);
+      if (!res.headersSent) {
+        return res.status(500).json({
+          error: "Failed to generate episodes",
+          details: error.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  }
+);
+
 // ========== ARTIFACT ENDPOINTS ===========
 
 // Handle client-side routing fallback

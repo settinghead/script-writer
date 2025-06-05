@@ -163,29 +163,157 @@ export class StreamObjectService {
     /**
      * Create job-specific streaming methods
      */
-    async streamBrainstorming(userId: string, params: any, res: Response): Promise<void> {
-        return this.executeStreamingTransform(userId, {
-            templateId: 'brainstorming',
-            artifactIds: [],
-            templateParams: params
-        }, res);
+      async streamBrainstorming(userId: string, params: any, res: Response): Promise<void> {
+    // Build genre string from genrePaths and genreProportions
+    const buildGenrePromptString = (genrePaths: string[][], genreProportions: number[]): string => {
+      if (!genrePaths || genrePaths.length === 0) return '未指定';
+      return genrePaths.map((path: string[], index: number) => {
+        const proportion = genreProportions && genreProportions[index] !== undefined
+          ? genreProportions[index]
+          : (100 / genrePaths.length);
+        const pathString = path.join(' > ');
+        return genrePaths.length > 1
+          ? `${pathString} (${proportion.toFixed(0)}%)`
+          : pathString;
+      }).join(', ');
+    };
+
+    // Build requirements section if provided
+    const requirementsSection = params.requirements?.trim()
+      ? `特殊要求：${params.requirements.trim()}`
+      : '';
+
+    const templateParams = {
+      genre: buildGenrePromptString(params.genrePaths || [], params.genreProportions || []),
+      platform: params.platform || '通用短视频平台',
+      requirementsSection: requirementsSection
+    };
+
+    return this.executeStreamingTransform(userId, {
+      templateId: 'brainstorming',
+      artifactIds: [],
+      templateParams
+    }, res);
+  }
+
+      async streamOutline(userId: string, params: any, sourceArtifactIds: string[], res: Response): Promise<void> {
+    // Load source artifacts to extract content and cascade parameters
+    const artifacts = await this.loadArtifacts(userId, sourceArtifactIds);
+    if (artifacts.length === 0) {
+      throw new Error('No source artifacts found');
     }
 
-    async streamOutline(userId: string, params: any, sourceArtifactIds: string[], res: Response): Promise<void> {
-        return this.executeStreamingTransform(userId, {
-            templateId: 'outline',
-            artifactIds: sourceArtifactIds,
-            templateParams: params
-        }, res);
+    // Get the primary source artifact (usually first one)
+    const sourceArtifact = artifacts[0];
+    
+    // Extract user input from the source artifact
+    let userInput = '';
+    if (sourceArtifact.type === 'brainstorm_idea') {
+      userInput = `${sourceArtifact.data.idea_title || ''}: ${sourceArtifact.data.idea_text}`;
+    } else if (sourceArtifact.type === 'user_input') {
+      userInput = sourceArtifact.data.text || '';
     }
 
-    async streamEpisodes(userId: string, params: any, sourceArtifactIds: string[], res: Response): Promise<void> {
-        return this.executeStreamingTransform(userId, {
-            templateId: 'episode_synopsis_generation',
-            artifactIds: sourceArtifactIds,
-            templateParams: params
-        }, res);
+    // Use cascaded parameters if available, otherwise defaults
+    const cascadedParams = params.cascadedParams || {};
+    
+    // Build genre string from cascaded genre paths
+    const buildGenrePromptString = (genrePaths: string[][], genreProportions: number[]): string => {
+      if (!genrePaths || genrePaths.length === 0) return '未指定';
+      return genrePaths.map((path: string[], index: number) => {
+        const proportion = genreProportions && genreProportions[index] !== undefined
+          ? genreProportions[index]
+          : (100 / genrePaths.length);
+        const pathString = path.join(' > ');
+        return genrePaths.length > 1
+          ? `${pathString} (${proportion.toFixed(0)}%)`
+          : pathString;
+      }).join(', ');
+    };
+
+    const templateParams = {
+      userInput: userInput,
+      platform: cascadedParams.platform || '通用短视频平台',
+      genre: buildGenrePromptString(cascadedParams.genre_paths || [], cascadedParams.genre_proportions || []),
+      requirements: cascadedParams.requirements || '',
+      totalEpisodes: params.totalEpisodes || 30,
+      episodeInfo: params.totalEpisodes 
+        ? `总共需要分为 ${params.totalEpisodes} 集，单集时长约 ${params.episodeDuration || 2} 分钟。`
+        : '总共需要分为 30 集，单集时长约 2 分钟。'
+    };
+
+    return this.executeStreamingTransform(userId, {
+      templateId: 'outline',
+      artifactIds: sourceArtifactIds,
+      templateParams
+    }, res);
+  }
+
+      async streamEpisodes(userId: string, params: any, sourceArtifactIds: string[], res: Response): Promise<void> {
+    // Load source artifacts to get outline data and stage information
+    const artifacts = await this.loadArtifacts(userId, sourceArtifactIds);
+    if (artifacts.length === 0) {
+      throw new Error('No source artifacts found');
     }
+
+    // Find the outline session artifact (outline data)
+    const outlineArtifact = artifacts.find(a => a.type === 'outline_session');
+    if (!outlineArtifact) {
+      throw new Error('Outline session artifact not found');
+    }
+
+    // Get stage artifact if provided (contains stage-specific data)
+    const stageArtifact = artifacts.find(a => a.type === 'synopsis_stage');
+    if (!stageArtifact) {
+      throw new Error('Synopsis stage artifact not found');
+    }
+
+    const outlineData = outlineArtifact.data;
+    const stageData = stageArtifact.data;
+
+    // Build template parameters from the stage and outline data
+    const templateParams = {
+      // Platform and genre info from cascade or outline
+      platform: params.platform || outlineData.components?.platform || '通用短视频平台',
+      genre: params.genre || outlineData.components?.genre || '未指定',
+      requirements: params.requirements || outlineData.components?.requirements || '',
+      
+      // Episode configuration
+      totalEpisodes: params.totalEpisodes || outlineData.totalEpisodes || 30,
+      episodeDuration: params.episodeDuration || outlineData.episodeDuration || 2,
+      
+      // Stage-specific data
+      stageNumber: stageData.stageNumber || 1,
+      numberOfEpisodes: stageData.numberOfEpisodes || 1,
+      startingEpisode: stageData.startingEpisode || 1,
+      endingEpisode: stageData.endingEpisode || 1,
+      
+      // Stage content
+      stageSynopsis: stageData.stageSynopsis || '',
+      timeframe: stageData.timeframe || '',
+      startingCondition: stageData.startingCondition || '',
+      endingCondition: stageData.endingCondition || '',
+      stageStartEvent: stageData.stageStartEvent || '',
+      stageEndEvent: stageData.stageEndEvent || '',
+      relationshipLevel: stageData.relationshipLevel || '',
+      emotionalArc: stageData.emotionalArc || '',
+      externalPressure: stageData.externalPressure || '',
+      
+      // Key points as formatted string 
+      keyPoints: stageData.keyMilestones ? 
+        stageData.keyMilestones.map((m: any) => `${m.event} (${m.timeSpan})`).join('; ') : '',
+      
+      // Custom requirements if any
+      customRequirements: params.customRequirements || '',
+      episodeSpecificInstructions: params.episodeSpecificInstructions || ''
+    };
+
+    return this.executeStreamingTransform(userId, {
+      templateId: 'episode_synopsis_generation',
+      artifactIds: sourceArtifactIds,
+      templateParams
+    }, res);
+  }
 
     async streamScript(userId: string, params: any, sourceArtifactIds: string[], res: Response): Promise<void> {
         return this.executeStreamingTransform(userId, {
