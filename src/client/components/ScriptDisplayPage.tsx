@@ -235,10 +235,14 @@ export const ScriptDisplayPage: React.FC = () => {
         loadEpisodeSynopsis();
     }, [stageId, episodeId]);
 
-    // Load script when component mounts or route parameters change
+    // Clear script data and load script when component mounts or route parameters change
     useEffect(() => {
         if (stageId && episodeId) {
-            console.log('[ScriptDisplayPage] Component mounted or params changed, loading script');
+            console.log('[ScriptDisplayPage] Component mounted or params changed, clearing state and loading script');
+            // Clear previous script data to prevent showing wrong script while loading
+            setScriptData(null);
+            setError(null);
+            setLoading(true);
             setPollCount(0); // Reset poll count
             loadScript();
         }
@@ -280,12 +284,14 @@ export const ScriptDisplayPage: React.FC = () => {
             setLoading(true);
             setError(null);
 
-            console.log(`[ScriptDisplayPage] Loading script attempt ${pollCount + 1}/${maxPollAttempts}`);
+            console.log(`[ScriptDisplayPage] Loading script attempt ${pollCount + 1}/${maxPollAttempts} for episode ${episodeId} in stage ${stageId}`);
 
             const response = await fetch(`/api/scripts/${episodeId}/${stageId}`, {
                 method: 'GET',
                 credentials: 'include'
             });
+
+            console.log(`[ScriptDisplayPage] API response for episode ${episodeId}:`, response.status);
 
             if (!response.ok) {
                 if (response.status === 404) {
@@ -308,6 +314,12 @@ export const ScriptDisplayPage: React.FC = () => {
             }
 
             const script = await response.json();
+            console.log(`[ScriptDisplayPage] Script data for episode ${episodeId}:`, {
+                episodeNumber: script.episodeNumber,
+                stageArtifactId: script.stageArtifactId,
+                contentLength: script.scriptContent?.length || 0,
+                scenesCount: script.scenes?.length || 0
+            });
             setScriptData(script);
             setPollCount(0); // Reset poll count on success
             if (pollTimeoutId) {
