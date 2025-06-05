@@ -30,7 +30,7 @@ export const OutlineTab: React.FC = () => {
     const streamingService = useMemo(() => new OutlineStreamingService(), []);
 
     // Use the LLM streaming hook
-    const { status: streamingStatus, items: outlineItems, isThinking, stop: stopStreaming, error: streamingError } = useLLMStreaming(
+    const { status: streamingStatus, items: outlineItems, isThinking, stop: stopStreaming, error: streamingError, reasoningEvent } = useLLMStreaming(
         streamingService,
         { transformId: transformId || undefined }
     );
@@ -303,6 +303,7 @@ export const OutlineTab: React.FC = () => {
                     totalEpisodes={sessionData.totalEpisodes}
                     episodeDuration={sessionData.episodeDuration}
                     createdAt={sessionData.createdAt}
+                    reasoningEvent={reasoningEvent}
                     onRegenerate={async () => {
                         try {
                             await apiService.regenerateOutline(id || '');
