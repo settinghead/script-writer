@@ -908,7 +908,7 @@ app.post("/api/ideations/:id/generate_plot/stream",
   }
 );
 
-// Streaming endpoint for brainstorming/idea generation
+// Streaming endpoint for brainstorming/idea generation (MIGRATED TO STREAMOBJECT)
 app.post("/api/brainstorm/generate/stream",
   authMiddleware.authenticate,
   async (req: any, res: any) => {
@@ -916,8 +916,7 @@ app.post("/api/brainstorm/generate/stream",
       selectedPlatform,
       selectedGenrePaths,
       genreProportions,
-      requirements,
-      prompt
+      requirements
     } = req.body;
 
     const user = authMiddleware.getCurrentUser(req);
@@ -926,40 +925,24 @@ app.post("/api/brainstorm/generate/stream",
     }
 
     try {
-      const { apiKey, baseUrl, modelName } = getLLMCredentials();
+      // Import the new StreamObjectService
+      const { StreamObjectService } = await import('./services/streaming/StreamObjectService');
+      const streamService = new StreamObjectService(
+        artifactRepo,
+        transformRepo,
+        templateService
+      );
 
-      const llmAI = createOpenAI({
-        apiKey,
-        baseURL: baseUrl,
-      });
+      // Convert parameters for the new service
+      const params = {
+        platform: selectedPlatform || '通用短视频平台',
+        genrePaths: selectedGenrePaths || [],
+        genreProportions: genreProportions || [],
+        requirements: requirements || ''
+      };
 
-      const result = await streamText({
-        model: llmAI(modelName),
-        messages: [{ role: 'user', content: prompt }]
-      });
-
-      // Set up streaming response
-      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-      res.setHeader('Transfer-Encoding', 'chunked');
-
-      const reader = result.toDataStream().getReader();
-
-      const pump = () => {
-        reader.read().then(({ done, value }) => {
-          if (done) {
-            res.end();
-            return;
-          }
-          res.write(new TextDecoder().decode(value));
-          pump();
-        }).catch(err => {
-          console.error("Error during brainstorm stream pump:", err);
-          if (!res.writableEnded) {
-            res.status(500).end("Stream error");
-          }
-        });
-      }
-      pump();
+      // Use the new streamBrainstorming method
+      await streamService.streamBrainstorming(user.id, params, res);
 
     } catch (error: any) {
       console.error('Error in streaming brainstorm generation:', error);
