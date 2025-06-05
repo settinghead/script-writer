@@ -9,6 +9,7 @@ import { useLLMStreaming } from '../hooks/useLLMStreaming';
 import { ScriptStreamingService, StreamingScript } from '../services/implementations/ScriptStreamingService';
 import { useEpisodeContext } from '../contexts/EpisodeContext';
 import { OutlineExportModal } from './shared/OutlineExportModal';
+import { TopProgressBar } from './shared/TopProgressBar';
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -634,8 +635,19 @@ export const ScriptDisplayPage: React.FC = () => {
             height: '100%',
             overflow: 'auto',
             padding: '20px',
-            backgroundColor: '#0a0a0a'
+            backgroundColor: '#0a0a0a',
+            position: 'relative'
         }}>
+            {/* Top Progress Bar */}
+            <TopProgressBar
+                isStreaming={isStreaming || streamingStatus === 'streaming'}
+                progress={currentScriptContent.length > 0 ? Math.min((currentScriptContent.length / 5000) * 100, 100) : 0}
+                currentCount={currentScriptContent.length}
+                totalCount={1000}
+                itemLabel="字符"
+                visible={isStreaming || streamingStatus === 'streaming'}
+            />
+            
             <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
                 {/* Breadcrumb Navigation */}
                 <div style={{ marginBottom: '20px' }}>
@@ -859,59 +871,30 @@ export const ScriptDisplayPage: React.FC = () => {
                     }}>
                         {/* Show streaming content when streaming */}
                         {(isStreaming || streamingStatus === 'streaming') ? (
-                            <div>
-                                {/* Streaming progress header */}
-                                <div style={{
-                                    color: '#888',
-                                    fontSize: '14px',
-                                    marginBottom: '16px',
-                                    padding: '12px',
-                                    backgroundColor: '#262626',
-                                    borderRadius: '6px',
-                                    borderLeft: '3px solid #1890ff',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px'
-                                }}>
-                                    <Spin size="small" />
-                                    <div>
-                                        <div style={{ marginBottom: '4px', color: '#fff' }}>
-                                            正在根据剧集大纲生成详细剧本内容...
-                                        </div>
-                                        {streamingItems && streamingItems.length > 0 && (
-                                            <div style={{ fontSize: '12px' }}>
-                                                已生成内容：{currentScriptContent.length} 字符
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                                
-                                {/* Streaming content display */}
-                                <div style={{
-                                    backgroundColor: '#1f1f1f',
-                                    borderRadius: '8px',
-                                    fontFamily: 'monospace',
-                                    fontSize: '14px',
-                                    lineHeight: '1.6',
-                                    color: '#fff',
-                                    whiteSpace: 'pre-wrap',
-                                    minHeight: '500px',
-                                    maxHeight: '800px',
-                                    overflow: 'auto',
-                                    padding: '20px',
-                                    border: '1px solid #404040'
-                                }}>
-                                    {currentScriptContent || '等待内容生成...'}
-                                    {(isStreaming || streamingStatus === 'streaming') && (
-                                        <span style={{ 
-                                            color: '#1890ff', 
-                                            animation: 'pulse 1s infinite',
-                                            marginLeft: '2px'
-                                        }}>
-                                            ▋
-                                        </span>
-                                    )}
-                                </div>
+                            <div style={{
+                                backgroundColor: '#1f1f1f',
+                                borderRadius: '8px',
+                                fontFamily: 'monospace',
+                                fontSize: '14px',
+                                lineHeight: '1.6',
+                                color: '#fff',
+                                whiteSpace: 'pre-wrap',
+                                minHeight: '500px',
+                                maxHeight: '800px',
+                                overflow: 'auto',
+                                padding: '20px',
+                                border: '1px solid #404040'
+                            }}>
+                                {currentScriptContent || '等待内容生成...'}
+                                {(isStreaming || streamingStatus === 'streaming') && (
+                                    <span style={{ 
+                                        color: '#1890ff', 
+                                        animation: 'pulse 1s infinite',
+                                        marginLeft: '2px'
+                                    }}>
+                                        ▋
+                                    </span>
+                                )}
                             </div>
                         ) : (
                             <Slate 

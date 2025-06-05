@@ -57,7 +57,7 @@ export const TopProgressBar: React.FC<TopProgressBarProps> = ({
                 status={isStreaming ? "active" : "normal"}
                 showInfo={false}
                 size="small"
-                strokeWidth={2}
+                strokeWidth={5}
                 strokeColor={isStreaming ? {
                     '0%': '#1890ff',
                     '50%': '#52c41a', 
