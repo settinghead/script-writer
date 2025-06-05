@@ -603,7 +603,7 @@ export const ProjectLayout: React.FC<ProjectLayoutProps> = () => {
                         }}>
                             <div style={{ textAlign: 'center' }}>
                                 <PlayCircleOutlined style={{ fontSize: '64px', color: '#666', marginBottom: '16px' }} />
-                                <Title level={3} style={{ color: '#fff' }}>选择阶段开始生成剧集</Title>
+                                <Title level={3} style={{ color: '#fff' }}>选择阶段开始生成每集大纲</Title>
                                 <Text type="secondary">
                                     从左侧剧集结构中选择一个阶段来查看或生成剧集内容
                                 </Text>

@@ -78,7 +78,7 @@ You can now:
    - Navigate to episode generation page
    - Select a stage from the tree view
    - Edit episode parameters if needed
-   - Click "开始生成剧集"
+   - Click "开始生成每集大纲"
    - Monitor real-time generation progress
    - View generated episode synopses
 

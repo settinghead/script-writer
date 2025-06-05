@@ -17,24 +17,16 @@ const Breadcrumb: React.FC = () => {
     const generateBreadcrumbItems = (): BreadcrumbItem[] => {
         const items: BreadcrumbItem[] = [
             {
-                title: '首页',
-                icon: <HomeOutlined />,
-                onClick: () => navigate('/')
+                title: '创作工作台',
+                icon: <HistoryOutlined />,
+                onClick: () => navigate('/ideations')
             }
         ];
 
         if (location.pathname === '/ideations') {
-            items.push({
-                title: '创作工作台',
-                icon: <HistoryOutlined />
-            });
+            // Just show the main workspace item for the home page
+            return items;
         } else if (location.pathname.startsWith('/ideation')) {
-            items.push({
-                title: '创作工作台',
-                icon: <HistoryOutlined />,
-                onClick: () => navigate('/ideations')
-            });
-
             const ideationId = location.pathname.split('/')[2];
             if (ideationId) {
                 items.push({
@@ -49,20 +41,10 @@ const Breadcrumb: React.FC = () => {
             }
         } else if (location.pathname.startsWith('/new-outline')) {
             items.push({
-                title: '创作工作台',
-                icon: <HistoryOutlined />,
-                onClick: () => navigate('/ideations')
-            });
-            items.push({
                 title: '设计故事大纲',
                 icon: <FileTextOutlined />
             });
         } else if (location.pathname.startsWith('/outlines')) {
-            items.push({
-                title: '创作工作台',
-                icon: <HistoryOutlined />,
-                onClick: () => navigate('/ideations')
-            });
             const outlineId = location.pathname.split('/')[2];
             if (outlineId) {
                 items.push({
@@ -74,12 +56,6 @@ const Breadcrumb: React.FC = () => {
             const pathParts = location.pathname.split('/');
             const projectId = pathParts[2];
             const section = pathParts[3];
-            
-            items.push({
-                title: '创作工作台',
-                icon: <HistoryOutlined />,
-                onClick: () => navigate('/ideations')
-            });
             
             if (section === 'outline') {
                 items.push({

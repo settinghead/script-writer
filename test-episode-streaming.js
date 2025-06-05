@@ -88,7 +88,7 @@ console.log('You can run this test manually or check the browser network tab for
 console.log('🔧 Manual Testing Steps:');
 console.log('1. Start server: npm run dev');
 console.log('2. Navigate to episode generation page');
-console.log('3. Click "开始生成剧集"');
+console.log('3. Click "开始生成每集大纲"');
 console.log('4. Check browser console for any errors');
 console.log('5. Check server logs for streaming progress');
 console.log('6. Verify episodes appear in the UI after generation');

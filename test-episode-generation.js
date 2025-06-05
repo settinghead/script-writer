@@ -85,7 +85,7 @@ try {
         console.log('   ✅ Parameter editing mode');
         features++;
     }
-    if (content.includes('开始生成剧集')) {
+    if (content.includes('开始生成每集大纲')) {
         console.log('   ✅ Generation button UI');
         features++;
     }
@@ -171,7 +171,7 @@ console.log('1. Start server: npm run dev');
 console.log('2. Create/open an outline with synopsis stages');
 console.log('3. Click "开始每集撰写" button');
 console.log('4. Navigate to episode generation page');
-console.log('5. Select a stage and click "开始生成剧集"');
+console.log('5. Select a stage and click "开始生成每集大纲"');
 console.log('6. Monitor streaming progress and episode creation');
 console.log();
 console.log('🔧 NEXT PHASE:');

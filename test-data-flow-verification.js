@@ -47,7 +47,7 @@ console.log('\n📋 NEXT STEPS FOR USER:');
 console.log('  1. Generate an outline with enhanced structure (已完成)');
 console.log('  2. Navigate to episode generation (/scripts/[sessionId])');
 console.log('  3. See rich context display with emotion arcs and relationships');
-console.log('  4. Click "开始生成剧集" to use enhanced context');
+console.log('  4. Click "开始生成每集大纲" to use enhanced context');
 console.log('  5. Verify generated episodes have better emotional continuity');
 
 console.log('\n🎉 PROBLEM SOLVED: Enhanced outline data IS being passed to episode generation!'); 

@@ -722,7 +722,7 @@ export const EpisodeGenerationForm: React.FC = () => {
           disabled={!outlineId}
           style={{ width: '100%' }}
         >
-          开始生成剧集
+          开始生成每集大纲
         </Button>
       </Space>
     </Card>

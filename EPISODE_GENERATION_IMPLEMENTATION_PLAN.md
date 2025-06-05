@@ -335,7 +335,7 @@ export const EpisodeGenerationPage: React.FC = () => {
             }}
           />
         ) : (
-          <Empty description="请选择一个阶段开始生成剧集" />
+          <Empty description="请选择一个阶段开始生成每集大纲" />
         )}
       </div>
     </div>

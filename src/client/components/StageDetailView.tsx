@@ -177,7 +177,7 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
         return (
             <Alert
                 message="请选择阶段"
-                description="在左侧树形菜单中选择一个阶段开始生成剧集"
+                description="在左侧树形菜单中选择一个阶段开始生成每集大纲"
                 type="info"
                 showIcon
             />
@@ -425,7 +425,7 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
                             onClick={handleStartGeneration}
                             disabled={editMode}
                         >
-                                {episodes.length > 0 ? '重新生成剧集' : '开始生成剧集'}
+                                {episodes.length > 0 ? '重新生成每集大纲' : '开始生成每集大纲'}
                         </Button>
                     ) : (
                         <Button
