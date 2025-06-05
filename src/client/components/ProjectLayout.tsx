@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Routes, Route, useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Layout, Collapse, Tree, Typography, Button, Space, Alert, Spin } from 'antd';
 import type { DataNode } from 'antd/es/tree';
@@ -27,6 +27,7 @@ import { apiService } from '../services/apiService';
 import { useEpisodeContext } from '../contexts/EpisodeContext';
 import { OutlineStreamingService } from '../services/implementations/OutlineStreamingService';
 import { useLLMStreaming } from '../hooks/useLLMStreaming';
+import { useLocalStorage } from '../hooks/useLocalStorage';
 import type { OutlineSessionData } from '../../server/services/OutlineService';
 import type { OutlineSection } from '../services/implementations/OutlineStreamingService';
 
@@ -111,6 +112,12 @@ export const ProjectLayout: React.FC<ProjectLayoutProps> = () => {
     const [activeAccordionKeys, setActiveAccordionKeys] = useState<string[]>(['outline', 'episodes']);
     const [selectedOutlineSection, setSelectedOutlineSection] = useState<string>('');
     const [selectedEpisodeNode, setSelectedEpisodeNode] = useState<string>('');
+    
+    // Resizable sidebar state
+    const [sidebarWidth, setSidebarWidth] = useLocalStorage('projectLayout.sidebarWidth', 400);
+    const [isResizing, setIsResizing] = useState(false);
+    const resizeStartX = useRef(0);
+    const startWidth = useRef(0);
     
     // Outline streaming setup
     const searchParams = new URLSearchParams(location.search);
@@ -350,6 +357,30 @@ export const ProjectLayout: React.FC<ProjectLayoutProps> = () => {
         }
     };
 
+    // Resize handlers
+    const handleResizeStart = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        setIsResizing(true);
+        resizeStartX.current = e.clientX;
+        startWidth.current = sidebarWidth;
+        
+        // Add global event listeners
+        const handleMouseMove = (e: MouseEvent) => {
+            const deltaX = e.clientX - resizeStartX.current;
+            const newWidth = Math.max(250, Math.min(800, startWidth.current + deltaX));
+            setSidebarWidth(newWidth);
+        };
+        
+        const handleMouseUp = () => {
+            setIsResizing(false);
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+        
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+    }, [sidebarWidth, setSidebarWidth]);
+
     // Loading state
     if (loading && !outlineData) {
         return (
@@ -401,17 +432,21 @@ export const ProjectLayout: React.FC<ProjectLayoutProps> = () => {
     }
 
     return (
-        <Layout style={{ height: 'calc(100vh - 160px)', backgroundColor: '#0a0a0a' }}>
+        <Layout style={{ 
+            height: 'calc(100vh - 160px)', 
+            backgroundColor: '#0a0a0a',
+            userSelect: isResizing ? 'none' : 'auto'
+        }}>
             {/* Left Sidebar - Accordion Navigation */}
             <Sider
-                width={400}
+                width={sidebarWidth}
                 style={{
                     backgroundColor: '#1a1a1a',
-                    borderRight: '1px solid #404040',
                     display: 'flex',
                     flexDirection: 'column',
                     height: '100%',
-                    overflow: 'auto'
+                    overflow: 'auto',
+                    borderRight: 'none' // Remove default border since we have custom resize handle
                 }}
             >
                 {/* Header */}
@@ -478,7 +513,6 @@ export const ProjectLayout: React.FC<ProjectLayoutProps> = () => {
                                         style={{
                                             backgroundColor: 'transparent',
                                             color: '#fff',
-                                            maxHeight: '400px',
                                             overflow: 'auto'
                                         }}
                                         className="episode-tree"
@@ -491,6 +525,40 @@ export const ProjectLayout: React.FC<ProjectLayoutProps> = () => {
                     />
                 </div>
             </Sider>
+
+            {/* Resize Handle - positioned between Sider and Content */}
+            <div
+                onMouseDown={handleResizeStart}
+                style={{
+                    width: '5px',
+                    cursor: 'col-resize',
+                    backgroundColor: isResizing ? '#1890ff' : '#404040',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 10,
+                    transition: isResizing ? 'none' : 'background-color 0.2s',
+                    flexShrink: 0
+                }}
+                onMouseEnter={(e) => {
+                    if (!isResizing) {
+                        e.currentTarget.style.backgroundColor = '#1890ff';
+                    }
+                }}
+                onMouseLeave={(e) => {
+                    if (!isResizing) {
+                        e.currentTarget.style.backgroundColor = '#404040';
+                    }
+                }}
+            >
+                <div style={{
+                    width: '1px',
+                    height: '20px',
+                    backgroundColor: '#fff',
+                    opacity: isResizing ? 1 : 0.6,
+                    transition: isResizing ? 'none' : 'opacity 0.2s'
+                }} />
+            </div>
 
             {/* Right Content Area */}
             <Content style={{ flex: 1, overflow: 'auto' }}>
