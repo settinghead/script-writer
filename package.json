@@ -11,7 +11,9 @@
     "build": "npm run clean && npm run build:backend && npm run build:frontend",
     "clean": "rimraf dist",
     "start": "node dist-server/index.js",
-    "test": "echo 'No tests specified; skipping.'"
+    "test": "echo 'No tests specified; skipping.'",
+    "lint": "eslint src/ --ext .ts,.tsx",
+    "lint:fix": "eslint src/ --ext .ts,.tsx --fix"
   },
   "repository": {
     "type": "git",
@@ -81,6 +83,11 @@
   "devDependencies": {
     "@stagewise/toolbar-react": "^0.1.2",
     "@types/node": "^22.15.19",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
+    "eslint-plugin-react": "^7.33.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
     "less": "^4.3.0",
     "rimraf": "^6.0.1",
     "tsx": "^4.19.4",
