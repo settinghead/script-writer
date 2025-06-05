@@ -7,7 +7,7 @@ import { useEpisodeContext } from '../contexts/EpisodeContext';
 import { OutlineExportModal } from './shared/OutlineExportModal';
 import { formatMultiStageEpisodesForExport, type MultiStageEpisodeExportData } from '../utils/episodeExporter';
 import { Button } from 'antd';
-import { ExportOutlined } from '@ant-design/icons';
+import { ExportOutlined, FileTextOutlined } from '@ant-design/icons';
 
 const { Title } = Typography;
 
@@ -120,15 +120,41 @@ export const EpisodeGenerationPage: React.FC = () => {
             const isLoadingEpisodes = stageEpisodeData?.loading || false;
             const isStreamingEpisodes = stageEpisodeData?.isStreaming || false;
 
-            const episodeChildren: EpisodeNode[] = episodes.map(episode => ({
+            // Create episode children for existing episodes with normal icons
+            const existingEpisodeChildren: EpisodeNode[] = episodes.map(episode => ({
                 key: `episode-${stage.artifactId}-${episode.episodeNumber}`,
                 title: `第${episode.episodeNumber}集: ${episode.title}`,
                 isLeaf: true,
                 episodeNumber: episode.episodeNumber,
                 episodeId: episode.episodeNumber.toString(),
                 stageId: stage.artifactId,
-                synopsis: episode.briefSummary
+                synopsis: episode.briefSummary,
+                icon: <FileTextOutlined style={{ color: '#e6edf3' }} />
             }));
+
+            // Create placeholder children for missing episodes with greyed out icons
+            const missingEpisodeChildren: EpisodeNode[] = [];
+            const existingNumbers = episodes.map(ep => ep.episodeNumber);
+            
+            for (let i = 1; i <= stage.numberOfEpisodes; i++) {
+                if (!existingNumbers.includes(i)) {
+                    missingEpisodeChildren.push({
+                        key: `missing-episode-${stage.artifactId}-${i}`,
+                        title: `第${i}集: 待生成`,
+                        isLeaf: true,
+                        episodeNumber: i,
+                        episodeId: i.toString(),
+                        stageId: stage.artifactId,
+                        synopsis: '',
+                        icon: <FileTextOutlined style={{ color: '#6e7681', opacity: 0.5 }} />,
+                        disabled: true
+                    });
+                }
+            }
+
+            // Combine and sort all episodes by episode number
+            const allEpisodeChildren = [...existingEpisodeChildren, ...missingEpisodeChildren]
+                .sort((a, b) => a.episodeNumber - b.episodeNumber);
 
             // Build stage title with status
             let stageTitle = `第${stage.stageNumber}阶段 (${stage.numberOfEpisodes}集)`;
@@ -142,7 +168,7 @@ export const EpisodeGenerationPage: React.FC = () => {
                 key: stage.artifactId,
                 title: stageTitle,
                 isLeaf: false,
-                children: episodeChildren,
+                children: allEpisodeChildren,
                 stageNumber: stage.stageNumber,
                 artifactId: stage.artifactId,
                 numberOfEpisodes: stage.numberOfEpisodes,
@@ -157,6 +183,11 @@ export const EpisodeGenerationPage: React.FC = () => {
         const nodeKey = selectedKeys[0] as string;
 
         if (nodeKey && nodeKey.includes('episode-')) {
+            // Skip if it's a missing episode
+            if (nodeKey.includes('missing-episode-')) {
+                return;
+            }
+            
             // Episode selected
             // Parse episode key: episode-{stageId}-{episodeNumber}
             // Since stageId can contain hyphens (UUID), find the last hyphen
