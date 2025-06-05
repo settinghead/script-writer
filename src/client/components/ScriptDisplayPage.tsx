@@ -262,6 +262,12 @@ export const ScriptDisplayPage: React.FC = () => {
     const loadScript = async () => {
         if (!episodeId || !stageId) return;
 
+        // 🔥 Don't load script if we're in streaming mode
+        if (currentTransformId && (isStreaming || streamingStatus === 'streaming' || streamingItems?.length > 0)) {
+            console.log('[ScriptDisplayPage] Skipping loadScript - in streaming mode');
+            return;
+        }
+
         // Prevent excessive polling
         if (pollCount >= maxPollAttempts) {
             console.log('[ScriptDisplayPage] Maximum poll attempts reached, stopping');
@@ -388,7 +394,7 @@ export const ScriptDisplayPage: React.FC = () => {
                 children: [{ text: '暂无内容' }]
             }
         ] as Descendant[];
-    }, [currentScriptContent, isStreaming]);
+    }, [currentScriptContent, isStreaming, streamingStatus]);
 
     // Render different element types
     const renderElement = (props: any) => {
