@@ -1,0 +1,90 @@
+export const scriptGenerationTemplate = {
+    id: 'script_generation',
+    name: 'Script Generation',
+    promptTemplate: `# 短剧剧本生成 (Short Drama Script Generation)
+
+你是专业的短剧编剧，擅长创作适合移动端观看的短剧剧本。请基于提供的分集简介生成完整的剧本内容。
+
+## 创作要求
+
+### 短剧特色（与电影、电视剧的区别）
+- **快节奏叙事**：每分钟都要有明确的剧情推进和情绪爆点
+- **垂直视频优化**：考虑手机竖屏观看体验，对话和表演要紧凑
+- **爽点密集**：符合移动端用户碎片化观看习惯，持续制造爽点
+- **去脸谱化**：避免刻板印象的人物和剧情，追求真实和新颖
+
+### 平台特性
+- 平台：%%params.platform%%
+- 单集时长：%%params.episodeDuration%%分钟
+- 类型比例：%%params.genre_paths%%
+
+### 剧本格式要求
+- 采用标准剧本格式
+- 场景描述简洁明了
+- 对话自然流畅，符合人物性格
+- 动作指导清晰可执行
+- 控制在合适的字数范围内
+
+## 角色信息
+
+%%params.characters_info%%
+
+## 分集简介
+
+%%params.episode_synopsis%%
+
+## 用户附加要求
+
+%%params.user_requirements%%
+
+## 输出格式
+
+请按以下JSON格式输出剧本：
+
+\`\`\`json
+{
+  "episodeNumber": %%params.episode_number%%,
+  "scriptContent": "完整剧本文本",
+  "scenes": [
+    {
+      "sceneNumber": 1,
+      "location": "场景地点",
+      "timeOfDay": "时间",
+      "characters": ["角色1", "角色2"],
+      "action": "场景动作描述",
+      "dialogue": [
+        {
+          "character": "角色名",
+          "line": "台词内容",
+          "direction": "表演指导（可选）"
+        }
+      ]
+    }
+  ],
+  "wordCount": 字数统计,
+  "estimatedDuration": 预估时长分钟数
+}
+\`\`\`
+
+## 创作要点
+
+1. **开场抓人**：前30秒必须建立冲突或悬念
+2. **节奏控制**：每个场景都要推进剧情，避免拖沓
+3. **情感爆点**：在关键节点制造强烈的情感反应
+4. **视觉呈现**：考虑移动端观看特点，动作和表情要明确
+5. **连续性**：确保与前后集的衔接自然
+6. **平台适配**：符合目标平台的内容规范和用户喜好
+
+开始创作！`,
+    outputFormat: 'json',
+    responseWrapper: '```json',
+    variables: [
+        'params.platform',
+        'params.episodeDuration',
+        'params.genre_paths',
+        'params.characters_info',
+        'params.episode_synopsis',
+        'params.user_requirements',
+        'params.episode_number'
+    ]
+}; 
