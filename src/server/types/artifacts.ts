@@ -398,7 +398,7 @@ function isOutlineJobParamsV1(data: any): data is OutlineJobParamsV1 {
 function isUserInputV1(data: any): data is UserInputV1 {
     return typeof data === 'object' &&
         typeof data.text === 'string' &&
-        ['manual', 'selected_idea'].includes(data.source);
+        ['manual', 'modified_brainstorm'].includes(data.source);
 }
 
 function isPlotOutlineV1(data: any): data is PlotOutlineV1 {

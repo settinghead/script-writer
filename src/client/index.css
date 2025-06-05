@@ -236,3 +236,47 @@ body {
     opacity: 1;
   }
 }
+
+/* Outline Generation Pulsing Background */
+@keyframes outlinePulse {
+  0% {
+    background-color: rgba(16, 20, 24, 0.9);
+  }
+
+  50% {
+    background-color: rgba(24, 144, 255, 0.05);
+  }
+
+  100% {
+    background-color: rgba(16, 20, 24, 0.9);
+  }
+}
+
+.outline-generating {
+  animation: outlinePulse 3s ease-in-out infinite;
+  border-radius: 8px;
+  padding: 20px;
+  transition: background-color 0.3s ease;
+}
+
+/* Episode Generation Pulsing Background */
+@keyframes episodePulse {
+  0% {
+    background-color: rgba(16, 20, 24, 0.9);
+  }
+
+  50% {
+    background-color: rgba(82, 196, 26, 0.05);
+  }
+
+  100% {
+    background-color: rgba(16, 20, 24, 0.9);
+  }
+}
+
+.episode-generating {
+  animation: episodePulse 3s ease-in-out infinite;
+  border-radius: 8px;
+  padding: 20px;
+  transition: background-color 0.3s ease;
+}

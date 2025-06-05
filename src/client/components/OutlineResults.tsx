@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Row, Col, Alert, Button, Card, Typography, Space } from 'antd';
 import { ReloadOutlined, CheckCircleOutlined, ExclamationCircleOutlined, ExportOutlined } from '@ant-design/icons';
-import { EditableTextField, StreamingProgress } from './shared';
+import { EditableTextField } from './shared';
+import { TopProgressBar } from './shared/TopProgressBar';
 import { OutlineExportModal } from './shared/OutlineExportModal';
 import { apiService } from '../services/apiService';
 import { formatOutlineForExport, type OutlineExportData } from '../utils/outlineExporter';
@@ -165,15 +166,18 @@ export const OutlineResults: React.FC<OutlineResultsProps> = ({
     };
 
     return (
+        <div className={isStreaming ? 'outline-generating' : ''} style={{ width: '100%' }}>
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
             {/* Streaming Progress */}
             {(isStreaming || isConnecting) && (
-                <StreamingProgress
+                <TopProgressBar
+                    isVisible={true}
                     isStreaming={isStreaming}
                     isConnecting={isConnecting}
-                    onStop={onStopStreaming || (() => { })}
-                    itemCount={getCompletedComponentsCount()}
+                    currentCount={getCompletedComponentsCount()}
+                    totalCount={9} // Total outline components (title, genre, target_audience, selling_points, satisfaction_points, setting, synopsis, synopsis_stages, characters)
                     itemLabel="大纲组件"
+                    onStop={onStopStreaming || (() => { })}
                 />
             )}
 
@@ -773,5 +777,6 @@ export const OutlineResults: React.FC<OutlineResultsProps> = ({
                 title="导出大纲"
             />
         </Space>
+        </div>
     );
 }; 

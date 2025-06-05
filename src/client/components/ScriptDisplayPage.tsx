@@ -858,42 +858,50 @@ export const ScriptDisplayPage: React.FC = () => {
                         minHeight: '500px'
                     }}>
                         {/* Show streaming progress info when streaming */}
-                        {(isStreaming || streamingStatus === 'streaming') && (
+                        {(isStreaming || streamingStatus === 'streaming') ? (
                             <div style={{
                                 color: '#888',
                                 fontSize: '14px',
-                                marginBottom: '16px',
                                 padding: '12px',
                                 backgroundColor: '#262626',
                                 borderRadius: '6px',
-                                borderLeft: '3px solid #1890ff'
+                                borderLeft: '3px solid #1890ff',
+                                textAlign: 'center',
+                                height: '500px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                justifyContent: 'center',
+                                alignItems: 'center'
                             }}>
-                                <div style={{ marginBottom: '8px' }}>
+                                <div style={{ marginBottom: '16px', fontSize: '16px', color: '#fff' }}>
                                     正在根据剧集大纲生成详细剧本内容，请稍候...
                                 </div>
                                 {streamingItems && streamingItems.length > 0 && (
-                                    <div style={{ fontSize: '12px' }}>
+                                    <div style={{ fontSize: '14px' }}>
                                         已生成内容：{currentScriptContent.length} 字符
                                     </div>
                                 )}
+                                <div style={{ marginTop: '20px' }}>
+                                    <Spin size="large" indicator={<LoadingOutlined style={{ fontSize: 32, color: '#1890ff' }} />} />
+                                </div>
                             </div>
+                        ) : (
+                            <Slate 
+                                editor={editor} 
+                                initialValue={slateValue}
+                                onChange={() => {}} // Read-only
+                            >
+                                <Editable
+                                    readOnly={true}
+                                    renderElement={renderElement}
+                                    renderLeaf={renderLeaf}
+                                    style={{
+                                        outline: 'none',
+                                        minHeight: '500px'
+                                    }}
+                                />
+                            </Slate>
                         )}
-                        
-                        <Slate 
-                            editor={editor} 
-                            initialValue={slateValue}
-                            onChange={() => {}} // Read-only
-                        >
-                            <Editable
-                                readOnly={true}
-                                renderElement={renderElement}
-                                renderLeaf={renderLeaf}
-                                style={{
-                                    outline: 'none',
-                                    minHeight: '500px'
-                                }}
-                            />
-                        </Slate>
                     </div>
                 </Card>
             </div>

@@ -54,7 +54,7 @@ export const DynamicEpisodeResults: React.FC<DynamicEpisodeResultsProps> = ({
   const progress = totalExpected > 0 ? Math.min((streamingData.length / totalExpected) * 100, 100) : 0;
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div className={isStreaming ? 'episode-generating' : ''} style={{ position: 'relative' }}>
       {/* Top Progress Bar */}
       <TopProgressBar
         isStreaming={isStreaming}
