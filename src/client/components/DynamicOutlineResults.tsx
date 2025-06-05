@@ -4,9 +4,11 @@ import { ReloadOutlined, ExportOutlined, UndoOutlined, PlayCircleOutlined } from
 import { useNavigate } from 'react-router-dom';
 import { DynamicStreamingUI, outlineFieldRegistry } from './shared/streaming';
 import { OutlineExportModal } from './shared/OutlineExportModal';
+import { ReasoningIndicator } from './shared/ReasoningIndicator';
 import { formatOutlineForExport, type OutlineExportData } from '../utils/outlineExporter';
 import { apiService } from '../services/apiService';
 import { OutlineSessionData } from '../../server/services/OutlineService';
+import { ReasoningEvent } from '../../common/streaming/types';
 
 interface OutlineCharacter {
     name: string;
@@ -93,6 +95,7 @@ interface DynamicOutlineResultsProps {
     totalEpisodes?: number;
     episodeDuration?: number;
     createdAt?: string;
+    reasoningEvent?: ReasoningEvent | null;
 }
 
 export const DynamicOutlineResults: React.FC<DynamicOutlineResultsProps> = ({

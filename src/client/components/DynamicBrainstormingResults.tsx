@@ -3,9 +3,11 @@ import { Space, Button, Typography, Spin, Empty, Card, Tag } from 'antd';
 import { StopOutlined, ReloadOutlined, EyeOutlined } from '@ant-design/icons';
 import { IdeaCard } from './shared/streaming';
 import { ThinkingIndicator } from './shared/ThinkingIndicator';
+import { ReasoningIndicator } from './shared/ReasoningIndicator';
 import { IdeaWithTitle } from '../services/implementations/BrainstormingStreamingService';
 import { apiService } from '../services/apiService';
 import { useNavigate } from 'react-router-dom';
+import { ReasoningEvent } from '../../common/streaming/types';
 
 const { Text } = Typography;
 
@@ -21,6 +23,7 @@ interface DynamicBrainstormingResultsProps {
     selectedIdeaIndex?: number | null;
     canRegenerate?: boolean;
     ideationRunId?: string;
+    reasoningEvent?: ReasoningEvent | null;
 }
 
 // Component to display associated outlines for an idea
@@ -122,7 +125,8 @@ export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsPr
     error,
     selectedIdeaIndex = null,
     canRegenerate = true,
-    ideationRunId
+    ideationRunId,
+    reasoningEvent
 }) => {
     const [ideaOutlines, setIdeaOutlines] = React.useState<{ [ideaId: string]: any[] }>({});
     const [outlinesLoading, setOutlinesLoading] = React.useState(false);
@@ -158,6 +162,9 @@ export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsPr
         onIdeaSelect(ideaText);
     }, [onIdeaSelect]);
 
+    // Determine if reasoning is active
+    const isReasoning = reasoningEvent?.type === 'reasoning_start';
+
 
 
     return (
@@ -178,8 +185,15 @@ export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsPr
                 </Text>
             </div>
 
-            {/* Thinking indicator */}
-            {isThinking && (
+            {/* Reasoning indicator */}
+            <ReasoningIndicator
+                isVisible={isReasoning}
+                phase="brainstorming"
+                className="mb-4"
+            />
+
+            {/* Legacy thinking indicator for non-reasoning models */}
+            {!isReasoning && isThinking && (
                 <ThinkingIndicator
                     isThinking={isThinking}
                     className="mb-4"
