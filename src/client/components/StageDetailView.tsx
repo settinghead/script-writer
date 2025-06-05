@@ -103,6 +103,13 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
         }
     }, [stageData]);
 
+    // Auto-collapse stage details when streaming starts
+    React.useEffect(() => {
+        if (isActiveStreaming && !stageDetailsCollapsed) {
+            setStageDetailsCollapsed(true);
+        }
+    }, [isActiveStreaming]);
+
     const handleStartGeneration = async () => {
         if (!stageData) return;
 
@@ -200,7 +207,7 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
     const progress = Math.min((episodes.length / expectedEpisodes) * 100, 100);
 
     return (
-        <div style={{ position: 'relative' }}>
+        <div className={isActiveStreaming ? 'episode-generating' : ''} style={{ position: 'relative' }}>
             {/* Top Progress Bar - NProgress Style */}
             <TopProgressBar
                 isStreaming={isActiveStreaming}
