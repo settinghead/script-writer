@@ -1,5 +1,5 @@
 import React from 'react';
-import { Space, Button, Typography, Spin, Empty, Card, Tag } from 'antd';
+import { Space, Button, Typography, Spin, Empty, Card, Tag, Alert } from 'antd';
 import { StopOutlined, ReloadOutlined, EyeOutlined } from '@ant-design/icons';
 import { IdeaCard } from './shared/streaming';
 import { ThinkingIndicator } from './shared/ThinkingIndicator';
@@ -8,6 +8,8 @@ import { IdeaWithTitle } from '../services/implementations/BrainstormingStreamin
 import { apiService } from '../services/apiService';
 import { useNavigate } from 'react-router-dom';
 import { ReasoningEvent } from '../../common/streaming/types';
+// NEW: Import the new streamObject hook
+import { useBrainstormingStream } from '../hooks/useStreamObject';
 
 const { Text } = Typography;
 
@@ -364,4 +366,217 @@ export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsPr
     );
 };
 
-export default DynamicBrainstormingResults; 
+export default DynamicBrainstormingResults;
+
+/**
+ * NEW: Modern brainstorming component using AI SDK streamObject
+ * This replaces the complex manual JSON parsing with clean, typed streaming
+ */
+export const ModernBrainstormingResults: React.FC<{
+    initialParams: {
+        platform: string;
+        genrePaths: string[][];
+        genreProportions: number[];
+        requirements: string;
+    };
+    onIdeaSelect: (ideaText: string) => void;
+    ideationRunId?: string;
+}> = ({ 
+    initialParams, 
+    onIdeaSelect,
+    ideationRunId 
+}) => {
+    const navigate = useNavigate();
+    const [selectedIdeaIndex, setSelectedIdeaIndex] = React.useState<number | null>(null);
+    
+    // Use the new streamObject hook - much simpler!
+    const brainstormingStream = useBrainstormingStream((ideas) => {
+        console.log('Brainstorming completed:', ideas);
+        // You could save the results to artifacts here if needed
+    });
+
+    // Auto-start streaming when component mounts
+    React.useEffect(() => {
+        if (initialParams) {
+            brainstormingStream.submit(initialParams);
+        }
+    }, []); // Only run once
+
+    // Handle idea selection
+    const handleIdeaClick = React.useCallback((idea: any, index: number) => {
+        const ideaText = `${idea.title}: ${idea.body}`;
+        setSelectedIdeaIndex(index);
+        onIdeaSelect(ideaText);
+    }, [onIdeaSelect]);
+
+    const handleRegenerate = () => {
+        brainstormingStream.submit(initialParams);
+        setSelectedIdeaIndex(null);
+    };
+
+    if (brainstormingStream.error) {
+        return (
+            <div style={{
+                padding: '16px',
+                background: '#1a1a1a',
+                borderRadius: '8px',
+                border: '1px solid #ff4d4f',
+                marginBottom: '24px'
+            }}>
+                <Space direction="vertical" style={{ width: '100%' }}>
+                    <Text style={{ color: '#ff6b6b' }}>生成失败: {brainstormingStream.error.message}</Text>
+                    <Button size="small" onClick={handleRegenerate}>
+                        重新生成
+                    </Button>
+                </Space>
+            </div>
+        );
+    }
+
+    if (brainstormingStream.isLoading && !brainstormingStream.object) {
+        return (
+            <div style={{
+                padding: '16px',
+                background: '#1a1a1a',
+                borderRadius: '8px',
+                border: '1px solid #303030',
+                marginBottom: '24px',
+                textAlign: 'center'
+            }}>
+                <Space direction="vertical" align="center" style={{ width: '100%' }}>
+                    <Spin size="large" />
+                    <Text type="secondary">正在生成创意灵感...</Text>
+                    {brainstormingStream.isStreaming && (
+                        <Button 
+                            danger 
+                            size="small" 
+                            icon={<StopOutlined />} 
+                            onClick={brainstormingStream.stop}
+                        >
+                            停止生成
+                        </Button>
+                    )}
+                </Space>
+            </div>
+        );
+    }
+
+    const ideas = brainstormingStream.object || [];
+
+    if (ideas.length === 0) {
+        return (
+            <div style={{
+                padding: '40px',
+                background: '#1a1a1a',
+                borderRadius: '8px',
+                border: '1px solid #303030',
+                marginBottom: '24px',
+                textAlign: 'center'
+            }}>
+                <Empty
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    description="暂无创意灵感"
+                >
+                    <Button type="primary" onClick={handleRegenerate}>
+                        开始生成
+                    </Button>
+                </Empty>
+            </div>
+        );
+    }
+
+    return (
+        <div style={{
+            padding: '16px',
+            background: '#1a1a1a',
+            borderRadius: '8px',
+            border: '1px solid #303030',
+            marginBottom: '24px'
+        }}>
+            {/* Header */}
+            <div style={{ marginBottom: '16px' }}>
+                <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                    <Space>
+                        <Text strong style={{ fontSize: '16px', color: '#d9d9d9' }}>
+                            💡 故事灵感 ({ideas.length})
+                        </Text>
+                        {brainstormingStream.isStreaming && (
+                            <Spin size="small" />
+                        )}
+                    </Space>
+                    <Space>
+                        {brainstormingStream.isStreaming && (
+                            <Button 
+                                size="small" 
+                                danger 
+                                icon={<StopOutlined />} 
+                                onClick={brainstormingStream.stop}
+                            >
+                                停止
+                            </Button>
+                        )}
+                        <Button 
+                            size="small" 
+                            icon={<ReloadOutlined />} 
+                            onClick={handleRegenerate}
+                            disabled={brainstormingStream.isStreaming}
+                        >
+                            重新生成
+                        </Button>
+                    </Space>
+                </Space>
+            </div>
+
+            {/* Ideas list */}
+            <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                {ideas.map((idea, index) => {
+                    const isSelected = selectedIdeaIndex === index;
+                    
+                    return (
+                        <Card
+                            key={`idea-${index}`}
+                            style={{
+                                backgroundColor: isSelected ? '#2d3436' : '#262626',
+                                border: isSelected ? '1px solid #1890ff' : '1px solid #434343',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease'
+                            }}
+                            bodyStyle={{ padding: '12px' }}
+                            hoverable={!isSelected}
+                            onClick={() => handleIdeaClick(idea, index)}
+                        >
+                            <div>
+                                <div style={{ marginBottom: '8px' }}>
+                                    <Text strong style={{ 
+                                        color: '#d9d9d9', 
+                                        fontSize: '14px'
+                                    }}>
+                                        {idea.title}
+                                    </Text>
+                                </div>
+                                
+                                <Text style={{ 
+                                    color: '#a6a6a6', 
+                                    fontSize: '13px', 
+                                    lineHeight: '1.4',
+                                    display: 'block'
+                                }}>
+                                    {idea.body}
+                                </Text>
+                            </div>
+                        </Card>
+                    );
+                })}
+            </Space>
+
+            {brainstormingStream.isStreaming && (
+                <div style={{ marginTop: '16px', textAlign: 'center' }}>
+                    <Text type="secondary">
+                        <Spin size="small" style={{ marginRight: 8 }} />
+                        正在生成更多创意...
+                    </Text>
+                </div>
+            )}
+        </div>
+    );
+}; 
