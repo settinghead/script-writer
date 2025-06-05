@@ -766,12 +766,20 @@ export class StreamingTransformExecutor {
                 ? `\n\n剧集信息：\n- 总集数：${jobParams.totalEpisodes}集\n- 每集时长：约${jobParams.episodeDuration}分钟`
                 : '';
 
+            // Get cascaded parameters from job params or provide defaults
+            const cascadedParams = jobParams.cascadedParams || {};
+            
             return await this.templateService.renderTemplate(template, {
                 artifacts: {},
                 params: {
                     episodeInfo,
                     userInput,
-                    totalEpisodes: jobParams.totalEpisodes || 12
+                    totalEpisodes: jobParams.totalEpisodes || 12,
+                    platform: (cascadedParams as any).platform || '短视频平台',
+                    genre: (cascadedParams as any).genre_paths 
+                        ? (cascadedParams as any).genre_paths.map((path: string[]) => path.join(' > ')).join(', ')
+                        : '未指定',
+                    requirements: (cascadedParams as any).requirements || ''
                 }
             });
         };
@@ -1543,20 +1551,34 @@ export class StreamingTransformExecutor {
             }
 
             // Build prompt using the provided builder function
-            const prompt = await promptBuilder(jobParams, sourceArtifact);
+            console.log(`🔧 [StreamingTransformExecutor] Building prompt for template ${templateId} with job params:`, JSON.stringify(jobParams, null, 2));
+            let prompt: string;
+            try {
+                prompt = await promptBuilder(jobParams, sourceArtifact);
+                console.log(`✅ [StreamingTransformExecutor] Successfully built prompt for ${templateId}, length: ${prompt.length}`);
+            } catch (promptError) {
+                console.error(`🚨 [StreamingTransformExecutor] Failed to build prompt for template ${templateId}:`, promptError);
+                throw promptError;
+            }
 
             // Get model name from credentials
             const { modelName } = getLLMCredentials();
 
             // Stream LLM response
-            await this.streamLLMResponse(
-                prompt,
-                modelName,
-                outputFormat,
-                transform,
-                res,
-                transform.user_id
-            );
+            try {
+                await this.streamLLMResponse(
+                    prompt,
+                    modelName,
+                    outputFormat,
+                    transform,
+                    res,
+                    transform.user_id
+                );
+                console.log(`✅ [StreamingTransformExecutor] Successfully completed streaming for ${templateId}`);
+            } catch (streamError) {
+                console.error(`🚨 [StreamingTransformExecutor] Failed to stream LLM response for template ${templateId}:`, streamError);
+                throw streamError;
+            }
         }
     }
 } 
