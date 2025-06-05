@@ -36,6 +36,7 @@ export function useStreamingBrainstorm(transformId?: string) {
 
     return {
         ...streamingResult,
-        items: itemsWithArtifactIds.length > 0 ? itemsWithArtifactIds : streamingResult.items
+        items: itemsWithArtifactIds.length > 0 ? itemsWithArtifactIds : streamingResult.items,
+        reasoningEvent: streamingResult.reasoningEvent
     };
 } 

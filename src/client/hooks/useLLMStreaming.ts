@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useObservableState } from './useObservableState';
-import { StreamingResponse } from '../../common/streaming/types';
+import { StreamingResponse, ReasoningEvent } from '../../common/streaming/types';
 import { LLMStreamingService } from '../services/streaming/LLMStreamingService';
 
 export function useLLMStreaming<T>(
@@ -22,6 +22,12 @@ export function useLLMStreaming<T>(
             items: [],
             rawContent: ''
         }
+    );
+
+    // Subscribe to reasoning events
+    const reasoningEvent = useObservableState<ReasoningEvent | null>(
+        service?.reasoning$,
+        null
     );
 
     // Debug log response changes
@@ -87,6 +93,7 @@ export function useLLMStreaming<T>(
 
     return {
         ...response,
+        reasoningEvent,
         stop: () => {
             console.log(`[useLLMStreaming] Stop called for transform ${transformId}`);
             service?.stop();

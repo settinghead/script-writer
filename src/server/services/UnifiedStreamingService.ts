@@ -353,7 +353,7 @@ export class UnifiedStreamingService {
     try {
       const broadcaster = JobBroadcaster.getInstance();
       const eventData = JSON.stringify({
-        type: 'reasoning_event',
+        eventType: 'reasoning_event',
         ...event
       });
       broadcaster.broadcast(transformId, eventData);

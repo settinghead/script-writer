@@ -25,7 +25,7 @@ import {
 } from 'rxjs/operators';
 import { v4 as uuidv4 } from 'uuid';
 import { JSONStreamable } from '../../../common/streaming/interfaces';
-import { StreamConfig, StreamingRequest, StreamingResponse } from '../../../common/streaming/types';
+import { StreamConfig, StreamingRequest, StreamingResponse, ReasoningEvent } from '../../../common/streaming/types';
 import { processStreamingContent } from '../../../common/utils/textCleaning';
 
 export type StreamingStatus = 'idle' | 'connected' | 'streaming' | 'thinking' | 'completed' | 'error';
@@ -38,6 +38,7 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
     protected error$ = new Subject<Error>();
     protected completion$ = new Subject<void>();
     protected thinking$ = new Subject<boolean>();
+    protected reasoning$ = new Subject<ReasoningEvent>();
     protected eventSource?: EventSource;
     protected currentTransformId$ = new BehaviorSubject<string | undefined>(undefined);
 
@@ -46,6 +47,7 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
     readonly status$: Observable<StreamingStatus>;
     readonly response$: Observable<StreamingResponse<T>>;
     readonly isThinking$: Observable<boolean>;
+    readonly reasoning$: Observable<ReasoningEvent>;
 
     private lastEmittedItemsJson: string = '[]';
     private instanceId: string;
@@ -84,6 +86,10 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
 
         this.isThinking$ = this.thinking$.pipe(
             distinctUntilChanged(),
+            shareReplay(1)
+        );
+
+        this.reasoning$ = this.reasoning$.pipe(
             shareReplay(1)
         );
 
@@ -288,9 +294,20 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
                                 this.error$.next(new Error(errorData.error || 'Stream error'));
                                 this.eventSource?.close();
                             } else {
-                                // Other data format (like status messages)
+                                // Other data format (like status messages or reasoning events)
                                 try {
                                     const data = JSON.parse(line);
+                                    
+                                    // Handle reasoning events
+                                    if (data.eventType === 'reasoning_event' && (data.type === 'reasoning_start' || data.type === 'reasoning_end')) {
+                                        const reasoningEvent: ReasoningEvent = {
+                                            type: data.type,
+                                            phase: data.phase,
+                                            timestamp: data.timestamp,
+                                            modelName: data.modelName
+                                        };
+                                        this.reasoning$.next(reasoningEvent);
+                                    }
                                     // Status messages are handled by the status stream
                                 } catch {
                                     // Non-JSON data, ignore
