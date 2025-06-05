@@ -33,6 +33,20 @@ import type { OutlineSection } from '../services/implementations/OutlineStreamin
 const { Sider, Content } = Layout;
 const { Title, Text } = Typography;
 
+// Simple dotted circle component for ungenerated episodes
+const DottedCircle: React.FC<{ style?: React.CSSProperties }> = ({ style }) => (
+    <span
+        style={{
+            display: 'inline-block',
+            width: '12px',
+            height: '12px',
+            border: '1.5px dotted #666',
+            borderRadius: '50%',
+            ...style
+        }}
+    />
+);
+
 // Define outline section navigation items
 const outlineTreeData: DataNode[] = [
     {
@@ -294,7 +308,7 @@ export const ProjectLayout: React.FC<ProjectLayoutProps> = () => {
             children: episodeState.stageEpisodeData[stage.artifactId]?.episodes.map(episode => ({
                 key: `episode-${stage.artifactId}-${episode.episodeNumber}`,
                 title: `第${episode.episodeNumber}集: ${episode.title}`,
-                icon: episode.hasScript ? <PlayCircleOutlined style={{ color: '#52c41a' }} /> : <PlayCircleOutlined />,
+                icon: episode.hasScript ? <PlayCircleOutlined style={{ color: '#52c41a' }} /> : <DottedCircle />,
                 isLeaf: true,
                 hasScript: episode.hasScript
             })) || []
@@ -393,14 +407,19 @@ export const ProjectLayout: React.FC<ProjectLayoutProps> = () => {
                 width={400}
                 style={{
                     backgroundColor: '#1a1a1a',
-                    borderRight: '1px solid #404040'
+                    borderRight: '1px solid #404040',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    height: '100%',
+                    overflow: 'auto'
                 }}
             >
                 {/* Header */}
                 <div style={{
                     padding: '20px',
                     borderBottom: '1px solid #404040',
-                    backgroundColor: '#262626'
+                    backgroundColor: '#262626',
+                    flexShrink: 0
                 }}>
                     <Title level={4} style={{ color: '#fff', margin: 0 }}>
                         {outlineData.components.title || '项目详情'}
@@ -411,7 +430,12 @@ export const ProjectLayout: React.FC<ProjectLayoutProps> = () => {
                 </div>
 
                 {/* Accordion Navigation */}
-                <div style={{ flex: 1, overflow: 'auto', padding: '16px' }}>
+                <div style={{ 
+                    flex: 1, 
+                    overflow: 'auto', 
+                    padding: '16px',
+                    minHeight: 0
+                }}>
                     <Collapse
                         activeKey={activeAccordionKeys}
                         onChange={handleAccordionChange}
@@ -430,7 +454,9 @@ export const ProjectLayout: React.FC<ProjectLayoutProps> = () => {
                                         selectedKeys={selectedOutlineSection ? [selectedOutlineSection] : []}
                                         style={{
                                             backgroundColor: 'transparent',
-                                            color: '#fff'
+                                            color: '#fff',
+                                            maxHeight: '300px',
+                                            overflow: 'auto'
                                         }}
                                         className="outline-tree"
                                         showIcon
@@ -451,7 +477,9 @@ export const ProjectLayout: React.FC<ProjectLayoutProps> = () => {
                                         onExpand={episodeActions.setExpandedKeys}
                                         style={{
                                             backgroundColor: 'transparent',
-                                            color: '#fff'
+                                            color: '#fff',
+                                            maxHeight: '400px',
+                                            overflow: 'auto'
                                         }}
                                         className="episode-tree"
                                         showIcon

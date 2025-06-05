@@ -743,88 +743,21 @@ export const ScriptDisplayPage: React.FC = () => {
                     </Panel>
                 </Collapse>
 
-                {/* Script Header */}
-                {scriptData && !currentTransformId && !(isStreaming || streamingStatus === 'streaming') && (
-                    <Card
-                        style={{
-                            backgroundColor: '#1a1a1a',
-                            border: '1px solid #404040',
-                            borderRadius: '12px',
-                            marginBottom: '20px'
-                        }}
-                    >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
-                            <Space direction="vertical" size="small" style={{ flex: 1 }}>
-                                <Title level={4} style={{ color: '#fff', marginBottom: '8px' }}>
-                                    <FileTextOutlined style={{ marginRight: '8px' }} />
-                                    第 {scriptData.episodeNumber} 集剧本
-                                </Title>
-                                <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
-                                    <div>
-                                        <Text style={{ color: '#888' }}>字数：</Text>
-                                        <Text style={{ color: '#fff' }}>{scriptData.wordCount || '计算中'}</Text>
-                                    </div>
-                                    <div>
-                                        <Text style={{ color: '#888' }}>预估时长：</Text>
-                                        <Text style={{ color: '#fff' }}>{scriptData.estimatedDuration || '计算中'} 分钟</Text>
-                                    </div>
-                                    <div>
-                                        <Text style={{ color: '#888' }}>生成时间：</Text>
-                                        <Text style={{ color: '#fff' }}>
-                                            {scriptData.generatedAt ? new Date(scriptData.generatedAt).toLocaleString() : '未知'}
-                                        </Text>
-                                    </div>
-                                </div>
-                            </Space>
-                            <Button
-                                icon={<ExportOutlined />}
-                                onClick={handleExportScript}
-                                style={{ marginLeft: '16px' }}
-                            >
-                                导出剧本
-                            </Button>
-                        </div>
-                    </Card>
-                )}
 
-                {/* Streaming Progress Indicator */}
-                {(isStreaming || streamingStatus === 'streaming') && (
-                    <Card
-                        style={{
-                            backgroundColor: '#1a1a1a',
-                            border: '1px solid #404040',
-                            borderRadius: '12px',
-                            marginBottom: '20px'
-                        }}
-                    >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
-                            <Space direction="vertical" size="small" style={{ flex: 1 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <LoadingOutlined style={{ color: '#1890ff' }} />
-                                    <Text style={{ color: '#fff' }}>剧本生成中...</Text>
-                                </div>
-                                <div style={{ color: '#888', fontSize: '14px' }}>
-                                    正在根据剧集大纲生成详细剧本内容，请稍候...
-                                </div>
-                                {streamingItems && streamingItems.length > 0 && (
-                                    <div style={{ color: '#888', fontSize: '12px' }}>
-                                        已生成内容：{currentScriptContent.length} 字符
-                                    </div>
-                                )}
-                            </Space>
-                            {currentScriptContent && currentScriptContent.length > 0 && (
-                                <Button
-                                    icon={<ExportOutlined />}
-                                    onClick={handleExportScript}
-                                    style={{ marginLeft: '16px' }}
-                                    size="small"
-                                >
-                                    导出当前内容
-                                </Button>
-                            )}
-                        </div>
-                    </Card>
-                )}
+
+
+
+                {/* CSS for pulsing animation */}
+                <style>{`
+                    @keyframes scriptPulse {
+                        0% { background-color: #1a1a1a; }
+                        50% { background-color: #1f2937; }
+                        100% { background-color: #1a1a1a; }
+                    }
+                    .script-card-streaming {
+                        animation: scriptPulse 2s ease-in-out infinite;
+                    }
+                `}</style>
 
                 {/* Script Content */}
                 <Card
@@ -834,6 +767,57 @@ export const ScriptDisplayPage: React.FC = () => {
                         borderRadius: '12px',
                         minHeight: '600px'
                     }}
+                    className={(isStreaming || streamingStatus === 'streaming') ? 'script-card-streaming' : ''}
+                    title={
+                        scriptData && !currentTransformId && !(isStreaming || streamingStatus === 'streaming') ? (
+                            <div style={{ 
+                                display: 'flex', 
+                                justifyContent: 'space-between', 
+                                alignItems: 'flex-start', 
+                                width: '100%',
+                                padding: '8px 0'
+                            }}>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                        <FileTextOutlined style={{ color: '#fff' }} />
+                                        <Text style={{ color: '#fff', fontSize: '18px', fontWeight: 'bold' }}>
+                                            第 {scriptData.episodeNumber} 集剧本
+                                        </Text>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
+                                        <div>
+                                            <Text style={{ color: '#888', fontSize: '14px' }}>字数：</Text>
+                                            <Text style={{ color: '#fff', fontSize: '14px' }}>{scriptData.wordCount || '计算中'}</Text>
+                                        </div>
+                                        <div>
+                                            <Text style={{ color: '#888', fontSize: '14px' }}>预估时长：</Text>
+                                            <Text style={{ color: '#fff', fontSize: '14px' }}>{scriptData.estimatedDuration || '计算中'} 分钟</Text>
+                                        </div>
+                                        <div>
+                                            <Text style={{ color: '#888', fontSize: '14px' }}>生成时间：</Text>
+                                            <Text style={{ color: '#fff', fontSize: '14px' }}>
+                                                {scriptData.generatedAt ? new Date(scriptData.generatedAt).toLocaleString() : '未知'}
+                                            </Text>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (isStreaming || streamingStatus === 'streaming') ? (
+                            <div style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '8px',
+                                padding: '8px 0'
+                            }}>
+                                <LoadingOutlined style={{ color: '#1890ff' }} />
+                                <Text style={{ color: '#fff', fontSize: '18px', fontWeight: 'bold' }}>剧本生成中...</Text>
+                            </div>
+                        ) : (
+                            <div style={{ padding: '8px 0' }}>
+                                <Text style={{ color: '#fff', fontSize: '18px', fontWeight: 'bold' }}>剧本内容</Text>
+                            </div>
+                        )
+                    }
                     extra={
                         // 🔥 FIXED: Always show export button when there's content to export
                         (currentScriptContent && currentScriptContent.length > 10 && 
@@ -861,6 +845,28 @@ export const ScriptDisplayPage: React.FC = () => {
                         whiteSpace: 'pre-wrap',
                         minHeight: '500px'
                     }}>
+                        {/* Show streaming progress info when streaming */}
+                        {(isStreaming || streamingStatus === 'streaming') && (
+                            <div style={{
+                                color: '#888',
+                                fontSize: '14px',
+                                marginBottom: '16px',
+                                padding: '12px',
+                                backgroundColor: '#262626',
+                                borderRadius: '6px',
+                                borderLeft: '3px solid #1890ff'
+                            }}>
+                                <div style={{ marginBottom: '8px' }}>
+                                    正在根据剧集大纲生成详细剧本内容，请稍候...
+                                </div>
+                                {streamingItems && streamingItems.length > 0 && (
+                                    <div style={{ fontSize: '12px' }}>
+                                        已生成内容：{currentScriptContent.length} 字符
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        
                         <Slate 
                             editor={editor} 
                             initialValue={slateValue}
