@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Breadcrumb as AntBreadcrumb } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { HomeOutlined, BulbOutlined, MessageOutlined, EditOutlined, HistoryOutlined, FileTextOutlined, PlayCircleOutlined } from '@ant-design/icons';
+import { HomeOutlined, BulbOutlined, MessageOutlined, EditOutlined, HistoryOutlined, FileTextOutlined, PlayCircleOutlined, ProjectOutlined } from '@ant-design/icons';
+import { apiService } from '../services/apiService';
 
 interface BreadcrumbItem {
     title: string;
@@ -13,11 +14,33 @@ interface BreadcrumbItem {
 const Breadcrumb: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
+    const [projectTitle, setProjectTitle] = useState<string>('');
+
+    // Fetch project title when on project routes
+    useEffect(() => {
+        const pathParts = location.pathname.split('/');
+        if (pathParts[1] === 'projects' && pathParts[2]) {
+            const projectId = pathParts[2];
+            fetchProjectTitle(projectId);
+        } else {
+            setProjectTitle('');
+        }
+    }, [location.pathname]);
+
+    const fetchProjectTitle = async (projectId: string) => {
+        try {
+            const data = await apiService.getOutlineSession(projectId);
+            setProjectTitle(data?.components?.title || '');
+        } catch (error) {
+            console.error('Failed to fetch project title:', error);
+            setProjectTitle('');
+        }
+    };
 
     const generateBreadcrumbItems = (): BreadcrumbItem[] => {
         const items: BreadcrumbItem[] = [
             {
-                title: '创作工作台',
+                title: '工作台',
                 icon: <HistoryOutlined />,
                 onClick: () => navigate('/ideations')
             }
@@ -57,9 +80,16 @@ const Breadcrumb: React.FC = () => {
             const projectId = pathParts[2];
             const section = pathParts[3];
             
+            // Add project title as second level
+            items.push({
+                title: projectTitle ? `项目 "${projectTitle}"` : `项目 (${projectId.slice(0, 8)}...)`,
+                icon: <ProjectOutlined />,
+                onClick: () => navigate(`/projects/${projectId}`)
+            });
+            
             if (section === 'outline') {
                 items.push({
-                    title: `项目大纲 (${projectId.slice(0, 8)}...)`,
+                    title: '大纲',
                     icon: <FileTextOutlined />,
                     onClick: () => navigate(`/projects/${projectId}/outline`)
                 });
@@ -83,14 +113,14 @@ const Breadcrumb: React.FC = () => {
                 }
             } else if (section === 'episodes') {
                 items.push({
-                    title: `剧集结构 (${projectId.slice(0, 8)}...)`,
+                    title: '剧集结构',
                     icon: <PlayCircleOutlined />,
                     onClick: () => navigate(`/projects/${projectId}/episodes`)
                 });
             } else if (section === 'stages') {
                 const stageId = pathParts[4];
                 items.push({
-                    title: `剧集结构 (${projectId.slice(0, 8)}...)`,
+                    title: '剧集结构',
                     icon: <PlayCircleOutlined />,
                     onClick: () => navigate(`/projects/${projectId}/episodes`)
                 });
@@ -119,11 +149,6 @@ const Breadcrumb: React.FC = () => {
                         }
                     }
                 }
-            } else {
-                items.push({
-                    title: `项目详情 (${projectId.slice(0, 8)}...)`,
-                    icon: <FileTextOutlined />
-                });
             }
         } else if (location.pathname === '/chat') {
             items.push({
