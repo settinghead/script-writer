@@ -38,7 +38,7 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
     protected error$ = new Subject<Error>();
     protected completion$ = new Subject<void>();
     protected thinking$ = new Subject<boolean>();
-    protected reasoning$ = new Subject<ReasoningEvent>();
+    protected reasoningSubject$ = new Subject<ReasoningEvent>();
     protected eventSource?: EventSource;
     protected currentTransformId$ = new BehaviorSubject<string | undefined>(undefined);
 
@@ -89,7 +89,7 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
             shareReplay(1)
         );
 
-        this.reasoning$ = this.reasoning$.pipe(
+        this.reasoning$ = this.reasoningSubject$.pipe(
             shareReplay(1)
         );
 
@@ -306,7 +306,7 @@ export abstract class LLMStreamingService<T> implements JSONStreamable<T> {
                                             timestamp: data.timestamp,
                                             modelName: data.modelName
                                         };
-                                        this.reasoning$.next(reasoningEvent);
+                                        this.reasoningSubject$.next(reasoningEvent);
                                     }
                                     // Status messages are handled by the status stream
                                 } catch {

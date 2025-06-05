@@ -11,13 +11,13 @@ import {
     message,
     Space,
     Divider,
-    Progress,
     List,
     Tag,
     Collapse
 } from 'antd';
 import { PlayCircleOutlined, EditOutlined, StopOutlined, ExportOutlined } from '@ant-design/icons';
 import { OutlineExportModal } from './shared/OutlineExportModal';
+import { TopProgressBar } from './shared/TopProgressBar';
 import { formatEpisodesForExport, type EpisodeExportData } from '../utils/episodeExporter';
 import { useEpisodeContext, EpisodeApiService } from '../contexts/EpisodeContext';
 
@@ -201,80 +201,15 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
 
     return (
         <div style={{ position: 'relative' }}>
-            {/* CSS for pulse animation */}
-            <style>{`
-                @keyframes pulse {
-                    0% { opacity: 1; transform: scale(1); }
-                    50% { opacity: 0.5; transform: scale(1.2); }
-                    100% { opacity: 1; transform: scale(1); }
-                }
-            `}</style>
-            
             {/* Top Progress Bar - NProgress Style */}
-            {(isActiveStreaming || episodes.length > 0) && (
-                <div style={{
-                    position: 'sticky',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    zIndex: 1000,
-                    backgroundColor: '#0d1117',
-                    borderBottom: '1px solid #21262d',
-                    padding: '0',
-                    marginBottom: '1px'
-                }}>
-                    <Progress
-                        percent={progress}
-                        status={isActiveStreaming ? "active" : "normal"}
-                        showInfo={false}
-                    size="small"
-                        strokeWidth={2}
-                        strokeColor={isActiveStreaming ? {
-                            '0%': '#1890ff',
-                            '50%': '#52c41a', 
-                            '100%': '#faad14'
-                        } : '#52c41a'}
-                        trailColor="rgba(255, 255, 255, 0.1)"
-                    style={{
-                            margin: 0,
-                            padding: 0
-                        }}
-                    />
-                    {isActiveStreaming && (
-                        <div style={{
-                            position: 'absolute',
-                            top: '6px',
-                            right: '12px',
-                            fontSize: '11px',
-                            color: '#8b949e',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px'
-                        }}>
-                            <span>正在生成 {episodes.length}/{expectedEpisodes}</span>
-                            <div style={{
-                                width: '6px',
-                                height: '6px',
-                                borderRadius: '50%',
-                                backgroundColor: '#1890ff',
-                                animation: 'pulse 2s infinite'
-                            }} />
-                        </div>
-                    )}
-                    {!isActiveStreaming && episodes.length > 0 && (
-                        <div style={{
-                            position: 'absolute',
-                            top: '6px',
-                            right: '12px',
-                            fontSize: '11px',
-                            color: '#52c41a',
-                            fontWeight: 500
-                        }}>
-                            已完成 {episodes.length}/{expectedEpisodes}
-                        </div>
-                    )}
-                </div>
-            )}
+            <TopProgressBar
+                isStreaming={isActiveStreaming}
+                progress={progress}
+                currentCount={episodes.length}
+                totalCount={expectedEpisodes}
+                itemLabel="集"
+                visible={isActiveStreaming || episodes.length > 0}
+            />
 
             {/* Main Content */}
             <div style={{ padding: '20px 40px' }}>

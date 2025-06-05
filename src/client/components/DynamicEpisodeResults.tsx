@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Space, Typography, Divider } from 'antd';
 import { DynamicStreamingUI } from './shared/streaming/DynamicStreamingUI';
+import { TopProgressBar } from './shared/TopProgressBar';
 import { episodeFieldRegistry } from './shared/streaming/fieldRegistries';
 import { EpisodeSynopsisV1 } from '../../common/types';
 
@@ -14,6 +15,7 @@ interface DynamicEpisodeResultsProps {
   isThinking?: boolean;
   onStopStreaming?: () => void;
   onEpisodeEdit?: (episodeNumber: number, field: string, value: any) => Promise<void>;
+  expectedEpisodeCount?: number; // Expected total number of episodes for progress calculation
 }
 
 export const DynamicEpisodeResults: React.FC<DynamicEpisodeResultsProps> = ({
@@ -23,7 +25,8 @@ export const DynamicEpisodeResults: React.FC<DynamicEpisodeResultsProps> = ({
   streamingStatus = 'idle',
   isThinking = false,
   onStopStreaming,
-  onEpisodeEdit
+  onEpisodeEdit,
+  expectedEpisodeCount
 }) => {
   // Transform episodes data for streaming
   const streamingData = useMemo(() => {
@@ -46,19 +49,34 @@ export const DynamicEpisodeResults: React.FC<DynamicEpisodeResultsProps> = ({
     }
   };
 
+  // Calculate progress for the top progress bar
+  const totalExpected = expectedEpisodeCount || streamingData.length;
+  const progress = totalExpected > 0 ? Math.min((streamingData.length / totalExpected) * 100, 100) : 0;
+
   return (
-    <div style={{ padding: '20px' }}>
-      <Space direction="vertical" size="large" style={{ width: '100%' }}>
-        {/* Header */}
-        <div>
-          <Title level={3} style={{ color: '#fff', marginBottom: '8px' }}>
-            剧集大纲生成结果
-          </Title>
-          <div style={{ color: '#888', fontSize: '14px' }}>
-            共 {streamingData.length} 集剧集大纲
-            {isStreaming && ` · 正在生成中...`}
+    <div style={{ position: 'relative' }}>
+      {/* Top Progress Bar */}
+      <TopProgressBar
+        isStreaming={isStreaming}
+        progress={progress}
+        currentCount={streamingData.length}
+        totalCount={totalExpected}
+        itemLabel="集"
+        visible={isStreaming || streamingData.length > 0}
+      />
+      
+      <div style={{ padding: '20px' }}>
+        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+          {/* Header */}
+          <div>
+            <Title level={3} style={{ color: '#fff', marginBottom: '8px' }}>
+              剧集大纲生成结果
+            </Title>
+            <div style={{ color: '#888', fontSize: '14px' }}>
+              共 {streamingData.length} 集剧集大纲
+              {isStreaming && ` · 正在生成中...`}
+            </div>
           </div>
-        </div>
 
         <Divider style={{ borderColor: '#404040' }} />
 
@@ -86,6 +104,7 @@ export const DynamicEpisodeResults: React.FC<DynamicEpisodeResultsProps> = ({
           itemTitleFormatter={(item, index) => `第${item.episodeNumber || (index + 1)}集: ${item.title || '剧集标题'}`}
         />
       </Space>
+    </div>
     </div>
   );
 }; 

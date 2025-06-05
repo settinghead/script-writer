@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Tabs, Typography, Button } from 'antd';
-import { BulbOutlined, FileTextOutlined, PlusOutlined, VideoCameraOutlined } from '@ant-design/icons';
+import { BulbOutlined, FileTextOutlined, PlusOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import IdeationsList from './IdeationsList';
 import { OutlinesList } from './OutlinesList';
-import ScriptsList from './ScriptsList';
 
 const { Title } = Typography;
 
@@ -14,17 +13,17 @@ const HomePage: React.FC = () => {
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
     // Valid tab keys
-    const validTabs = ['ideations', 'outlines', 'scripts'];
+    const validTabs = ['ideations', 'outlines'];
 
-    // Get initial tab from URL parameter, default to 'ideations'
+    // Get initial tab from URL parameter, default to 'outlines'
     const tabFromUrl = searchParams.get('tab');
-    const initialTab = validTabs.includes(tabFromUrl || '') ? tabFromUrl! : 'ideations';
+    const initialTab = validTabs.includes(tabFromUrl || '') ? tabFromUrl! : 'outlines';
     const [activeTab, setActiveTab] = useState(initialTab);
 
     // Sync state when URL changes (e.g., browser back/forward)
     useEffect(() => {
         const tabFromUrl = searchParams.get('tab');
-        const validTab = validTabs.includes(tabFromUrl || '') ? tabFromUrl! : 'ideations';
+        const validTab = validTabs.includes(tabFromUrl || '') ? tabFromUrl! : 'outlines';
         if (validTab !== activeTab) {
             setActiveTab(validTab);
         }
@@ -59,7 +58,7 @@ const HomePage: React.FC = () => {
             label: (
                 <span>
                     <BulbOutlined />
-                    灵感历史
+                    我的灵感
                 </span>
             ),
             children: <IdeationsList />
@@ -69,20 +68,10 @@ const HomePage: React.FC = () => {
             label: (
                 <span>
                     <FileTextOutlined />
-                    大纲历史
+                    我的项目
                 </span>
             ),
             children: <OutlinesList />
-        },
-        {
-            key: 'scripts',
-            label: (
-                <span>
-                    <VideoCameraOutlined />
-                    剧本制作
-                </span>
-            ),
-            children: <ScriptsList />
         }
     ];
 

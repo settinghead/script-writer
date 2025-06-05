@@ -70,7 +70,6 @@ export class TransformExecutor {
                 transform_id: transform.id,
                 model_name: modelName,
                 raw_response: result.text,
-                reasoning_response: result.reasoning || null,
                 token_usage: result.usage ? {
                     prompt_tokens: result.usage.promptTokens,
                     completion_tokens: result.usage.completionTokens,

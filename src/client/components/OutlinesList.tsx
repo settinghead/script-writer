@@ -179,14 +179,19 @@ export const OutlinesList: React.FC = () => {
                                     display: 'flex',
                                     flexDirection: 'column',
                                     flex: 1,
-                                    padding: isMobile ? '12px' : '16px'
+                                    padding: isMobile ? '12px' : '16px',
+                                    cursor: 'pointer'
                                 }}
+                                onClick={() => handleViewOutline(session.id)}
                                 actions={[
                                     <Button
                                         key="view"
                                         type="text"
                                         icon={<EyeOutlined />}
-                                        onClick={() => handleViewOutline(session.id)}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleViewOutline(session.id);
+                                        }}
                                         style={{
                                             color: '#1890ff',
                                             fontSize: isMobile ? '12px' : '14px',
@@ -201,7 +206,10 @@ export const OutlinesList: React.FC = () => {
                                             key="source"
                                             type="text"
                                             icon={<FileTextOutlined />}
-                                            onClick={() => handleViewSourceIdea(session.id)}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleViewSourceIdea(session.id);
+                                            }}
                                             style={{
                                                 color: '#52c41a',
                                                 fontSize: isMobile ? '12px' : '14px',
@@ -217,7 +225,10 @@ export const OutlinesList: React.FC = () => {
                                         key="delete"
                                         type="text"
                                         icon={<DeleteOutlined />}
-                                        onClick={() => handleDelete(session.id, session.title || '无标题大纲')}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDelete(session.id, session.title || '无标题大纲');
+                                        }}
                                         loading={deleting === session.id}
                                         style={{
                                             color: '#ff4d4f',

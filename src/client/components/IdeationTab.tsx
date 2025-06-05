@@ -10,7 +10,7 @@ import DynamicBrainstormingResults from './DynamicBrainstormingResults';
 import { useStreamingBrainstorm } from '../hooks/useStreamingBrainstorm';
 import { IdeaWithTitle } from '../services/implementations/BrainstormingStreamingService';
 import TextareaAutosize from 'react-textarea-autosize';
-import { BrainstormingParameterInput } from './BrainstormingParameterInput';
+
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -44,7 +44,7 @@ const IdeationTab: React.FC = () => {
     });
 
     // Use streaming hook when we have an active transform ID
-    const { status, items, isThinking, error: streamingError, start, stop, reasoningEvent } = useStreamingBrainstorm(activeTransformId || undefined);
+    const { status, items, isThinking, error: streamingError, stop, reasoningEvent } = useStreamingBrainstorm(activeTransformId || undefined);
 
     // Update generated ideas when streaming items change
     useEffect(() => {

@@ -283,14 +283,19 @@ const IdeationsList: React.FC = () => {
                                     display: 'flex',
                                     flexDirection: 'column',
                                     flex: 1,
-                                    padding: isMobile ? '12px' : '16px' // Smaller padding on mobile
+                                    padding: isMobile ? '12px' : '16px', // Smaller padding on mobile
+                                    cursor: 'pointer'
                                 }}
+                                onClick={() => handleViewIdeation(ideation.id)}
                                 actions={[
                                     <Button
                                         key="view"
                                         type="text"
                                         icon={<EyeOutlined />}
-                                        onClick={() => handleViewIdeation(ideation.id)}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleViewIdeation(ideation.id);
+                                        }}
                                         style={{
                                             color: '#1890ff',
                                             fontSize: isMobile ? '12px' : '14px',
