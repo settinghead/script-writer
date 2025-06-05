@@ -41,7 +41,62 @@ export class EpisodeGenerationService {
 
         const stageData = stageArtifact.data as OutlineSynopsisStageV1;
 
+        // 🔥 FIX: Ensure cascaded parameters are complete by loading from artifacts if needed
+        let completeCascadedParams = cascadedParams || {};
 
+        // Check if essential parameters are missing and load them from brainstorm artifacts
+        if (!completeCascadedParams.platform || !completeCascadedParams.genre_paths) {
+            console.log('[EpisodeGenerationService] Missing cascaded params, loading from artifacts...');
+            
+            try {
+                // Get brainstorm params to retrieve platform, genre_paths, etc.
+                const brainstormParamsArtifacts = await this.artifactRepo.getArtifactsByType(userId, 'brainstorm_params');
+                let brainstormParams = null;
+                
+                if (brainstormParamsArtifacts.length > 0) {
+                    // Get the most recent brainstorm params
+                    const latest = brainstormParamsArtifacts
+                        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+                    brainstormParams = latest.data;
+                }
+
+                // Get outline job params to retrieve totalEpisodes and episodeDuration
+                const outlineJobParamsArtifacts = await this.artifactRepo.getArtifactsByType(userId, 'outline_job_params');
+                let outlineJobParams = null;
+
+                if (outlineJobParamsArtifacts.length > 0) {
+                    // Get the most recent outline job params
+                    const latest = outlineJobParamsArtifacts
+                        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+                    outlineJobParams = latest.data;
+                }
+
+                // Merge with provided cascadedParams, giving priority to provided values
+                completeCascadedParams = {
+                    platform: completeCascadedParams.platform || brainstormParams?.platform || '通用',
+                    genre_paths: completeCascadedParams.genre_paths || brainstormParams?.genre_paths || [['其他']],
+                    genre_proportions: completeCascadedParams.genre_proportions || brainstormParams?.genre_proportions || [100],
+                    requirements: completeCascadedParams.requirements || brainstormParams?.requirements || '',
+                    totalEpisodes: completeCascadedParams.totalEpisodes || outlineJobParams?.totalEpisodes || 60,
+                    episodeDuration: completeCascadedParams.episodeDuration || outlineJobParams?.episodeDuration || 3
+                };
+
+                console.log('[EpisodeGenerationService] Loaded cascaded params:', JSON.stringify(completeCascadedParams, null, 2));
+            } catch (error) {
+                console.warn('[EpisodeGenerationService] Failed to load cascaded params from artifacts, using defaults:', error);
+                
+                // Use minimal defaults if artifact loading fails
+                completeCascadedParams = {
+                    platform: '通用',
+                    genre_paths: [['其他']],
+                    genre_proportions: [100],
+                    requirements: '',
+                    totalEpisodes: completeCascadedParams.totalEpisodes || 60,
+                    episodeDuration: completeCascadedParams.episodeDuration || 3,
+                    ...completeCascadedParams // Keep any provided params
+                };
+            }
+        }
 
         // 2. Create or get user_input artifact if modifications exist
         let paramsArtifact;
@@ -52,7 +107,7 @@ export class EpisodeGenerationService {
                 { action: 'modify_episode_params' }
             );
 
-            // Create user_input artifact
+            // Create user_input artifact with complete cascaded params
             paramsArtifact = await this.artifactRepo.createArtifact(
                 userId,
                 'episode_generation_params',
@@ -61,7 +116,7 @@ export class EpisodeGenerationService {
                     numberOfEpisodes: numberOfEpisodes || stageData.numberOfEpisodes,
                     stageSynopsis: stageData.stageSynopsis,
                     customRequirements,
-                    cascadedParams
+                    cascadedParams: completeCascadedParams // Use complete params
                 } as EpisodeGenerationParamsV1,
                 'v1'
             );

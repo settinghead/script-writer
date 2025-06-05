@@ -86,9 +86,11 @@ export const outlineFieldRegistry: FieldDefinition[] = [
     order: 8
   },
 
-  // 8. Enhanced stages structure with progressive streaming support
+
+
+  // 8b. Legacy synopsis_stages for backward compatibility with streaming
   {
-    path: "stages",
+    path: "synopsis_stages",
     component: EditableSynopsisStagesField,
     label: "分段故事梗概",
     order: 9

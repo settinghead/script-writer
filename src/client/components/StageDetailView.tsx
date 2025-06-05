@@ -44,7 +44,6 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
     const [isExportModalVisible, setIsExportModalVisible] = useState(false);
     const [exportText, setExportText] = useState('');
     const [stageDetailsCollapsed, setStageDetailsCollapsed] = useState(false);
-    const [hasAutoCollapsed, setHasAutoCollapsed] = useState(false);
 
     // Editable parameters
     const [editedEpisodes, setEditedEpisodes] = useState<number>(0);
@@ -103,19 +102,6 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
             setEditedEpisodes(stageData.numberOfEpisodes);
         }
     }, [stageData]);
-
-    // Auto-collapse stage details when generation starts or episodes are generated
-    React.useEffect(() => {
-        // Auto-collapse when streaming starts
-        if (isActiveStreaming && !stageDetailsCollapsed) {
-            setStageDetailsCollapsed(true);
-        }
-        // Auto-collapse when episodes are generated (only once)
-        else if (episodes.length > 0 && !stageDetailsCollapsed && !hasAutoCollapsed) {
-            setStageDetailsCollapsed(true);
-            setHasAutoCollapsed(true);
-        }
-    }, [isActiveStreaming, episodes.length, stageDetailsCollapsed, hasAutoCollapsed]);
 
     const handleStartGeneration = async () => {
         if (!stageData) return;
@@ -299,10 +285,6 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
                 activeKey={stageDetailsCollapsed ? [] : ['stage-details']}
                 onChange={(keys) => {
                     setStageDetailsCollapsed(!keys.includes('stage-details'));
-                    // Mark that user has manually interacted, preventing auto-collapse interference
-                    if (!hasAutoCollapsed) {
-                        setHasAutoCollapsed(true);
-                    }
                 }}
                 style={{ marginBottom: '20px' }}
                 size="large"
