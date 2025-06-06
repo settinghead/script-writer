@@ -41,7 +41,10 @@ export const TopProgressBar: React.FC<TopProgressBarProps> = ({
             backgroundColor: '#0d1117',
             borderBottom: '1px solid #21262d',
             padding: '0',
-            marginBottom: '1px'
+            marginBottom: '1px',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)'
         }}>
             {/* CSS for pulse animation */}
             <style>{`

@@ -208,7 +208,7 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
 
     return (
         <div className={isActiveStreaming ? 'episode-generating' : ''} style={{ position: 'relative' }}>
-            {/* Top Progress Bar - NProgress Style */}
+            {/* Top Progress Bar - Always floats at top of scrollable area */}
             <TopProgressBar
                 isStreaming={isActiveStreaming}
                 progress={progress}

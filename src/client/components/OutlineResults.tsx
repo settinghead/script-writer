@@ -167,19 +167,19 @@ export const OutlineResults: React.FC<OutlineResultsProps> = ({
 
     return (
         <div className={isStreaming ? 'outline-generating' : ''} style={{ width: '100%' }}>
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
-            {/* Streaming Progress */}
+            {/* Streaming Progress - Outside Space to ensure proper sticky positioning */}
             {(isStreaming || isConnecting) && (
                 <TopProgressBar
-                    isVisible={true}
+                    visible={true}
                     isStreaming={isStreaming}
-                    isConnecting={isConnecting}
+                    progress={Math.round((getCompletedComponentsCount() / 9) * 100)}
                     currentCount={getCompletedComponentsCount()}
                     totalCount={9} // Total outline components (title, genre, target_audience, selling_points, satisfaction_points, setting, synopsis, synopsis_stages, characters)
                     itemLabel="大纲组件"
-                    onStop={onStopStreaming || (() => { })}
                 />
             )}
+            
+        <Space direction="vertical" size="large" style={{ width: '100%' }}>
 
             {/* Status */}
             {status === 'failed' && (

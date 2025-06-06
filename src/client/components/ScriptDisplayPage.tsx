@@ -634,11 +634,10 @@ export const ScriptDisplayPage: React.FC = () => {
         <div style={{
             height: '100%',
             overflow: 'auto',
-            padding: '20px',
             backgroundColor: '#0a0a0a',
             position: 'relative'
         }}>
-            {/* Top Progress Bar */}
+            {/* Top Progress Bar - Always floats at top of scrollable area */}
             <TopProgressBar
                 isStreaming={isStreaming || streamingStatus === 'streaming'}
                 progress={currentScriptContent.length > 0 ? Math.min((currentScriptContent.length / 5000) * 100, 100) : 0}
@@ -648,7 +647,7 @@ export const ScriptDisplayPage: React.FC = () => {
                 visible={isStreaming || streamingStatus === 'streaming'}
             />
             
-            <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+            <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '20px' }}>
                 {/* Breadcrumb Navigation */}
                 <div style={{ marginBottom: '20px' }}>
                     <Breadcrumb 
@@ -775,11 +774,11 @@ export const ScriptDisplayPage: React.FC = () => {
                 <style>{`
                     @keyframes scriptPulse {
                         0% { background-color: #1a1a1a; }
-                        50% { background-color: #1f2937; }
+                        50% { background-color: #1e3a8a; }
                         100% { background-color: #1a1a1a; }
                     }
                     .script-card-streaming {
-                        animation: scriptPulse 2s ease-in-out infinite;
+                        animation: scriptPulse 5s ease-in-out infinite;
                     }
                 `}</style>
 

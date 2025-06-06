@@ -55,7 +55,7 @@ export const DynamicEpisodeResults: React.FC<DynamicEpisodeResultsProps> = ({
 
   return (
     <div className={isStreaming ? 'episode-generating' : ''} style={{ position: 'relative' }}>
-      {/* Top Progress Bar */}
+      {/* Top Progress Bar - Outside main content to ensure proper sticky positioning */}
       <TopProgressBar
         isStreaming={isStreaming}
         progress={progress}

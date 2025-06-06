@@ -243,7 +243,7 @@ body {
   }
 
   50% {
-    background-color: rgba(24, 144, 255, 0.05);
+    background-color: rgba(24, 144, 255, 0.15);
   }
 
   100% {
@@ -252,7 +252,7 @@ body {
 }
 
 .outline-generating {
-  animation: outlinePulse 3s ease-in-out infinite;
+  animation: outlinePulse 6s ease-in-out infinite;
   border-radius: 8px;
   padding: 20px;
   transition: background-color 0.3s ease;
@@ -265,7 +265,7 @@ body {
   }
 
   50% {
-    background-color: rgba(82, 196, 26, 0.05);
+    background-color: rgba(82, 196, 26, 0.15);
   }
 
   100% {
@@ -274,7 +274,7 @@ body {
 }
 
 .episode-generating {
-  animation: episodePulse 3s ease-in-out infinite;
+  animation: episodePulse 6s ease-in-out infinite;
   border-radius: 8px;
   padding: 20px;
   transition: background-color 0.3s ease;
