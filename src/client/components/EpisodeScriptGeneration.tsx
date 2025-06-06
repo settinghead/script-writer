@@ -142,7 +142,7 @@ export const EpisodeScriptGeneration: React.FC = () => {
                         }}
                     >
                         <Title level={5} style={{ color: '#fff', marginBottom: '12px' }}>
-                            本集大纲（尚未生成）
+                            本集大纲（剧本尚未生成）
                         </Title>
                         <Space direction="vertical" size="small" style={{ width: '100%' }}>
                             <div>
