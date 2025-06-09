@@ -98,10 +98,12 @@ export class EpisodeGenerationService {
             }
         }
 
-        // 2. Create or get user_input artifact if modifications exist
+        // 2. Always create episode params artifact with cascaded parameters
+        // This ensures the StreamingTransformExecutor always has access to complete parameters
         let paramsArtifact;
-        if (numberOfEpisodes !== stageData.numberOfEpisodes || customRequirements || cascadedParams) {
-            // Create human transform for modifications
+        
+        if (numberOfEpisodes !== stageData.numberOfEpisodes || customRequirements || (cascadedParams && Object.keys(cascadedParams).length > 0)) {
+            // Create human transform for user modifications
             const humanTransform = await this.transformRepo.createTransform(
                 userId, 'human', 'v1', 'completed',
                 { action: 'modify_episode_params' }
@@ -123,6 +125,31 @@ export class EpisodeGenerationService {
 
             // Link human transform to params artifact
             await this.transformRepo.addTransformOutputs(humanTransform.id, [
+                { artifactId: paramsArtifact.id, outputRole: 'episode_params' }
+            ]);
+        } else {
+            // No user modifications, but still create artifact with default params and cascaded data
+            // This ensures the StreamingTransformExecutor always has access to cascaded parameters
+            const systemTransform = await this.transformRepo.createTransform(
+                userId, 'llm', 'v1', 'completed',
+                { action: 'prepare_episode_params' }
+            );
+
+            paramsArtifact = await this.artifactRepo.createArtifact(
+                userId,
+                'episode_generation_params',
+                {
+                    stageArtifactId,
+                    numberOfEpisodes: stageData.numberOfEpisodes,
+                    stageSynopsis: stageData.stageSynopsis,
+                    customRequirements: undefined,
+                    cascadedParams: completeCascadedParams // Always include complete cascaded params
+                } as EpisodeGenerationParamsV1,
+                'v1'
+            );
+
+            // Link system transform to params artifact
+            await this.transformRepo.addTransformOutputs(systemTransform.id, [
                 { artifactId: paramsArtifact.id, outputRole: 'episode_params' }
             ]);
         }
@@ -154,11 +181,11 @@ export class EpisodeGenerationService {
             }
         );
 
-        // 5. Add input artifacts
-        const inputArtifacts = [{ artifactId: stageArtifactId, inputRole: 'stage_data' }];
-        if (paramsArtifact) {
-            inputArtifacts.push({ artifactId: paramsArtifact.id, inputRole: 'episode_params' });
-        }
+        // 5. Add input artifacts (paramsArtifact is now always created)
+        const inputArtifacts = [
+            { artifactId: stageArtifactId, inputRole: 'stage_data' },
+            { artifactId: paramsArtifact.id, inputRole: 'episode_params' }
+        ];
         await this.transformRepo.addTransformInputs(transform.id, inputArtifacts);
 
         // 6. Start the streaming job in the background

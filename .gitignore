@@ -15,3 +15,5 @@ dist-client
 *.tsbuildinfo
 
 cookies.txt
+
+*.log

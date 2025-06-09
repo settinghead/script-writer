@@ -3,6 +3,8 @@ import '@ant-design/v5-patch-for-react-19';
 
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Layout, Typography, ConfigProvider, theme, Button, Drawer, Menu, Dropdown, Avatar } from 'antd';
 import { MenuOutlined, UserOutlined, LogoutOutlined, LoginOutlined } from '@ant-design/icons';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -24,6 +26,16 @@ import "./index.css";
 
 const { Header, Content } = Layout;
 const { Title } = Typography;
+
+// Create a client for TanStack Query
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      refetchOnWindowFocus: false, // Disable aggressive refetching
+    },
+  },
+});
 
 const AppContent: React.FC = () => {
   const location = useLocation();
@@ -298,25 +310,28 @@ const AppContent: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <ConfigProvider
-      theme={{
-        algorithm: theme.darkAlgorithm,
-        token: {
-          colorPrimary: '#1890ff',
-          borderRadius: 8,
-        }
-      }}
-    >
-      <Router>
-        <AuthProvider>
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/*" element={<AppContent />} />
-          </Routes>
-        </AuthProvider>
-      </Router>
-      <StagewiseToolbar />
-    </ConfigProvider>
+    <QueryClientProvider client={queryClient}>
+      <ConfigProvider
+        theme={{
+          algorithm: theme.darkAlgorithm,
+          token: {
+            colorPrimary: '#1890ff',
+            borderRadius: 8,
+          }
+        }}
+      >
+        <Router>
+          <AuthProvider>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/*" element={<AppContent />} />
+            </Routes>
+          </AuthProvider>
+        </Router>
+        <StagewiseToolbar />
+      </ConfigProvider>
+      <ReactQueryDevtools initialIsOpen={false} />
+    </QueryClientProvider>
   );
 };
 

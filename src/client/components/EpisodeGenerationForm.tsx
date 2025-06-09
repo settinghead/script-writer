@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Button, Space, InputNumber, Checkbox, Typography, message, Row, Col } from 'antd';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import TextareaAutosize from 'react-textarea-autosize';
 import { apiService } from '../services/apiService';
 import { BrainstormParamsV1 } from '../../common/types';
@@ -26,20 +27,11 @@ export const EpisodeGenerationForm: React.FC = () => {
     const [requirements, setRequirements] = useState<string>('');
     const [genrePopupVisible, setGenrePopupVisible] = useState(false);
 
-    const [isGenerating, setIsGenerating] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
-
-    // Load cascaded parameters when component mounts
-    useEffect(() => {
-        if (outlineId) {
-            loadCascadedParameters();
-        }
-    }, [outlineId]);
-
-    // 🔥 NEW: Load cascaded parameters from outline/brainstorming artifacts
-    const loadCascadedParameters = async () => {
-        try {
-            setIsLoading(true);
+    // Use TanStack Query to load cascaded parameters
+    const { data: cascadedParams, isLoading } = useQuery({
+        queryKey: ['cascaded-params', outlineId],
+        queryFn: async () => {
+            if (!outlineId) return null;
 
             // Find brainstorm_params for this specific outline session
             const response = await fetch(`/api/artifacts?type=brainstorm_params&sessionId=${outlineId}`, {
@@ -52,21 +44,38 @@ export const EpisodeGenerationForm: React.FC = () => {
                 // Get the most recent related brainstorm params
                 if (brainstormArtifacts.length > 0) {
                     const latestBrainstorm = brainstormArtifacts[0]; // Already sorted by created_at desc
-                    const brainstormData = latestBrainstorm.data as BrainstormParamsV1;
-
-                    setSelectedPlatform(brainstormData.platform || '通用');
-                    setSelectedGenrePaths(brainstormData.genre_paths || []);
-                    setGenreProportions(brainstormData.genre_proportions || []);
-                    setRequirements(brainstormData.requirements || '');
+                    return latestBrainstorm.data as BrainstormParamsV1;
                 }
             }
-        } catch (error) {
-            console.log('No cascaded parameters found, using defaults');
-            // This is expected when creating episodes from scratch
-        } finally {
-            setIsLoading(false);
+            return null;
+        },
+        enabled: !!outlineId,
+        staleTime: 10 * 60 * 1000, // 10 minutes
+    });
+
+    // Update state when cascaded parameters are loaded
+    useEffect(() => {
+        if (cascadedParams) {
+            setSelectedPlatform(cascadedParams.platform || '通用');
+            setSelectedGenrePaths(cascadedParams.genre_paths || []);
+            setGenreProportions(cascadedParams.genre_proportions || []);
+            setRequirements(cascadedParams.requirements || '');
         }
-    };
+    }, [cascadedParams]);
+
+    // Mutation for episode generation
+    const generateMutation = useMutation({
+        mutationFn: async (params: any) => {
+            return apiService.generateEpisodes(params);
+        },
+        onSuccess: (result) => {
+            navigate(`/episodes/${result.sessionId}?transform=${result.transformId}`);
+        },
+        onError: (error) => {
+            console.error('Error generating episodes:', error);
+            message.error('生成失败');
+        }
+    });
 
     const handleGenreSelectionConfirm = (selection: { paths: string[][]; proportions: number[] }) => {
         setSelectedGenrePaths(selection.paths);
@@ -95,33 +104,22 @@ export const EpisodeGenerationForm: React.FC = () => {
             return;
         }
 
-        try {
-            setIsGenerating(true);
-
-            // 🔥 NEW: Include cascaded parameters in episode generation
-            const result = await apiService.generateEpisodes({
-                outlineSessionId: outlineId,
-                episode_count: episodeCount,
-                episode_duration: episodeDuration,
-                generation_strategy: 'sequential',
-                custom_requirements: customRequirements,
-                use_modified_outline: useModifiedOutline,
-                // Include cascaded parameters
-                cascadedParams: {
-                    platform: selectedPlatform,
-                    genre_paths: selectedGenrePaths,
-                    genre_proportions: genreProportions,
-                    requirements: requirements
-                }
-            });
-
-            navigate(`/episodes/${result.sessionId}?transform=${result.transformId}`);
-        } catch (error) {
-            console.error('Error generating episodes:', error);
-            message.error('生成失败');
-        } finally {
-            setIsGenerating(false);
-        }
+        // 🔥 NEW: Include cascaded parameters in episode generation
+        generateMutation.mutate({
+            outlineSessionId: outlineId,
+            episode_count: episodeCount,
+            episode_duration: episodeDuration,
+            generation_strategy: 'sequential',
+            custom_requirements: customRequirements,
+            use_modified_outline: useModifiedOutline,
+            // Include cascaded parameters
+            cascadedParams: {
+                platform: selectedPlatform,
+                genre_paths: selectedGenrePaths,
+                genre_proportions: genreProportions,
+                requirements: requirements
+            }
+        });
     };
 
     if (isLoading) {
@@ -340,7 +338,7 @@ export const EpisodeGenerationForm: React.FC = () => {
                     <Button
                         type="primary"
                         onClick={handleGenerate}
-                        loading={isGenerating}
+                                                    loading={generateMutation.isPending}
                         disabled={!outlineId}
                         style={{
                             width: '100%',

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     Card,
@@ -19,26 +19,25 @@ import { PlayCircleOutlined, EditOutlined, StopOutlined, ExportOutlined } from '
 import { OutlineExportModal } from './shared/OutlineExportModal';
 import { TopProgressBar } from './shared/TopProgressBar';
 import { formatEpisodesForExport, type EpisodeExportData } from '../utils/episodeExporter';
-import { useEpisodeContext, EpisodeApiService } from '../contexts/EpisodeContext';
+import { useProjectStore, type Stage, type EpisodeData } from '../stores/projectStore';
+import { useStageEpisodes } from '../hooks/useProjectData';
+import { apiService } from '../services/apiService';
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
 const { Panel } = Collapse;
 
 interface StageDetailViewProps {
-    selectedStageId: string | null;
-    stages: any[];
-    stageEpisodeData: Record<string, any>;
+    selectedStageId?: string | null;
+    stages?: Stage[];
+    stageEpisodeData?: Record<string, any>;
     onEpisodeSelect?: (episodeNumber: number) => void;
 }
 
 export const StageDetailView: React.FC<StageDetailViewProps> = ({
-    stages,
-    stageEpisodeData,
     onEpisodeSelect
 }) => {
-    const { actions } = useEpisodeContext();
-    const { id, stageId } = useParams<{ id: string; stageId: string }>();
+    const { id: projectId, stageId } = useParams<{ id: string; stageId: string }>();
     const navigate = useNavigate();
     const [editMode, setEditMode] = useState(false);
     const [isExportModalVisible, setIsExportModalVisible] = useState(false);
@@ -49,12 +48,25 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
     const [editedEpisodes, setEditedEpisodes] = useState<number>(0);
     const [editedRequirements, setEditedRequirements] = useState<string>('');
 
+    // Get data from Zustand store
+    const stages = useProjectStore(state => state.projects[projectId!]?.stages || []);
+    const episodes = useProjectStore(state => state.projects[projectId!]?.episodes || {});
+    const activeStreamingStageId = useProjectStore(state => state.projects[projectId!]?.activeStreamingStageId);
+    const streamingTransformId = useProjectStore(state => state.projects[projectId!]?.streamingTransformId);
+
+    // Store actions
+    const startStreaming = useProjectStore(state => state.startStreaming);
+    const stopStreaming = useProjectStore(state => state.stopStreaming);
+
+    // Load episodes for this stage
+    useStageEpisodes(projectId!, stageId!, !!stageId);
+
     // Get current stage data and episode data
     const stageData = stages.find(s => s.artifactId === stageId);
-    const currentStageEpisodeData = stageId ? stageEpisodeData[stageId] : undefined;
-    const episodes = currentStageEpisodeData?.episodes || [];
+    const currentStageEpisodeData = stageId ? episodes[stageId] : undefined;
+    const episodeList = currentStageEpisodeData?.episodes || [];
     const isLoading = currentStageEpisodeData?.loading || false;
-    const isStreaming = currentStageEpisodeData?.isStreaming || false;
+    const isStreaming = activeStreamingStageId === stageId && !!streamingTransformId;
     const sessionData = currentStageEpisodeData?.sessionData;
 
     // 🔥 DEBUG: Log stage data to see what fields are available
@@ -77,64 +89,120 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
     }, [stageData]);
 
     // 🔥 NEW: Debug episode data to see if new fields are present
-    React.useEffect(() => {
-        if (episodes.length > 0) {
-            console.log('🔍 StageDetailView - Episodes data:', episodes);
-            console.log('🔍 First episode structure:', episodes[0]);
-            console.log('🔍 Episode fields available:', Object.keys(episodes[0]));
+    useEffect(() => {
+        if (episodeList.length > 0) {
+            console.log('🔍 StageDetailView - Episodes data:', episodeList);
+            console.log('🔍 First episode structure:', episodeList[0]);
+            console.log('🔍 Episode fields available:', Object.keys(episodeList[0]));
             console.log('🔍 Enhanced episode fields present:', {
-                hasEmotionDevelopments: !!episodes[0].emotionDevelopments,
-                hasRelationshipDevelopments: !!episodes[0].relationshipDevelopments,
-                emotionDevelopmentsLength: episodes[0].emotionDevelopments?.length || 0,
-                relationshipDevelopmentsLength: episodes[0].relationshipDevelopments?.length || 0
+                hasEmotionDevelopments: !!episodeList[0].emotionDevelopments,
+                hasRelationshipDevelopments: !!episodeList[0].relationshipDevelopments,
+                emotionDevelopmentsLength: episodeList[0].emotionDevelopments?.length || 0,
+                relationshipDevelopmentsLength: episodeList[0].relationshipDevelopments?.length || 0
             });
         }
-    }, [episodes]);
+    }, [episodeList]);
 
     // Check if this stage is currently streaming
     const isActiveStreaming = isStreaming;
 
-    // Episode selection is handled by parent component
-
     // Initialize editable parameters when stage data loads
-    React.useEffect(() => {
+    useEffect(() => {
         if (stageData) {
             setEditedEpisodes(stageData.numberOfEpisodes);
         }
     }, [stageData]);
 
     // Auto-collapse stage details when streaming starts
-    React.useEffect(() => {
-        if (isActiveStreaming && !stageDetailsCollapsed) {
+    useEffect(() => {
+        if (isStreaming && !stageDetailsCollapsed) {
             setStageDetailsCollapsed(true);
         }
-    }, [isActiveStreaming]);
+    }, [isStreaming, stageDetailsCollapsed]);
 
     const handleStartGeneration = async () => {
-        if (!stageData) return;
+        if (!stageData || !projectId) return;
 
         try {
+            // Start streaming in the store
+            startStreaming(projectId, stageData.artifactId, 'generating');
+
             // Fetch cascaded parameters before starting generation
-            const cascadedParams = await EpisodeApiService.getCascadedParams(stageData.outlineSessionId);
+            let cascadedParams = {};
+            try {
+                // Get brainstorm params for platform, genre, requirements
+                const brainstormResponse = await fetch(`/api/artifacts?type=brainstorm_params&sessionId=${stageData.outlineSessionId}`, {
+                    credentials: 'include'
+                });
+
+                // Get outline job params for totalEpisodes and episodeDuration
+                const outlineJobResponse = await fetch(`/api/artifacts?type=outline_job_params&sessionId=${stageData.outlineSessionId}`, {
+                    credentials: 'include'
+                });
+
+                // Extract from brainstorm params
+                if (brainstormResponse.ok) {
+                    const brainstormArtifacts = await brainstormResponse.json();
+                    if (brainstormArtifacts.length > 0) {
+                        const latestBrainstorm = brainstormArtifacts[0];
+                        cascadedParams = {
+                            platform: latestBrainstorm.data.platform,
+                            genre_paths: latestBrainstorm.data.genre_paths,
+                            genre_proportions: latestBrainstorm.data.genre_proportions,
+                            requirements: latestBrainstorm.data.requirements,
+                            ...cascadedParams
+                        };
+                    }
+                }
+
+                // Extract from outline job params
+                if (outlineJobResponse.ok) {
+                    const outlineJobArtifacts = await outlineJobResponse.json();
+                    if (outlineJobArtifacts.length > 0) {
+                        const latestOutlineJob = outlineJobArtifacts[0];
+                        cascadedParams = {
+                            ...cascadedParams,
+                            totalEpisodes: latestOutlineJob.data.totalEpisodes,
+                            episodeDuration: latestOutlineJob.data.episodeDuration
+                        };
+                    }
+                }
+            } catch (error) {
+                console.warn('Failed to load cascaded parameters:', error);
+                cascadedParams = {}; // Fallback to empty object
+            }
             
-            await actions.startEpisodeGeneration(
-                stageData.artifactId, 
-                editedEpisodes, 
-                editedRequirements.trim() || undefined,
-                cascadedParams // Include cascaded parameters
-            );
+            // Start episode generation via API
+            const result = await apiService.startEpisodeGeneration({
+                stageArtifactId: stageData.artifactId,
+                numberOfEpisodes: editedEpisodes,
+                customRequirements: editedRequirements.trim() || undefined,
+                cascadedParams
+            });
+
             message.success('剧集生成已开始');
         } catch (error) {
             console.error('Error starting episode generation:', error);
             message.error('启动剧集生成失败');
+            if (projectId) {
+                stopStreaming(projectId);
+            }
         }
     };
 
     const handleStopGeneration = async () => {
-        if (!stageData) return;
+        if (!stageData || !projectId) return;
 
         try {
-            await actions.stopEpisodeGeneration(stageData.artifactId);
+            // Stop any active generation
+            if (sessionData?.session?.id) {
+                await fetch(`/api/episodes/episode-generation/${sessionData.session.id}/stop`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+            }
+
+            stopStreaming(projectId);
             message.success('剧集生成已停止');
         } catch (error) {
             console.error('Error stopping episode generation:', error);
@@ -159,7 +227,7 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
                 numberOfEpisodes: stageData.numberOfEpisodes,
                 artifactId: stageData.artifactId
             },
-            episodes,
+            episodes: episodeList,
             generatedAt: new Date().toISOString()
         };
 
@@ -425,14 +493,14 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
                         </Button>
                     )}
 
-                    {!isActiveStreaming ? (
+                                            {!isActiveStreaming ? (
                         <Button
                             type="primary"
                             icon={<PlayCircleOutlined />}
                             onClick={handleStartGeneration}
                             disabled={editMode}
                         >
-                                {episodes.length > 0 ? '重新生成每集大纲' : '开始生成每集大纲'}
+                                {episodeList.length > 0 ? '重新生成每集大纲' : '开始生成每集大纲'}
                         </Button>
                     ) : (
                         <Button
@@ -454,9 +522,9 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
 
 
             {/* Episodes List */}
-            {episodes.length > 0 && (
+            {episodeList.length > 0 && (
                 <Card 
-                    title={`每集大纲 (${episodes.length}集)`}
+                    title={`每集大纲 (${episodeList.length}集)`}
                     extra={
                         <Button
                             icon={<ExportOutlined />}
@@ -468,7 +536,7 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
                     }
                 >
                     <List
-                        dataSource={episodes}
+                        dataSource={episodeList}
                         renderItem={(episode, index) => (
                             <List.Item
                                 key={episode.episodeNumber}
@@ -480,8 +548,8 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
                                     transition: 'background-color 0.2s'
                                 }}
                                 onClick={() => {
-                                    if (id && stageId) {
-                                        navigate(`/projects/${id}/stages/${stageId}/episodes/${episode.episodeNumber}`);
+                                    if (projectId && stageId) {
+                                        navigate(`/projects/${projectId}/stages/${stageId}/episodes/${episode.episodeNumber}`);
                                     }
                                 }}
                                 onMouseEnter={(e) => {
@@ -494,7 +562,7 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
                                 <div style={{ width: '100%' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                                             <Text strong>第{episode.episodeNumber}集: {episode.title}</Text>
-                                            {isActiveStreaming && index === episodes.length - 1 && (
+                                            {isActiveStreaming && index === episodeList.length - 1 && (
                                                 <Tag color="processing">正在生成</Tag>
                                             )}
                                         <Tag color="blue" style={{ fontSize: '11px' }}>点击生成剧本</Tag>

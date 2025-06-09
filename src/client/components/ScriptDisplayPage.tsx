@@ -7,7 +7,8 @@ import { Slate, Editable, withReact } from 'slate-react';
 import type { EpisodeScriptV1 } from '../../common/streaming/types';
 import { useLLMStreaming } from '../hooks/useLLMStreaming';
 import { ScriptStreamingService, StreamingScript } from '../services/implementations/ScriptStreamingService';
-import { useEpisodeContext } from '../contexts/EpisodeContext';
+import { useProjectStore } from '../stores/projectStore';
+import { useStageEpisodes } from '../hooks/useProjectData';
 import { OutlineExportModal } from './shared/OutlineExportModal';
 import { TopProgressBar } from './shared/TopProgressBar';
 
@@ -22,14 +23,20 @@ interface ScriptNode {
 }
 
 export const ScriptDisplayPage: React.FC = () => {
-    const { id, stageId, episodeId } = useParams<{ 
+    const { id: projectId, stageId, episodeId } = useParams<{ 
         id: string; 
         stageId: string; 
         episodeId: string; 
     }>();
     const navigate = useNavigate();
     const location = useLocation();
-    const { actions } = useEpisodeContext();
+    
+    // Get data from Zustand store
+    const episodes = useProjectStore(state => state.projects[projectId!]?.episodes || {});
+    const updateEpisodeScriptStatus = useProjectStore(state => state.updateEpisodeScriptStatus);
+
+    // Load episodes for this stage
+    useStageEpisodes(projectId!, stageId!, !!stageId);
 
     // Get transformId from navigation state
     const { transformId: navigationTransformId, sessionId } = (location.state as any) || {};
@@ -195,11 +202,11 @@ export const ScriptDisplayPage: React.FC = () => {
 
     // Update episode script status when streaming completes
     useEffect(() => {
-        if (isComplete && streamingItems && streamingItems.length > 0 && stageId && episodeId) {
+        if (isComplete && streamingItems && streamingItems.length > 0 && projectId && stageId && episodeId) {
             console.log('[ScriptDisplayPage] Script generation completed, updating status');
-            actions.updateEpisodeScriptStatus(stageId, parseInt(episodeId), true);
+            updateEpisodeScriptStatus(projectId, stageId, parseInt(episodeId), true);
         }
-    }, [isComplete, streamingItems, stageId, episodeId, actions]);
+    }, [isComplete, streamingItems, projectId, stageId, episodeId, updateEpisodeScriptStatus]);
 
     // Auto-collapse script parameters when generation starts or script is available
     useEffect(() => {
@@ -571,7 +578,7 @@ export const ScriptDisplayPage: React.FC = () => {
                 <Button 
                     type="link" 
                     icon={<ArrowLeftOutlined />}
-                    onClick={() => navigate(`/projects/${id}/stages/${stageId}/episodes/${episodeId}`)}
+                    onClick={() => navigate(`/projects/${projectId}/stages/${stageId}/episodes/${episodeId}`)}
                     style={{ color: '#1890ff', padding: 0 }}
                 >
                     返回剧集

@@ -614,17 +614,34 @@ function isOutlineGenreEditV1(data: any): boolean {
 }
 
 function isOutlineSellingPointsEditV1(data: any): boolean {
-    return typeof data === 'object' &&
-        typeof data.selling_points === 'string' &&
-        typeof data.outline_session_id === 'string' &&
-        typeof data.edited_at === 'string';
+    if (typeof data !== 'object' || 
+        typeof data.outline_session_id !== 'string' || 
+        typeof data.edited_at !== 'string') {
+        return false;
+    }
+    
+    // Accept both string and array for selling_points, as well as stringified JSON
+    if (typeof data.selling_points === 'string' || Array.isArray(data.selling_points)) {
+        return true;
+    }
+    
+    return false;
 }
 
 function isOutlineSettingEditV1(data: any): boolean {
-    return typeof data === 'object' &&
-        typeof data.setting === 'string' &&
-        typeof data.outline_session_id === 'string' &&
-        typeof data.edited_at === 'string';
+    if (typeof data !== 'object' || 
+        typeof data.outline_session_id !== 'string' || 
+        typeof data.edited_at !== 'string') {
+        return false;
+    }
+    
+    // Accept both string and object for setting, as well as stringified JSON
+    if (typeof data.setting === 'string' || 
+        (typeof data.setting === 'object' && data.setting !== null)) {
+        return true;
+    }
+    
+    return false;
 }
 
 function isOutlineSynopsisEditV1(data: any): boolean {
@@ -651,7 +668,8 @@ function isOutlineTargetAudienceEditV1(data: any): boolean {
             const parsed = JSON.parse(data.target_audience);
             return typeof parsed === 'object' && parsed !== null;
         } catch {
-            return false;
+            // If it's not JSON, accept it as plain string as well for flexibility
+            return true;
         }
     }
     
@@ -675,7 +693,8 @@ function isOutlineSatisfactionPointsEditV1(data: any): boolean {
             const parsed = JSON.parse(data.satisfaction_points);
             return Array.isArray(parsed);
         } catch {
-            return false;
+            // If it's not JSON, accept it as plain string as well for flexibility
+            return true;
         }
     }
     
@@ -699,7 +718,8 @@ function isOutlineCharactersEditV1(data: any): boolean {
             const parsed = JSON.parse(data.characters);
             return Array.isArray(parsed);
         } catch {
-            return false;
+            // If it's not JSON, accept it as plain string as well for flexibility
+            return true;
         }
     }
     
@@ -723,7 +743,8 @@ function isOutlineSynopsisStagesEditV1(data: any): boolean {
             const parsed = JSON.parse(data.synopsis_stages);
             return Array.isArray(parsed);
         } catch {
-            return false;
+            // If it's not JSON, accept it as plain string as well for flexibility
+            return true;
         }
     }
     

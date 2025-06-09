@@ -3,19 +3,19 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card, Button, Space, Typography, message, InputNumber, Checkbox, Alert } from 'antd';
 import { FileTextOutlined } from '@ant-design/icons';
 import TextareaAutosize from 'react-textarea-autosize';
-import { useEpisodeContext } from '../contexts/EpisodeContext';
+import { useProjectStore } from '../stores/projectStore';
+import { useStageEpisodes } from '../hooks/useProjectData';
 import type { EpisodeSynopsisV1 } from '../../common/types';
 
 const { Title, Text } = Typography;
 
 export const EpisodeScriptGeneration: React.FC = () => {
-    const { id, stageId, episodeId } = useParams<{ 
+    const { id: projectId, stageId, episodeId } = useParams<{ 
         id: string; 
         stageId: string; 
         episodeId: string; 
     }>();
     const navigate = useNavigate();
-    const { state, actions } = useEpisodeContext();
 
     // Form state
     const [scriptLength, setScriptLength] = useState<number>(2000);
@@ -25,33 +25,34 @@ export const EpisodeScriptGeneration: React.FC = () => {
     const [customRequirements, setCustomRequirements] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
 
+    // Get data from Zustand store
+    const stages = useProjectStore(state => state.projects[projectId!]?.stages || []);
+    const episodes = useProjectStore(state => state.projects[projectId!]?.episodes || {});
+    const setSelectedStage = useProjectStore(state => state.setSelectedStage);
+    const setSelectedEpisode = useProjectStore(state => state.setSelectedEpisode);
+
+    // Load episodes for this stage
+    useStageEpisodes(projectId!, stageId!, !!stageId);
+
     // Find episode data
-    const currentStage = state.stages.find(stage => stage.artifactId === stageId);
-    const stageEpisodeData = stageId ? state.stageEpisodeData[stageId] : undefined;
+    const currentStage = stages.find(stage => stage.artifactId === stageId);
+    const stageEpisodeData = stageId ? episodes[stageId] : undefined;
     const currentEpisode = stageEpisodeData?.episodes?.find(
         ep => ep.episodeNumber.toString() === episodeId
     );
 
-    // Initialize data if needed
-    useEffect(() => {
-        if (id && id !== state.scriptId) {
-            actions.setScriptId(id);
-            actions.loadStages(id);
-        }
-    }, [id, state.scriptId, actions]);
-
     // Set selected stage and episode
     useEffect(() => {
-        if (stageId && stageId !== state.selectedStageId) {
-            actions.setSelectedStage(stageId);
+        if (projectId && stageId) {
+            setSelectedStage(projectId, stageId);
         }
-        if (episodeId && episodeId !== state.selectedEpisodeId) {
-            actions.setSelectedEpisode(episodeId);
+        if (projectId && episodeId) {
+            setSelectedEpisode(projectId, episodeId);
         }
-    }, [stageId, episodeId, state.selectedStageId, state.selectedEpisodeId, actions]);
+    }, [projectId, stageId, episodeId, setSelectedStage, setSelectedEpisode]);
 
     const handleGenerateScript = async () => {
-        if (!id || !stageId || !episodeId || !currentEpisode) {
+        if (!projectId || !stageId || !episodeId || !currentEpisode) {
             message.error('缺少必要参数');
             return;
         }
@@ -83,7 +84,7 @@ export const EpisodeScriptGeneration: React.FC = () => {
             message.success('剧本生成已开始，正在跳转到剧本页面...');
             
             // Navigate to script display page with transformId in state
-            navigate(`/projects/${id}/stages/${stageId}/episodes/${episodeId}/script`, {
+            navigate(`/projects/${projectId}/stages/${stageId}/episodes/${episodeId}/script`, {
                 state: { 
                     transformId: result.transformId,
                     sessionId: result.sessionId 
@@ -98,7 +99,7 @@ export const EpisodeScriptGeneration: React.FC = () => {
         }
     };
 
-    if (!id || !stageId || !episodeId) {
+    if (!projectId || !stageId || !episodeId) {
         return (
             <Alert
                 message="参数错误"

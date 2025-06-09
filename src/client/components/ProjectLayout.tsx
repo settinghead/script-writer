@@ -22,12 +22,13 @@ import { EpisodeScriptGeneration } from './EpisodeScriptGeneration';
 import { ScriptDisplayPage } from './ScriptDisplayPage';
 import { OutlineParameterSummary } from './OutlineParameterSummary';
 
-// Import services and contexts
-import { apiService } from '../services/apiService';
-import { useEpisodeContext } from '../contexts/EpisodeContext';
+// Import new data fetching and state management
+import { useProjectData, useEpisodeScriptChecks } from '../hooks/useProjectData';
+import { useProjectStore } from '../stores/projectStore';
 import { OutlineStreamingService } from '../services/implementations/OutlineStreamingService';
-import { useLLMStreaming } from '../hooks/useLLMStreaming';
+import { useLLMStreamingWithStore } from '../hooks/useLLMStreamingWithStore';
 import { useLocalStorage } from '../hooks/useLocalStorage';
+import { apiService } from '../services/apiService';
 import type { OutlineSessionData } from '../../server/services/OutlineService';
 import type { OutlineSection } from '../services/implementations/OutlineStreamingService';
 
@@ -96,17 +97,9 @@ const outlineTreeData: DataNode[] = [
 interface ProjectLayoutProps {}
 
 export const ProjectLayout: React.FC<ProjectLayoutProps> = () => {
-    const { id } = useParams<{ id: string }>();
+    const { id: projectId } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const location = useLocation();
-    
-    // Episode context for managing episode tree data
-    const { state: episodeState, actions: episodeActions } = useEpisodeContext();
-    
-    // Outline data state
-    const [outlineData, setOutlineData] = useState<OutlineSessionData | null>(null);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string>('');
     
     // UI state - both sections expanded by default
     const [activeAccordionKeys, setActiveAccordionKeys] = useState<string[]>(['outline', 'episodes']);
@@ -119,43 +112,43 @@ export const ProjectLayout: React.FC<ProjectLayoutProps> = () => {
     const resizeStartX = useRef(0);
     const startWidth = useRef(0);
     
+    // Data fetching using TanStack Query + Zustand
+    const { isLoading, error } = useProjectData(projectId!);
+    
+    // Select data from Zustand store
+    const outline = useProjectStore(state => state.projects[projectId!]?.outline);
+    const stages = useProjectStore(state => state.projects[projectId!]?.stages || []);
+    const episodes = useProjectStore(state => state.projects[projectId!]?.episodes || {});
+    const expandedKeys = useProjectStore(state => state.projects[projectId!]?.expandedKeys || []);
+    const setExpandedKeys = useProjectStore(state => state.setExpandedKeys);
+    const setStageEpisodes = useProjectStore(state => state.setStageEpisodes);
+    
     // Outline streaming setup
     const searchParams = new URLSearchParams(location.search);
     const transformId = searchParams.get('transform');
     const streamingService = useMemo(() => new OutlineStreamingService(), []);
     const { 
         status: streamingStatus, 
-        items: outlineItems, 
         isThinking, 
         stop: stopStreaming, 
         error: streamingError 
-    } = useLLMStreaming(streamingService, { transformId: transformId || undefined });
+    } = useLLMStreamingWithStore(streamingService, { 
+        transformId: transformId || undefined,
+        projectId,
+        dataType: 'outline'
+    });
     
     // Derived streaming state
     const isStreaming = streamingStatus === 'streaming';
     const isConnecting = !!(streamingStatus === 'idle' && transformId);
 
-    // Initialize data when component mounts
+    // Handle streaming completion - refetch data when streaming completes
     useEffect(() => {
-        if (id) {
-            loadProjectData(id);
+        if (streamingStatus === 'completed' && projectId) {
+            // TanStack Query will automatically refetch the data
+            // No manual loading needed thanks to the new architecture
         }
-    }, [id]);
-
-    // Update outline data when streaming provides new data
-    useEffect(() => {
-        if (outlineItems.length > 0) {
-            const latestOutline = outlineItems[outlineItems.length - 1];
-            updateOutlineComponents(latestOutline);
-        }
-    }, [outlineItems]);
-
-    // Handle streaming completion
-    useEffect(() => {
-        if (streamingStatus === 'completed' && id) {
-            loadProjectData(id);
-        }
-    }, [streamingStatus, id]);
+    }, [streamingStatus, projectId]);
 
     // Set active accordion based on current route (but keep both expanded)
     useEffect(() => {
@@ -174,36 +167,10 @@ export const ProjectLayout: React.FC<ProjectLayoutProps> = () => {
         setActiveAccordionKeys(['outline', 'episodes']);
     }, [location.pathname]);
 
-    const loadProjectData = async (projectId: string) => {
-        try {
-            setLoading(true);
-            setError('');
-
-            // Load outline data
-            const data = await apiService.getOutlineSession(projectId);
-            console.log('🔍 [DEBUG] Loaded outline data:', data);
-            console.log('🔍 [DEBUG] synopsis_stages structure:', data?.components?.synopsis_stages);
-            console.log('🔍 [DEBUG] Full components structure:', data?.components);
-            console.log('🔍 [DEBUG] Does stages field exist?', data?.components?.stages);
-            console.log('🔍 [DEBUG] All component keys:', Object.keys(data?.components || {}));
-            if (data?.components?.synopsis_stages) {
-                data.components.synopsis_stages.forEach((stage, index) => {
-                    console.log(`🔍 [DEBUG] Stage ${index + 1}:`, {
-                        numberOfEpisodes: stage.numberOfEpisodes,
-                        stageSynopsis: stage.stageSynopsis?.substring(0, 50) + '...',
-                        hasNumberOfEpisodes: stage.hasOwnProperty('numberOfEpisodes'),
-                        stageKeys: Object.keys(stage)
-                    });
-                });
-            }
-            setOutlineData(data);
-
-            // Load episode data
-            episodeActions.setScriptId(projectId);
-            await episodeActions.loadStages(projectId);
-
-            // Check for active streaming job
-            if (!transformId) {
+    // Check for active streaming job on mount
+    useEffect(() => {
+        if (!transformId && projectId) {
+            const checkActiveJob = async () => {
                 try {
                     const activeJob = await apiService.checkActiveStreamingJob(projectId);
                     if (activeJob) {
@@ -212,56 +179,17 @@ export const ProjectLayout: React.FC<ProjectLayoutProps> = () => {
                 } catch (error) {
                     console.log('No active streaming job found');
                 }
-            }
-
-        } catch (error) {
-            console.error('Error loading project data:', error);
-            setError('Failed to load project data');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const updateOutlineComponents = (outline: OutlineSection) => {
-        console.log('🔍 [DEBUG] updateOutlineComponents called with:', outline);
-        console.log('🔍 [DEBUG] outline.synopsis_stages:', outline.synopsis_stages);
-        if (outline.synopsis_stages) {
-            outline.synopsis_stages.forEach((stage, index) => {
-                console.log(`🔍 [DEBUG] Streaming Stage ${index + 1}:`, {
-                    numberOfEpisodes: stage.numberOfEpisodes,
-                    hasNumberOfEpisodes: stage.hasOwnProperty('numberOfEpisodes'),
-                    stageKeys: Object.keys(stage)
-                });
-            });
-        }
-        
-        setOutlineData(prev => {
-            if (!prev) return prev;
-
-            return {
-                ...prev,
-                components: {
-                    ...prev.components,
-                    title: outline.title || prev.components.title,
-                    genre: outline.genre || prev.components.genre,
-                    target_audience: outline.target_audience || prev.components.target_audience,
-                    selling_points: outline.selling_points?.join('\n') || prev.components.selling_points,
-                    satisfaction_points: outline.satisfaction_points || prev.components.satisfaction_points,
-                    setting: outline.setting?.core_setting_summary || prev.components.setting,
-                    synopsis: prev.components.synopsis,
-                    synopsis_stages: outline.synopsis_stages || prev.components.synopsis_stages,
-                    characters: outline.characters || prev.components.characters
-                }
             };
-        });
-    };
+            checkActiveJob();
+        }
+    }, [transformId, projectId, navigate]);
 
     // Handle outline section selection
     const handleOutlineTreeSelect = (selectedKeys: React.Key[]) => {
         const sectionKey = selectedKeys[0] as string;
         if (sectionKey) {
             setSelectedOutlineSection(sectionKey);
-            navigate(`/projects/${id}/outline/${sectionKey}`);
+                            navigate(`/projects/${projectId}/outline/${sectionKey}`);
         }
     };
 
@@ -281,19 +209,19 @@ export const ProjectLayout: React.FC<ProjectLayoutProps> = () => {
                 const episodeNumber = afterPrefix.substring(lastHyphenIndex + 1);
 
                 // Check if script exists for this episode
-                const stageData = episodeState.stageEpisodeData[stageId];
+                const stageData = episodes[stageId];
                 const episode = stageData?.episodes.find(ep => ep.episodeNumber.toString() === episodeNumber);
                 const hasScript = episode?.hasScript || false;
 
                 if (hasScript) {
-                    navigate(`/projects/${id}/stages/${stageId}/episodes/${episodeNumber}/script`);
+                    navigate(`/projects/${projectId}/stages/${stageId}/episodes/${episodeNumber}/script`);
                 } else {
-                    navigate(`/projects/${id}/stages/${stageId}/episodes/${episodeNumber}`);
+                    navigate(`/projects/${projectId}/stages/${stageId}/episodes/${episodeNumber}`);
                 }
             }
         } else if (nodeKey) {
             // Stage selected
-            navigate(`/projects/${id}/stages/${nodeKey}`);
+            navigate(`/projects/${projectId}/stages/${nodeKey}`);
         }
     };
 
@@ -306,13 +234,13 @@ export const ProjectLayout: React.FC<ProjectLayoutProps> = () => {
         // No forced navigation - let users control navigation separately
     };
 
-    // Build episode tree data from context
+    // Build episode tree data from Zustand store
     const episodeTreeData: DataNode[] = useMemo(() => {
-        return episodeState.stages.map(stage => ({
+        return stages.map(stage => ({
             key: stage.artifactId,
             title: `第${stage.stageNumber}阶段 (${stage.numberOfEpisodes}集)`,
             icon: <BookOutlined />,
-            children: episodeState.stageEpisodeData[stage.artifactId]?.episodes.map(episode => ({
+            children: episodes[stage.artifactId]?.episodes.map(episode => ({
                 key: `episode-${stage.artifactId}-${episode.episodeNumber}`,
                 title: `第${episode.episodeNumber}集: ${episode.title}`,
                 icon: episode.hasScript ? <PlayCircleOutlined style={{ color: '#52c41a' }} /> : <DottedCircle />,
@@ -320,42 +248,81 @@ export const ProjectLayout: React.FC<ProjectLayoutProps> = () => {
                 hasScript: episode.hasScript
             })) || []
         }));
-    }, [episodeState.stages, episodeState.stageEpisodeData]);
+    }, [stages, episodes]);
+
+    // Handle episode tree expansion - load episodes for expanded stages
+    const handleEpisodeTreeExpand = (expandedKeys: React.Key[]) => {
+        const keyStrings = expandedKeys as string[];
+        if (projectId) {
+            setExpandedKeys(projectId, keyStrings);
+        }
+    };
+
+    // Load episodes for expanded stages
+    const [expandedStageIds, setExpandedStageIds] = useState<string[]>([]);
+    
+    useEffect(() => {
+        const newExpandedStageIds = expandedKeys.filter(key => 
+            !key.includes('episode-') && stages.some(stage => stage.artifactId === key)
+        );
+        setExpandedStageIds(newExpandedStageIds);
+    }, [expandedKeys, stages]);
+
+    // Load episodes for expanded stages using a single effect
+    // instead of calling hooks in a loop (which violates Rules of Hooks)
+    useEffect(() => {
+        if (!projectId || expandedStageIds.length === 0) return;
+
+        const loadEpisodesForStages = async () => {
+            for (const stageId of expandedStageIds) {
+                try {
+                    // Fetch episodes for this stage
+                    const result = await fetch(`/api/episodes/stages/${stageId}/latest-generation`, {
+                        credentials: 'include'
+                    });
+                    
+                    if (result.ok) {
+                        const episodesData = await result.json();
+                        const episodes = episodesData.episodes.map((episode: any) => ({
+                            ...episode,
+                            hasScript: false, // TODO: Check script existence
+                        }));
+
+                        const episodeState = {
+                            episodes,
+                            loading: false,
+                            isStreaming: episodesData.status === 'active',
+                            sessionData: episodesData,
+                        };
+                        
+                        // Update store with episodes data
+                        setStageEpisodes(projectId, stageId, episodeState);
+                    } else if (result.status === 404) {
+                        // No episodes generated yet
+                        const episodeState = {
+                            episodes: [],
+                            loading: false,
+                            isStreaming: false,
+                        };
+                        setStageEpisodes(projectId, stageId, episodeState);
+                    }
+                } catch (error) {
+                    console.error(`Error loading episodes for stage ${stageId}:`, error);
+                }
+            }
+        };
+
+        loadEpisodesForStages();
+    }, [expandedStageIds, projectId, setStageEpisodes]);
 
     // Handle component updates from outline editing
     const handleOutlineComponentUpdate = (componentType: string, newValue: string, newArtifactId: string) => {
-        setOutlineData(prev => {
-            if (!prev) return prev;
-
-            let updatedComponents = { ...prev.components };
-
-            if (componentType === 'characters') {
-                try {
-                    updatedComponents.characters = JSON.parse(newValue);
-                } catch {
-                    // If parsing fails, keep the current value
-                }
-            } else {
-                updatedComponents = {
-                    ...updatedComponents,
-                    [componentType]: newValue
-                };
-            }
-
-            return {
-                ...prev,
-                components: updatedComponents
-            };
-        });
+        // This will be handled automatically by the store when outline data changes
+        // No manual state updates needed
+        console.log('Outline component updated:', { componentType, newValue, newArtifactId });
     };
 
-    const handleStopStreaming = async () => {
-        try {
-            stopStreaming();
-        } catch (error) {
-            console.error('Error stopping streaming:', error);
-        }
-    };
+
 
     // Resize handlers
     const handleResizeStart = useCallback((e: React.MouseEvent) => {
@@ -382,7 +349,7 @@ export const ProjectLayout: React.FC<ProjectLayoutProps> = () => {
     }, [sidebarWidth, setSidebarWidth]);
 
     // Loading state
-    if (loading && !outlineData) {
+    if (isLoading && !outline) {
         return (
             <div style={{
                 display: 'flex',
@@ -399,16 +366,16 @@ export const ProjectLayout: React.FC<ProjectLayoutProps> = () => {
     }
 
     // Error state
-    if (error && !outlineData) {
+    if (error && !outline) {
         return (
             <Alert
                 message="加载失败"
-                description={error}
+                description={error.message}
                 type="error"
                 showIcon
                 style={{ margin: '20px' }}
                 action={
-                    <Button onClick={() => id && loadProjectData(id)} size="small">
+                    <Button onClick={() => window.location.reload()} size="small">
                         重试
                     </Button>
                 }
@@ -417,7 +384,7 @@ export const ProjectLayout: React.FC<ProjectLayoutProps> = () => {
     }
 
     // Not found state
-    if (!outlineData) {
+    if (!outline) {
         return (
             <div style={{ textAlign: 'center', padding: '40px 20px' }}>
                 <Title level={3} style={{ color: '#fff' }}>项目未找到</Title>
@@ -457,7 +424,7 @@ export const ProjectLayout: React.FC<ProjectLayoutProps> = () => {
                     flexShrink: 0
                 }}>
                     <Title level={4} style={{ color: '#fff', margin: 0 }}>
-                        {outlineData.components.title || '项目详情'}
+                        {outline?.components?.title || '项目详情'}
                     </Title>
                     <Text type="secondary" style={{ fontSize: '12px' }}>
                         点击左侧导航查看详情
@@ -508,8 +475,8 @@ export const ProjectLayout: React.FC<ProjectLayoutProps> = () => {
                                         treeData={episodeTreeData}
                                         onSelect={handleEpisodeTreeSelect}
                                         selectedKeys={selectedEpisodeNode ? [selectedEpisodeNode] : []}
-                                        expandedKeys={episodeState.expandedKeys}
-                                        onExpand={episodeActions.setExpandedKeys}
+                                        expandedKeys={expandedKeys}
+                                        onExpand={handleEpisodeTreeExpand}
                                         style={{
                                             backgroundColor: 'transparent',
                                             color: '#fff',
@@ -566,28 +533,28 @@ export const ProjectLayout: React.FC<ProjectLayoutProps> = () => {
                     {/* Default route - redirect to outline */}
                     <Route index element={
                         <div style={{ padding: '20px' }}>
-                            {outlineData && (
+                            {outline && (
                                 <>
                                     <OutlineParameterSummary
-                                        sourceArtifact={outlineData.sourceArtifact}
-                                        ideationRunId={outlineData.ideationRunId}
-                                        totalEpisodes={outlineData.totalEpisodes}
-                                        episodeDuration={outlineData.episodeDuration}
-                                        createdAt={outlineData.createdAt}
+                                        sourceArtifact={outline.sourceArtifact}
+                                        ideationRunId={outline.ideationRunId}
+                                        totalEpisodes={outline.totalEpisodes}
+                                        episodeDuration={outline.episodeDuration}
+                                        createdAt={outline.createdAt}
                                     />
                                     <div style={{ marginTop: '20px' }}>
                                         <OutlineResults
-                                            sessionId={id || ''}
-                                            components={outlineData.components}
-                                            status={outlineData.status}
+                                            sessionId={projectId || ''}
+                                            components={outline.components}
+                                            status={outline.status}
                                             isStreaming={isStreaming}
                                             isConnecting={isConnecting}
-                                            onStopStreaming={handleStopStreaming}
+                                            onStopStreaming={stopStreaming}
                                             onComponentUpdate={handleOutlineComponentUpdate}
-                                            sourceArtifact={outlineData.sourceArtifact}
-                                            totalEpisodes={outlineData.totalEpisodes}
-                                            episodeDuration={outlineData.episodeDuration}
-                                            createdAt={outlineData.createdAt}
+                                            sourceArtifact={outline.sourceArtifact}
+                                            totalEpisodes={outline.totalEpisodes}
+                                            episodeDuration={outline.episodeDuration}
+                                            createdAt={outline.createdAt}
                                         />
                                     </div>
                                 </>
@@ -598,28 +565,28 @@ export const ProjectLayout: React.FC<ProjectLayoutProps> = () => {
                     {/* Outline routes */}
                     <Route path="outline" element={
                         <div style={{ padding: '20px' }}>
-                            {outlineData && (
+                            {outline && (
                                 <>
                                     <OutlineParameterSummary
-                                        sourceArtifact={outlineData.sourceArtifact}
-                                        ideationRunId={outlineData.ideationRunId}
-                                        totalEpisodes={outlineData.totalEpisodes}
-                                        episodeDuration={outlineData.episodeDuration}
-                                        createdAt={outlineData.createdAt}
+                                        sourceArtifact={outline.sourceArtifact}
+                                        ideationRunId={outline.ideationRunId}
+                                        totalEpisodes={outline.totalEpisodes}
+                                        episodeDuration={outline.episodeDuration}
+                                        createdAt={outline.createdAt}
                                     />
                                     <div style={{ marginTop: '20px' }}>
                                         <OutlineResults
-                                            sessionId={id || ''}
-                                            components={outlineData.components}
-                                            status={outlineData.status}
+                                            sessionId={projectId || ''}
+                                            components={outline.components}
+                                            status={outline.status}
                                             isStreaming={isStreaming}
                                             isConnecting={isConnecting}
-                                            onStopStreaming={handleStopStreaming}
+                                            onStopStreaming={stopStreaming}
                                             onComponentUpdate={handleOutlineComponentUpdate}
-                                            sourceArtifact={outlineData.sourceArtifact}
-                                            totalEpisodes={outlineData.totalEpisodes}
-                                            episodeDuration={outlineData.episodeDuration}
-                                            createdAt={outlineData.createdAt}
+                                            sourceArtifact={outline.sourceArtifact}
+                                            totalEpisodes={outline.totalEpisodes}
+                                            episodeDuration={outline.episodeDuration}
+                                            createdAt={outline.createdAt}
                                             activeSection={selectedOutlineSection}
                                         />
                                     </div>
@@ -630,28 +597,28 @@ export const ProjectLayout: React.FC<ProjectLayoutProps> = () => {
                     
                     <Route path="outline/:section" element={
                         <div style={{ padding: '20px' }}>
-                            {outlineData && (
+                            {outline && (
                                 <>
                                     <OutlineParameterSummary
-                                        sourceArtifact={outlineData.sourceArtifact}
-                                        ideationRunId={outlineData.ideationRunId}
-                                        totalEpisodes={outlineData.totalEpisodes}
-                                        episodeDuration={outlineData.episodeDuration}
-                                        createdAt={outlineData.createdAt}
+                                        sourceArtifact={outline.sourceArtifact}
+                                        ideationRunId={outline.ideationRunId}
+                                        totalEpisodes={outline.totalEpisodes}
+                                        episodeDuration={outline.episodeDuration}
+                                        createdAt={outline.createdAt}
                                     />
                                     <div style={{ marginTop: '20px' }}>
                                         <OutlineResults
-                                            sessionId={id || ''}
-                                            components={outlineData.components}
-                                            status={outlineData.status}
+                                            sessionId={projectId || ''}
+                                            components={outline.components}
+                                            status={outline.status}
                                             isStreaming={isStreaming}
                                             isConnecting={isConnecting}
-                                            onStopStreaming={handleStopStreaming}
+                                            onStopStreaming={stopStreaming}
                                             onComponentUpdate={handleOutlineComponentUpdate}
-                                            sourceArtifact={outlineData.sourceArtifact}
-                                            totalEpisodes={outlineData.totalEpisodes}
-                                            episodeDuration={outlineData.episodeDuration}
-                                            createdAt={outlineData.createdAt}
+                                            sourceArtifact={outline.sourceArtifact}
+                                            totalEpisodes={outline.totalEpisodes}
+                                            episodeDuration={outline.episodeDuration}
+                                            createdAt={outline.createdAt}
                                             activeSection={selectedOutlineSection}
                                         />
                                     </div>
@@ -681,11 +648,7 @@ export const ProjectLayout: React.FC<ProjectLayoutProps> = () => {
                     
                     {/* Stage and episode detail routes */}
                     <Route path="stages/:stageId" element={
-                        <StageDetailView 
-                            stages={episodeState.stages}
-                            stageEpisodeData={episodeState.stageEpisodeData}
-                            selectedStageId={selectedEpisodeNode}
-                        />
+                        <StageDetailView />
                     } />
                     <Route path="stages/:stageId/episodes/:episodeId" element={<EpisodeScriptGeneration />} />
                     <Route path="stages/:stageId/episodes/:episodeId/script" element={<ScriptDisplayPage />} />

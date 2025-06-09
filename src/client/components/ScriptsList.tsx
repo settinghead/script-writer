@@ -2,32 +2,33 @@ import React, { useState, useEffect } from 'react';
 import { List, Card, Tag, Button, Typography, Space, message } from 'antd';
 import { PlayCircleOutlined, EyeOutlined, FileTextOutlined, UserOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { apiService } from '../services/apiService';
 import { OutlineSessionSummary } from '../../server/services/OutlineService';
 
 const { Text, Title } = Typography;
 
 const ScriptsList: React.FC = () => {
-    const [scripts, setScripts] = useState<OutlineSessionSummary[]>([]);
-    const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
 
-    useEffect(() => {
-        loadScripts();
-    }, []);
+    // Use TanStack Query for data fetching (reuse the same query as OutlinesList)
+    const { 
+        data: scripts = [], 
+        isLoading: loading, 
+        error 
+    } = useQuery({
+        queryKey: ['outline-sessions'],
+        queryFn: () => apiService.getOutlineSessions(),
+        staleTime: 5 * 60 * 1000, // 5 minutes
+    });
 
-    const loadScripts = async () => {
-        try {
-            setLoading(true);
-            const outlineSessions = await apiService.getOutlineSessions();
-            setScripts(outlineSessions);
-        } catch (error) {
+    // Show error message if query fails
+    React.useEffect(() => {
+        if (error) {
             console.error('Error loading scripts:', error);
             message.error('加载剧本列表失败');
-        } finally {
-            setLoading(false);
         }
-    };
+    }, [error]);
 
     const getStatusColor = (status: string) => {
         switch (status) {

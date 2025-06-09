@@ -136,14 +136,15 @@ export function createOutlineRoutes(
                 return res.status(400).json({ error: 'Value is required' });
             }
 
-            // Create specific edit artifact type instead of generic 'user_input'
-            const artifactType = `${componentType}_edit`;
+            // Create artifact data (frontend now sends complete objects for complex fields)
             const artifactData = {
                 [componentType]: value,
                 outline_session_id: sessionId,
                 edited_at: new Date().toISOString()
             };
 
+            // Create specific edit artifact type
+            const artifactType = `${componentType}_edit`;
             const newArtifact = await artifactRepo.createArtifact(userId, artifactType, artifactData);
 
             // Find the original component artifact for this session

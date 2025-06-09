@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, List, Button, Tag, Empty, Spin, Alert, Typography, Space } from 'antd';
+import { Card, List, Button, Tag, Empty, Spin, Alert, Typography, Space, message } from 'antd';
 import { PlusOutlined, EyeOutlined, DeleteOutlined, FileTextOutlined } from '@ant-design/icons';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiService } from '../services/apiService';
 
 const { Title, Text } = Typography;
@@ -22,10 +23,7 @@ interface OutlineSessionSummary {
 
 export const OutlinesList: React.FC = () => {
     const navigate = useNavigate();
-    const [sessions, setSessions] = useState<OutlineSessionSummary[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string>('');
-    const [deleting, setDeleting] = useState<string | null>(null);
+    const queryClient = useQueryClient();
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
     useEffect(() => {
@@ -37,39 +35,40 @@ export const OutlinesList: React.FC = () => {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    useEffect(() => {
-        loadSessions();
-    }, []);
+    // Use TanStack Query for data fetching
+    const { 
+        data: sessions = [], 
+        isLoading: loading, 
+        error, 
+        refetch: loadSessions 
+    } = useQuery({
+        queryKey: ['outline-sessions'],
+        queryFn: () => apiService.getOutlineSessions(),
+        staleTime: 5 * 60 * 1000, // 5 minutes
+    });
 
-    const loadSessions = async () => {
-        try {
-            setLoading(true);
-            setError('');
-            const data = await apiService.getOutlineSessions();
-            setSessions(data);
-        } catch (error) {
-            console.error('Error loading outline sessions:', error);
-            setError('Failed to load outline sessions');
-        } finally {
-            setLoading(false);
+    // Mutation for deleting sessions
+    const deleteMutation = useMutation({
+        mutationFn: (sessionId: string) => apiService.deleteOutlineSession(sessionId),
+        onSuccess: (_, sessionId) => {
+            // Update the cache by removing the deleted session
+            queryClient.setQueryData(['outline-sessions'], (old: OutlineSessionSummary[] = []) => 
+                old.filter(s => s.id !== sessionId)
+            );
+            message.success('大纲已删除');
+        },
+        onError: (error) => {
+            console.error('Error deleting outline session:', error);
+            message.error('删除大纲时出错，请重试');
         }
-    };
+    });
 
     const handleDelete = async (sessionId: string, sessionTitle: string) => {
         if (!confirm(`确定要删除大纲"${sessionTitle}"吗？此操作无法撤销。`)) {
             return;
         }
 
-        try {
-            setDeleting(sessionId);
-            await apiService.deleteOutlineSession(sessionId);
-            setSessions(sessions.filter(s => s.id !== sessionId));
-        } catch (error) {
-            console.error('Error deleting outline session:', error);
-            alert('删除大纲时出错，请重试');
-        } finally {
-            setDeleting(null);
-        }
+        deleteMutation.mutate(sessionId);
     };
 
     const handleViewOutline = (sessionId: string) => {
@@ -129,12 +128,12 @@ export const OutlinesList: React.FC = () => {
         return (
             <Alert
                 message="加载失败"
-                description={error}
+                description={error instanceof Error ? error.message : '加载大纲列表失败'}
                 type="error"
                 showIcon
                 style={{ margin: '20px 0' }}
                 action={
-                    <Button onClick={loadSessions} size="small">
+                    <Button onClick={() => loadSessions()} size="small">
                         重试
                     </Button>
                 }
@@ -229,7 +228,7 @@ export const OutlinesList: React.FC = () => {
                                             e.stopPropagation();
                                             handleDelete(session.id, session.title || '无标题大纲');
                                         }}
-                                        loading={deleting === session.id}
+                                        loading={deleteMutation.isPending && deleteMutation.variables === session.id}
                                         style={{
                                             color: '#ff4d4f',
                                             fontSize: isMobile ? '12px' : '14px',

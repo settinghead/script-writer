@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Breadcrumb as AntBreadcrumb } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { HomeOutlined, BulbOutlined, MessageOutlined, EditOutlined, HistoryOutlined, FileTextOutlined, PlayCircleOutlined, ProjectOutlined } from '@ant-design/icons';
-import { apiService } from '../services/apiService';
+import { useProjectStore } from '../stores/projectStore';
+import { useProjectData } from '../hooks/useProjectData';
 
 interface BreadcrumbItem {
     title: string;
@@ -14,28 +15,19 @@ interface BreadcrumbItem {
 const Breadcrumb: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const [projectTitle, setProjectTitle] = useState<string>('');
-
-    // Fetch project title when on project routes
-    useEffect(() => {
-        const pathParts = location.pathname.split('/');
-        if (pathParts[1] === 'projects' && pathParts[2]) {
-            const projectId = pathParts[2];
-            fetchProjectTitle(projectId);
-        } else {
-            setProjectTitle('');
-        }
-    }, [location.pathname]);
-
-    const fetchProjectTitle = async (projectId: string) => {
-        try {
-            const data = await apiService.getOutlineSession(projectId);
-            setProjectTitle(data?.components?.title || '');
-        } catch (error) {
-            console.error('Failed to fetch project title:', error);
-            setProjectTitle('');
-        }
-    };
+    
+    // Extract project ID from URL
+    const pathParts = location.pathname.split('/');
+    const projectId = pathParts[1] === 'projects' && pathParts[2] ? pathParts[2] : null;
+    
+    // Always call the hook, but with conditional enabling
+    // This ensures hooks are called in the same order every render
+    const { isLoading, error } = useProjectData(projectId || '');
+    
+    // Get project title from store
+    const projectTitle = useProjectStore(state => 
+        projectId ? state.projects[projectId]?.outline?.components?.title || '' : ''
+    );
 
     const generateBreadcrumbItems = (): BreadcrumbItem[] => {
         const items: BreadcrumbItem[] = [

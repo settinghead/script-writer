@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Row, Col, Alert, Button, Space, message } from 'antd';
 import { ReloadOutlined, ExportOutlined, UndoOutlined, PlayCircleOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DynamicStreamingUI, outlineFieldRegistry } from './shared/streaming';
 import { OutlineExportModal } from './shared/OutlineExportModal';
 import { ReasoningIndicator } from './shared/ReasoningIndicator';
@@ -117,92 +118,126 @@ export const DynamicOutlineResults: React.FC<DynamicOutlineResultsProps> = ({
 }) => {
     const [isExportModalVisible, setIsExportModalVisible] = useState(false);
     const [exportText, setExportText] = useState('');
-    const [originalData, setOriginalData] = useState<OutlineSessionData | null>(null);
     const [modifiedFields, setModifiedFields] = useState<Set<string>>(new Set());
-    const [isLoadingOriginal, setIsLoadingOriginal] = useState(false);
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
 
     // Determine streaming status
     const streamingStatus = isConnecting ? 'idle' : isStreaming ? 'streaming' : 'completed';
 
-    // Load original data and modification status
+    // Use TanStack Query to load original data
+    const { data: originalData, isLoading: isLoadingOriginal } = useQuery({
+        queryKey: ['outline-original', sessionId],
+        queryFn: () => apiService.getOriginalOutlineData(sessionId),
+        enabled: !!sessionId,
+        staleTime: 10 * 60 * 1000, // 10 minutes
+    });
+
+    // Use TanStack Query to load current data for comparison
+    const { data: currentData } = useQuery({
+        queryKey: ['outline-session', sessionId],
+        queryFn: () => apiService.getOutlineSession(sessionId),
+        enabled: !!sessionId,
+        staleTime: 5 * 60 * 1000, // 5 minutes
+    });
+
+    // Determine which fields have been modified
     useEffect(() => {
-        loadOutlineData();
-    }, [sessionId]);
-
-    const loadOutlineData = async () => {
-        try {
-            // Get current data (with modifications)
-            const currentData = await apiService.getOutlineSession(sessionId);
-
-            // Get original data (without modifications)
-            const originalData = await apiService.getOriginalOutlineData(sessionId);
-
-            setOriginalData(originalData);
-
-            // Determine which fields have been modified
+        if (currentData?.components && originalData?.components) {
             const modified = new Set<string>();
-            if (currentData.components && originalData.components) {
-                Object.keys(currentData.components).forEach(key => {
-                    if (JSON.stringify(currentData.components[key]) !== JSON.stringify(originalData.components[key])) {
-                        modified.add(key);
-                    }
-                });
-            }
+            Object.keys(currentData.components).forEach(key => {
+                if (JSON.stringify(currentData.components[key]) !== JSON.stringify(originalData.components[key])) {
+                    modified.add(key);
+                }
+            });
             setModifiedFields(modified);
-
-        } catch (error) {
-            console.error('Error loading outline data:', error);
         }
-    };
+    }, [currentData, originalData]);
 
-    // Handle field edit with auto-save
-    const handleFieldEdit = async (path: string, value: any) => {
-        console.log('Field edit requested:', path, value);
-
-        try {
-            // Convert path to component type
-            const componentType = pathToComponentType(path);
-
-            // Save to backend
-            await apiService.updateOutlineComponent(sessionId, componentType, value);
-
+    // Mutation for updating outline components
+    const updateMutation = useMutation({
+        mutationFn: async ({ componentType, value }: { componentType: string; value: any }) => {
+            return apiService.updateOutlineComponent(sessionId, componentType, value);
+        },
+        onSuccess: (_, { componentType, value }) => {
+            // Update the cache
+            queryClient.invalidateQueries({ queryKey: ['outline-session', sessionId] });
+            
             // Update local state
             setModifiedFields(prev => new Set([...prev, componentType]));
 
             // Update parent component
             if (onComponentUpdate) {
                 const newArtifactId = `artifact-${Date.now()}`;
-                await onComponentUpdate(componentType, value, newArtifactId);
+                onComponentUpdate(componentType, value, newArtifactId);
             }
-        } catch (error) {
+        },
+        onError: (error) => {
             console.error('Error saving field:', error);
-            throw error; // Re-throw for component to handle
+            message.error('保存失败，请重试');
         }
+    });
+
+    // Mutation for reverting to original
+    const revertMutation = useMutation({
+        mutationFn: () => apiService.clearOutlineEdits(sessionId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['outline-session', sessionId] });
+            setModifiedFields(new Set());
+            message.success('已恢复到原始版本');
+        },
+        onError: (error) => {
+            console.error('Error reverting to original:', error);
+            message.error('恢复失败，请重试');
+        }
+    });
+
+    // Handle field edit with auto-save
+    const handleFieldEdit = async (path: string, value: any) => {
+        console.log('Field edit requested:', path, value);
+
+        // Convert path to component type
+        const componentType = pathToComponentType(path);
+
+        let finalValue = value;
+
+        // Handle target_audience sub-field updates by constructing complete object
+        if (path.startsWith('target_audience.')) {
+            const currentTargetAudience = components.target_audience || {};
+            
+            if (path === 'target_audience.demographic') {
+                finalValue = {
+                    ...currentTargetAudience,
+                    demographic: value
+                };
+            } else if (path === 'target_audience.core_themes') {
+                finalValue = {
+                    ...currentTargetAudience,
+                    core_themes: value
+                };
+            }
+        }
+
+        // Use mutation to save
+        return new Promise((resolve, reject) => {
+            updateMutation.mutate(
+                { componentType, value: finalValue },
+                {
+                    onSuccess: () => resolve(undefined),
+                    onError: (error) => reject(error)
+                }
+            );
+        });
     };
 
     const handleRevertToOriginal = async () => {
         if (!originalData) return;
 
-        try {
-            setIsLoadingOriginal(true);
-
-            // Clear all user edits from backend
-            await apiService.clearOutlineEdits(sessionId);
-
-            // Reset local state
-            setModifiedFields(new Set());
-
-            // Reload data
-            await loadOutlineData();
-
-            message.success('已恢复到原始生成内容');
-        } catch (error) {
-            console.error('Error reverting to original:', error);
-            message.error('恢复失败');
-        } finally {
-            setIsLoadingOriginal(false);
+        if (!confirm('确定要恢复到原始版本吗？这将丢失所有修改。')) {
+            return;
         }
+
+        revertMutation.mutate();
     };
 
     const handleGenerateEpisodes = () => {
@@ -438,7 +473,7 @@ export const DynamicOutlineResults: React.FC<DynamicOutlineResultsProps> = ({
                             type="default"
                             icon={<UndoOutlined />}
                             onClick={handleRevertToOriginal}
-                            loading={isLoadingOriginal}
+                            loading={revertMutation.isPending}
                             style={{
                                 background: '#722ed1',
                                 borderColor: '#722ed1',
