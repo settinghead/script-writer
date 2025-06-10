@@ -78,7 +78,7 @@ const streamingTransformExecutor = new StreamingTransformExecutor(
 app.locals.streamingExecutor = streamingTransformExecutor;
 app.locals.transformRepo = transformRepo;
 const server = app.listen(PORT, "0.0.0.0", () =>
-  console.log("Server is listening...")
+  console.log(`Server is listening at http://localhost:${PORT}...`)
 );
 
 ViteExpress.bind(app, server);
