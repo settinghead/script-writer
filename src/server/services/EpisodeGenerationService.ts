@@ -4,7 +4,9 @@ import {
     EpisodeGenerationSessionV1,
     EpisodeGenerationParamsV1,
     EpisodeSynopsisV1,
-    OutlineSynopsisStageV1
+    OutlineSynopsisStageV1,
+    BrainstormParamsV1,
+    OutlineJobParamsV1
 } from '../../common/types';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -47,12 +49,12 @@ export class EpisodeGenerationService {
         // Check if essential parameters are missing and load them from brainstorm artifacts
         if (!completeCascadedParams.platform || !completeCascadedParams.genre_paths) {
             console.log('[EpisodeGenerationService] Missing cascaded params, loading from artifacts...');
-            
+
             try {
                 // Get brainstorm params to retrieve platform, genre_paths, etc.
                 const brainstormParamsArtifacts = await this.artifactRepo.getArtifactsByType(userId, 'brainstorm_params');
-                let brainstormParams = null;
-                
+                let brainstormParams: BrainstormParamsV1 | null = null;
+
                 if (brainstormParamsArtifacts.length > 0) {
                     // Get the most recent brainstorm params
                     const latest = brainstormParamsArtifacts
@@ -62,7 +64,7 @@ export class EpisodeGenerationService {
 
                 // Get outline job params to retrieve totalEpisodes and episodeDuration
                 const outlineJobParamsArtifacts = await this.artifactRepo.getArtifactsByType(userId, 'outline_job_params');
-                let outlineJobParams = null;
+                let outlineJobParams: OutlineJobParamsV1 | null = null;
 
                 if (outlineJobParamsArtifacts.length > 0) {
                     // Get the most recent outline job params
@@ -84,7 +86,7 @@ export class EpisodeGenerationService {
                 console.log('[EpisodeGenerationService] Loaded cascaded params:', JSON.stringify(completeCascadedParams, null, 2));
             } catch (error) {
                 console.warn('[EpisodeGenerationService] Failed to load cascaded params from artifacts, using defaults:', error);
-                
+
                 // Use minimal defaults if artifact loading fails
                 completeCascadedParams = {
                     platform: '通用',
@@ -101,7 +103,7 @@ export class EpisodeGenerationService {
         // 2. Always create episode params artifact with cascaded parameters
         // This ensures the StreamingTransformExecutor always has access to complete parameters
         let paramsArtifact;
-        
+
         if (numberOfEpisodes !== stageData.numberOfEpisodes || customRequirements || (cascadedParams && Object.keys(cascadedParams).length > 0)) {
             // Create human transform for user modifications
             const humanTransform = await this.transformRepo.createTransform(
