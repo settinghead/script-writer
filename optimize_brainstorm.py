@@ -8,7 +8,7 @@ import mlflow
 from copy import copy
 from typing import List
 import dspy
-from dspy.teleprompt import BootstrapFewShotWithRandomSearch, COPRO, BayesianSignatureOptimizer
+from dspy.teleprompt import BootstrapFewShotWithRandomSearch, COPRO
 
 from brainstorm_module import BrainstormModule, OptimizedBrainstormModule
 from evaluators import StoryIdeaEvaluator, create_evaluation_metric
