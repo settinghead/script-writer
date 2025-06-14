@@ -10,6 +10,7 @@
    - LLM 配置管理
    - 数据类定义（StoryIdea, BrainstormRequest, EvaluationResult）
    - 工具函数
+   - 改进的 JSON 解析和错误处理
 
 2. **`brainstorm_module.py`** - DSPy 创意生成模块
    - `BrainstormModule` - 基础创意生成模块
@@ -28,6 +29,12 @@
    - Bootstrap Few-Shot 优化
    - COPRO 优化
    - 模型对比和保存
+   - **改进的错误处理和重试机制**
+
+6. **`inspect_optimized_prompts.py`** - **新增** 提示词检查工具
+   - 检查优化后模块状态
+   - 保存和导出优化提示词
+   - 对比基础模型与优化模型
 
 ## 快速开始
 
@@ -57,6 +64,13 @@ python run_single_brainstorm.py
 ```bash
 python optimize_brainstorm.py
 ```
+
+### 5. 检查优化结果
+
+优化完成后，查看：
+- 控制台输出的详细检查信息
+- `optimized_prompts/` 目录下的保存文件
+- MLflow UI 中的实验记录
 
 ## 使用说明
 
@@ -239,4 +253,131 @@ result = evaluator.evaluate(ideas, request)
 
 ## 许可证
 
-[根据项目需要添加许可证信息] 
+[根据项目需要添加许可证信息]
+
+## 检查优化后的提示词
+
+### 自动检查功能
+
+运行优化脚本后，系统会自动检查和保存优化后的提示词：
+
+```bash
+python optimize_brainstorm.py
+```
+
+优化完成后，你会看到：
+- 📚 Few-shot demonstrations 的数量和内容
+- 🏷️  Signature 信息和字段描述  
+- 📝 扩展的 Signature 或指令
+- ✅ 提示词信息保存到 `optimized_prompts/` 目录
+
+### 手动检查工具
+
+使用独立的检查工具：
+
+```python
+from inspect_optimized_prompts import inspect_optimized_module, save_optimized_prompts
+from brainstorm_module import BrainstormModule
+
+# 检查模块状态
+module = BrainstormModule()  # 或加载优化后的模块
+inspect_optimized_module(module, "模块名称")
+
+# 保存提示词信息到文件
+save_optimized_prompts(module, "模块名称")
+```
+
+### 追踪执行过程
+
+查看模块实际执行时使用的提示词：
+
+```python
+from inspect_optimized_prompts import trace_module_execution
+from common import BrainstormRequest
+
+request = BrainstormRequest(genre="甜宠", platform="抖音")
+ideas = trace_module_execution(module, request, "测试模块")
+```
+
+### 对比基础与优化模型
+
+```python
+from inspect_optimized_prompts import compare_baseline_vs_optimized
+
+baseline_module = BrainstormModule()
+# optimized_module = 加载优化后的模块
+compare_baseline_vs_optimized(baseline_module, optimized_module, test_request)
+```
+
+### 提示词文件格式
+
+保存的提示词文件包含：
+
+```json
+{
+  "name": "bootstrap",
+  "type": "BrainstormModule", 
+  "predictor": {
+    "type": "Predict",
+    "has_demos": true,
+    "num_demos": 3,
+    "demos": [
+      {
+        "genre": "甜宠",
+        "platform": "抖音",
+        "requirements_section": "浪漫甜蜜的爱情故事",
+        "story_ideas": "[{\"title\":\"心动\",\"body\":\"...\"}]"
+      }
+    ],
+    "signature": {
+      "name": "BrainstormSignature",
+      "fields": {
+        "inputs": {
+          "genre": "故事类型/题材",
+          "platform": "目标平台"
+        },
+        "outputs": {
+          "story_ideas": "JSON格式的故事创意数组"
+        }
+      }
+    }
+  }
+}
+```
+
+## 错误处理改进
+
+### 自动重试机制
+
+系统现在包含robust的错误处理：
+
+1. **JSON解析失败**: 自动重试最多2次，失败后停止执行
+2. **DSPy示例配置**: 自动配置输入字段，避免"Use `example.with_inputs()`"错误  
+3. **优化器参数**: 自动添加必需参数如`eval_kwargs`
+4. **快速失败**: 遇到错误立即停止，不再继续执行
+
+### 改进的JSON解析
+
+- 支持去除markdown格式 (```json)
+- 使用正则表达式提取JSON数组
+- 详细的错误信息和调试输出
+- 自动验证数据结构完整性
+
+```python
+# 示例：改进的解析逻辑
+def parse_story_ideas(json_response: str) -> List[StoryIdea]:
+    # 清理响应格式
+    cleaned_response = json_response.strip()
+    if cleaned_response.startswith("```json"):
+        cleaned_response = cleaned_response.replace("```json", "").replace("```", "").strip()
+    
+    # 尝试直接解析，失败则使用正则表达式
+    try:
+        ideas_data = json.loads(cleaned_response)
+    except json.JSONDecodeError:
+        json_pattern = r'\[.*?\]'
+        matches = re.findall(json_pattern, cleaned_response, re.DOTALL)
+        if matches:
+            ideas_data = json.loads(matches[0])
+        else:
+            raise json.JSONDecodeError("No valid JSON array found", cleaned_response, 0) 

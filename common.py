@@ -3,6 +3,8 @@ import dspy
 from dotenv import dotenv_values
 from typing import List, Dict, Any
 from dataclasses import dataclass
+import json
+import re
 
 # Load configuration
 config = dotenv_values(".env")
@@ -54,13 +56,44 @@ class EvaluationResult:
     feedback: str
 
 def parse_story_ideas(json_response: str) -> List[StoryIdea]:
-    """Parse JSON response into StoryIdea objects"""
-    import json
+    """Parse JSON response into StoryIdea objects with improved error handling"""
     try:
-        ideas_data = json.loads(json_response)
-        return [StoryIdea(title=idea["title"], body=idea["body"]) for idea in ideas_data]
-    except (json.JSONDecodeError, KeyError) as e:
+        # Clean the response - remove markdown formatting if present
+        cleaned_response = json_response.strip()
+        if cleaned_response.startswith("```json"):
+            cleaned_response = cleaned_response.replace("```json", "").replace("```", "").strip()
+        
+        # Try to extract JSON from the response using regex if direct parsing fails
+        try:
+            ideas_data = json.loads(cleaned_response)
+        except json.JSONDecodeError:
+            # Try to find JSON array pattern in the text
+            json_pattern = r'\[.*?\]'
+            matches = re.findall(json_pattern, cleaned_response, re.DOTALL)
+            if matches:
+                ideas_data = json.loads(matches[0])
+            else:
+                raise json.JSONDecodeError("No valid JSON array found", cleaned_response, 0)
+        
+        # Validate the structure
+        if not isinstance(ideas_data, list):
+            raise ValueError(f"Expected list, got {type(ideas_data)}")
+        
+        ideas = []
+        for i, idea in enumerate(ideas_data):
+            if not isinstance(idea, dict):
+                raise ValueError(f"Idea {i+1} is not a dictionary: {idea}")
+            
+            if "title" not in idea or "body" not in idea:
+                raise KeyError(f"Idea {i+1} missing required fields 'title' or 'body': {idea}")
+            
+            ideas.append(StoryIdea(title=str(idea["title"]), body=str(idea["body"])))
+        
+        return ideas
+        
+    except (json.JSONDecodeError, KeyError, ValueError) as e:
         print(f"Error parsing story ideas: {e}")
+        print(f"Raw response: {json_response[:200]}...")
         return []
 
 def format_ideas_for_evaluation(ideas: List[StoryIdea]) -> str:

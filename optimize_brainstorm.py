@@ -5,6 +5,7 @@ Uses DSPy optimizers to improve story idea generation quality
 """
 
 import mlflow
+import sys
 from copy import copy
 from typing import List
 import dspy
@@ -13,6 +14,7 @@ from dspy.teleprompt import BootstrapFewShotWithRandomSearch, COPRO
 from brainstorm_module import BrainstormModule, OptimizedBrainstormModule
 from evaluators import StoryIdeaEvaluator, create_evaluation_metric
 from common import BrainstormRequest
+from inspect_optimized_prompts import inspect_optimized_module, save_optimized_prompts
 
 class BrainstormExample(dspy.Example):
     """Example class for brainstorm training data"""
@@ -22,10 +24,6 @@ class BrainstormExample(dspy.Example):
             platform=platform,
             requirements_section=requirements_section
         )
-        # Mark input fields
-        self.genre = genre
-        self.platform = platform
-        self.requirements_section = requirements_section
 
 def create_training_examples() -> List[BrainstormExample]:
     """Create diverse training examples for optimization using real genre system"""
@@ -62,68 +60,108 @@ def create_training_examples() -> List[BrainstormExample]:
         BrainstormExample("神医", "小红书", "医术高超，悬壶济世"),
     ]
     
-    return examples
+    # Configure examples with proper input fields for DSPy
+    configured_examples = []
+    for example in examples:
+        configured_example = example.with_inputs("genre", "platform", "requirements_section")
+        configured_examples.append(configured_example)
+    
+    return configured_examples
+
+def generate_ideas_with_retry(module, request: BrainstormRequest, max_retries: int = 2):
+    """Generate ideas with retry logic for JSON parsing failures"""
+    for attempt in range(max_retries + 1):
+        try:
+            ideas = module(request)
+            if len(ideas) == 0:
+                if attempt < max_retries:
+                    print(f"  JSON解析失败，重试 {attempt + 1}/{max_retries}")
+                    continue
+                else:
+                    print(f"  ❌ JSON解析失败，达到最大重试次数，停止执行")
+                    sys.exit(1)
+            return ideas
+        except Exception as e:
+            if attempt < max_retries:
+                print(f"  生成失败，重试 {attempt + 1}/{max_retries}: {e}")
+                continue
+            else:
+                print(f"  ❌ 生成失败，达到最大重试次数: {e}")
+                sys.exit(1)
 
 def run_bootstrap_optimization():
     """Run bootstrap few-shot optimization"""
     print("🚀 开始 Bootstrap Few-Shot 优化")
     print("=" * 50)
     
-    # Create training examples
-    train_examples = create_training_examples()
-    print(f"创建了 {len(train_examples)} 个训练样例")
-    
-    # Create evaluator and metric
-    evaluator = StoryIdeaEvaluator()
-    metric = create_evaluation_metric(evaluator)
-    
-    # Configure optimizer
-    optimizer = BootstrapFewShotWithRandomSearch(
-        metric=metric,
-        num_candidate_programs=8,  # More candidates for better exploration
-        max_bootstrapped_demos=3,  # More demonstrations
-        num_threads=1,  # Keep single-threaded for stability
-        max_rounds=2   # Multiple optimization rounds
-    )
-    
-    print("配置优化器完成，开始训练...")
-    
-    # Compile the module
-    base_module = BrainstormModule()
-    compiled_module = optimizer.compile(base_module, trainset=train_examples)
-    
-    print("✅ Bootstrap 优化完成!")
-    return compiled_module, train_examples
+    try:
+        # Create training examples
+        train_examples = create_training_examples()
+        print(f"创建了 {len(train_examples)} 个训练样例")
+        
+        # Create evaluator and metric
+        evaluator = StoryIdeaEvaluator()
+        metric = create_evaluation_metric(evaluator)
+        
+        # Configure optimizer
+        optimizer = BootstrapFewShotWithRandomSearch(
+            metric=metric,
+            num_candidate_programs=8,
+            max_bootstrapped_demos=3,
+            num_threads=1,
+            max_rounds=2
+        )
+        
+        print("配置优化器完成，开始训练...")
+        
+        # Compile the module
+        base_module = BrainstormModule()
+        compiled_module = optimizer.compile(base_module, trainset=train_examples)
+        
+        print("✅ Bootstrap 优化完成!")
+        return compiled_module, train_examples
+        
+    except Exception as e:
+        print(f"❌ Bootstrap 优化过程中发生错误: {e}")
+        print("停止执行")
+        sys.exit(1)
 
 def run_copro_optimization():
     """Run COPRO (Collaborative Prompt Optimization)"""
     print("🚀 开始 COPRO 优化")
     print("=" * 50)
     
-    # Create training examples
-    train_examples = create_training_examples()
-    print(f"创建了 {len(train_examples)} 个训练样例")
-    
-    # Create evaluator and metric
-    evaluator = StoryIdeaEvaluator()
-    metric = create_evaluation_metric(evaluator)
-    
-    # Configure COPRO optimizer
-    optimizer = COPRO(
-        metric=metric,
-        breadth=10,    # Number of candidates to generate
-        depth=3,       # Number of optimization iterations
-        init_temperature=1.4  # Temperature for generation
-    )
-    
-    print("配置 COPRO 优化器完成，开始训练...")
-    
-    # Compile the module
-    base_module = BrainstormModule()
-    compiled_module = optimizer.compile(base_module, trainset=train_examples)
-    
-    print("✅ COPRO 优化完成!")
-    return compiled_module, train_examples
+    try:
+        # Create training examples
+        train_examples = create_training_examples()
+        print(f"创建了 {len(train_examples)} 个训练样例")
+        
+        # Create evaluator and metric
+        evaluator = StoryIdeaEvaluator()
+        metric = create_evaluation_metric(evaluator)
+        
+        # Configure COPRO optimizer with required eval_kwargs
+        optimizer = COPRO(
+            metric=metric,
+            breadth=10,
+            depth=3,
+            init_temperature=1.4,
+            eval_kwargs={}  # Required parameter for COPRO
+        )
+        
+        print("配置 COPRO 优化器完成，开始训练...")
+        
+        # Compile the module
+        base_module = BrainstormModule()
+        compiled_module = optimizer.compile(base_module, trainset=train_examples)
+        
+        print("✅ COPRO 优化完成!")
+        return compiled_module, train_examples
+        
+    except Exception as e:
+        print(f"❌ COPRO 优化过程中发生错误: {e}")
+        print("停止执行")
+        sys.exit(1)
 
 def evaluate_model_performance(module, test_examples: List[BrainstormExample], name: str):
     """Evaluate model performance on test examples"""
@@ -133,7 +171,7 @@ def evaluate_model_performance(module, test_examples: List[BrainstormExample], n
     evaluator = StoryIdeaEvaluator()
     total_scores = []
     
-    for i, example in enumerate(test_examples[:5]):  # Test on first 5 examples
+    for i, example in enumerate(test_examples[:5]):
         try:
             request = BrainstormRequest(
                 genre=example.genre,
@@ -141,8 +179,8 @@ def evaluate_model_performance(module, test_examples: List[BrainstormExample], n
                 requirements_section=example.requirements_section
             )
             
-            # Generate ideas
-            ideas = module(request)
+            # Generate ideas with retry logic
+            ideas = generate_ideas_with_retry(module, request)
             
             # Evaluate
             result = evaluator.evaluate(ideas, request)
@@ -151,39 +189,45 @@ def evaluate_model_performance(module, test_examples: List[BrainstormExample], n
             print(f"  案例 {i+1} ({example.genre}): {result.overall_score:.1f}/10")
             
         except Exception as e:
-            print(f"  案例 {i+1} 评估失败: {e}")
-            continue
+            print(f"  ❌ 案例 {i+1} 评估失败: {e}")
+            print("停止执行")
+            sys.exit(1)
     
     if total_scores:
         avg_score = sum(total_scores) / len(total_scores)
         print(f"\n  平均分数: {avg_score:.1f}/10")
         return avg_score
     else:
-        print("  无有效评估结果")
-        return 0.0
+        print("  ❌ 无有效评估结果")
+        sys.exit(1)
 
 def save_optimized_model(module, name: str, score: float):
     """Save optimized model with MLflow"""
-    with mlflow.start_run(run_name=f"optimized_brainstorm_{name}"):
-        # Log parameters
-        mlflow.log_param("optimizer_type", name)
-        mlflow.log_param("model_type", "BrainstormModule")
-        
-        # Log metrics
-        mlflow.log_metric("average_score", score)
-        
-        # Log model
-        model_info = mlflow.dspy.log_model(
-            module,
-            artifact_path="model",
-            input_example=BrainstormRequest(
-                genre="都市爱情",
-                platform="抖音"
+    try:
+        with mlflow.start_run(run_name=f"optimized_brainstorm_{name}"):
+            # Log parameters
+            mlflow.log_param("optimizer_type", name)
+            mlflow.log_param("model_type", "BrainstormModule")
+            
+            # Log metrics
+            mlflow.log_metric("average_score", score)
+            
+            # Log model
+            model_info = mlflow.dspy.log_model(
+                module,
+                artifact_path="model",
+                input_example=BrainstormRequest(
+                    genre="都市爱情",
+                    platform="抖音"
+                )
             )
-        )
-        
-        print(f"✅ 模型已保存: {model_info.model_uri}")
-        return model_info
+            
+            print(f"✅ 模型已保存: {model_info.model_uri}")
+            return model_info
+    except Exception as e:
+        print(f"❌ 模型保存失败: {e}")
+        print("停止执行")
+        sys.exit(1)
 
 def compare_models():
     """Compare different optimization approaches"""
@@ -208,32 +252,32 @@ def compare_models():
     results["基础模型"] = baseline_score
     
     # Test bootstrap optimized model
-    try:
-        print("\n运行 Bootstrap 优化...")
-        bootstrap_module, _ = run_bootstrap_optimization()
-        bootstrap_score = evaluate_model_performance(bootstrap_module, test_examples, "Bootstrap优化")
-        results["Bootstrap优化"] = bootstrap_score
-        
-        # Save best bootstrap model
-        save_optimized_model(bootstrap_module, "bootstrap", bootstrap_score)
-        
-    except Exception as e:
-        print(f"Bootstrap 优化失败: {e}")
-        results["Bootstrap优化"] = 0.0
+    print("\n运行 Bootstrap 优化...")
+    bootstrap_module, _ = run_bootstrap_optimization()
+    bootstrap_score = evaluate_model_performance(bootstrap_module, test_examples, "Bootstrap优化")
+    results["Bootstrap优化"] = bootstrap_score
+    
+    # Inspect and save Bootstrap optimized model
+    print("\n🔍 检查 Bootstrap 优化结果:")
+    inspect_optimized_module(bootstrap_module, "Bootstrap优化")
+    save_optimized_prompts(bootstrap_module, "bootstrap")
+    
+    # Save best bootstrap model
+    save_optimized_model(bootstrap_module, "bootstrap", bootstrap_score)
     
     # Test COPRO optimized model
-    try:
-        print("\n运行 COPRO 优化...")
-        copro_module, _ = run_copro_optimization()
-        copro_score = evaluate_model_performance(copro_module, test_examples, "COPRO优化")
-        results["COPRO优化"] = copro_score
-        
-        # Save COPRO model
-        save_optimized_model(copro_module, "copro", copro_score)
-        
-    except Exception as e:
-        print(f"COPRO 优化失败: {e}")
-        results["COPRO优化"] = 0.0
+    print("\n运行 COPRO 优化...")
+    copro_module, _ = run_copro_optimization()
+    copro_score = evaluate_model_performance(copro_module, test_examples, "COPRO优化")
+    results["COPRO优化"] = copro_score
+    
+    # Inspect and save COPRO optimized model
+    print("\n🔍 检查 COPRO 优化结果:")
+    inspect_optimized_module(copro_module, "COPRO优化")
+    save_optimized_prompts(copro_module, "copro")
+    
+    # Save COPRO model
+    save_optimized_model(copro_module, "copro", copro_score)
     
     # Display final results
     print("\n🏆 最终对比结果")
@@ -252,18 +296,24 @@ def main():
     print("🧪 故事创意生成优化系统")
     print("=" * 50)
     
-    # Setup MLflow
-    mlflow.set_experiment("Brainstorm_Optimization")
-    mlflow.dspy.autolog()
-    
-    # Run comprehensive comparison
-    results = compare_models()
-    
-    print("\n✅ 优化流程完成!")
-    print("\n📝 使用建议:")
-    print("1. 查看 MLflow UI 了解详细训练过程")
-    print("2. 选择表现最佳的模型进行部署")
-    print("3. 可以基于最佳模型继续调优参数")
+    try:
+        # Setup MLflow
+        mlflow.set_experiment("Brainstorm_Optimization")
+        mlflow.dspy.autolog()
+        
+        # Run comprehensive comparison
+        results = compare_models()
+        
+        print("\n✅ 优化流程完成!")
+        print("\n📝 使用建议:")
+        print("1. 查看 MLflow UI 了解详细训练过程")
+        print("2. 选择表现最佳的模型进行部署")
+        print("3. 可以基于最佳模型继续调优参数")
+        
+    except Exception as e:
+        print(f"❌ 主流程发生错误: {e}")
+        print("程序终止")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main() 
