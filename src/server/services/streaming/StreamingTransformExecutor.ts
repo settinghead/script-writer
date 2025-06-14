@@ -554,7 +554,7 @@ export class StreamingTransformExecutor {
     ): Promise<void> {
         console.error(`🚨 [StreamingTransformExecutor] Job failure for transform ${transformId}:`, error);
         console.error(`🚨 [StreamingTransformExecutor] Error stack:`, error.stack);
-        
+
         const transform = await this.transformRepo.getTransform(transformId);
         if (!transform) {
             throw new Error(`Transform ${transformId} not found`);
@@ -768,7 +768,7 @@ export class StreamingTransformExecutor {
 
             // Get cascaded parameters from job params or provide defaults
             const cascadedParams = jobParams.cascadedParams || {};
-            
+
             return await this.templateService.renderTemplate(template, {
                 artifacts: {},
                 params: {
@@ -776,7 +776,7 @@ export class StreamingTransformExecutor {
                     userInput,
                     totalEpisodes: jobParams.totalEpisodes || 12,
                     platform: (cascadedParams as any).platform || '短视频平台',
-                    genre: (cascadedParams as any).genre_paths 
+                    genre: (cascadedParams as any).genre_paths
                         ? (cascadedParams as any).genre_paths.map((path: string[]) => path.join(' > ')).join(', ')
                         : '未指定',
                     requirements: (cascadedParams as any).requirements || ''
@@ -825,7 +825,7 @@ export class StreamingTransformExecutor {
             }
 
             const cascaded = paramsArtifact.data.cascadedParams;
-            
+
             // Validate and extract required parameters - throw if missing
             if (!cascaded.platform) {
                 throw new Error('Platform parameter is required but not found in cascaded params');
@@ -921,7 +921,7 @@ export class StreamingTransformExecutor {
             // 🔥 NEW: Calculate episode range and generate dynamic instructions
             // We need to determine the starting episode number for this stage
             let startingEpisodeNumber = 1;
-            
+
             // Calculate starting episode number based on previous stages
             // (This logic will be similar to what's in createEpisodeArtifacts)
             const stageArtifactId = transform.execution_context?.stage_artifact_id;
@@ -932,17 +932,17 @@ export class StreamingTransformExecutor {
                         const currentStageData = currentStageArtifact.data as any;
                         const outlineSessionId = currentStageData.outlineSessionId;
                         const currentStageNumber = currentStageData.stageNumber;
-                        
+
                         if (outlineSessionId && currentStageNumber) {
                             const allStageArtifacts = await this.artifactRepo.getArtifactsByType(
                                 transform.user_id,
                                 'outline_synopsis_stage'
                             );
-                            
+
                             const relevantStages = allStageArtifacts
                                 .filter(artifact => (artifact.data as any).outlineSessionId === outlineSessionId)
                                 .sort((a, b) => (a.data as any).stageNumber - (b.data as any).stageNumber);
-                            
+
                             // Calculate starting episode number
                             for (const stageArtifact of relevantStages) {
                                 const stageData = stageArtifact.data as any;
@@ -960,10 +960,10 @@ export class StreamingTransformExecutor {
             }
 
             const endingEpisodeNumber = startingEpisodeNumber + numberOfEpisodes - 1;
-            
+
             // Generate episode-specific instructions dynamically
             const episodeSpecificInstructions = this.templateService.generateEpisodeSpecificInstructions(
-                startingEpisodeNumber, 
+                startingEpisodeNumber,
                 endingEpisodeNumber
             );
 
@@ -971,15 +971,15 @@ export class StreamingTransformExecutor {
 
             // 🔥 FIXED: Pass ALL required parameters - no missing values allowed
             const templateParams = {
-                    numberOfEpisodes,
-                    stageSynopsis: stageData.stageSynopsis,
-                    customRequirements: requirementsSection,
+                numberOfEpisodes,
+                stageSynopsis: stageData.stageSynopsis,
+                customRequirements: requirementsSection,
                 // Enhanced stage parameters - all required
-                    timeframe: stageData.timeframe || '',
-                    startingCondition: stageData.startingCondition || '',
-                    endingCondition: stageData.endingCondition || '',
-                    stageStartEvent: stageData.stageStartEvent || '',
-                    stageEndEvent: stageData.stageEndEvent || '',
+                timeframe: stageData.timeframe || '',
+                startingCondition: stageData.startingCondition || '',
+                endingCondition: stageData.endingCondition || '',
+                stageStartEvent: stageData.stageStartEvent || '',
+                stageEndEvent: stageData.stageEndEvent || '',
                 // 🔥 NEW: Pass formatted enhanced keyPoints structure
                 keyPoints: formatKeyPoints(stageData.keyPoints || []),
                 // 🔥 NEW: Pass extracted relationship and emotional summaries
@@ -1195,7 +1195,7 @@ export class StreamingTransformExecutor {
             // 9. Synopsis Stages - Create individual stage artifacts from enhanced structure
             // 🔥 FIX: Use the new enhanced stages structure instead of old synopsis_stages
             const stagesToProcess = outlineData.stages || outlineData.synopsis_stages;
-            
+
             if (stagesToProcess && Array.isArray(stagesToProcess)) {
                 // Get outline session ID from transform context
                 const outlineSessionId = transform.execution_context?.outline_session_id;
@@ -1204,14 +1204,14 @@ export class StreamingTransformExecutor {
                     console.warn('No outline session ID found in transform context, skipping stage artifacts creation');
                 } else {
                     console.log(`Creating ${stagesToProcess.length} stage artifacts from enhanced structure`);
-                    
+
                     // Create individual stage artifacts
                     for (let i = 0; i < stagesToProcess.length; i++) {
                         const stage = stagesToProcess[i];
 
                         // Handle both enhanced format (stages) and legacy format (synopsis_stages)
                         const isEnhancedFormat = stage.hasOwnProperty('keyPoints') || stage.hasOwnProperty('timeframe');
-                        
+
                         console.log(`Creating stage ${i + 1} - Enhanced format: ${isEnhancedFormat}`);
 
                         const stageArtifact = await this.artifactRepo.createArtifact(
@@ -1278,43 +1278,43 @@ export class StreamingTransformExecutor {
 
             // 🔥 FIXED: Calculate the starting episode number by summing up episodes from all previous stages
             let startingEpisodeNumber = 1;
-            
+
             console.log(`🔍 [DEBUG] Starting episode numbering calculation for transform ${transform.id}`);
             console.log(`🔍 [DEBUG] Stage artifact ID: ${stageArtifactId}`);
-            
+
             if (stageArtifactId) {
                 try {
                     // Get current stage artifact to find its stage number and outlineSessionId
                     const currentStageArtifact = await this.artifactRepo.getArtifact(stageArtifactId, userId);
                     console.log(`🔍 [DEBUG] Current stage artifact:`, currentStageArtifact ? 'found' : 'not found');
-                    
+
                     if (currentStageArtifact && currentStageArtifact.data) {
                         const currentStageData = currentStageArtifact.data as any;
                         const outlineSessionId = currentStageData.outlineSessionId;
                         const currentStageNumber = currentStageData.stageNumber;
-                        
+
                         console.log(`🔍 [DEBUG] Current stage data:`, {
                             outlineSessionId,
                             currentStageNumber,
                             numberOfEpisodes: currentStageData.numberOfEpisodes,
                             title: currentStageData.title
                         });
-                        
+
                         if (outlineSessionId && currentStageNumber) {
                             // Get all stage artifacts for this outline session
                             const allStageArtifacts = await this.artifactRepo.getArtifactsByType(
                                 userId,
                                 'outline_synopsis_stage'
                             );
-                            
+
                             console.log(`🔍 [DEBUG] Total stage artifacts found: ${allStageArtifacts.length}`);
-                            
+
                             // Filter stages for this outline session and sum episodes from previous stages
                             const relevantStages = allStageArtifacts
                                 .filter(artifact => (artifact.data as any).outlineSessionId === outlineSessionId)
                                 .sort((a, b) => (a.data as any).stageNumber - (b.data as any).stageNumber);
-                            
-                            console.log(`🔍 [DEBUG] Relevant stages for outline session ${outlineSessionId}:`, 
+
+                            console.log(`🔍 [DEBUG] Relevant stages for outline session ${outlineSessionId}:`,
                                 relevantStages.map(s => ({
                                     id: s.id,
                                     stageNumber: (s.data as any).stageNumber,
@@ -1322,9 +1322,9 @@ export class StreamingTransformExecutor {
                                     title: (s.data as any).title
                                 }))
                             );
-                            
+
                             // Calculate starting episode number by summing episodes from previous stages
-                            let episodeSumDebug = [];
+                            let episodeSumDebug: string[] = [];
                             for (const stageArtifact of relevantStages) {
                                 const stageData = stageArtifact.data as any;
                                 if (stageData.stageNumber < currentStageNumber) {
@@ -1335,7 +1335,7 @@ export class StreamingTransformExecutor {
                                     break; // We've reached the current stage
                                 }
                             }
-                            
+
                             console.log(`🔍 [DEBUG] Episode calculation breakdown:`);
                             console.log(`🔍 [DEBUG] Base starting number: 1`);
                             episodeSumDebug.forEach(debug => console.log(`🔍 [DEBUG] ${debug}`));
@@ -1356,7 +1356,7 @@ export class StreamingTransformExecutor {
 
             // Create individual episode synopsis artifacts with correct numbering
             console.log(`🔍 [DEBUG] Creating ${episodeData.length} episodes starting from episode ${startingEpisodeNumber}`);
-            
+
             for (let i = 0; i < episodeData.length; i++) {
                 const episode = episodeData[i];
                 const correctEpisodeNumber = startingEpisodeNumber + i;
@@ -1399,9 +1399,9 @@ export class StreamingTransformExecutor {
 
                 console.log(`🔍 [DEBUG] ✅ Created episode artifact ${episodeArtifact.id} for episode ${correctEpisodeNumber} (stage-local index ${i + 1})`);
             }
-            
+
             console.log(`🔍 [DEBUG] ✅ Completed creating all episodes. Range: ${startingEpisodeNumber} to ${startingEpisodeNumber + episodeData.length - 1}`);
-        
+
 
             // Update episode generation session status to completed
             if (sessionId) {
@@ -1461,7 +1461,7 @@ export class StreamingTransformExecutor {
             // Get transform inputs to find required context
             const inputs = await this.transformRepo.getTransformInputs(transform.id);
             const paramsInput = inputs.find(input => input.input_role === 'job_params');
-            
+
             if (!paramsInput) {
                 throw new Error('Missing job params for script generation');
             }
