@@ -3,10 +3,13 @@
 Brainstorm optimization script using MIPROv2
 Uses DSPy's most advanced optimizer for story idea generation quality improvement
 Supports both flat (single-group) and grouped optimization approaches
+Uses golden examples from /examples directory for high-quality training data
 """
 
 import mlflow
 import sys
+import json
+import os
 from copy import copy
 from typing import List, Dict, Tuple
 import dspy
@@ -21,8 +24,84 @@ from inspect_optimized_prompts import inspect_optimized_module, save_optimized_p
 # Options: "flat" (current approach - single overall metric) or "grouped" (separate group optimization)
 OPTIMIZATION_MODE = "flat"  # Change this to "grouped" to use grouped optimization
 
-def create_training_examples() -> List[dspy.Example]:
-    """Create diverse training examples for optimization using real genre system"""
+def load_golden_examples() -> List[dspy.Example]:
+    """Load golden examples from /examples directory"""
+    examples_dir = "examples"
+    golden_examples = []
+    
+    if not os.path.exists(examples_dir):
+        print(f"❌ 黄金样例目录不存在: {examples_dir}")
+        return []
+    
+    # Platform mapping for different genres
+    platform_mapping = {
+        "甜宠": "抖音",
+        "虐恋": "小红书", 
+        "复仇": "快手",
+        "穿越": "抖音",
+        "重生": "小红书",
+        "马甲": "快手",
+        "霸总": "抖音",
+        "战神": "快手",
+        "神豪": "抖音",
+        "赘婿": "小红书",
+        "玄幻": "快手",
+        "末世": "抖音",
+        "娱乐圈": "小红书",
+        "萌宝": "抖音",
+        "团宠": "快手"
+    }
+    
+    # Load all JSON files from examples directory
+    for filename in os.listdir(examples_dir):
+        if filename.endswith('.json'):
+            filepath = os.path.join(examples_dir, filename)
+            try:
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                
+                # Extract genre info
+                genre_path = data.get('genre_path', [])
+                if len(genre_path) >= 3:
+                    genre = genre_path[2]  # The specific genre type
+                elif len(genre_path) >= 2:
+                    genre = genre_path[1]  # Subcategory
+                else:
+                    genre = "其他"
+                
+                # Map to platform
+                platform = platform_mapping.get(genre, "抖音")
+                
+                # Create requirements from tags
+                tags = data.get('tags', [])
+                requirements = f"要求: {', '.join(tags[:5])}"  # Use first 5 tags
+                
+                # Create expected output - the golden example should generate similar content
+                expected_ideas = [data['content']]
+                
+                # Create DSPy example with inputs and expected output
+                example_data = {
+                    "genre": genre,
+                    "platform": platform, 
+                    "requirements_section": requirements,
+                    "ideas": expected_ideas  # This is the expected output
+                }
+                
+                example = dspy.Example(**example_data)
+                configured_example = example.with_inputs("genre", "platform", "requirements_section")
+                golden_examples.append(configured_example)
+                
+                print(f"  加载黄金样例: {filename} -> {genre} ({platform})")
+                
+            except Exception as e:
+                print(f"  ❌ 加载 {filename} 失败: {e}")
+                continue
+    
+    print(f"✅ 成功加载 {len(golden_examples)} 个黄金样例")
+    return golden_examples
+
+def create_synthetic_training_examples() -> List[dspy.Example]:
+    """Create diverse synthetic training examples for optimization using real genre system"""
     examples_data = [
         # 女频 - 爱情类
         {"genre": "甜宠", "platform": "抖音", "requirements_section": "浪漫甜蜜的爱情故事，适合年轻观众"},
@@ -63,24 +142,53 @@ def create_training_examples() -> List[dspy.Example]:
         configured_example = example.with_inputs("genre", "platform", "requirements_section")
         configured_examples.append(configured_example)
     
-    return configured_examples
+    return configured_examples 
+
+def create_training_examples() -> List[dspy.Example]:
+    """Create combined training examples using both golden examples and synthetic examples"""
+    print("📚 加载训练样例...")
+    
+    # Load golden examples first
+    golden_examples = load_golden_examples()
+    
+    # Load synthetic examples
+    synthetic_examples = create_synthetic_training_examples()
+    
+    # Combine them, prioritizing golden examples
+    all_examples = golden_examples + synthetic_examples
+    
+    print(f"📊 训练样例统计:")
+    print(f"  - 黄金样例: {len(golden_examples)} 个")
+    print(f"  - 合成样例: {len(synthetic_examples)} 个") 
+    print(f"  - 总计: {len(all_examples)} 个")
+    
+    return all_examples
 
 def create_group_specific_training_examples(group_name: str) -> List[dspy.Example]:
     """Create training examples tailored for specific evaluation groups"""
+    # First get all examples (golden + synthetic)
     base_examples = create_training_examples()
+    
+    # Always include golden examples as they are high-quality
+    golden_examples = load_golden_examples()
     
     if group_name == "creativity":
         # Focus on genres that require high creativity and engagement
-        creative_genres = ["穿越", "重生", "马甲", "替身", "玄幻", "末世", "金手指"]
-        return [ex for ex in base_examples if ex.genre in creative_genres]
+        creative_genres = ["穿越", "重生", "马甲", "替身", "玄幻", "末世", "金手指", "复仇"]
+        filtered_examples = [ex for ex in base_examples if ex.genre in creative_genres]
+        # Always include golden examples for creativity training
+        return golden_examples + filtered_examples
     elif group_name == "feasibility":
         # Focus on practical, cost-effective genres
         practical_genres = ["甜宠", "霸总", "萌宝", "团宠", "娱乐圈", "神医"]
-        return [ex for ex in base_examples if ex.genre in practical_genres]
+        filtered_examples = [ex for ex in base_examples if ex.genre in practical_genres]
+        return golden_examples + filtered_examples
     elif group_name == "content_quality":
         # Focus on genres requiring detailed storytelling and logical coherence
-        quality_genres = ["虐恋", "穿越", "重生", "战神", "逆袭", "高手下山"]
-        return [ex for ex in base_examples if ex.genre in quality_genres]
+        quality_genres = ["虐恋", "穿越", "重生", "战神", "逆袭", "高手下山", "复仇"]
+        filtered_examples = [ex for ex in base_examples if ex.genre in quality_genres]
+        # Golden examples are especially important for content quality
+        return golden_examples + filtered_examples
     else:
         # Return all examples for overall/flat optimization
         return base_examples
@@ -352,10 +460,34 @@ def save_optimized_model(module, name: str, score: float, detailed_scores: Dict[
         print("停止执行")
         sys.exit(1)
 
+def show_golden_examples_summary():
+    """Show a summary of loaded golden examples"""
+    golden_examples = load_golden_examples()
+    if not golden_examples:
+        return
+        
+    print(f"\n📋 黄金样例详情:")
+    print("-" * 50)
+    for i, example in enumerate(golden_examples[:3], 1):  # Show first 3 examples
+        print(f"  样例 {i}:")
+        print(f"    类型: {example.genre}")
+        print(f"    平台: {example.platform}")
+        print(f"    要求: {example.requirements_section}")
+        if hasattr(example, 'ideas') and example.ideas:
+            content_preview = example.ideas[0][:50] + "..." if len(example.ideas[0]) > 50 else example.ideas[0]
+            print(f"    内容: {content_preview}")
+        print()
+    
+    if len(golden_examples) > 3:
+        print(f"  ...还有 {len(golden_examples) - 3} 个样例")
+
 def run_optimization():
     """Run optimization based on the configured mode"""
     print(f"🧪 故事创意生成优化系统 - {OPTIMIZATION_MODE.upper()} 模式")
     print("=" * 70)
+    
+    # Show summary of golden examples
+    show_golden_examples_summary()
     
     # Create test examples for evaluation
     test_examples = [
