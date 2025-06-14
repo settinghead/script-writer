@@ -18,12 +18,15 @@ from dspy.teleprompt import MIPROv2
 
 from brainstorm_module import BrainstormModule, OptimizedBrainstormModule
 from evaluators import StoryIdeaEvaluator, create_evaluation_metric, create_grouped_evaluation_metrics
-from common import BrainstormRequest
+from common import BrainstormRequest, IDEAS_PER_EVALUATION
 from inspect_optimized_prompts import inspect_optimized_module, save_optimized_prompts
 
 # CONFIGURATION: Set optimization mode
 # Options: "flat" (current approach - single overall metric) or "grouped" (separate group optimization)
 OPTIMIZATION_MODE = "flat"  # Change this to "grouped" to use grouped optimization
+
+# CONFIGURATION: Number of test examples to evaluate (reduce for faster optimization)
+MAX_TEST_EXAMPLES = 2  # Reduced from 5 to speed up evaluation
 
 # Global variables for logging
 LOG_DIR = None
@@ -532,7 +535,7 @@ def generate_ideas_with_retry(module, request: BrainstormRequest, max_retries: i
                 "requirements": request.requirements_section,
                 "generated_ideas_count": len(ideas),
                 "attempt_number": attempt + 1,
-                "ideas_preview": [idea[:100] + "..." if len(idea) > 100 else idea for idea in ideas[:2]]  # First 2 ideas preview
+                "ideas_preview": [f"{idea.title}: {idea.body[:100]}..." if len(idea.body) > 100 else f"{idea.title}: {idea.body}" for idea in ideas[:2]]  # First 2 ideas preview
             }, "generation")
             
             return ideas
@@ -711,7 +714,7 @@ def evaluate_model_performance(module, test_examples: List[dspy.Example], name: 
     
     test_cases_results = []
     
-    for i, example in enumerate(test_examples[:5]):
+    for i, example in enumerate(test_examples[:MAX_TEST_EXAMPLES]):
         try:
             request = BrainstormRequest(
                 genre=example.genre,
@@ -723,7 +726,8 @@ def evaluate_model_performance(module, test_examples: List[dspy.Example], name: 
             ideas = generate_ideas_with_retry(module, request)
             
             # Log generated examples for this test case
-            logger.log_generated_examples(ideas, f"{name}_case_{i+1}_{example.genre}")
+            ideas_as_strings = [f"{idea.title}: {idea.body}" for idea in ideas]
+            logger.log_generated_examples(ideas_as_strings, f"{name}_case_{i+1}_{example.genre}")
             
             # Evaluate
             result = evaluator.evaluate(ideas, request)
@@ -744,7 +748,7 @@ def evaluate_model_performance(module, test_examples: List[dspy.Example], name: 
                 "genre": example.genre,
                 "platform": example.platform,
                 "requirements": example.requirements_section,
-                "generated_ideas": ideas,
+                "generated_ideas": [{"title": idea.title, "body": idea.body} for idea in ideas],
                 "overall_score": result.overall_score,
                 "detailed_scores": {
                     "novelty": result.novelty_score,

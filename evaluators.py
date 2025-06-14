@@ -274,12 +274,11 @@ class GroupedEvaluationMetrics:
             """Metric function for a specific group"""
             try:
                 # Extract ideas from prediction
-                if hasattr(prediction, 'story_ideas') and isinstance(prediction.story_ideas, str):
-                    from common import parse_story_ideas
-                    ideas = parse_story_ideas(prediction.story_ideas)
-                elif hasattr(prediction, '__iter__') and not isinstance(prediction, str):
+                # With the new DSPy approach, prediction should be a list of StoryIdea objects
+                if hasattr(prediction, '__iter__') and not isinstance(prediction, str):
                     ideas = list(prediction)
                 else:
+                    print(f"Warning: Unexpected prediction type: {type(prediction)}")
                     return 0.0
                 
                 # Create request from example

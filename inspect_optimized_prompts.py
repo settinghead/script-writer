@@ -16,9 +16,14 @@ def inspect_optimized_module(optimized_module, name: str = "optimized_module"):
     print(f"🔍 检查优化后的模块状态: {name}")
     print("=" * 60)
     
-    # Inspect the main predictor
-    if hasattr(optimized_module, 'generate_ideas'):
+    # Inspect the main predictor - check for both old and new attribute names
+    if hasattr(optimized_module, 'generate_idea'):
+        predictor = optimized_module.generate_idea
+    elif hasattr(optimized_module, 'generate_ideas'):
         predictor = optimized_module.generate_ideas
+    else:
+        print("❌ 模块没有 generate_idea 或 generate_ideas 属性")
+        return
         print(f"Predictor类型: {type(predictor).__name__}")
         
         # Check if it's a few-shot predictor with demos
@@ -65,12 +70,22 @@ def save_optimized_prompts(module, name: str) -> str:
         "timestamp": str(pd.Timestamp.now()) if 'pd' in globals() else "unknown"
     }
     
-    if hasattr(module, 'generate_ideas'):
+    # Check for both old and new attribute names
+    if hasattr(module, 'generate_idea'):
+        predictor = module.generate_idea
+    elif hasattr(module, 'generate_ideas'):
         predictor = module.generate_ideas
-        predictor_info = {
-            "type": type(predictor).__name__,
-            "has_demos": hasattr(predictor, 'demos')
-        }
+    else:
+        module_info['error'] = "模块没有 generate_idea 或 generate_ideas 属性"
+        filename = f"{prompts_dir}/{name}_optimized_prompts.json"
+        with open(filename, 'w', encoding='utf-8') as f:
+            json.dump(module_info, f, ensure_ascii=False, indent=2)
+        return filename
+    
+    predictor_info = {
+        "type": type(predictor).__name__,
+        "has_demos": hasattr(predictor, 'demos')
+    }
         
         # Save few-shot demonstrations
         if hasattr(predictor, 'demos'):

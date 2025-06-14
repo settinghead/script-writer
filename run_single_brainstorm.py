@@ -73,7 +73,7 @@ def main():
             print(f"  新颖性: {evaluation.novelty_score:.1f}/10")
             print(f"  可行性: {evaluation.feasibility_score:.1f}/10")
             print(f"  结构性: {evaluation.structure_score:.1f}/10")
-            print(f"  题材一致性: {evaluation.genre_consistency_score:.1f}/10")
+            print(f"  题材一致性: {evaluation.genre_score:.1f}/10")
             print(f"  吸引力: {evaluation.engagement_score:.1f}/10")
             print(f"  总体评分: {evaluation.overall_score:.1f}/10")
             
@@ -141,7 +141,7 @@ def interactive_mode():
                 print(f"  新颖性: {evaluation.novelty_score:.1f}")
                 print(f"  可行性: {evaluation.feasibility_score:.1f}")
                 print(f"  结构性: {evaluation.structure_score:.1f}")
-                print(f"  题材一致性: {evaluation.genre_consistency_score:.1f}")
+                print(f"  题材一致性: {evaluation.genre_score:.1f}")
                 print(f"  吸引力: {evaluation.engagement_score:.1f}")
                 
         except Exception as e:
