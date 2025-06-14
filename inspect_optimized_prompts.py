@@ -8,7 +8,7 @@ import os
 from typing import Dict, Any, List
 import dspy
 from brainstorm_module import BrainstormModule
-from common import BrainstormRequest
+from common import BrainstormRequest, StoryIdea
 import pandas as pd
 
 def inspect_optimized_module(optimized_module, name: str = "optimized_module"):
@@ -123,11 +123,13 @@ def trace_module_execution(module, request: BrainstormRequest, name: str = "modu
     with dspy.context(trace=[]):
         try:
             # Generate a single idea for tracing
-            idea = module(
+            prediction = module(
                 genre=request.genre,
                 platform=request.platform,
                 requirements_section=request.requirements_section
             )
+            # Extract StoryIdea from DSPy prediction
+            idea = prediction.story_idea if hasattr(prediction, 'story_idea') else StoryIdea(title=prediction.title, body=prediction.body)
             ideas = [idea]  # Convert to list for compatibility
             
             # Get the execution trace
