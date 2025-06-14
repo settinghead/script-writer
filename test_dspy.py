@@ -3,6 +3,7 @@ import getpass
 import os
 from dotenv import dotenv_values
 
+
 config = dotenv_values(".env") 
 
 LLM_API_KEY=config["LLM_API_KEY"]
@@ -71,4 +72,4 @@ optimizer = BootstrapFewShotWithRandomSearch(
   num_threads=1,
 )
 
-compiled_pe = optimizer.compile(copy(TextClassifier()), trainset=train_dataset)
+compiled_pe = optimizer.compile(copy(TextClassifier()), trainset=csv_train_dataset)

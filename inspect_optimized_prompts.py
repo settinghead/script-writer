@@ -9,6 +9,7 @@ from typing import Dict, Any, List
 import dspy
 from brainstorm_module import BrainstormModule
 from common import BrainstormRequest
+import pandas as pd
 
 def inspect_optimized_module(optimized_module, name: str = "optimized_module"):
     """Inspect the optimized DSPy module to see what changed"""
