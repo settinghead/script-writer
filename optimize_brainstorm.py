@@ -64,7 +64,11 @@ def generate_ideas_with_retry(module, request: BrainstormRequest, max_retries: i
     """Generate ideas with retry logic for JSON parsing failures"""
     for attempt in range(max_retries + 1):
         try:
-            ideas = module(request)
+            ideas = module(
+                genre=request.genre,
+                platform=request.platform,
+                requirements_section=request.requirements_section
+            )
             if len(ideas) == 0:
                 if attempt < max_retries:
                     print(f"  JSON解析失败，重试 {attempt + 1}/{max_retries}")
