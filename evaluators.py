@@ -1,6 +1,10 @@
 import dspy
-from typing import List, Dict
+from typing import List, Dict, Tuple, Optional
 from common import StoryIdea, BrainstormRequest, EvaluationResult, format_ideas_for_evaluation, eval_lm
+import hashlib
+import json
+import pickle
+import os
 
 class NoveltyEvaluationSignature(dspy.Signature):
     """Evaluate novelty and originality of story ideas"""
@@ -52,7 +56,7 @@ class EngagementEvaluationSignature(dspy.Signature):
 class StoryIdeaEvaluator:
     """Comprehensive evaluator for story ideas using multiple LLM judges"""
     
-    def __init__(self):
+    def __init__(self, cache_file: str = "evaluation_cache.pkl"):
         # Configure evaluators to use evaluation LLM
         with dspy.context(lm=eval_lm):
             self.novelty_evaluator = dspy.Predict(NoveltyEvaluationSignature)
@@ -62,9 +66,49 @@ class StoryIdeaEvaluator:
             self.logical_coherence_evaluator = dspy.Predict(LogicalCoherenceEvaluationSignature)
             self.genre_evaluator = dspy.Predict(GenreConsistencySignature)
             self.engagement_evaluator = dspy.Predict(EngagementEvaluationSignature)
+        
+        # Initialize cache
+        self.cache_file = cache_file
+        self.cache = self._load_cache()
+    
+    def _load_cache(self) -> Dict[str, EvaluationResult]:
+        """Load evaluation cache from disk"""
+        if os.path.exists(self.cache_file):
+            try:
+                with open(self.cache_file, 'rb') as f:
+                    return pickle.load(f)
+            except Exception as e:
+                print(f"Warning: Failed to load cache: {e}")
+                return {}
+        return {}
+    
+    def _save_cache(self):
+        """Save evaluation cache to disk"""
+        try:
+            with open(self.cache_file, 'wb') as f:
+                pickle.dump(self.cache, f)
+        except Exception as e:
+            print(f"Warning: Failed to save cache: {e}")
+    
+    def _get_cache_key(self, ideas: List[StoryIdea], request: BrainstormRequest) -> str:
+        """Generate a cache key for the given ideas and request"""
+        content = {
+            'ideas': [{'title': idea.title, 'body': idea.body} for idea in ideas],
+            'genre': request.genre,
+            'platform': request.platform,
+            'requirements': request.requirements_section
+        }
+        content_str = json.dumps(content, sort_keys=True, ensure_ascii=False)
+        return hashlib.md5(content_str.encode('utf-8')).hexdigest()
     
     def evaluate(self, ideas: List[StoryIdea], request: BrainstormRequest) -> EvaluationResult:
-        """Comprehensive evaluation of story ideas"""
+        """Comprehensive evaluation of story ideas with caching"""
+        
+        # Check cache first
+        cache_key = self._get_cache_key(ideas, request)
+        if cache_key in self.cache:
+            print("  📋 使用缓存的评估结果")
+            return self.cache[cache_key]
         
         formatted_ideas = format_ideas_for_evaluation(ideas)
         
@@ -120,112 +164,177 @@ class StoryIdeaEvaluator:
         engagement_score = self._parse_score(engagement_result.engagement_score)
         
         # Calculate weighted overall score
-        overall_score = self._calculate_overall_score(
-            novelty_score, feasibility_score, structure_score, 
-            detail_score, logical_coherence_score, genre_score, engagement_score
-        )
-        
-        # Combine feedback
-        combined_feedback = self._combine_feedback(
-            novelty_result.novelty_feedback,
-            feasibility_result.feasibility_feedback,
-            structure_result.structure_feedback,
-            detail_result.detail_feedback,
-            logical_coherence_result.logical_coherence_feedback,
-            genre_result.genre_feedback,
-            engagement_result.engagement_feedback
-        )
-        
-        return EvaluationResult(
-            novelty_score=novelty_score,
-            feasibility_score=feasibility_score,
-            structure_score=structure_score,
-            detail_score=detail_score,
-            logical_coherence_score=logical_coherence_score,
-            genre_consistency_score=genre_score,
-            engagement_score=engagement_score,
-            overall_score=overall_score,
-            feedback=combined_feedback
-        )
-    
-    def _parse_score(self, score_str: str) -> float:
-        """Parse score from string, handling various formats"""
-        try:
-            # Try to extract number from string
-            import re
-            numbers = re.findall(r'\d+(?:\.\d+)?', str(score_str))
-            if numbers:
-                score = float(numbers[0])
-                return max(1.0, min(10.0, score))  # Clamp between 1-10
-            return 5.0  # Default to middle score if parsing fails
-        except:
-            return 5.0
-    
-    def _calculate_overall_score(self, novelty: float, feasibility: float, 
-                               structure: float, detail: float, logical_coherence: float, 
-                               genre: float, engagement: float) -> float:
-        """Calculate weighted overall score"""
-        # Weights: novelty, detail, logical coherence, and engagement are most important
         weights = {
             'novelty': 0.18,
             'feasibility': 0.12,
             'structure': 0.08,
             'detail': 0.18,
-            'logical_coherence': 0.16,  # Important for complex storylines
+            'logical_coherence': 0.16,
             'genre': 0.10,
             'engagement': 0.18
         }
         
-        return (novelty * weights['novelty'] + 
-                feasibility * weights['feasibility'] + 
-                structure * weights['structure'] + 
-                detail * weights['detail'] +
-                logical_coherence * weights['logical_coherence'] +
-                genre * weights['genre'] + 
-                engagement * weights['engagement'])
+        overall_score = (
+            novelty_score * weights['novelty'] +
+            feasibility_score * weights['feasibility'] +
+            structure_score * weights['structure'] +
+            detail_score * weights['detail'] +
+            logical_coherence_score * weights['logical_coherence'] +
+            genre_score * weights['genre'] +
+            engagement_score * weights['engagement']
+        )
+        
+        # Combine feedback
+        combined_feedback = f"""
+评估结果详情：
+
+新颖性评分：{novelty_score}/10
+{novelty_result.novelty_feedback}
+
+可行性评分：{feasibility_score}/10
+{feasibility_result.feasibility_feedback}
+
+结构评分：{structure_score}/10
+{structure_result.structure_feedback}
+
+详细程度评分：{detail_score}/10
+{detail_result.detail_feedback}
+
+逻辑连贯性评分：{logical_coherence_score}/10
+{logical_coherence_result.logical_coherence_feedback}
+
+题材一致性评分：{genre_score}/10
+{genre_result.genre_feedback}
+
+吸引力评分：{engagement_score}/10
+{engagement_result.engagement_feedback}
+
+总体评分：{overall_score:.1f}/10
+"""
+        
+        # Create result
+        result = EvaluationResult(
+            overall_score=overall_score,
+            novelty_score=novelty_score,
+            feasibility_score=feasibility_score,
+            structure_score=structure_score,
+            detail_score=detail_score,
+            logical_coherence_score=logical_coherence_score,
+            genre_score=genre_score,
+            engagement_score=engagement_score,
+            feedback=combined_feedback.strip()
+        )
+        
+        # Cache the result
+        self.cache[cache_key] = result
+        self._save_cache()
+        
+        return result
+
+    def _parse_score(self, score_str: str) -> float:
+        """Parse score string, handling various formats"""
+        if isinstance(score_str, (int, float)):
+            return float(score_str)
+        
+        # Try to extract number from string
+        import re
+        matches = re.findall(r'(\d+(?:\.\d+)?)', str(score_str))
+        if matches:
+            try:
+                score = float(matches[0])
+                return min(max(score, 0.0), 10.0)  # Clamp to 0-10 range
+            except ValueError:
+                pass
+        
+        print(f"Warning: Could not parse score '{score_str}', defaulting to 5.0")
+        return 5.0
+
+# Grouped optimization support
+class GroupedEvaluationMetrics:
+    """Metrics for grouped optimization of different evaluation aspects"""
     
-    def _combine_feedback(self, *feedbacks) -> str:
-        """Combine individual feedback into comprehensive feedback"""
-        sections = [
-            f"【新颖性】{feedbacks[0]}",
-            f"【可行性】{feedbacks[1]}",
-            f"【结构性】{feedbacks[2]}",
-            f"【详细程度】{feedbacks[3]}",
-            f"【逻辑连贯性】{feedbacks[4]}",
-            f"【题材一致性】{feedbacks[5]}",
-            f"【吸引力】{feedbacks[6]}"
-        ]
-        return "\n\n".join(sections)
+    def __init__(self, evaluator: StoryIdeaEvaluator):
+        self.evaluator = evaluator
+        
+        # Define evaluation groups
+        self.groups = {
+            'creativity': ['novelty', 'engagement'],
+            'feasibility': ['feasibility', 'structure'], 
+            'content_quality': ['detail', 'logical_coherence', 'genre']
+        }
+        
+        # Single group for compatibility with current approach
+        self.single_group = {
+            'overall': ['novelty', 'feasibility', 'structure', 'detail', 'logical_coherence', 'genre', 'engagement']
+        }
+    
+    def create_group_metric(self, group_name: str, metric_names: List[str]):
+        """Create a metric function for a specific group of evaluation criteria"""
+        def group_metric(example, prediction, trace=None) -> float:
+            """Metric function for a specific group"""
+            try:
+                # Extract ideas from prediction
+                if hasattr(prediction, 'story_ideas') and isinstance(prediction.story_ideas, str):
+                    from common import parse_story_ideas
+                    ideas = parse_story_ideas(prediction.story_ideas)
+                elif hasattr(prediction, '__iter__') and not isinstance(prediction, str):
+                    ideas = list(prediction)
+                else:
+                    return 0.0
+                
+                # Create request from example
+                request = BrainstormRequest(
+                    genre=example.genre,
+                    platform=example.platform,
+                    requirements_section=getattr(example, 'requirements_section', '')
+                )
+                
+                # Evaluate ideas
+                result = self.evaluator.evaluate(ideas, request)
+                
+                # Calculate group score
+                if group_name == 'overall':
+                    # Use overall score for single-group optimization (current approach)
+                    return result.overall_score / 10.0
+                else:
+                    # Calculate average of metrics in this group
+                    group_scores = []
+                    for metric_name in metric_names:
+                        score = getattr(result, f'{metric_name}_score', 0)
+                        group_scores.append(score)
+                    
+                    if group_scores:
+                        return sum(group_scores) / len(group_scores) / 10.0
+                    else:
+                        return 0.0
+                
+            except Exception as e:
+                print(f"Group evaluation error ({group_name}): {e}")
+                return 0.0
+        
+        return group_metric
+    
+    def get_all_group_metrics(self, use_single_group: bool = False) -> Dict[str, callable]:
+        """Get all group metrics for optimization"""
+        if use_single_group:
+            # Return single group (current approach)
+            return {
+                'overall': self.create_group_metric('overall', self.single_group['overall'])
+            }
+        else:
+            # Return grouped metrics
+            metrics = {}
+            for group_name, metric_names in self.groups.items():
+                metrics[group_name] = self.create_group_metric(group_name, metric_names)
+            return metrics
 
 def create_evaluation_metric(evaluator: StoryIdeaEvaluator):
-    """Create a metric function for DSPy optimization"""
-    def evaluation_metric(example, prediction, trace=None) -> float:
-        """Metric function for DSPy optimizer"""
-        try:
-            # Extract ideas from prediction
-            if hasattr(prediction, 'story_ideas') and isinstance(prediction.story_ideas, str):
-                from common import parse_story_ideas
-                ideas = parse_story_ideas(prediction.story_ideas)
-            elif hasattr(prediction, '__iter__') and not isinstance(prediction, str):
-                ideas = list(prediction)
-            else:
-                return 0.0
-            
-            # Create request from example
-            request = BrainstormRequest(
-                genre=example.genre,
-                platform=example.platform,
-                requirements_section=getattr(example, 'requirements_section', '')
-            )
-            
-            # Evaluate ideas
-            result = evaluator.evaluate(ideas, request)
-            
-            # Return normalized score (0-1 range for DSPy)
-            return result.overall_score / 10.0
-            
-        except Exception as e:
-            print(f"Evaluation error: {e}")
-            return 0.0
-    
-    return evaluation_metric 
+    """Create a metric function for DSPy optimization (backwards compatibility)"""
+    grouped_metrics = GroupedEvaluationMetrics(evaluator)
+    overall_metrics = grouped_metrics.get_all_group_metrics(use_single_group=True)
+    return overall_metrics['overall']
+
+def create_grouped_evaluation_metrics(evaluator: StoryIdeaEvaluator, use_single_group: bool = False):
+    """Create grouped evaluation metrics for advanced optimization"""
+    grouped_metrics = GroupedEvaluationMetrics(evaluator)
+    return grouped_metrics.get_all_group_metrics(use_single_group=use_single_group) 

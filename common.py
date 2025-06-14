@@ -52,7 +52,7 @@ class EvaluationResult:
     structure_score: float
     detail_score: float
     logical_coherence_score: float
-    genre_consistency_score: float
+    genre_score: float  # Changed from genre_consistency_score to match evaluators.py
     engagement_score: float
     overall_score: float
     feedback: str

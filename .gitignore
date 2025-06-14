@@ -20,3 +20,5 @@ cookies.txt
 
 mlruns
 __pycache__
+
+*.pkl

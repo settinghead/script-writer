@@ -255,7 +255,7 @@ result = evaluator.evaluate(ideas, request)
 
 ## 许可证
 
-[根据项目需要添加许可证信息]
+[根据项目需要添加许可证信息] 
 
 ## 检查优化后的提示词
 
