@@ -17,6 +17,10 @@ from evaluators import StoryIdeaEvaluator, create_evaluation_metric, create_grou
 from common import BrainstormRequest
 from inspect_optimized_prompts import inspect_optimized_module, save_optimized_prompts
 
+# CONFIGURATION: Set optimization mode
+# Options: "flat" (current approach - single overall metric) or "grouped" (separate group optimization)
+OPTIMIZATION_MODE = "flat"  # Change this to "grouped" to use grouped optimization
+
 def create_training_examples() -> List[dspy.Example]:
     """Create diverse training examples for optimization using real genre system"""
     examples_data = [
@@ -310,11 +314,13 @@ def evaluate_grouped_models(grouped_modules: Dict[str, dspy.Module], test_exampl
         print("  ❌ 无有效分组评估结果")
         sys.exit(1)
 
-def save_optimized_model(module, name: str, score: float, detailed_scores: Dict[str, float] = None):
+def save_optimized_model(module, name: str, score: float, detailed_scores: Dict[str, float] = None, mode: str = "flat"):
     """Save optimized model with MLflow"""
     try:
-        with mlflow.start_run(run_name=f"optimized_brainstorm_{name}"):
+        run_name = f"brainstorm_{mode}_{name}"
+        with mlflow.start_run(run_name=run_name):
             # Log parameters
+            mlflow.log_param("optimization_mode", mode)
             mlflow.log_param("optimizer_type", name)
             mlflow.log_param("model_type", "BrainstormModule")
             
@@ -346,12 +352,12 @@ def save_optimized_model(module, name: str, score: float, detailed_scores: Dict[
         print("停止执行")
         sys.exit(1)
 
-def compare_optimization_approaches():
-    """Compare flat vs grouped optimization approaches with baseline"""
-    print("🆚 优化方法对比测试: 基线 vs 平面优化 vs 分组优化")
+def run_optimization():
+    """Run optimization based on the configured mode"""
+    print(f"🧪 故事创意生成优化系统 - {OPTIMIZATION_MODE.upper()} 模式")
     print("=" * 70)
     
-    # Create test examples (separate from training)
+    # Create test examples for evaluation
     test_examples = [
         dspy.Example(genre="先婚后爱", platform="抖音", requirements_section="契约婚姻，情感真实"),
         dspy.Example(genre="恶女", platform="小红书", requirements_section="恶毒女配逆袭，双重人格"),
@@ -360,103 +366,66 @@ def compare_optimization_approaches():
         dspy.Example(genre="复仇", platform="小红书", requirements_section="复仇主题，情节紧凑")
     ]
     
-    results = {}
-    detailed_results = {}
-    
-    # 1. Test baseline model
-    print("\n1️⃣ 测试基线模型...")
-    baseline_module = BrainstormModule()
-    baseline_score, baseline_detailed = evaluate_model_performance(baseline_module, test_examples, "基线模型")
-    results["基线模型"] = baseline_score
-    detailed_results["基线模型"] = baseline_detailed
-    
-    # 2. Test flat optimization
-    print(f"\n2️⃣ 运行平面优化...")
-    flat_module, _ = run_flat_optimization("medium")
-    flat_score, flat_detailed = evaluate_model_performance(flat_module, test_examples, "平面优化")
-    results["平面优化"] = flat_score
-    detailed_results["平面优化"] = flat_detailed
-    
-    # Inspect and save flat model
-    print(f"\n🔍 检查平面优化结果:")
-    inspect_optimized_module(flat_module, "平面优化")
-    save_optimized_prompts(flat_module, "flat_optimization")
-    save_optimized_model(flat_module, "flat_optimization", flat_score, flat_detailed)
-    
-    # 3. Test grouped optimization
-    print(f"\n3️⃣ 运行分组优化...")
-    grouped_modules, _ = run_grouped_optimization("medium")
-    grouped_score, grouped_detailed = evaluate_grouped_models(grouped_modules, test_examples)
-    results["分组优化"] = grouped_score
-    detailed_results["分组优化"] = grouped_detailed
-    
-    # Inspect and save grouped models
-    print(f"\n🔍 检查分组优化结果:")
-    for group_name, module in grouped_modules.items():
-        inspect_optimized_module(module, f"分组优化-{group_name}")
-        save_optimized_prompts(module, f"grouped_optimization_{group_name}")
-        # Save individual group models
-        group_score, group_detailed = evaluate_model_performance(module, test_examples[:2], f"分组-{group_name}")  # Shorter eval for individual groups
-        save_optimized_model(module, f"grouped_{group_name}", group_score, group_detailed)
-    
-    # Display final comparison results
-    print("\n🏆 最终对比结果")
-    print("=" * 70)
-    print(f"{'方法':<15} {'总分':<10} {'提升':<10}")
-    print("-" * 35)
-    
-    baseline_score_val = results["基线模型"]
-    for method_name, score in results.items():
-        if method_name == "基线模型":
-            improvement = "基准"
-        else:
-            improvement = f"+{score - baseline_score_val:.1f}"
-        print(f"{method_name:<15} {score:<10.1f} {improvement:<10}")
-    
-    # Display detailed comparison
-    print(f"\n📊 详细指标对比")
-    print("=" * 70)
-    metric_names = ['novelty', 'feasibility', 'structure', 'detail', 'logical_coherence', 'genre', 'engagement']
-    
-    print(f"{'指标':<15} {'基线':<8} {'平面':<8} {'分组':<8} {'最佳':<8}")
-    print("-" * 55)
-    
-    for metric_name in metric_names:
-        baseline_val = detailed_results["基线模型"].get(metric_name, 0)
-        flat_val = detailed_results["平面优化"].get(metric_name, 0)
-        grouped_val = detailed_results["分组优化"].get(metric_name, 0)
+    if OPTIMIZATION_MODE == "flat":
+        # Run flat optimization
+        print("📋 运行平面优化模式...")
+        optimized_module, _ = run_flat_optimization("medium")
         
-        best_val = max(baseline_val, flat_val, grouped_val)
-        best_method = "基线" if best_val == baseline_val else ("平面" if best_val == flat_val else "分组")
+        # Evaluate the optimized model
+        score, detailed_scores = evaluate_model_performance(optimized_module, test_examples, "平面优化模型")
         
-        print(f"{metric_name:<15} {baseline_val:<8.1f} {flat_val:<8.1f} {grouped_val:<8.1f} {best_method:<8}")
-    
-    # Find overall best method
-    best_method = max(results.items(), key=lambda x: x[1])
-    print(f"\n🥇 最佳优化方法: {best_method[0]} (得分: {best_method[1]:.1f})")
-    
-    return results, detailed_results
+        # Inspect and save results
+        print(f"\n🔍 检查优化结果:")
+        inspect_optimized_module(optimized_module, "平面优化")
+        save_optimized_prompts(optimized_module, f"{OPTIMIZATION_MODE}_optimization")
+        save_optimized_model(optimized_module, "miprov2_medium", score, detailed_scores, OPTIMIZATION_MODE)
+        
+        print(f"\n✅ 平面优化完成! 最终得分: {score:.1f}/10")
+        
+    elif OPTIMIZATION_MODE == "grouped":
+        # Run grouped optimization
+        print("📋 运行分组优化模式...")
+        grouped_modules, _ = run_grouped_optimization("medium")
+        
+        # Evaluate the grouped models
+        final_score, final_detailed_scores = evaluate_grouped_models(grouped_modules, test_examples)
+        
+        # Inspect and save results for each group
+        print(f"\n🔍 检查分组优化结果:")
+        for group_name, module in grouped_modules.items():
+            inspect_optimized_module(module, f"分组优化-{group_name}")
+            save_optimized_prompts(module, f"{OPTIMIZATION_MODE}_optimization_{group_name}")
+            
+            # Save individual group models
+            group_score, group_detailed = evaluate_model_performance(module, test_examples[:2], f"分组-{group_name}")
+            save_optimized_model(module, f"miprov2_{group_name}", group_score, group_detailed, OPTIMIZATION_MODE)
+        
+        print(f"\n✅ 分组优化完成! 最终平均得分: {final_score:.1f}/10")
+        
+    else:
+        print(f"❌ 未知的优化模式: {OPTIMIZATION_MODE}")
+        print("请将 OPTIMIZATION_MODE 设置为 'flat' 或 'grouped'")
+        sys.exit(1)
 
 def main():
-    """Main optimization workflow with approach comparison"""
-    print("🧪 故事创意生成优化系统 - 平面 vs 分组优化对比")
-    print("=" * 70)
-    
+    """Main optimization workflow"""
     try:
-        # Setup MLflow
-        mlflow.set_experiment("Brainstorm_Optimization_Comparison")
+        # Setup MLflow with mode-specific experiment name
+        experiment_name = f"Brainstorm_{OPTIMIZATION_MODE.title()}_Optimization"
+        mlflow.set_experiment(experiment_name)
         mlflow.dspy.autolog()
         
-        # Run comprehensive comparison
-        results, detailed_results = compare_optimization_approaches()
+        print(f"📊 MLflow 实验: {experiment_name}")
         
-        print("\n✅ 优化对比流程完成!")
-        print("\n📝 结果总结:")
-        print("1. 基线模型: 未经优化的原始模型")
-        print("2. 平面优化: 使用单一综合指标优化 (当前方法)")
-        print("3. 分组优化: 分别优化创意性、可行性、内容质量三个组别")
-        print("4. 查看 MLflow UI 了解详细训练过程和模型对比")
-        print("5. 缓存机制避免重复评估相同内容")
+        # Run optimization
+        run_optimization()
+        
+        print(f"\n📝 优化完成总结:")
+        print(f"1. 优化模式: {OPTIMIZATION_MODE.upper()}")
+        print(f"2. 缓存机制: 启用 (避免重复评估)")
+        print(f"3. MLflow 实验: {experiment_name}")
+        print(f"4. 提示词文件: optimized_prompts/{OPTIMIZATION_MODE}_optimization_*.txt")
+        print(f"5. 要切换模式，请修改代码中的 OPTIMIZATION_MODE 常量")
         
     except Exception as e:
         print(f"❌ 主流程发生错误: {e}")
