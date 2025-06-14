@@ -104,6 +104,7 @@ def run_mipro_optimization(auto_mode: str = "medium"):
             metric=metric,
             auto=auto_mode,  # "light", "medium", or "heavy"
             max_bootstrapped_demos=4,
+            num_threads=5,
             max_labeled_demos=4,
             verbose=True,
             track_stats=True,
@@ -272,4 +273,4 @@ def main():
         sys.exit(1)
 
 if __name__ == "__main__":
-    main() 
+    main()
