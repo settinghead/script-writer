@@ -20,32 +20,19 @@ class BrainstormModule(dspy.Module):
     def forward(self, genre: str, platform: str, requirements_section: str = "") -> StoryIdea:
         """Generate a single story idea based on the input parameters"""
         
-        # Build the requirements section
-        requirements_text = requirements_section if requirements_section else ""
-        
-        # Add the core prompt instructions
-        base_prompt = """
-要求：
-- 生成一个完整的故事情节梗概灵感
-- 题材不要老旧，要新颖有创意，避免套路化内容
-- 创意包含一个标题（3-7个字符）和一个完整的故事梗概灵感（严格控制在180字以内）
-- 故事梗概包含完整的起承转合结构
-- 有明确的主角、冲突、发展和结局
-- 适合短视频/短剧格式
-- 创意要兼顾拍摄的难度和可行性
-- 确保与指定题材类型高度一致
-"""
-        
-        full_requirements = f"{requirements_text}\n{base_prompt}" if requirements_text else base_prompt
-        
-        # Generate single idea via DSPy
+        # Pure DSPy approach - let DSPy figure out the optimal prompt
+        # Only pass user requirements, no baseline prompt
         response = self.generate_idea(
             genre=genre,
             platform=platform,
-            requirements_section=full_requirements
+            requirements_section=requirements_section
         )
         
-        # Create StoryIdea directly from DSPy response
-        return StoryIdea(title=response.title, body=response.body)
+        # Return DSPy prediction with StoryIdea for compatibility
+        return dspy.Prediction(
+            title=response.title,
+            body=response.body,
+            story_idea=StoryIdea(title=response.title, body=response.body)
+        )
 
  

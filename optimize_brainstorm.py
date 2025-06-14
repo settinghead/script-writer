@@ -18,7 +18,7 @@ from dspy.teleprompt import MIPROv2
 
 from brainstorm_module import BrainstormModule
 from evaluators import StoryIdeaEvaluator, create_evaluation_metric, create_grouped_evaluation_metrics
-from common import BrainstormRequest
+from common import BrainstormRequest, StoryIdea
 from inspect_optimized_prompts import inspect_optimized_module, save_optimized_prompts
 
 # CONFIGURATION: Set optimization mode
@@ -519,11 +519,13 @@ def generate_ideas_with_retry(module, request: BrainstormRequest, max_retries: i
             # Generate multiple ideas by calling the module multiple times
             ideas = []
             for i in range(2):  # Generate 2 ideas for faster optimization
-                idea = module(
+                prediction = module(
                     genre=request.genre,
                     platform=request.platform,
                     requirements_section=request.requirements_section
                 )
+                # Extract StoryIdea from DSPy prediction
+                idea = prediction.story_idea if hasattr(prediction, 'story_idea') else StoryIdea(title=prediction.title, body=prediction.body)
                 ideas.append(idea)
             
             if len(ideas) == 0:

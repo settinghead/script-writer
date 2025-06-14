@@ -7,7 +7,7 @@ Demonstrates basic brainstorming functionality and evaluation
 import json
 from brainstorm_module import BrainstormModule
 from evaluators import StoryIdeaEvaluator
-from common import BrainstormRequest
+from common import BrainstormRequest, StoryIdea
 
 def main():
     print("🎬 Story Brainstorming - Single Run")
@@ -56,11 +56,13 @@ def main():
             print("正在生成创意...")
             ideas = []
             for i in range(3):  # Generate 3 ideas for demonstration
-                idea = brainstorm_module(
+                prediction = brainstorm_module(
                     genre=test_case["request"].genre,
                     platform=test_case["request"].platform,
                     requirements_section=test_case["request"].requirements_section
                 )
+                # Extract StoryIdea from DSPy prediction
+                idea = prediction.story_idea if hasattr(prediction, 'story_idea') else StoryIdea(title=prediction.title, body=prediction.body)
                 ideas.append(idea)
             
             print(f"生成了 {len(ideas)} 个创意:")
@@ -123,11 +125,13 @@ def interactive_mode():
             print("\n🎬 正在生成创意...")
             ideas = []
             for i in range(3):  # Generate 3 ideas for interactive mode
-                idea = brainstorm_module(
+                prediction = brainstorm_module(
                     genre=request.genre,
                     platform=request.platform,
                     requirements_section=request.requirements_section
                 )
+                # Extract StoryIdea from DSPy prediction
+                idea = prediction.story_idea if hasattr(prediction, 'story_idea') else StoryIdea(title=prediction.title, body=prediction.body)
                 ideas.append(idea)
             
             print(f"\n生成的创意:")
