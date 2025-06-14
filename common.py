@@ -16,7 +16,7 @@ lm = dspy.LM(
     api_key=LLM_API_KEY,
     api_base=LLM_BASE_URL,
     max_tokens=1000,
-    temperature=0.7,
+    temperature=1.2,  # Increased from 0.7 for more creative brainstorming
 )
 dspy.settings.configure(lm=lm)
 
@@ -25,8 +25,8 @@ eval_lm = dspy.LM(
     model=f"openai/{LLM_MODEL_NAME}",
     api_key=LLM_API_KEY,
     api_base=LLM_BASE_URL,
-    max_tokens=500,
-    temperature=0.1,
+    max_tokens=1500,  # Increased from 500 to prevent truncation
+    temperature=0.3,  # Increased from 0.1 to reduce repetition
 )
 
 @dataclass

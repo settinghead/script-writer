@@ -34,7 +34,7 @@
 ### 1. 安装依赖
 
 ```bash
-pip install -r requirements_brainstorm.txt
+pip install -r requirements.txt
 ```
 
 ### 2. 配置环境变量
