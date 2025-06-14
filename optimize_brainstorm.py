@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Brainstorm optimization script
-Uses DSPy optimizers to improve story idea generation quality
+Brainstorm optimization script using MIPROv2
+Uses DSPy's most advanced optimizer for story idea generation quality improvement
 """
 
 import mlflow
@@ -9,7 +9,7 @@ import sys
 from copy import copy
 from typing import List
 import dspy
-from dspy.teleprompt import BootstrapFewShotWithRandomSearch, COPRO
+from dspy.teleprompt import MIPROv2
 
 from brainstorm_module import BrainstormModule, OptimizedBrainstormModule
 from evaluators import StoryIdeaEvaluator, create_evaluation_metric
@@ -85,9 +85,9 @@ def generate_ideas_with_retry(module, request: BrainstormRequest, max_retries: i
                 print(f"  ❌ 生成失败，达到最大重试次数: {e}")
                 sys.exit(1)
 
-def run_bootstrap_optimization():
-    """Run bootstrap few-shot optimization"""
-    print("🚀 开始 Bootstrap Few-Shot 优化")
+def run_mipro_optimization(auto_mode: str = "medium"):
+    """Run MIPROv2 optimization with specified auto mode"""
+    print(f"🚀 开始 MIPROv2 优化 (模式: {auto_mode})")
     print("=" * 50)
     
     try:
@@ -99,63 +99,32 @@ def run_bootstrap_optimization():
         evaluator = StoryIdeaEvaluator()
         metric = create_evaluation_metric(evaluator)
         
-        # Configure optimizer
-        optimizer = BootstrapFewShotWithRandomSearch(
+        # Configure MIPROv2 optimizer
+        optimizer = MIPROv2(
             metric=metric,
-            num_candidate_programs=8,
-            max_bootstrapped_demos=3,
-            num_threads=1,
-            max_rounds=2
+            auto=auto_mode,  # "light", "medium", or "heavy"
+            max_bootstrapped_demos=4,
+            max_labeled_demos=4,
+            verbose=True,
+            track_stats=True,
+            seed=42  # For reproducibility
         )
         
-        print("配置优化器完成，开始训练...")
+        print(f"配置 MIPROv2 优化器完成 ({auto_mode} 模式)，开始训练...")
         
         # Compile the module
         base_module = BrainstormModule()
-        compiled_module = optimizer.compile(base_module, trainset=train_examples)
-        
-        print("✅ Bootstrap 优化完成!")
-        return compiled_module, train_examples
-        
-    except Exception as e:
-        print(f"❌ Bootstrap 优化过程中发生错误: {e}")
-        print("停止执行")
-        sys.exit(1)
-
-def run_copro_optimization():
-    """Run COPRO (Collaborative Prompt Optimization)"""
-    print("🚀 开始 COPRO 优化")
-    print("=" * 50)
-    
-    try:
-        # Create training examples
-        train_examples = create_training_examples()
-        print(f"创建了 {len(train_examples)} 个训练样例")
-        
-        # Create evaluator and metric
-        evaluator = StoryIdeaEvaluator()
-        metric = create_evaluation_metric(evaluator)
-        
-        # Configure COPRO optimizer with required eval_kwargs
-        optimizer = COPRO(
-            metric=metric,
-            breadth=10,
-            depth=3,
-            init_temperature=1.4,
-            eval_kwargs={}  # Required parameter for COPRO
+        compiled_module = optimizer.compile(
+            base_module, 
+            trainset=train_examples,
+            requires_permission_to_run=False  # Required for MIPROv2
         )
         
-        print("配置 COPRO 优化器完成，开始训练...")
-        
-        # Compile the module
-        base_module = BrainstormModule()
-        compiled_module = optimizer.compile(base_module, trainset=train_examples)
-        
-        print("✅ COPRO 优化完成!")
+        print(f"✅ MIPROv2 优化完成 ({auto_mode} 模式)!")
         return compiled_module, train_examples
         
     except Exception as e:
-        print(f"❌ COPRO 优化过程中发生错误: {e}")
+        print(f"❌ MIPROv2 优化过程中发生错误: {e}")
         print("停止执行")
         sys.exit(1)
 
@@ -225,9 +194,9 @@ def save_optimized_model(module, name: str, score: float):
         print("停止执行")
         sys.exit(1)
 
-def compare_models():
-    """Compare different optimization approaches"""
-    print("🆚 模型对比测试")
+def compare_mipro_modes():
+    """Compare different MIPROv2 auto modes and baseline"""
+    print("🆚 MIPROv2 模式对比测试")
     print("=" * 50)
     
     # Create test examples (separate from training)
@@ -247,33 +216,22 @@ def compare_models():
     baseline_score = evaluate_model_performance(baseline_module, test_examples, "基础模型")
     results["基础模型"] = baseline_score
     
-    # Test bootstrap optimized model
-    print("\n运行 Bootstrap 优化...")
-    bootstrap_module, _ = run_bootstrap_optimization()
-    bootstrap_score = evaluate_model_performance(bootstrap_module, test_examples, "Bootstrap优化")
-    results["Bootstrap优化"] = bootstrap_score
+    # Test different MIPROv2 modes
+    mipro_modes = ["light", "medium", "heavy"]
     
-    # Inspect and save Bootstrap optimized model
-    print("\n🔍 检查 Bootstrap 优化结果:")
-    inspect_optimized_module(bootstrap_module, "Bootstrap优化")
-    save_optimized_prompts(bootstrap_module, "bootstrap")
-    
-    # Save best bootstrap model
-    save_optimized_model(bootstrap_module, "bootstrap", bootstrap_score)
-    
-    # Test COPRO optimized model
-    print("\n运行 COPRO 优化...")
-    copro_module, _ = run_copro_optimization()
-    copro_score = evaluate_model_performance(copro_module, test_examples, "COPRO优化")
-    results["COPRO优化"] = copro_score
-    
-    # Inspect and save COPRO optimized model
-    print("\n🔍 检查 COPRO 优化结果:")
-    inspect_optimized_module(copro_module, "COPRO优化")
-    save_optimized_prompts(copro_module, "copro")
-    
-    # Save COPRO model
-    save_optimized_model(copro_module, "copro", copro_score)
+    for mode in mipro_modes:
+        print(f"\n运行 MIPROv2 优化 ({mode} 模式)...")
+        optimized_module, _ = run_mipro_optimization(mode)
+        mode_score = evaluate_model_performance(optimized_module, test_examples, f"MIPROv2-{mode}")
+        results[f"MIPROv2-{mode}"] = mode_score
+        
+        # Inspect and save optimized model
+        print(f"\n🔍 检查 MIPROv2-{mode} 优化结果:")
+        inspect_optimized_module(optimized_module, f"MIPROv2-{mode}")
+        save_optimized_prompts(optimized_module, f"miprov2_{mode}")
+        
+        # Save model
+        save_optimized_model(optimized_module, f"miprov2_{mode}", mode_score)
     
     # Display final results
     print("\n🏆 最终对比结果")
@@ -288,23 +246,25 @@ def compare_models():
     return results
 
 def main():
-    """Main optimization workflow"""
-    print("🧪 故事创意生成优化系统")
+    """Main optimization workflow using MIPROv2"""
+    print("🧪 故事创意生成优化系统 - MIPROv2版本")
     print("=" * 50)
     
     try:
         # Setup MLflow
-        mlflow.set_experiment("Brainstorm_Optimization")
+        mlflow.set_experiment("Brainstorm_MIPROv2_Optimization")
         mlflow.dspy.autolog()
         
         # Run comprehensive comparison
-        results = compare_models()
+        results = compare_mipro_modes()
         
-        print("\n✅ 优化流程完成!")
+        print("\n✅ MIPROv2 优化流程完成!")
         print("\n📝 使用建议:")
         print("1. 查看 MLflow UI 了解详细训练过程")
-        print("2. 选择表现最佳的模型进行部署")
-        print("3. 可以基于最佳模型继续调优参数")
+        print("2. Heavy 模式通常效果最好但耗时最长")
+        print("3. Medium 模式是性能和时间的良好平衡")
+        print("4. Light 模式适合快速原型测试")
+        print("5. 选择表现最佳的模型进行部署")
         
     except Exception as e:
         print(f"❌ 主流程发生错误: {e}")
