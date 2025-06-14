@@ -17,3 +17,6 @@ dist-client
 cookies.txt
 
 *.log
+
+mlruns
+__pycache__

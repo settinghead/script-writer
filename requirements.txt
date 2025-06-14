@@ -1,0 +1,4 @@
+mlflow==3.1.0
+openai==1.86.0
+dspy==2.6.27
+python-dotenv==1.1.0
