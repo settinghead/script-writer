@@ -18,7 +18,7 @@ from dspy.teleprompt import MIPROv2
 
 from brainstorm_module import BrainstormModule, OptimizedBrainstormModule
 from evaluators import StoryIdeaEvaluator, create_evaluation_metric, create_grouped_evaluation_metrics
-from common import BrainstormRequest, IDEAS_PER_EVALUATION
+from common import BrainstormRequest
 from inspect_optimized_prompts import inspect_optimized_module, save_optimized_prompts
 
 # CONFIGURATION: Set optimization mode
@@ -27,6 +27,8 @@ OPTIMIZATION_MODE = "flat"  # Change this to "grouped" to use grouped optimizati
 
 # CONFIGURATION: Number of test examples to evaluate (reduce for faster optimization)
 MAX_TEST_EXAMPLES = 2  # Reduced from 5 to speed up evaluation
+
+
 
 # Global variables for logging
 LOG_DIR = None
@@ -514,11 +516,15 @@ def generate_ideas_with_retry(module, request: BrainstormRequest, max_retries: i
     """Generate ideas with retry logic for JSON parsing failures"""
     for attempt in range(max_retries + 1):
         try:
-            ideas = module(
-                genre=request.genre,
-                platform=request.platform,
-                requirements_section=request.requirements_section
-            )
+            # Generate multiple ideas by calling the module multiple times
+            ideas = []
+            for i in range(2):  # Generate 2 ideas for faster optimization
+                idea = module(
+                    genre=request.genre,
+                    platform=request.platform,
+                    requirements_section=request.requirements_section
+                )
+                ideas.append(idea)
             
             if len(ideas) == 0:
                 if attempt < max_retries:

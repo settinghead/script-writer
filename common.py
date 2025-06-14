@@ -13,8 +13,7 @@ LLM_BASE_URL = config["LLM_BASE_URL"]
 LLM_MODEL_NAME = config["LLM_MODEL_NAME"]
 
 # CONFIGURATION CONSTANTS
-IDEAS_PER_EVALUATION = 2  # Number of ideas to generate per evaluation (reduced for faster optimization)
-MAX_TOKENS_GENERATION = 3000  # Further increased to prevent JSON truncation
+MAX_TOKENS_GENERATION = 3000  # Increased to prevent JSON truncation
 MAX_TOKENS_EVALUATION = 2000  # For evaluation tasks
 
 # Configure DSPy LLM

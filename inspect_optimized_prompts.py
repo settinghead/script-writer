@@ -16,14 +16,9 @@ def inspect_optimized_module(optimized_module, name: str = "optimized_module"):
     print(f"🔍 检查优化后的模块状态: {name}")
     print("=" * 60)
     
-    # Inspect the main predictor - check for both old and new attribute names
+    # Inspect the main predictor
     if hasattr(optimized_module, 'generate_idea'):
         predictor = optimized_module.generate_idea
-    elif hasattr(optimized_module, 'generate_ideas'):
-        predictor = optimized_module.generate_ideas
-    else:
-        print("❌ 模块没有 generate_idea 或 generate_ideas 属性")
-        return
         print(f"Predictor类型: {type(predictor).__name__}")
         
         # Check if it's a few-shot predictor with demos
@@ -34,9 +29,8 @@ def inspect_optimized_module(optimized_module, name: str = "optimized_module"):
                 print(f"    题材: {demo.genre}")
                 print(f"    平台: {demo.platform}")
                 print(f"    要求: {demo.requirements_section[:50]}...")
-                if hasattr(demo, 'story_ideas'):
-                    story_preview = demo.story_ideas[:100] + "..." if len(demo.story_ideas) > 100 else demo.story_ideas
-                    print(f"    创意: {story_preview}")
+                if hasattr(demo, 'title') and hasattr(demo, 'body'):
+                    print(f"    创意: 【{demo.title}】{demo.body[:100]}...")
         else:
             print("\n📚 无 Few-shot demonstrations")
         
@@ -56,6 +50,8 @@ def inspect_optimized_module(optimized_module, name: str = "optimized_module"):
         # Look for optimized prompts/instructions
         if hasattr(predictor, 'extended_signature'):
             print(f"\n📝 扩展 Signature: {predictor.extended_signature}")
+    else:
+        print("❌ 模块没有 generate_idea 属性")
     
     print("\n" + "=" * 60)
 
@@ -70,22 +66,12 @@ def save_optimized_prompts(module, name: str) -> str:
         "timestamp": str(pd.Timestamp.now()) if 'pd' in globals() else "unknown"
     }
     
-    # Check for both old and new attribute names
     if hasattr(module, 'generate_idea'):
         predictor = module.generate_idea
-    elif hasattr(module, 'generate_ideas'):
-        predictor = module.generate_ideas
-    else:
-        module_info['error'] = "模块没有 generate_idea 或 generate_ideas 属性"
-        filename = f"{prompts_dir}/{name}_optimized_prompts.json"
-        with open(filename, 'w', encoding='utf-8') as f:
-            json.dump(module_info, f, ensure_ascii=False, indent=2)
-        return filename
-    
-    predictor_info = {
-        "type": type(predictor).__name__,
-        "has_demos": hasattr(predictor, 'demos')
-    }
+        predictor_info = {
+            "type": type(predictor).__name__,
+            "has_demos": hasattr(predictor, 'demos')
+        }
         
         # Save few-shot demonstrations
         if hasattr(predictor, 'demos'):
@@ -96,8 +82,9 @@ def save_optimized_prompts(module, name: str) -> str:
                     'platform': demo.platform,
                     'requirements_section': getattr(demo, 'requirements_section', ''),
                 }
-                if hasattr(demo, 'story_ideas'):
-                    demo_dict['story_ideas'] = demo.story_ideas
+                if hasattr(demo, 'title') and hasattr(demo, 'body'):
+                    demo_dict['title'] = demo.title
+                    demo_dict['body'] = demo.body
                 demos_data.append(demo_dict)
             predictor_info['demos'] = demos_data
             predictor_info['num_demos'] = len(demos_data)
@@ -116,6 +103,8 @@ def save_optimized_prompts(module, name: str) -> str:
             }
         
         module_info['predictor'] = predictor_info
+    else:
+        module_info['error'] = "模块没有 generate_idea 属性"
     
     # Save to file
     filename = f"{prompts_dir}/{name}_optimized_prompts.json"
@@ -185,8 +174,8 @@ def extract_prompt_templates(module) -> Dict[str, Any]:
     """Extract prompt templates from a DSPy module"""
     templates = {}
     
-    if hasattr(module, 'generate_ideas'):
-        predictor = module.generate_ideas
+    if hasattr(module, 'generate_idea'):
+        predictor = module.generate_idea
         
         # Extract basic signature template
         if hasattr(predictor, 'signature'):
@@ -208,8 +197,8 @@ def extract_prompt_templates(module) -> Dict[str, Any]:
                         'requirements_section': getattr(demo, 'requirements_section', '')
                     }
                 }
-                if hasattr(demo, 'story_ideas'):
-                    example['output'] = {'story_ideas': demo.story_ideas}
+                if hasattr(demo, 'title') and hasattr(demo, 'body'):
+                    example['output'] = {'title': demo.title, 'body': demo.body}
                 templates['few_shot_examples'].append(example)
     
     return templates

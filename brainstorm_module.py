@@ -1,6 +1,6 @@
 import dspy
 from typing import List
-from common import StoryIdea, BrainstormRequest, IDEAS_PER_EVALUATION
+from common import StoryIdea, BrainstormRequest
 
 class BrainstormSignature(dspy.Signature):
     """Signature for brainstorming a single story idea"""
@@ -17,8 +17,8 @@ class BrainstormModule(dspy.Module):
         super().__init__()
         self.generate_idea = dspy.Predict(BrainstormSignature)
     
-    def forward(self, genre: str, platform: str, requirements_section: str = "") -> List[StoryIdea]:
-        """Generate story ideas based on the input parameters"""
+    def forward(self, genre: str, platform: str, requirements_section: str = "") -> StoryIdea:
+        """Generate a single story idea based on the input parameters"""
         
         # Build the requirements section
         requirements_text = requirements_section if requirements_section else ""
@@ -38,26 +38,15 @@ class BrainstormModule(dspy.Module):
         
         full_requirements = f"{requirements_text}\n{base_prompt}" if requirements_text else base_prompt
         
-        # Generate multiple ideas by calling the LLM multiple times
-        ideas = []
-        for i in range(IDEAS_PER_EVALUATION):
-            try:
-                response = self.generate_idea(
-                    genre=genre,
-                    platform=platform,
-                    requirements_section=full_requirements
-                )
-                
-                # Create StoryIdea directly from DSPy response
-                idea = StoryIdea(title=response.title, body=response.body)
-                ideas.append(idea)
-                
-            except Exception as e:
-                print(f"Error generating idea {i+1}: {e}")
-                continue
+        # Generate single idea via DSPy
+        response = self.generate_idea(
+            genre=genre,
+            platform=platform,
+            requirements_section=full_requirements
+        )
         
-        print(f"Successfully generated {len(ideas)} ideas")
-        return ideas
+        # Create StoryIdea directly from DSPy response
+        return StoryIdea(title=response.title, body=response.body)
 
 class OptimizedBrainstormModule(dspy.Module):
     """Enhanced brainstorm module with additional reasoning capabilities"""
@@ -67,8 +56,8 @@ class OptimizedBrainstormModule(dspy.Module):
         self.analyze_genre = dspy.ChainOfThought("genre -> genre_analysis")
         self.generate_idea = dspy.ChainOfThought(BrainstormSignature)
     
-    def forward(self, genre: str, platform: str, requirements_section: str = "") -> List[StoryIdea]:
-        """Generate story ideas with enhanced analysis"""
+    def forward(self, genre: str, platform: str, requirements_section: str = "") -> StoryIdea:
+        """Generate a single story idea with enhanced analysis"""
         
         # First, analyze the genre for better understanding
         genre_analysis = self.analyze_genre(genre=genre)
@@ -82,7 +71,7 @@ class OptimizedBrainstormModule(dspy.Module):
 要求：
 - 生成一个完整的故事情节梗概灵感
 - 题材必须新颖创新，深度理解{genre}类型的核心特点，避免陈旧套路
-- 创意包含一个吸引人的标题（3-7个字符）和完整故事梗概（严格控制在180字以内）
+- 创意包含一个吸引人的标题（3-7个字符）和完整故事梗概（不低于180字）
 - 故事结构：起承转合完整，主角鲜明，冲突强烈，发展合理，结局满意
 - 高度适配{platform}平台特点和用户偏好
 - 制作可行性：考虑拍摄成本、场景复杂度、演员要求等实际因素
@@ -92,23 +81,12 @@ class OptimizedBrainstormModule(dspy.Module):
         
         full_requirements = f"{requirements_text}\n{enhanced_prompt}" if requirements_text else enhanced_prompt
         
-        # Generate multiple ideas by calling the LLM multiple times
-        ideas = []
-        for i in range(IDEAS_PER_EVALUATION):
-            try:
-                response = self.generate_idea(
-                    genre=genre,
-                    platform=platform,
-                    requirements_section=full_requirements
-                )
-                
-                # Create StoryIdea directly from DSPy response
-                idea = StoryIdea(title=response.title, body=response.body)
-                ideas.append(idea)
-                
-            except Exception as e:
-                print(f"Error generating idea {i+1}: {e}")
-                continue
+        # Generate single idea via DSPy
+        response = self.generate_idea(
+            genre=genre,
+            platform=platform,
+            requirements_section=full_requirements
+        )
         
-        print(f"Successfully generated {len(ideas)} ideas")
-        return ideas 
+        # Create StoryIdea directly from DSPy response
+        return StoryIdea(title=response.title, body=response.body) 

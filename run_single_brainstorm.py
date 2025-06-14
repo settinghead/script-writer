@@ -54,11 +54,14 @@ def main():
         try:
             # Generate ideas
             print("正在生成创意...")
-            ideas = brainstorm_module(
-                genre=test_case["request"].genre,
-                platform=test_case["request"].platform,
-                requirements_section=test_case["request"].requirements_section
-            )
+            ideas = []
+            for i in range(3):  # Generate 3 ideas for demonstration
+                idea = brainstorm_module(
+                    genre=test_case["request"].genre,
+                    platform=test_case["request"].platform,
+                    requirements_section=test_case["request"].requirements_section
+                )
+                ideas.append(idea)
             
             print(f"生成了 {len(ideas)} 个创意:")
             for j, idea in enumerate(ideas, 1):
@@ -118,11 +121,14 @@ def interactive_mode():
         
         try:
             print("\n🎬 正在生成创意...")
-            ideas = brainstorm_module(
-                genre=request.genre,
-                platform=request.platform,
-                requirements_section=request.requirements_section
-            )
+            ideas = []
+            for i in range(3):  # Generate 3 ideas for interactive mode
+                idea = brainstorm_module(
+                    genre=request.genre,
+                    platform=request.platform,
+                    requirements_section=request.requirements_section
+                )
+                ideas.append(idea)
             
             print(f"\n生成的创意:")
             for i, idea in enumerate(ideas, 1):
