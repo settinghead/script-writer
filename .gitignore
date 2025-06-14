@@ -22,3 +22,5 @@ mlruns
 __pycache__
 
 *.pkl
+
+test_logs
