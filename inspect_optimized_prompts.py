@@ -122,11 +122,13 @@ def trace_module_execution(module, request: BrainstormRequest, name: str = "modu
     # Enable DSPy history tracking
     with dspy.context(trace=[]):
         try:
-            ideas = module(
+            # Generate a single idea for tracing
+            idea = module(
                 genre=request.genre,
                 platform=request.platform,
                 requirements_section=request.requirements_section
             )
+            ideas = [idea]  # Convert to list for compatibility
             
             # Get the execution trace
             if dspy.settings.trace:
