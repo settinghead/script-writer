@@ -12,6 +12,7 @@ import json
 import os
 from copy import copy
 from typing import List, Dict, Tuple
+from datetime import datetime
 import dspy
 from dspy.teleprompt import MIPROv2
 
@@ -23,6 +24,319 @@ from inspect_optimized_prompts import inspect_optimized_module, save_optimized_p
 # CONFIGURATION: Set optimization mode
 # Options: "flat" (current approach - single overall metric) or "grouped" (separate group optimization)
 OPTIMIZATION_MODE = "flat"  # Change this to "grouped" to use grouped optimization
+
+# Global variables for logging
+LOG_DIR = None
+CURRENT_STEP = 0
+
+class ComprehensiveLogger:
+    """Comprehensive file-based logger for optimization process"""
+    
+    def __init__(self, base_dir: str = "optimization_logs"):
+        self.base_dir = base_dir
+        self.run_dir = None
+        self.step_counter = 0
+        self.setup_logging_directories()
+    
+    def setup_logging_directories(self):
+        """Setup logging directory structure"""
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        mode = OPTIMIZATION_MODE
+        self.run_dir = os.path.join(self.base_dir, f"{mode}_optimization_{timestamp}")
+        
+        # Create directory structure
+        directories = [
+            "00_configuration",
+            "01_training_data", 
+            "02_golden_examples",
+            "03_optimization_process",
+            "04_evaluation_results",
+            "05_final_models",
+            "06_prompts_comparison",
+            "07_error_logs",
+            "08_performance_metrics"
+        ]
+        
+        for dir_name in directories:
+            os.makedirs(os.path.join(self.run_dir, dir_name), exist_ok=True)
+        
+        print(f"📁 日志目录创建: {self.run_dir}")
+    
+    def log_configuration(self, config: Dict):
+        """Log optimization configuration"""
+        config_file = os.path.join(self.run_dir, "00_configuration", "optimization_config.json")
+        with open(config_file, 'w', encoding='utf-8') as f:
+            json.dump(config, f, ensure_ascii=False, indent=2)
+        print(f"✅ 配置已保存: {config_file}")
+    
+    def log_training_data(self, examples: List[dspy.Example], data_type: str):
+        """Log training examples"""
+        data_dir = os.path.join(self.run_dir, "01_training_data")
+        
+        # Save examples as JSON
+        examples_data = []
+        for i, example in enumerate(examples):
+            example_dict = {
+                "index": i,
+                "genre": getattr(example, 'genre', 'N/A'),
+                "platform": getattr(example, 'platform', 'N/A'),
+                "requirements_section": getattr(example, 'requirements_section', 'N/A'),
+                "has_expected_output": hasattr(example, 'ideas'),
+            }
+            if hasattr(example, 'ideas'):
+                example_dict["expected_ideas"] = example.ideas
+            examples_data.append(example_dict)
+        
+        json_file = os.path.join(data_dir, f"{data_type}_examples.json")
+        with open(json_file, 'w', encoding='utf-8') as f:
+            json.dump(examples_data, f, ensure_ascii=False, indent=2)
+        
+        # Save summary
+        summary_file = os.path.join(data_dir, f"{data_type}_summary.txt")
+        with open(summary_file, 'w', encoding='utf-8') as f:
+            f.write(f"Training Data Summary - {data_type}\n")
+            f.write("=" * 50 + "\n\n")
+            f.write(f"Total examples: {len(examples)}\n")
+            f.write(f"Data type: {data_type}\n")
+            f.write(f"Timestamp: {datetime.now()}\n\n")
+            
+            # Genre distribution
+            genres = {}
+            platforms = {}
+            for example in examples:
+                genre = getattr(example, 'genre', 'Unknown')
+                platform = getattr(example, 'platform', 'Unknown')
+                genres[genre] = genres.get(genre, 0) + 1
+                platforms[platform] = platforms.get(platform, 0) + 1
+            
+            f.write("Genre Distribution:\n")
+            for genre, count in sorted(genres.items()):
+                f.write(f"  {genre}: {count}\n")
+            
+            f.write("\nPlatform Distribution:\n")
+            for platform, count in sorted(platforms.items()):
+                f.write(f"  {platform}: {count}\n")
+        
+        print(f"✅ {data_type} 训练数据已保存: {len(examples)} 个样例")
+    
+    def log_golden_examples(self, golden_examples: List[dspy.Example]):
+        """Log golden examples with detailed analysis"""
+        golden_dir = os.path.join(self.run_dir, "02_golden_examples")
+        
+        # Save detailed golden examples
+        golden_data = []
+        for i, example in enumerate(golden_examples):
+            example_dict = {
+                "index": i,
+                "genre": getattr(example, 'genre', 'N/A'),
+                "platform": getattr(example, 'platform', 'N/A'),
+                "requirements": getattr(example, 'requirements_section', 'N/A'),
+                "expected_content": getattr(example, 'ideas', [])
+            }
+            golden_data.append(example_dict)
+        
+        golden_file = os.path.join(golden_dir, "golden_examples_detailed.json")
+        with open(golden_file, 'w', encoding='utf-8') as f:
+            json.dump(golden_data, f, ensure_ascii=False, indent=2)
+        
+        # Create readable analysis
+        analysis_file = os.path.join(golden_dir, "golden_examples_analysis.txt")
+        with open(analysis_file, 'w', encoding='utf-8') as f:
+            f.write("Golden Examples Analysis\n")
+            f.write("=" * 50 + "\n\n")
+            f.write(f"Total golden examples: {len(golden_examples)}\n")
+            f.write(f"Analysis timestamp: {datetime.now()}\n\n")
+            
+            for i, example in enumerate(golden_examples):
+                f.write(f"Golden Example {i+1}:\n")
+                f.write(f"  Genre: {getattr(example, 'genre', 'N/A')}\n")
+                f.write(f"  Platform: {getattr(example, 'platform', 'N/A')}\n")
+                f.write(f"  Requirements: {getattr(example, 'requirements_section', 'N/A')}\n")
+                if hasattr(example, 'ideas') and example.ideas:
+                    content = example.ideas[0]
+                    f.write(f"  Content Length: {len(content)} characters\n")
+                    f.write(f"  Content Preview: {content[:100]}...\n")
+                f.write("\n")
+        
+        print(f"✅ 黄金样例分析已保存: {len(golden_examples)} 个样例")
+    
+    def log_optimization_step(self, step_name: str, data: Dict, step_type: str = "general"):
+        """Log optimization step with details"""
+        self.step_counter += 1
+        step_dir = os.path.join(self.run_dir, "03_optimization_process", f"step_{self.step_counter:02d}_{step_name}")
+        os.makedirs(step_dir, exist_ok=True)
+        
+        # Save step data
+        step_file = os.path.join(step_dir, "step_data.json")
+        step_data = {
+            "step_number": self.step_counter,
+            "step_name": step_name,
+            "step_type": step_type,
+            "timestamp": datetime.now().isoformat(),
+            "data": data
+        }
+        
+        with open(step_file, 'w', encoding='utf-8') as f:
+            json.dump(step_data, f, ensure_ascii=False, indent=2)
+        
+        # Save step summary
+        summary_file = os.path.join(step_dir, "step_summary.txt")
+        with open(summary_file, 'w', encoding='utf-8') as f:
+            f.write(f"Optimization Step {self.step_counter}: {step_name}\n")
+            f.write("=" * 50 + "\n")
+            f.write(f"Step type: {step_type}\n")
+            f.write(f"Timestamp: {datetime.now()}\n\n")
+            f.write("Step Data Summary:\n")
+            for key, value in data.items():
+                if isinstance(value, (str, int, float, bool)):
+                    f.write(f"  {key}: {value}\n")
+                elif isinstance(value, (list, dict)):
+                    f.write(f"  {key}: {type(value).__name__} with {len(value) if hasattr(value, '__len__') else 'N/A'} items\n")
+                else:
+                    f.write(f"  {key}: {type(value).__name__}\n")
+        
+        print(f"📝 优化步骤 {self.step_counter} 已记录: {step_name}")
+        return step_dir
+    
+    def log_evaluation_results(self, results: Dict, test_name: str):
+        """Log evaluation results"""
+        eval_dir = os.path.join(self.run_dir, "04_evaluation_results")
+        
+        # Save results as JSON
+        results_file = os.path.join(eval_dir, f"{test_name}_results.json")
+        with open(results_file, 'w', encoding='utf-8') as f:
+            json.dump(results, f, ensure_ascii=False, indent=2)
+        
+        # Save readable report
+        report_file = os.path.join(eval_dir, f"{test_name}_report.txt")
+        with open(report_file, 'w', encoding='utf-8') as f:
+            f.write(f"Evaluation Report: {test_name}\n")
+            f.write("=" * 50 + "\n")
+            f.write(f"Timestamp: {datetime.now()}\n\n")
+            
+            if "overall_score" in results:
+                f.write(f"Overall Score: {results['overall_score']:.2f}/10\n\n")
+            
+            if "detailed_scores" in results:
+                f.write("Detailed Scores:\n")
+                for metric, score in results["detailed_scores"].items():
+                    f.write(f"  {metric}: {score:.2f}/10\n")
+                f.write("\n")
+            
+            # Log test cases if available
+            if "test_cases" in results:
+                f.write("Test Cases:\n")
+                for i, case in enumerate(results["test_cases"], 1):
+                    f.write(f"  Case {i}: {case.get('genre', 'N/A')} - Score: {case.get('score', 'N/A')}\n")
+        
+        print(f"📊 评估结果已保存: {test_name}")
+    
+    def log_model_prompts(self, module, model_name: str):
+        """Log model prompts and configurations"""
+        prompts_dir = os.path.join(self.run_dir, "06_prompts_comparison")
+        
+        # Save prompts
+        prompt_file = os.path.join(prompts_dir, f"{model_name}_prompts.txt")
+        with open(prompt_file, 'w', encoding='utf-8') as f:
+            f.write(f"Model Prompts: {model_name}\n")
+            f.write("=" * 50 + "\n")
+            f.write(f"Timestamp: {datetime.now()}\n\n")
+            
+            # Try to extract prompts from the module
+            try:
+                if hasattr(module, 'predictor'):
+                    predictor = module.predictor
+                    if hasattr(predictor, 'signature'):
+                        f.write("Signature:\n")
+                        f.write(str(predictor.signature) + "\n\n")
+                    
+                    if hasattr(predictor, 'lm') and hasattr(predictor.lm, 'history'):
+                        f.write("Recent LM History:\n")
+                        for i, entry in enumerate(predictor.lm.history[-3:]):  # Last 3 entries
+                            f.write(f"Entry {i+1}:\n")
+                            f.write(str(entry) + "\n\n")
+                
+                # Try to get the actual prompt template
+                f.write("Module Structure:\n")
+                f.write(str(type(module)) + "\n\n")
+                
+            except Exception as e:
+                f.write(f"Error extracting prompts: {e}\n")
+        
+        print(f"📝 模型提示词已保存: {model_name}")
+    
+    def log_error(self, error: Exception, context: str):
+        """Log errors with context"""
+        error_dir = os.path.join(self.run_dir, "07_error_logs")
+        
+        error_file = os.path.join(error_dir, f"error_{datetime.now().strftime('%H%M%S')}.txt")
+        with open(error_file, 'w', encoding='utf-8') as f:
+            f.write(f"Error Log\n")
+            f.write("=" * 30 + "\n")
+            f.write(f"Timestamp: {datetime.now()}\n")
+            f.write(f"Context: {context}\n")
+            f.write(f"Error Type: {type(error).__name__}\n")
+            f.write(f"Error Message: {str(error)}\n\n")
+            
+            # Try to get traceback
+            import traceback
+            f.write("Traceback:\n")
+            f.write(traceback.format_exc())
+        
+        print(f"❌ 错误已记录: {context}")
+    
+    def log_generated_examples(self, examples: List[str], context: str):
+        """Log generated examples in a readable format"""
+        examples_dir = os.path.join(self.run_dir, "08_performance_metrics")
+        
+        examples_file = os.path.join(examples_dir, f"generated_examples_{context}.txt")
+        with open(examples_file, 'w', encoding='utf-8') as f:
+            f.write(f"Generated Examples - {context}\n")
+            f.write("=" * 50 + "\n")
+            f.write(f"Timestamp: {datetime.now()}\n")
+            f.write(f"Total examples: {len(examples)}\n\n")
+            
+            for i, example in enumerate(examples, 1):
+                f.write(f"Example {i}:\n")
+                f.write(f"Length: {len(example)} characters\n")
+                f.write(f"Content: {example}\n")
+                f.write("-" * 30 + "\n")
+        
+        print(f"📝 生成样例已保存: {context}")
+    
+    def create_final_summary(self):
+        """Create final optimization summary"""
+        summary_file = os.path.join(self.run_dir, "OPTIMIZATION_SUMMARY.txt")
+        with open(summary_file, 'w', encoding='utf-8') as f:
+            f.write("Optimization Run Summary\n")
+            f.write("=" * 50 + "\n")
+            f.write(f"Mode: {OPTIMIZATION_MODE}\n")
+            f.write(f"Timestamp: {datetime.now()}\n")
+            f.write(f"Total steps: {self.step_counter}\n\n")
+            
+            f.write("Directory Structure:\n")
+            f.write("├── 00_configuration/     - Optimization settings\n")
+            f.write("├── 01_training_data/     - Training examples used\n") 
+            f.write("├── 02_golden_examples/   - Golden examples analysis\n")
+            f.write("├── 03_optimization_process/ - Step-by-step process\n")
+            f.write("├── 04_evaluation_results/   - Performance evaluations\n")
+            f.write("├── 05_final_models/         - Saved model artifacts\n")
+            f.write("├── 06_prompts_comparison/   - Model prompts\n")
+            f.write("├── 07_error_logs/           - Error logs\n")
+            f.write("└── 08_performance_metrics/  - Performance data\n\n")
+            
+            f.write("To analyze results:\n")
+            f.write("1. Check 04_evaluation_results for performance metrics\n")
+            f.write("2. Review 03_optimization_process for step details\n")
+            f.write("3. Compare 06_prompts_comparison to see prompt evolution\n")
+            f.write("4. Check 07_error_logs if any issues occurred\n")
+            f.write("5. Look at 08_performance_metrics for generated examples\n")
+        
+        print(f"📋 最终总结已保存: {summary_file}")
+        return summary_file
+
+# Initialize global logger
+logger = ComprehensiveLogger()
 
 def load_golden_examples() -> List[dspy.Example]:
     """Load golden examples from /examples directory"""
@@ -202,6 +516,7 @@ def generate_ideas_with_retry(module, request: BrainstormRequest, max_retries: i
                 platform=request.platform,
                 requirements_section=request.requirements_section
             )
+            
             if len(ideas) == 0:
                 if attempt < max_retries:
                     print(f"  JSON解析失败，重试 {attempt + 1}/{max_retries}")
@@ -209,12 +524,26 @@ def generate_ideas_with_retry(module, request: BrainstormRequest, max_retries: i
                 else:
                     print(f"  ❌ JSON解析失败，达到最大重试次数，停止执行")
                     sys.exit(1)
+            
+            # Log successful generation
+            logger.log_optimization_step("idea_generation_success", {
+                "genre": request.genre,
+                "platform": request.platform,
+                "requirements": request.requirements_section,
+                "generated_ideas_count": len(ideas),
+                "attempt_number": attempt + 1,
+                "ideas_preview": [idea[:100] + "..." if len(idea) > 100 else idea for idea in ideas[:2]]  # First 2 ideas preview
+            }, "generation")
+            
             return ideas
+            
         except Exception as e:
             if attempt < max_retries:
                 print(f"  生成失败，重试 {attempt + 1}/{max_retries}: {e}")
+                logger.log_error(e, f"idea_generation_attempt_{attempt + 1}")
                 continue
             else:
+                logger.log_error(e, f"idea_generation_final_failure_after_{max_retries}_attempts")
                 print(f"  ❌ 生成失败，达到最大重试次数: {e}")
                 sys.exit(1)
 
@@ -224,13 +553,33 @@ def run_flat_optimization(auto_mode: str = "medium") -> Tuple[dspy.Module, List[
     print("=" * 60)
     
     try:
+        # Log optimization start
+        logger.log_optimization_step("flat_optimization_start", {
+            "auto_mode": auto_mode,
+            "max_bootstrapped_demos": 4,
+            "num_threads": 8,
+            "max_labeled_demos": 4,
+            "seed": 42
+        }, "optimization_start")
+        
         # Create training examples
         train_examples = create_training_examples()
         print(f"创建了 {len(train_examples)} 个训练样例")
         
+        # Log training data
+        logger.log_training_data(train_examples, "flat_optimization_training")
+        golden_examples = load_golden_examples()
+        if golden_examples:
+            logger.log_golden_examples(golden_examples)
+        
         # Create evaluator and metric (single overall metric)
         evaluator = StoryIdeaEvaluator()
         metric = create_evaluation_metric(evaluator)  # This uses the overall score
+        
+        logger.log_optimization_step("metric_creation", {
+            "evaluator_type": "StoryIdeaEvaluator",
+            "metric_type": "single_overall_metric"
+        }, "configuration")
         
         # Configure MIPROv2 optimizer
         optimizer = MIPROv2(
@@ -244,20 +593,39 @@ def run_flat_optimization(auto_mode: str = "medium") -> Tuple[dspy.Module, List[
             seed=42
         )
         
+        logger.log_optimization_step("optimizer_configuration", {
+            "optimizer_type": "MIPROv2",
+            "auto_mode": auto_mode,
+            "training_examples_count": len(train_examples)
+        }, "configuration")
+        
         print(f"配置平面优化器完成，开始训练...")
         
         # Compile the module
         base_module = BrainstormModule()
+        logger.log_optimization_step("module_compilation_start", {
+            "base_module_type": "BrainstormModule"
+        }, "compilation")
+        
         compiled_module = optimizer.compile(
             base_module, 
             trainset=train_examples,
             requires_permission_to_run=False
         )
         
+        logger.log_optimization_step("module_compilation_complete", {
+            "compiled_module_type": str(type(compiled_module)),
+            "success": True
+        }, "compilation")
+        
+        # Log model prompts
+        logger.log_model_prompts(compiled_module, "flat_optimized_model")
+        
         print(f"✅ 平面优化完成!")
         return compiled_module, train_examples
         
     except Exception as e:
+        logger.log_error(e, "flat_optimization")
         print(f"❌ 平面优化过程中发生错误: {e}")
         print("停止执行")
         sys.exit(1)
@@ -327,12 +695,21 @@ def evaluate_model_performance(module, test_examples: List[dspy.Example], name: 
     print(f"\n📊 评估 {name} 模型性能")
     print("-" * 40)
     
+    # Log evaluation start
+    logger.log_optimization_step(f"evaluation_start_{name}", {
+        "model_name": name,
+        "test_examples_count": len(test_examples),
+        "evaluation_limit": 5
+    }, "evaluation")
+    
     evaluator = StoryIdeaEvaluator()
     total_scores = []
     detailed_scores = {
         'novelty': [], 'feasibility': [], 'structure': [], 
         'detail': [], 'logical_coherence': [], 'genre': [], 'engagement': []
     }
+    
+    test_cases_results = []
     
     for i, example in enumerate(test_examples[:5]):
         try:
@@ -344,6 +721,9 @@ def evaluate_model_performance(module, test_examples: List[dspy.Example], name: 
             
             # Generate ideas with retry logic
             ideas = generate_ideas_with_retry(module, request)
+            
+            # Log generated examples for this test case
+            logger.log_generated_examples(ideas, f"{name}_case_{i+1}_{example.genre}")
             
             # Evaluate
             result = evaluator.evaluate(ideas, request)
@@ -358,9 +738,30 @@ def evaluate_model_performance(module, test_examples: List[dspy.Example], name: 
             detailed_scores['genre'].append(result.genre_score)
             detailed_scores['engagement'].append(result.engagement_score)
             
+            # Store test case result for logging
+            test_case_result = {
+                "case_number": i + 1,
+                "genre": example.genre,
+                "platform": example.platform,
+                "requirements": example.requirements_section,
+                "generated_ideas": ideas,
+                "overall_score": result.overall_score,
+                "detailed_scores": {
+                    "novelty": result.novelty_score,
+                    "feasibility": result.feasibility_score,
+                    "structure": result.structure_score,
+                    "detail": result.detail_score,
+                    "logical_coherence": result.logical_coherence_score,
+                    "genre": result.genre_score,
+                    "engagement": result.engagement_score
+                }
+            }
+            test_cases_results.append(test_case_result)
+            
             print(f"  案例 {i+1} ({example.genre}): {result.overall_score:.1f}/10")
             
         except Exception as e:
+            logger.log_error(e, f"evaluate_model_performance_case_{i+1}")
             print(f"  ❌ 案例 {i+1} 评估失败: {e}")
             print("停止执行")
             sys.exit(1)
@@ -375,6 +776,16 @@ def evaluate_model_performance(module, test_examples: List[dspy.Example], name: 
                 avg_detailed_scores[metric_name] = sum(scores) / len(scores)
             else:
                 avg_detailed_scores[metric_name] = 0.0
+        
+        # Log evaluation results
+        evaluation_results = {
+            "model_name": name,
+            "overall_score": avg_score,
+            "detailed_scores": avg_detailed_scores,
+            "test_cases": test_cases_results,
+            "total_test_cases": len(test_cases_results)
+        }
+        logger.log_evaluation_results(evaluation_results, f"evaluation_{name}")
         
         print(f"\n  平均分数: {avg_score:.1f}/10")
         print(f"  详细分数:")
@@ -542,6 +953,16 @@ def run_optimization():
 def main():
     """Main optimization workflow"""
     try:
+        # Log initial configuration
+        config = {
+            "optimization_mode": OPTIMIZATION_MODE,
+            "timestamp": datetime.now().isoformat(),
+            "mlflow_experiment": f"Brainstorm_{OPTIMIZATION_MODE.title()}_Optimization",
+            "python_version": sys.version,
+            "script_path": __file__
+        }
+        logger.log_configuration(config)
+        
         # Setup MLflow with mode-specific experiment name
         experiment_name = f"Brainstorm_{OPTIMIZATION_MODE.title()}_Optimization"
         mlflow.set_experiment(experiment_name)
@@ -549,17 +970,29 @@ def main():
         
         print(f"📊 MLflow 实验: {experiment_name}")
         
+        # Log MLflow setup
+        logger.log_optimization_step("mlflow_setup", {
+            "experiment_name": experiment_name,
+            "autolog_enabled": True
+        }, "initialization")
+        
         # Run optimization
         run_optimization()
+        
+        # Create final summary
+        summary_file = logger.create_final_summary()
         
         print(f"\n📝 优化完成总结:")
         print(f"1. 优化模式: {OPTIMIZATION_MODE.upper()}")
         print(f"2. 缓存机制: 启用 (避免重复评估)")
         print(f"3. MLflow 实验: {experiment_name}")
         print(f"4. 提示词文件: optimized_prompts/{OPTIMIZATION_MODE}_optimization_*.txt")
-        print(f"5. 要切换模式，请修改代码中的 OPTIMIZATION_MODE 常量")
+        print(f"5. 详细日志: {logger.run_dir}")
+        print(f"6. 总结文件: {summary_file}")
+        print(f"7. 要切换模式，请修改代码中的 OPTIMIZATION_MODE 常量")
         
     except Exception as e:
+        logger.log_error(e, "main_workflow")
         print(f"❌ 主流程发生错误: {e}")
         print("程序终止")
         sys.exit(1)
