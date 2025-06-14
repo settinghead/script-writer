@@ -36,6 +36,9 @@ A collaborative script writing application with AI assistance, real-time collabo
 - **Responsive design** for desktop and mobile
 - **Tabbed interface** (Ideation, Chat, Script Editor)
 - **User dropdown** with profile info and logout
+- **Modern state management** with TanStack Query for server state and Zustand for client state
+- **Unified project layout** with collapsible sections for outline and episodes
+- **Real-time UI updates** with streaming data integration
 
 ### 📊 Analytics & Debugging
 - **Complete data traceability** through artifacts and transforms
@@ -104,6 +107,24 @@ npm run dev
 
 ## Architecture
 
+### Frontend Architecture
+- **React 19** with TypeScript
+- **Modern State Management Architecture**:
+  - **TanStack Query (React Query)** for server state management - handles fetching, caching, synchronizing, and updating data from backend APIs
+  - **Zustand** for global client state management - lightweight store for UI state and assembled results of fetched/streamed data
+  - **Unified data flow** - eliminates redundant API calls and provides single source of truth
+- **Ant Design** component library with responsive multi-column layouts
+- **React Router** for navigation with protected routes
+- **RxJS streaming services** for real-time LLM JSON parsing
+- **Generic streaming hooks** with automatic state management and cleanup
+
+#### State Management Benefits
+- **Single Source of Truth**: All components read from Zustand store, ensuring UI consistency
+- **Performance**: TanStack Query's cache eliminates redundant API calls, making navigation faster
+- **Separation of Concerns**: Components become declarative renderers of state, while hooks and store manage complex logic
+- **Simplified Logic**: Complex `useEffect` chains replaced by declarative `useQuery` hooks
+- **Scalability**: Adding new data types or views becomes a matter of adding a new query and store slice
+
 ### Backend
 - **Express.js** server with TypeScript
 - **SQLite** database with generalized artifacts/transforms system
@@ -111,15 +132,6 @@ npm run dev
 - **DeepSeek AI integration** for content generation
 - **Yjs WebSocket server** for real-time collaboration
 - **Unified streaming architecture** with database-backed state management
-
-### Frontend  
-- **React 19** with TypeScript
-- **Ant Design** component library with responsive multi-column layouts
-- **React Router** for navigation
-- **Authentication context** for state management
-- **Protected routes** requiring login
-- **RxJS streaming services** for real-time LLM JSON parsing
-- **Generic streaming hooks** with automatic state management and cleanup
 
 ### Database Schema
 
@@ -405,9 +417,13 @@ src/
 │   ├── components/        # React components with streaming UI
 │   ├── contexts/         # React contexts (Auth)
 │   ├── hooks/           # Custom hooks including streaming hooks
+│   │   ├── useProjectData.ts    # TanStack Query hooks for project data
+│   │   └── useLLMStreamingWithStore.ts # Zustand-integrated streaming
 │   ├── services/        # RxJS streaming services
 │   │   ├── streaming/   # Generic LLM streaming base classes
 │   │   └── implementations/ # Specific streaming implementations
+│   ├── stores/         # Zustand stores
+│   │   └── projectStore.ts    # Global project state management
 │   └── types/           # TypeScript types
 ├── common/               # Shared frontend/backend types
 │   ├── streaming/       # Streaming interfaces and types
@@ -440,7 +456,54 @@ The authentication system is designed to be extensible. Planned features include
 
 ## Developer Notes
 
-### 🏗️ Architecture Overview
+### 🏗️ Modern Frontend Architecture
+
+#### TanStack Query & Zustand Integration
+The application uses a **modern state management architecture** that eliminates the inefficiencies of traditional React state patterns:
+
+- **TanStack Query** manages all server state with intelligent caching, background updates, and error handling
+- **Zustand** provides lightweight global state for UI state and assembled data
+- **Unified Data Flow**: Components read from Zustand store, TanStack Query keeps server data synced
+- **Performance Benefits**: Eliminates redundant API calls across components like `ProjectLayout` and `ScriptLayout`
+
+```typescript
+// Example: Project data fetching pattern
+export const useProjectData = (projectId: string) => {
+  const setOutline = useProjectStore(state => state.setOutline);
+  
+  // TanStack Query handles server state
+  const { data: outlineData, isLoading } = useQuery({
+    queryKey: ['projects', projectId, 'outline'],
+    queryFn: () => apiService.getOutlineSession(projectId),
+    enabled: !!projectId,
+  });
+
+  // Sync to Zustand store for global access
+  useEffect(() => {
+    if (outlineData) setOutline(projectId, outlineData);
+  }, [outlineData, projectId, setOutline]);
+
+  return { isLoading };
+};
+
+// Components simply select from store
+const ProjectLayout = () => {
+  const { isLoading } = useProjectData(projectId);
+  const outline = useProjectStore(state => state.projects[projectId]?.outline);
+  // Clean, declarative rendering
+};
+```
+
+#### Query Key Strategy
+```typescript
+export const projectKeys = {
+  all: ['projects'] as const,
+  detail: (projectId: string) => [...projectKeys.all, projectId] as const,
+  outline: (projectId: string) => [...projectKeys.detail(projectId), 'outline'] as const,
+  stages: (projectId: string) => [...projectKeys.detail(projectId), 'stages'] as const,
+  episodes: (stageId: string) => [...projectKeys.all, 'episodes', stageId] as const,
+};
+```
 
 #### RxJS Streaming System
 The application features a **generalized LLM JSON streaming framework** built on RxJS:
@@ -451,12 +514,16 @@ The application features a **generalized LLM JSON streaming framework** built on
 - **Template System**: Prompt templates with variable interpolation
 - **State Management**: RxJS observables with React hooks integration
 - **Error Recovery**: Automatic retry logic and graceful degradation
+- **Store Integration**: Streaming data automatically synced with Zustand store
 
 ```typescript
-// Usage pattern for any LLM JSON streaming
-const { status, items, error, start, stop } = useLLMStreaming(ServiceClass, config);
+// Usage pattern for any LLM JSON streaming with store integration
+const { status, items, error, start, stop } = useLLMStreamingWithStore(ServiceClass, {
+  projectId,
+  dataType: 'outline'
+});
 
-// Start streaming with template
+// Start streaming with template - data automatically flows to store
 await start({
   artifactIds: [],
   templateId: 'brainstorming',
@@ -537,6 +604,36 @@ const llmStats = await replayService.getTransformStats(userId);
 
 ### 🔧 Development Patterns
 
+#### Modern State Management Pattern
+```typescript
+// 1. Define query hooks with TanStack Query
+export const useProjectData = (projectId: string) => {
+  const setOutline = useProjectStore(state => state.setOutline);
+  
+  const { data, isLoading, error } = useQuery({
+    queryKey: projectKeys.outline(projectId),
+    queryFn: () => apiService.getOutlineSession(projectId),
+    enabled: !!projectId,
+  });
+
+  // Sync to Zustand store
+  useEffect(() => {
+    if (data) setOutline(projectId, data);
+  }, [data, projectId, setOutline]);
+
+  return { isLoading, error };
+};
+
+// 2. Components select from store
+const Component = () => {
+  const { isLoading } = useProjectData(projectId);
+  const outline = useProjectStore(state => state.projects[projectId]?.outline);
+  
+  if (isLoading) return <Spin />;
+  return <div>{outline?.title}</div>;
+};
+```
+
 #### Streaming Service Pattern
 ```typescript
 // Create specialized streaming service
@@ -551,8 +648,11 @@ export class BrainstormingStreamingService extends LLMStreamingService<IdeaWithT
   }
 }
 
-// Use in React components
-const { status, items, start, stop } = useStreamingBrainstorm();
+// Use with store integration
+const { status, items, start, stop } = useLLMStreamingWithStore(BrainstormingStreamingService, {
+  projectId,
+  dataType: 'brainstorm'
+});
 ```
 
 #### Artifact Creation Pattern
@@ -623,11 +723,45 @@ if (Date.now() - lastCall < 5000) { // 5 second cooldown
 
 ### 🔮 Extension Points
 
+#### Adding New State to the Store
+```typescript
+// 1. Extend the Zustand store
+interface ProjectStoreState {
+  // ... existing state
+  newFeature: Record<string, NewFeatureData>;
+  setNewFeature: (projectId: string, data: NewFeatureData) => void;
+}
+
+// 2. Create TanStack Query hook
+export const useNewFeatureData = (projectId: string) => {
+  const setNewFeature = useProjectStore(state => state.setNewFeature);
+  
+  const { data, isLoading } = useQuery({
+    queryKey: ['projects', projectId, 'newFeature'],
+    queryFn: () => apiService.getNewFeature(projectId),
+    enabled: !!projectId,
+  });
+
+  useEffect(() => {
+    if (data) setNewFeature(projectId, data);
+  }, [data, projectId, setNewFeature]);
+
+  return { isLoading };
+};
+
+// 3. Use in components
+const Component = () => {
+  const { isLoading } = useNewFeatureData(projectId);
+  const newFeature = useProjectStore(state => state.projects[projectId]?.newFeature);
+  // ...
+};
+```
+
 #### Adding New Streaming Services
 1. **Extend base class** with type-specific validation and parsing
 2. **Create custom hook** with service configuration  
 3. **Add template** to backend template system
-4. **Update component** to use streaming hook
+4. **Update component** to use streaming hook with store integration
 
 ```typescript
 // Example: Custom streaming service
@@ -635,9 +769,12 @@ export class OutlineStreamingService extends LLMStreamingService<OutlineItem> {
   // Implement abstract methods for outline-specific parsing
 }
 
-// Create hook
-export function useStreamingOutline() {
-  return useLLMStreaming(OutlineStreamingService, { debounceMs: 100 });
+// Create hook with store integration
+export function useStreamingOutline(projectId: string) {
+  return useLLMStreamingWithStore(OutlineStreamingService, { 
+    projectId,
+    dataType: 'outline'
+  });
 }
 ```
 
@@ -677,9 +814,16 @@ const customMetrics = {
 #### Core Framework Dependencies
 - **React 19** with TypeScript for modern frontend development
 - **Express.js** with TypeScript for backend API server
+- **TanStack Query** for intelligent server state management with caching
+- **Zustand** for lightweight global client state management
 - **RxJS** for reactive streaming and state management
 - **Ant Design** for comprehensive UI component library
 - **AI SDK** with DeepSeek integration for LLM streaming
+
+#### State Management Dependencies
+- **@tanstack/react-query** ^5.80.6 - Server state management with caching
+- **@tanstack/react-query-devtools** ^5.80.6 - Development tools for debugging queries
+- **zustand** ^5.0.5 - Minimal, fast, and scalable state management
 
 #### Streaming & Real-time Dependencies
 - **jsonrepair** for robust JSON parsing and error recovery
@@ -687,28 +831,36 @@ const customMetrics = {
 - **Server-Sent Events** for LLM response streaming
 - **Custom RxJS operators** for partial JSON parsing and debouncing
 
-#### Enhanced Data Management Dependencies
-
 ### ⚠️ Important Notes
 
-1. **Unified Streaming Architecture**: Database-backed streaming eliminates caching complexities and race conditions
-2. **Database Evolution**: Complete migration from caching layer to persistent streaming chunks
-3. **API Compatibility**: All existing endpoints maintained while using new unified streaming backend
-4. **Transform Replay**: Available for all LLM transforms for reproducibility and debugging
-5. **Data Export**: Complete user data available for AI training purposes
-6. **Real-time Performance**: Built-in metrics and streaming state monitoring
-7. **Debug Tools**: Comprehensive debugging endpoints for development and analytics
-8. **Memory Management**: Efficient streaming with automatic cleanup and garbage collection
-9. **Streaming Architecture**: RxJS-based services provide consistent streaming patterns across all LLM features
-10. **JSON Parsing**: Robust error recovery with multiple parsing strategies and `jsonrepair` integration
-11. **UI Animations**: Smooth transitions with proper cleanup to prevent memory leaks and infinite loops
-12. **Single Source of Truth**: Database serves as the only authoritative data source, eliminating synchronization issues
+1. **Modern State Architecture**: TanStack Query + Zustand eliminates traditional React state management issues
+2. **Single Source of Truth**: Zustand store provides consistent state across all components
+3. **Intelligent Caching**: TanStack Query handles background updates, cache invalidation, and optimistic updates
+4. **Streaming Integration**: All streaming services automatically sync with the global store
+5. **Performance Optimized**: Eliminates redundant API calls through intelligent query caching
+6. **Developer Experience**: React Query Devtools and simple Zustand patterns improve debugging
+7. **Scalable Patterns**: Easy to extend with new data types and streaming services
+8. **Unified Streaming Architecture**: Database-backed streaming eliminates caching complexities and race conditions
+9. **Database Evolution**: Complete migration from caching layer to persistent streaming chunks
+10. **API Compatibility**: All existing endpoints maintained while using new unified streaming backend
+11. **Transform Replay**: Available for all LLM transforms for reproducibility and debugging
+12. **Data Export**: Complete user data available for AI training purposes
+13. **Real-time Performance**: Built-in metrics and streaming state monitoring
+14. **Debug Tools**: Comprehensive debugging endpoints for development and analytics
+15. **Memory Management**: Efficient streaming with automatic cleanup and garbage collection
+16. **Streaming Architecture**: RxJS-based services provide consistent streaming patterns across all LLM features
+17. **JSON Parsing**: Robust error recovery with multiple parsing strategies and `jsonrepair` integration
+18. **UI Animations**: Smooth transitions with proper cleanup to prevent memory leaks and infinite loops
 
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch
-3. Make your changes following the established patterns
+3. Make your changes following the established patterns:
+   - Use TanStack Query for new server state requirements
+   - Add new client state to the Zustand store
+   - Follow the streaming service patterns for LLM integrations
+   - Maintain the artifacts/transforms architecture for data operations
 4. Add tests for new authentication providers or script elements
 5. Ensure TypeScript types are properly defined
 6. Test authentication flows and real-time collaboration
