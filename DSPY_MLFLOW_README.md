@@ -14,7 +14,7 @@
 
 2. **`brainstorm_module.py`** - DSPy 创意生成模块
    - `BrainstormModule` - 基础创意生成模块
-   - `OptimizedBrainstormModule` - 增强版创意生成模块（带推理链）
+   
 
 3. **`evaluators.py`** - LLM 评估器
    - 五维度评估：新颖性、可行性、结构性、题材一致性、吸引力

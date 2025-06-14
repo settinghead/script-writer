@@ -16,7 +16,7 @@ from datetime import datetime
 import dspy
 from dspy.teleprompt import MIPROv2
 
-from brainstorm_module import BrainstormModule, OptimizedBrainstormModule
+from brainstorm_module import BrainstormModule
 from evaluators import StoryIdeaEvaluator, create_evaluation_metric, create_grouped_evaluation_metrics
 from common import BrainstormRequest
 from inspect_optimized_prompts import inspect_optimized_module, save_optimized_prompts
