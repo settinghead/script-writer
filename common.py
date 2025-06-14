@@ -51,6 +51,7 @@ class EvaluationResult:
     feasibility_score: float
     structure_score: float
     detail_score: float
+    logical_coherence_score: float
     genre_consistency_score: float
     engagement_score: float
     overall_score: float
