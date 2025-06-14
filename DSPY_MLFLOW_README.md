@@ -29,7 +29,7 @@
    - Bootstrap Few-Shot 优化
    - COPRO 优化
    - 模型对比和保存
-   - **改进的错误处理和重试机制**
+   - **纯DSPy架构，无需手动提示词工程**
 
 6. **`inspect_optimized_prompts.py`** - **新增** 提示词检查工具
    - 检查优化后模块状态
@@ -349,12 +349,14 @@ compare_baseline_vs_optimized(baseline_module, optimized_module, test_request)
 
 ## 错误处理改进
 
-### 自动重试机制
+### 纯DSPy架构优势
 
-系统现在包含robust的错误处理：
+系统采用纯DSPy架构，具有以下优势：
 
-1. **JSON解析失败**: 自动重试最多2次，失败后停止执行
-2. **DSPy示例配置**: 自动配置输入字段，避免"Use `example.with_inputs()`"错误  
+1. **结构化输出**: DSPy内部处理结构化输出，无需JSON解析
+2. **自动优化**: 基于黄金样例自动优化提示词，无需手动工程
+3. **模型无关**: 同一套代码可适配不同LLM模型
+4. **DSPy示例配置**: 自动配置输入字段，避免"Use `example.with_inputs()`"错误  
 3. **优化器参数**: 自动添加必需参数如`eval_kwargs`
 4. **快速失败**: 遇到错误立即停止，不再继续执行
 

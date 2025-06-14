@@ -57,10 +57,10 @@ def main():
             ideas = []
             for i in range(3):  # Generate 3 ideas for demonstration
                 prediction = brainstorm_module(
-                    genre=test_case["request"].genre,
-                    platform=test_case["request"].platform,
-                    requirements_section=test_case["request"].requirements_section
-                )
+                genre=test_case["request"].genre,
+                platform=test_case["request"].platform,
+                requirements_section=test_case["request"].requirements_section
+            )
                 # Extract StoryIdea from DSPy prediction
                 idea = prediction.story_idea if hasattr(prediction, 'story_idea') else StoryIdea(title=prediction.title, body=prediction.body)
                 ideas.append(idea)
@@ -69,9 +69,9 @@ def main():
             for j, idea in enumerate(ideas, 1):
                 print(f"  {j}. 【{idea.title}】{idea.body}")
             
-            # Evaluate ideas
+            # Evaluate ideas (evaluate first idea as representative)
             print("\n正在评估创意质量...")
-            evaluation = evaluator.evaluate(ideas, test_case["request"])
+            evaluation = evaluator.evaluate(ideas[0], test_case["request"])
             
             # Display evaluation results
             print("\n📊 评估结果:")
@@ -126,10 +126,10 @@ def interactive_mode():
             ideas = []
             for i in range(3):  # Generate 3 ideas for interactive mode
                 prediction = brainstorm_module(
-                    genre=request.genre,
-                    platform=request.platform,
-                    requirements_section=request.requirements_section
-                )
+                genre=request.genre,
+                platform=request.platform,
+                requirements_section=request.requirements_section
+            )
                 # Extract StoryIdea from DSPy prediction
                 idea = prediction.story_idea if hasattr(prediction, 'story_idea') else StoryIdea(title=prediction.title, body=prediction.body)
                 ideas.append(idea)
@@ -143,7 +143,7 @@ def interactive_mode():
             evaluate = input("\n是否进行评估? (y/n): ").strip().lower()
             if evaluate == 'y':
                 print("\n🔍 正在评估...")
-                evaluation = evaluator.evaluate(ideas, request)
+                evaluation = evaluator.evaluate(ideas[0], request)
                 
                 print(f"\n📊 评估结果:")
                 print(f"  总体评分: {evaluation.overall_score:.1f}/10")

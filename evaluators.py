@@ -7,49 +7,56 @@ import pickle
 import os
 
 class NoveltyEvaluationSignature(dspy.Signature):
-    """Evaluate novelty and originality of story ideas"""
+    """Evaluate novelty and originality of a single story idea"""
     genre = dspy.InputField(desc="故事题材类型")
-    story_ideas = dspy.InputField(desc="待评估的故事创意列表")
+    story_title = dspy.InputField(desc="故事标题")
+    story_body = dspy.InputField(desc="故事梗概")
     novelty_score = dspy.OutputField(desc="新颖性评分(1-10分)，评估创意的原创性和避免套路程度")
-    novelty_feedback = dspy.OutputField(desc="新颖性评价反馈，指出哪些创意新颖，哪些套路化")
+    novelty_feedback = dspy.OutputField(desc="新颖性评价反馈，指出创意是否新颖或套路化")
 
 class FeasibilityEvaluationSignature(dspy.Signature):
-    """Evaluate production feasibility of story ideas"""
+    """Evaluate production feasibility of a single story idea"""
     platform = dspy.InputField(desc="目标平台")
-    story_ideas = dspy.InputField(desc="待评估的故事创意列表")
+    story_title = dspy.InputField(desc="故事标题")
+    story_body = dspy.InputField(desc="故事梗概")
     feasibility_score = dspy.OutputField(desc="拍摄可行性评分(1-10分)，考虑成本、场景、演员等因素")
     feasibility_feedback = dspy.OutputField(desc="可行性评价反馈，分析制作难度和实际约束")
 
 class StructureEvaluationSignature(dspy.Signature):
-    """Evaluate structural clarity of story ideas"""
-    story_ideas = dspy.InputField(desc="待评估的故事创意列表")
+    """Evaluate structural clarity of a single story idea"""
+    story_title = dspy.InputField(desc="故事标题")
+    story_body = dspy.InputField(desc="故事梗概")
     structure_score = dspy.OutputField(desc="结构明晰度评分(1-10分)，评估起承转合的完整性")
     structure_feedback = dspy.OutputField(desc="结构评价反馈，分析故事结构的清晰度和逻辑性")
 
 class DetailEvaluationSignature(dspy.Signature):
-    """Evaluate the level of detail in story ideas"""
-    story_ideas = dspy.InputField(desc="待评估的故事创意列表")
+    """Evaluate the level of detail in a single story idea"""
+    story_title = dspy.InputField(desc="故事标题")
+    story_body = dspy.InputField(desc="故事梗概")
     detail_score = dspy.OutputField(desc="详细程度评分(1-10分)，评估故事梗概的丰富性、细节描述和情节展开程度")
-    detail_feedback = dspy.OutputField(desc="详细程度评价反馈，分析哪些创意描述充分，哪些过于简略")
+    detail_feedback = dspy.OutputField(desc="详细程度评价反馈，分析创意描述是否充分详细")
 
 class LogicalCoherenceEvaluationSignature(dspy.Signature):
-    """Evaluate logical coherence and internal consistency of story ideas"""
+    """Evaluate logical coherence and internal consistency of a single story idea"""
     genre = dspy.InputField(desc="故事题材类型")
-    story_ideas = dspy.InputField(desc="待评估的故事创意列表")
+    story_title = dspy.InputField(desc="故事标题")
+    story_body = dspy.InputField(desc="故事梗概")
     logical_coherence_score = dspy.OutputField(desc="逻辑连贯性评分(1-10分)，评估故事内在逻辑、时间线一致性、因果关系合理性，特别关注穿越、重生、多时空等复杂设定的逻辑漏洞")
     logical_coherence_feedback = dspy.OutputField(desc="逻辑连贯性评价反馈，指出故事中的逻辑漏洞、时间线矛盾、因果关系不合理等问题")
 
 class GenreConsistencySignature(dspy.Signature):
-    """Evaluate genre consistency of story ideas"""
+    """Evaluate genre consistency of a single story idea"""
     genre = dspy.InputField(desc="预期的故事题材类型")
-    story_ideas = dspy.InputField(desc="待评估的故事创意列表")
+    story_title = dspy.InputField(desc="故事标题")
+    story_body = dspy.InputField(desc="故事梗概")
     genre_score = dspy.OutputField(desc="题材一致性评分(1-10分)，评估与指定题材的匹配度")
     genre_feedback = dspy.OutputField(desc="题材一致性反馈，分析是否符合题材特征")
 
 class EngagementEvaluationSignature(dspy.Signature):
-    """Evaluate engagement potential of story ideas"""
+    """Evaluate engagement potential of a single story idea"""
     platform = dspy.InputField(desc="目标平台")
-    story_ideas = dspy.InputField(desc="待评估的故事创意列表")
+    story_title = dspy.InputField(desc="故事标题")
+    story_body = dspy.InputField(desc="故事梗概")
     engagement_score = dspy.OutputField(desc="吸引力评分(1-10分)，评估观众兴趣和情感共鸣")
     engagement_feedback = dspy.OutputField(desc="吸引力评价反馈，分析观众接受度和传播潜力")
 
@@ -101,57 +108,62 @@ class StoryIdeaEvaluator:
         content_str = json.dumps(content, sort_keys=True, ensure_ascii=False)
         return hashlib.md5(content_str.encode('utf-8')).hexdigest()
     
-    def evaluate(self, ideas: List[StoryIdea], request: BrainstormRequest) -> EvaluationResult:
-        """Comprehensive evaluation of story ideas with caching"""
+    def evaluate(self, idea: StoryIdea, request: BrainstormRequest) -> EvaluationResult:
+        """Comprehensive evaluation of a single story idea with caching"""
         
         # Check cache first
-        cache_key = self._get_cache_key(ideas, request)
+        cache_key = self._get_cache_key([idea], request)
         if cache_key in self.cache:
             print("  📋 使用缓存的评估结果")
             return self.cache[cache_key]
-        
-        formatted_ideas = format_ideas_for_evaluation(ideas)
         
         # Use evaluation LLM for all evaluations
         with dspy.context(lm=eval_lm):
             # Evaluate novelty
             novelty_result = self.novelty_evaluator(
                 genre=request.genre,
-                story_ideas=formatted_ideas
+                story_title=idea.title,
+                story_body=idea.body
             )
             
             # Evaluate feasibility
             feasibility_result = self.feasibility_evaluator(
                 platform=request.platform,
-                story_ideas=formatted_ideas
+                story_title=idea.title,
+                story_body=idea.body
             )
             
             # Evaluate structure
             structure_result = self.structure_evaluator(
-                story_ideas=formatted_ideas
+                story_title=idea.title,
+                story_body=idea.body
             )
             
             # Evaluate detail level
             detail_result = self.detail_evaluator(
-                story_ideas=formatted_ideas
+                story_title=idea.title,
+                story_body=idea.body
             )
             
             # Evaluate logical coherence
             logical_coherence_result = self.logical_coherence_evaluator(
                 genre=request.genre,
-                story_ideas=formatted_ideas
+                story_title=idea.title,
+                story_body=idea.body
             )
             
             # Evaluate genre consistency
             genre_result = self.genre_evaluator(
                 genre=request.genre,
-                story_ideas=formatted_ideas
+                story_title=idea.title,
+                story_body=idea.body
             )
             
             # Evaluate engagement
             engagement_result = self.engagement_evaluator(
                 platform=request.platform,
-                story_ideas=formatted_ideas
+                story_title=idea.title,
+                story_body=idea.body
             )
         
         # Parse scores (handle potential parsing errors)
@@ -271,14 +283,24 @@ class GroupedEvaluationMetrics:
     def create_group_metric(self, group_name: str, metric_names: List[str]):
         """Create a metric function for a specific group of evaluation criteria"""
         def group_metric(example, prediction, trace=None) -> float:
-            """Metric function for a specific group"""
+            """Metric function for a specific group - simplified for single idea evaluation"""
             try:
-                # Extract ideas from prediction
-                # With the new DSPy approach, prediction should be a list of StoryIdea objects
-                if hasattr(prediction, '__iter__') and not isinstance(prediction, str):
-                    ideas = list(prediction)
+                # Extract single idea from prediction
+                idea = None
+                
+                if hasattr(prediction, 'story_idea'):
+                    # DSPy prediction with story_idea attribute
+                    idea = prediction.story_idea
+                elif hasattr(prediction, 'title') and hasattr(prediction, 'body'):
+                    # DSPy prediction with title/body attributes
+                    from common import StoryIdea
+                    idea = StoryIdea(title=prediction.title, body=prediction.body)
                 else:
                     print(f"Warning: Unexpected prediction type: {type(prediction)}")
+                    return 0.0
+                
+                if not idea:
+                    print(f"Warning: No idea extracted from prediction")
                     return 0.0
                 
                 # Create request from example
@@ -288,12 +310,12 @@ class GroupedEvaluationMetrics:
                     requirements_section=getattr(example, 'requirements_section', '')
                 )
                 
-                # Evaluate ideas
-                result = self.evaluator.evaluate(ideas, request)
+                # Evaluate single idea
+                result = self.evaluator.evaluate(idea, request)
                 
                 # Calculate group score
                 if group_name == 'overall':
-                    # Use overall score for single-group optimization (current approach)
+                    # Use overall score for single-group optimization
                     return result.overall_score / 10.0
                 else:
                     # Calculate average of metrics in this group

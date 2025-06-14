@@ -461,7 +461,7 @@ def create_synthetic_training_examples() -> List[dspy.Example]:
         configured_example = example.with_inputs("genre", "platform", "requirements_section")
         configured_examples.append(configured_example)
     
-    return configured_examples 
+    return configured_examples
 
 def create_training_examples() -> List[dspy.Example]:
     """Create combined training examples using both golden examples and synthetic examples"""
@@ -512,51 +512,29 @@ def create_group_specific_training_examples(group_name: str) -> List[dspy.Exampl
         # Return all examples for overall/flat optimization
         return base_examples
 
-def generate_ideas_with_retry(module, request: BrainstormRequest, max_retries: int = 2):
-    """Generate ideas with retry logic for JSON parsing failures"""
-    for attempt in range(max_retries + 1):
-        try:
-            # Generate multiple ideas by calling the module multiple times
-            ideas = []
-            for i in range(2):  # Generate 2 ideas for faster optimization
-                prediction = module(
-                    genre=request.genre,
-                    platform=request.platform,
-                    requirements_section=request.requirements_section
-                )
-                # Extract StoryIdea from DSPy prediction
-                idea = prediction.story_idea if hasattr(prediction, 'story_idea') else StoryIdea(title=prediction.title, body=prediction.body)
-                ideas.append(idea)
-            
-            if len(ideas) == 0:
-                if attempt < max_retries:
-                    print(f"  JSON解析失败，重试 {attempt + 1}/{max_retries}")
-                    continue
-                else:
-                    print(f"  ❌ JSON解析失败，达到最大重试次数，停止执行")
-                    sys.exit(1)
-            
-            # Log successful generation
-            logger.log_optimization_step("idea_generation_success", {
-                "genre": request.genre,
-                "platform": request.platform,
-                "requirements": request.requirements_section,
-                "generated_ideas_count": len(ideas),
-                "attempt_number": attempt + 1,
-                "ideas_preview": [f"{idea.title}: {idea.body[:100]}..." if len(idea.body) > 100 else f"{idea.title}: {idea.body}" for idea in ideas[:2]]  # First 2 ideas preview
-            }, "generation")
-            
-            return ideas
-            
-        except Exception as e:
-            if attempt < max_retries:
-                print(f"  生成失败，重试 {attempt + 1}/{max_retries}: {e}")
-                logger.log_error(e, f"idea_generation_attempt_{attempt + 1}")
-                continue
-            else:
-                logger.log_error(e, f"idea_generation_final_failure_after_{max_retries}_attempts")
-                print(f"  ❌ 生成失败，达到最大重试次数: {e}")
-                sys.exit(1)
+def generate_ideas(module, request: BrainstormRequest, num_ideas: int = 2):
+    """Generate ideas using DSPy module - pure DSPy approach"""
+    ideas = []
+    for i in range(num_ideas):
+        prediction = module(
+                genre=request.genre,
+                platform=request.platform,
+                requirements_section=request.requirements_section
+            )
+        # Extract StoryIdea from DSPy prediction
+        idea = prediction.story_idea if hasattr(prediction, 'story_idea') else StoryIdea(title=prediction.title, body=prediction.body)
+        ideas.append(idea)
+    
+    # Log successful generation
+    logger.log_optimization_step("idea_generation_success", {
+        "genre": request.genre,
+        "platform": request.platform,
+        "requirements": request.requirements_section,
+        "generated_ideas_count": len(ideas),
+        "ideas_preview": [f"{idea.title}: {idea.body[:100]}..." if len(idea.body) > 100 else f"{idea.title}: {idea.body}" for idea in ideas[:2]]
+    }, "generation")
+    
+    return ideas
 
 def run_flat_optimization(auto_mode: str = "medium") -> Tuple[dspy.Module, List[dspy.Example]]:
     """Run flat (single-group) optimization - current approach"""
@@ -730,15 +708,15 @@ def evaluate_model_performance(module, test_examples: List[dspy.Example], name: 
                 requirements_section=example.requirements_section
             )
             
-            # Generate ideas with retry logic
-            ideas = generate_ideas_with_retry(module, request)
+            # Generate ideas using DSPy
+            ideas = generate_ideas(module, request)
             
             # Log generated examples for this test case
             ideas_as_strings = [f"{idea.title}: {idea.body}" for idea in ideas]
             logger.log_generated_examples(ideas_as_strings, f"{name}_case_{i+1}_{example.genre}")
             
             # Evaluate
-            result = evaluator.evaluate(ideas, request)
+            result = evaluator.evaluate(ideas[0], request)
             total_scores.append(result.overall_score)
             
             # Collect detailed scores
