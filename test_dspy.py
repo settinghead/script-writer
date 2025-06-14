@@ -25,6 +25,10 @@ import mlflow
 
 mlflow.set_experiment("DSPy Quickstart")
 
+mlflow.dspy.autolog()
+
+
+
 from dataset import csv_train_dataset, csv_test_dataset, unique_csv_train_labels
 
 class TextClassificationSignature(dspy.Signature):
@@ -52,3 +56,19 @@ print(text_classifier(text=message))
 
 message = "I enjoy ice skating"
 print(text_classifier(text=message))
+
+from dspy.teleprompt import BootstrapFewShotWithRandomSearch
+
+
+def validate_classification(example, prediction, trace=None) -> bool:
+  return example.label == prediction.label
+
+
+optimizer = BootstrapFewShotWithRandomSearch(
+  metric=validate_classification,
+  num_candidate_programs=5,
+  max_bootstrapped_demos=2,
+  num_threads=1,
+)
+
+compiled_pe = optimizer.compile(copy(TextClassifier()), trainset=train_dataset)
