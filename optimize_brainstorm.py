@@ -104,7 +104,7 @@ def run_mipro_optimization(auto_mode: str = "medium"):
             metric=metric,
             auto=auto_mode,  # "light", "medium", or "heavy"
             max_bootstrapped_demos=4,
-            num_threads=5,
+            num_threads=8,
             max_labeled_demos=4,
             verbose=True,
             track_stats=True,
@@ -178,14 +178,17 @@ def save_optimized_model(module, name: str, score: float):
             # Log metrics
             mlflow.log_metric("average_score", score)
             
-            # Log model
+            # Log model with proper input example format
+            input_example = {
+                "genre": "都市爱情",
+                "platform": "抖音",
+                "requirements_section": "浪漫甜蜜的爱情故事"
+            }
+            
             model_info = mlflow.dspy.log_model(
                 module,
                 artifact_path="model",
-                input_example=BrainstormRequest(
-                    genre="都市爱情",
-                    platform="抖音"
-                )
+                input_example=input_example
             )
             
             print(f"✅ 模型已保存: {model_info.model_uri}")

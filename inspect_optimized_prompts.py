@@ -41,10 +41,12 @@ def inspect_optimized_module(optimized_module, name: str = "optimized_module"):
             print(f"\n🏷️  Signature: {sig.__class__.__name__}")
             print("  输入字段:")
             for name, field in sig.input_fields.items():
-                print(f"    - {name}: {field.desc}")
+                desc = getattr(field, 'desc', getattr(field, 'description', str(field)))
+                print(f"    - {name}: {desc}")
             print("  输出字段:")
             for name, field in sig.output_fields.items():
-                print(f"    - {name}: {field.desc}")
+                desc = getattr(field, 'desc', getattr(field, 'description', str(field)))
+                print(f"    - {name}: {desc}")
         
         # Look for optimized prompts/instructions
         if hasattr(predictor, 'extended_signature'):
@@ -91,8 +93,10 @@ def save_optimized_prompts(module, name: str) -> str:
             predictor_info['signature'] = {
                 'name': sig.__class__.__name__,
                 'fields': {
-                    'inputs': {name: field.desc for name, field in sig.input_fields.items()},
-                    'outputs': {name: field.desc for name, field in sig.output_fields.items()}
+                    'inputs': {name: getattr(field, 'desc', getattr(field, 'description', str(field))) 
+                              for name, field in sig.input_fields.items()},
+                    'outputs': {name: getattr(field, 'desc', getattr(field, 'description', str(field))) 
+                               for name, field in sig.output_fields.items()}
                 }
             }
         

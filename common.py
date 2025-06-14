@@ -18,7 +18,7 @@ lm = dspy.LM(
     api_key=LLM_API_KEY,
     api_base=LLM_BASE_URL,
     max_tokens=1000,
-    temperature=1.2,  # Increased from 0.7 for more creative brainstorming
+    temperature=1.7,  # Increased from 0.7 for more creative brainstorming
 )
 dspy.settings.configure(lm=lm)
 
