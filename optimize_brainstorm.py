@@ -16,53 +16,45 @@ from evaluators import StoryIdeaEvaluator, create_evaluation_metric
 from common import BrainstormRequest
 from inspect_optimized_prompts import inspect_optimized_module, save_optimized_prompts
 
-class BrainstormExample(dspy.Example):
-    """Example class for brainstorm training data"""
-    def __init__(self, genre: str, platform: str, requirements_section: str = ""):
-        super().__init__(
-            genre=genre,
-            platform=platform,
-            requirements_section=requirements_section
-        )
-
-def create_training_examples() -> List[BrainstormExample]:
+def create_training_examples() -> List[dspy.Example]:
     """Create diverse training examples for optimization using real genre system"""
-    examples = [
+    examples_data = [
         # 女频 - 爱情类
-        BrainstormExample("甜宠", "抖音", "浪漫甜蜜的爱情故事，适合年轻观众"),
-        BrainstormExample("虐恋", "小红书", "充满波折、痛苦和情感挣扎的爱情故事"),
-        BrainstormExample("霸总", "快手", "高冷型霸道总裁，节奏紧凑"),
+        {"genre": "甜宠", "platform": "抖音", "requirements_section": "浪漫甜蜜的爱情故事，适合年轻观众"},
+        {"genre": "虐恋", "platform": "小红书", "requirements_section": "充满波折、痛苦和情感挣扎的爱情故事"},
+        {"genre": "霸总", "platform": "快手", "requirements_section": "高冷型霸道总裁，节奏紧凑"},
         
         # 女频 - 设定类
-        BrainstormExample("穿越", "抖音", "身穿或魂穿，古代现代背景都可"),
-        BrainstormExample("重生", "小红书", "重生题材，复仇或改变命运"),
-        BrainstormExample("马甲", "快手", "多重身份设定，反转惊喜"),
-        BrainstormExample("替身", "抖音", "真假千金，双胞胎替换"),
+        {"genre": "穿越", "platform": "抖音", "requirements_section": "身穿或魂穿，古代现代背景都可"},
+        {"genre": "重生", "platform": "小红书", "requirements_section": "重生题材，复仇或改变命运"},
+        {"genre": "马甲", "platform": "快手", "requirements_section": "多重身份设定，反转惊喜"},
+        {"genre": "替身", "platform": "抖音", "requirements_section": "真假千金，双胞胎替换"},
         
         # 女频 - 其他类型
-        BrainstormExample("萌宝", "小红书", "可爱萌娃，温馨家庭"),
-        BrainstormExample("团宠", "快手", "被全家宠爱的设定"),
-        BrainstormExample("娱乐圈", "抖音", "娱乐圈背景，明星生活"),
+        {"genre": "萌宝", "platform": "小红书", "requirements_section": "可爱萌娃，温馨家庭"},
+        {"genre": "团宠", "platform": "快手", "requirements_section": "被全家宠爱的设定"},
+        {"genre": "娱乐圈", "platform": "抖音", "requirements_section": "娱乐圈背景，明星生活"},
         
         # 男频 - 设定类
-        BrainstormExample("玄幻", "快手", "修炼成仙，升级打怪"),
-        BrainstormExample("末世", "抖音", "末日求生，丧尸题材，制作成本可控"),
+        {"genre": "玄幻", "platform": "快手", "requirements_section": "修炼成仙，升级打怪"},
+        {"genre": "末世", "platform": "抖音", "requirements_section": "末日求生，丧尸题材，制作成本可控"},
         
         # 男频 - 逆袭类
-        BrainstormExample("战神", "小红书", "强者归来，兵王题材"),
-        BrainstormExample("神豪", "抖音", "一夜暴富，点石成金"),
-        BrainstormExample("赘婿", "快手", "赘婿逆袭，扮猪吃老虎"),
-        BrainstormExample("逆袭", "小红书", "小人物成长，马甲大佬"),
-        BrainstormExample("金手指", "抖音", "超能力，系统选中"),
-        BrainstormExample("高手下山", "快手", "隐世高手重出江湖"),
+        {"genre": "战神", "platform": "小红书", "requirements_section": "强者归来，兵王题材"},
+        {"genre": "神豪", "platform": "抖音", "requirements_section": "一夜暴富，点石成金"},
+        {"genre": "赘婿", "platform": "快手", "requirements_section": "赘婿逆袭，扮猪吃老虎"},
+        {"genre": "逆袭", "platform": "小红书", "requirements_section": "小人物成长，马甲大佬"},
+        {"genre": "金手指", "platform": "抖音", "requirements_section": "超能力，系统选中"},
+        {"genre": "高手下山", "platform": "快手", "requirements_section": "隐世高手重出江湖"},
         
         # 男频 - 其他类型
-        BrainstormExample("神医", "小红书", "医术高超，悬壶济世"),
+        {"genre": "神医", "platform": "小红书", "requirements_section": "医术高超，悬壶济世"},
     ]
     
-    # Configure examples with proper input fields for DSPy
+    # Create DSPy examples and configure with proper input fields
     configured_examples = []
-    for example in examples:
+    for data in examples_data:
+        example = dspy.Example(**data)
         configured_example = example.with_inputs("genre", "platform", "requirements_section")
         configured_examples.append(configured_example)
     
@@ -163,7 +155,7 @@ def run_copro_optimization():
         print("停止执行")
         sys.exit(1)
 
-def evaluate_model_performance(module, test_examples: List[BrainstormExample], name: str):
+def evaluate_model_performance(module, test_examples: List[dspy.Example], name: str):
     """Evaluate model performance on test examples"""
     print(f"\n📊 评估 {name} 模型性能")
     print("-" * 40)
@@ -236,11 +228,11 @@ def compare_models():
     
     # Create test examples (separate from training)
     test_examples = [
-        BrainstormExample("先婚后爱", "抖音", "契约婚姻，情感真实"),
-        BrainstormExample("恶女", "小红书", "恶毒女配逆袭，双重人格"),
-        BrainstormExample("残疾大佬", "快手", "残疾大佬隐藏身份"),
-        BrainstormExample("后宫", "抖音", "后宫争斗，权谋设计"),
-        BrainstormExample("复仇", "小红书", "复仇主题，情节紧凑")
+        dspy.Example(genre="先婚后爱", platform="抖音", requirements_section="契约婚姻，情感真实"),
+        dspy.Example(genre="恶女", platform="小红书", requirements_section="恶毒女配逆袭，双重人格"),
+        dspy.Example(genre="残疾大佬", platform="快手", requirements_section="残疾大佬隐藏身份"),
+        dspy.Example(genre="后宫", platform="抖音", requirements_section="后宫争斗，权谋设计"),
+        dspy.Example(genre="复仇", platform="小红书", requirements_section="复仇主题，情节紧凑")
     ]
     
     results = {}
