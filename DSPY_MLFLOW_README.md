@@ -134,13 +134,14 @@ optimized_module = optimizer.compile(base_module, trainset=training_examples)
 
 ## 评估维度
 
-系统使用五个维度评估创意质量：
+系统使用六个维度评估创意质量：
 
-1. **新颖性 (25%)** - 避免套路化，创意原创性
-2. **可行性 (20%)** - 拍摄成本、场景复杂度等实际因素
-3. **结构性 (15%)** - 起承转合完整性，逻辑清晰度
-4. **题材一致性 (20%)** - 与指定题材的匹配度
-5. **吸引力 (20%)** - 观众兴趣和传播潜力
+1. **新颖性 (20%)** - 避免套路化，创意原创性
+2. **可行性 (15%)** - 拍摄成本、场景复杂度等实际因素
+3. **结构性 (10%)** - 起承转合完整性，逻辑清晰度
+4. **详细程度 (20%)** - 故事梗概的丰富性、细节描述和情节展开程度
+5. **题材一致性 (15%)** - 与指定题材的匹配度
+6. **吸引力 (20%)** - 观众兴趣和传播潜力
 
 ## 优化策略
 
@@ -381,3 +382,4 @@ def parse_story_ideas(json_response: str) -> List[StoryIdea]:
             ideas_data = json.loads(matches[0])
         else:
             raise json.JSONDecodeError("No valid JSON array found", cleaned_response, 0) 
+```

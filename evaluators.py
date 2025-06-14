@@ -22,6 +22,12 @@ class StructureEvaluationSignature(dspy.Signature):
     structure_score = dspy.OutputField(desc="结构明晰度评分(1-10分)，评估起承转合的完整性")
     structure_feedback = dspy.OutputField(desc="结构评价反馈，分析故事结构的清晰度和逻辑性")
 
+class DetailEvaluationSignature(dspy.Signature):
+    """Evaluate the level of detail in story ideas"""
+    story_ideas = dspy.InputField(desc="待评估的故事创意列表")
+    detail_score = dspy.OutputField(desc="详细程度评分(1-10分)，评估故事梗概的丰富性、细节描述和情节展开程度")
+    detail_feedback = dspy.OutputField(desc="详细程度评价反馈，分析哪些创意描述充分，哪些过于简略")
+
 class GenreConsistencySignature(dspy.Signature):
     """Evaluate genre consistency of story ideas"""
     genre = dspy.InputField(desc="预期的故事题材类型")
@@ -45,6 +51,7 @@ class StoryIdeaEvaluator:
             self.novelty_evaluator = dspy.Predict(NoveltyEvaluationSignature)
             self.feasibility_evaluator = dspy.Predict(FeasibilityEvaluationSignature)
             self.structure_evaluator = dspy.Predict(StructureEvaluationSignature)
+            self.detail_evaluator = dspy.Predict(DetailEvaluationSignature)
             self.genre_evaluator = dspy.Predict(GenreConsistencySignature)
             self.engagement_evaluator = dspy.Predict(EngagementEvaluationSignature)
     
@@ -72,6 +79,11 @@ class StoryIdeaEvaluator:
                 story_ideas=formatted_ideas
             )
             
+            # Evaluate detail level
+            detail_result = self.detail_evaluator(
+                story_ideas=formatted_ideas
+            )
+            
             # Evaluate genre consistency
             genre_result = self.genre_evaluator(
                 genre=request.genre,
@@ -88,13 +100,14 @@ class StoryIdeaEvaluator:
         novelty_score = self._parse_score(novelty_result.novelty_score)
         feasibility_score = self._parse_score(feasibility_result.feasibility_score)
         structure_score = self._parse_score(structure_result.structure_score)
+        detail_score = self._parse_score(detail_result.detail_score)
         genre_score = self._parse_score(genre_result.genre_score)
         engagement_score = self._parse_score(engagement_result.engagement_score)
         
         # Calculate weighted overall score
         overall_score = self._calculate_overall_score(
             novelty_score, feasibility_score, structure_score, 
-            genre_score, engagement_score
+            detail_score, genre_score, engagement_score
         )
         
         # Combine feedback
@@ -102,6 +115,7 @@ class StoryIdeaEvaluator:
             novelty_result.novelty_feedback,
             feasibility_result.feasibility_feedback,
             structure_result.structure_feedback,
+            detail_result.detail_feedback,
             genre_result.genre_feedback,
             engagement_result.engagement_feedback
         )
@@ -110,6 +124,7 @@ class StoryIdeaEvaluator:
             novelty_score=novelty_score,
             feasibility_score=feasibility_score,
             structure_score=structure_score,
+            detail_score=detail_score,
             genre_consistency_score=genre_score,
             engagement_score=engagement_score,
             overall_score=overall_score,
@@ -130,20 +145,22 @@ class StoryIdeaEvaluator:
             return 5.0
     
     def _calculate_overall_score(self, novelty: float, feasibility: float, 
-                               structure: float, genre: float, engagement: float) -> float:
+                               structure: float, detail: float, genre: float, engagement: float) -> float:
         """Calculate weighted overall score"""
-        # Weights: novelty and engagement are most important
+        # Weights: novelty, detail, and engagement are most important
         weights = {
-            'novelty': 0.25,
-            'feasibility': 0.20,
-            'structure': 0.15,
-            'genre': 0.20,
+            'novelty': 0.20,
+            'feasibility': 0.15,
+            'structure': 0.10,
+            'detail': 0.20,      # High weight for detail as requested
+            'genre': 0.15,
             'engagement': 0.20
         }
         
         return (novelty * weights['novelty'] + 
                 feasibility * weights['feasibility'] + 
                 structure * weights['structure'] + 
+                detail * weights['detail'] +
                 genre * weights['genre'] + 
                 engagement * weights['engagement'])
     
@@ -153,8 +170,9 @@ class StoryIdeaEvaluator:
             f"【新颖性】{feedbacks[0]}",
             f"【可行性】{feedbacks[1]}",
             f"【结构性】{feedbacks[2]}",
-            f"【题材一致性】{feedbacks[3]}",
-            f"【吸引力】{feedbacks[4]}"
+            f"【详细程度】{feedbacks[3]}",
+            f"【题材一致性】{feedbacks[4]}",
+            f"【吸引力】{feedbacks[5]}"
         ]
         return "\n\n".join(sections)
 
