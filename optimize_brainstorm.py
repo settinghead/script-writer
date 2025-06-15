@@ -941,26 +941,34 @@ def run_optimization():
 def main():
     """Main optimization workflow"""
     try:
+        # Extract model name for experiment naming (remove provider prefix if present)
+        model_name_clean = LLM_MODEL_NAME.replace("openai/", "").replace("/", "_")
+        
+        # Setup MLflow with mode-specific and model-specific experiment name
+        experiment_name = f"Brainstorm_{OPTIMIZATION_MODE.title()}_{model_name_clean}_Optimization"
+        
         # Log initial configuration
         config = {
             "optimization_mode": OPTIMIZATION_MODE,
+            "model_name": LLM_MODEL_NAME,
+            "model_name_clean": model_name_clean,
             "timestamp": datetime.now().isoformat(),
-            "mlflow_experiment": f"Brainstorm_{OPTIMIZATION_MODE.title()}_Optimization",
+            "mlflow_experiment": experiment_name,
             "python_version": sys.version,
             "script_path": __file__
         }
         logger.log_configuration(config)
         
-        # Setup MLflow with mode-specific experiment name
-        experiment_name = f"Brainstorm_{OPTIMIZATION_MODE.title()}_Optimization"
         mlflow.set_experiment(experiment_name)
         mlflow.dspy.autolog()
         
         print(f"📊 MLflow 实验: {experiment_name}")
+        print(f"🤖 使用模型: {LLM_MODEL_NAME}")
         
         # Log MLflow setup
         logger.log_optimization_step("mlflow_setup", {
             "experiment_name": experiment_name,
+            "model_name": LLM_MODEL_NAME,
             "autolog_enabled": True
         }, "initialization")
         

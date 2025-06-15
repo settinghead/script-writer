@@ -147,7 +147,7 @@ def setup_environment():
     
     print("✅ 环境设置完成")
 
-def load_optimized_from_mlflow(experiment_name: str = "Brainstorm_Flat_Optimization") -> Optional[dspy.Module]:
+def load_optimized_from_mlflow(experiment_name: str = "Brainstorm_Flat_deepseek-chat_Optimization") -> Optional[dspy.Module]:
     """Load optimized module from MLflow"""
     print(f"📦 从 MLflow 加载优化模型 (实验: {experiment_name})")
     
