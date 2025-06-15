@@ -1,0 +1,52 @@
+{
+  "name": "flat_optimization",
+  "type": "BrainstormModule",
+  "timestamp": "2025-06-15 01:39:37.744142",
+  "predictor": {
+    "type": "Predict",
+    "has_demos": true,
+    "demos": [
+      {
+        "genre": "甜宠",
+        "platform": "抖音",
+        "requirements_section": "要求: 职场精英, 双强CP, 谈判专家, 微表情专家, 悬疑破案",
+        "title": "心机较量",
+        "body": "谈判专家姜然在一次跨国商业谈判中遭遇神秘黑客袭击，微表情专家顾言突然空降介入调查。她精准解读每个人的表情暗流，逐渐抽丝剥茧，二人由对峙到默契，在携手揭开幕后黑手身份的过程中不断试探彼此底线。随着线索步步惊心地交织，理性与情感交锋间，他们开始分不清是棋子还是情愫占了上风。"
+      },
+      {
+        "genre": "虐恋",
+        "platform": "小红书",
+        "requirements_section": "要求: 青梅竹马, 政治联姻, 追妻火葬场, 破镜难圆, 悲剧结局",
+        "title": "情深难归",
+        "body": "青梅竹马的林悠和顾琛，因家族政治联姻被迫分开。多年后，她远嫁他人，他才惊觉心底最爱仍是她。为追寻旧情，他步步纠缠，却在一次次拉扯中将她推得更远。她早已心灰意冷，即使他曾燃起追妻烈火，最终也只余一场葬礼般的诀别。"
+      },
+      {
+        "genre": "复仇",
+        "platform": "快手",
+        "requirements_section": "要求: 复仇, 古装, 宫廷, 冒充身份, 废太子",
+        "title": "废太子的复仇",
+        "body": "前世被权谋陷害，太子萧恒含冤而死。重生归来，他冒充当朝宠臣的身份，混入宫廷，只为揭开真相、血债血偿。从冷漠王爷到奸佞宰相，每一步都藏着杀机。他利用皇上的信任，暗中结盟昔日旧部，逐步揭露当年阴谋，更发现幕后黑手竟是最亲近之人。宫墙之下，一场震撼江山的复仇正式上演！"
+      },
+      {
+        "genre": "复仇",
+        "platform": "快手",
+        "requirements_section": "要求: 复仇, 现代, 豪门, 特工, 双胞胎"
+      }
+    ],
+    "num_demos": 4,
+    "signature": {
+      "name": "SignatureMeta",
+      "fields": {
+        "inputs": {
+          "genre": null,
+          "platform": null,
+          "requirements_section": null
+        },
+        "outputs": {
+          "title": null,
+          "body": null
+        }
+      }
+    }
+  }
+}

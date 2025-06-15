@@ -18,7 +18,7 @@ from dspy.teleprompt import MIPROv2
 
 from brainstorm_module import BrainstormModule
 from evaluators import StoryIdeaEvaluator, create_evaluation_metric, create_grouped_evaluation_metrics
-from common import BrainstormRequest, StoryIdea
+from common import BrainstormRequest, StoryIdea, LLM_MODEL_NAME
 from inspect_optimized_prompts import inspect_optimized_module, save_optimized_prompts
 
 # CONFIGURATION: Set optimization mode
@@ -512,29 +512,27 @@ def create_group_specific_training_examples(group_name: str) -> List[dspy.Exampl
         # Return all examples for overall/flat optimization
         return base_examples
 
-def generate_ideas(module, request: BrainstormRequest, num_ideas: int = 2):
-    """Generate ideas using DSPy module - pure DSPy approach"""
-    ideas = []
-    for i in range(num_ideas):
-        prediction = module(
-                genre=request.genre,
-                platform=request.platform,
-                requirements_section=request.requirements_section
-            )
-        # Extract StoryIdea from DSPy prediction
-        idea = prediction.story_idea if hasattr(prediction, 'story_idea') else StoryIdea(title=prediction.title, body=prediction.body)
-        ideas.append(idea)
+def generate_single_idea(module, request: BrainstormRequest):
+    """Generate a single idea using DSPy module - pure DSPy approach"""
+    prediction = module(
+        genre=request.genre,
+        platform=request.platform,
+        requirements_section=request.requirements_section
+    )
+    
+    # Extract StoryIdea from DSPy prediction
+    idea = prediction.story_idea if hasattr(prediction, 'story_idea') else StoryIdea(title=prediction.title, body=prediction.body)
     
     # Log successful generation
     logger.log_optimization_step("idea_generation_success", {
         "genre": request.genre,
         "platform": request.platform,
         "requirements": request.requirements_section,
-        "generated_ideas_count": len(ideas),
-        "ideas_preview": [f"{idea.title}: {idea.body[:100]}..." if len(idea.body) > 100 else f"{idea.title}: {idea.body}" for idea in ideas[:2]]
+        "generated_idea_title": idea.title,
+        "generated_idea_length": len(idea.body)
     }, "generation")
     
-    return ideas
+    return idea
 
 def run_flat_optimization(auto_mode: str = "medium") -> Tuple[dspy.Module, List[dspy.Example]]:
     """Run flat (single-group) optimization - current approach"""
@@ -708,15 +706,15 @@ def evaluate_model_performance(module, test_examples: List[dspy.Example], name: 
                 requirements_section=example.requirements_section
             )
             
-            # Generate ideas using DSPy
-            ideas = generate_ideas(module, request)
+            # Generate single idea using DSPy
+            idea = generate_single_idea(module, request)
             
-            # Log generated examples for this test case
-            ideas_as_strings = [f"{idea.title}: {idea.body}" for idea in ideas]
-            logger.log_generated_examples(ideas_as_strings, f"{name}_case_{i+1}_{example.genre}")
+            # Log generated example for this test case
+            idea_as_string = f"{idea.title}: {idea.body}"
+            logger.log_generated_examples([idea_as_string], f"{name}_case_{i+1}_{example.genre}")
             
             # Evaluate
-            result = evaluator.evaluate(ideas[0], request)
+            result = evaluator.evaluate(idea, request)
             total_scores.append(result.overall_score)
             
             # Collect detailed scores
@@ -734,7 +732,7 @@ def evaluate_model_performance(module, test_examples: List[dspy.Example], name: 
                 "genre": example.genre,
                 "platform": example.platform,
                 "requirements": example.requirements_section,
-                "generated_ideas": [{"title": idea.title, "body": idea.body} for idea in ideas],
+                "generated_idea": {"title": idea.title, "body": idea.body},
                 "overall_score": result.overall_score,
                 "detailed_scores": {
                     "novelty": result.novelty_score,
