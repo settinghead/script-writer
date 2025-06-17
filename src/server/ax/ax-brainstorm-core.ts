@@ -1,5 +1,6 @@
 import { AxAI, AxChainOfThought } from '@ax-llm/ax';
 import { StoryIdea, BrainstormRequest } from './ax-brainstorm-types';
+import { loadExamples } from './exampleLoader';
 
 // Create signature using template literals (similar to DSPy signature)
 export const brainstormSignature = `
@@ -28,7 +29,24 @@ export class BrainstormProgram extends AxChainOfThought<BrainstormRequest, Story
             `genre:string "Story genre like 甜宠, 虐恋, etc", platform:string "Platform like 抖音, 快手, etc", requirements_section:string "Specific requirements" -> title:string "Creative story title (3-7 Chinese characters)", body:string "Story synopsis describing plot, characters and conflict (50-180 characters)"`
         );
 
-        // TODO: Add demos once we understand the correct format for ax library
+        // Load examples from JSON files for few-shot prompting
+        try {
+            const examples = loadExamples();
+            console.log(`Loaded ${examples.length} examples for few-shot prompting`);
+            this.setExamples(examples);
+        } catch (error) {
+            console.warn('Failed to load examples, using fallback examples:', error);
+            // Fallback to hardcoded examples if loading fails
+            this.setExamples([
+                {
+                    genre: '甜宠',
+                    platform: '抖音',
+                    requirements_section: '现代都市，温馨浪漫',
+                    title: '暖心总裁',
+                    body: '冷酷总裁遇见温柔护士，从误会到相爱，他用无微不至的关怀融化她的心，两人在都市中谱写甜蜜恋曲。'
+                }
+            ]);
+        }
     }
 
     // Override forward method for custom generation logic
