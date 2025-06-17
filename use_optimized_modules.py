@@ -241,25 +241,25 @@ def compare_models(baseline_module: dspy.Module, optimized_module: dspy.Module, 
         print("-" * 40)
         
         # Generate with baseline
-        print("🔸 基础模型:")
-        try:
-            baseline_result = baseline_module(
-                genre=request.genre,
-                platform=request.platform,
-                requirements_section=request.requirements_section
-            )
-            baseline_idea = baseline_result.story_idea if hasattr(baseline_result, 'story_idea') else StoryIdea(title=baseline_result.title, body=baseline_result.body)
-            print(f"  标题: {baseline_idea.title}")
+        # print("🔸 基础模型:")
+        # try:
+        #     baseline_result = baseline_module(
+        #         genre=request.genre,
+        #         platform=request.platform,
+        #         requirements_section=request.requirements_section
+        #     )
+        #     baseline_idea = baseline_result.story_idea if hasattr(baseline_result, 'story_idea') else StoryIdea(title=baseline_result.title, body=baseline_result.body)
+        #     print(f"  标题: {baseline_idea.title}")
             
-            # Show full content or truncated based on max_content_length
-            if max_content_length and len(baseline_idea.body) > max_content_length:
-                print(f"  内容: {baseline_idea.body[:max_content_length]}...")
-                print(f"  (内容长度: {len(baseline_idea.body)} 字符，已截取前 {max_content_length} 字符)")
-            else:
-                print(f"  内容: {baseline_idea.body}")
-                print(f"  (内容长度: {len(baseline_idea.body)} 字符)")
-        except Exception as e:
-            print(f"  ❌ 生成失败: {e}")
+        #     # Show full content or truncated based on max_content_length
+        #     if max_content_length and len(baseline_idea.body) > max_content_length:
+        #         print(f"  内容: {baseline_idea.body[:max_content_length]}...")
+        #         print(f"  (内容长度: {len(baseline_idea.body)} 字符，已截取前 {max_content_length} 字符)")
+        #     else:
+        #         print(f"  内容: {baseline_idea.body}")
+        #         print(f"  (内容长度: {len(baseline_idea.body)} 字符)")
+        # except Exception as e:
+        #     print(f"  ❌ 生成失败: {e}")
         
         # Generate with optimized
         print("\n🔹 优化模型:")
