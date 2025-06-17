@@ -5,72 +5,39 @@ import { BrainstormProgram } from './ax-brainstorm-core';
 import { BrainstormRequest, StoryIdea } from './ax-brainstorm-types';
 import { loadExamples } from './exampleLoader';
 import { getLLMCredentials } from '../services/LLMConfig';
+import { createEvaluationSystem } from './ax-evaluation-system-simple';
 
-// Evaluation metric for story quality
-const storyQualityMetric: AxMetricFn = ({ prediction, example }) => {
+// Create evaluation system instance
+const evaluationSystem = createEvaluationSystem();
+
+// Cache for professional evaluations to avoid repeated API calls
+const evaluationCache = new Map<string, number>();
+
+// Professional evaluation metric using the full evaluation system
+const professionalEvaluationMetric: AxMetricFn = ({ prediction, example }) => {
     const pred = prediction as unknown as StoryIdea;
     const exp = example as BrainstormRequest & StoryIdea;
 
-    let score = 0;
+    // Create cache key based on prediction content
+    const cacheKey = `${pred.title}|${pred.body}|${exp.genre}|${exp.platform}`;
 
-    // Title quality (30% weight)
-    if (pred.title && pred.title.length >= 3 && pred.title.length <= 10) {
-        score += 0.3;
+    // Return cached result if available
+    if (evaluationCache.has(cacheKey)) {
+        return evaluationCache.get(cacheKey)!;
     }
 
-    // Body length appropriateness (40% weight)
-    if (pred.body && pred.body.length >= 50 && pred.body.length <= 200) {
-        score += 0.4;
-    }
-
-    // Content relevance to genre (30% weight)
-    if (pred.body && exp.genre && pred.body.includes(exp.genre)) {
-        score += 0.3;
-    }
-
-    return score;
-};
-
-// Alternative similarity-based metric
-const semanticSimilarityMetric: AxMetricFn = ({ prediction, example }) => {
-    const pred = prediction as unknown as StoryIdea;
-    const exp = example as BrainstormRequest & StoryIdea;
-
-    // Simple similarity based on genre matching and length appropriateness
-    let score = 0;
-
-    // Check if generated story matches expected genre characteristics
-    if (pred.title && pred.body) {
-        // Basic structural validation
-        if (pred.title.length >= 3 && pred.title.length <= 10) score += 0.25;
-        if (pred.body.length >= 50 && pred.body.length <= 200) score += 0.25;
-
-        // Genre relevance (simple keyword matching)
-        const genreKeywords = {
-            '甜宠': ['甜', '爱', '恋', '温柔', '暖'],
-            '虐恋': ['痛', '误会', '分离', '虐'],
-            '穿越': ['穿越', '古代', '现代', '时空'],
-            '霸总': ['总裁', '霸道', '冷酷', '豪门']
-        };
-
-        const keywords = genreKeywords[exp.genre as keyof typeof genreKeywords] || [];
-        const matchCount = keywords.filter(keyword =>
-            pred.title.includes(keyword) || pred.body.includes(keyword)
-        ).length;
-
-        score += (matchCount / Math.max(keywords.length, 1)) * 0.5;
-    }
-
-    return Math.min(score, 1.0);
+    // If not cached, this means we need pre-evaluation or the metric will fail
+    throw new Error(`Professional evaluation not available for: ${pred.title}. Use preEvaluate option.`);
 };
 
 // Main optimization function
 export async function optimizeBrainstormProgram(options: {
     numTrials?: number;
     auto?: 'light' | 'medium' | 'heavy';
-    metricType?: 'quality' | 'similarity';
+    metricType?: 'quality' | 'similarity' | 'professional';
     outputPath?: string;
     verbose?: boolean;
+    preEvaluate?: boolean;
 } = {}) {
 
     const {
@@ -78,7 +45,8 @@ export async function optimizeBrainstormProgram(options: {
         auto = 'medium',
         metricType = 'quality',
         outputPath = './optimized-brainstorm-demos.json',
-        verbose = false
+        verbose = false,
+        preEvaluate = false
     } = options;
 
     console.log('🚀 Starting brainstorm program optimization with MiPRO v2...');
@@ -112,6 +80,31 @@ export async function optimizeBrainstormProgram(options: {
 
         console.log(`✅ Loaded ${examples.length} training examples`);
 
+        // 2.5. Pre-evaluate examples with professional evaluation system
+        console.log('🧠 Pre-evaluating examples with professional evaluation system...');
+        const maxExamplesToEvaluate = Math.min(examples.length, preEvaluate ? 20 : 10);
+
+        for (let i = 0; i < maxExamplesToEvaluate; i++) {
+            const example = examples[i];
+            try {
+                const evaluation = await evaluationSystem.evaluateStoryIdea(
+                    { title: example.title, body: example.body },
+                    example.genre,
+                    example.platform
+                );
+                const cacheKey = `${example.title}|${example.body}|${example.genre}|${example.platform}`;
+                evaluationCache.set(cacheKey, evaluation.overall_score / 10.0);
+
+                if (verbose) {
+                    console.log(`   Pre-evaluated example ${i + 1}: ${evaluation.overall_score.toFixed(2)}/10`);
+                }
+            } catch (error) {
+                console.error(`❌ Failed to pre-evaluate example ${i + 1}:`, error);
+                throw new Error(`Pre-evaluation failed for example ${i + 1}. Cannot proceed with optimization.`);
+            }
+        }
+        console.log(`✅ Pre-evaluated ${maxExamplesToEvaluate} examples`);
+
         // 3. Create the program to optimize
         console.log('🔧 Creating brainstorm program...');
         const program = new BrainstormProgram();
@@ -131,9 +124,9 @@ export async function optimizeBrainstormProgram(options: {
             },
         });
 
-        // 5. Choose evaluation metric
-        const metricFn = metricType === 'quality' ? storyQualityMetric : semanticSimilarityMetric;
-        console.log(`📊 Using ${metricType} evaluation metric`);
+        // 5. Choose evaluation metric - only professional evaluation supported
+        const metricFn = professionalEvaluationMetric;
+        console.log(`📊 Using professional evaluation metric (${metricType} mode)`);
 
         // 6. Run optimization
         console.log(`🔄 Running optimization with ${numTrials} trials...`);
@@ -217,8 +210,9 @@ export async function runOptimization() {
         verbose: args.includes('--verbose') || args.includes('-v'),
         auto: (args.find(arg => arg.startsWith('--auto='))?.split('=')[1] as 'light' | 'medium' | 'heavy') || 'medium',
         numTrials: parseInt(args.find(arg => arg.startsWith('--trials='))?.split('=')[1] || '15'),
-        metricType: (args.find(arg => arg.startsWith('--metric='))?.split('=')[1] as 'quality' | 'similarity') || 'quality',
-        outputPath: args.find(arg => arg.startsWith('--output='))?.split('=')[1] || './optimized-brainstorm-demos.json'
+        metricType: (args.find(arg => arg.startsWith('--metric='))?.split('=')[1] as 'quality' | 'similarity' | 'professional') || 'professional',
+        outputPath: args.find(arg => arg.startsWith('--output='))?.split('=')[1] || './optimized-brainstorm-demos.json',
+        preEvaluate: args.includes('--pre-evaluate') || args.includes('--full-eval')
     };
 
     try {
@@ -230,7 +224,7 @@ export async function runOptimization() {
 }
 
 // Export for use in other modules
-export { BrainstormProgram, storyQualityMetric, semanticSimilarityMetric };
+export { BrainstormProgram, professionalEvaluationMetric };
 
 // Run optimization if called directly
 if (require.main === module) {

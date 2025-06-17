@@ -43,7 +43,7 @@ export class StoryEvaluationSystem {
         platform: string
     ): Promise<EvaluationResult> {
         try {
-            console.log('   Evaluating story with generateObject...');
+            console.log(`   Evaluating story ${idea.title} with generateObject...`);
 
             // Get model configuration
             const { apiKey, baseUrl, modelName } = getLLMCredentials();
