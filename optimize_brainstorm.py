@@ -345,7 +345,7 @@ logger = ComprehensiveLogger()
 
 def load_golden_examples() -> List[dspy.Example]:
     """Load golden examples from /examples directory"""
-    examples_dir = "examples"
+    examples_dir = "src/examples"
     golden_examples = []
     
     if not os.path.exists(examples_dir):

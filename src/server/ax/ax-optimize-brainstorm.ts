@@ -41,11 +41,11 @@ export async function optimizeBrainstormProgram(options: {
 } = {}) {
 
     const {
-        numTrials = 15,
-        auto = 'medium',
+        numTrials = 5, // Reduced from 15 to 5 for initial testing
+        auto = 'light', // Changed from 'medium' to 'light' for simpler optimization
         metricType = 'quality',
         outputPath = './optimized-brainstorm-demos.json',
-        verbose = false,
+        verbose = true,
         preEvaluate = false
     } = options;
 
@@ -111,16 +111,21 @@ export async function optimizeBrainstormProgram(options: {
 
         // 4. Configure the MiPRO optimizer
         console.log('⚙️ Configuring MiPRO v2 optimizer...');
+        const maxDemos = auto === 'light' ? 1 : auto === 'medium' ? 2 : 3; // Reduced further
+        const maxExamples = auto === 'light' ? 2 : auto === 'medium' ? 3 : 4; // Reduced further
+
+        console.log(`📋 Optimizer settings: maxDemos=${maxDemos}, maxExamples=${maxExamples}, trials=${numTrials}`);
+
         const optimizer = new AxMiPRO({
             ai,
             program,
             examples: examples,
             options: {
                 numTrials,
-                verbose,
-                maxDemos: auto === 'light' ? 2 : auto === 'medium' ? 3 : 4,
-                maxExamples: auto === 'light' ? 3 : auto === 'medium' ? 4 : 5,
-                earlyStoppingPatience: 5,
+                verbose: true, // Always verbose for debugging
+                maxDemos,
+                maxExamples,
+                earlyStoppingPatience: 3, // Reduced from 5 to 3
             },
         });
 
@@ -128,12 +133,32 @@ export async function optimizeBrainstormProgram(options: {
         const metricFn = professionalEvaluationMetric;
         console.log(`📊 Using professional evaluation metric (${metricType} mode)`);
 
-        // 6. Run optimization
+        // 6. Test the program before optimization
+        console.log('🔍 Testing program before optimization...');
+        try {
+            const testExample = examples[0];
+            console.log(`🧪 Testing with example: ${testExample.genre} on ${testExample.platform}`);
+            const testResult = await program.forward(ai, {
+                genre: testExample.genre,
+                platform: testExample.platform,
+                requirements_section: testExample.requirements_section || ''
+            });
+            console.log(`✅ Test generation successful: "${testResult.title}"`);
+        } catch (testError) {
+            console.error('❌ Test generation failed:', testError);
+            throw new Error(`Program test failed before optimization: ${testError.message}`);
+        }
+
+        // 7. Run optimization with smaller, more manageable settings
         console.log(`🔄 Running optimization with ${numTrials} trials...`);
         const startTime = Date.now();
 
+        // Use much smaller validation set and more conservative settings
+        const valsetSize = Math.min(2, Math.floor(examples.length / 2));
+        console.log(`📊 Using ${valsetSize} examples for validation`);
+
         const optimizedProgram = await optimizer.compile(metricFn, {
-            valset: examples.slice(-Math.min(10, Math.floor(examples.length * 0.2))), // Use last 20% as validation
+            valset: examples.slice(0, valsetSize), // Use first few as validation
         });
 
         const endTime = Date.now();
@@ -208,8 +233,8 @@ export async function runOptimization() {
 
     const options: Parameters<typeof optimizeBrainstormProgram>[0] = {
         verbose: args.includes('--verbose') || args.includes('-v'),
-        auto: (args.find(arg => arg.startsWith('--auto='))?.split('=')[1] as 'light' | 'medium' | 'heavy') || 'medium',
-        numTrials: parseInt(args.find(arg => arg.startsWith('--trials='))?.split('=')[1] || '15'),
+        auto: (args.find(arg => arg.startsWith('--auto='))?.split('=')[1] as 'light' | 'medium' | 'heavy') || 'light',
+        numTrials: parseInt(args.find(arg => arg.startsWith('--trials='))?.split('=')[1] || '5'),
         metricType: (args.find(arg => arg.startsWith('--metric='))?.split('=')[1] as 'quality' | 'similarity' | 'professional') || 'professional',
         outputPath: args.find(arg => arg.startsWith('--output='))?.split('=')[1] || './optimized-brainstorm-demos.json',
         preEvaluate: args.includes('--pre-evaluate') || args.includes('--full-eval')
