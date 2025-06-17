@@ -2,7 +2,7 @@ import { AxAI, AxAIOpenAIModel } from '@ax-llm/ax';
 import { BrainstormRequest, StoryIdea } from './ax-brainstorm-types';
 import { BrainstormProgram } from './ax-brainstorm-core';
 import { StoryEvaluationSystem } from './ax-evaluation-system-simple';
-import { getLLMCredentials } from './ax-llm-config';
+import { getLLMCredentials } from '../services/LLMConfig';
 
 // Environment variables are loaded by run-ts script
 
@@ -21,7 +21,7 @@ function createSimpleAI(): AxAI {
 
     try {
         return new AxAI({
-            name: 'openai',
+            name: credentials.provider,
             apiKey: credentials.apiKey,
             apiURL: credentials.baseUrl,
             config: {

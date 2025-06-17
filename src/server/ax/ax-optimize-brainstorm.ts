@@ -8,7 +8,7 @@ import {
 } from './ax-brainstorm-types';
 import { BrainstormProgram } from './ax-brainstorm-core';
 import { StoryEvaluationSystem } from './ax-evaluation-system-simple';
-import { getLLMCredentials } from './ax-llm-config';
+import { getLLMCredentials } from '../services/LLMConfig';
 
 // Environment variables loaded by run-ts
 
@@ -76,7 +76,7 @@ function createOptimizationAI(): AxAI {
     const credentials = getLLMCredentials();
 
     return new AxAI({
-        name: 'openai',
+        name: credentials.provider,
         apiKey: credentials.apiKey,
         apiURL: credentials.baseUrl,
         config: {
