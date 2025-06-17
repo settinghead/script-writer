@@ -21,7 +21,7 @@ function createSimpleAI(): AxAI {
 
     try {
         return new AxAI({
-            name: credentials.provider,
+            name: credentials.provider as any,
             apiKey: credentials.apiKey,
             apiURL: credentials.baseUrl,
             config: {

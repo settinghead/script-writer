@@ -1,224 +1,238 @@
 import fs from 'fs';
-import { AxAI, AxAIOpenAIModel, AxMiPRO, type AxMetricFn } from '@ax-llm/ax';
-import {
-    BrainstormRequest,
-    StoryIdea,
-    TrainingExample,
-    EVALUATION_WEIGHTS
-} from './ax-brainstorm-types';
+import path from 'path';
+import { AxAI, AxMiPRO, AxMetricFn, AxAIOpenAIModel } from '@ax-llm/ax';
 import { BrainstormProgram } from './ax-brainstorm-core';
-import { StoryEvaluationSystem } from './ax-evaluation-system-simple';
+import { BrainstormRequest, StoryIdea } from './ax-brainstorm-types';
+import { loadExamples } from './exampleLoader';
 import { getLLMCredentials } from '../services/LLMConfig';
 
-// Environment variables loaded by run-ts
+// Evaluation metric for story quality
+const storyQualityMetric: AxMetricFn = ({ prediction, example }) => {
+    const pred = prediction as unknown as StoryIdea;
+    const exp = example as BrainstormRequest & StoryIdea;
 
-// Training data for optimization (similar to Python version)
-const trainingData: TrainingExample[] = [
-    {
-        genre: '甜宠',
-        platform: '抖音',
-        requirements_section: '现代都市背景，温馨浪漫',
-    },
-    {
-        genre: '虐恋',
-        platform: '小红书',
-        requirements_section: '古装背景，情感纠葛深刻',
-    },
-    {
-        genre: '复仇',
-        platform: '快手',
-        requirements_section: '现代商战，强势女主',
-    },
-    {
-        genre: '穿越',
-        platform: '抖音',
-        requirements_section: '古代宫廷，智慧女主',
-    },
-    {
-        genre: '重生',
-        platform: '小红书',
-        requirements_section: '现代都市，第二次人生',
-    },
-    {
-        genre: '霸总',
-        platform: '抖音',
-        requirements_section: '商界精英，甜宠日常',
-    },
-    {
-        genre: '战神',
-        platform: '快手',
-        requirements_section: '古代军营，英雄美人',
-    },
-    {
-        genre: '萌宝',
-        platform: '抖音',
-        requirements_section: '现代家庭，亲子温馨',
-    },
-];
+    let score = 0;
 
-// Validation data
-const validationData: TrainingExample[] = [
-    {
-        genre: '玄幻',
-        platform: '快手',
-        requirements_section: '修仙世界，逆天改命',
-    },
-    {
-        genre: '娱乐圈',
-        platform: '小红书',
-        requirements_section: '明星生活，追梦励志',
-    },
-];
+    // Title quality (30% weight)
+    if (pred.title && pred.title.length >= 3 && pred.title.length <= 10) {
+        score += 0.3;
+    }
 
-// Create AI instance for optimization
-function createOptimizationAI(): AxAI {
+    // Body length appropriateness (40% weight)
+    if (pred.body && pred.body.length >= 50 && pred.body.length <= 200) {
+        score += 0.4;
+    }
 
-    const credentials = getLLMCredentials();
+    // Content relevance to genre (30% weight)
+    if (pred.body && exp.genre && pred.body.includes(exp.genre)) {
+        score += 0.3;
+    }
 
-    return new AxAI({
-        name: credentials.provider,
-        apiKey: credentials.apiKey,
-        apiURL: credentials.baseUrl,
-        config: {
-            model: credentials.modelName as AxAIOpenAIModel,
-            // Use simple config for now - will be refined later
-            maxTokens: 3000,
-            temperature: 1.0,
-        }
-    });
-}
+    return score;
+};
 
-// Evaluation metric function
-const createEvaluationMetric = (ai: AxAI, evaluationSystem: StoryEvaluationSystem): AxMetricFn => {
-    return async ({ prediction, example }) => {
-        try {
-            const storyIdea = prediction as StoryIdea;
-            const brainstormRequest = example as BrainstormRequest;
+// Alternative similarity-based metric
+const semanticSimilarityMetric: AxMetricFn = ({ prediction, example }) => {
+    const pred = prediction as unknown as StoryIdea;
+    const exp = example as BrainstormRequest & StoryIdea;
 
-            if (!storyIdea.title || !storyIdea.body) {
-                return 0.0;
-            }
+    // Simple similarity based on genre matching and length appropriateness
+    let score = 0;
 
-            // Evaluate the generated story idea
-            const evaluation = await evaluationSystem.evaluateStoryIdea(
-                ai,
-                storyIdea,
-                brainstormRequest.genre,
-                brainstormRequest.platform
-            );
+    // Check if generated story matches expected genre characteristics
+    if (pred.title && pred.body) {
+        // Basic structural validation
+        if (pred.title.length >= 3 && pred.title.length <= 10) score += 0.25;
+        if (pred.body.length >= 50 && pred.body.length <= 200) score += 0.25;
 
-            // Normalize score to 0-1 range (ax expects this range)
-            return evaluation.overall_score / 10.0;
-        } catch (error) {
-            console.warn('Evaluation failed:', error);
-            return 0.0;
-        }
-    };
+        // Genre relevance (simple keyword matching)
+        const genreKeywords = {
+            '甜宠': ['甜', '爱', '恋', '温柔', '暖'],
+            '虐恋': ['痛', '误会', '分离', '虐'],
+            '穿越': ['穿越', '古代', '现代', '时空'],
+            '霸总': ['总裁', '霸道', '冷酷', '豪门']
+        };
+
+        const keywords = genreKeywords[exp.genre as keyof typeof genreKeywords] || [];
+        const matchCount = keywords.filter(keyword =>
+            pred.title.includes(keyword) || pred.body.includes(keyword)
+        ).length;
+
+        score += (matchCount / Math.max(keywords.length, 1)) * 0.5;
+    }
+
+    return Math.min(score, 1.0);
 };
 
 // Main optimization function
-async function optimizeBrainstormProgram() {
-    console.log('Starting MiPRO optimization for brainstorm program...');
+export async function optimizeBrainstormProgram(options: {
+    numTrials?: number;
+    auto?: 'light' | 'medium' | 'heavy';
+    metricType?: 'quality' | 'similarity';
+    outputPath?: string;
+    verbose?: boolean;
+} = {}) {
 
-    // Initialize AI and systems
-    const ai = createOptimizationAI();
-    const evaluationSystem = new StoryEvaluationSystem();
-    const program = new BrainstormProgram();
+    const {
+        numTrials = 15,
+        auto = 'medium',
+        metricType = 'quality',
+        outputPath = './optimized-brainstorm-demos.json',
+        verbose = false
+    } = options;
 
-    // Configure MiPRO optimizer
-    const optimizer = new AxMiPRO({
-        ai,
-        program,
-        examples: trainingData,
-        options: {
-            // Core MiPRO settings
-            numCandidates: 3, // Number of candidate programs per trial
-            numTrials: 10, // Number of optimization trials
-            maxBootstrappedDemos: 2, // Maximum bootstrapped demos
-            maxLabeledDemos: 3, // Maximum labeled demos
+    console.log('🚀 Starting brainstorm program optimization with MiPRO v2...');
 
-            // Advanced optimization
-            earlyStoppingTrials: 3, // Stop if no improvement after N trials
-            minImprovementThreshold: 0.01, // Minimum score improvement
-
-            // Optimization strategies
-            programAwareProposer: true, // Use program structure
-            dataAwareProposer: true, // Consider dataset characteristics
-
-            // Logging
-            verbose: true,
-        },
-    });
-
-    // Define evaluation metric
-    const metricFn = createEvaluationMetric(ai, evaluationSystem);
-
-    console.log('Running MiPRO optimization...');
-    console.log('This systematically searches for optimal prompt configurations.');
-
-    // Run optimization
-    const optimizedProgram = await optimizer.compile(metricFn, {
-        valset: validationData,
-        auto: 'medium', // Use medium optimization level
-    });
-
-    // Save optimized configuration
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const configPath = `./ax-optimized-brainstorm-${timestamp}.json`;
-
-    const programConfig = JSON.stringify(optimizedProgram, null, 2);
-    await fs.promises.writeFile(configPath, programConfig);
-
-    console.log(`\nOptimized program configuration saved to: ${configPath}`);
-
-    // Evaluate optimized program on validation set
-    console.log('\nEvaluating optimized program on validation set:');
-    let totalScore = 0;
-    let validEvaluations = 0;
-
-    for (const example of validationData) {
-        try {
-            console.log(`\nGenerating idea for: ${example.genre} on ${example.platform}`);
-
-            const prediction = await optimizedProgram.forward(ai, example);
-            const score = await metricFn({ prediction, example });
-
-            totalScore += score;
-            validEvaluations++;
-
-            console.log(`Title: "${prediction.title}"`);
-            console.log(`Body: "${prediction.body}"`);
-            console.log(`Score: ${score.toFixed(4)} (${score === 1.0 ? '✓ EXCELLENT' : score > 0.7 ? '✓ GOOD' : score > 0.5 ? '~ FAIR' : '✗ POOR'})`);
-
-        } catch (error) {
-            console.warn(`Failed to evaluate example:`, error);
-        }
-    }
-
-    const averageScore = validEvaluations > 0 ? totalScore / validEvaluations : 0;
-    console.log(`\nFinal Average Score: ${averageScore.toFixed(4)} (${totalScore.toFixed(2)}/${validEvaluations})`);
-    console.log(`Optimization complete! Configuration saved to: ${configPath}`);
-
-    return {
-        optimizedProgram,
-        configPath,
-        averageScore,
-    };
-}
-
-// Script execution
-if (require.main === module) {
-    optimizeBrainstormProgram()
-        .then((result) => {
-            console.log('\n✅ Optimization completed successfully!');
-            console.log(`📁 Config file: ${result.configPath}`);
-            console.log(`📊 Average score: ${result.averageScore.toFixed(4)}`);
-            process.exit(0);
-        })
-        .catch((error) => {
-            console.error('\n❌ Optimization failed:', error);
-            process.exit(1);
+    try {
+        // 1. Setup AI service
+        const {
+            apiKey,
+            baseUrl,
+            modelName,
+            provider
+        } = getLLMCredentials();
+        const ai = new AxAI({
+            name: provider as any,
+            apiKey,
+            apiURL: baseUrl,
+            config: {
+                model: modelName as AxAIOpenAIModel,
+                maxTokens: 3000,
+                temperature: 1.5,
+            }
         });
+
+        // 2. Load training examples
+        console.log('📚 Loading training examples...');
+        const examples = loadExamples();
+
+        if (examples.length === 0) {
+            throw new Error('No training examples found. Cannot optimize without examples.');
+        }
+
+        console.log(`✅ Loaded ${examples.length} training examples`);
+
+        // 3. Create the program to optimize
+        console.log('🔧 Creating brainstorm program...');
+        const program = new BrainstormProgram();
+
+        // 4. Configure the MiPRO optimizer
+        console.log('⚙️ Configuring MiPRO v2 optimizer...');
+        const optimizer = new AxMiPRO({
+            ai,
+            program,
+            examples: examples,
+            options: {
+                numTrials,
+                verbose,
+                maxDemos: auto === 'light' ? 2 : auto === 'medium' ? 3 : 4,
+                maxExamples: auto === 'light' ? 3 : auto === 'medium' ? 4 : 5,
+                earlyStoppingPatience: 5,
+            },
+        });
+
+        // 5. Choose evaluation metric
+        const metricFn = metricType === 'quality' ? storyQualityMetric : semanticSimilarityMetric;
+        console.log(`📊 Using ${metricType} evaluation metric`);
+
+        // 6. Run optimization
+        console.log(`🔄 Running optimization with ${numTrials} trials...`);
+        const startTime = Date.now();
+
+        const optimizedProgram = await optimizer.compile(metricFn, {
+            valset: examples.slice(-Math.min(10, Math.floor(examples.length * 0.2))), // Use last 20% as validation
+        });
+
+        const endTime = Date.now();
+        const duration = ((endTime - startTime) / 1000).toFixed(2);
+
+        console.log(`✅ Optimization completed in ${duration} seconds`);
+
+        // 7. Extract demos/configuration
+        console.log('💾 Saving optimized configuration...');
+
+        // Get the optimized demos from the program
+        const optimizedDemos = (optimizedProgram as any).demos || [];
+
+        // Save configuration
+        const config = {
+            timestamp: new Date().toISOString(),
+            optimization: {
+                numTrials,
+                auto,
+                metricType,
+                duration: `${duration}s`,
+                examplesUsed: examples.length
+            },
+            demos: optimizedDemos,
+            metadata: {
+                version: '1.0',
+                optimizer: 'MiPRO v2',
+                signature: program.getSignature?.() || 'brainstorm signature'
+            }
+        };
+
+        // Ensure directory exists
+        const outputDir = path.dirname(outputPath);
+        if (!fs.existsSync(outputDir)) {
+            fs.mkdirSync(outputDir, { recursive: true });
+        }
+
+        fs.writeFileSync(outputPath, JSON.stringify(config, null, 2));
+        console.log(`📁 Optimized configuration saved to: ${outputPath}`);
+
+        // 8. Test the optimized program
+        console.log('🧪 Testing optimized program...');
+        const testRequest: BrainstormRequest = {
+            genre: '甜宠',
+            platform: '抖音',
+            requirements_section: '现代都市背景，温馨浪漫'
+        };
+
+        const testResult = await optimizedProgram.forward(ai, testRequest);
+        console.log('Test result:', testResult);
+
+        console.log('\n🎉 Optimization complete!');
+        console.log(`📈 Performance should be improved with ${optimizedDemos.length} optimized demonstrations`);
+        console.log(`📝 Load the optimized demos using: program.setDemos(config.demos)`);
+
+        return {
+            optimizedProgram,
+            demos: optimizedDemos,
+            config,
+            outputPath
+        };
+
+    } catch (error) {
+        console.error('❌ Optimization failed:', error);
+        throw error;
+    }
 }
 
-export { optimizeBrainstormProgram, createOptimizationAI, createEvaluationMetric }; 
+// CLI interface for running optimization
+export async function runOptimization() {
+    const args = process.argv.slice(2);
+
+    const options: Parameters<typeof optimizeBrainstormProgram>[0] = {
+        verbose: args.includes('--verbose') || args.includes('-v'),
+        auto: (args.find(arg => arg.startsWith('--auto='))?.split('=')[1] as 'light' | 'medium' | 'heavy') || 'medium',
+        numTrials: parseInt(args.find(arg => arg.startsWith('--trials='))?.split('=')[1] || '15'),
+        metricType: (args.find(arg => arg.startsWith('--metric='))?.split('=')[1] as 'quality' | 'similarity') || 'quality',
+        outputPath: args.find(arg => arg.startsWith('--output='))?.split('=')[1] || './optimized-brainstorm-demos.json'
+    };
+
+    try {
+        await optimizeBrainstormProgram(options);
+    } catch (error) {
+        console.error('Optimization failed:', error);
+        process.exit(1);
+    }
+}
+
+// Export for use in other modules
+export { BrainstormProgram, storyQualityMetric, semanticSimilarityMetric };
+
+// Run optimization if called directly
+if (require.main === module) {
+    runOptimization();
+} 
