@@ -3,25 +3,21 @@
 import { AxAI, AxAIOpenAIModel } from '@ax-llm/ax';
 import { BrainstormProgram } from './ax-brainstorm-core';
 import { BrainstormRequest } from './ax-brainstorm-types';
+import { getLLMCredentials } from '../services/LLMConfig';
 
 // Simple test script to verify the brainstorm system works
 async function testBrainstorm() {
     console.log('🚀 Starting simple brainstorm test...\n');
-
-    // Create AI instance
-    const apiKey = process.env.LLM_API_KEY || process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-        console.error('❌ Error: Please set LLM_API_KEY or OPENAI_API_KEY environment variable');
-        process.exit(1);
-    }
+    const credentials = getLLMCredentials();
 
     const ai = new AxAI({
-        name: 'openai',
-        apiKey,
+        name: credentials.provider as any,
+        apiKey: credentials.apiKey,
+        apiURL: credentials.baseUrl,
         config: {
-            model: AxAIOpenAIModel.GPT4OMini, // Use proper enum value
-            maxTokens: 500,
-            temperature: 0.8,
+            model: credentials.modelName as AxAIOpenAIModel, // Use proper enum value
+            maxTokens: 3000,
+            temperature: 1.5,
         }
     });
 
@@ -52,32 +48,29 @@ async function testBrainstorm() {
         }
     ];
 
-    for (let i = 0; i < testCases.length; i++) {
-        const request = testCases[i];
+    const chosenTestCase = testCases[Math.floor(Math.random() * testCases.length)];
 
-        console.log(`📝 Test ${i + 1} - Input:`);
-        console.log(`   Genre: ${request.genre}`);
-        console.log(`   Platform: ${request.platform}`);
-        console.log(`   Requirements: ${request.requirements_section}\n`);
+    const request = chosenTestCase;
 
-        try {
-            console.log('⏳ Generating story idea...\n');
+    console.log(`📝 Randomly chosen test case ${chosenTestCase.genre} - Input:`);
+    console.log(`   Genre: ${request.genre}`);
+    console.log(`   Platform: ${request.platform}`);
+    console.log(`   Requirements: ${request.requirements_section}\n`);
 
-            // Generate story idea
-            const idea = await program.generateIdea(ai, request);
+    try {
+        console.log('⏳ Generating story idea...\n');
 
-            console.log('✅ Generated Story Idea:');
-            console.log(`   Title: "${idea.title}"`);
-            console.log(`   Body: "${idea.body}"\n`);
+        // Generate story idea
+        const idea = await program.generateIdea(ai, request);
 
-            // Add separator between tests
-            if (i < testCases.length - 1) {
-                console.log('─'.repeat(60) + '\n');
-            }
+        console.log('✅ Generated Story Idea:');
+        console.log(`   Title: "${idea.title}"`);
+        console.log(`   Body: "${idea.body}"\n`);
 
-        } catch (error) {
-            console.error('❌ Error generating story idea:', error);
-        }
+
+
+    } catch (error) {
+        console.error('❌ Error generating story idea:', error);
     }
 
     console.log('🎉 All tests completed successfully!');
