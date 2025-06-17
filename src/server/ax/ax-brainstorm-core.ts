@@ -23,10 +23,12 @@ Body: [story synopsis]
 export class BrainstormProgram extends AxChainOfThought<BrainstormRequest, StoryIdea> {
 
     constructor() {
-        // Initialize with signature for story generation
+        // Initialize with improved signature for creative story generation
         super(
-            `genre:string, platform:string, requirements_section:string -> title:string "3-7 characters", body:string "within 180 characters"`
+            `genre:string "Story genre like 甜宠, 虐恋, etc", platform:string "Platform like 抖音, 快手, etc", requirements_section:string "Specific requirements" -> title:string "Creative story title (3-7 Chinese characters)", body:string "Story synopsis describing plot, characters and conflict (50-180 characters)"`
         );
+
+        // TODO: Add demos once we understand the correct format for ax library
     }
 
     // Override forward method for custom generation logic
@@ -42,15 +44,17 @@ export class BrainstormProgram extends AxChainOfThought<BrainstormRequest, Story
                 requirements_section: input.requirements_section || '无特殊要求'
             });
 
-            // Ensure we return a proper StoryIdea object
+            // Ensure we return a proper StoryIdea object with validation
+            const title = result.title?.trim() || '未知标题';
+            const body = result.body?.trim() || '暂无梗概';
+
             return {
-                title: result.title || '未知标题',
-                body: result.body || '暂无梗概'
+                title: title.length > 10 ? title.substring(0, 10) : title,
+                body: body.length > 200 ? body.substring(0, 200) + '...' : body
             };
 
         } catch (error) {
             console.error('Failed to generate story idea:', error);
-
             // Return fallback idea
             return {
                 title: '故事标题',
