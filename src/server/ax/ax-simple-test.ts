@@ -4,10 +4,11 @@ import { AxAI, AxAIOpenAIModel } from '@ax-llm/ax';
 import { BrainstormProgram } from './ax-brainstorm-core';
 import { BrainstormRequest } from './ax-brainstorm-types';
 import { getLLMCredentials } from '../services/LLMConfig';
+import { StoryEvaluationSystem } from './ax-evaluation-system-simple';
 
 // Simple test script to verify the brainstorm system works
 async function testBrainstorm() {
-    console.log('🚀 Starting simple brainstorm test...\n');
+    console.log('🚀 Starting simple brainstorm test with evaluation...\n');
     const credentials = getLLMCredentials();
 
     const ai = new AxAI({
@@ -21,8 +22,9 @@ async function testBrainstorm() {
         }
     });
 
-    // Create brainstorm program
+    // Create brainstorm program and evaluation system
     const program = new BrainstormProgram();
+    const evaluationSystem = new StoryEvaluationSystem();
 
     // Test different genres and platforms
     const testCases: BrainstormRequest[] = [
@@ -49,31 +51,53 @@ async function testBrainstorm() {
     ];
 
     const chosenTestCase = testCases[Math.floor(Math.random() * testCases.length)];
-
     const request = chosenTestCase;
 
-    console.log(`📝 Randomly chosen test case ${chosenTestCase.genre} - Input:`);
+    console.log(`📝 Randomly chosen test case: ${chosenTestCase.genre}`);
     console.log(`   Genre: ${request.genre}`);
     console.log(`   Platform: ${request.platform}`);
     console.log(`   Requirements: ${request.requirements_section}\n`);
 
     try {
+        // Step 1: Generate story idea
         console.log('⏳ Generating story idea...\n');
-
-        // Generate story idea
         const idea = await program.generateIdea(ai, request);
 
         console.log('✅ Generated Story Idea:');
         console.log(`   Title: "${idea.title}"`);
         console.log(`   Body: "${idea.body}"\n`);
 
+        // Step 2: Evaluate the generated story
+        console.log('🔍 Evaluating the generated story...\n');
+        const evaluation = await evaluationSystem.evaluateStoryIdea(
+            idea,
+            request.genre,
+            request.platform
+        );
 
+        // Display evaluation results
+        console.log('📊 Evaluation Results:');
+        console.log('─'.repeat(50));
+        console.log(`Overall Score: ${evaluation.overall_score.toFixed(2)}/10`);
+        console.log('─'.repeat(50));
+        console.log(`新颖性 (Novelty): ${evaluation.novelty_score}/10`);
+        console.log(`可行性 (Feasibility): ${evaluation.feasibility_score}/10`);
+        console.log(`结构 (Structure): ${evaluation.structure_score}/10`);
+        console.log(`详细程度 (Detail): ${evaluation.detail_score}/10`);
+        console.log(`逻辑连贯性 (Logical Coherence): ${evaluation.logical_coherence_score}/10`);
+        console.log(`题材一致性 (Genre Consistency): ${evaluation.genre_score}/10`);
+        console.log(`吸引力 (Engagement): ${evaluation.engagement_score}/10`);
+        console.log('─'.repeat(50));
+
+        console.log('\n📝 Detailed Feedback:');
+        console.log(evaluation.feedback);
+
+        console.log('\n🎉 Test completed successfully!');
 
     } catch (error) {
-        console.error('❌ Error generating story idea:', error);
+        console.error('❌ Error during test:', error);
+        process.exit(1);
     }
-
-    console.log('🎉 All tests completed successfully!');
 }
 
 // Run the test
