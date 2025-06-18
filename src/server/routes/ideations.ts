@@ -119,7 +119,7 @@ export function createIdeationRoutes(
 
             const ideationService = new IdeationService(artifactRepo, transformRepo, transformExecutor, unifiedStreamingService);
             const ideaOutlines = await ideationService.getIdeaOutlines(user.id, sessionId);
-            
+
             res.json(ideaOutlines);
         } catch (error: any) {
             console.error('Error getting idea outlines:', error);

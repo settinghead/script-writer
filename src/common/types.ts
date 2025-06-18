@@ -277,4 +277,27 @@ export type {
     OutlineCharacterV2,
     LegacyKeyMilestone,
     LegacyOutlineStage
-}; 
+};
+
+// ========== FLOW TYPES ==========
+
+export interface ProjectFlow {
+    id: string; // earliest session ID
+    title: string;
+    description: string;
+    currentPhase: 'brainstorming' | 'outline' | 'episodes' | 'scripts';
+    status: 'active' | 'completed' | 'failed';
+    platform?: string;
+    genre?: string;
+    totalEpisodes?: number;
+    episodeDuration?: number;
+    createdAt: string;
+    updatedAt: string;
+    sourceType: 'brainstorm' | 'direct_outline';
+    artifactCounts: {
+        ideas: number;
+        outlines: number;
+        episodes: number;
+        scripts: number;
+    };
+} 
