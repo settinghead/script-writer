@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, List, Button, Tag, Empty, Spin, Alert, Typography, Space, Progress, Tooltip } from 'antd';
+import { Card, List, Button, Tag, Empty, Spin, Alert, Typography, Space, Progress, Tooltip, Modal } from 'antd';
 import {
     BulbOutlined,
     FileTextOutlined,
@@ -10,7 +10,9 @@ import {
     EditOutlined,
     CheckCircleOutlined,
     LoadingOutlined,
-    ExclamationCircleOutlined
+    ExclamationCircleOutlined,
+    ThunderboltOutlined,
+    FormOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -21,6 +23,7 @@ const { Title, Text, Paragraph } = Typography;
 const HomePage: React.FC = () => {
     const navigate = useNavigate();
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+    const [showCreateModal, setShowCreateModal] = useState(false);
 
     useEffect(() => {
         const handleResize = () => {
@@ -50,7 +53,17 @@ const HomePage: React.FC = () => {
     });
 
     const handleCreateNew = () => {
+        setShowCreateModal(true);
+    };
+
+    const handleCreateWithBrainstorm = () => {
+        setShowCreateModal(false);
         navigate('/ideation');
+    };
+
+    const handleCreateWithDirectOutline = () => {
+        setShowCreateModal(false);
+        navigate('/projects/new/outline');
     };
 
     const handleViewFlow = (flow: ProjectFlow) => {
@@ -428,6 +441,86 @@ const HomePage: React.FC = () => {
                     )}
                 />
             )}
+
+            {/* Create Project Modal */}
+            <Modal
+                title="选择创建方式"
+                open={showCreateModal}
+                onCancel={() => setShowCreateModal(false)}
+                footer={null}
+                width={500}
+                centered
+            >
+                <div style={{ padding: '20px 0' }}>
+                    <Text type="secondary" style={{ display: 'block', marginBottom: '24px', textAlign: 'center' }}>
+                        选择您希望如何开始创建项目
+                    </Text>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        <Card
+                            hoverable
+                            onClick={handleCreateWithBrainstorm}
+                            style={{ cursor: 'pointer' }}
+                            bodyStyle={{ padding: '20px' }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                <div style={{
+                                    width: '48px',
+                                    height: '48px',
+                                    borderRadius: '50%',
+                                    backgroundColor: '#faad14',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '20px',
+                                    color: '#fff'
+                                }}>
+                                    <ThunderboltOutlined />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <Title level={4} style={{ margin: 0, marginBottom: '8px' }}>
+                                        头脑风暴创意
+                                    </Title>
+                                    <Text type="secondary">
+                                        通过AI辅助的头脑风暴生成创意想法，然后逐步完善为完整项目
+                                    </Text>
+                                </div>
+                            </div>
+                        </Card>
+
+                        <Card
+                            hoverable
+                            onClick={handleCreateWithDirectOutline}
+                            style={{ cursor: 'pointer' }}
+                            bodyStyle={{ padding: '20px' }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                <div style={{
+                                    width: '48px',
+                                    height: '48px',
+                                    borderRadius: '50%',
+                                    backgroundColor: '#1890ff',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '20px',
+                                    color: '#fff'
+                                }}>
+                                    <FormOutlined />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <Title level={4} style={{ margin: 0, marginBottom: '8px' }}>
+                                        直接输入大纲
+                                    </Title>
+                                    <Text type="secondary">
+                                        已有明确想法？直接输入您的创意内容，快速开始大纲设计
+                                    </Text>
+                                </div>
+                            </div>
+                        </Card>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 };
