@@ -137,6 +137,165 @@ class RequirementsVariator:
 # Global variator instance
 requirements_variator = RequirementsVariator()
 
+def extract_prompts_from_module(module: dspy.Module, output_file: str = "extracted_prompts.json") -> bool:
+    """Extract system and user prompts from a DSPy module and save to file for TypeScript usage"""
+    print(f"🔍 提取模块提示词到文件: {output_file}")
+    
+    try:
+        prompts_data = {
+            "extracted_at": None,
+            "module_type": type(module).__name__,
+            "prompts": {},
+            "demos": [],
+            "metadata": {}
+        }
+        
+        import datetime
+        prompts_data["extracted_at"] = datetime.datetime.now().isoformat()
+        
+        # Extract prompts from the main predictor
+        if hasattr(module, 'generate_idea'):
+            predictor = module.generate_idea
+            
+            # Try to get the signature
+            if hasattr(predictor, 'signature'):
+                signature = predictor.signature
+                prompts_data["metadata"]["signature_instructions"] = getattr(signature, 'instructions', '')
+                prompts_data["metadata"]["input_fields"] = list(signature.input_fields.keys()) if hasattr(signature, 'input_fields') else []
+                prompts_data["metadata"]["output_fields"] = list(signature.output_fields.keys()) if hasattr(signature, 'output_fields') else []
+            
+            # Try to extract the actual prompt templates used
+            # This varies depending on DSPy version and LM type
+            if hasattr(predictor, 'lm') and predictor.lm:
+                lm = predictor.lm
+                
+                # Get the last request if available (from DSPy's request history)
+                if hasattr(lm, 'history') and lm.history:
+                    last_request = lm.history[-1]
+                    if 'prompt' in last_request:
+                        prompts_data["prompts"]["last_full_prompt"] = last_request['prompt']
+                    if 'messages' in last_request:
+                        prompts_data["prompts"]["last_messages"] = last_request['messages']
+            
+            # Try to construct a sample prompt by calling the predictor's _generate method
+            try:
+                # Create a sample input
+                sample_input = {
+                    'genre': '甜宠',
+                    'platform': '抖音',  
+                    'requirements_section': '现代都市, 霸道总裁x独立女强人, 双强CP'
+                }
+                
+                # Get the formatted prompt (this might trigger LM call, so we'll catch any errors)
+                if hasattr(predictor, '_generate'):
+                    # Try to intercept the prompt before it goes to LM
+                    original_lm = predictor.lm
+                    
+                    class MockLM:
+                        def __init__(self):
+                            self.captured_prompt = None
+                            self.captured_messages = None
+                            
+                        def __call__(self, prompt=None, messages=None, **kwargs):
+                            self.captured_prompt = prompt
+                            self.captured_messages = messages
+                            # Return a mock response to avoid actual LM call
+                            return ["title: 示例标题\nbody: 示例内容"]
+                        
+                        def generate(self, prompt=None, messages=None, **kwargs):
+                            return self.__call__(prompt, messages, **kwargs)
+                    
+                    mock_lm = MockLM()
+                    predictor.lm = mock_lm
+                    
+                    try:
+                        # This should capture the prompt without making real LM call
+                        predictor(**sample_input)
+                        
+                        if mock_lm.captured_prompt:
+                            prompts_data["prompts"]["system_user_prompt"] = mock_lm.captured_prompt
+                        if mock_lm.captured_messages:
+                            prompts_data["prompts"]["messages_format"] = mock_lm.captured_messages
+                            
+                    except Exception as e:
+                        print(f"⚠️ 模拟调用失败: {e}")
+                    finally:
+                        # Restore original LM
+                        predictor.lm = original_lm
+                        
+            except Exception as e:
+                print(f"⚠️ 提示词构建失败: {e}")
+            
+            # Extract demonstrations/examples
+            if hasattr(predictor, 'demos') and predictor.demos:
+                print(f"📚 发现 {len(predictor.demos)} 个演示示例")
+                for i, demo in enumerate(predictor.demos):
+                    demo_data = {}
+                    
+                    # Extract input fields
+                    for field in ['genre', 'platform', 'requirements_section']:
+                        if hasattr(demo, field):
+                            demo_data[field] = getattr(demo, field)
+                    
+                    # Extract output fields  
+                    for field in ['title', 'body']:
+                        if hasattr(demo, field):
+                            demo_data[field] = getattr(demo, field)
+                    
+                    prompts_data["demos"].append({
+                        "demo_index": i,
+                        "data": demo_data
+                    })
+        
+        # Try to extract template/instruction patterns
+        try:
+            # Look for common DSPy prompt patterns
+            if hasattr(module, 'generate_idea') and hasattr(module.generate_idea, 'signature'):
+                sig = module.generate_idea.signature
+                
+                # Build a template based on signature
+                template_parts = []
+                
+                if hasattr(sig, 'instructions') and sig.instructions:
+                    template_parts.append(f"Instructions: {sig.instructions}")
+                
+                # Add input format
+                if hasattr(sig, 'input_fields'):
+                    input_template = "Input Format:\n"
+                    for name, field in sig.input_fields.items():
+                        desc = getattr(field, 'desc', '') or name
+                        input_template += f"- {name}: {desc}\n"
+                    template_parts.append(input_template)
+                
+                # Add output format
+                if hasattr(sig, 'output_fields'):
+                    output_template = "Output Format:\n"
+                    for name, field in sig.output_fields.items():
+                        desc = getattr(field, 'desc', '') or name
+                        output_template += f"- {name}: {desc}\n"
+                    template_parts.append(output_template)
+                
+                if template_parts:
+                    prompts_data["prompts"]["template_structure"] = "\n\n".join(template_parts)
+                    
+        except Exception as e:
+            print(f"⚠️ 模板提取失败: {e}")
+        
+        # Write to file
+        with open(output_file, 'w', encoding='utf-8') as f:
+            json.dump(prompts_data, f, ensure_ascii=False, indent=2)
+        
+        print(f"✅ 提示词已保存到: {output_file}")
+        print(f"   - 模块类型: {prompts_data['module_type']}")
+        print(f"   - 演示示例数: {len(prompts_data['demos'])}")
+        print(f"   - 提取的提示词类型: {list(prompts_data['prompts'].keys())}")
+        
+        return True
+        
+    except Exception as e:
+        print(f"❌ 提示词提取失败: {e}")
+        return False
+
 def setup_environment():
     """Setup LLM and MLflow environment"""
     print("🔧 设置环境...")
@@ -490,6 +649,165 @@ def test_cache_avoidance():
         except Exception as e:
             print(f"  ❌ 生成失败: {e}")
 
+def extract_all_prompts():
+    """Extract prompts from all available modules for TypeScript usage"""
+    print(f"\n📤 提示词提取模式")
+    print("=" * 60)
+    
+    setup_environment()
+    
+    # Extract from baseline module
+    print("🔸 提取基础模型提示词...")
+    baseline_module = BrainstormModule()
+    baseline_success = extract_prompts_from_module(baseline_module, "baseline_prompts.json")
+    
+    # Extract from optimized modules
+    print("\n🔹 提取优化模型提示词...")
+    
+    # Try MLflow first
+    mlflow_model = load_optimized_from_mlflow()
+    if mlflow_model:
+        mlflow_success = extract_prompts_from_module(mlflow_model, "optimized_mlflow_prompts.json")
+    else:
+        mlflow_success = False
+        print("⚠️ MLflow 模型不可用")
+    
+    # Try prompts file method
+    prompts_model = load_optimized_from_prompts()
+    if prompts_model:
+        prompts_success = extract_prompts_from_module(prompts_model, "optimized_prompts_file_prompts.json")
+    else:
+        prompts_success = False
+        print("⚠️ 提示词文件模型不可用")
+    
+    # Create a combined TypeScript-friendly export
+    print("\n🎯 创建TypeScript友好的合并文件...")
+    try:
+        combined_data = {
+            "extraction_info": {
+                "extracted_at": None,
+                "baseline_available": baseline_success,
+                "mlflow_optimized_available": mlflow_success,
+                "prompts_file_optimized_available": prompts_success
+            },
+            "baseline": {},
+            "optimized_mlflow": {},
+            "optimized_prompts_file": {}
+        }
+        
+        import datetime
+        combined_data["extraction_info"]["extracted_at"] = datetime.datetime.now().isoformat()
+        
+        # Load each file if it exists
+        files_to_load = [
+            ("baseline_prompts.json", "baseline"),
+            ("optimized_mlflow_prompts.json", "optimized_mlflow"), 
+            ("optimized_prompts_file_prompts.json", "optimized_prompts_file")
+        ]
+        
+        for filename, key in files_to_load:
+            if os.path.exists(filename):
+                try:
+                    with open(filename, 'r', encoding='utf-8') as f:
+                        combined_data[key] = json.load(f)
+                except Exception as e:
+                    print(f"⚠️ 无法加载 {filename}: {e}")
+                    combined_data[key] = {"error": str(e)}
+        
+        # Write combined file
+        with open("all_prompts_for_typescript.json", 'w', encoding='utf-8') as f:
+            json.dump(combined_data, f, ensure_ascii=False, indent=2)
+        
+        print("✅ TypeScript友好的合并文件已创建: all_prompts_for_typescript.json")
+        
+        # Create a TypeScript interface file
+        ts_interface = '''// Auto-generated TypeScript interfaces for extracted DSPy prompts
+// Generated at: ''' + datetime.datetime.now().isoformat() + '''
+
+export interface ExtractedPrompt {
+  system_user_prompt?: string;
+  messages_format?: Array<{role: string, content: string}>;
+  last_full_prompt?: string;
+  last_messages?: Array<{role: string, content: string}>;
+  template_structure?: string;
+}
+
+export interface DemoData {
+  genre?: string;
+  platform?: string;
+  requirements_section?: string;
+  title?: string;
+  body?: string;
+}
+
+export interface ExtractedDemo {
+  demo_index: number;
+  data: DemoData;
+}
+
+export interface ModuleMetadata {
+  signature_instructions?: string;
+  input_fields?: string[];
+  output_fields?: string[];
+}
+
+export interface ExtractedModuleData {
+  extracted_at?: string;
+  module_type?: string;
+  prompts: ExtractedPrompt;
+  demos: ExtractedDemo[];
+  metadata: ModuleMetadata;
+  error?: string;
+}
+
+export interface AllPromptsData {
+  extraction_info: {
+    extracted_at: string;
+    baseline_available: boolean;
+    mlflow_optimized_available: boolean;
+    prompts_file_optimized_available: boolean;
+  };
+  baseline: ExtractedModuleData;
+  optimized_mlflow: ExtractedModuleData;
+  optimized_prompts_file: ExtractedModuleData;
+}
+
+// Usage example:
+// import promptsData from './all_prompts_for_typescript.json';
+// const data: AllPromptsData = promptsData;
+// 
+// // Get the best available optimized prompt
+// const getBestPrompt = (): ExtractedPrompt => {
+//   if (data.extraction_info.mlflow_optimized_available && data.optimized_mlflow.prompts) {
+//     return data.optimized_mlflow.prompts;
+//   }
+//   if (data.extraction_info.prompts_file_optimized_available && data.optimized_prompts_file.prompts) {
+//     return data.optimized_prompts_file.prompts;
+//   }
+//   return data.baseline.prompts;
+// };
+'''
+        
+        with open("prompts-types.ts", 'w', encoding='utf-8') as f:
+            f.write(ts_interface)
+        
+        print("✅ TypeScript接口文件已创建: prompts-types.ts")
+        
+    except Exception as e:
+        print(f"❌ 创建合并文件失败: {e}")
+    
+    print(f"\n📋 提示词提取总结:")
+    print(f"   基础模型: {'✅ 成功' if baseline_success else '❌ 失败'}")
+    print(f"   MLflow优化模型: {'✅ 成功' if mlflow_success else '❌ 不可用'}")
+    print(f"   提示词文件优化模型: {'✅ 成功' if prompts_success else '❌ 不可用'}")
+    print()
+    print("📁 生成的文件:")
+    print("   - baseline_prompts.json (基础模型提示词)")
+    print("   - optimized_mlflow_prompts.json (MLflow优化模型提示词)")  
+    print("   - optimized_prompts_file_prompts.json (提示词文件优化模型)")
+    print("   - all_prompts_for_typescript.json (TypeScript使用的合并文件)")
+    print("   - prompts-types.ts (TypeScript接口定义)")
+
 def main():
     """Main function"""
     print("🎉 优化模块使用指南")
@@ -497,12 +815,23 @@ def main():
     print("本脚本演示如何使用 DSPy 优化后的模块")
     print("支持从 MLflow 加载和从提示词文件重建两种方式")
     print("✨ 新增: 智能需求变化器，避免缓存影响测试结果")
+    print("✨ 新增: 提示词提取功能，用于TypeScript集成")
     print()
+    
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "--extract-prompts":
+        # Run only prompt extraction
+        extract_all_prompts()
+        return
     
     # Run demonstrations
     demonstrate_usage()
     production_usage_example()
     test_cache_avoidance()
+    
+    # Also extract prompts by default
+    print("\n" + "="*60)
+    extract_all_prompts()
     
     print(f"\n📋 使用总结:")
     print("1. 优先使用 MLFlow 加载方式（完整保存了优化状态）")
@@ -510,6 +839,7 @@ def main():
     print("3. 在生产环境中建议实现自动回退机制")
     print("4. 优化模型包含了学习到的示例演示，性能通常优于基础模型")
     print("5. ✨ 使用需求变化器确保每次测试都有独特输入，避免缓存影响")
+    print("6. ✨ 使用 --extract-prompts 参数仅运行提示词提取")
     print()
     print("✅ 演示完成！")
 

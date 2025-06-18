@@ -1,0 +1,20 @@
+{
+  "extracted_at": "2025-06-18T13:45:07.267894",
+  "module_type": "BrainstormModule",
+  "prompts": {
+    "template_structure": "Instructions: Signature for brainstorming a single story idea\n\nInput Format:\n- genre: genre\n- platform: platform\n- requirements_section: requirements_section\n\n\nOutput Format:\n- title: title\n- body: body\n"
+  },
+  "demos": [],
+  "metadata": {
+    "signature_instructions": "Signature for brainstorming a single story idea",
+    "input_fields": [
+      "genre",
+      "platform",
+      "requirements_section"
+    ],
+    "output_fields": [
+      "title",
+      "body"
+    ]
+  }
+}

@@ -1,0 +1,114 @@
+{
+  "extraction_info": {
+    "extracted_at": "2025-06-18T13:45:07.360598",
+    "baseline_available": true,
+    "mlflow_optimized_available": true,
+    "prompts_file_optimized_available": true
+  },
+  "baseline": {
+    "extracted_at": "2025-06-18T13:45:07.267894",
+    "module_type": "BrainstormModule",
+    "prompts": {
+      "template_structure": "Instructions: Signature for brainstorming a single story idea\n\nInput Format:\n- genre: genre\n- platform: platform\n- requirements_section: requirements_section\n\n\nOutput Format:\n- title: title\n- body: body\n"
+    },
+    "demos": [],
+    "metadata": {
+      "signature_instructions": "Signature for brainstorming a single story idea",
+      "input_fields": [
+        "genre",
+        "platform",
+        "requirements_section"
+      ],
+      "output_fields": [
+        "title",
+        "body"
+      ]
+    }
+  },
+  "optimized_mlflow": {
+    "extracted_at": "2025-06-18T13:45:07.360131",
+    "module_type": "BrainstormModule",
+    "prompts": {
+      "template_structure": "Instructions: You are a creative director specializing in short-form video content for Chinese social media platforms. Your task is to generate compelling story ideas that will perform well on the specified platform. \n\nFor each request, you must:\n1. Create a concise 3-7 character Chinese title that captures the story's essence\n2. Develop a complete 180-word synopsis with clear narrative structure (setup, development, climax, resolution)\n3. Incorporate all specified genre elements and platform-specific requirements\n4. Ensure the story features strong dramatic tension and culturally relevant themes\n\nThe story must be tailored to the platform's audience preferences:\n- For Kuaishou: Focus on fast-paced revenge plots with strong female leads\n- For Xiaohongshu/Douyin: Emphasize emotional depth and romantic/tragic elements\n- Always include the requested tropes (e.g., twins, hidden identities, political intrigue)\n\nMake the story immediately engaging while adhering strictly to the word limit. The synopsis should read like a mini-drama, with each sentence advancing the plot toward its dramatic conclusion.\n\nInput Format:\n- genre: genre\n- platform: platform\n- requirements_section: requirements_section\n\n\nOutput Format:\n- title: title\n- body: body\n"
+    },
+    "demos": [
+      {
+        "demo_index": 0,
+        "data": {
+          "genre": "甜宠",
+          "platform": "抖音",
+          "requirements_section": "要求: 职场精英, 双强CP, 谈判专家, 微表情专家, 悬疑破案",
+          "title": "罪爱解码",
+          "body": "金融精英女主是位微表情专家，与谈判专家男主搭档调查公司机密泄露案。初始互相嫌弃，却在一次次高智商对决中暗生情愫。当谈判桌上男主为保护女主挡下致命一击，针锋相对的两人终于卸下心防。最终联手用专业能力设局，在商业酒会上通过嫌犯的微表情破获内鬼，也在此刻确立了恋人关系。"
+        }
+      },
+      {
+        "demo_index": 1,
+        "data": {
+          "genre": "复仇",
+          "platform": "快手",
+          "requirements_section": "要求: 复仇, 古装, 宫廷, 冒充身份, 废太子"
+        }
+      },
+      {
+        "demo_index": 2,
+        "data": {
+          "genre": "虐恋",
+          "platform": "小红书",
+          "requirements_section": "要求: 青梅竹马, 政治联姻, 追妻火葬场, 破镜难圆, 悲剧结局"
+        }
+      },
+      {
+        "demo_index": 3,
+        "data": {
+          "genre": "复仇",
+          "platform": "快手",
+          "requirements_section": "要求: 复仇, 古装, 宫廷, 偏执, 藏娇"
+        }
+      }
+    ],
+    "metadata": {
+      "signature_instructions": "You are a creative director specializing in short-form video content for Chinese social media platforms. Your task is to generate compelling story ideas that will perform well on the specified platform. \n\nFor each request, you must:\n1. Create a concise 3-7 character Chinese title that captures the story's essence\n2. Develop a complete 180-word synopsis with clear narrative structure (setup, development, climax, resolution)\n3. Incorporate all specified genre elements and platform-specific requirements\n4. Ensure the story features strong dramatic tension and culturally relevant themes\n\nThe story must be tailored to the platform's audience preferences:\n- For Kuaishou: Focus on fast-paced revenge plots with strong female leads\n- For Xiaohongshu/Douyin: Emphasize emotional depth and romantic/tragic elements\n- Always include the requested tropes (e.g., twins, hidden identities, political intrigue)\n\nMake the story immediately engaging while adhering strictly to the word limit. The synopsis should read like a mini-drama, with each sentence advancing the plot toward its dramatic conclusion.",
+      "input_fields": [
+        "genre",
+        "platform",
+        "requirements_section"
+      ],
+      "output_fields": [
+        "title",
+        "body"
+      ]
+    }
+  },
+  "optimized_prompts_file": {
+    "extracted_at": "2025-06-18T13:45:07.360473",
+    "module_type": "BrainstormModule",
+    "prompts": {
+      "template_structure": "Instructions: Signature for brainstorming a single story idea\n\nInput Format:\n- genre: genre\n- platform: platform\n- requirements_section: requirements_section\n\n\nOutput Format:\n- title: title\n- body: body\n"
+    },
+    "demos": [
+      {
+        "demo_index": 0,
+        "data": {
+          "genre": "甜宠",
+          "platform": "抖音",
+          "requirements_section": "要求: 职场精英, 双强CP, 谈判专家, 微表情专家, 悬疑破案",
+          "title": "罪爱解码",
+          "body": "金融精英女主是位微表情专家，与谈判专家男主搭档调查公司机密泄露案。初始互相嫌弃，却在一次次高智商对决中暗生情愫。当谈判桌上男主为保护女主挡下致命一击，针锋相对的两人终于卸下心防。最终联手用专业能力设局，在商业酒会上通过嫌犯的微表情破获内鬼，也在此刻确立了恋人关系。"
+        }
+      }
+    ],
+    "metadata": {
+      "signature_instructions": "Signature for brainstorming a single story idea",
+      "input_fields": [
+        "genre",
+        "platform",
+        "requirements_section"
+      ],
+      "output_fields": [
+        "title",
+        "body"
+      ]
+    }
+  }
+}

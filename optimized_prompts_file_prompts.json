@@ -1,0 +1,31 @@
+{
+  "extracted_at": "2025-06-18T13:45:07.360473",
+  "module_type": "BrainstormModule",
+  "prompts": {
+    "template_structure": "Instructions: Signature for brainstorming a single story idea\n\nInput Format:\n- genre: genre\n- platform: platform\n- requirements_section: requirements_section\n\n\nOutput Format:\n- title: title\n- body: body\n"
+  },
+  "demos": [
+    {
+      "demo_index": 0,
+      "data": {
+        "genre": "甜宠",
+        "platform": "抖音",
+        "requirements_section": "要求: 职场精英, 双强CP, 谈判专家, 微表情专家, 悬疑破案",
+        "title": "罪爱解码",
+        "body": "金融精英女主是位微表情专家，与谈判专家男主搭档调查公司机密泄露案。初始互相嫌弃，却在一次次高智商对决中暗生情愫。当谈判桌上男主为保护女主挡下致命一击，针锋相对的两人终于卸下心防。最终联手用专业能力设局，在商业酒会上通过嫌犯的微表情破获内鬼，也在此刻确立了恋人关系。"
+      }
+    }
+  ],
+  "metadata": {
+    "signature_instructions": "Signature for brainstorming a single story idea",
+    "input_fields": [
+      "genre",
+      "platform",
+      "requirements_section"
+    ],
+    "output_fields": [
+      "title",
+      "body"
+    ]
+  }
+}
