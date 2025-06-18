@@ -179,7 +179,7 @@ const AppContent: React.FC = () => {
           )}
         </div>
       </Header>
-      <Content style={{ flexGrow: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <Content style={{ flexGrow: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
         {isMobile ? (
           <>
             <Drawer
@@ -245,7 +245,7 @@ const AppContent: React.FC = () => {
             </div>
           </>
         ) : (
-          <div style={{ flexGrow: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
             {/* Content Area with Breadcrumbs */}
             <div style={{
               flexGrow: 1,

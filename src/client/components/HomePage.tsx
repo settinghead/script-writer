@@ -14,29 +14,9 @@ import {
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { ProjectFlow } from '../../common/types';
 
 const { Title, Text, Paragraph } = Typography;
-
-interface ProjectFlow {
-    id: string;
-    title: string;
-    description: string;
-    currentPhase: 'brainstorming' | 'outline' | 'episodes' | 'scripts';
-    status: 'active' | 'completed' | 'failed';
-    platform?: string;
-    genre?: string;
-    totalEpisodes?: number;
-    episodeDuration?: number;
-    createdAt: string;
-    updatedAt: string;
-    sourceType: 'brainstorm' | 'direct_outline';
-    artifactCounts: {
-        ideas: number;
-        outlines: number;
-        episodes: number;
-        scripts: number;
-    };
-}
 
 const HomePage: React.FC = () => {
     const navigate = useNavigate();
@@ -183,6 +163,90 @@ const HomePage: React.FC = () => {
         return ((currentIndex + 1) / phases.length) * 100;
     };
 
+    const renderStageProgression = (flow: ProjectFlow) => {
+        const stages = [
+            { key: 'brainstorming', label: '创意构思', icon: <BulbOutlined /> },
+            { key: 'outline', label: '大纲设计', icon: <FileTextOutlined /> },
+            { key: 'episodes', label: '分集大纲', icon: <PlayCircleOutlined /> },
+            { key: 'scripts', label: '剧本创作', icon: <FileDoneOutlined /> }
+        ];
+
+        const currentIndex = stages.findIndex(stage => stage.key === flow.currentPhase);
+
+        return (
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: '12px',
+                padding: '8px 0'
+            }}>
+                {stages.map((stage, index) => {
+                    const isActive = index === currentIndex;
+                    const isCompleted = index < currentIndex;
+                    const isFuture = index > currentIndex;
+
+                    return (
+                        <React.Fragment key={stage.key}>
+                            <div style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                opacity: isFuture ? 0.4 : 1,
+                                transition: 'opacity 0.3s ease'
+                            }}>
+                                <div style={{
+                                    width: '24px',
+                                    height: '24px',
+                                    borderRadius: '50%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '12px',
+                                    backgroundColor: isActive
+                                        ? getPhaseColor(flow.currentPhase)
+                                        : isCompleted
+                                            ? '#52c41a'
+                                            : '#434343',
+                                    color: isActive || isCompleted ? '#fff' : '#999',
+                                    border: isActive ? `2px solid ${getPhaseColor(flow.currentPhase)}` : 'none',
+                                    boxShadow: isActive ? `0 0 8px ${getPhaseColor(flow.currentPhase)}40` : 'none'
+                                }}>
+                                    {isCompleted ? <CheckCircleOutlined style={{ fontSize: '12px' }} /> : stage.icon}
+                                </div>
+                                <Text style={{
+                                    fontSize: '10px',
+                                    marginTop: '4px',
+                                    color: isActive
+                                        ? getPhaseColor(flow.currentPhase)
+                                        : isCompleted
+                                            ? '#52c41a'
+                                            : isFuture
+                                                ? '#666'
+                                                : '#999',
+                                    fontWeight: isActive ? 'bold' : 'normal',
+                                    textAlign: 'center'
+                                }}>
+                                    {stage.label}
+                                </Text>
+                            </div>
+                            {index < stages.length - 1 && (
+                                <div style={{
+                                    flex: 1,
+                                    height: '2px',
+                                    margin: '0 8px',
+                                    backgroundColor: index < currentIndex ? '#52c41a' : '#434343',
+                                    opacity: index >= currentIndex ? 0.4 : 1,
+                                    transition: 'all 0.3s ease'
+                                }} />
+                            )}
+                        </React.Fragment>
+                    );
+                })}
+            </div>
+        );
+    };
+
     if (loading) {
         return (
             <div style={{
@@ -298,27 +362,16 @@ const HomePage: React.FC = () => {
                                     </div>
 
                                     <div style={{ marginBottom: '12px' }}>
-                                        <Tag
-                                            icon={getPhaseIcon(flow.currentPhase)}
-                                            color={getPhaseColor(flow.currentPhase)}
-                                        >
-                                            {getPhaseText(flow.currentPhase)}
-                                        </Tag>
-                                        {flow.sourceType === 'brainstorm' && (
-                                            <Tag color="orange">从头脑风暴开始</Tag>
-                                        )}
-                                        {flow.sourceType === 'direct_outline' && (
-                                            <Tag color="blue">直接大纲</Tag>
-                                        )}
+                                        {renderStageProgression(flow)}
+                                        <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
+                                            {flow.sourceType === 'brainstorm' && (
+                                                <Tag color="orange">从头脑风暴开始</Tag>
+                                            )}
+                                            {flow.sourceType === 'direct_outline' && (
+                                                <Tag color="blue">直接大纲</Tag>
+                                            )}
+                                        </div>
                                     </div>
-
-                                    <Progress
-                                        percent={getProgressValue(flow)}
-                                        size="small"
-                                        strokeColor={getPhaseColor(flow.currentPhase)}
-                                        showInfo={false}
-                                        style={{ marginBottom: '12px' }}
-                                    />
                                 </div>
 
                                 <Paragraph
