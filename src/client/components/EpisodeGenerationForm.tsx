@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Button, Space, InputNumber, Checkbox, Typography, message, Row, Col } from 'antd';
+import { Card, Button, Space, InputNumber, Checkbox, Typography, message, Row, Col, Tag } from 'antd';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import TextareaAutosize from 'react-textarea-autosize';
@@ -23,7 +23,6 @@ export const EpisodeGenerationForm: React.FC = () => {
     // 🔥 NEW: Cascaded parameters (inherited from outline/brainstorming)
     const [selectedPlatform, setSelectedPlatform] = useState<string>('通用');
     const [selectedGenrePaths, setSelectedGenrePaths] = useState<string[][]>([]);
-    const [genreProportions, setGenreProportions] = useState<number[]>([]);
     const [requirements, setRequirements] = useState<string>('');
     const [genrePopupVisible, setGenrePopupVisible] = useState(false);
 
@@ -58,7 +57,6 @@ export const EpisodeGenerationForm: React.FC = () => {
         if (cascadedParams) {
             setSelectedPlatform(cascadedParams.platform || '通用');
             setSelectedGenrePaths(cascadedParams.genre_paths || []);
-            setGenreProportions(cascadedParams.genre_proportions || []);
             setRequirements(cascadedParams.requirements || '');
         }
     }, [cascadedParams]);
@@ -77,23 +75,18 @@ export const EpisodeGenerationForm: React.FC = () => {
         }
     });
 
-    const handleGenreSelectionConfirm = (selection: { paths: string[][]; proportions: number[] }) => {
+    const handleGenreSelectionConfirm = (selection: { paths: string[][] }) => {
         setSelectedGenrePaths(selection.paths);
-        setGenreProportions(selection.proportions);
         setGenrePopupVisible(false);
     };
 
-    const buildGenreDisplayElements = (): (React.ReactElement | string)[] => {
+    const buildGenreDisplayElements = (): React.ReactElement[] => {
         return selectedGenrePaths.map((path, index) => {
             const genreText = path.join(' > ');
-            const proportion = genreProportions[index];
-            const proportionText = proportion ? ` (${proportion}%)` : '';
-
             return (
-                <span key={index} style={{ marginRight: '8px', marginBottom: '4px', display: 'inline-block' }}>
-                    {genreText}{proportionText}
-                    {index < selectedGenrePaths.length - 1 && ', '}
-                </span>
+                <Tag key={index} color="blue" style={{ marginBottom: 4 }}>
+                    {genreText}
+                </Tag>
             );
         });
     };
@@ -116,7 +109,6 @@ export const EpisodeGenerationForm: React.FC = () => {
             cascadedParams: {
                 platform: selectedPlatform,
                 genre_paths: selectedGenrePaths,
-                genre_proportions: genreProportions,
                 requirements: requirements
             }
         });
@@ -257,44 +249,44 @@ export const EpisodeGenerationForm: React.FC = () => {
 
                         <Row gutter={[16, 16]}>
                             <Col xs={24} sm={12}>
-                    <div>
-                        <Text strong style={{ color: '#fff', display: 'block', marginBottom: '8px' }}>
-                            剧集数量
-                        </Text>
-                        <InputNumber
-                            value={episodeCount}
-                            onChange={(value) => setEpisodeCount(value || 1)}
-                            min={1}
-                            max={100}
-                            style={{
-                                width: '100%',
-                                backgroundColor: '#1f1f1f',
-                                borderColor: '#404040',
-                                color: '#fff'
-                            }}
+                                <div>
+                                    <Text strong style={{ color: '#fff', display: 'block', marginBottom: '8px' }}>
+                                        剧集数量
+                                    </Text>
+                                    <InputNumber
+                                        value={episodeCount}
+                                        onChange={(value) => setEpisodeCount(value || 1)}
+                                        min={1}
+                                        max={100}
+                                        style={{
+                                            width: '100%',
+                                            backgroundColor: '#1f1f1f',
+                                            borderColor: '#404040',
+                                            color: '#fff'
+                                        }}
                                         suffix="集"
-                        />
-                    </div>
+                                    />
+                                </div>
                             </Col>
 
                             <Col xs={24} sm={12}>
-                    <div>
-                        <Text strong style={{ color: '#fff', display: 'block', marginBottom: '8px' }}>
-                            每集时长（分钟）
-                        </Text>
-                        <InputNumber
-                            value={episodeDuration}
-                            onChange={(value) => setEpisodeDuration(value || 1)}
-                            min={1}
-                            max={30}
-                            style={{
-                                width: '100%',
-                                backgroundColor: '#1f1f1f',
-                                borderColor: '#404040',
-                                color: '#fff'
-                            }}
+                                <div>
+                                    <Text strong style={{ color: '#fff', display: 'block', marginBottom: '8px' }}>
+                                        每集时长（分钟）
+                                    </Text>
+                                    <InputNumber
+                                        value={episodeDuration}
+                                        onChange={(value) => setEpisodeDuration(value || 1)}
+                                        min={1}
+                                        max={30}
+                                        style={{
+                                            width: '100%',
+                                            backgroundColor: '#1f1f1f',
+                                            borderColor: '#404040',
+                                            color: '#fff'
+                                        }}
                                         suffix="分钟"
-                        />
+                                    />
                                 </div>
                             </Col>
                         </Row>
@@ -338,7 +330,7 @@ export const EpisodeGenerationForm: React.FC = () => {
                     <Button
                         type="primary"
                         onClick={handleGenerate}
-                                                    loading={generateMutation.isPending}
+                        loading={generateMutation.isPending}
                         disabled={!outlineId}
                         style={{
                             width: '100%',

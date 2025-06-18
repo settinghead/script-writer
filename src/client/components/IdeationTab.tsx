@@ -37,7 +37,6 @@ const IdeationTab: React.FC = () => {
     const [brainstormingData, setBrainstormingData] = useState({
         selectedPlatform: '',
         selectedGenrePaths: [] as string[][],
-        genreProportions: [] as number[],
         generatedIdeas: [] as IdeaWithTitle[],
         generatedIdeaArtifacts: [] as Array<{ id: string, text: string, title?: string, orderIndex: number }>,
         requirements: ''
@@ -69,13 +68,13 @@ const IdeationTab: React.FC = () => {
     useEffect(() => {
         const currentTransformId = searchParams.get('transform');
         const currentArtifactId = searchParams.get('artifact_id');
-        
+
         // Update transform ID if it changed
         if (currentTransformId !== activeTransformId) {
             setActiveTransformId(currentTransformId);
             setIsStreamingJob(!!currentTransformId);
         }
-        
+
         // Update artifact ID if it changed
         if (currentArtifactId !== currentArtifactId) {
             setCurrentArtifactId(currentArtifactId);
@@ -117,7 +116,6 @@ const IdeationTab: React.FC = () => {
             setBrainstormingData({
                 selectedPlatform: data.selectedPlatform || '',
                 selectedGenrePaths: data.genrePaths || [],
-                genreProportions: data.genreProportions || [],
                 generatedIdeas: data.initialIdeas || [],
                 generatedIdeaArtifacts: data.initialIdeaArtifacts || [],
                 requirements: data.requirements || ''
@@ -274,7 +272,6 @@ const IdeationTab: React.FC = () => {
                 body: JSON.stringify({
                     platform: brainstormingData.selectedPlatform || '通用短视频平台',
                     genrePaths: brainstormingData.selectedGenrePaths,
-                    genreProportions: brainstormingData.genreProportions,
                     requirements: brainstormingData.requirements.trim()
                 })
             });
@@ -342,7 +339,6 @@ const IdeationTab: React.FC = () => {
         setBrainstormingData({
             selectedPlatform: '',
             selectedGenrePaths: [],
-            genreProportions: [],
             generatedIdeas: [],
             generatedIdeaArtifacts: [],
             requirements: ''
@@ -482,7 +478,6 @@ const IdeationTab: React.FC = () => {
                                 <BrainstormingParameterSummary
                                     selectedPlatform={brainstormingData.selectedPlatform}
                                     selectedGenrePaths={brainstormingData.selectedGenrePaths}
-                                    genreProportions={brainstormingData.genreProportions}
                                     requirements={brainstormingData.requirements}
                                 />
                             )}
@@ -578,13 +573,11 @@ const IdeationTab: React.FC = () => {
                                 <BrainstormingInputForm
                                     selectedPlatform={brainstormingData.selectedPlatform}
                                     selectedGenrePaths={brainstormingData.selectedGenrePaths}
-                                    genreProportions={brainstormingData.genreProportions}
                                     requirements={brainstormingData.requirements}
                                     onPlatformChange={(value) => setBrainstormingData(prev => ({ ...prev, selectedPlatform: value }))}
-                                    onGenreSelectionChange={(paths, proportions) => setBrainstormingData(prev => ({
+                                    onGenreSelectionChange={(paths) => setBrainstormingData(prev => ({
                                         ...prev,
-                                        selectedGenrePaths: paths,
-                                        genreProportions: proportions
+                                        selectedGenrePaths: paths
                                     }))}
                                     onRequirementsChange={(value) => setBrainstormingData(prev => ({ ...prev, requirements: value }))}
                                     onGenerate={generateIdeas}

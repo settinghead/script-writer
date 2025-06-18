@@ -510,10 +510,10 @@ const HomePage: React.FC = () => {
                                 </div>
                                 <div style={{ flex: 1 }}>
                                     <Title level={4} style={{ margin: 0, marginBottom: '8px' }}>
-                                        直接输入大纲
+                                        素材生成大纲
                                     </Title>
                                     <Text type="secondary">
-                                        已有明确想法？直接输入您的创意内容，快速开始大纲设计
+                                        输入任何形式的素材内容，AI将为您自动生成详细的故事大纲
                                     </Text>
                                 </div>
                             </div>

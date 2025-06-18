@@ -1,27 +1,28 @@
 import React from 'react';
-import { Typography, Divider } from 'antd';
+import { Typography, Divider, Tag, Space } from 'antd';
 
 const { Text } = Typography;
 
 interface BrainstormingParameterSummaryProps {
     selectedPlatform: string;
     selectedGenrePaths: string[][];
-    genreProportions: number[];
     requirements: string;
 }
 
 const BrainstormingParameterSummary: React.FC<BrainstormingParameterSummaryProps> = ({
     selectedPlatform,
     selectedGenrePaths,
-    genreProportions,
     requirements
 }) => {
-    const buildGenrePromptString = (): string => {
+    const buildGenreDisplayElements = (): React.ReactElement[] => {
         return selectedGenrePaths.map((path, index) => {
             const genreText = path.join(' > ');
-            const proportion = genreProportions[index];
-            return proportion ? `${genreText} (${proportion}%)` : genreText;
-        }).join(', ');
+            return (
+                <Tag key={index} color="blue" style={{ fontSize: '11px' }}>
+                    {genreText}
+                </Tag>
+            );
+        });
     };
 
     return (
@@ -50,12 +51,15 @@ const BrainstormingParameterSummary: React.FC<BrainstormingParameterSummaryProps
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <Text type="secondary" style={{ fontSize: '12px' }}>类型:</Text>
-                    <Text style={{ color: '#d9d9d9', fontSize: '12px' }}>
-                        {selectedGenrePaths.length > 0
-                            ? buildGenrePromptString()
-                            : '未指定'
-                        }
-                    </Text>
+                    {selectedGenrePaths.length > 0 ? (
+                        <Space wrap size="small">
+                            {buildGenreDisplayElements()}
+                        </Space>
+                    ) : (
+                        <Text style={{ color: '#d9d9d9', fontSize: '12px' }}>
+                            未指定
+                        </Text>
+                    )}
                 </div>
 
                 {requirements && (
@@ -63,7 +67,14 @@ const BrainstormingParameterSummary: React.FC<BrainstormingParameterSummaryProps
                         <Divider type="vertical" style={{ background: '#404040', margin: '0' }} />
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <Text type="secondary" style={{ fontSize: '12px' }}>要求:</Text>
-                            <Text style={{ color: '#d9d9d9', fontSize: '12px' }}>
+                            <Text style={{
+                                color: '#d9d9d9',
+                                fontSize: '12px',
+                                maxWidth: '200px',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
+                            }}>
                                 {requirements}
                             </Text>
                         </div>

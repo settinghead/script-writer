@@ -40,7 +40,6 @@ export interface Transform {
 export interface BrainstormParamsV1 {
     platform: string;
     genre_paths: string[][];
-    genre_proportions: number[];
     requirements: string;
 }
 
@@ -63,7 +62,6 @@ export interface UserInputV1 {
 export interface BrainstormingJobParamsV1 {
     platform: string;
     genrePaths: string[][];
-    genreProportions: number[];
     requirements: string;
     requestedAt: string;
 }
@@ -74,7 +72,6 @@ export interface BrainstormingJobParamsV1 {
 export interface WorkflowCascadingParamsV1 {
     platform: string;
     genre_paths: string[][];
-    genre_proportions: number[];
     requirements: string;
     // Add more cascading params as needed
 }

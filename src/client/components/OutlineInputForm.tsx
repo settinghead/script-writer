@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Button, Card, Typography, Alert, Space, message, InputNumber, Row, Col, Select } from 'antd';
+import { Button, Card, Typography, Alert, Space, message, InputNumber, Row, Col, Select, Tag } from 'antd';
 import { SaveOutlined, FileTextOutlined } from '@ant-design/icons';
 import TextareaAutosize from 'react-textarea-autosize';
 import { apiService } from '../services/apiService';
@@ -22,7 +22,6 @@ export const OutlineInputForm: React.FC = () => {
     // 🔥 NEW: Cascaded parameters
     const [selectedPlatform, setSelectedPlatform] = useState<string>('通用');
     const [selectedGenrePaths, setSelectedGenrePaths] = useState<string[][]>([]);
-    const [genreProportions, setGenreProportions] = useState<number[]>([]);
     const [requirements, setRequirements] = useState<string>('');
     const [genrePopupVisible, setGenrePopupVisible] = useState(false);
 
@@ -95,13 +94,11 @@ export const OutlineInputForm: React.FC = () => {
                     console.log('🔍 Setting cascaded parameters:', {
                         platform: brainstormData.platform || '通用',
                         genre_paths: brainstormData.genre_paths || [],
-                        genre_proportions: brainstormData.genre_proportions || [],
                         requirements: brainstormData.requirements || ''
                     });
 
                     setSelectedPlatform(brainstormData.platform || '通用');
                     setSelectedGenrePaths(brainstormData.genre_paths || []);
-                    setGenreProportions(brainstormData.genre_proportions || []);
                     setRequirements(brainstormData.requirements || '');
                 } else {
                     console.log('🔍 No brainstorm artifacts found, using defaults');
@@ -121,24 +118,19 @@ export const OutlineInputForm: React.FC = () => {
         setHasUnsavedChanges(true);
     };
 
-    const handleGenreSelectionConfirm = (selection: { paths: string[][]; proportions: number[] }) => {
+    const handleGenreSelectionConfirm = (selection: { paths: string[][] }) => {
         setSelectedGenrePaths(selection.paths);
-        setGenreProportions(selection.proportions);
         setGenrePopupVisible(false);
         setHasUnsavedChanges(true);
     };
 
-    const buildGenreDisplayElements = (): (React.ReactElement | string)[] => {
+    const buildGenreDisplayElements = (): React.ReactElement[] => {
         return selectedGenrePaths.map((path, index) => {
             const genreText = path.join(' > ');
-            const proportion = genreProportions[index];
-            const proportionText = proportion ? ` (${proportion}%)` : '';
-
             return (
-                <span key={index} style={{ marginRight: '8px', marginBottom: '4px', display: 'inline-block' }}>
-                    {genreText}{proportionText}
-                    {index < selectedGenrePaths.length - 1 && ', '}
-                </span>
+                <Tag key={index} color="blue" style={{ marginBottom: 4 }}>
+                    {genreText}
+                </Tag>
             );
         });
     };
@@ -151,18 +143,18 @@ export const OutlineInputForm: React.FC = () => {
 
         try {
             setIsLoading(true);
-                const response = await fetch('/api/artifacts/user-input', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        text: text.trim(),
+            const response = await fetch('/api/artifacts/user-input', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    text: text.trim(),
                     sourceArtifactId: sourceArtifact?.id
-                    })
-                });
+                })
+            });
 
-                if (!response.ok) {
+            if (!response.ok) {
                 throw new Error(`Failed to save artifact: ${response.status}`);
             }
 
@@ -224,13 +216,12 @@ export const OutlineInputForm: React.FC = () => {
                 cascadedParams: {
                     platform: selectedPlatform,
                     genre_paths: selectedGenrePaths,
-                    genre_proportions: genreProportions,
                     requirements: requirements
                 }
             });
 
             // Navigate to the streaming outline page
-                            navigate(`/projects/${result.sessionId}/outline?transform=${result.transformId}`);
+            navigate(`/projects/${result.sessionId}/outline?transform=${result.transformId}`);
 
         } catch (error: any) {
             console.error('Error generating outline:', error);
@@ -243,7 +234,7 @@ export const OutlineInputForm: React.FC = () => {
     if (isLoading) {
         return (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
-                    <Text style={{ color: '#fff' }}>加载中...</Text>
+                <Text style={{ color: '#fff' }}>加载中...</Text>
             </div>
         );
     }

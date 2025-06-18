@@ -41,7 +41,6 @@ export interface OutlineGenerateRequest {
     cascadedParams?: {
         platform: string;
         genre_paths: string[][];
-        genre_proportions: number[];
         requirements: string;
     };
 }
@@ -55,7 +54,6 @@ export interface OutlineGenerateResponse {
 export interface BrainstormingGenerateRequest {
     platform: string;
     genrePaths: string[];
-    genreProportions: number[];
     requirements?: string;
 }
 
@@ -95,16 +93,16 @@ export interface EpisodeScriptV1 {
     episodeNumber: number;
     stageArtifactId: string;
     episodeGenerationSessionId: string;
-    
+
     // Script content
     scriptContent: string;
     scenes: SceneV1[];
-    
+
     // Metadata
     wordCount: number;
     estimatedDuration: number; // in minutes
     generatedAt: string;
-    
+
     // Source references
     episodeSynopsisArtifactId: string;
     userRequirements?: string;

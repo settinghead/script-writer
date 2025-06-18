@@ -82,7 +82,6 @@ export interface IdeationSessionV1 {
 export interface BrainstormParamsV1 {
     platform: string;
     genre_paths: string[][];
-    genre_proportions: number[];
     requirements: string;
 }
 
@@ -98,7 +97,6 @@ export interface BrainstormIdeaV1 {
 export interface BrainstormingJobParamsV1 {
     platform: string;
     genrePaths: string[][];
-    genreProportions: number[];
     requirements: string;
     requestedAt: string; // ISO timestamp
 }
@@ -109,7 +107,6 @@ export interface BrainstormingJobParamsV1 {
 export interface WorkflowCascadingParamsV1 {
     platform: string;
     genre_paths: string[][];
-    genre_proportions: number[];
     requirements: string;
     // Add more cascading params as needed
 }
@@ -262,7 +259,7 @@ export interface EpisodeScriptV1 {
     episodeNumber: number;
     stageArtifactId: string;
     episodeGenerationSessionId: string;
-    
+
     // Script content
     scriptContent: string;
     scenes: Array<{
@@ -277,12 +274,12 @@ export interface EpisodeScriptV1 {
             direction?: string;
         }>;
     }>;
-    
+
     // Metadata
     wordCount: number;
     estimatedDuration: number;
     generatedAt: string;
-    
+
     // Source references
     episodeSynopsisArtifactId: string;
     userRequirements?: string;
@@ -386,7 +383,6 @@ function isBrainstormParamsV1(data: any): data is BrainstormParamsV1 {
     return typeof data === 'object' &&
         typeof data.platform === 'string' &&
         Array.isArray(data.genre_paths) &&
-        Array.isArray(data.genre_proportions) &&
         typeof data.requirements === 'string';
 }
 
@@ -401,7 +397,6 @@ function isBrainstormingJobParamsV1(data: any): data is BrainstormingJobParamsV1
     return typeof data === 'object' &&
         typeof data.platform === 'string' &&
         Array.isArray(data.genrePaths) &&
-        Array.isArray(data.genreProportions) &&
         typeof data.requirements === 'string' &&
         typeof data.requestedAt === 'string';
 }
@@ -614,33 +609,33 @@ function isOutlineGenreEditV1(data: any): boolean {
 }
 
 function isOutlineSellingPointsEditV1(data: any): boolean {
-    if (typeof data !== 'object' || 
-        typeof data.outline_session_id !== 'string' || 
+    if (typeof data !== 'object' ||
+        typeof data.outline_session_id !== 'string' ||
         typeof data.edited_at !== 'string') {
         return false;
     }
-    
+
     // Accept both string and array for selling_points, as well as stringified JSON
     if (typeof data.selling_points === 'string' || Array.isArray(data.selling_points)) {
         return true;
     }
-    
+
     return false;
 }
 
 function isOutlineSettingEditV1(data: any): boolean {
-    if (typeof data !== 'object' || 
-        typeof data.outline_session_id !== 'string' || 
+    if (typeof data !== 'object' ||
+        typeof data.outline_session_id !== 'string' ||
         typeof data.edited_at !== 'string') {
         return false;
     }
-    
+
     // Accept both string and object for setting, as well as stringified JSON
-    if (typeof data.setting === 'string' || 
+    if (typeof data.setting === 'string' ||
         (typeof data.setting === 'object' && data.setting !== null)) {
         return true;
     }
-    
+
     return false;
 }
 
@@ -652,17 +647,17 @@ function isOutlineSynopsisEditV1(data: any): boolean {
 }
 
 function isOutlineTargetAudienceEditV1(data: any): boolean {
-    if (typeof data !== 'object' || 
-        typeof data.outline_session_id !== 'string' || 
+    if (typeof data !== 'object' ||
+        typeof data.outline_session_id !== 'string' ||
         typeof data.edited_at !== 'string') {
         return false;
     }
-    
+
     // Accept both object and stringified JSON for target_audience
     if (typeof data.target_audience === 'object' && data.target_audience !== null) {
         return true;
     }
-    
+
     if (typeof data.target_audience === 'string') {
         try {
             const parsed = JSON.parse(data.target_audience);
@@ -672,22 +667,22 @@ function isOutlineTargetAudienceEditV1(data: any): boolean {
             return true;
         }
     }
-    
+
     return false;
 }
 
 function isOutlineSatisfactionPointsEditV1(data: any): boolean {
-    if (typeof data !== 'object' || 
-        typeof data.outline_session_id !== 'string' || 
+    if (typeof data !== 'object' ||
+        typeof data.outline_session_id !== 'string' ||
         typeof data.edited_at !== 'string') {
         return false;
     }
-    
+
     // Accept both array and stringified JSON for satisfaction_points
     if (Array.isArray(data.satisfaction_points)) {
         return true;
     }
-    
+
     if (typeof data.satisfaction_points === 'string') {
         try {
             const parsed = JSON.parse(data.satisfaction_points);
@@ -697,22 +692,22 @@ function isOutlineSatisfactionPointsEditV1(data: any): boolean {
             return true;
         }
     }
-    
+
     return false;
 }
 
 function isOutlineCharactersEditV1(data: any): boolean {
-    if (typeof data !== 'object' || 
-        typeof data.outline_session_id !== 'string' || 
+    if (typeof data !== 'object' ||
+        typeof data.outline_session_id !== 'string' ||
         typeof data.edited_at !== 'string') {
         return false;
     }
-    
+
     // Accept both array and stringified JSON for characters
     if (Array.isArray(data.characters)) {
         return true;
     }
-    
+
     if (typeof data.characters === 'string') {
         try {
             const parsed = JSON.parse(data.characters);
@@ -722,22 +717,22 @@ function isOutlineCharactersEditV1(data: any): boolean {
             return true;
         }
     }
-    
+
     return false;
 }
 
 function isOutlineSynopsisStagesEditV1(data: any): boolean {
-    if (typeof data !== 'object' || 
-        typeof data.outline_session_id !== 'string' || 
+    if (typeof data !== 'object' ||
+        typeof data.outline_session_id !== 'string' ||
         typeof data.edited_at !== 'string') {
         return false;
     }
-    
+
     // Accept both array and stringified JSON for synopsis_stages
     if (Array.isArray(data.synopsis_stages)) {
         return true;
     }
-    
+
     if (typeof data.synopsis_stages === 'string') {
         try {
             const parsed = JSON.parse(data.synopsis_stages);
@@ -747,6 +742,6 @@ function isOutlineSynopsisStagesEditV1(data: any): boolean {
             return true;
         }
     }
-    
+
     return false;
 } 

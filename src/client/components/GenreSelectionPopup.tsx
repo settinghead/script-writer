@@ -5,7 +5,6 @@ import {
     Button,
     Checkbox,
     Typography,
-    Slider,
     Row,
     Col,
     Menu,
@@ -14,7 +13,6 @@ import {
     Space,
     Card,
     Breadcrumb,
-    Divider,
     Flex,
     Tag,
     Alert
@@ -76,7 +74,7 @@ export const genreOptions = {
 export interface GenreSelectionPopupProps {
     visible: boolean;
     onClose: () => void;
-    onSelect: (selection: { paths: string[][]; proportions: number[] }) => void;
+    onSelect: (selection: { paths: string[][] }) => void;
     currentSelectionPaths: string[][];
     disabledOptions?: string[]; // Optional array of genre paths to disable
 }
@@ -91,19 +89,7 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
     const [navigationPath, setNavigationPath] = useState<string[]>([]);
     const [tempSelectedPaths, setTempSelectedPaths] = useState<string[][]>(currentSelectionPaths);
-    const [tempProportions, setTempProportions] = useState<number[]>([]);
     const [activeNavigationPath, setActiveNavigationPath] = useState<string[]>([]);
-
-    const initializeProportions = (paths: string[][]) => {
-        if (paths.length === 0) {
-            setTempProportions([]);
-        } else if (paths.length === 1) {
-            setTempProportions([100]);
-        } else {
-            const equalShare = Math.floor(100 / paths.length);
-            setTempProportions(paths.map(() => equalShare));
-        }
-    };
 
     useEffect(() => {
         const handleResize = () => {
@@ -116,7 +102,6 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
     useEffect(() => {
         if (visible) {
             setTempSelectedPaths(currentSelectionPaths);
-            initializeProportions(currentSelectionPaths);
             setNavigationPath([]);
             if (!isMobile) {
                 if (currentSelectionPaths.length > 0 && currentSelectionPaths[0].length > 0) {
@@ -188,113 +173,59 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
             return;
         }
 
-        let newSelectedPaths: string[][] = [];
-
         setTempSelectedPaths(prevSelectedPaths => {
             const isAlreadySelected = prevSelectedPaths.some(p => JSON.stringify(p) === JSON.stringify(fullItemPath));
             if (isAlreadySelected) {
-                newSelectedPaths = prevSelectedPaths.filter(p => JSON.stringify(p) !== JSON.stringify(fullItemPath));
+                return prevSelectedPaths.filter(p => JSON.stringify(p) !== JSON.stringify(fullItemPath));
             } else {
                 if (prevSelectedPaths.length < 3) {
-                    newSelectedPaths = [...prevSelectedPaths, fullItemPath];
+                    return [...prevSelectedPaths, fullItemPath];
                 } else {
-                    newSelectedPaths = prevSelectedPaths;
+                    return prevSelectedPaths;
                 }
             }
-            initializeProportions(newSelectedPaths);
-            return newSelectedPaths;
         });
     };
 
     const handleRemoveSelectedItem = (indexToRemove: number) => {
         const newSelectedPaths = tempSelectedPaths.filter((_, index) => index !== indexToRemove);
         setTempSelectedPaths(newSelectedPaths);
-        initializeProportions(newSelectedPaths);
-    };
-
-    const handleProportionSliderChange = (index: number, value: number | null) => {
-        if (value === null) return;
-        const newProportions = [...tempProportions];
-        newProportions[index] = value;
-        setTempProportions(newProportions);
     };
 
     const handleConfirm = () => {
         if (tempSelectedPaths.length > 0 && tempSelectedPaths.length <= 3) {
-            let finalProportions: number[];
-            if (tempSelectedPaths.length === 0) {
-                finalProportions = [];
-            } else if (tempSelectedPaths.length === 1) {
-                finalProportions = [100];
-            } else {
-                const sum = tempProportions.reduce((acc, p) => acc + p, 0);
-                if (sum === 0) {
-                    const equalShare = 100 / tempProportions.length;
-                    finalProportions = tempProportions.map(() => equalShare);
-                } else {
-                    finalProportions = tempProportions.map(p => Math.round((p / sum) * 100));
-                    const currentSum = finalProportions.reduce((a, b) => a + b, 0);
-                    if (currentSum !== 100 && finalProportions.length > 0) {
-                        finalProportions[0] += (100 - currentSum);
-                    }
-                }
-            }
-            onSelect({ paths: tempSelectedPaths, proportions: finalProportions });
+            onSelect({ paths: tempSelectedPaths });
             onClose();
         }
     };
 
     const handleCancel = () => {
         setTempSelectedPaths(currentSelectionPaths);
-        initializeProportions(currentSelectionPaths);
         onClose();
     };
 
-    const renderProportionSliders = () => {
+    const renderSelectedItemsTags = () => {
         if (tempSelectedPaths.length === 0) return null;
-
-        const totalRawSum = tempProportions.reduce((a, b) => a + b, 0);
-        const isSingleItem = tempSelectedPaths.length === 1;
 
         return (
             <Card size="small" style={{ marginTop: 16 }}>
-                <Title level={5} style={{ marginBottom: 16 }}>调整类型比例</Title>
-                <Form layout="vertical">
+                <Title level={5} style={{ marginBottom: 16 }}>已选择的故事类型</Title>
+                <Space wrap>
                     {tempSelectedPaths.map((path, index) => {
                         const pathString = path.join(' > ');
-                        const displayValue = tempProportions[index] || (100 / tempProportions.length);
-                        const currentPercentage = totalRawSum > 0 ? (displayValue / totalRawSum) * 100 : (tempSelectedPaths.length > 0 ? (100 / tempSelectedPaths.length) : 0);
-
                         return (
-                            <Form.Item key={`slider-${index}`} style={{ marginBottom: 16 }}>
-                                <Flex justify="space-between" align="center" style={{ marginBottom: 8 }}>
-                                    <Text ellipsis style={{ flex: 1, marginRight: 16 }}>{pathString}</Text>
-                                    <Space>
-                                        <Tag color="blue">
-                                            {isSingleItem ? '100%' : `${currentPercentage.toFixed(0)}%`}
-                                        </Tag>
-                                        <Button
-                                            type="text"
-                                            icon={<CloseOutlined />}
-                                            onClick={() => handleRemoveSelectedItem(index)}
-                                            size="small"
-                                            danger
-                                        />
-                                    </Space>
-                                </Flex>
-                                <Slider
-                                    min={0}
-                                    max={100}
-                                    step={1}
-                                    value={isSingleItem ? 100 : displayValue}
-                                    onChange={(value) => handleProportionSliderChange(index, value)}
-                                    tooltip={{ formatter: (value) => `${value}%` }}
-                                    disabled={isSingleItem}
-                                />
-                            </Form.Item>
+                            <Tag
+                                key={index}
+                                closable
+                                onClose={() => handleRemoveSelectedItem(index)}
+                                color="blue"
+                                style={{ marginBottom: 8 }}
+                            >
+                                {pathString}
+                            </Tag>
                         );
                     })}
-                </Form>
+                </Space>
             </Card>
         );
     };
@@ -379,7 +310,7 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
 
         return (
             <Flex vertical>
-                <Flex gap={8} style={{ overflowX: 'auto', paddingBottom: tempSelectedPaths.length >= 2 ? 16 : 0 }}>
+                <Flex gap={8} style={{ overflowX: 'auto', paddingBottom: tempSelectedPaths.length > 0 ? 16 : 0 }}>
                     {columns}
                 </Flex>
                 {tempSelectedPaths.length >= 3 && (
@@ -391,8 +322,7 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
                         style={{ margin: '16px 0' }}
                     />
                 )}
-                {tempSelectedPaths.length >= 2 && <Divider />}
-                {renderProportionSliders()}
+                {tempSelectedPaths.length > 0 && renderSelectedItemsTags()}
             </Flex>
         );
     };
@@ -423,7 +353,7 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
             <Flex vertical style={{ height: '100%' }}>
                 {navigationPath.length > 0 && renderBreadcrumb()}
 
-                <div style={{ flex: 1, paddingBottom: tempSelectedPaths.length >= 2 ? 16 : 0 }}>
+                <div style={{ flex: 1, paddingBottom: tempSelectedPaths.length > 0 ? 16 : 0 }}>
                     {currentDataToDisplay && typeof currentDataToDisplay === 'object' && !Array.isArray(currentDataToDisplay) ? (
                         <List
                             dataSource={Object.keys(currentDataToDisplay)}
@@ -475,18 +405,17 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
                     )}
                 </div>
 
-                {tempSelectedPaths.length >= 2 && <Divider />}
-                {renderProportionSliders()}
+                {tempSelectedPaths.length > 0 && renderSelectedItemsTags()}
             </Flex>
         );
     };
 
-    const drawerHeight = tempSelectedPaths.length >= 2 ? '85vh' : '70vh';
+    const drawerHeight = tempSelectedPaths.length > 0 ? '85vh' : '70vh';
 
     if (isMobile) {
         return (
             <Drawer
-                title="选择故事类型与比例"
+                title="选择故事类型"
                 placement="bottom"
                 height={drawerHeight}
                 onClose={handleCancel}
@@ -513,10 +442,10 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
 
     return (
         <Modal
-            title="选择故事类型与比例"
+            title="选择故事类型"
             open={visible}
             onCancel={handleCancel}
-            width={Math.min(220 * (activeNavigationPath.length + 2) + (tempSelectedPaths.length >= 2 ? 50 : 0), 1000)}
+            width={Math.min(220 * (activeNavigationPath.length + 2) + (tempSelectedPaths.length > 0 ? 50 : 0), 1000)}
             centered
             footer={[
                 <Button key="cancel" onClick={handleCancel}>
