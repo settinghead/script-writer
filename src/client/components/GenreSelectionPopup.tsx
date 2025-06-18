@@ -1,8 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Drawer, Button, Checkbox, Typography, Slider, Row, Col } from 'antd';
-import { RightOutlined, LeftOutlined, CloseOutlined } from '@ant-design/icons';
+import {
+    Modal,
+    Drawer,
+    Button,
+    Checkbox,
+    Typography,
+    Slider,
+    Row,
+    Col,
+    Menu,
+    List,
+    Form,
+    Space,
+    Card,
+    Breadcrumb,
+    Divider,
+    Flex,
+    Tag,
+    Alert
+} from 'antd';
+import { RightOutlined, LeftOutlined, CloseOutlined, HomeOutlined } from '@ant-design/icons';
+import type { MenuProps } from 'antd';
 
-const { Text } = Typography;
+const { Text, Title } = Typography;
 
 // Genre hierarchy with disabled states
 export const genreOptions = {
@@ -237,203 +257,177 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
         const isSingleItem = tempSelectedPaths.length === 1;
 
         return (
-            <div style={{ marginTop: '20px', padding: '0 16px' }}>
-                <Text strong style={{ display: 'block', marginBottom: '10px' }}>调整类型比例:</Text>
-                {tempSelectedPaths.map((path, index) => {
-                    const pathString = path.join(' > ');
-                    const currentRawValue = tempProportions[index] || 0;
-                    const baseValue = tempProportions.length > 0 ? (100 / tempProportions.length) : 0;
-                    const displayValue = tempProportions[index] !== undefined ? tempProportions[index] : baseValue;
+            <Card size="small" style={{ marginTop: 16 }}>
+                <Title level={5} style={{ marginBottom: 16 }}>调整类型比例</Title>
+                <Form layout="vertical">
+                    {tempSelectedPaths.map((path, index) => {
+                        const pathString = path.join(' > ');
+                        const displayValue = tempProportions[index] || (100 / tempProportions.length);
+                        const currentPercentage = totalRawSum > 0 ? (displayValue / totalRawSum) * 100 : (tempSelectedPaths.length > 0 ? (100 / tempSelectedPaths.length) : 0);
 
-                    const currentPercentage = totalRawSum > 0 ? (displayValue / totalRawSum) * 100 : (tempSelectedPaths.length > 0 ? (100 / tempSelectedPaths.length) : 0);
-
-                    return (
-                        <div key={`slider-${index}`} style={{ marginBottom: '15px' }}>
-                            <Row align="middle" gutter={8}>
-                                <Col flex="1">
-                                    <Text ellipsis={{ tooltip: pathString }}>{pathString}</Text>
-                                </Col>
-                                <Col style={{ width: '70px', textAlign: 'right' }}>
-                                    <Text type="secondary">
-                                        {isSingleItem ? '100%' : `${currentPercentage.toFixed(0)}%`}
-                                    </Text>
-                                </Col>
-                                <Col>
-                                    <Button
-                                        type="text"
-                                        icon={<CloseOutlined />}
-                                        onClick={() => handleRemoveSelectedItem(index)}
-                                        size="small"
-                                        danger
-                                    />
-                                </Col>
-                            </Row>
-                            <Slider
-                                min={0}
-                                max={100}
-                                step={1}
-                                value={isSingleItem ? 100 : displayValue}
-                                onChange={(value) => handleProportionSliderChange(index, value)}
-                                tooltip={{ formatter: (value) => `${value}` }}
-                                disabled={isSingleItem}
-                            />
-                        </div>
-                    );
-                })}
-            </div>
+                        return (
+                            <Form.Item key={`slider-${index}`} style={{ marginBottom: 16 }}>
+                                <Flex justify="space-between" align="center" style={{ marginBottom: 8 }}>
+                                    <Text ellipsis style={{ flex: 1, marginRight: 16 }}>{pathString}</Text>
+                                    <Space>
+                                        <Tag color="blue">
+                                            {isSingleItem ? '100%' : `${currentPercentage.toFixed(0)}%`}
+                                        </Tag>
+                                        <Button
+                                            type="text"
+                                            icon={<CloseOutlined />}
+                                            onClick={() => handleRemoveSelectedItem(index)}
+                                            size="small"
+                                            danger
+                                        />
+                                    </Space>
+                                </Flex>
+                                <Slider
+                                    min={0}
+                                    max={100}
+                                    step={1}
+                                    value={isSingleItem ? 100 : displayValue}
+                                    onChange={(value) => handleProportionSliderChange(index, value)}
+                                    tooltip={{ formatter: (value) => `${value}%` }}
+                                    disabled={isSingleItem}
+                                />
+                            </Form.Item>
+                        );
+                    })}
+                </Form>
+            </Card>
         );
     };
 
+    const createMenuItems = (data: any, basePath: string[] = []): MenuProps['items'] => {
+        if (!data || typeof data !== 'object' || Array.isArray(data)) return [];
+
+        return Object.keys(data).map(key => {
+            const itemPath = [...basePath, key];
+            const itemHasChildren = hasChildren(basePath, key);
+            const itemIsDeepest = isDeepestLevel(basePath, key);
+            const canSelectItem = !itemHasChildren || itemIsDeepest;
+            const isSelected = tempSelectedPaths.some(p => JSON.stringify(p) === JSON.stringify(itemPath));
+
+            return {
+                key: itemPath.join('|'),
+                label: (
+                    <Flex justify="space-between" align="center">
+                        <Flex align="center">
+                            {canSelectItem && (
+                                <Checkbox
+                                    checked={isSelected}
+                                    onChange={() => handleCheckboxChange(basePath, key)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    disabled={!isSelected && tempSelectedPaths.length >= 3}
+                                    style={{ marginRight: 8 }}
+                                />
+                            )}
+                            <span>{key}</span>
+                        </Flex>
+                        {itemHasChildren && !itemIsDeepest && <RightOutlined style={{ fontSize: 10 }} />}
+                    </Flex>
+                ),
+                onClick: () => {
+                    if (itemHasChildren && !itemIsDeepest) {
+                        handleNavigationClick(itemPath);
+                    } else if (canSelectItem) {
+                        handleCheckboxChange(basePath, key);
+                    }
+                }
+            };
+        });
+    };
+
     const renderMillerColumns = () => {
-        const columns = [];
+        const columns: React.ReactElement[] = [];
         let currentLevelData: any = genreOptions;
         let currentPathSegmentsForRender: string[] = [];
 
-
+        // Root column
         columns.push(
-            <div key="col-root" style={{
-                width: '200px',
-                borderRight: '1px solid #303030',
-                height: 'auto',
-                maxHeight: '300px',
-                overflowY: 'auto'
-            }}>
-                {Object.keys(currentLevelData).map(key => {
-                    const itemPath = [key];
-                    const isEffectivelySelected = tempSelectedPaths.some(p => JSON.stringify(p) === JSON.stringify(itemPath) && (!hasChildren([], key) || isDeepestLevel([], key)));
-                    const canSelectItem = !hasChildren([], key) || isDeepestLevel([], key);
-                    const isActiveNavBranch = activeNavigationPath[0] === key;
-
-                    return (
-                        <div
-                            key={key}
-                            onClick={() => {
-                                if (hasChildren([], key) && !isDeepestLevel([], key)) handleNavigationClick(itemPath);
-                            }}
-                            style={{
-                                padding: '8px 12px',
-                                cursor: (hasChildren([], key) && !isDeepestLevel([], key)) ? 'pointer' : 'default',
-                                backgroundColor: isActiveNavBranch ? '#1890ff20' : (isEffectivelySelected ? '#1890ff10' : 'transparent'),
-                                borderLeft: isActiveNavBranch ? '3px solid #1890ff' : (isEffectivelySelected ? '3px solid #1890ff80' : '3px solid transparent'),
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center'
-                            }}
-                            onMouseEnter={(e) => { if (!isActiveNavBranch && !isEffectivelySelected) e.currentTarget.style.backgroundColor = '#ffffff10'; }}
-                            onMouseLeave={(e) => { if (!isActiveNavBranch && !isEffectivelySelected) e.currentTarget.style.backgroundColor = 'transparent'; }}
-                        >
-                            <div style={{ display: 'flex', alignItems: 'center' }}>
-                                {canSelectItem && (
-                                    <Checkbox
-                                        checked={isEffectivelySelected}
-                                        onChange={() => handleCheckboxChange([], key)}
-                                        onClick={(e) => e.stopPropagation()}
-                                        disabled={!isEffectivelySelected && tempSelectedPaths.length >= 3}
-                                        style={{ marginRight: '8px' }}
-                                    />
-                                )}
-                                <span>{key}</span>
-                            </div>
-                            {hasChildren([], key) && !isDeepestLevel([], key) && <RightOutlined style={{ fontSize: '10px' }} />}
-                        </div>
-                    );
-                })}
-            </div>
+            <Card key="col-root" size="small" style={{ width: 200, height: 300, overflow: 'auto' }}>
+                <Menu
+                    mode="vertical"
+                    selectedKeys={activeNavigationPath.length > 0 ? [activeNavigationPath[0]] : []}
+                    items={createMenuItems(currentLevelData)}
+                    style={{ border: 'none' }}
+                />
+            </Card>
         );
 
+        // Additional columns based on navigation path
         for (let i = 0; i < activeNavigationPath.length; i++) {
             currentPathSegmentsForRender = activeNavigationPath.slice(0, i + 1);
             currentLevelData = getDataAtPath(currentPathSegmentsForRender);
 
-
-
             if (currentLevelData && typeof currentLevelData === 'object' && !Array.isArray(currentLevelData)) {
                 columns.push(
-                    <div key={`col-${i}`} style={{
-                        width: '200px',
-                        borderRight: '1px solid #303030',
-                        height: 'auto',
-                        maxHeight: '300px',
-                        overflowY: 'auto'
-                    }}>
-                        {Object.keys(currentLevelData).map(key => {
-                            const itemPath = [...currentPathSegmentsForRender, key];
-                            const isEffectivelySelected = tempSelectedPaths.some(p => JSON.stringify(p) === JSON.stringify(itemPath) && (!hasChildren(currentPathSegmentsForRender, key) || isDeepestLevel(currentPathSegmentsForRender, key)));
-                            const canSelectItem = !hasChildren(currentPathSegmentsForRender, key) || isDeepestLevel(currentPathSegmentsForRender, key);
-                            const isActiveNavBranch = activeNavigationPath[i + 1] === key;
-
-                            const itemHasChildren = hasChildren(currentPathSegmentsForRender, key);
-                            const itemIsDeepest = isDeepestLevel(currentPathSegmentsForRender, key);
-
-                            return (
-                                <div
-                                    key={key}
-                                    onClick={() => {
-                                        if (itemHasChildren && !itemIsDeepest) {
-                                            console.log(`    Navigating due to itemHasChildren && !itemIsDeepest.`);
-                                            handleNavigationClick(itemPath);
-                                        } else if (canSelectItem) {
-                                            console.log(`    Checkbox change due to canSelectItem: ${canSelectItem}.`);
-                                            handleCheckboxChange(currentPathSegmentsForRender, key);
-                                        }
-                                    }}
-                                    style={{
-                                        padding: '8px 12px',
-                                        cursor: 'pointer',
-                                        backgroundColor: isActiveNavBranch ? '#1890ff20' : (isEffectivelySelected ? '#1890ff10' : 'transparent'),
-                                        borderLeft: isActiveNavBranch ? '3px solid #1890ff' : (isEffectivelySelected ? '3px solid #1890ff80' : '3px solid transparent'),
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center'
-                                    }}
-                                    onMouseEnter={(e) => { if (!isActiveNavBranch && !isEffectivelySelected) e.currentTarget.style.backgroundColor = '#ffffff10'; }}
-                                    onMouseLeave={(e) => { if (!isActiveNavBranch && !isEffectivelySelected) e.currentTarget.style.backgroundColor = 'transparent'; }}
-                                >
-                                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                                        {canSelectItem && (
-                                            <Checkbox
-                                                checked={isEffectivelySelected}
-                                                onChange={() => handleCheckboxChange(currentPathSegmentsForRender, key)}
-                                                onClick={(e) => e.stopPropagation()}
-                                                disabled={!isEffectivelySelected && tempSelectedPaths.length >= 3}
-                                                style={{ marginRight: '8px' }}
-                                            />
-                                        )}
-                                        <span>{key}</span>
-                                    </div>
-                                    {hasChildren(currentPathSegmentsForRender, key) && !isDeepestLevel(currentPathSegmentsForRender, key) && <RightOutlined style={{ fontSize: '10px' }} />}
-                                </div>
-                            );
-                        })}
-                    </div>
+                    <Card key={`col-${i}`} size="small" style={{ width: 200, height: 300, overflow: 'auto' }}>
+                        <Menu
+                            mode="vertical"
+                            selectedKeys={activeNavigationPath.length > i + 1 ? [activeNavigationPath[i + 1]] : []}
+                            items={createMenuItems(currentLevelData, currentPathSegmentsForRender)}
+                            style={{ border: 'none' }}
+                        />
+                    </Card>
                 );
             } else {
                 break;
             }
         }
-        return (
-            <>
 
-                <div style={{ display: 'flex', flexGrow: 1, overflowX: 'auto', overflowY: 'hidden', borderBottom: tempSelectedPaths.length >= 2 ? '1px solid #303030' : 'none', paddingBottom: tempSelectedPaths.length >= 2 ? '10px' : '0' }}>
+        return (
+            <Flex vertical>
+                <Flex gap={8} style={{ overflowX: 'auto', paddingBottom: tempSelectedPaths.length >= 2 ? 16 : 0 }}>
                     {columns}
-                </div>
+                </Flex>
+                {tempSelectedPaths.length >= 3 && (
+                    <Alert
+                        message="已选择最大数量 (3个) 的故事类型"
+                        description="如需选择其他类型，请先移除已选择的类型。"
+                        type="info"
+                        showIcon
+                        style={{ margin: '16px 0' }}
+                    />
+                )}
+                {tempSelectedPaths.length >= 2 && <Divider />}
                 {renderProportionSliders()}
-            </>
+            </Flex>
+        );
+    };
+
+    const renderBreadcrumb = () => {
+        const breadcrumbItems = [
+            {
+                title: <HomeOutlined />,
+            },
+            ...navigationPath.map((segment, index) => ({
+                title: segment,
+                onClick: () => setNavigationPath(navigationPath.slice(0, index + 1))
+            }))
+        ];
+
+        return (
+            <Breadcrumb
+                items={breadcrumbItems}
+                style={{ marginBottom: 16 }}
+            />
         );
     };
 
     const renderSingleView = () => {
         const currentDataToDisplay = getDataAtPath(navigationPath);
-        const breadcrumbs = navigationPath.length > 0 ? navigationPath : ['选择类型'];
 
         return (
-            <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <Flex vertical style={{ height: '100%' }}>
+                {navigationPath.length > 0 && renderBreadcrumb()}
 
-
-                <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0', borderBottom: tempSelectedPaths.length >= 2 ? '1px solid #303030' : 'none', paddingBottom: tempSelectedPaths.length >= 2 ? '10px' : '0' }}>
-                    <>
-                        {currentDataToDisplay && typeof currentDataToDisplay === 'object' && !Array.isArray(currentDataToDisplay) &&
-                            Object.keys(currentDataToDisplay).map(key => {
+                <div style={{ flex: 1, paddingBottom: tempSelectedPaths.length >= 2 ? 16 : 0 }}>
+                    {currentDataToDisplay && typeof currentDataToDisplay === 'object' && !Array.isArray(currentDataToDisplay) ? (
+                        <List
+                            dataSource={Object.keys(currentDataToDisplay)}
+                            renderItem={(key) => {
                                 const itemFullPath = [...navigationPath, key];
                                 const isItemSelected = tempSelectedPaths.some(p => JSON.stringify(p) === JSON.stringify(itemFullPath));
                                 const itemHasChildren = hasChildren(navigationPath, key);
@@ -441,63 +435,53 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
                                 const canSelectItem = !itemHasChildren || itemIsDeepest;
 
                                 return (
-                                    <div
-                                        key={key}
+                                    <List.Item
                                         onClick={() => {
                                             if (itemHasChildren && !itemIsDeepest) {
                                                 handleNavigationClick(itemFullPath);
-                                            } else if (canSelectItem && !isItemSelected && tempSelectedPaths.length < 3) {
-                                                handleCheckboxChange(navigationPath, key);
-                                            } else if (canSelectItem && isItemSelected) {
+                                            } else if (canSelectItem) {
                                                 handleCheckboxChange(navigationPath, key);
                                             }
                                         }}
                                         style={{
-                                            padding: '12px 16px',
                                             cursor: 'pointer',
-                                            borderBottom: '1px solid #2a2a2a',
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'center',
-                                            backgroundColor: isItemSelected ? '#1890ff10' : 'transparent'
+                                            backgroundColor: isItemSelected ? '#1890ff10' : 'transparent',
+                                            padding: '12px 16px',
+                                            borderRadius: 6
                                         }}
+                                        actions={[
+                                            itemHasChildren && !itemIsDeepest ? <RightOutlined key="arrow" /> : null
+                                        ].filter(Boolean)}
                                     >
-                                        <div style={{ display: 'flex', alignItems: 'center' }}>
-                                            {canSelectItem && (
+                                        <List.Item.Meta
+                                            avatar={canSelectItem ? (
                                                 <Checkbox
                                                     checked={isItemSelected}
                                                     onChange={() => handleCheckboxChange(navigationPath, key)}
                                                     onClick={(e) => e.stopPropagation()}
                                                     disabled={!isItemSelected && tempSelectedPaths.length >= 3}
-                                                    style={{ marginRight: '12px' }}
                                                 />
-                                            )}
-                                            <span>{key}</span>
-                                        </div>
-                                        {itemHasChildren && !itemIsDeepest && (
-                                            <RightOutlined style={{ fontSize: '12px', color: '#666' }} />
-                                        )}
-                                    </div>
+                                            ) : null}
+                                            title={key}
+                                        />
+                                    </List.Item>
                                 );
-                            })
-                        }
-                        {(!currentDataToDisplay || (typeof currentDataToDisplay === 'object' && Array.isArray(currentDataToDisplay) && Object.keys(currentDataToDisplay).length === 0)) && (
-                            <div style={{ padding: '12px 16px', color: '#666' }}>当前分类下没有更多子选项。</div>
-                        )}
-                    </>
+                            }}
+                        />
+                    ) : (
+                        <Text type="secondary" style={{ padding: 16, display: 'block', textAlign: 'center' }}>
+                            当前分类下没有更多子选项
+                        </Text>
+                    )}
                 </div>
+
+                {tempSelectedPaths.length >= 2 && <Divider />}
                 {renderProportionSliders()}
-            </div>
+            </Flex>
         );
     };
 
     const drawerHeight = tempSelectedPaths.length >= 2 ? '85vh' : '70vh';
-
-    const modalBodyStyle: React.CSSProperties = {
-        height: 'auto',
-        maxHeight: 'calc(100vh - 180px)', // Account for modal header, footer, and body padding
-        overflowY: 'auto',
-    };
 
     if (isMobile) {
         return (
@@ -507,21 +491,20 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
                 height={drawerHeight}
                 onClose={handleCancel}
                 open={visible}
-                style={{ padding: 0 }}
-                styles={{ footer: { padding: '16px', borderTop: '1px solid #303030' } }}
-                footer={[
-                    <Button key="cancel" onClick={handleCancel} style={{ marginRight: '8px' }}>
-                        取消
-                    </Button>,
-                    <Button
-                        key="confirm"
-                        type="primary"
-                        onClick={handleConfirm}
-                        disabled={tempSelectedPaths.length === 0 || tempSelectedPaths.length > 3}
-                    >
-                        确定 ({tempSelectedPaths.length})
-                    </Button>
-                ]}
+                footer={
+                    <Space>
+                        <Button onClick={handleCancel}>
+                            取消
+                        </Button>
+                        <Button
+                            type="primary"
+                            onClick={handleConfirm}
+                            disabled={tempSelectedPaths.length === 0 || tempSelectedPaths.length > 3}
+                        >
+                            确定 ({tempSelectedPaths.length})
+                        </Button>
+                    </Space>
+                }
             >
                 {renderSingleView()}
             </Drawer>
@@ -534,7 +517,6 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
             open={visible}
             onCancel={handleCancel}
             width={Math.min(220 * (activeNavigationPath.length + 2) + (tempSelectedPaths.length >= 2 ? 50 : 0), 1000)}
-            style={modalBodyStyle}
             centered
             footer={[
                 <Button key="cancel" onClick={handleCancel}>
