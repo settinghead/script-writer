@@ -89,7 +89,7 @@ const ProjectsList: React.FC = () => {
         // Navigate based on current phase
         switch (project.currentPhase) {
             case 'brainstorming':
-                navigate('/ideation');
+                navigate('/new-project-from-brainstorming');
                 break;
             case 'outline':
                 navigate(`/projects/${project.id}/outline`);
@@ -101,7 +101,7 @@ const ProjectsList: React.FC = () => {
                 navigate(`/projects/${project.id}/scripts`);
                 break;
             default:
-                navigate('/ideation');
+                navigate('/new-project-from-brainstorming');
         }
     };
 
@@ -111,7 +111,7 @@ const ProjectsList: React.FC = () => {
 
     const handleCreateWithBrainstorm = () => {
         setShowCreateModal(false);
-        navigate('/ideation');
+        navigate('/new-project-from-brainstorming');
     };
 
     const handleCreateWithDirectOutline = () => {
