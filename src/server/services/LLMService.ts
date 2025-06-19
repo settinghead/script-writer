@@ -1,6 +1,7 @@
 import { createOpenAI } from '@ai-sdk/openai';
-import { generateText, streamText, wrapLanguageModel, extractReasoningMiddleware } from 'ai';
+import { generateText, streamText, wrapLanguageModel, extractReasoningMiddleware, streamObject } from 'ai';
 import { getLLMCredentials } from './LLMConfig';
+import { z } from 'zod';
 
 export interface LLMModelInfo {
     name: string;
@@ -183,5 +184,63 @@ export class LLMService {
     clearCache(): void {
         this.modelCache.clear();
         this.reasoningModelCache.clear();
+    }
+
+    /**
+     * Stream a structured object with automatic reasoning detection
+     */
+    async streamObject<T extends z.ZodSchema<any>>(
+        options: {
+            prompt: string;
+            schema: T;
+            modelName?: string;
+            onReasoningStart?: (phase: string) => void;
+            onReasoningEnd?: (phase: string) => void;
+        }
+    ) {
+        const { prompt, schema, modelName, onReasoningStart, onReasoningEnd } = options;
+        const modelInfo = this.getModelInfo(modelName);
+
+        if (modelInfo.supportsReasoning) {
+            const reasoningModel = this.getReasoningModel(modelName);
+
+            // Emit reasoning start event
+            onReasoningStart?.('generation');
+
+            const stream = await streamObject({
+                model: reasoningModel,
+                schema: schema,
+                messages: [{
+                    role: 'user',
+                    content: prompt
+                }]
+            });
+
+            // Create a wrapper that emits reasoning end when the first partial object arrives
+            let hasEmittedReasoningEnd = false;
+            const originalStream = stream.partialObjectStream;
+
+            return (async function*() {
+                for await (const partialObject of originalStream) {
+                    if (!hasEmittedReasoningEnd) {
+                        onReasoningEnd?.('generation');
+                        hasEmittedReasoningEnd = true;
+                    }
+                    yield partialObject;
+                }
+            })();
+
+        } else {
+            const standardModel = this.getModel(modelName);
+            const stream = await streamObject({
+                model: standardModel,
+                schema: schema,
+                messages: [{
+                    role: 'user',
+                    content: prompt
+                }]
+            });
+            return stream.partialObjectStream;
+        }
     }
 } 

@@ -1,9 +1,11 @@
 import 'dotenv/config';
-import { executeIdeationTransform } from '../transforms/ideation.js';
+import { executeStreamingIdeationTransform } from '../transforms/ideation-stream.js';
 import type { IdeationInput } from '../../common/transform_schemas.js';
+import { spinner } from '@clack/prompts';
+import c from 'ansi-colors';
 
-async function testIdeation() {
-  console.log('🚀 Starting ideation transform test...');
+async function testStreamingIdeation() {
+  console.log(c.bold.yellow('🚀 Starting streaming ideation transform test...'));
 
   const testInput: IdeationInput = {
     platform: '抖音',
@@ -14,29 +16,40 @@ async function testIdeation() {
     other_requirements: '需要有反转情节',
   };
 
-  console.log('\n📝 Test Input:');
+  console.log(c.bold('\n📝 Test Input:'));
   console.log(JSON.stringify(testInput, null, 2));
 
+  const s = spinner();
+  s.start('Generating ideas...');
+  
   try {
     const startTime = Date.now();
-    const ideas = await executeIdeationTransform(testInput);
-    const duration = (Date.now() - startTime) / 1000;
+    const partialObjectStream = await executeStreamingIdeationTransform(testInput);
 
-    console.log(`\n✅ Ideation transform completed successfully in ${duration.toFixed(2)}s!`);
-    console.log(`\n💡 Generated Ideas (${ideas.length}):`);
-    console.log(JSON.stringify(ideas, null, 2));
+    let lastOutput: any = null;
+
+    for await (const partialObject of partialObjectStream) {
+      lastOutput = partialObject;
+      s.message(c.cyan('Streaming ideas...\n') + JSON.stringify(partialObject, null, 2));
+    }
+    
+    const duration = (Date.now() - startTime) / 1000;
+    s.stop(`✅ Ideation transform streamed successfully in ${duration.toFixed(2)}s!`);
+
+    console.log(c.bold.green('\n💡 Final Generated Ideas:'));
+    console.log(JSON.stringify(lastOutput, null, 2));
 
   } catch (error) {
-    console.error('\n❌ Ideation transform failed:');
+    s.stop(c.bold.red('❌ Ideation transform failed.'));
     if (error instanceof Error) {
-        console.error('Error message:', error.message);
+        console.error(c.red('Error message:'), error.message);
         if (error.stack) {
-            console.error('Stack trace:', error.stack);
+            console.error(c.red('Stack trace:'), error.stack);
         }
     } else {
-        console.error('An unknown error occurred:', error);
+        console.error(c.red('An unknown error occurred:'), error);
     }
   }
 }
 
-testIdeation(); 
+testStreamingIdeation(); 
