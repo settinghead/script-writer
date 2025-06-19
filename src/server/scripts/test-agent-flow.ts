@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { createOpenAI } from '@ai-sdk/openai';
 import { getLLMCredentials } from '../services/LLMConfig';
 import { executeStreamingIdeationTransform } from '../transforms/ideation-stream';
-import { IdeationInputSchema, IdeationOutputSchema } from '../../common/transform_schemas';
+import { IdeationInputSchema, IdeationOutputSchema, IdeationInput, IdeationOutput } from '../../common/transform_schemas';
 
 // Global in-memory storage for results
 const RESULTS_STORE = new Map<string, any>();
@@ -19,32 +19,54 @@ function generateResultId(): string {
 }
 
 /**
- * Enhanced factory function that creates a 'brainstorm' tool with result ID management.
- * This tool has a "side-streaming" capability and stores results in global memory.
- *
- * @param onStreamChunk A callback function that gets invoked with each partial data chunk from the stream.
- * @param onResultId A callback function that gets invoked with the result ID as soon as the tool starts executing.
+ * Interface that encapsulates all information needed to define a streaming tool
  */
-export function createStreamingBrainstormTool(
+interface StreamingToolDefinition<TInput, TOutput> {
+  name: string;
+  description: string;
+  inputSchema: z.ZodSchema<TInput>;
+  outputSchema: z.ZodSchema<TOutput>;
+  executeFunction: (input: TInput) => Promise<AsyncIterable<Partial<TOutput>>>;
+}
+
+/**
+ * Factory function that creates a brainstorm tool definition
+ */
+function createBrainstormToolDefinition(): StreamingToolDefinition<IdeationInput, IdeationOutput> {
+  return {
+    name: 'brainstorm',
+    description: 'Generates creative story ideas based on platform, genre, story points, keywords, and style preferences. Use this tool when users want to brainstorm, generate, or create story concepts for short-form video content.',
+    inputSchema: IdeationInputSchema,
+    outputSchema: IdeationOutputSchema,
+    executeFunction: executeStreamingIdeationTransform,
+  };
+}
+
+/**
+ * Generic factory function that creates a streaming tool with result ID management.
+ * This tool has a "side-streaming" capability and stores results in global memory.
+ */
+export function createStreamingToolWithResultId<TInput, TOutput>(
+  toolDef: StreamingToolDefinition<TInput, TOutput>,
   onStreamChunk: (chunk: any) => void,
   onResultId: (resultId: string) => void
 ) {
   return tool({
-    description: 'Generates creative story ideas based on a given set of parameters. Returns a result ID for accessing the generated ideas.',
-    parameters: IdeationInputSchema,
-    execute: async (params: z.infer<typeof IdeationInputSchema>) => {
+    description: toolDef.description,
+    parameters: toolDef.inputSchema,
+    execute: async (params: TInput) => {
       // Generate result ID immediately when tool execution starts
       const resultId = generateResultId();
-      console.log(`\n\n[Tool Execution] Agent called brainstorm tool with result ID: ${resultId}`);
+      console.log(`\n\n[Tool Execution] Agent called '${toolDef.name}' tool with result ID: ${resultId}`);
       console.log(`[Tool Execution] Params:`, params);
       
       // Notify the caller about the result ID
       onResultId(resultId);
       
-      process.stdout.write('[Tool Side-Stream] -> ');
+      process.stdout.write(`[Tool Side-Stream ${toolDef.name.toUpperCase()}] -> `);
 
       try {
-        const stream = await executeStreamingIdeationTransform(params);
+        const stream = await toolDef.executeFunction(params);
         
         let finalResult: any[] = [];
         let chunkCount = 0;
@@ -71,17 +93,17 @@ export function createStreamingBrainstormTool(
         console.log(`\n[Tool Execution] Final result before validation:`, JSON.stringify(finalResult, null, 2));
         
         // Validate final result before storing
-        const parsedResult = IdeationOutputSchema.safeParse(finalResult);
+        const parsedResult = toolDef.outputSchema.safeParse(finalResult);
         if (!parsedResult.success) {
           console.error('\n[Tool Execution] Final tool output failed validation:', parsedResult.error);
           // Store error in global memory
-          RESULTS_STORE.set(resultId, { error: 'Failed to generate valid story ideas.', details: parsedResult.error.issues });
+          RESULTS_STORE.set(resultId, { error: `Failed to generate valid ${toolDef.name} results.`, details: parsedResult.error.issues });
           return { resultId };
         }
 
         // Store the validated results in global memory
         RESULTS_STORE.set(resultId, parsedResult.data);
-        console.log(`\n[Tool Execution] Stored ${parsedResult.data.length} ideas in global memory with ID: ${resultId}`);
+        console.log(`\n[Tool Execution] Stored ${Array.isArray(parsedResult.data) ? parsedResult.data.length : 1} ${toolDef.name} results in global memory with ID: ${resultId}`);
         
         // Return only the result ID to the agent
         return { resultId };
@@ -101,8 +123,36 @@ export function getResultById(resultId: string): any {
   return RESULTS_STORE.get(resultId);
 }
 
+/**
+ * Creates a generic agent prompt that can work with multiple tools
+ */
+function createGenericAgentPrompt(userRequest: string, toolDefinitions: StreamingToolDefinition<any, any>[]): string {
+  const toolDescriptions = toolDefinitions.map(tool => 
+    `- ${tool.name}: ${tool.description}`
+  ).join('\n');
+
+  return `You are an AI assistant with access to specialized tools to help users with their requests.
+
+User Request: "${userRequest}"
+
+Available Tools:
+${toolDescriptions}
+
+Your task is to:
+1. Analyze the user request carefully
+2. Determine which tool would best fulfill the user's needs
+3. Extract the necessary parameters from the user request based on the tool's schema requirements
+4. Call the appropriate tool with the extracted parameters
+5. Once you receive a result ID, return it in JSON format like {"resultId": "ABC12"}
+6. Write "TASK_COMPLETE" on a new line when done
+
+Important: Do NOT return or display the actual results - only return the result ID. The tool will handle storing the results separately.
+
+Begin by analyzing the request and calling the most appropriate tool.`;
+}
+
 async function main() {
-  console.log('--- Starting Enhanced Agent Flow Test ---');
+  console.log('--- Starting Generic Agent Flow Test ---');
 
   // Track result IDs as they're generated
   const resultIds: string[] = [];
@@ -119,7 +169,11 @@ async function main() {
     resultIds.push(resultId);
   };
   
-  const brainstormTool = createStreamingBrainstormTool(sideStreamHandler, resultIdHandler);
+  // Create tool definitions
+  const brainstormToolDef = createBrainstormToolDefinition();
+  
+  // Create streaming tools with result ID management
+  const brainstormTool = createStreamingToolWithResultId(brainstormToolDef, sideStreamHandler, resultIdHandler);
 
   // Initialize model directly following the docs pattern
   const { apiKey, baseUrl, modelName } = getLLMCredentials();
@@ -129,32 +183,11 @@ async function main() {
   });
   const model = openai(modelName);
 
-  const requestParams = {
-    platform: "Tiktok",
-    genre: "穿越, 爽文",
-    main_story_points: "男主是现代霸总，意外穿越到古代，成为一个没落家族的少爷，利用现代知识经商、宫斗，最终富可敌国，并抱得美人归。",
-    plot_keywords: "商战, 权谋, 打脸",
-    style_modifiers: "节奏快, 反转多"
-  };
+  // Generic user request (instead of hardcoded parameters)
+  const userRequest = "I need to create story ideas for TikTok videos. The genre should be time travel and power fantasy (穿越, 爽文). The main story is about a modern CEO who accidentally travels back to ancient times, becomes a fallen noble family's young master, uses modern knowledge for business and court intrigue, eventually becomes incredibly wealthy and wins the heart of a beautiful woman. Keywords should include business warfare, political schemes, and face-slapping moments. The style should be fast-paced with many plot twists.";
 
-  const prompt = `You are an expert script writing assistant. 
-Your task is to generate exactly 3 high-quality story ideas for a short-form video series.
-You must use the brainstorm tool provided to you to achieve this.
-
-Here are the parameters for the brainstorm tool:
-- platform: "${requestParams.platform}"
-- genre: "${requestParams.genre}"
-- main_story_points: "${requestParams.main_story_points}"
-- plot_keywords: "${requestParams.plot_keywords}"
-- style_modifiers: "${requestParams.style_modifiers}"
-
-Your workflow is as follows:
-1. You MUST call the 'brainstorm' tool to generate story ideas.
-2. The tool will return a result ID in JSON format like {"resultId": "ABC12"}.
-3. Once you receive the result ID, your job is complete. Simply return the result ID JSON and write "TASK_COMPLETE" on a new line.
-4. Do NOT repeat or display the actual story ideas - just return the result ID.
-
-Call the tool now.`;
+  // Create generic prompt
+  const prompt = createGenericAgentPrompt(userRequest, [brainstormToolDef]);
 
   try {
     const result = await streamText({
@@ -162,7 +195,7 @@ Call the tool now.`;
       tools: {
         brainstorm: brainstormTool,
       },
-      maxSteps: 3, // Allow up to 3 steps (e.g., initial call + 2 retries)
+      maxSteps: 3, // Allow up to 3 steps
       prompt: prompt,
     });
 
