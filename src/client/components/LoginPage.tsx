@@ -106,7 +106,7 @@ const LoginPage: React.FC = () => {
                         <UserOutlined style={{ fontSize: '32px', color: 'white' }} />
                     </div>
                     <Title level={2} style={{ margin: '0 0 8px', color: '#fff' }}>
-                        登录 Script Aid
+                        登录 觅光助手
                     </Title>
                     <Text type="secondary">
                         请选择测试用户登录

@@ -102,7 +102,7 @@ const AppContent: React.FC = () => {
         alignItems: 'center',
         justifyContent: 'space-between'
       }}>
-        <Title level={3} style={{ color: 'white', margin: '16px 0' }}>Script Aid</Title>
+        <Title level={3} style={{ color: 'white', margin: '16px 0' }}>觅光助手</Title>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {/* User Authentication Section */}
           {isAuthenticated && user ? (
