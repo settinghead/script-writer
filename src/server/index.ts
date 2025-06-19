@@ -3,7 +3,6 @@ import ViteExpress from "vite-express";
 import { createOpenAI } from '@ai-sdk/openai';
 import { streamText, generateText } from 'ai';
 import * as dotenv from 'dotenv';
-import { v4 as uuidv4 } from 'uuid';
 import cookieParser from 'cookie-parser';
 import { setupYjsWebSocketServer, applyEditsToYDoc } from './yjs-server';
 import { parseLLMResponse } from './llm-to-yjs';
