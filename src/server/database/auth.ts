@@ -190,7 +190,7 @@ export class AuthDatabase {
             .selectFrom('user_sessions')
             .selectAll()
             .where('id', '=', sessionId)
-            .where('expires_at', '>', sql`NOW()`)
+            .where('expires_at', '>', new Date())
             .executeTakeFirst();
 
         if (!session) return null;
@@ -234,7 +234,7 @@ export class AuthDatabase {
     async cleanupExpiredSessions(): Promise<void> {
         await this.db
             .deleteFrom('user_sessions')
-            .where('expires_at', '<=', sql`NOW()`)
+            .where('expires_at', '<=', new Date())
             .execute();
     }
 

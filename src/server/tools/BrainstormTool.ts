@@ -1,17 +1,23 @@
 import { executeStreamingIdeationTransform } from '../transforms/ideation-stream';
 import { IdeationInputSchema, IdeationOutputSchema, IdeationInput, IdeationOutput } from '../../common/transform_schemas';
-import { StreamingToolDefinition } from './StreamingAgentFramework';
+// Note: StreamingAgentFramework removed as part of Electric Sync migration
 import { TransformRepository } from '../repositories/TransformRepository';
 import { ArtifactRepository } from '../repositories/ArtifactRepository';
-import { JobBroadcaster } from './streaming/JobBroadcaster';
 
+// Temporary type definition for Electric Sync migration
+interface StreamingToolDefinition<TInput, TOutput> {
+    name: string;
+    description: string;
+    inputSchema: any;
+    outputSchema: any;
+    execute: (params: TInput) => Promise<TOutput>;
+}
 /**
  * Factory function that creates a brainstorm tool definition
  */
 export function createBrainstormToolDefinition(
     transformRepo: TransformRepository,
     artifactRepo: ArtifactRepository,
-    jobBroadcaster: JobBroadcaster,
     projectId: string,
     userId: string,
 ): StreamingToolDefinition<IdeationInput, IdeationOutput> {
@@ -27,7 +33,6 @@ export function createBrainstormToolDefinition(
                 const transform = await transformRepo.createTransform(
                     projectId,
                     'llm', // The tool is an LLM operation
-                    'v1',
                     'running',
                     { 
                         toolName: 'brainstorm',
@@ -42,8 +47,7 @@ export function createBrainstormToolDefinition(
                     'brainstorm_tool_input',
                     params,
                     'v1',
-                    {},
-                    userId
+                    {}
                 );
                 await transformRepo.addTransformInputs(toolTransformId, [
                     { artifactId: inputArtifact.id, inputRole: 'tool_input' }
@@ -60,11 +64,10 @@ export function createBrainstormToolDefinition(
                     chunkCount++;
                     const chunkData = JSON.stringify({ type: 'chunk', data: partial });
                     
-                    // Save chunk to DB
-                    await transformRepo.addTransformChunk(toolTransformId, chunkData);
+                    // Note: addTransformChunk method removed as part of Electric Sync migration
+                    // await transformRepo.addTransformChunk(toolTransformId, chunkData);
                     
-                    // Broadcast to any connected clients
-                    jobBroadcaster.broadcastChunk(projectId, chunkData);
+                    // Note: Broadcasting removed - Electric Sync will handle real-time updates
 
                     finalResult = partial; // Keep track of the latest (most complete) result
                 }
@@ -75,8 +78,7 @@ export function createBrainstormToolDefinition(
                     'brainstorm_idea_collection',
                     finalResult,
                     'v1',
-                    { chunkCount },
-                    userId
+                    { chunkCount }
                 );
                 await transformRepo.addTransformOutputs(toolTransformId, [
                     { artifactId: outputArtifact.id, outputRole: 'final_result' }

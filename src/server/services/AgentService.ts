@@ -4,13 +4,10 @@ import { ArtifactRepository } from '../repositories/ArtifactRepository';
 import { runStreamingAgent } from './StreamingAgentFramework';
 import { createBrainstormToolDefinition } from '../tools/BrainstormTool';
 import { AgentBrainstormRequest } from '../../common/types';
-import { JobBroadcaster } from './streaming/JobBroadcaster';
-
 export class AgentService {
     constructor(
         private transformRepo: TransformRepository,
         private artifactRepo: ArtifactRepository,
-        private jobBroadcaster: JobBroadcaster,
     ) {}
 
     public async runBrainstormAgent(
@@ -38,7 +35,6 @@ export class AgentService {
             const brainstormToolDef = createBrainstormToolDefinition(
                 this.transformRepo,
                 this.artifactRepo,
-                this.jobBroadcaster,
                 projectId,
                 userId
             );

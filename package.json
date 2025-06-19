@@ -35,7 +35,7 @@
     "@radix-ui/react-slot": "^1.2.3",
     "@slate-yjs/core": "^1.0.2",
     "@slate-yjs/react": "^1.1.0",
-    "@tanstack/react-query": "^5.80.7",
+    "@tanstack/react-query": "^5.80.10",
     "@tanstack/react-query-devtools": "^5.80.7",
     "@types/cookie-parser": "^1.4.9",
     "@types/express": "^5.0.3",

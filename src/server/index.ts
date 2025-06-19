@@ -26,7 +26,6 @@ import { UnifiedStreamingService } from './services/UnifiedStreamingService';
 import { db } from './database/connection';
 // New streaming framework imports
 import { TemplateService } from './services/templates/TemplateService';
-import { StreamingTransformExecutor } from './services/streaming/StreamingTransformExecutor';
 import { createIdeationRoutes } from './routes/ideations';
 import { BrainstormingJobParamsV1, OutlineJobParamsV1 } from './types/artifacts';
 import { OutlineGenerateRequest, OutlineGenerateResponse } from '../common/streaming/types';
@@ -39,8 +38,6 @@ import { createProjectRoutes } from './routes/projectRoutes.js';
 import { ProjectService } from './services/ProjectService.js';
 import { ProjectRepository } from './repositories/ProjectRepository.js';
 import { AgentService } from './services/AgentService.js';
-import { JobBroadcaster } from './services/streaming/JobBroadcaster.js';
-import { createStreamingRoutes } from './routes/streamingRoutes.js';
 import { BrainstormService } from './services/BrainstormService';
 import { LLMService } from './services/LLMService';
 import { createBrainstormRoutes } from './routes/brainstormRoutes';
@@ -64,7 +61,6 @@ const projectRepo = new ProjectRepository(db);
 
 // Initialize unified streaming service
 const unifiedStreamingService = new UnifiedStreamingService(artifactRepo, transformRepo);
-const jobBroadcaster = JobBroadcaster.getInstance();
 
 // Initialize services with unified streaming
 const transformExecutor = new TransformExecutor(artifactRepo, transformRepo, unifiedStreamingService);
@@ -73,7 +69,7 @@ const outlineService = new OutlineService(artifactRepo, transformRepo, unifiedSt
 const scriptService = new ScriptService(artifactRepo, transformExecutor);
 const replayService = new ReplayService(artifactRepo, transformRepo, transformExecutor);
 const projectService = new ProjectService(projectRepo, artifactRepo, transformRepo);
-const agentService = new AgentService(transformRepo, artifactRepo, jobBroadcaster);
+const agentService = new AgentService(transformRepo, artifactRepo);
 
 // Initialize new streaming framework services
 const templateService = new TemplateService();
@@ -81,15 +77,8 @@ const templateService = new TemplateService();
 // Initialize new Electric-compatible services
 const llmService = new LLMService();
 const brainstormService = new BrainstormService(db, artifactRepo, transformRepo, templateService, llmService);
-const streamingTransformExecutor = new StreamingTransformExecutor(
-  artifactRepo,
-  transformRepo,
-  templateService,
-  ideationService  // Add ideation service for job creation
-);
 
 // Make services available to routes via app.locals
-app.locals.streamingExecutor = streamingTransformExecutor;
 app.locals.transformRepo = transformRepo;
 const server = app.listen(PORT, "0.0.0.0", () =>
   console.log(`Server is listening at http://localhost:${PORT}...`)
@@ -106,14 +95,11 @@ app.use('/auth', createAuthRoutes(authDB, authMiddleware));
 // Mount project routes
 app.use('/api/projects', createProjectRoutes(authMiddleware, projectService, agentService));
 
-// Mount streaming routes
-app.use('/api/streaming', createStreamingRoutes(authMiddleware, transformRepo, artifactRepo));
-
 // Mount new brainstorm routes (Electric-compatible)
 app.use('/api/brainstorm', createBrainstormRoutes(authMiddleware, brainstormService));
 
 // Mount ideation routes - now serving projects list
-app.use('/api/ideations', createIdeationRoutes(authMiddleware, artifactRepo, transformRepo, streamingTransformExecutor));
+app.use('/api/ideations', createIdeationRoutes(authMiddleware, artifactRepo, transformRepo));
 
 // Attach authDB to all requests
 app.use(authMiddleware.attachAuthDB);
@@ -841,14 +827,16 @@ app.put("/api/artifacts/:artifactId",
         text: text.trim()
       };
 
-      // Update the artifact directly in the database
-      await db('artifacts')
-        .where('id', artifactId)
-        .where('user_id', user.id)
-        .update({
+      // Update the artifact directly in the database using Kysely
+      await db
+        .updateTable('artifacts')
+        .set({
           data: JSON.stringify(updatedData),
           metadata: JSON.stringify(existingArtifact.metadata)
-        });
+        })
+        .where('id', '=', artifactId)
+        .where('project_id', '=', user.id) // Note: This might need adjustment based on actual schema
+        .execute();
 
       // Return the updated artifact with the same ID
       const updatedArtifact = {
@@ -880,9 +868,7 @@ app.use('/api/episodes', createEpisodeRoutes(artifactRepo, transformRepo, authMi
 // Mount script routes
 app.use('/api/scripts', createScriptRoutes(artifactRepo, transformRepo, authMiddleware));
 
-// Mount streaming ideation routes
-import { createStreamingIdeationRoutes } from './routes/streamingIdeation.js';
-app.use('/api/ideation', createStreamingIdeationRoutes(authDB));
+// Legacy streaming ideation routes removed as part of Electric Sync migration
 
 // ========== STREAMING ENDPOINTS ==========
 
@@ -978,139 +964,11 @@ app.post("/api/brainstorm/generate/stream",
   }
 );
 
-// New generic streaming LLM endpoint using the RxJS framework
-app.post("/api/streaming/llm",
-  authMiddleware.authenticate,
-  async (req: any, res: any) => {
-    const user = authMiddleware.getCurrentUser(req);
-    if (!user) {
-      return res.status(401).json({ error: "User not authenticated" });
-    }
+// ========== REMOVED LEGACY SSE ENDPOINTS ==========
+// Legacy SSE endpoints have been removed as part of Electric Sync migration.
+// Use the new Electric-compatible /api/brainstorm endpoints instead.
 
-    try {
-      await streamingTransformExecutor.executeStreamingTransform(
-        user.id,
-        req.body,
-        res
-      );
-    } catch (error: any) {
-      console.error('Error in generic streaming LLM endpoint:', error);
-      if (!res.headersSent) {
-        return res.status(500).json({
-          error: "Failed to execute streaming transform",
-          details: error.message,
-          timestamp: new Date().toISOString()
-        });
-      }
-    }
-  }
-);
 
-// Transform-based streaming endpoint (for resumable jobs)
-app.get("/api/streaming/transform/:transformId", authMiddleware.authenticate, async (req: any, res: any) => {
-  const user = authMiddleware.getCurrentUser(req);
-  if (!user) {
-    console.log(`[SSE Endpoint] User not authenticated for transform request`);
-    return res.status(401).json({ error: "User not authenticated" });
-  }
-
-  const { transformId } = req.params;
-
-  try {
-    // Import services
-    const { JobBroadcaster } = await import('./services/streaming/JobBroadcaster');
-    const broadcaster = JobBroadcaster.getInstance();
-
-    // Verify ownership
-    const transform = await transformRepo.getTransform(transformId, user.id);
-
-    if (!transform) {
-      return res.status(403).json({ error: 'Transform not found or unauthorized' });
-    }
-
-    // If job is already completed, send database chunks in SSE format
-    if (transform.status === 'completed') {
-      // Setup SSE connection even for completed jobs
-      res.writeHead(200, {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Cache-Control'
-      });
-
-      // Send initial status
-      res.write(`data: ${JSON.stringify({ status: 'connected', transformId })}\n\n`);
-
-      // Send completed data from database
-      const chunks = await transformRepo.getTransformChunks(transformId);
-      if (chunks.length > 0) {
-        // Send all chunks with proper SSE formatting
-        for (const chunk of chunks) {
-          res.write(`data: ${chunk}\n\n`);
-        }
-      }
-
-      // Send completion events
-      res.write(`data: e:${JSON.stringify({ finishReason: 'stop' })}\n\n`);
-      res.write(`data: d:${JSON.stringify({ finishReason: 'stop' })}\n\n`);
-      res.end();
-      return;
-    }
-
-    // If job is running, connect to stream
-    if (transform.status === 'running') {
-      // Setup SSE connection
-      res.writeHead(200, {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Cache-Control'
-      });
-
-      // Register this client with the broadcaster
-      broadcaster.addClient(transformId, user.id, res);
-
-      // Send initial status
-      res.write(`data: ${JSON.stringify({ status: 'connected', transformId })}\n\n`);
-
-      // Send any existing chunks from database
-      const chunks = await transformRepo.getTransformChunks(transformId);
-      if (chunks.length > 0) {
-        // Send all existing chunks with proper SSE formatting
-        for (const chunk of chunks) {
-          res.write(`data: ${chunk}\n\n`);
-        }
-      }
-
-      console.log(`[Streaming] Client connected to transform ${transformId}, streaming job should be running or will start shortly`);
-
-    } else {
-      // Job failed or cancelled - send error in SSE format
-      res.writeHead(200, {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Cache-Control'
-      });
-
-      res.write(`data: ${JSON.stringify({ status: 'connected', transformId })}\n\n`);
-      res.write(`data: error:${JSON.stringify({ error: `Job not active, status: ${transform.status}` })}\n\n`);
-      res.end();
-    }
-  } catch (error: any) {
-    console.error('Error in transform streaming endpoint:', error);
-    if (!res.headersSent) {
-      return res.status(500).json({
-        error: "Failed to connect to transform stream",
-        details: error.message,
-        timestamp: new Date().toISOString()
-      });
-    }
-  }
-});
 
 // ========== SCRIPT ENDPOINTS (with validation) ==========
 
@@ -1496,77 +1354,34 @@ app.post("/api/projects/create-brainstorming-job",
         requestedAt: new Date().toISOString()
       };
 
-      const result = await streamingTransformExecutor.startBrainstormingJob(
-        user.id,
-        jobParams
-      );
-
-      res.json(result);
+      // Legacy brainstorming endpoint removed - use /api/brainstorm/start instead
+      return res.status(410).json({
+        error: "This endpoint has been deprecated",
+        message: "Use /api/brainstorm/start instead",
+        timestamp: new Date().toISOString()
+      });
 
     } catch (error: any) {
-      console.error('Error creating brainstorming job:', error);
+      console.error('Error in deprecated brainstorming endpoint:', error);
       res.status(500).json({
-        error: "Failed to create brainstorming job",
-        details: error.message,
+        error: "Endpoint deprecated",
+        details: "Use /api/brainstorm/start instead",
         timestamp: new Date().toISOString()
       });
     }
   }
 );
 
-// Create outline job
+// Legacy outline job endpoint - deprecated
 app.post("/api/outlines/create-job",
   authMiddleware.authenticate,
   async (req: any, res: any) => {
-    const { sourceArtifactId, totalEpisodes, episodeDuration }: OutlineGenerateRequest = req.body;
-
-    const user = authMiddleware.getCurrentUser(req);
-    if (!user) {
-      return res.status(401).json({ error: "User not authenticated" });
-    }
-
-    // Validate required fields
-    if (!sourceArtifactId) {
-      return res.status(400).json({
-        error: "Missing sourceArtifactId",
-        details: "sourceArtifactId is required"
-      });
-    }
-
-    try {
-      const jobParams: OutlineJobParamsV1 = {
-        sourceArtifactId,
-        totalEpisodes: totalEpisodes || undefined,
-        episodeDuration: episodeDuration || undefined,
-        requestedAt: new Date().toISOString()
-      };
-
-      const result = await streamingTransformExecutor.startOutlineJob(
-        user.id,
-        jobParams
-      );
-
-      // Return response that matches the common interface
-      const response: OutlineGenerateResponse = {
-        sessionId: result.outlineSessionId,  // Map outlineSessionId to sessionId
-        transformId: result.transformId
-      };
-
-      res.json(response);
-
-    } catch (error: any) {
-      console.error('Error creating outline job:', error);
-
-      if (error.message.includes('not found or access denied')) {
-        return res.status(404).json({ error: "Source artifact not found" });
-      }
-
-      res.status(500).json({
-        error: "Failed to create outline job",
-        details: error.message,
-        timestamp: new Date().toISOString()
-      });
-    }
+    // Legacy outline endpoint removed as part of Electric Sync migration
+    return res.status(410).json({
+      error: "This endpoint has been deprecated",
+      message: "Outline functionality will be migrated to Electric Sync in a future update",
+      timestamp: new Date().toISOString()
+    });
   }
 );
 

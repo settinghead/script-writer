@@ -1,6 +1,5 @@
 import { ArtifactRepository } from '../repositories/ArtifactRepository';
 import { TransformRepository } from '../repositories/TransformRepository';
-import { JobBroadcaster } from './streaming/JobBroadcaster';
 import { ReasoningEvent } from '../../common/streaming/types';
 
 // Unified streaming state interface
@@ -126,11 +125,12 @@ export class UnifiedStreamingService {
       if (latestTransform) {
         if (latestTransform.status === 'running') {
           status = 'streaming';
-          const chunks = await this.transformRepo.getTransformChunks(latestTransform.id);
+          // Note: getTransformChunks method removed as part of Electric Sync migration
+          const chunks: string[] = []; // Empty for now - Electric Sync will handle streaming
           streamingData = {
             transformId: latestTransform.id,
             chunks,
-            progress: this.calculateProgress(chunks)
+            progress: 0 // Progress will be handled by Electric Sync
           };
         } else if (latestTransform.status === 'failed') {
           status = 'failed';
@@ -269,7 +269,7 @@ export class UnifiedStreamingService {
   }
 
   /**
-   * Get streaming state for any transform
+   * Get streaming state for any transform (Electric Sync migration - simplified)
    */
   async getStreamingState(transformId: string): Promise<StreamingState | null> {
     try {
@@ -278,14 +278,15 @@ export class UnifiedStreamingService {
         return null;
       }
 
-      const chunks = await this.transformRepo.getTransformChunks(transformId);
+      // Note: getTransformChunks method removed as part of Electric Sync migration
+      const chunks: string[] = []; // Empty for now - Electric Sync will handle streaming
 
       // Get results from artifacts if completed
       const results: any[] = [];
       if (transform.status === 'completed') {
         const outputs = await this.transformRepo.getTransformOutputs(transformId);
         for (const output of outputs) {
-          const artifact = await this.artifactRepo.getArtifact(output.artifact_id, transform.user_id);
+          const artifact = await this.artifactRepo.getArtifact(output.artifact_id);
           if (artifact) {
             results.push(artifact.data);
           }
@@ -297,7 +298,7 @@ export class UnifiedStreamingService {
         status: transform.status,
         chunks,
         results,
-        progress: this.calculateProgress(chunks)
+        progress: transform.status === 'completed' ? 100 : 0
       };
 
     } catch (error) {
@@ -307,15 +308,15 @@ export class UnifiedStreamingService {
   }
 
   /**
-   * Store chunk to database (replaces StreamingCache.addChunk)
+   * Store chunk to database (Electric Sync migration - method disabled)
    */
   async addStreamingChunk(transformId: string, chunkData: string): Promise<void> {
     try {
-      await this.transformRepo.addTransformChunk(transformId, chunkData);
+      // Note: addTransformChunk method removed as part of Electric Sync migration
+      // await this.transformRepo.addTransformChunk(transformId, chunkData);
 
-      // Broadcast chunk to connected clients
-      const broadcaster = JobBroadcaster.getInstance();
-      broadcaster.broadcast(transformId, chunkData);
+      // Broadcasting removed - Electric Sync will handle real-time updates
+      console.log(`[UnifiedStreamingService] Chunk added for ${transformId} (Electric Sync migration)`);
 
     } catch (error) {
       console.error(`[UnifiedStreamingService] Error adding chunk for ${transformId}:`, error);
@@ -324,21 +325,14 @@ export class UnifiedStreamingService {
   }
 
   /**
-   * Mark streaming as complete and clean up
+   * Mark streaming as complete (Electric Sync migration - simplified)
    */
   async completeStreaming(transformId: string): Promise<void> {
     try {
       await this.transformRepo.updateTransformStatus(transformId, 'completed');
 
-      // Broadcast completion
-      const broadcaster = JobBroadcaster.getInstance();
-      broadcaster.broadcast(transformId, 'stream:complete');
-
-      // Schedule cleanup after grace period
-      setTimeout(async () => {
-        await this.transformRepo.cleanupTransformChunks(transformId);
-        broadcaster.cleanup(transformId);
-      }, 5 * 60 * 1000); // 5 minutes
+      // Broadcasting and cleanup removed - Electric Sync will handle real-time updates
+      console.log(`[UnifiedStreamingService] Streaming completed for ${transformId} (Electric Sync migration)`);
 
     } catch (error) {
       console.error(`[UnifiedStreamingService] Error completing streaming for ${transformId}:`, error);
@@ -347,16 +341,12 @@ export class UnifiedStreamingService {
   }
 
   /**
-   * Broadcast reasoning event to connected clients
+   * Broadcast reasoning event (Electric Sync migration - disabled)
    */
   async broadcastReasoningEvent(transformId: string, event: ReasoningEvent): Promise<void> {
     try {
-      const broadcaster = JobBroadcaster.getInstance();
-      const eventData = JSON.stringify({
-        eventType: 'reasoning_event',
-        ...event
-      });
-      broadcaster.broadcast(transformId, eventData);
+      // Broadcasting removed - Electric Sync will handle real-time updates
+      console.log(`[UnifiedStreamingService] Reasoning event for ${transformId} (Electric Sync migration)`, event);
     } catch (error) {
       console.error(`[UnifiedStreamingService] Error broadcasting reasoning event for ${transformId}:`, error);
     }

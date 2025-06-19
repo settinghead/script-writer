@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import * as jwt from 'jsonwebtoken';
 import { AuthDatabase, User } from '../database/auth';
-import * as sqlite3 from 'sqlite3';
 
 // Extend Express Request interface to include user and authDB
 declare global {

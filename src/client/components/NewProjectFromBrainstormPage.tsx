@@ -1,43 +1,83 @@
-import React, { useState } from 'react';
-import { Button, Card, Typography, Spin, Alert, Flex, Form, Input, Space, Divider } from 'antd';
-import { useMutation } from '@tanstack/react-query';
+import React from 'react';
+import { Button, Card, Typography, Spin, Flex, Form, Input, Space, Divider, message } from 'antd';
 import { useNavigate } from 'react-router-dom';
-import { apiService } from '../services/apiService';
-import { AgentBrainstormRequest } from '../../common/types';
+import { useMutation } from '@tanstack/react-query';
 
 const { Title, Paragraph, Text } = Typography;
 const { TextArea } = Input;
+
+interface BrainstormParams {
+    genre: string;
+    theme: string;
+    character_setting: string;
+    plot_device: string;
+    ending_type: string;
+    length: string;
+    platform: string;
+    additional_requirements?: string;
+}
+
+interface CreateProjectResponse {
+    projectId: string;
+    message: string;
+}
 
 const NewProjectFromBrainstormPage: React.FC = () => {
     const [form] = Form.useForm();
     const navigate = useNavigate();
 
-    const { mutate: createProject, isPending } = useMutation({
-        mutationFn: (request: AgentBrainstormRequest) => apiService.createProjectFromBrainstorm(request),
-        onSuccess: (data) => {
-            // On success, navigate to the new project page
-            if (data.projectId) {
-                navigate(`/projects/${data.projectId}`);
+    // TanStack Query mutation for creating projects with optimistic updates
+    const createProjectMutation = useMutation({
+        mutationKey: ['create-project'],
+        mutationFn: async (params: BrainstormParams): Promise<CreateProjectResponse> => {
+            const response = await fetch('/api/brainstorm/create-project', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ params })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || 'Failed to create project');
             }
+
+            return response.json();
+        },
+        onSuccess: (data) => {
+            message.success('Project created! Redirecting to brainstorm page...');
+            // Navigate to the project brainstorm page where Electric will sync the results
+            navigate(`/projects/${data.projectId}/brainstorm`);
         },
         onError: (error) => {
-            console.error('Failed to create project from brainstorm:', error);
-            // You can show a notification to the user here
-        },
+            console.error('Error creating project:', error);
+            message.error(error instanceof Error ? error.message : 'Failed to create project. Please try again.');
+        }
     });
 
-    const handleStart = () => {
-        form.validateFields().then(values => {
-            const userRequest = `I need to create story ideas for ${values.platform || 'social media'} videos. The genre should be ${values.genre || 'any'}. The main story is about a modern CEO who accidentally travels back to ancient times, becomes a fallen noble family's young master, uses modern knowledge for business and court intrigue, eventually becomes incredibly wealthy and wins the heart of a beautiful woman. Keywords should include business warfare, political schemes, and face-slapping moments. The style should be fast-paced with many plot twists.`;
+    const handleStart = async () => {
+        try {
+            const values = await form.validateFields();
 
-            const request: AgentBrainstormRequest = {
-                userRequest,
-                platform: values.platform?.trim(),
-                genre: values.genre?.trim(),
-                other_requirements: values.other_requirements?.trim(),
+            // Prepare brainstorm parameters
+            const params: BrainstormParams = {
+                genre: values.genre || 'any',
+                theme: values.other_requirements || 'general story',
+                character_setting: 'modern protagonist',
+                plot_device: 'time travel or modern knowledge',
+                ending_type: 'happy ending',
+                length: 'short form video series',
+                platform: values.platform || 'social media',
+                additional_requirements: values.other_requirements
             };
-            createProject(request);
-        });
+
+            // Use TanStack mutation with optimistic updates
+            createProjectMutation.mutate(params);
+            
+        } catch (error) {
+            console.error('Form validation error:', error);
+        }
     };
     
     const handleReset = () => {
@@ -98,18 +138,18 @@ const NewProjectFromBrainstormPage: React.FC = () => {
                             <Button
                                 type="primary"
                                 onClick={handleStart}
-                                loading={isPending}
+                                loading={createProjectMutation.isPending}
                             >
-                                {isPending ? 'Creating Project...' : 'Start Generating'}
+                                {createProjectMutation.isPending ? 'Creating Project...' : 'Start Generating'}
                             </Button>
-                            <Button onClick={handleReset} disabled={isPending}>
+                            <Button onClick={handleReset} disabled={createProjectMutation.isPending}>
                                 Reset
                             </Button>
                         </Space>
                     </Form.Item>
                 </Form>
 
-                {isPending && (
+                {createProjectMutation.isPending && (
                     <Flex vertical align="center" gap="middle" style={{ marginTop: '2rem' }}>
                         <Spin size="large" />
                         <Text>Your new project is being created. You will be redirected shortly...</Text>

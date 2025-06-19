@@ -116,8 +116,8 @@ export class StreamObjectService {
       for await (const partialObject of result.partialObjectStream) {
         const chunk = `0:${JSON.stringify(JSON.stringify(partialObject))}`;
 
-        // Store chunk in database for resumability
-        await this.transformRepo.addTransformChunk(transform.id, chunk);
+        // Note: addTransformChunk method removed as part of Electric Sync migration
+        // await this.transformRepo.addTransformChunk(transform.id, chunk);
 
         // Write to response
         if (!res.destroyed && res.writable) {

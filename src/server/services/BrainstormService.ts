@@ -74,8 +74,14 @@ export class BrainstormService {
             await this.transformRepo.updateTransformStreamingStatus(transformId, 'running', 0);
 
             // Get brainstorm template
-            const template = this.templateService.getBrainstormingTemplate();
-            const prompt = template.generatePrompt(params);
+            const template = this.templateService.getTemplate('brainstorming');
+            if (!template) {
+                throw new Error('Brainstorming template not found');
+            }
+            
+            const prompt = await this.templateService.renderTemplate(template, {
+                params: params
+            });
 
             // Update progress
             await this.transformRepo.updateTransformStreamingStatus(transformId, 'running', 25);
