@@ -17,7 +17,8 @@ import HomePage from './components/HomePage';
 import { OutlineTab } from './components/OutlineTab';
 import ChatTab from './components/ChatTab';
 import ScriptTab from './components/ScriptTab';
-import { ProjectLayout } from './components/ProjectLayout';
+import ProjectLayout from './components/ProjectLayout';
+import ProjectBrainstormPage from './components/ProjectBrainstormPage';
 import Breadcrumb from './components/Breadcrumb';
 import StagewiseToolbar from './components/StagewiseToolbar';
 
@@ -203,6 +204,16 @@ const AppContent: React.FC = () => {
                     <ProjectsList />
                   </ProtectedRoute>
                 } />
+                <Route path="/projects/:projectId/*" element={
+                  <ProtectedRoute>
+                    <EpisodeProvider>
+                      <ProjectLayout />
+                    </EpisodeProvider>
+                  </ProtectedRoute>
+                }>
+                  <Route path="brainstorm" element={<ProjectBrainstormPage />} />
+                  {/* Add other project sub-routes here in the future */}
+                </Route>
                 <Route path="/ideation/:id" element={
                   <ProtectedRoute>
                     <IdeationTab />
@@ -231,13 +242,6 @@ const AppContent: React.FC = () => {
                 <Route path="/script" element={
                   <ProtectedRoute>
                     <ScriptTab />
-                  </ProtectedRoute>
-                } />
-                <Route path="/projects/:id/*" element={
-                  <ProtectedRoute>
-                    <EpisodeProvider>
-                      <ProjectLayout />
-                    </EpisodeProvider>
                   </ProtectedRoute>
                 } />
                 <Route path="/" element={<Navigate to="/projects" replace />} />
@@ -261,6 +265,16 @@ const AppContent: React.FC = () => {
                     <ProjectsList />
                   </ProtectedRoute>
                 } />
+                <Route path="/projects/:projectId/*" element={
+                  <ProtectedRoute>
+                    <EpisodeProvider>
+                      <ProjectLayout />
+                    </EpisodeProvider>
+                  </ProtectedRoute>
+                }>
+                  <Route path="brainstorm" element={<ProjectBrainstormPage />} />
+                  {/* Add other project sub-routes here in the future */}
+                </Route>
                 <Route path="/ideation/:id" element={
                   <ProtectedRoute>
                     <IdeationTab />
@@ -289,13 +303,6 @@ const AppContent: React.FC = () => {
                 <Route path="/script" element={
                   <ProtectedRoute>
                     <ScriptTab />
-                  </ProtectedRoute>
-                } />
-                <Route path="/projects/:id/*" element={
-                  <ProtectedRoute>
-                    <EpisodeProvider>
-                      <ProjectLayout />
-                    </EpisodeProvider>
                   </ProtectedRoute>
                 } />
                 <Route path="/" element={<Navigate to="/projects" replace />} />

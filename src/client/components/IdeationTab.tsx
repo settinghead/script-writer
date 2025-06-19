@@ -255,16 +255,16 @@ const IdeationTab: React.FC = () => {
     }, [ideationRunId, navigate]);
 
     const generateIdeas = async () => {
-        // Clear previous ideas
-        setBrainstormingData(prev => ({
-            ...prev,
-            generatedIdeas: []
-        }));
-        setSelectedIdeaIndex(null);
+        if (!brainstormingData.selectedGenrePaths.length) {
+            setError(new Error('请至少选择一个故事类型'));
+            return;
+        }
+
+        setError(null);
 
         try {
-            // Create brainstorming job
-            const response = await fetch('/api/projects/create-brainstorming-job', {
+            // Create project and start brainstorming job in one request
+            const response = await fetch('/api/projects/create-project-and-brainstorm', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -277,21 +277,19 @@ const IdeationTab: React.FC = () => {
             });
 
             if (!response.ok) {
-                throw new Error(`Failed to create brainstorming job: ${response.status}`);
+                throw new Error(`Failed to create project and brainstorming job: ${response.status}`);
             }
 
-            const { ideationRunId: newRunId, transformId } = await response.json();
+            const { projectId, ideationRunId, transformId, projectTitle } = await response.json();
 
-            // Navigate immediately to the new run with transform ID
-            if (transformId) {
-                navigate(`/ideation/${newRunId}?transform=${transformId}`);
-            } else {
-                navigate(`/ideation/${newRunId}`);
-            }
+            console.log(`Created project ${projectId} (${projectTitle}) with brainstorming job ${transformId}`);
+
+            // Navigate to the new project brainstorming page
+            navigate(`/projects/${projectId}/brainstorm?transform=${transformId}&ideationRun=${ideationRunId}`);
 
         } catch (err) {
-            console.error('Error creating brainstorming job:', err);
-            setError(err instanceof Error ? err : new Error('Failed to generate ideas'));
+            console.error('Error creating project and brainstorming job:', err);
+            setError(err instanceof Error ? err : new Error('Failed to create project and start brainstorming'));
         }
     };
 

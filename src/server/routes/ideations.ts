@@ -163,6 +163,83 @@ export function createIdeationRoutes(
         }
     });
 
+    // ========== NEW PROJECT + BRAINSTORMING ENDPOINT ==========
+
+    // Create project and start brainstorming in one request
+    router.post('/create-project-and-brainstorm', authMiddleware.authenticate, async (req: any, res: any) => {
+        try {
+            const user = authMiddleware.getCurrentUser(req);
+            if (!user) {
+                return res.status(401).json({ error: "User not authenticated" });
+            }
+
+            const { platform, genrePaths, requirements } = req.body;
+
+            // Validate required fields
+            if (!platform || !genrePaths) {
+                return res.status(400).json({
+                    error: "Missing required fields: platform, genrePaths"
+                });
+            }
+
+            // Generate project title from genres
+            const generateProjectTitle = (genrePaths: string[][]): string => {
+                if (!genrePaths || genrePaths.length === 0) {
+                    return '未命名项目';
+                }
+
+                // Extract the last part of each genre path (the most specific genre)
+                const genres = genrePaths
+                    .map(path => path[path.length - 1])
+                    .filter(genre => genre && genre !== 'disabled')
+                    .slice(0, 3); // Limit to 3 genres for readability
+
+                if (genres.length === 0) {
+                    return '未命名项目';
+                }
+
+                return `[${genres.join('+')}] 未命名`;
+            };
+
+            const projectTitle = generateProjectTitle(genrePaths);
+
+            // 1. Create the project first
+            const project = await projectService.createProject(
+                user.id,
+                projectTitle,
+                '', // Empty description as requested
+                'script' // Default project type
+            );
+
+            // 2. Create brainstorming job parameters
+            const jobParams: BrainstormingJobParamsV1 = {
+                platform,
+                genrePaths,
+                requirements: requirements || '',
+                requestedAt: new Date().toISOString()
+            };
+
+            // 3. Start brainstorming job associated with the project
+            const { ideationRunId, transformId } = await streamingExecutor
+                .startBrainstormingJobForProject(user.id, project.id, jobParams);
+
+            console.log(`[IdeationRoutes] Created project ${project.id} and brainstorming job ${transformId}`);
+
+            res.json({ 
+                projectId: project.id,
+                ideationRunId, 
+                transformId,
+                projectTitle 
+            });
+        } catch (error: any) {
+            console.error('Error creating project and brainstorming job:', error);
+            res.status(500).json({
+                error: 'Failed to create project and brainstorming job',
+                details: error.message
+            });
+        }
+    });
+
     // ========== LEGACY IDEATION ENDPOINTS (for backward compatibility) ==========
 
     // Create brainstorming job (immediate creation and redirect)
