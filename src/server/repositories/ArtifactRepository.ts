@@ -193,9 +193,9 @@ export class ArtifactRepository {
             .where('a.type', '=', type)
             .where((eb) => 
                 eb.or([
-                    sql`a.data->>'id' = ${sessionId}`,
-                    sql`a.data->>'ideation_session_id' = ${sessionId}`,
-                    sql`a.data->>'outline_session_id' = ${sessionId}`
+                    eb(sql`a.data->>'id'`, '=', sessionId),
+                    eb(sql`a.data->>'ideation_session_id'`, '=', sessionId),
+                    eb(sql`a.data->>'outline_session_id'`, '=', sessionId)
                 ])
             );
 

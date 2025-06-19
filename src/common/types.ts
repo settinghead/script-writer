@@ -52,6 +52,13 @@ export interface BrainstormIdeaV1 {
     confidence_score?: number;
 }
 
+// Idea interface used throughout the application
+export interface IdeaWithTitle {
+    title: string;
+    body: string;
+    artifactId?: string;
+}
+
 // User input/selection (for user-modified or manually entered content)
 export interface UserInputV1 {
     text: string;
