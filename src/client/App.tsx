@@ -12,7 +12,7 @@ import { EpisodeProvider } from './contexts/EpisodeContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './components/LoginPage';
 import IdeationTab from './components/IdeationTab';
-import IdeationsList from './components/IdeationsList';
+import ProjectsList from './components/IdeationsList';
 import HomePage from './components/HomePage';
 import { OutlineTab } from './components/OutlineTab';
 import ChatTab from './components/ChatTab';
@@ -200,7 +200,7 @@ const AppContent: React.FC = () => {
               <Routes>
                 <Route path="/ideations" element={
                   <ProtectedRoute>
-                    <HomePage />
+                    <ProjectsList />
                   </ProtectedRoute>
                 } />
                 <Route path="/ideation/:id" element={
@@ -258,7 +258,7 @@ const AppContent: React.FC = () => {
               <Routes>
                 <Route path="/ideations" element={
                   <ProtectedRoute>
-                    <HomePage />
+                    <ProjectsList />
                   </ProtectedRoute>
                 } />
                 <Route path="/ideation/:id" element={

@@ -89,12 +89,8 @@ const yjs = setupYjsWebSocketServer(server, authDB);
 // Mount authentication routes
 app.use('/auth', createAuthRoutes(authDB, authMiddleware));
 
-// Mount ideation routes
+// Mount ideation routes - now serving projects list
 app.use('/api/ideations', createIdeationRoutes(authMiddleware, artifactRepo, transformRepo, streamingTransformExecutor));
-
-// Mount flows routes
-import { createFlowRoutes } from './routes/flows';
-app.use('/api/flows', createFlowRoutes(authMiddleware, artifactRepo, transformRepo));
 
 // Attach authDB to all requests
 app.use(authMiddleware.attachAuthDB);

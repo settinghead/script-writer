@@ -111,26 +111,69 @@ export class ArtifactRepository {
         return artifacts;
     }
 
-    // Get artifacts by IDs
-    async getArtifactsByIds(artifactIds: string[], projectId?: string): Promise<Artifact[]> {
-        if (artifactIds.length === 0) return [];
+    // Get artifacts by project ID with limit
+    async getProjectArtifacts(projectId: string, limit: number = 50): Promise<Artifact[]> {
+        const artifacts = await this.db
+            .select('*')
+            .from('artifacts')
+            .where('project_id', projectId)
+            .orderBy('created_at', 'desc')
+            .limit(limit);
 
-        let query = this.db('artifacts')
+        return artifacts.map(row => ({
+            id: row.id,
+            project_id: row.project_id,
+            type: row.type,
+            type_version: row.type_version,
+            data: JSON.parse(row.data),
+            metadata: row.metadata ? JSON.parse(row.metadata) : null,
+            created_at: row.created_at
+        }));
+    }
+
+    // Get artifacts by IDs for a specific project
+    async getArtifactsByIds(artifactIds: string[], projectId?: string): Promise<Artifact[]> {
+        let query = this.db
+            .select('*')
+            .from('artifacts')
             .whereIn('id', artifactIds);
 
         if (projectId) {
-            query = query.where('project_id', projectId);
+            query = query.andWhere('project_id', projectId);
         }
 
-        const rows = await query.orderBy('created_at', 'asc');
+        const artifacts = await query;
 
-        const artifacts = rows.map(row => ({
-            ...row,
+        return artifacts.map(row => ({
+            id: row.id,
+            project_id: row.project_id,
+            type: row.type,
+            type_version: row.type_version,
             data: JSON.parse(row.data),
-            metadata: row.metadata ? JSON.parse(row.metadata) : null
+            metadata: row.metadata ? JSON.parse(row.metadata) : null,
+            created_at: row.created_at
         }));
+    }
 
-        return artifacts;
+    // Get artifacts by type for a specific project
+    async getProjectArtifactsByType(projectId: string, type: string, limit: number = 20): Promise<Artifact[]> {
+        const artifacts = await this.db
+            .select('*')
+            .from('artifacts')
+            .where('project_id', projectId)
+            .andWhere('type', type)
+            .orderBy('created_at', 'desc')
+            .limit(limit);
+
+        return artifacts.map(row => ({
+            id: row.id,
+            project_id: row.project_id,
+            type: row.type,
+            type_version: row.type_version,
+            data: JSON.parse(row.data),
+            metadata: row.metadata ? JSON.parse(row.metadata) : null,
+            created_at: row.created_at
+        }));
     }
 
     // Get artifacts by type for a specific session
@@ -204,5 +247,20 @@ export class ArtifactRepository {
             .del();
 
         return deletedCount > 0;
+    }
+
+    // Update artifact data
+    async updateArtifact(artifactId: string, data: any, metadata?: any): Promise<void> {
+        const updateData: any = {
+            data: JSON.stringify(data)
+        };
+
+        if (metadata !== undefined) {
+            updateData.metadata = metadata ? JSON.stringify(metadata) : null;
+        }
+
+        await this.db('artifacts')
+            .where('id', artifactId)
+            .update(updateData);
     }
 } 

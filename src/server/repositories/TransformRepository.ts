@@ -219,24 +219,50 @@ export class TransformRepository {
         };
     }
 
-    // Get transforms for a project
-    async getProjectTransforms(projectId: string, limit?: number): Promise<Transform[]> {
-        let query = this.db('transforms')
+    // Get transforms for a specific project
+    async getProjectTransforms(projectId: string, limit: number = 50): Promise<Transform[]> {
+        const transforms = await this.db
+            .select('*')
+            .from('transforms')
             .where('project_id', projectId)
-            .orderBy('created_at', 'desc');
+            .orderBy('created_at', 'desc')
+            .limit(limit);
 
-        if (limit) {
-            query = query.limit(limit);
-        }
-
-        const rows = await query;
-
-        const transforms = rows.map(row => ({
-            ...row,
-            execution_context: row.execution_context ? JSON.parse(row.execution_context) : null
+        return transforms.map(row => ({
+            id: row.id,
+            project_id: row.project_id,
+            type: row.type,
+            type_version: row.type_version,
+            status: row.status,
+            retry_count: row.retry_count,
+            max_retries: row.max_retries,
+            execution_context: row.execution_context ? JSON.parse(row.execution_context) : null,
+            created_at: row.created_at
         }));
+    }
 
-        return transforms;
+    // Legacy method - get user transforms (now searches across all user's projects)
+    async getUserTransforms(userId: string): Promise<Transform[]> {
+        // This method now needs to find all projects the user has access to
+        // and then get transforms for those projects
+        const transforms = await this.db
+            .select('t.*')
+            .from('transforms as t')
+            .join('projects_users as pu', 't.project_id', 'pu.project_id')
+            .where('pu.user_id', userId)
+            .orderBy('t.created_at', 'desc');
+
+        return transforms.map(row => ({
+            id: row.id,
+            project_id: row.project_id,
+            type: row.type,
+            type_version: row.type_version,
+            status: row.status,
+            retry_count: row.retry_count,
+            max_retries: row.max_retries,
+            execution_context: row.execution_context ? JSON.parse(row.execution_context) : null,
+            created_at: row.created_at
+        }));
     }
 
     // Update transform status

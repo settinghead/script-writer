@@ -10,41 +10,56 @@ import {
     Alert,
     Empty,
     Space,
-    Descriptions,
-    Modal
+    Modal,
+    Input
 } from 'antd';
 import {
     EyeOutlined,
     PlusOutlined,
     ClockCircleOutlined,
-    DeleteOutlined
+    DeleteOutlined,
+    EditOutlined,
+    ProjectOutlined,
+    FileTextOutlined,
+    PlayCircleOutlined,
+    FileDoneOutlined
 } from '@ant-design/icons';
 import { formatDistanceToNow } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 
 const { Title, Text, Paragraph } = Typography;
 
-interface IdeationRun {
+interface ProjectSummary {
     id: string;
-    user_input: string;
-    selected_platform: string;
-    genre_prompt_string: string;
-    genre_paths: string[][];
-    genre_proportions: number[];
-    initial_ideas: string[];
-    initial_idea_titles?: string[];
-    created_at: string;
+    name: string;
+    description: string;
+    currentPhase: 'brainstorming' | 'outline' | 'episodes' | 'scripts';
+    status: 'active' | 'completed' | 'failed';
+    platform?: string;
+    genre?: string;
+    createdAt: string;
+    updatedAt: string;
+    artifactCounts: {
+        ideations: number;
+        outlines: number;
+        episodes: number;
+        scripts: number;
+    };
 }
 
-const IdeationsList: React.FC = () => {
+const ProjectsList: React.FC = () => {
     const navigate = useNavigate();
-    const [ideations, setIdeations] = useState<IdeationRun[]>([]);
+    const [projects, setProjects] = useState<ProjectSummary[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+    const [createModalVisible, setCreateModalVisible] = useState(false);
+    const [newProjectName, setNewProjectName] = useState('');
+    const [newProjectDescription, setNewProjectDescription] = useState('');
+    const [creating, setCreating] = useState(false);
 
     useEffect(() => {
-        fetchIdeations();
+        fetchProjects();
 
         // Handle window resize for mobile detection
         const handleResize = () => {
@@ -55,58 +70,136 @@ const IdeationsList: React.FC = () => {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    const fetchIdeations = async () => {
+    const fetchProjects = async () => {
         try {
             const response = await fetch('/api/ideations');
             if (!response.ok) {
-                throw new Error(`Failed to fetch ideations: ${response.status}`);
+                throw new Error(`Failed to fetch projects: ${response.status}`);
             }
 
             const data = await response.json();
-            setIdeations(data);
+            setProjects(data);
         } catch (err) {
-            console.error('Error fetching ideations:', err);
-            setError(err instanceof Error ? err.message : 'Failed to load ideations');
+            console.error('Error fetching projects:', err);
+            setError(err instanceof Error ? err.message : 'Failed to load projects');
         } finally {
             setLoading(false);
         }
     };
 
-    const handleViewIdeation = (id: string) => {
-        navigate(`/ideation/${id}`);
+    const handleViewProject = (project: ProjectSummary) => {
+        // Navigate based on current phase
+        switch (project.currentPhase) {
+            case 'brainstorming':
+                navigate('/ideation');
+                break;
+            case 'outline':
+                navigate(`/projects/${project.id}/outline`);
+                break;
+            case 'episodes':
+                navigate(`/projects/${project.id}/episodes`);
+                break;
+            case 'scripts':
+                navigate(`/projects/${project.id}/scripts`);
+                break;
+            default:
+                navigate('/ideation');
+        }
     };
 
     const handleCreateNew = () => {
-        navigate('/ideation');
+        setCreateModalVisible(true);
+        setNewProjectName('');
+        setNewProjectDescription('');
     };
 
-    const handleDeleteIdeation = async (id: string, title: string) => {
+    const handleCreateProject = async () => {
+        if (!newProjectName.trim()) {
+            return;
+        }
+
+        setCreating(true);
+        try {
+            const response = await fetch('/api/ideations/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: newProjectName.trim(),
+                    description: newProjectDescription.trim()
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to create project: ${response.status}`);
+            }
+
+            const newProject = await response.json();
+            
+            // Add to local state
+            setProjects(prev => [
+                {
+                    id: newProject.id,
+                    name: newProject.name,
+                    description: newProject.description || '',
+                    currentPhase: 'brainstorming',
+                    status: 'active',
+                    platform: '',
+                    genre: '',
+                    createdAt: newProject.created_at,
+                    updatedAt: newProject.updated_at,
+                    artifactCounts: {
+                        ideations: 0,
+                        outlines: 0,
+                        episodes: 0,
+                        scripts: 0
+                    }
+                },
+                ...prev
+            ]);
+
+            setCreateModalVisible(false);
+            
+            // Navigate to the new project
+            navigate('/ideation');
+        } catch (err) {
+            console.error('Error creating project:', err);
+            Modal.error({
+                title: '创建失败',
+                content: '项目创建失败，请重试。',
+            });
+        } finally {
+            setCreating(false);
+        }
+    };
+
+    const handleDeleteProject = async (project: ProjectSummary) => {
         Modal.confirm({
             title: '确认删除',
-            content: `确定要删除灵感 "${title}" 吗？此操作无法撤销。`,
+            content: `确定要删除项目 "${project.name}" 吗？此操作无法撤销。`,
             okText: '删除',
             okType: 'danger',
             cancelText: '取消',
             onOk: async () => {
                 try {
-                    const response = await fetch(`/api/ideations/${id}`, {
+                    const response = await fetch(`/api/ideations/${project.id}`, {
                         method: 'DELETE'
                     });
 
                     if (!response.ok) {
-                        throw new Error(`Failed to delete ideation: ${response.status}`);
+                        throw new Error(`Failed to delete project: ${response.status}`);
                     }
 
-                    // Remove from local state to update UI immediately
-                    setIdeations(prevIdeations => prevIdeations.filter(ideation => ideation.id !== id));
+                    // Remove from local state
+                    setProjects(prev => prev.filter(p => p.id !== project.id));
 
-                    // Show success message
                     Modal.success({
                         title: '删除成功',
-                        content: '灵感已成功删除',
+                        content: '项目已成功删除',
                     });
                 } catch (err) {
-                    console.error('Error deleting ideation:', err);
+                    console.error('Error deleting project:', err);
                     Modal.error({
                         title: '删除失败',
                         content: '删除失败，请重试。',
@@ -128,100 +221,60 @@ const IdeationsList: React.FC = () => {
         }
     };
 
-    const truncateText = (text: string, maxLength: number = 60) => {
-        if (!text) return '';
-        return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
+    const getPhaseIcon = (phase: string) => {
+        switch (phase) {
+            case 'brainstorming':
+                return <ProjectOutlined />;
+            case 'outline':
+                return <FileTextOutlined />;
+            case 'episodes':
+                return <PlayCircleOutlined />;
+            case 'scripts':
+                return <FileDoneOutlined />;
+            default:
+                return <ProjectOutlined />;
+        }
     };
 
-    const generateTitle = (ideation: IdeationRun) => {
-        // Priority: use comma-separated idea titles, then user input, then generate from platform + genre
-        const maxLength = isMobile ? 25 : 35; // Shorter titles on mobile
-
-        if (ideation.initial_idea_titles && ideation.initial_idea_titles.length > 0) {
-            // Filter out empty titles and join with commas
-            const validTitles = ideation.initial_idea_titles.filter(title => title && title.trim());
-            if (validTitles.length > 0) {
-                const titleString = validTitles.join('，');
-                return truncateText(titleString, maxLength);
-            }
+    const getPhaseText = (phase: string) => {
+        switch (phase) {
+            case 'brainstorming':
+                return '头脑风暴';
+            case 'outline':
+                return '大纲阶段';
+            case 'episodes':
+                return '分集阶段';
+            case 'scripts':
+                return '剧本阶段';
+            default:
+                return '未知阶段';
         }
-
-        // Fallback to first initial idea if no titles available
-        if (ideation.initial_ideas && ideation.initial_ideas.length > 0) {
-            return truncateText(ideation.initial_ideas[0], maxLength);
-        }
-
-        if (ideation.user_input && ideation.user_input.trim()) {
-            return truncateText(ideation.user_input, maxLength);
-        }
-
-        // Generate title from platform and genre
-        const parts = [];
-        if (ideation.selected_platform) {
-            parts.push(ideation.selected_platform);
-        }
-
-        if (ideation.genre_paths && ideation.genre_paths.length > 0) {
-            const genreStrings = [];
-            ideation.genre_paths.forEach(path => {
-                if (path && path.length > 0) {
-                    // Use the most specific genre (last element)
-                    const specificGenre = path[path.length - 1];
-                    genreStrings.push(specificGenre);
-                }
-            });
-            
-            // Add all genres to the title
-            if (genreStrings.length > 0) {
-                parts.push(...genreStrings);
-            }
-        }
-
-        return parts.length > 0 ? parts.join(' · ') : '灵感创作';
     };
 
-    const generateDescription = (ideation: IdeationRun) => {
-        // Priority: show genre combination, then initial ideas preview, then platform info
-        if (ideation.genre_prompt_string && ideation.genre_prompt_string !== '未指定') {
-            return ideation.genre_prompt_string;
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case 'active':
+                return 'green';
+            case 'completed':
+                return 'blue';
+            case 'failed':
+                return 'red';
+            default:
+                return 'default';
         }
-
-        if (ideation.initial_ideas && ideation.initial_ideas.length > 1) {
-            return `包含 ${ideation.initial_ideas.length} 个故事灵感`;
-        }
-
-        if (ideation.selected_platform) {
-            return `${ideation.selected_platform} 平台内容`;
-        }
-
-        return '创意灵感记录';
     };
 
-    const getGenreTags = (ideation: IdeationRun) => {
-        const tags = [];
-
-        if (ideation.selected_platform) {
-            tags.push({ text: ideation.selected_platform, color: 'blue' });
+    const getStatusText = (status: string) => {
+        switch (status) {
+            case 'active':
+                return '进行中';
+            case 'completed':
+                return '已完成';
+            case 'failed':
+                return '失败';
+            default:
+                return status;
         }
-
-        if (ideation.genre_paths && ideation.genre_paths.length > 0) {
-            ideation.genre_paths.forEach((path, index) => {
-                if (path && path.length > 0) {
-                    const genreText = path.length > 1 ? path[path.length - 1] : path[0];
-                    const proportion = ideation.genre_proportions && ideation.genre_proportions[index];
-                    const displayText = ideation.genre_paths.length > 1 && proportion
-                        ? `${genreText} ${proportion}%`
-                        : genreText;
-                    tags.push({ text: displayText, color: 'purple' });
-                }
-            });
-        }
-
-        if (ideation.initial_ideas && ideation.initial_ideas.length > 0) {
-            tags.push({ text: `${ideation.initial_ideas.length} 个故事`, color: 'green' });
-        }
-
-        return tags;
     };
 
     if (loading) {
@@ -251,20 +304,30 @@ const IdeationsList: React.FC = () => {
 
     return (
         <div style={{ padding: isMobile ? '0 8px' : '0 4px' }}>
+            <div style={{ marginBottom: '16px', textAlign: 'right' }}>
+                <Button 
+                    type="primary" 
+                    icon={<PlusOutlined />} 
+                    onClick={handleCreateNew}
+                    size={isMobile ? 'middle' : 'large'}
+                >
+                    创建新项目
+                </Button>
+            </div>
 
-            {ideations.length === 0 ? (
+            {projects.length === 0 ? (
                 <Empty
-                    description="还没有创建过灵感"
+                    description="还没有创建过项目"
                     style={{ margin: '60px 0' }}
                 >
                     <Button type="primary" icon={<PlusOutlined />} onClick={handleCreateNew}>
-                        创建第一个灵感
+                        创建第一个项目
                     </Button>
                 </Empty>
             ) : (
                 <List
                     grid={{
-                        gutter: [16, 24], // [horizontal, vertical] spacing
+                        gutter: [16, 24],
                         xs: 1,
                         sm: 1,
                         md: 2,
@@ -272,21 +335,20 @@ const IdeationsList: React.FC = () => {
                         xl: 3,
                         xxl: 3,
                     }}
-                    dataSource={ideations}
-                    renderItem={(ideation) => (
+                    dataSource={projects}
+                    renderItem={(project) => (
                         <List.Item style={{ marginBottom: '16px' }}>
                             <Card
                                 hoverable
                                 style={{
                                     minHeight: '220px',
-                                    height: 'auto', // Allow dynamic height
+                                    height: 'auto',
                                     display: 'flex',
                                     flexDirection: 'column',
                                     flex: 1,
-                                    padding: isMobile ? '12px' : '16px', // Smaller padding on mobile
                                     cursor: 'pointer'
                                 }}
-                                onClick={() => handleViewIdeation(ideation.id)}
+                                onClick={() => handleViewProject(project)}
                                 actions={[
                                     <Button
                                         key="view"
@@ -294,13 +356,9 @@ const IdeationsList: React.FC = () => {
                                         icon={<EyeOutlined />}
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            handleViewIdeation(ideation.id);
+                                            handleViewProject(project);
                                         }}
-                                        style={{
-                                            color: '#1890ff',
-                                            fontSize: isMobile ? '12px' : '14px',
-                                            padding: isMobile ? '4px 8px' : '4px 15px'
-                                        }}
+                                        style={{ color: '#1890ff' }}
                                         size={isMobile ? 'small' : 'middle'}
                                     >
                                         {isMobile ? '查看' : '查看详情'}
@@ -311,13 +369,9 @@ const IdeationsList: React.FC = () => {
                                         icon={<DeleteOutlined />}
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            handleDeleteIdeation(ideation.id, generateTitle(ideation));
+                                            handleDeleteProject(project);
                                         }}
-                                        style={{
-                                            color: '#ff4d4f',
-                                            fontSize: isMobile ? '12px' : '14px',
-                                            padding: isMobile ? '4px 8px' : '4px 15px'
-                                        }}
+                                        style={{ color: '#ff4d4f' }}
                                         size={isMobile ? 'small' : 'middle'}
                                         danger
                                     >
@@ -329,47 +383,54 @@ const IdeationsList: React.FC = () => {
                                     flex: 1,
                                     display: 'flex',
                                     flexDirection: 'column',
-                                    minHeight: 0 // Prevents flex item from overflowing
+                                    minHeight: 0
                                 }}>
-                                    <div style={{ marginBottom: isMobile ? '8px' : '12px' }}>
+                                    <div style={{ marginBottom: '12px' }}>
                                         <Text strong style={{
-                                            fontSize: isMobile ? '14px' : '16px',
+                                            fontSize: '16px',
                                             color: '#fff',
-                                            lineHeight: '1.4',
-                                            wordBreak: 'break-word'
+                                            lineHeight: '1.4'
                                         }}>
-                                            {generateTitle(ideation)}
+                                            {project.name}
                                         </Text>
                                     </div>
 
-                                    <div style={{ marginBottom: isMobile ? '8px' : '12px' }}>
-                                        <Text type="secondary" style={{
-                                            fontSize: isMobile ? '12px' : '13px',
-                                            lineHeight: '1.4',
-                                            wordBreak: 'break-word'
-                                        }}>
-                                            {generateDescription(ideation)}
-                                        </Text>
-                                    </div>
+                                    {project.description && (
+                                        <div style={{ marginBottom: '12px' }}>
+                                            <Text type="secondary" style={{
+                                                fontSize: '13px',
+                                                lineHeight: '1.4'
+                                            }}>
+                                                {project.description}
+                                            </Text>
+                                        </div>
+                                    )}
 
-                                    <div style={{
-                                        marginBottom: isMobile ? '6px' : '8px',
-                                        flex: '0 0 auto' // Don't grow or shrink
-                                    }}>
+                                    <div style={{ marginBottom: '8px' }}>
                                         <Space size={[4, 4]} wrap>
-                                            {getGenreTags(ideation).map((tag, index) => (
-                                                <Tag
-                                                    key={index}
-                                                    color={tag.color}
-                                                    style={{
-                                                        fontSize: isMobile ? '10px' : '11px',
-                                                        margin: '2px 0',
-                                                        padding: isMobile ? '0 4px' : '0 6px'
-                                                    }}
-                                                >
-                                                    {tag.text}
+                                            <Tag 
+                                                icon={getPhaseIcon(project.currentPhase)}
+                                                color="blue"
+                                                style={{ fontSize: '11px' }}
+                                            >
+                                                {getPhaseText(project.currentPhase)}
+                                            </Tag>
+                                            <Tag 
+                                                color={getStatusColor(project.status)}
+                                                style={{ fontSize: '11px' }}
+                                            >
+                                                {getStatusText(project.status)}
+                                            </Tag>
+                                            {project.platform && (
+                                                <Tag color="purple" style={{ fontSize: '11px' }}>
+                                                    {project.platform}
                                                 </Tag>
-                                            ))}
+                                            )}
+                                            {project.genre && (
+                                                <Tag color="green" style={{ fontSize: '11px' }}>
+                                                    {project.genre}
+                                                </Tag>
+                                            )}
                                         </Space>
                                     </div>
 
@@ -377,18 +438,15 @@ const IdeationsList: React.FC = () => {
                                         display: 'flex',
                                         alignItems: 'center',
                                         marginTop: 'auto',
-                                        paddingTop: '4px',
-                                        flex: '0 0 auto' // Don't grow or shrink
+                                        paddingTop: '4px'
                                     }}>
                                         <ClockCircleOutlined style={{
                                             marginRight: '4px',
-                                            fontSize: isMobile ? '11px' : '12px',
+                                            fontSize: '12px',
                                             color: '#888'
                                         }} />
-                                        <Text type="secondary" style={{
-                                            fontSize: isMobile ? '11px' : '12px'
-                                        }}>
-                                            {formatDate(ideation.created_at)}
+                                        <Text type="secondary" style={{ fontSize: '12px' }}>
+                                            {formatDate(project.updatedAt)}
                                         </Text>
                                     </div>
                                 </div>
@@ -397,8 +455,40 @@ const IdeationsList: React.FC = () => {
                     )}
                 />
             )}
+
+            <Modal
+                title="创建新项目"
+                open={createModalVisible}
+                onOk={handleCreateProject}
+                onCancel={() => setCreateModalVisible(false)}
+                confirmLoading={creating}
+                okText="创建"
+                cancelText="取消"
+            >
+                <Space direction="vertical" style={{ width: '100%' }}>
+                    <div>
+                        <Text>项目名称 *</Text>
+                        <Input
+                            value={newProjectName}
+                            onChange={(e) => setNewProjectName(e.target.value)}
+                            placeholder="输入项目名称"
+                            maxLength={50}
+                        />
+                    </div>
+                    <div>
+                        <Text>项目描述</Text>
+                        <Input.TextArea
+                            value={newProjectDescription}
+                            onChange={(e) => setNewProjectDescription(e.target.value)}
+                            placeholder="输入项目描述（可选）"
+                            maxLength={200}
+                            rows={3}
+                        />
+                    </div>
+                </Space>
+            </Modal>
         </div>
     );
 };
 
-export default IdeationsList; 
+export default ProjectsList; 
