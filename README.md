@@ -7,6 +7,7 @@ A collaborative script writing application with AI assistance, real-time collabo
 ### 🔐 Authentication System
 - **JWT-based authentication** with HTTP-only cookies for security
 - **Test user login** via dropdown selection (xiyang, xiaolin)
+- **Debug token support** for development (`debug-auth-token-script-writer-dev`)
 - **Extensible provider architecture** ready for future integrations:
   - WeChat login
   - Weibo login  
@@ -16,16 +17,24 @@ A collaborative script writing application with AI assistance, real-time collabo
 - **Session management** with automatic cleanup
 
 ### 🤖 AI-Powered Features
+
+#### New Architecture: Electric SQL + Streaming Agent Framework
+- **Real-time sync** with Electric SQL for instant UI updates
+- **Streaming Agent Framework** with pluggable tool system for extensible AI workflows
+- **Project-based brainstorming** with Electric real-time sync and progressive UI updates
+- **Modular tool system** supporting custom AI workflows and transforms
+- **Type-safe streaming** with Zod validation and comprehensive error recovery
+- **去脸谱化 (De-stereotyping)** - AI prompts explicitly require avoiding stereotypical characters and plots
+
+#### Legacy Architecture: SSE-based Streaming (Being Phased Out)
 - **Real-time JSON streaming** with RxJS-based architecture for partial response parsing
 - **Script editing assistance** using DeepSeek AI
-- **Project-based brainstorming and plot generation** with live streaming and progressive UI updates
 - **Chat interface** for AI interactions
 - **Genre-based content generation** with multi-column responsive display
 - **Transform replay system** for reproducibility testing
 - **Partial JSON parsing** with automatic repair and error recovery
 - **Streaming progress indicators** with cancellation support
 - **Automatic content filtering** - Removes `<think>...</think>` tags and code block wrappers from LLM outputs
-- **去脸谱化 (De-stereotyping)** - AI prompts explicitly require avoiding stereotypical characters and plots
 
 ### 👥 Collaboration & Project Management
 - **Project-based workflow** - Organize work into projects with episodes and scripts
@@ -43,7 +52,7 @@ A collaborative script writing application with AI assistance, real-time collabo
 - **User dropdown** with profile info and logout
 - **Modern state management** with TanStack Query for server state and Zustand for client state
 - **Unified project layout** with collapsible sections for outline and episodes
-- **Real-time UI updates** with streaming data integration
+- **Real-time UI updates** with Electric SQL synchronization
 
 ### 📊 Analytics & Debugging
 - **Complete data traceability** through artifacts and transforms
@@ -58,6 +67,7 @@ A collaborative script writing application with AI assistance, real-time collabo
 ### Prerequisites
 - Node.js 18+ 
 - npm or yarn
+- Docker and Docker Compose (for Electric SQL)
 
 ### Installation
 
@@ -92,14 +102,27 @@ COOKIE_DOMAIN=localhost
 
 # Server Configuration
 PORT=4600
+
+# Electric SQL Configuration
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=script_writer
+DB_USER=postgres
+DB_PASSWORD=password
+ELECTRIC_URL=http://localhost:3000
 ```
 
-4. Start the development server:
+4. Start Electric SQL and PostgreSQL:
+```bash
+docker compose up -d
+```
+
+5. Start the development server:
 ```bash
 npm run dev
 ```
 
-5. Open your browser and navigate to `http://localhost:4600`
+6. Open your browser and navigate to `http://localhost:4600`
 
 ### First Login
 
@@ -112,217 +135,122 @@ npm run dev
 
 ## Architecture
 
-### Frontend Architecture
-- **React 19** with TypeScript
-- **Modern State Management Architecture**:
-  - **TanStack Query (React Query)** for server state management - handles fetching, caching, synchronizing, and updating data from backend APIs
-  - **Zustand** for global client state management - lightweight store for UI state and assembled results of fetched/streamed data
-  - **Unified data flow** - eliminates redundant API calls and provides single source of truth
-- **Ant Design** component library with responsive multi-column layouts
-- **React Router** for navigation with protected routes
-- **RxJS streaming services** for real-time LLM JSON parsing
-- **Generic streaming hooks** with automatic state management and cleanup
+### New Architecture: Electric SQL + Streaming Agents
 
-#### State Management Benefits
-- **Single Source of Truth**: All components read from Zustand store, ensuring UI consistency
-- **Performance**: TanStack Query's cache eliminates redundant API calls, making navigation faster
-- **Separation of Concerns**: Components become declarative renderers of state, while hooks and store manage complex logic
-- **Simplified Logic**: Complex `useEffect` chains replaced by declarative `useQuery` hooks
-- **Scalability**: Adding new data types or views becomes a matter of adding a new query and store slice
+The application is migrating to a modern architecture combining Electric SQL for real-time sync with a Streaming Agent Framework for AI workflows.
 
-### Backend
-- **Express.js** server with TypeScript
-- **SQLite** database with generalized artifacts/transforms system
-- **JWT authentication** with session management
-- **DeepSeek AI integration** for content generation
-- **Yjs WebSocket server** for real-time collaboration
-- **Unified streaming architecture** with database-backed state management
+#### Electric SQL Integration
+- **Real-time database sync** from PostgreSQL to frontend with sub-100ms updates
+- **Authenticated proxy pattern** for secure user-scoped data access
+- **Automatic conflict resolution** and offline support
+- **User isolation** - all data automatically scoped to authenticated user's projects
 
-### Database Schema
+#### Streaming Agent Framework
+- **Pluggable tool system** for extensible AI workflows
+- **Real-time streaming** with live progress updates
+- **Type-safe execution** with Zod validation
+- **Result management** with persistent storage and unique IDs
+- **Multi-step workflows** supporting complex AI agent interactions
 
-The application uses a **project-based architecture** with a **generalized artifacts and transforms system** for complete data traceability:
+```typescript
+// Example: Brainstorm tool integration
+const brainstormToolDef = createBrainstormToolDefinition();
+const result = await runStreamingAgent({
+  userRequest: "Create story ideas for TikTok videos...",
+  toolDefinitions: [brainstormToolDef],
+  onStreamChunk: (chunk) => {
+    // Real-time UI updates via Electric sync
+  },
+  onResultId: (resultId) => {
+    // Store result ID for later retrieval
+  }
+});
+```
 
-#### Project Management Tables
+#### Database Schema (PostgreSQL + Electric)
 ```sql
--- Projects are the main organizational unit
+-- Projects with multi-user collaboration
 CREATE TABLE projects (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   description TEXT,
-  project_type TEXT DEFAULT 'script',  -- 'script', 'novel', etc.
-  status TEXT DEFAULT 'active',        -- 'active', 'completed', 'archived'
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  project_type TEXT DEFAULT 'script',
+  status TEXT DEFAULT 'active',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Multi-user project collaboration
-CREATE TABLE projects_users (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  project_id TEXT NOT NULL,
-  user_id TEXT NOT NULL,
-  role TEXT DEFAULT 'member',          -- 'owner', 'editor', 'member', 'viewer'
-  joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (project_id) REFERENCES projects (id) ON DELETE CASCADE,
-  FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
-  UNIQUE(project_id, user_id)
-);
-```
-
-#### Core Artifacts & Transforms Tables
-```sql
--- Immutable artifacts store all data entities (now project-scoped)
+-- Enhanced artifacts with Electric streaming support
 CREATE TABLE artifacts (
   id TEXT PRIMARY KEY,
-  project_id TEXT NOT NULL,            -- Changed from user_id to project_id
-  type TEXT NOT NULL,                  -- 'brainstorm_params', 'brainstorm_ideas', 'outline_session', etc.
-  type_version TEXT NOT NULL DEFAULT 'v1',
-  data TEXT NOT NULL,                  -- JSON data for the artifact
-  metadata TEXT,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (project_id) REFERENCES projects (id) ON DELETE CASCADE
+  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  type TEXT NOT NULL,
+  data TEXT NOT NULL,
+  streaming_status TEXT DEFAULT 'completed',
+  streaming_progress DECIMAL(5,2) DEFAULT 100.00,
+  partial_data JSONB -- Real-time streaming data
 );
 
--- Transform operations (LLM calls, human actions) - also project-scoped
-CREATE TABLE transforms (
-  id TEXT PRIMARY KEY,
-  project_id TEXT NOT NULL,            -- Changed from user_id to project_id
-  type TEXT NOT NULL,                  -- 'llm' or 'human'
-  type_version TEXT NOT NULL DEFAULT 'v1',
-  status TEXT DEFAULT 'completed',
-  execution_context TEXT,              -- JSON context data
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (project_id) REFERENCES projects (id) ON DELETE CASCADE
-);
-
--- Streaming chunks for real-time processing
-CREATE TABLE transform_chunks (
-  id TEXT PRIMARY KEY,
-  transform_id TEXT NOT NULL,
-  chunk_index INTEGER NOT NULL,
-  chunk_data TEXT NOT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (transform_id) REFERENCES transforms (id) ON DELETE CASCADE
-);
-
--- Many-to-many relationships
-CREATE TABLE transform_inputs (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  transform_id TEXT NOT NULL,
-  artifact_id TEXT NOT NULL,
-  input_role TEXT,
-  FOREIGN KEY (transform_id) REFERENCES transforms (id) ON DELETE CASCADE,
-  FOREIGN KEY (artifact_id) REFERENCES artifacts (id)
-);
-
-CREATE TABLE transform_outputs (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  transform_id TEXT NOT NULL,
-  artifact_id TEXT NOT NULL,
-  output_role TEXT,
-  FOREIGN KEY (transform_id) REFERENCES transforms (id) ON DELETE CASCADE,
-  FOREIGN KEY (artifact_id) REFERENCES artifacts (id)
-);
+-- Electric-optimized view for brainstorming flows
+CREATE VIEW brainstorm_flows AS
+SELECT 
+  p.id as project_id,
+  t.id as transform_id,
+  t.streaming_status as transform_status,
+  a.streaming_progress,
+  a.partial_data
+FROM projects p
+JOIN transforms t ON t.project_id = p.id
+LEFT JOIN artifacts a ON a.transform_id = t.id
+WHERE t.type = 'llm';
 ```
 
-#### LLM-Specific Tables
-```sql
--- LLM prompts (separate due to size)
-CREATE TABLE llm_prompts (
-  id TEXT PRIMARY KEY,
-  transform_id TEXT NOT NULL,
-  prompt_text TEXT NOT NULL,
-  prompt_role TEXT DEFAULT 'primary',
-  FOREIGN KEY (transform_id) REFERENCES transforms (id) ON DELETE CASCADE
-);
+### Legacy Architecture: SSE-based Streaming (Being Phased Out)
 
--- LLM transform metadata
-CREATE TABLE llm_transforms (
-  transform_id TEXT PRIMARY KEY,
-  model_name TEXT NOT NULL,
-  model_parameters TEXT,
-  raw_response TEXT,
-  token_usage TEXT,               -- JSON with token counts
-  FOREIGN KEY (transform_id) REFERENCES transforms (id) ON DELETE CASCADE
-);
+The application previously used Server-Sent Events (SSE) for real-time updates. This is being replaced by Electric SQL.
 
--- Human action tracking
-CREATE TABLE human_transforms (
-  transform_id TEXT PRIMARY KEY,
-  action_type TEXT NOT NULL,
-  interface_context TEXT,
-  change_description TEXT,
-  FOREIGN KEY (transform_id) REFERENCES transforms (id) ON DELETE CASCADE
-);
-```
+#### Frontend Architecture (Legacy)
+- **React 19** with TypeScript
+- **TanStack Query (React Query)** for server state management
+- **Zustand** for global client state management
+- **Ant Design** component library with responsive multi-column layouts
+- **React Router** for navigation with protected routes
+- **RxJS streaming services** for real-time LLM JSON parsing (being replaced)
 
-#### Authentication Tables
-```sql
-CREATE TABLE users (
-  id TEXT PRIMARY KEY,
-  username TEXT NOT NULL UNIQUE,
-  display_name TEXT,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  status TEXT DEFAULT 'active'
-);
+#### Backend (Legacy)
+- **Express.js** server with TypeScript
+- **SQLite** database (migrating to PostgreSQL)
+- **Knex.js** for database operations (migrating to Kysely)
+- **Server-Sent Events** for real-time updates (being replaced by Electric)
+- **Yjs WebSocket server** for real-time collaboration
 
-CREATE TABLE auth_providers (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id TEXT NOT NULL,
-  provider_type TEXT NOT NULL,
-  provider_user_id TEXT,
-  provider_data TEXT,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES users (id),
-  UNIQUE(provider_type, provider_user_id)
-);
+### Frontend State Management
 
-CREATE TABLE user_sessions (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
-  expires_at DATETIME NOT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES users (id)
-);
-```
+The application uses a **modern state management architecture** that eliminates inefficiencies:
 
-### Unified Streaming Architecture
-
-The application features a **unified, database-backed streaming architecture** that eliminates caching-related issues and provides a single source of truth for both streaming and completed data.
-
-#### Core Design Principles
-
-1. **Single Source of Truth**: Database (artifacts/transforms) is the only authoritative data source
-2. **Real-time Updates**: Database changes trigger events to connected clients via EventSource
-3. **Unified Endpoints**: Single API endpoints serve both streaming and completed data states
-4. **No Caching Layer**: Eliminates race conditions and stale data issues
-5. **Project-Scoped Data**: All operations filtered by project membership and user permissions
-
-#### Streaming State Management
+- **TanStack Query** manages all server state with intelligent caching
+- **Zustand** provides lightweight global state for UI state
+- **Electric useShape hooks** for real-time database synchronization
+- **Unified Data Flow**: Components read from stores, Electric keeps data synced
 
 ```typescript
-interface StreamingState {
-  transformId: string;
-  status: 'running' | 'completed' | 'failed';
-  chunks: string[];        // Retrieved from transform_chunks table
-  results: any[];          // Retrieved from completed artifacts
-  progress: number;        // Calculated from chunks/expected
+// Modern pattern: Electric + Zustand integration
+export function useElectricBrainstorm(projectId: string) {
+  const { data: flows, isLoading } = useShape({
+    url: '/api/electric/v1/shape',
+    params: {
+      table: 'brainstorm_flows',
+      where: `project_id = '${projectId}'`
+    }
+  });
+
+  return {
+    ideas: flows?.[0]?.partial_data?.ideas || [],
+    status: flows?.[0]?.transform_status || 'idle',
+    progress: flows?.[0]?.streaming_progress || 0,
+    isLoading
+  };
 }
-```
-
-#### Architecture Diagram
-
-```
-┌─────────────┐     ┌──────────────┐     ┌─────────────┐
-│   Frontend  │────►│  Single API  │────►│   Database  │
-│             │◄────│   Endpoint   │◄────│ (Projects/  │
-└─────────────┘     └──────────────┘     │ Artifacts/  │
-      ▲                    │              │ Transforms) │
-      │                    │              └─────────────┘
-      │              ┌─────▼──────┐              │
-      └──────────────│   Event    │◄─────────────┘
-                     │ Broadcaster │   DB Changes
-                     └────────────┘
 ```
 
 ## API Endpoints
@@ -332,64 +260,40 @@ interface StreamingState {
 - `POST /auth/logout` - Logout and invalidate session
 - `GET /auth/me` - Get current user info
 - `GET /auth/status` - Check authentication status
-- `GET /auth/test-users` - Get list of test users
-- `POST /auth/refresh` - Refresh authentication token
 
-### Protected AI Endpoints (Require Authentication)
-- `POST /llm-api/chat/completions` - Chat completions
-- `POST /llm-api/script/edit` - Script editing assistance
-- `POST /api/streaming/llm` - Generic LLM JSON streaming with template support
+### Electric SQL Proxy (New)
+- `GET /api/electric/v1/shape` - Authenticated Electric SQL proxy for real-time sync
+- Automatic user scoping and project-based access control
+- Real-time streaming of database changes
 
-### Real-time Streaming Endpoints
-- `GET /api/streaming/transform/:transformId` - Subscribe to transform streaming updates via EventSource
-- `GET /api/streaming/status/:transformId` - Get current streaming status and progress
-- `POST /api/streaming/cancel/:transformId` - Cancel active streaming operation
+### Streaming Agent Framework (New)
+- `POST /api/agent/stream` - Execute streaming agent with tool selection
+- `GET /api/results/:resultId` - Retrieve agent execution results
+- `POST /api/brainstorm/create-project` - Create project and start brainstorming
+- `POST /api/brainstorm/start` - Start brainstorming for existing project
 
 ### Project Management (All Require Authentication)
-
-#### Project Operations
 - `GET /api/projects` - List user's projects
 - `GET /api/projects/:id` - Get specific project details
 - `POST /api/projects/create` - Create new project
 - `PUT /api/projects/:id` - Update project details
 - `DELETE /api/projects/:id` - Delete project
 
-#### Brainstorming & Content Generation
-- `POST /api/projects/:id/brainstorm/generate/stream` - Stream brainstorming ideas for project
-- `POST /api/projects/:id/outline/generate/stream` - Stream outline generation for project
-- `POST /api/projects/:id/episodes/generate/stream` - Stream episode generation for project
+### Legacy SSE Endpoints (Being Phased Out)
+- `GET /api/streaming/transform/:transformId` - Subscribe to transform streaming updates
+- `POST /api/streaming/llm` - Generic LLM JSON streaming
+- `POST /api/projects/:id/brainstorm/generate/stream` - Legacy brainstorming endpoint
 
-#### Legacy Endpoints (Maintained for Compatibility)
-- `POST /api/brainstorm/generate/stream` - Stream brainstorming ideas with progressive JSON parsing
-
-#### Script Management
-- `GET /api/scripts` - List user's script documents
-- `GET /api/scripts/:id` - Get user's specific script document
-- `POST /api/scripts` - Create new script document
-- `PUT /api/scripts/:id` - Update script name
-- `DELETE /api/scripts/:id` - Delete script document
-
-#### Real-time Collaboration
+### Real-time Collaboration
 - `WebSocket /yjs?room={roomId}` - Join collaborative editing session (authenticated)
 
-### Debug & Analytics Endpoints (Development/Admin)
-- `GET /debug/artifacts` - List/filter user artifacts
-- `GET /debug/transforms` - List user transforms  
-- `GET /debug/transforms/:id` - Detailed transform view
-- `GET /debug/artifacts/:id` - Individual artifact details
-- `GET /debug/artifacts/:id/lineage` - Artifact lineage tracing
-- `GET /debug/stats` - Database statistics
-- `GET /debug/export` - Complete user data export
-- `POST /debug/replay/transform/:id` - Replay specific transform
-- `POST /debug/replay/workflow/:artifactId` - Replay entire workflow
-- `GET /debug/stats/transforms` - Transform execution statistics
-- `GET /debug/cache/stats` - Cache performance metrics
-- `POST /debug/cache/clear` - Clear cache
-- `GET /debug/search/artifacts` - Advanced artifact search
-- `GET /debug/health` - System health check
-- `GET /debug/performance` - Performance metrics
-
 ## Security Features
+
+### Electric SQL Security
+- **Authenticated proxy pattern** - All Electric requests go through authentication proxy
+- **Automatic user scoping** - Database queries automatically filtered by user's project access
+- **Project-based isolation** - Users can only access data from their projects
+- **Debug token support** - Development workflow with `debug-auth-token-script-writer-dev`
 
 ### Project-Based Access Control
 - **Multi-user projects** with role-based permissions (owner, editor, member, viewer)
@@ -403,26 +307,6 @@ interface StreamingState {
 - **CORS configuration** for cross-origin requests
 - **Input validation** on all endpoints
 - **Session cleanup** for expired tokens
-- **Provider-based architecture** for secure auth extensibility
-
-## User Data Isolation
-
-### Project-Based Data Organization
-- **Projects**: Users can access projects they're members of based on role permissions
-- **Artifacts & Transforms**: All data scoped to projects, with user role validation
-- **WebSocket Connections**: Real-time editing sessions protected by project membership
-- **Room Access Control**: Users can only join collaborative editing rooms for their projects
-
-### Database-Level Security
-- All content tables use `project_id` with user membership validation
-- API endpoints filter all queries by user's project access
-- WebSocket connections verify project membership before allowing access
-- No cross-project data leakage possible through any endpoint
-
-### Room ID Generation
-- Script room IDs include user ID: `script-{user_id}-{timestamp}-{random}`
-- Prevents guessing other users' room IDs
-- Enables quick ownership verification for WebSocket connections
 
 ## Development
 
@@ -430,379 +314,196 @@ interface StreamingState {
 ```
 src/
 ├── client/                 # React frontend
-│   ├── components/        # React components with streaming UI
-│   │   ├── ProjectsList.tsx     # Main project list (renamed from IdeationsList)
-│   │   ├── DynamicStreamingUI.tsx # Unified streaming interface
-│   │   └── shared/streaming/    # Reusable streaming components
-│   ├── contexts/         # React contexts (Auth)
-│   ├── hooks/           # Custom hooks including streaming hooks
-│   │   ├── useProjectData.ts    # TanStack Query hooks for project data
-│   │   └── useLLMStreamingWithStore.ts # Zustand-integrated streaming
-│   ├── services/        # RxJS streaming services
-│   │   ├── streaming/   # Generic LLM streaming base classes
-│   │   └── implementations/ # Specific streaming implementations
-│   ├── stores/         # Zustand stores
-│   │   └── projectStore.ts    # Global project state management
-│   └── types/           # TypeScript types
-├── common/               # Shared frontend/backend types
-│   ├── streaming/       # Streaming interfaces and types
-│   └── llm/            # LLM template types
-└── server/               # Express backend
-    ├── database/        # Database helpers and migrations
-    ├── middleware/      # Express middleware
-    ├── routes/         # API routes including streaming endpoints
-    │   └── ideations.ts # Project management endpoints (renamed for compatibility)
-    ├── services/       # Business logic including streaming executors
-    │   ├── ProjectService.ts    # Project CRUD and collaboration
-    │   └── streaming/   # Streaming transform executors
-    ├── repositories/    # Data access layer
-    │   ├── ProjectRepository.ts # Project and user access management
-    │   ├── ArtifactRepository.ts # Project-scoped artifact operations
-    │   └── TransformRepository.ts # Project-scoped transform operations
-    └── index.ts        # Server entry point
+│   ├── components/        # React components with Electric sync
+│   │   ├── ProjectBrainstormPage.tsx   # Electric-powered brainstorming
+│   │   ├── DynamicStreamingUI.tsx      # Legacy streaming interface
+│   │   └── shared/streaming/           # Legacy streaming components
+│   ├── hooks/             # Custom hooks
+│   │   ├── useElectricBrainstorm.ts    # Electric sync hooks
+│   │   ├── useProjectData.ts           # TanStack Query hooks
+│   │   └── useLLMStreamingWithStore.ts # Legacy streaming hooks
+│   ├── services/          # API services
+│   │   ├── streaming/     # Legacy RxJS streaming services
+│   │   └── implementations/ # Legacy streaming implementations
+│   └── stores/            # Zustand stores
+│       └── projectStore.ts # Global project state management
+├── common/                # Shared frontend/backend types
+│   ├── config/electric.ts # Electric SQL configuration
+│   ├── streaming/         # Legacy streaming interfaces
+│   └── llm/              # LLM template types
+└── server/                # Express backend
+    ├── database/          # Database setup
+    │   ├── schema.sql     # PostgreSQL schema for Electric
+    │   ├── types.ts       # Generated Kysely types
+    │   └── connection.ts  # Database connection (Kysely + PostgreSQL)
+    ├── routes/            # API routes
+    │   ├── electricProxy.ts # Electric SQL authentication proxy
+    │   ├── brainstormRoutes.ts # New brainstorming endpoints
+    │   └── ideations.ts   # Legacy project endpoints
+    ├── services/          # Business logic
+    │   ├── BrainstormService.ts # Electric-integrated brainstorming
+    │   ├── StreamingAgentFramework.ts # Agent orchestration
+    │   └── streaming/     # Legacy streaming executors
+    ├── tools/             # Streaming agent tools
+    │   └── BrainstormTool.ts # Brainstorming tool definition
+    └── transforms/        # Transform implementations
+        └── ideation-stream.ts # Brainstorming transform logic
 ```
 
 ### Available Scripts
 - `npm run dev` - Start development server
 - `npm run build` - Build for production
 - `npm run start` - Start production server
+- `docker compose up` - Start Electric SQL and PostgreSQL
+
+### Development with Electric SQL
+
+1. **Start Electric and PostgreSQL**:
+```bash
+docker compose up -d
+```
+
+2. **Verify Electric is running**:
+```bash
+curl http://localhost:3000/v1/shape?table=projects&offset=-1
+```
+
+3. **Test authentication**:
+```bash
+./run-ts src/server/scripts/test-electric-auth.ts
+```
+
+4. **Monitor Electric logs**:
+```bash
+docker compose logs -f electric
+```
+
+## Migration Status: SSE → Electric SQL
+
+The application is currently in a **hybrid state** during migration from SSE to Electric SQL:
+
+### ✅ Completed
+- **Electric SQL setup** with PostgreSQL and Docker Compose
+- **Authentication proxy** for secure, user-scoped access
+- **Database schema** optimized for Electric sync
+- **Frontend Electric hooks** (`useElectricBrainstorm`)
+- **Streaming Agent Framework** with tool system
+- **Dependencies** updated with Electric SQL packages
+
+### 🚧 In Progress
+- **Backend service migration** from SSE to Electric updates
+- **Database migration** from SQLite + Knex to PostgreSQL + Kysely
+- **Frontend component updates** to use Electric exclusively
+
+### ❌ To Be Removed
+- **Legacy SSE infrastructure** (JobBroadcaster, StreamingTransformExecutor)
+- **RxJS streaming services** (replaced by Electric)
+- **Complex caching layers** (eliminated by Electric's real-time sync)
+- **SQLite database** (migrated to PostgreSQL)
+
+### Migration Benefits
+- **70%+ code reduction** by eliminating SSE complexity
+- **Sub-100ms updates** with Electric's real-time sync
+- **Simplified architecture** - single trigger endpoints + Electric sync
+- **Better collaboration** with real-time multi-user sync
+- **Enhanced security** with automatic user scoping
+
+## Streaming Agent Framework
+
+The application features a **Streaming Agent Framework** that enables AI agents to use specialized tools for content generation.
+
+### Core Components
+
+#### StreamingAgentFramework.ts
+- **Generic tool system** supporting any tool that implements `StreamingToolDefinition`
+- **Real-time streaming** with live updates during tool execution
+- **Result management** with global in-memory storage and unique result IDs
+- **Multi-step execution** supporting complex workflows
+
+#### Tool System
+```typescript
+interface StreamingToolDefinition<TInput, TOutput> {
+  name: string;
+  description: string;
+  inputSchema: z.ZodSchema<TInput>;
+  outputSchema: z.ZodSchema<TOutput>;
+  executeFunction: (input: TInput) => Promise<AsyncIterable<Partial<TOutput>>>;
+}
+
+// Example: Brainstorm tool
+const brainstormToolDef = createBrainstormToolDefinition();
+const result = await runStreamingAgent({
+  userRequest: "Create story ideas for TikTok videos...",
+  toolDefinitions: [brainstormToolDef],
+  onStreamChunk: (chunk) => console.log('Streaming:', chunk),
+  onResultId: (id) => console.log('Result ID:', id)
+});
+```
+
+#### Agent Execution Flow
+1. **Request Processing** - Natural language user request
+2. **Tool Selection** - LLM analyzes request and selects appropriate tool
+3. **Parameter Extraction** - Extract necessary parameters from request
+4. **Tool Execution** - Execute tool with real-time streaming
+5. **Result Storage** - Store results with unique IDs for retrieval
+
+### Testing Framework
+```bash
+# Test the complete agent flow
+./run-ts src/server/scripts/test-agent-flow.ts
+```
 
 ## Recent Major Changes
 
-### Project-Based Architecture Migration
-The application has been completely restructured from a user-based to a project-based architecture:
+### Electric SQL Integration
+- **Real-time sync** replacing Server-Sent Events for better performance
+- **Authenticated proxy pattern** ensuring secure, user-scoped data access
+- **PostgreSQL migration** from SQLite for better Electric compatibility
+- **Simplified streaming** - database updates automatically sync to frontend
 
-#### Database Schema Changes
-- **New Tables**: `projects` and `projects_users` for multi-user collaboration
-- **Schema Migration**: `artifacts` and `transforms` tables now use `project_id` instead of `user_id`
-- **Access Control**: Role-based permissions (owner, editor, member, viewer)
-- **Data Relationships**: Proper foreign key constraints and cascade deletes
+### Streaming Agent Framework
+- **Modular tool system** for extensible AI workflows
+- **Type-safe execution** with comprehensive Zod validation
+- **Real-time progress** with streaming chunk updates
+- **Result persistence** with unique ID-based retrieval
 
-#### API Restructuring
-- **Unified Project Endpoints**: `/api/projects` serves project management with clean, semantic naming
-- **Removed Legacy System**: Eliminated old `/api/flows` endpoints and `FlowService`
-- **Enhanced Security**: All endpoints validate project membership and user roles
-- **Streaming Integration**: Project-scoped streaming with proper access control
-
-#### Frontend Updates
-- **Component Renaming**: `IdeationsList` → `ProjectsList` with updated interfaces
-- **Data Flow**: Updated to use `ProjectSummary` instead of legacy `IdeationRun` types
-- **UI Improvements**: Side-by-side project creation modal with better UX
-- **Navigation**: Simplified project-centric navigation structure
-
-#### Key Benefits
-- **Multi-user Collaboration**: Teams can work together on projects with proper role management
-- **Better Organization**: Clear project hierarchy (Project → Episodes → Scripts)
-- **Simplified Data Model**: Eliminated complex flows system in favor of straightforward project structure
-- **Enhanced Security**: Project-based access control with role validation
-- **Future-Ready**: Architecture supports advanced collaboration features
-
-### UI/UX Improvements
-- **Streamlined Interface**: Removed confusing "故事灵感" (Story Inspiration) section from brainstorming
-- **Dynamic Rendering**: Controls render eagerly as streamed JSON arrives, no predefined display order
-- **Responsive Design**: Multi-column layouts adapt to content and screen size
-- **Dark Theme Consistency**: Maintained dark theme throughout all components
-
-### Development Philosophy
-- **No Backward Compatibility**: Dev environment allows breaking changes for cleaner architecture
-- **Immutable Artifacts**: LLM-generated content treated as immutable; user edits create new human artifacts
-- **Debounced Auto-save**: All user edits automatically saved with debouncing
-- **Zod Validation**: Schema-first approach with versioned artifact validation
+### Project-Based Architecture
+- **Multi-user collaboration** with role-based permissions
+- **Enhanced security** with project membership validation
+- **Simplified data model** eliminating complex flow systems
+- **Better organization** with clear project hierarchy
 
 ## Future Enhancements
 
-### Authentication Extensions
-- **WeChat Login** - OAuth integration with WeChat
-- **Weibo Login** - OAuth integration with Weibo  
-- **SMS Authentication** - Phone number verification
-- **Email/Password Login** - Traditional authentication
-- **Two-Factor Authentication** - Enhanced security
-- **OAuth2 Providers** - Google, GitHub, etc.
+### Electric SQL Completion
+- **Complete SSE removal** and migration to Electric-only architecture
+- **Advanced real-time features** like presence indicators and live cursors
+- **Offline support** with Electric's built-in sync capabilities
+- **Performance optimization** with Electric's caching and batching
+
+### Agent Framework Extensions
+- **Multi-tool workflows** with agents using multiple tools in sequence
+- **Conditional logic** and branching based on intermediate results
+- **Custom tool development** framework for domain-specific workflows
+- **Integration APIs** for external tool and service connections
 
 ### Collaboration Features
-- **Advanced Role Management** - Custom permissions and project templates
-- **Real-time Notifications** - Project activity feeds and mentions
-- **Version Control** - Branching and merging for collaborative writing
-- **Comment System** - Inline comments and review workflows
-
-### AI Enhancements
-- **Multi-model Support** - Integration with multiple LLM providers
-- **Custom Templates** - User-defined prompt templates and workflows
-- **Content Analysis** - Advanced analytics and quality scoring
-- **Export Formats** - Multiple output formats for scripts and outlines
-
-## Developer Notes
-
-### 🏗️ Modern Frontend Architecture
-
-#### TanStack Query & Zustand Integration
-The application uses a **modern state management architecture** that eliminates the inefficiencies of traditional React state patterns:
-
-- **TanStack Query** manages all server state with intelligent caching, background updates, and error handling
-- **Zustand** provides lightweight global state for UI state and assembled data
-- **Unified Data Flow**: Components read from Zustand store, TanStack Query keeps server data synced
-- **Performance Benefits**: Eliminates redundant API calls across components
-
-```typescript
-// Example: Project data fetching pattern
-export const useProjectData = (projectId: string) => {
-  const setOutline = useProjectStore(state => state.setOutline);
-  
-  // TanStack Query handles server state
-  const { data: outlineData, isLoading } = useQuery({
-    queryKey: ['projects', projectId, 'outline'],
-    queryFn: () => apiService.getOutlineSession(projectId),
-    enabled: !!projectId,
-  });
-
-  // Sync to Zustand store for global access
-  useEffect(() => {
-    if (outlineData) setOutline(projectId, outlineData);
-  }, [outlineData, projectId, setOutline]);
-
-  return { isLoading };
-};
-
-// Components simply select from store
-const ProjectLayout = () => {
-  const { isLoading } = useProjectData(projectId);
-  const outline = useProjectStore(state => state.projects[projectId]?.outline);
-  // Clean, declarative rendering
-};
-```
-
-#### RxJS Streaming System
-The application features a **generalized LLM JSON streaming framework** built on RxJS:
-
-- **Generic Base Classes**: `LLMStreamingService<T>` provides reusable streaming logic
-- **Partial JSON Parsing**: Real-time parsing with `jsonrepair` and regex fallbacks
-- **Progressive UI Updates**: Multi-column responsive display with smooth animations
-- **Template System**: Prompt templates with variable interpolation
-- **State Management**: RxJS observables with React hooks integration
-- **Error Recovery**: Automatic retry logic and graceful degradation
-- **Store Integration**: Streaming data automatically synced with Zustand store
-
-#### LLM Content Filtering System
-The application includes a **centralized content filtering system** that automatically cleans LLM outputs:
-
-- **Think Tag Removal**: Strips `<think>...</think>` tags (case-insensitive, multiline)
-- **Code Block Cleanup**: Removes markdown code block wrappers (`\`\`\`json`, `\`\`\``)
-- **Whitespace Normalization**: Trims leading/trailing whitespace
-- **Streaming Integration**: Applied to both real-time streams and final outputs
-- **Console Think Indicator**: Displays animated spinner when AI is in "thinking mode"
-
-#### Project-Based Data Architecture
-The application has evolved to a **project-centric data model**:
-
-- **Multi-user Collaboration**: Projects support multiple users with role-based permissions
-- **Complete Traceability**: Every operation tracked through project-scoped transforms
-- **Access Control**: All data operations validate project membership and user roles
-- **Simplified Navigation**: Clear hierarchy from projects to episodes to scripts
-
-### 🔧 Development Patterns
-
-#### Modern State Management Pattern
-```typescript
-// 1. Define query hooks with TanStack Query
-export const useProjectData = (projectId: string) => {
-  const setProject = useProjectStore(state => state.setProject);
-  
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['projects', projectId],
-    queryFn: () => apiService.getProject(projectId),
-    enabled: !!projectId,
-  });
-
-  // Sync to Zustand store
-  useEffect(() => {
-    if (data) setProject(projectId, data);
-  }, [data, projectId, setProject]);
-
-  return { isLoading, error };
-};
-
-// 2. Components select from store
-const Component = () => {
-  const { isLoading } = useProjectData(projectId);
-  const project = useProjectStore(state => state.projects[projectId]);
-  
-  if (isLoading) return <Spin />;
-  return <div>{project?.name}</div>;
-};
-```
-
-#### Project Service Pattern
-```typescript
-// Create project with proper user association
-const project = await projectService.createProject(userId, {
-  name: 'New Script Project',
-  description: 'A collaborative writing project',
-  project_type: 'script'
-});
-
-// Add collaborators with roles
-await projectService.addUserToProject(project.id, collaboratorId, 'editor');
-
-// List user's projects with summary info
-const projects = await projectService.listUserProjects(userId);
-// Returns: { id, name, status, role, artifact_counts, current_phase }
-```
-
-#### Streaming Service Pattern
-```typescript
-// Create project-scoped streaming service
-export class BrainstormingStreamingService extends LLMStreamingService<IdeaWithTitle> {
-  validate(item: any): item is IdeaWithTitle {
-    return typeof item.title === 'string' && typeof item.body === 'string';
-  }
-  
-  parsePartial(content: string): IdeaWithTitle[] {
-    // Custom parsing logic with error recovery
-    return this.extractValidObjects(content);
-  }
-}
-
-// Use with store integration and project context
-const { status, items, start, stop } = useLLMStreamingWithStore(BrainstormingStreamingService, {
-  projectId,
-  dataType: 'brainstorm'
-});
-```
-
-#### Artifact Creation Pattern
-```typescript
-// Create project-scoped artifacts
-const projectArtifact = await artifactRepo.createArtifact(
-  projectId,
-  'brainstorm_params',
-  { platform: 'douyin', genres: ['romance'], requirements: 'modern setting' }
-);
-
-// Track transform operations with project context
-const { transform, outputArtifacts } = await transformExecutor.executeLLMTransform(
-  projectId,
-  inputArtifacts,
-  prompt,
-  variables,
-  modelName,
-  outputType
-);
-```
-
-### 🛡️ Security Implementation
-
-#### Project-Based Access Control
-```typescript
-// Validate project membership before operations
-const hasAccess = await projectRepo.userHasProjectAccess(userId, projectId, 'editor');
-if (!hasAccess) {
-  throw new Error('Insufficient permissions for this project');
-}
-
-// Role-based operation validation
-const userRole = await projectRepo.getUserProjectRole(userId, projectId);
-if (userRole !== 'owner' && operation === 'delete') {
-  throw new Error('Only project owners can delete projects');
-}
-```
-
-#### Enhanced Data Isolation
-- **Project-level security**: All operations filtered by project membership
-- **Role-based permissions**: Different access levels for different operations
-- **Transform-level security**: All operations validate project access
-- **Debug endpoint protection**: Analytics data scoped to user's accessible projects
-
-### 🔮 Extension Points
-
-#### Adding New Project Types
-```typescript
-// 1. Extend project types
-type ProjectType = 'script' | 'novel' | 'game_narrative' | 'podcast';
-
-// 2. Add type-specific templates and workflows
-const templates = {
-  script: 'scriptGeneration',
-  novel: 'novelWriting',
-  game_narrative: 'gameStoryline'
-};
-
-// 3. Update UI to handle new project types
-const ProjectTypeSelector = ({ onSelect }) => {
-  const types = ['script', 'novel', 'game_narrative'];
-  // Render selection UI
-};
-```
-
-#### Adding New Collaboration Roles
-```typescript
-// Extend role system
-type ProjectRole = 'owner' | 'editor' | 'reviewer' | 'viewer' | 'guest';
-
-// Define role permissions
-const rolePermissions = {
-  owner: ['read', 'write', 'delete', 'manage_users'],
-  editor: ['read', 'write'],
-  reviewer: ['read', 'comment'],
-  viewer: ['read'],
-  guest: ['read_public']
-};
-```
-
-#### Custom Streaming Services
-```typescript
-// Add new streaming service for project type
-export class NovelStreamingService extends LLMStreamingService<Chapter> {
-  // Implement novel-specific parsing and validation
-}
-
-// Register with project type
-const streamingServices = {
-  script: BrainstormingStreamingService,
-  novel: NovelStreamingService,
-  game_narrative: GameNarrativeStreamingService
-};
-```
-
-### 📚 Key Dependencies
-
-#### Core Framework Dependencies
-- **React 19** with TypeScript for modern frontend development
-- **Express.js** with TypeScript for backend API server
-- **TanStack Query** for intelligent server state management with caching
-- **Zustand** for lightweight global client state management
-- **RxJS** for reactive streaming and state management
-- **Ant Design** for comprehensive UI component library
-- **AI SDK** with DeepSeek integration for LLM streaming
-
-#### Database & Migration Dependencies
-- **Knex.js** for database migrations and query building
-- **SQLite** for development database
-- **UUID** for generating unique identifiers
-
-### ⚠️ Important Notes
-
-1. **Project-Based Architecture**: All data operations now scoped to projects with proper access control
-2. **Multi-user Collaboration**: Projects support multiple users with role-based permissions
-3. **Backward Compatibility**: API endpoints maintain compatibility while using new project system
-4. **No Data Migration**: Development environment allows clean slate approach
-5. **Modern State Architecture**: TanStack Query + Zustand eliminates traditional React state management issues
-6. **Unified Streaming Architecture**: Database-backed streaming eliminates caching complexities
-7. **Enhanced Security**: Project membership validation on all operations
-8. **Simplified UI**: Removed confusing elements, streamlined user experience
-9. **Future-Ready**: Architecture supports advanced collaboration and multi-project features
+- **Advanced role management** with custom permissions
+- **Real-time notifications** and activity feeds
+- **Version control** with branching and merging capabilities
+- **Comment system** with inline reviews and discussions
 
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes following the established patterns:
-   - Use project-based data operations with proper access control
-   - Follow TanStack Query + Zustand state management patterns
-   - Maintain the artifacts/transforms architecture for data operations
-   - Ensure proper role-based permissions for new features
-4. Test authentication flows and project collaboration
-5. Ensure TypeScript types are properly defined
-6. Submit a pull request
+   - **Use Electric SQL** for new real-time features
+   - **Follow Streaming Agent Framework** patterns for AI workflows
+   - **Maintain project-based access control** for all operations
+   - **Use TypeScript** with proper type definitions
+4. Test with Electric SQL and authentication flows
+5. Submit a pull request
 
 ## License
 
