@@ -1,106 +1,162 @@
-import React, { useState, useRef } from 'react';
-import { Button, Card, Typography, Spin, Alert } from 'antd';
-import type { IdeationInput } from '../../common/transform_schemas';
-import c from 'ansi-colors';
+import React from 'react';
+import { Button, Card, Typography, Spin, Alert, Flex, Empty } from 'antd';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import type { IdeationInput, IdeationOutput } from '../../common/transform_schemas';
+import ansiColors from 'ansi-colors';
 
 const { Title, Paragraph } = Typography;
-const { cyan, green, red } = c;
 
-const StreamingIdeationTestPage: React.FC = () => {
-  const [ideas, setIdeas] = useState<any[] | null>(null);
-  const [status, setStatus] = useState<'idle' | 'streaming' | 'completed' | 'error'>('idle');
-  const [error, setError] = useState<string | null>(null);
-  const eventSourceRef = useRef<EventSource | null>(null);
+const streamingQueryKey = ['streaming-ideation-test'];
 
-  const startStreaming = () => {
-    // Cleanup previous connection if any
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-    }
+interface StreamingState {
+  status: 'idle' | 'streaming' | 'completed' | 'error';
+  ideas: IdeationOutput | null;
+  error: string | null;
+  eventSource: EventSource | null;
+}
 
-    setIdeas(null);
-    setError(null);
-    setStatus('streaming');
+const useStreamingIdeation = () => {
+  const queryClient = useQueryClient();
 
-    const testInput: IdeationInput = {
-      platform: '抖音',
-      genre: '虐恋',
-      main_story_points: '青梅竹马, 政治联姻, 追妻火葬场',
-      plot_keywords: '破镜难圆, 悲剧结局',
-      style_modifiers: '情感细腻, 氛围感强',
-    };
+  const startStreaming = (input: IdeationInput) => {
+    // Close previous connection if it exists
+    const previousState = queryClient.getQueryData<StreamingState>(streamingQueryKey);
+    previousState?.eventSource?.close();
 
-    const queryParams = new URLSearchParams(testInput as Record<string, string>).toString();
+    const queryParams = new URLSearchParams(input as Record<string, string>).toString();
     const es = new EventSource(`/api/ideation/stream/test?${queryParams}`, { withCredentials: true });
-    eventSourceRef.current = es;
+
+    queryClient.setQueryData<StreamingState>(streamingQueryKey, {
+      status: 'streaming',
+      ideas: null,
+      error: null,
+      eventSource: es,
+    });
 
     es.onopen = () => {
-      console.log(cyan('SSE Connection opened.'));
+      console.log(ansiColors.cyan('SSE Connection opened.'));
     };
 
     es.onmessage = (event) => {
       const partialResult = JSON.parse(event.data);
-      setIdeas(partialResult);
-      console.log('Received partial data:', partialResult);
+      queryClient.setQueryData<StreamingState>(streamingQueryKey, (oldData) => ({
+        ...(oldData!),
+        ideas: partialResult,
+      }));
     };
-
+    
     es.addEventListener('done', () => {
-        console.log(green('SSE "done" event received. Stream completed successfully.'));
-        setStatus('completed');
+        console.log(ansiColors.green('SSE "done" event received.'));
+        queryClient.setQueryData<StreamingState>(streamingQueryKey, (oldData) => ({
+            ...(oldData!),
+            status: 'completed',
+        }));
         es.close();
     });
 
     es.onerror = (err) => {
-      // Now this will only catch actual errors, not the end-of-stream signal
-      console.error(red('EventSource failed:'), err);
-      setError('An unexpected error occurred with the connection.');
-      setStatus('error');
+      const currentState = queryClient.getQueryData<StreamingState>(streamingQueryKey);
+      if (currentState?.status !== 'completed') {
+          console.error(ansiColors.red('EventSource error:'), err);
+          queryClient.setQueryData<StreamingState>(streamingQueryKey, (oldData) => ({
+            ...(oldData!),
+            status: 'error',
+            error: 'An unexpected error occurred.',
+          }));
+      }
       es.close();
     };
   };
   
   const stopStreaming = () => {
-    if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-        console.log('Streaming stopped by user.');
-        setStatus('idle');
-    }
-  }
+      const currentState = queryClient.getQueryData<StreamingState>(streamingQueryKey);
+      if (currentState?.eventSource) {
+          currentState.eventSource.close();
+          queryClient.setQueryData<StreamingState>(streamingQueryKey, (oldData) => ({
+            ...(oldData!),
+            status: 'idle'
+          }));
+          console.log('Streaming stopped by user.');
+      }
+  };
 
-  return (
-    <Card title={<Title level={4}>Streaming Ideation Test</Title>} style={{ margin: '20px' }}>
-      <Paragraph>
-        Click the button below to start a streaming request to the backend. The results will appear below in real-time.
-      </Paragraph>
-      <Button
-        type="primary"
-        onClick={startStreaming}
-        disabled={status === 'streaming'}
-        loading={status === 'streaming'}
-      >
-        {status === 'streaming' ? 'Generating...' : 'Start Generating'}
-      </Button>
-       <Button
-        onClick={stopStreaming}
-        disabled={status !== 'streaming'}
-        style={{marginLeft: 8}}
-      >
-        Stop
-      </Button>
+  return { startStreaming, stopStreaming };
+};
 
-      {status === 'error' && (
-        <Alert message={error} type="error" showIcon style={{ marginTop: '20px' }} />
-      )}
+const StreamingIdeationTestPage: React.FC = () => {
+    const { startStreaming, stopStreaming } = useStreamingIdeation();
+    
+    const { data } = useQuery<StreamingState>({
+        queryKey: streamingQueryKey,
+        queryFn: () => Promise.resolve({ status: 'idle', ideas: null, error: null, eventSource: null }),
+        initialData: { status: 'idle', ideas: null, error: null, eventSource: null },
+        staleTime: Infinity,
+        gcTime: Infinity,
+    });
 
-      {ideas && (
-        <Card style={{ marginTop: '20px', backgroundColor: '#222' }}>
-          <pre style={{ color: '#eee', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-            {JSON.stringify(ideas, null, 2)}
-          </pre>
+    const { status, ideas, error } = data;
+
+    const handleStart = () => {
+        const testInput: IdeationInput = {
+            platform: '抖音',
+            genre: '虐恋',
+            main_story_points: '青梅竹马, 政治联姻, 追妻火葬场',
+            plot_keywords: '破镜难圆, 悲剧结局',
+            style_modifiers: '情感细腻, 氛围感强',
+        };
+        startStreaming(testInput);
+    };
+
+    return (
+        <Card title={<Title level={4}>Streaming Ideation Test</Title>} style={{ margin: '20px' }}>
+            <Paragraph>
+                Click the button below to start a streaming request.
+            </Paragraph>
+            <Flex gap="small">
+                <Button
+                    type="primary"
+                    onClick={handleStart}
+                    disabled={status === 'streaming'}
+                    loading={status === 'streaming'}
+                >
+                    {status === 'streaming' ? 'Generating...' : 'Start Generating'}
+                </Button>
+                <Button
+                    onClick={stopStreaming}
+                    disabled={status !== 'streaming'}
+                >
+                    Stop
+                </Button>
+            </Flex>
+            
+            <div style={{ marginTop: '20px' }}>
+                {status === 'streaming' && !ideas && <Spin tip="Connecting to stream..." />}
+                
+                {status === 'error' && (
+                    <Alert message={error} type="error" showIcon />
+                )}
+
+                {ideas && ideas.length > 0 ? (
+                    <Flex wrap="wrap" gap="middle" style={{marginTop: '20px'}}>
+                        {ideas.map((idea, index) => (
+                            <Card 
+                                key={index} 
+                                title={idea.title || 'Generating Title...'} 
+                                style={{ flex: '1 1 300px', minWidth: '300px' }}
+                                loading={!idea.body}
+                            >
+                                <Paragraph style={{ minHeight: '100px' }}>
+                                    {idea.body}
+                                </Paragraph>
+                            </Card>
+                        ))}
+                    </Flex>
+                ) : (
+                    status === 'completed' && ideas && ideas.length === 0 && <Empty description="No ideas were generated." style={{marginTop: '20px'}} />
+                )}
+            </div>
         </Card>
-      )}
-    </Card>
-  );
+    );
 };
 
 export default StreamingIdeationTestPage; 
