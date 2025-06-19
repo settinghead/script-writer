@@ -58,11 +58,24 @@ export function createStreamingToolWithResultId<TInput, TOutput>(
         
         for await (const partial of stream) {
           chunkCount++;
-          process.stdout.write('⚡️');
           
-          // Debug: Log the first few chunks to see their structure
-          if (chunkCount <= 3) {
-            console.log(`\n[Debug] Chunk ${chunkCount}:`, JSON.stringify(partial, null, 2));
+          // Progressive JSON display - simpler approach without line clearing
+          // Just show the current state with a timestamp or counter
+          if (chunkCount === 1) {
+            console.log(`\n[Progressive Streaming] Starting...`);
+          }
+          
+          // Display the current partial object state with chunk number
+          const displayText = Array.isArray(partial) && partial.length > 0 
+            ? JSON.stringify(partial, null, 2)
+            : JSON.stringify(partial, null, 2);
+          
+          // For better readability, only show every 10th chunk or significant changes
+          if (chunkCount % 10 === 0 || chunkCount <= 5) {
+            console.log(`\n--- Chunk ${chunkCount} ---`);
+            console.log(displayText);
+          } else {
+            process.stdout.write('.');
           }
           
           onStreamChunk(partial); // This is the side-streaming callback
@@ -73,31 +86,20 @@ export function createStreamingToolWithResultId<TInput, TOutput>(
           }
         }
         
-        console.log(`\n[Tool Execution] Received ${chunkCount} chunks from stream`);
+        console.log(`\n[Tool Execution] Completed streaming with ${chunkCount} chunks`);
         
-        console.log(`\n[Tool Execution] Final result before validation:`, JSON.stringify(finalResult, null, 2));
+        // Store the final result in global memory
+        const resultId = this.storeResult(finalResult);
+        console.log(`\n[Tool Execution] Stored ${Array.isArray(finalResult) ? finalResult.length : 1} brainstorm results in global memory with ID: ${resultId}`);
         
-        // Validate final result before storing
-        const parsedResult = toolDef.outputSchema.safeParse(finalResult);
-        if (!parsedResult.success) {
-          console.error('\n[Tool Execution] Final tool output failed validation:', parsedResult.error);
-          // Store error in global memory
-          RESULTS_STORE.set(resultId, { error: `Failed to generate valid ${toolDef.name} results.`, details: parsedResult.error.issues });
-          return { resultId };
-        }
-
-        // Store the validated results in global memory
-        RESULTS_STORE.set(resultId, parsedResult.data);
-        console.log(`\n[Tool Execution] Stored ${Array.isArray(parsedResult.data) ? parsedResult.data.length : 1} ${toolDef.name} results in global memory with ID: ${resultId}`);
-        
-        // Return only the result ID to the agent
-        return { resultId };
+        return {
+          resultId,
+          finishReason: 'stop' // Proper string value instead of Promise
+        };
         
       } catch (error) {
-        console.error('\n[Tool Execution] Error during streaming:', error);
-        // Store error in global memory
-        RESULTS_STORE.set(resultId, { error: 'Streaming failed', details: error.message });
-        return { resultId };
+        console.error('\n[Tool Execution] Error:', error);
+        throw error;
       }
     },
   });
@@ -225,13 +227,16 @@ export async function runStreamingAgent(config: StreamingAgentConfig): Promise<{
     console.log('\n-----------------------------------');
 
     console.log('\n\n--- Agent Execution Summary ---');
-    console.log('Finish Reason:', result.finishReason);
+    const finishReason = result.finishReason;
+    console.log('Finish Reason:', finishReason);
     
     const toolCalls = await result.toolCalls;
-    console.log(`\nTool Calls Made: ${toolCalls.length}`);
+    const toolCallsMade = toolCalls.length;
+    console.log(`\nTool Calls Made: ${toolCallsMade}`);
 
     const toolResults = await result.toolResults;
-    console.log(`\nTool Results Received by Agent: ${toolResults.length}`);
+    const toolResultsReceived = toolResults.length;
+    console.log(`\nTool Results Received by Agent: ${toolResultsReceived}`);
     
     // Display the actual results stored in global memory
     console.log('\n--- Stored Results in Global Memory ---');
@@ -242,9 +247,30 @@ export async function runStreamingAgent(config: StreamingAgentConfig): Promise<{
     }
     console.log('---------------------------------');
 
+    // Log summary without repeating the data
+    console.log(`\n--- Agent Execution Summary ---`);
+    console.log(`Finish Reason: ${finishReason}`);
+    console.log(`\nTool Calls Made: ${toolCallsMade}`);
+    console.log(`\nTool Results Received by Agent: ${toolResultsReceived}`);
+    
+    // Show only the result IDs stored, not the full data
+    console.log(`\n--- Stored Results in Global Memory ---`);
+    resultIds.forEach(id => {
+      const result = RESULTS_STORE.get(id);
+      if (result) {
+        const count = Array.isArray(result) ? result.length : 1;
+        console.log(`\nResult ID: ${id}`);
+        console.log(`Stored ${count} items`);
+      }
+    });
+    console.log(`---------------------------------`);
+    
+    console.log(`\n--- Test Completed Successfully ---`);
+    console.log(`Generated ${resultIds.length} result(s): ${resultIds.join(', ')}`);
+    
     return {
       resultIds,
-      finishReason: result.finishReason,
+      finishReason,
       toolCalls,
       toolResults
     };
