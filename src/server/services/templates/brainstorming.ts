@@ -70,9 +70,9 @@ export const brainstormingTemplate: LLMTemplate = {
 目标平台：%%params.platform%%
 具体要求：%%params.requirementsSection%%
 
-请以JSON数组格式生成多个故事创意。每个创意应该准确包含：
+请以JSON数组格式生成3个故事创意（不多不少三个）。每个创意应该准确包含：
 - title：3-7个汉字的标题
-- body：具有清晰叙事结构的完整180字故事梗概
+- body：具有清晰叙事结构的完整200字故事梗概
 
 以JSON数组形式返回创意：
 [
