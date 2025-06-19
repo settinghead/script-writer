@@ -76,7 +76,7 @@ const templateService = new TemplateService();
 
 // Initialize new Electric-compatible services
 const llmService = new LLMService();
-const brainstormService = new BrainstormService(db, artifactRepo, transformRepo, templateService, llmService);
+const brainstormService = new BrainstormService(db, artifactRepo, transformRepo);
 
 // Make services available to routes via app.locals
 app.locals.transformRepo = transformRepo;

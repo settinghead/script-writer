@@ -3,8 +3,8 @@ import { v4 as uuidv4 } from 'uuid';
 import type { DB } from '../database/types';
 import { ArtifactRepository } from '../repositories/ArtifactRepository';
 import { TransformRepository } from '../repositories/TransformRepository';
-import { TemplateService } from './templates/TemplateService';
-import { LLMService } from './LLMService';
+import { runStreamingAgent } from './StreamingAgentFramework';
+import { createBrainstormToolDefinition } from '../tools/BrainstormTool';
 
 export interface BrainstormParams {
     genre: string;
@@ -26,20 +26,32 @@ export class BrainstormService {
     constructor(
         private db: Kysely<DB>,
         private artifactRepo: ArtifactRepository,
-        private transformRepo: TransformRepository,
-        private templateService: TemplateService,
-        private llmService: LLMService
+        private transformRepo: TransformRepository
     ) {}
 
     // Start brainstorm job - creates transform and begins background processing
     async startBrainstorm(request: BrainstormRequest): Promise<{ transformId: string }> {
         const { projectId, params } = request;
 
-        // Create user input artifact
+        // Transform frontend params to BrainstormParamsV1 schema
+        const brainstormParamsV1 = {
+            platform: params.platform,
+            genre_paths: [params.genre.split(',').map(g => g.trim())], // Convert comma-separated to array of arrays
+            requirements: [
+                params.theme,
+                params.character_setting,
+                params.plot_device,
+                params.ending_type,
+                params.length,
+                params.additional_requirements
+            ].filter(Boolean).join('; ') // Combine all requirements into a single string
+        };
+
+        // Create user input artifact with the properly formatted schema
         const userInputArtifact = await this.artifactRepo.createArtifact(
             projectId,
             'brainstorm_params',
-            params,
+            brainstormParamsV1,
             'v1'
         );
 
@@ -49,7 +61,7 @@ export class BrainstormService {
             'llm',
             'v1',
             'pending',
-            { brainstorm_params: params }
+            { brainstorm_params: brainstormParamsV1 }
         );
 
         // Link input artifact to transform
@@ -57,14 +69,14 @@ export class BrainstormService {
             { artifactId: userInputArtifact.id, inputRole: 'brainstorm_params' }
         ]);
 
-        // Start background processing
-        this.processBrainstormInBackground(transform.id, projectId, params);
+        // Start background processing using StreamingAgentFramework
+        this.processBrainstormWithAgent(transform.id, projectId, params);
 
         return { transformId: transform.id };
     }
 
-    // Background processing method
-    private async processBrainstormInBackground(
+    // Background processing method using StreamingAgentFramework
+    private async processBrainstormWithAgent(
         transformId: string,
         projectId: string,
         params: BrainstormParams
@@ -73,51 +85,47 @@ export class BrainstormService {
             // Update transform status to running
             await this.transformRepo.updateTransformStreamingStatus(transformId, 'running', 0);
 
-            // Get brainstorm template
-            const template = this.templateService.getTemplate('brainstorming');
-            if (!template) {
-                throw new Error('Brainstorming template not found');
-            }
-            
-            const prompt = await this.templateService.renderTemplate(template, {
-                params: params
-            });
+            // Get user ID from the transform context (assuming it's stored there)
+            // For now, we'll use a placeholder - this should be passed from the request
+            const userId = 'test-user-1'; // TODO: Get from authenticated user context
+
+            // Create brainstorm tool definition
+            const brainstormTool = createBrainstormToolDefinition(
+                this.transformRepo,
+                this.artifactRepo,
+                projectId,
+                userId
+            );
+
+            // Prepare agent request based on the parameters
+            const userRequest = `Generate creative story ideas for ${params.platform} platform. 
+Genre: ${params.genre}
+Theme: ${params.theme}
+Character setting: ${params.character_setting}
+Plot device: ${params.plot_device}
+Ending type: ${params.ending_type}
+Length: ${params.length}
+Additional requirements: ${params.additional_requirements || 'None'}`;
 
             // Update progress
             await this.transformRepo.updateTransformStreamingStatus(transformId, 'running', 25);
 
-            // Call LLM
-            const response = await this.llmService.generateText(prompt, 'gpt-4o-mini');
+            // Run the streaming agent
+            const result = await runStreamingAgent({
+                userRequest,
+                toolDefinitions: [brainstormTool],
+                maxSteps: 3
+            });
 
-            // Update progress  
+            // Update progress
             await this.transformRepo.updateTransformStreamingStatus(transformId, 'running', 75);
 
-            // Parse response and create result artifact
-            const brainstormResult = this.parseBrainstormResponse(response.text);
-            
-            const resultArtifact = await this.artifactRepo.createArtifact(
-                projectId,
-                'brainstorm_result',
-                brainstormResult,
-                'v1'
-            );
-
-            // Update artifact with streaming completion
-            await this.artifactRepo.updateArtifactStreamingStatus(
-                resultArtifact.id,
-                'completed',
-                100,
-                brainstormResult
-            );
-
-            // Link output artifact to transform
-            await this.transformRepo.addTransformOutputs(transformId, [
-                { artifactId: resultArtifact.id, outputRole: 'brainstorm_result' }
-            ]);
-
-            // Complete transform
+            // The tool execution creates its own artifacts and transforms
+            // We just need to mark our main transform as completed
             await this.transformRepo.updateTransformStreamingStatus(transformId, 'completed', 100);
             await this.transformRepo.updateTransformStatus(transformId, 'completed');
+
+            console.log(`Brainstorm completed for project ${projectId}:`, result);
 
         } catch (error) {
             console.error('Brainstorm processing error:', error);
@@ -128,28 +136,6 @@ export class BrainstormService {
                 streaming_status: 'failed',
                 error_message: error instanceof Error ? error.message : 'Unknown error'
             });
-        }
-    }
-
-    // Parse LLM response into structured brainstorm result
-    private parseBrainstormResponse(response: string): any {
-        try {
-            // Try to parse as JSON first
-            return JSON.parse(response);
-        } catch {
-            // If not JSON, create a simple structure
-            return {
-                ideas: [
-                    {
-                        title: "Generated Story Idea",
-                        description: response,
-                        characters: [],
-                        plot_points: [],
-                        themes: []
-                    }
-                ],
-                generated_at: new Date().toISOString()
-            };
         }
     }
 
@@ -173,9 +159,10 @@ export class BrainstormService {
 
     // Get brainstorm result by project ID
     async getBrainstormResult(projectId: string): Promise<any> {
+        // Look for brainstorm_idea_collection artifacts (created by the tool)
         const artifacts = await this.artifactRepo.getArtifactsByType(
             projectId,
-            'brainstorm_result',
+            'brainstorm_idea_collection',
             'v1'
         );
 

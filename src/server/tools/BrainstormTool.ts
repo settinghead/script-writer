@@ -53,38 +53,62 @@ export function createBrainstormToolDefinition(
                     { artifactId: inputArtifact.id, inputRole: 'tool_input' }
                 ]);
 
-                // 2. Execute the underlying transform which returns a stream
-                const stream = await executeStreamingIdeationTransform(params);
-
-                let finalResult: any = null;
-                let chunkCount = 0;
-
-                // 3. Process the stream: save chunks, broadcast, and aggregate final result
-                for await (const partial of stream) {
-                    chunkCount++;
-                    const chunkData = JSON.stringify({ type: 'chunk', data: partial });
-                    
-                    // Note: addTransformChunk method removed as part of Electric Sync migration
-                    // await transformRepo.addTransformChunk(toolTransformId, chunkData);
-                    
-                    // Note: Broadcasting removed - Electric Sync will handle real-time updates
-
-                    finalResult = partial; // Keep track of the latest (most complete) result
-                }
-
-                // 4. Create output artifact with the final result
+                // 2. Create initial output artifact that will be updated with streaming chunks
                 const outputArtifact = await artifactRepo.createArtifact(
                     projectId,
                     'brainstorm_idea_collection',
-                    finalResult,
+                    [], // Start with empty array
                     'v1',
-                    { chunkCount }
+                    { 
+                        status: 'streaming',
+                        chunkCount: 0,
+                        startedAt: new Date().toISOString()
+                    }
                 );
+                
                 await transformRepo.addTransformOutputs(toolTransformId, [
-                    { artifactId: outputArtifact.id, outputRole: 'final_result' }
+                    { artifactId: outputArtifact.id, outputRole: 'streaming_result' }
                 ]);
 
-                // 5. Mark transform as completed
+                // 3. Execute the underlying transform which returns a stream
+                const stream = await executeStreamingIdeationTransform(params);
+
+                let finalResult: any = [];
+                let chunkCount = 0;
+
+                // 4. Process the stream: update artifact with each chunk for real-time Electric sync
+                for await (const partial of stream) {
+                    chunkCount++;
+                    
+                    // Update the artifact with the current partial result
+                    // This will trigger Electric to sync the update to the frontend immediately
+                    await artifactRepo.updateArtifact(
+                        outputArtifact.id,
+                        partial, // The current partial result
+                        { 
+                            status: 'streaming',
+                            chunkCount,
+                            lastUpdated: new Date().toISOString()
+                        }
+                    );
+
+                    console.log(`[BrainstormTool] Updated artifact ${outputArtifact.id} with chunk ${chunkCount}`);
+                    
+                    finalResult = partial; // Keep track of the latest result
+                }
+
+                // 5. Final update to mark as completed
+                await artifactRepo.updateArtifact(
+                    outputArtifact.id,
+                    finalResult,
+                    { 
+                        status: 'completed',
+                        chunkCount,
+                        completedAt: new Date().toISOString()
+                    }
+                );
+
+                // 6. Mark transform as completed
                 await transformRepo.updateTransformStatus(toolTransformId, 'completed');
                 
                 // The agent framework expects a result object, which includes the ID of the artifact created
