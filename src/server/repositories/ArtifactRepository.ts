@@ -91,7 +91,7 @@ export class ArtifactRepository {
     }
 
     // Get all artifacts for a project
-    async getProjectArtifacts(projectId: string, limit?: number): Promise<Artifact[]> {
+    async getProjectArtifacts(projectId: string, limit: number = 50): Promise<Artifact[]> {
         let query = this.db('artifacts')
             .where('project_id', projectId)
             .orderBy('created_at', 'desc');
@@ -109,26 +109,6 @@ export class ArtifactRepository {
         }));
 
         return artifacts;
-    }
-
-    // Get artifacts by project ID with limit
-    async getProjectArtifacts(projectId: string, limit: number = 50): Promise<Artifact[]> {
-        const artifacts = await this.db
-            .select('*')
-            .from('artifacts')
-            .where('project_id', projectId)
-            .orderBy('created_at', 'desc')
-            .limit(limit);
-
-        return artifacts.map(row => ({
-            id: row.id,
-            project_id: row.project_id,
-            type: row.type,
-            type_version: row.type_version,
-            data: JSON.parse(row.data),
-            metadata: row.metadata ? JSON.parse(row.metadata) : null,
-            created_at: row.created_at
-        }));
     }
 
     // Get artifacts by IDs for a specific project
@@ -262,5 +242,32 @@ export class ArtifactRepository {
         await this.db('artifacts')
             .where('id', artifactId)
             .update(updateData);
+    }
+
+    // Get all artifacts for a user (legacy method for backward compatibility)
+    async getUserArtifacts(userId: string, limit?: number): Promise<Artifact[]> {
+        // In the new project-based system, we need to get artifacts for all user's projects
+        // For now, return all artifacts where project_id matches user's projects
+        let query = this.db('artifacts')
+            .join('projects', 'artifacts.project_id', 'projects.id')
+            .where('projects.user_id', userId)
+            .select('artifacts.*')
+            .orderBy('artifacts.created_at', 'desc');
+
+        if (limit) {
+            query = query.limit(limit);
+        }
+
+        const rows = await query;
+
+        return rows.map(row => ({
+            id: row.id,
+            project_id: row.project_id,
+            type: row.type,
+            type_version: row.type_version,
+            data: JSON.parse(row.data),
+            metadata: row.metadata ? JSON.parse(row.metadata) : null,
+            created_at: row.created_at
+        }));
     }
 } 
