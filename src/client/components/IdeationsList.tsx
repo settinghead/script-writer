@@ -10,8 +10,7 @@ import {
     Alert,
     Empty,
     Space,
-    Modal,
-    Input
+    Modal
 } from 'antd';
 import {
     EyeOutlined,
@@ -22,7 +21,9 @@ import {
     ProjectOutlined,
     FileTextOutlined,
     PlayCircleOutlined,
-    FileDoneOutlined
+    FileDoneOutlined,
+    ThunderboltOutlined,
+    FormOutlined
 } from '@ant-design/icons';
 import { formatDistanceToNow } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
@@ -53,10 +54,7 @@ const ProjectsList: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-    const [createModalVisible, setCreateModalVisible] = useState(false);
-    const [newProjectName, setNewProjectName] = useState('');
-    const [newProjectDescription, setNewProjectDescription] = useState('');
-    const [creating, setCreating] = useState(false);
+    const [showCreateModal, setShowCreateModal] = useState(false);
 
     useEffect(() => {
         fetchProjects();
@@ -108,70 +106,17 @@ const ProjectsList: React.FC = () => {
     };
 
     const handleCreateNew = () => {
-        setCreateModalVisible(true);
-        setNewProjectName('');
-        setNewProjectDescription('');
+        setShowCreateModal(true);
     };
 
-    const handleCreateProject = async () => {
-        if (!newProjectName.trim()) {
-            return;
-        }
+    const handleCreateWithBrainstorm = () => {
+        setShowCreateModal(false);
+        navigate('/ideation');
+    };
 
-        setCreating(true);
-        try {
-            const response = await fetch('/api/ideations/create', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    name: newProjectName.trim(),
-                    description: newProjectDescription.trim()
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error(`Failed to create project: ${response.status}`);
-            }
-
-            const newProject = await response.json();
-            
-            // Add to local state
-            setProjects(prev => [
-                {
-                    id: newProject.id,
-                    name: newProject.name,
-                    description: newProject.description || '',
-                    currentPhase: 'brainstorming',
-                    status: 'active',
-                    platform: '',
-                    genre: '',
-                    createdAt: newProject.created_at,
-                    updatedAt: newProject.updated_at,
-                    artifactCounts: {
-                        ideations: 0,
-                        outlines: 0,
-                        episodes: 0,
-                        scripts: 0
-                    }
-                },
-                ...prev
-            ]);
-
-            setCreateModalVisible(false);
-            
-            // Navigate to the new project
-            navigate('/ideation');
-        } catch (err) {
-            console.error('Error creating project:', err);
-            Modal.error({
-                title: '创建失败',
-                content: '项目创建失败，请重试。',
-            });
-        } finally {
-            setCreating(false);
-        }
+    const handleCreateWithDirectOutline = () => {
+        setShowCreateModal(false);
+        navigate('/projects/new/outline');
     };
 
     const handleDeleteProject = async (project: ProjectSummary) => {
@@ -456,36 +401,82 @@ const ProjectsList: React.FC = () => {
                 />
             )}
 
+            {/* Create Project Modal - Two Options */}
             <Modal
-                title="创建新项目"
-                open={createModalVisible}
-                onOk={handleCreateProject}
-                onCancel={() => setCreateModalVisible(false)}
-                confirmLoading={creating}
-                okText="创建"
-                cancelText="取消"
+                title="选择创建方式"
+                open={showCreateModal}
+                onCancel={() => setShowCreateModal(false)}
+                footer={null}
+                width={600}
+                centered
             >
-                <Space direction="vertical" style={{ width: '100%' }}>
-                    <div>
-                        <Text>项目名称 *</Text>
-                        <Input
-                            value={newProjectName}
-                            onChange={(e) => setNewProjectName(e.target.value)}
-                            placeholder="输入项目名称"
-                            maxLength={50}
-                        />
+                <div style={{ padding: '20px 0' }}>
+                    <Text type="secondary" style={{ display: 'block', marginBottom: '24px', textAlign: 'center' }}>
+                        选择您希望如何开始创建项目
+                    </Text>
+
+                    <div style={{ display: 'flex', gap: '16px' }}>
+                        <Card
+                            hoverable
+                            onClick={handleCreateWithBrainstorm}
+                            style={{ cursor: 'pointer', flex: 1 }}
+                            bodyStyle={{ padding: '20px' }}
+                        >
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+                                <div style={{
+                                    width: '48px',
+                                    height: '48px',
+                                    borderRadius: '50%',
+                                    backgroundColor: '#faad14',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '20px',
+                                    color: '#fff',
+                                    marginBottom: '16px'
+                                }}>
+                                    <ThunderboltOutlined />
+                                </div>
+                                <Title level={4} style={{ margin: 0, marginBottom: '8px' }}>
+                                    使用头脑风暴
+                                </Title>
+                                <Text type="secondary">
+                                    通过AI辅助的头脑风暴生成创意想法，然后逐步完善为完整项目
+                                </Text>
+                            </div>
+                        </Card>
+
+                        <Card
+                            hoverable
+                            onClick={handleCreateWithDirectOutline}
+                            style={{ cursor: 'pointer', flex: 1 }}
+                            bodyStyle={{ padding: '20px' }}
+                        >
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+                                <div style={{
+                                    width: '48px',
+                                    height: '48px',
+                                    borderRadius: '50%',
+                                    backgroundColor: '#1890ff',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '20px',
+                                    color: '#fff',
+                                    marginBottom: '16px'
+                                }}>
+                                    <FormOutlined />
+                                </div>
+                                <Title level={4} style={{ margin: 0, marginBottom: '8px' }}>
+                                    自己输入素材
+                                </Title>
+                                <Text type="secondary">
+                                    可以是一句话灵感、PDF、Word文档等，AI将为您自动生成详细的故事大纲
+                                </Text>
+                            </div>
+                        </Card>
                     </div>
-                    <div>
-                        <Text>项目描述</Text>
-                        <Input.TextArea
-                            value={newProjectDescription}
-                            onChange={(e) => setNewProjectDescription(e.target.value)}
-                            placeholder="输入项目描述（可选）"
-                            maxLength={200}
-                            rows={3}
-                        />
-                    </div>
-                </Space>
+                </div>
             </Modal>
         </div>
     );
