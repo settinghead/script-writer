@@ -2,7 +2,6 @@ import { tool, streamText } from 'ai';
 import { z } from 'zod';
 import { createOpenAI } from '@ai-sdk/openai';
 import { getLLMCredentials } from './LLMConfig';
-import logUpdate from 'log-update';
 
 // Global in-memory storage for results
 const RESULTS_STORE = new Map<string, any>();
@@ -45,65 +44,41 @@ export function createStreamingToolWithResultId<TInput, TOutput>(
       const resultId = generateResultId();
       console.log(`\n\n[Tool Execution] Agent called '${toolDef.name}' tool with result ID: ${resultId}`);
       console.log(`[Tool Execution] Params:`, params);
-      
+
       // Notify the caller about the result ID
       onResultId(resultId);
-      
+
       process.stdout.write(`[Tool Side-Stream ${toolDef.name.toUpperCase()}] -> `);
 
       try {
         const stream = await toolDef.executeFunction(params);
-        
+
         let finalResult: any[] = [];
         let chunkCount = 0;
-        
+
         for await (const partial of stream) {
           chunkCount++;
-          
-          // Clean progressive JSON display using log-update
-          if (chunkCount === 1) {
-            console.log(`\n[Progressive Streaming] Starting...`);
-          }
-          
-          // Display the current partial object state - this replaces the previous output
-          const displayText = Array.isArray(partial) && partial.length > 0 
-            ? JSON.stringify(partial, null, 2)
-            : JSON.stringify(partial, null, 2);
-          
-          // Use log-update to replace the previous output cleanly
-          logUpdate(`[Chunk ${chunkCount}]\n${displayText}`);
-          
-          onStreamChunk(partial); // This is the side-streaming callback
-          
+
+          onStreamChunk({ chunk: partial, chunkCount }); // Pass chunk and count to the handler
+
           // Since the chunks are arrays, we should use the latest array as our result
           if (Array.isArray(partial) && partial.length > 0) {
             finalResult = partial;
           }
         }
-        
-        // Clear the log-update display and show the final result
-        logUpdate.clear();
-        
-        // Show the final streamed result before completion message
-        const finalDisplayText = Array.isArray(finalResult) && finalResult.length > 0 
-          ? JSON.stringify(finalResult, null, 2)
-          : JSON.stringify(finalResult, null, 2);
-        
-        console.log(`[Final Result - Chunk ${chunkCount}]`);
-        console.log(finalDisplayText);
-        
+
         console.log(`\n[Tool Execution] Completed streaming with ${chunkCount} chunks`);
-        
+
         // Store the final result in global memory
-        const resultId = generateResultId();
-        RESULTS_STORE.set(resultId, finalResult);
-        console.log(`\n[Tool Execution] Stored ${Array.isArray(finalResult) ? finalResult.length : 1} brainstorm results in global memory with ID: ${resultId}`);
-        
+        const storedResultId = generateResultId();
+        RESULTS_STORE.set(storedResultId, finalResult);
+        console.log(`\n[Tool Execution] Stored ${Array.isArray(finalResult) ? finalResult.length : 1} brainstorm results in global memory with ID: ${storedResultId}`);
+
         return {
-          resultId,
-          finishReason: 'stop' // Proper string value instead of Promise
+          resultId: storedResultId,
+          finishReason: 'stop'
         };
-        
+
       } catch (error) {
         console.error('\n[Tool Execution] Error:', error);
         throw error;
@@ -121,7 +96,7 @@ export function getResultById(resultId: string): any {
  * Creates a generic agent prompt that can work with multiple tools
  */
 export function createGenericAgentPrompt(userRequest: string, toolDefinitions: StreamingToolDefinition<any, any>[]): string {
-  const toolDescriptions = toolDefinitions.map(tool => 
+  const toolDescriptions = toolDefinitions.map(tool =>
     `- ${tool.name}: ${tool.description}`
   ).join('\n');
 
@@ -174,12 +149,12 @@ export async function runStreamingAgent(config: StreamingAgentConfig): Promise<{
   const sideStreamHandler = config.onStreamChunk || ((chunk: any) => {
     // Default: do nothing, just let the ⚡️ symbols show progress
   });
-  
+
   const resultIdHandler = config.onResultId || ((resultId: string) => {
     console.log(`\n[Agent] Received result ID: ${resultId}`);
     resultIds.push(resultId);
   });
-  
+
   // If custom handler is provided, wrap it to ensure resultIds tracking
   const wrappedResultIdHandler = (resultId: string) => {
     resultIds.push(resultId); // Always track result IDs
@@ -218,18 +193,18 @@ export async function runStreamingAgent(config: StreamingAgentConfig): Promise<{
     console.log('\n\n--- Agent Stream & Final Output ---');
     let finalResponse = '';
     for await (const delta of result.fullStream) {
-        switch (delta.type) {
-            case 'text-delta':
-                process.stdout.write(delta.textDelta);
-                finalResponse += delta.textDelta;
-                break;
-            case 'tool-call':
-                console.log(`\n[Agent Action] Starting tool call to '${delta.toolName}' with ID '${delta.toolCallId}'`);
-                break;
-            case 'tool-result':
-                 console.log(`\n[Agent Action] Received result for tool call '${delta.toolCallId}'`);
-                 break;
-        }
+      switch (delta.type) {
+        case 'text-delta':
+          process.stdout.write(delta.textDelta);
+          finalResponse += delta.textDelta;
+          break;
+        case 'tool-call':
+          console.log(`\n[Agent Action] Starting tool call to '${delta.toolName}' with ID '${delta.toolCallId}'`);
+          break;
+        case 'tool-result':
+          console.log(`\n[Agent Action] Received result for tool call '${delta.toolCallId}'`);
+          break;
+      }
     }
     console.log('\n-----------------------------------');
 
@@ -244,7 +219,7 @@ export async function runStreamingAgent(config: StreamingAgentConfig): Promise<{
     console.log(`Finish Reason: ${finishReason}`);
     console.log(`\nTool Calls Made: ${toolCallsMade}`);
     console.log(`\nTool Results Received by Agent: ${toolResultsReceived}`);
-    
+
     // Show only the result IDs stored, not the full data
     console.log(`\n--- Stored Results in Global Memory ---`);
     resultIds.forEach(id => {

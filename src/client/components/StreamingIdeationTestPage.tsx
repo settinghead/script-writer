@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Button, Card, Typography, Spin, Alert, Flex, Empty, Input, Form, Space, Divider } from 'antd';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -12,7 +12,6 @@ interface StreamingState {
     ideas: any[] | null;
     resultIds: string[];
     error: string | null;
-    eventSource: EventSource | null;
     agentMessages: string[];
 }
 
@@ -25,13 +24,16 @@ interface AgentIdeationRequest {
 
 const useStreamingAgentIdeation = () => {
     const queryClient = useQueryClient();
+    const abortControllerRef = useRef<AbortController | null>(null);
 
     const startStreaming = (input: AgentIdeationRequest) => {
-        // Close previous connection if it exists
-        const previousState = queryClient.getQueryData<StreamingState>(streamingQueryKey);
-        previousState?.eventSource?.close();
+        // Abort previous request if it exists
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
 
-        const es = new EventSource('/api/ideation/agent/stream', { withCredentials: true });
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
 
         // Initialize streaming state
         queryClient.setQueryData<StreamingState>(streamingQueryKey, {
@@ -39,12 +41,9 @@ const useStreamingAgentIdeation = () => {
             ideas: null,
             resultIds: [],
             error: null,
-            eventSource: es,
             agentMessages: [],
         });
 
-        // Send the request data via POST (we'll need to modify this approach)
-        // For now, let's use fetch to send the POST request and then connect to SSE
         fetch('/api/ideation/agent/stream', {
             method: 'POST',
             headers: {
@@ -52,6 +51,7 @@ const useStreamingAgentIdeation = () => {
             },
             credentials: 'include',
             body: JSON.stringify(input),
+            signal: controller.signal,
         }).then(response => {
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -73,6 +73,7 @@ const useStreamingAgentIdeation = () => {
                             ...(oldData!),
                             status: 'completed',
                         }));
+                        abortControllerRef.current = null;
                         return;
                     }
 
@@ -126,12 +127,17 @@ const useStreamingAgentIdeation = () => {
                                 ...(oldData!),
                                 status: 'completed',
                             }));
+                            abortControllerRef.current = null;
                             return;
                         }
                     }
 
                     readStream(); // Continue reading
                 }).catch(err => {
+                    if (err.name === 'AbortError') {
+                        console.log('Streaming stopped by user.');
+                        return;
+                    }
                     console.error('Stream reading error:', err);
                     queryClient.setQueryData<StreamingState>(streamingQueryKey, (oldData) => ({
                         ...(oldData!),
@@ -143,6 +149,10 @@ const useStreamingAgentIdeation = () => {
 
             readStream();
         }).catch(err => {
+            if (err.name === 'AbortError') {
+                console.log('Fetch aborted by user.');
+                return;
+            }
             console.error('Fetch error:', err);
             queryClient.setQueryData<StreamingState>(streamingQueryKey, (oldData) => ({
                 ...(oldData!),
@@ -153,14 +163,13 @@ const useStreamingAgentIdeation = () => {
     };
 
     const stopStreaming = () => {
-        const currentState = queryClient.getQueryData<StreamingState>(streamingQueryKey);
-        if (currentState?.eventSource) {
-            currentState.eventSource.close();
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+            abortControllerRef.current = null;
             queryClient.setQueryData<StreamingState>(streamingQueryKey, (oldData) => ({
                 ...(oldData!),
                 status: 'idle'
             }));
-            console.log('Streaming stopped by user.');
         }
     };
 
@@ -178,7 +187,6 @@ const StreamingIdeationTestPage: React.FC = () => {
             ideas: null,
             resultIds: [],
             error: null,
-            eventSource: null,
             agentMessages: []
         }),
         initialData: {
@@ -186,7 +194,6 @@ const StreamingIdeationTestPage: React.FC = () => {
             ideas: null,
             resultIds: [],
             error: null,
-            eventSource: null,
             agentMessages: []
         },
         staleTime: Infinity,
