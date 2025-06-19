@@ -11,9 +11,6 @@ import { z } from 'zod';
 export const IdeationInputSchema = z.object({
   platform: z.string().nonempty({ message: '目标平台不能为空' }),
   genre: z.string().nonempty({ message: '故事类型不能为空' }),
-  main_story_points: z.string().nonempty({ message: '主要看点不能为空' }),
-  plot_keywords: z.string().nonempty({ message: '情节关键词不能为空' }),
-  style_modifiers: z.string().nonempty({ message: '风格修饰不能为空' }),
   other_requirements: z.string().optional(),
 });
 

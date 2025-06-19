@@ -36,8 +36,6 @@ import { createOutlineRoutes } from './routes/outlineRoutes';
 // Import LLM configuration
 import { getLLMCredentials } from './services/LLMConfig';
 import { createScriptRoutes } from './routes/scriptRoutes.js';
-import { executeStreamingIdeationTransform } from './transforms/ideation-stream.js';
-import { IdeationInputSchema } from '../common/transform_schemas.js';
 
 dotenv.config();
 
@@ -860,45 +858,9 @@ app.use('/api/episodes', createEpisodeRoutes(artifactRepo, transformRepo, authMi
 // Mount script routes
 app.use('/api/scripts', createScriptRoutes(artifactRepo, transformRepo, authMiddleware));
 
-// ========== NEW STREAMING TEST ROUTE ==========
-app.get("/api/ideation/stream/test", authMiddleware.authenticate, async (req: any, res: any) => {
-    try {
-        // 1. Validate input from the request query
-        const validatedInput = IdeationInputSchema.parse(req.query);
-
-        // 2. Set up SSE headers
-        res.writeHead(200, {
-            'Content-Type': 'text/event-stream',
-            'Cache-Control': 'no-cache',
-            'Connection': 'keep-alive',
-        });
-
-        // 3. Execute the streaming transform
-        const partialObjectStream = await executeStreamingIdeationTransform(validatedInput);
-
-        // 4. Stream partial objects to the client
-        for await (const partialObject of partialObjectStream) {
-            res.write(`data: ${JSON.stringify(partialObject)}\n\n`);
-        }
-
-        // 5. Send a 'done' event before closing the stream
-        res.write('event: done\ndata: {"status": "completed"}\n\n');
-
-        res.end();
-
-    } catch (error: any) {
-        console.error('Error in streaming ideation test endpoint:', error);
-        if (!res.headersSent) {
-            res.status(500).json({
-                error: "Failed to start ideation stream",
-                details: error.message
-            });
-        } else {
-            // If headers are sent, we can't send a status code, just end the response.
-            res.end();
-        }
-    }
-});
+// Mount streaming ideation routes
+import { createStreamingIdeationRoutes } from './routes/streamingIdeation.js';
+app.use('/api/ideation', createStreamingIdeationRoutes(authDB));
 
 // ========== STREAMING ENDPOINTS ==========
 
@@ -1412,8 +1374,8 @@ app.get("/api/debug/health", authMiddleware.authenticate, async (req: any, res: 
 
   try {
     // Test database connectivity
-    const artifacts = await artifactRepo.getUserArtifacts(user.id, 1);
-    const transforms = await transformRepo.getUserTransforms(user.id, 1);
+    const artifacts = await artifactRepo.getUserArtifacts(user.id);
+    const transforms = await transformRepo.getUserTransforms(user.id);
 
     // Basic health checks
     const health = {
@@ -1458,11 +1420,11 @@ app.get("/api/debug/performance", authMiddleware.authenticate, async (req: any, 
 
     // Test various operations
     const artifactFetchTime = Date.now();
-    await artifactRepo.getUserArtifacts(user.id, 10);
+    await artifactRepo.getUserArtifacts(user.id);
     const artifactTime = Date.now() - artifactFetchTime;
 
     const transformFetchTime = Date.now();
-    await transformRepo.getUserTransforms(user.id, 10);
+    await transformRepo.getUserTransforms(user.id);
     const transformTime = Date.now() - transformFetchTime;
 
     const streamingTestTime = Date.now();

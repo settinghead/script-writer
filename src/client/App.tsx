@@ -73,11 +73,11 @@ const AppContent: React.FC = () => {
 
   // Mobile menu items
   const menuItems = [
-            {
-            key: 'projects',
-            label: '创作工作台',
-            onClick: () => handleMenuClick('/projects')
-        },
+    {
+      key: 'projects',
+      label: '创作工作台',
+      onClick: () => handleMenuClick('/projects')
+    },
     {
       key: 'ideation',
       label: '新建灵感',
@@ -245,7 +245,7 @@ const AppContent: React.FC = () => {
                     <ScriptTab />
                   </ProtectedRoute>
                 } />
-                <Route path="/test-streaming-ideation" element={
+                <Route path="/test-agent-ideation" element={
                   <ProtectedRoute>
                     <StreamingIdeationTestPage />
                   </ProtectedRoute>
@@ -311,7 +311,7 @@ const AppContent: React.FC = () => {
                     <ScriptTab />
                   </ProtectedRoute>
                 } />
-                <Route path="/test-streaming-ideation" element={
+                <Route path="/test-agent-ideation" element={
                   <ProtectedRoute>
                     <StreamingIdeationTestPage />
                   </ProtectedRoute>

@@ -1,8 +1,8 @@
 import { LLMService } from '../services/LLMService.js';
 import { brainstormingTemplate } from '../services/templates/brainstorming.js';
-import { 
-  IdeationInputSchema, 
-  IdeationOutputSchema, 
+import {
+  IdeationInputSchema,
+  IdeationOutputSchema,
   IdeationInput
 } from '../../common/transform_schemas.js';
 
@@ -34,22 +34,23 @@ export async function executeStreamingIdeationTransform(input: IdeationInput) {
   // 1. Validate the input
   const validatedInput = IdeationInputSchema.parse(input);
 
-  // 2. Construct the 'requirementsSection'
+  // 2. Use hardcoded user request with dynamic genre and platform
+  const hardcodedUserRequest = `I need to create story ideas for ${validatedInput.platform} videos. The genre should be time travel and power fantasy (穿越, 爽文). The main story is about a modern CEO who accidentally travels back to ancient times, becomes a fallen noble family's young master, uses modern knowledge for business and court intrigue, eventually becomes incredibly wealthy and wins the heart of a beautiful woman. Keywords should include business warfare, political schemes, and face-slapping moments. The style should be fast-paced with many plot twists.`;
+
+  // 3. Construct the 'requirementsSection' with hardcoded content and optional user requirements
   const requirementsSection = [
-    `主要看点: ${validatedInput.main_story_points}`,
-    `情节关键词: ${validatedInput.plot_keywords}`,
-    `风格修饰: ${validatedInput.style_modifiers}`,
+    hardcodedUserRequest,
     validatedInput.other_requirements ? `其他要求: ${validatedInput.other_requirements}` : ''
   ].filter(Boolean).join('\n');
 
-  // 3. Render the prompt
+  // 4. Render the prompt
   const prompt = renderTemplate(brainstormingTemplate.promptTemplate, {
     'params.genre': validatedInput.genre,
     'params.platform': validatedInput.platform,
     'params.requirementsSection': requirementsSection,
   });
 
-  // 4. Call the LLM to get a stream of partial objects
+  // 5. Call the LLM to get a stream of partial objects
   const llmService = new LLMService();
   const partialObjectStream = await llmService.streamObject({
     prompt,

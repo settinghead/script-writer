@@ -10,9 +10,6 @@ async function testStreamingIdeation() {
   const testInput: IdeationInput = {
     platform: '抖音',
     genre: '甜宠',
-    main_story_points: '职场精英, 双强CP',
-    plot_keywords: '谈判专家, 微表情专家, 悬疑破案',
-    style_modifiers: '高智商男女主, 救赎式甜宠恋爱',
     other_requirements: '需要有反转情节',
   };
 
@@ -21,7 +18,7 @@ async function testStreamingIdeation() {
 
   const s = spinner();
   s.start('Generating ideas...');
-  
+
   try {
     const startTime = Date.now();
     const partialObjectStream = await executeStreamingIdeationTransform(testInput);
@@ -32,7 +29,7 @@ async function testStreamingIdeation() {
       lastOutput = partialObject;
       s.message(c.cyan('Streaming ideas...\n') + JSON.stringify(partialObject, null, 2));
     }
-    
+
     const duration = (Date.now() - startTime) / 1000;
     s.stop(`✅ Ideation transform streamed successfully in ${duration.toFixed(2)}s!`);
 
@@ -42,12 +39,12 @@ async function testStreamingIdeation() {
   } catch (error) {
     s.stop(c.bold.red('❌ Ideation transform failed.'));
     if (error instanceof Error) {
-        console.error(c.red('Error message:'), error.message);
-        if (error.stack) {
-            console.error(c.red('Stack trace:'), error.stack);
-        }
+      console.error(c.red('Error message:'), error.message);
+      if (error.stack) {
+        console.error(c.red('Stack trace:'), error.stack);
+      }
     } else {
-        console.error(c.red('An unknown error occurred:'), error);
+      console.error(c.red('An unknown error occurred:'), error);
     }
   }
 }
