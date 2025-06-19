@@ -90,7 +90,7 @@ const yjs = setupYjsWebSocketServer(server, authDB);
 app.use('/auth', createAuthRoutes(authDB, authMiddleware));
 
 // Mount ideation routes - now serving projects list
-app.use('/api/ideations', createIdeationRoutes(authMiddleware, artifactRepo, transformRepo, streamingTransformExecutor));
+app.use('/api/projects', createIdeationRoutes(authMiddleware, artifactRepo, transformRepo, streamingTransformExecutor));
 
 // Attach authDB to all requests
 app.use(authMiddleware.attachAuthDB);
@@ -315,7 +315,7 @@ app.post("/llm-api/script/edit", authMiddleware.authenticate, async (req: any, r
 
 // ========== UPDATED IDEATION ENDPOINTS (with validation) ==========
 
-app.post("/api/ideations/create_run_with_ideas",
+app.post("/api/projects/create_run_with_ideas",
   authMiddleware.authenticate,
   validateIdeationCreate,
   async (req: any, res: any) => {
@@ -355,7 +355,7 @@ app.post("/api/ideations/create_run_with_ideas",
   }
 );
 
-app.post("/api/ideations/create_run_and_generate_plot",
+app.post("/api/projects/create_run_and_generate_plot",
   authMiddleware.authenticate,
   validatePlotGeneration,
   async (req: any, res: any) => {
@@ -397,7 +397,7 @@ app.post("/api/ideations/create_run_and_generate_plot",
   }
 );
 
-app.get("/api/ideations/:id", authMiddleware.authenticate, async (req: any, res: any) => {
+app.get("/api/projects/:id", authMiddleware.authenticate, async (req: any, res: any) => {
   const { id } = req.params;
 
   // Get authenticated user
@@ -421,7 +421,7 @@ app.get("/api/ideations/:id", authMiddleware.authenticate, async (req: any, res:
   }
 });
 
-app.get("/api/ideations", authMiddleware.authenticate, async (req: any, res: any) => {
+app.get("/api/projects", authMiddleware.authenticate, async (req: any, res: any) => {
   // Get authenticated user
   const user = authMiddleware.getCurrentUser(req);
   if (!user) {
@@ -438,7 +438,7 @@ app.get("/api/ideations", authMiddleware.authenticate, async (req: any, res: any
   }
 });
 
-app.delete("/api/ideations/:id", authMiddleware.authenticate, async (req: any, res: any) => {
+app.delete("/api/projects/:id", authMiddleware.authenticate, async (req: any, res: any) => {
   const { id } = req.params;
 
   // Get authenticated user
@@ -462,7 +462,7 @@ app.delete("/api/ideations/:id", authMiddleware.authenticate, async (req: any, r
   }
 });
 
-app.post("/api/ideations/:id/generate_plot",
+app.post("/api/projects/:id/generate_plot",
   authMiddleware.authenticate,
   validatePlotGeneration,
   async (req: any, res: any) => {
@@ -862,7 +862,7 @@ app.use('/api/scripts', createScriptRoutes(artifactRepo, transformRepo, authMidd
 // ========== STREAMING ENDPOINTS ==========
 
 // Streaming endpoint for plot generation
-app.post("/api/ideations/:id/generate_plot/stream",
+app.post("/api/projects/:id/generate_plot/stream",
   authMiddleware.authenticate,
   async (req: any, res: any) => {
     const { id: runId } = req.params;
@@ -1453,7 +1453,7 @@ app.get("/api/debug/performance", authMiddleware.authenticate, async (req: any, 
 // ========== JOB-BASED ENDPOINTS ==========
 
 // Create brainstorming job
-app.post("/api/ideations/create-brainstorming-job",
+app.post("/api/projects/create-brainstorming-job",
   authMiddleware.authenticate,
   async (req: any, res: any) => {
     const { platform, genrePaths, requirements } = req.body;
@@ -1667,7 +1667,7 @@ app.get(/(.*)/, (req, res, next) => {
 });
 
 // Check for active ideation job
-app.get("/api/ideations/:id/active-job",
+app.get("/api/projects/:id/active-job",
   authMiddleware.authenticate,
   async (req: any, res: any) => {
     const user = authMiddleware.getCurrentUser(req);

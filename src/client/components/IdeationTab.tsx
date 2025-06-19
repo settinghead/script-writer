@@ -103,7 +103,7 @@ const IdeationTab: React.FC = () => {
         setError(null);
 
         try {
-            const response = await fetch(`/api/ideations/${runId}`);
+            const response = await fetch(`/api/projects/${runId}`);
 
             if (!response.ok) {
                 throw new Error(`Failed to load ideation run: ${response.status}`);
@@ -264,7 +264,7 @@ const IdeationTab: React.FC = () => {
 
         try {
             // Create brainstorming job
-            const response = await fetch('/api/ideations/create-brainstorming-job', {
+            const response = await fetch('/api/projects/create-brainstorming-job', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -306,7 +306,7 @@ const IdeationTab: React.FC = () => {
 
     const checkActiveStreamingJob = async (runId: string) => {
         try {
-            const response = await fetch(`/api/ideations/${runId}/active-job`);
+            const response = await fetch(`/api/projects/${runId}/active-job`);
             if (response.ok) {
                 const jobData = await response.json();
                 if (jobData.status === 'running') {
@@ -363,7 +363,7 @@ const IdeationTab: React.FC = () => {
             cancelText: '取消',
             onOk: async () => {
                 try {
-                    const response = await fetch(`/api/ideations/${ideationRunId}`, {
+                    const response = await fetch(`/api/projects/${ideationRunId}`, {
                         method: 'DELETE'
                     });
 
@@ -375,7 +375,7 @@ const IdeationTab: React.FC = () => {
                         title: '删除成功',
                         content: '灵感已成功删除',
                         onOk: () => {
-                            navigate('/ideations');
+                            navigate('/projects');
                         }
                     });
                 } catch (err) {
@@ -416,7 +416,7 @@ const IdeationTab: React.FC = () => {
                             {ideationRunId && (
                                 <Button
                                     icon={<ArrowLeftOutlined />}
-                                    onClick={() => navigate('/ideations')}
+                                    onClick={() => navigate('/projects')}
                                     type="text"
                                     style={{ color: '#1890ff' }}
                                 >

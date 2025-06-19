@@ -70,7 +70,7 @@ const ProjectsList: React.FC = () => {
 
     const fetchProjects = async () => {
         try {
-            const response = await fetch('/api/ideations');
+            const response = await fetch('/api/projects');
             if (!response.ok) {
                 throw new Error(`Failed to fetch projects: ${response.status}`);
             }
@@ -128,7 +128,7 @@ const ProjectsList: React.FC = () => {
             cancelText: '取消',
             onOk: async () => {
                 try {
-                    const response = await fetch(`/api/ideations/${project.id}`, {
+                    const response = await fetch(`/api/projects/${project.id}`, {
                         method: 'DELETE'
                     });
 

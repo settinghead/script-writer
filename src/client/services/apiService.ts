@@ -278,7 +278,7 @@ class ApiService {
 
     // Ideation support
     async getIdeationRun(runId: string): Promise<any> {
-        const response = await fetch(`${this.baseUrl}/ideations/${runId}`);
+        const response = await fetch(`${this.baseUrl}/projects/${runId}`);
         if (!response.ok) {
             throw new Error(`Failed to fetch ideation run: ${response.status}`);
         }
@@ -287,7 +287,7 @@ class ApiService {
 
     // Get outlines associated with ideas for an ideation session
     async getIdeaOutlines(ideationRunId: string): Promise<{ [ideaId: string]: any[] }> {
-        const response = await fetch(`${this.baseUrl}/ideations/${ideationRunId}/idea-outlines`);
+        const response = await fetch(`${this.baseUrl}/projects/${ideationRunId}/idea-outlines`);
         if (!response.ok) {
             throw new Error(`Failed to fetch idea outlines: ${response.status}`);
         }

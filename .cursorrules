@@ -12,7 +12,7 @@
 ### 2. API Design Philosophy
 - **DO NOT expose artifacts/transforms directly** in server routes - they are low-level constructs
 - **DO NOT make frontend interact with artifacts/transforms directly**
-- Create domain-specific endpoints (e.g., `/api/ideations`, `/api/scripts`) that abstract the underlying artifacts system
+- Create domain-specific endpoints (e.g., `/api/projects`, `/api/scripts`) that abstract the underlying artifacts system
 - Frontend should work with business domain objects (IdeationRun, ScriptDocument) not raw artifacts
 - Use repository pattern to encapsulate artifact/transform operations
 
@@ -68,7 +68,7 @@ src/
 ## API Endpoint Patterns
 
 ### 11. Route Organization
-- Group routes by domain: `/api/ideations`, `/api/scripts`, `/api/brainstorm`
+- Group routes by domain: `/api/projects`, `/api/scripts`, `/api/brainstorm`
 - Use RESTful conventions where appropriate
 - Streaming endpoints use `/stream` suffix
 - Debug endpoints under `/debug/` (development only)
@@ -90,7 +90,12 @@ src/
 - Return appropriate HTTP status codes
 - Include user-friendly error messages for frontend
 
-### 16. Debugging & Analytics
+### 16. TypeScript Script Execution
+- **ALWAYS use `./run-ts` when running TypeScript Node.js scripts** - never use `npx tsx` or `node` directly
+- The `./run-ts` script handles proper TypeScript configuration, dotenv loading, and module resolution
+- Example: `./run-ts src/server/test-script.ts` instead of `npx tsx src/server/test-script.ts`
+
+### 17. Debugging & Analytics
 - If a new flow is constructed or modified, test by creating a node.js only testing script that executes transforms
 
 ## Data Validation

@@ -34,11 +34,11 @@ const Breadcrumb: React.FC = () => {
             {
                 title: '工作台',
                 icon: <HistoryOutlined />,
-                onClick: () => navigate('/ideations')
+                onClick: () => navigate('/projects')
             }
         ];
 
-        if (location.pathname === '/ideations') {
+        if (location.pathname === '/projects') {
             // Just show the main workspace item for the home page
             return items;
         } else if (location.pathname.startsWith('/ideation')) {

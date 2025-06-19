@@ -348,16 +348,16 @@ interface StreamingState {
 ### Project Management (All Require Authentication)
 
 #### Project Operations
-- `GET /api/ideations` - List user's projects (renamed from ideations for backward compatibility)
-- `GET /api/ideations/:id` - Get specific project details
-- `POST /api/ideations/create` - Create new project
-- `PUT /api/ideations/:id` - Update project details
-- `DELETE /api/ideations/:id` - Delete project
+- `GET /api/projects` - List user's projects
+- `GET /api/projects/:id` - Get specific project details
+- `POST /api/projects/create` - Create new project
+- `PUT /api/projects/:id` - Update project details
+- `DELETE /api/projects/:id` - Delete project
 
 #### Brainstorming & Content Generation
-- `POST /api/ideations/:id/brainstorm/generate/stream` - Stream brainstorming ideas for project
-- `POST /api/ideations/:id/outline/generate/stream` - Stream outline generation for project
-- `POST /api/ideations/:id/episodes/generate/stream` - Stream episode generation for project
+- `POST /api/projects/:id/brainstorm/generate/stream` - Stream brainstorming ideas for project
+- `POST /api/projects/:id/outline/generate/stream` - Stream outline generation for project
+- `POST /api/projects/:id/episodes/generate/stream` - Stream episode generation for project
 
 #### Legacy Endpoints (Maintained for Compatibility)
 - `POST /api/brainstorm/generate/stream` - Stream brainstorming ideas with progressive JSON parsing
@@ -479,7 +479,7 @@ The application has been completely restructured from a user-based to a project-
 - **Data Relationships**: Proper foreign key constraints and cascade deletes
 
 #### API Restructuring
-- **Unified Project Endpoints**: `/api/ideations` now serves project management (backward compatible naming)
+- **Unified Project Endpoints**: `/api/projects` serves project management with clean, semantic naming
 - **Removed Legacy System**: Eliminated old `/api/flows` endpoints and `FlowService`
 - **Enhanced Security**: All endpoints validate project membership and user roles
 - **Streaming Integration**: Project-scoped streaming with proper access control

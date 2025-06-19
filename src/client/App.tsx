@@ -71,11 +71,11 @@ const AppContent: React.FC = () => {
 
   // Mobile menu items
   const menuItems = [
-    {
-      key: 'ideations',
-      label: '创作工作台',
-      onClick: () => handleMenuClick('/ideations')
-    },
+            {
+            key: 'projects',
+            label: '创作工作台',
+            onClick: () => handleMenuClick('/projects')
+        },
     {
       key: 'ideation',
       label: '新建灵感',
@@ -198,7 +198,7 @@ const AppContent: React.FC = () => {
             <div style={{ flexGrow: 1, overflow: 'auto', padding: '0 10px' }}>
               <Breadcrumb />
               <Routes>
-                <Route path="/ideations" element={
+                <Route path="/projects" element={
                   <ProtectedRoute>
                     <ProjectsList />
                   </ProtectedRoute>
@@ -240,7 +240,7 @@ const AppContent: React.FC = () => {
                     </EpisodeProvider>
                   </ProtectedRoute>
                 } />
-                <Route path="/" element={<Navigate to="/ideations" replace />} />
+                <Route path="/" element={<Navigate to="/projects" replace />} />
               </Routes>
             </div>
           </>
@@ -256,7 +256,7 @@ const AppContent: React.FC = () => {
             }}>
               <Breadcrumb />
               <Routes>
-                <Route path="/ideations" element={
+                <Route path="/projects" element={
                   <ProtectedRoute>
                     <ProjectsList />
                   </ProtectedRoute>
@@ -298,7 +298,7 @@ const AppContent: React.FC = () => {
                     </EpisodeProvider>
                   </ProtectedRoute>
                 } />
-                <Route path="/" element={<Navigate to="/ideations" replace />} />
+                <Route path="/" element={<Navigate to="/projects" replace />} />
               </Routes>
             </div>
           </div>

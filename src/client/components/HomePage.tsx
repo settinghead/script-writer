@@ -61,7 +61,7 @@ const HomePage: React.FC = () => {
     } = useQuery<ProjectSummary[]>({
         queryKey: ['user-projects'],
         queryFn: async () => {
-            const response = await fetch('/api/ideations');
+            const response = await fetch('/api/projects');
             if (!response.ok) {
                 throw new Error(`Failed to fetch projects: ${response.status}`);
             }

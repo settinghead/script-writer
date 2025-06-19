@@ -391,7 +391,7 @@ export const ProjectLayout: React.FC<ProjectLayoutProps> = () => {
                 <Text type="secondary" style={{ display: 'block', marginBottom: '20px' }}>
                     请求的项目不存在或已被删除。
                 </Text>
-                <Button onClick={() => navigate('/ideations')}>
+                <Button onClick={() => navigate('/projects')}>
                     返回工作台
                 </Button>
             </div>
