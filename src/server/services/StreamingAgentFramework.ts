@@ -2,6 +2,7 @@ import { tool, streamText } from 'ai';
 import { z } from 'zod';
 import { createOpenAI } from '@ai-sdk/openai';
 import { getLLMCredentials } from './LLMConfig';
+import logUpdate from 'log-update';
 
 // Global in-memory storage for results
 const RESULTS_STORE = new Map<string, any>();
@@ -59,24 +60,18 @@ export function createStreamingToolWithResultId<TInput, TOutput>(
         for await (const partial of stream) {
           chunkCount++;
           
-          // Progressive JSON display - simpler approach without line clearing
-          // Just show the current state with a timestamp or counter
+          // Clean progressive JSON display using log-update
           if (chunkCount === 1) {
             console.log(`\n[Progressive Streaming] Starting...`);
           }
           
-          // Display the current partial object state with chunk number
+          // Display the current partial object state - this replaces the previous output
           const displayText = Array.isArray(partial) && partial.length > 0 
             ? JSON.stringify(partial, null, 2)
             : JSON.stringify(partial, null, 2);
           
-          // For better readability, only show every 10th chunk or significant changes
-          if (chunkCount % 10 === 0 || chunkCount <= 5) {
-            console.log(`\n--- Chunk ${chunkCount} ---`);
-            console.log(displayText);
-          } else {
-            process.stdout.write('.');
-          }
+          // Use log-update to replace the previous output cleanly
+          logUpdate(`[Chunk ${chunkCount}]\n${displayText}`);
           
           onStreamChunk(partial); // This is the side-streaming callback
           
@@ -86,10 +81,13 @@ export function createStreamingToolWithResultId<TInput, TOutput>(
           }
         }
         
+        // Clear the log-update display and show completion message
+        logUpdate.clear();
         console.log(`\n[Tool Execution] Completed streaming with ${chunkCount} chunks`);
         
         // Store the final result in global memory
-        const resultId = this.storeResult(finalResult);
+        const resultId = generateResultId();
+        RESULTS_STORE.set(resultId, finalResult);
         console.log(`\n[Tool Execution] Stored ${Array.isArray(finalResult) ? finalResult.length : 1} brainstorm results in global memory with ID: ${resultId}`);
         
         return {
@@ -226,26 +224,11 @@ export async function runStreamingAgent(config: StreamingAgentConfig): Promise<{
     }
     console.log('\n-----------------------------------');
 
-    console.log('\n\n--- Agent Execution Summary ---');
-    const finishReason = result.finishReason;
-    console.log('Finish Reason:', finishReason);
-    
+    const finishReason = await result.finishReason;
     const toolCalls = await result.toolCalls;
     const toolCallsMade = toolCalls.length;
-    console.log(`\nTool Calls Made: ${toolCallsMade}`);
-
     const toolResults = await result.toolResults;
     const toolResultsReceived = toolResults.length;
-    console.log(`\nTool Results Received by Agent: ${toolResultsReceived}`);
-    
-    // Display the actual results stored in global memory
-    console.log('\n--- Stored Results in Global Memory ---');
-    for (const resultId of resultIds) {
-      const storedResult = getResultById(resultId);
-      console.log(`\nResult ID: ${resultId}`);
-      console.log('Stored Data:', JSON.stringify(storedResult, null, 2));
-    }
-    console.log('---------------------------------');
 
     // Log summary without repeating the data
     console.log(`\n--- Agent Execution Summary ---`);
