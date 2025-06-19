@@ -1,6 +1,7 @@
 import { useShape } from '@electric-sql/react'
 import { useMutation, useMutationState } from '@tanstack/react-query'
 import { IdeaWithTitle } from '../types/brainstorm'
+import { createElectricConfig } from '../../common/config/electric'
 
 interface BrainstormArtifact {
   id: string
@@ -40,12 +41,14 @@ interface UseElectricBrainstormResult {
   chunkCount: number
 }
 
-const ELECTRIC_URL = import.meta.env.VITE_ELECTRIC_URL || 'http://localhost:3000'
-
 export function useElectricBrainstorm(projectId: string): UseElectricBrainstormResult {
+  // Get authenticated Electric config
+  const electricConfig = createElectricConfig()
+
   // Watch for brainstorm_idea_collection artifacts for this project
+  // User scoping is handled automatically by the proxy
   const { data: artifacts, isLoading: artifactsLoading } = useShape({
-    url: `${ELECTRIC_URL}/v1/shape`,
+    ...electricConfig,
     params: {
       table: 'artifacts',
       where: `project_id = '${projectId}' AND type = 'brainstorm_idea_collection'`,
@@ -53,8 +56,9 @@ export function useElectricBrainstorm(projectId: string): UseElectricBrainstormR
   })
 
   // Watch for transforms to get status information
+  // User scoping is handled automatically by the proxy
   const { data: transforms, isLoading: transformsLoading } = useShape({
-    url: `${ELECTRIC_URL}/v1/shape`,
+    ...electricConfig,
     params: {
       table: 'transforms',
       where: `project_id = '${projectId}' AND type = 'llm'`,

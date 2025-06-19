@@ -18,6 +18,32 @@ This plan migrates from our current SSE-based streaming architecture to Electric
 3. Frontend connects to SSE endpoint and updates `ProjectBrainstormPage`
 4. Results displayed in `DynamicBrainstormingResults`
 
+### Current Authentication System
+1. **JWT tokens** stored in HTTP-only cookies (`auth_token`)
+2. **Session-based authentication** with database session storage (`user_sessions` table)
+3. **Debug token support** for development (`debug-auth-token-script-writer-dev`)
+4. **Middleware-based protection** (`AuthMiddleware.authenticate`) for all API routes
+5. **User scoping** - all data operations filtered by authenticated `user_id`
+6. **Optional authentication** support for public endpoints
+
+## Electric Authentication Integration
+
+### Authentication Pattern: Proxy Auth
+
+We'll use Electric's **Proxy Auth Pattern** which perfectly aligns with our existing JWT/session system:
+
+1. **Frontend**: Add `Authorization` header to Electric shape requests
+2. **Proxy Endpoint**: Create `/api/electric/v1/shape` that validates auth and proxies to Electric
+3. **User Scoping**: Automatically add `WHERE user_id = $authenticated_user_id` to all shape queries
+4. **Session Validation**: Reuse existing JWT + session validation logic
+
+### Benefits of This Approach
+- **Zero Changes** to existing authentication logic
+- **Automatic User Scoping** - users only see their own data
+- **Debug Token Support** - maintains development workflow
+- **HTTP-only Cookies** - maintains security model
+- **Session Management** - maintains existing session lifecycle
+
 ## Phase 1: Database Migration (SQLite → Postgres)
 
 ### 1.1 Complete Schema Replacement
@@ -475,9 +501,151 @@ export interface DB {
 }
 ```
 
-## Phase 2: Electric Sync Setup
+## Phase 2: Electric Sync Setup with Authentication
 
-### 2.1 Docker Compose for Development
+### 2.1 Electric Authentication Proxy
+
+```typescript
+// src/server/routes/electricProxy.ts - NEW FILE
+
+import { Router, Request, Response } from 'express';
+import { AuthMiddleware } from '../middleware/auth';
+import { AuthDatabase } from '../database/auth';
+
+export function createElectricProxyRoutes(authDB: AuthDatabase) {
+    const router = Router();
+    const authMiddleware = new AuthMiddleware(authDB);
+
+    // Electric proxy endpoint with authentication
+    router.get('/v1/shape', authMiddleware.authenticate, async (req: Request, res: Response) => {
+        try {
+            const user = authMiddleware.getCurrentUser(req);
+            if (!user) {
+                return res.status(401).json({ error: 'Authentication required' });
+            }
+
+            // Construct the upstream Electric URL
+            const electricUrl = new URL(`${process.env.ELECTRIC_URL || 'http://localhost:3000'}/v1/shape`);
+            
+            // Copy over Electric's query params
+            const url = new URL(req.url, `http://${req.headers.host}`);
+            url.searchParams.forEach((value, key) => {
+                if (['live', 'table', 'handle', 'offset', 'cursor', 'columns'].includes(key)) {
+                    electricUrl.searchParams.set(key, value);
+                }
+            });
+
+            // Get the table being requested
+            const table = url.searchParams.get('table');
+            
+            // Apply user-scoped WHERE clauses based on table
+            const existingWhere = url.searchParams.get('where');
+            let userScopedWhere = '';
+
+            switch (table) {
+                case 'brainstorm_flows':
+                    // brainstorm_flows view already includes project_id, need to scope by user
+                    userScopedWhere = `project_id IN (SELECT id FROM projects WHERE id IN (SELECT project_id FROM projects_users WHERE user_id = '${user.id}'))`;
+                    break;
+                case 'projects':
+                    userScopedWhere = `id IN (SELECT project_id FROM projects_users WHERE user_id = '${user.id}')`;
+                    break;
+                case 'artifacts':
+                    userScopedWhere = `project_id IN (SELECT project_id FROM projects_users WHERE user_id = '${user.id}')`;
+                    break;
+                case 'transforms':
+                    userScopedWhere = `project_id IN (SELECT project_id FROM projects_users WHERE user_id = '${user.id}')`;
+                    break;
+                default:
+                    return res.status(400).json({ error: `Table ${table} not authorized for Electric sync` });
+            }
+
+            // Combine existing WHERE with user scoping
+            const finalWhere = existingWhere 
+                ? `(${existingWhere}) AND (${userScopedWhere})`
+                : userScopedWhere;
+            
+            electricUrl.searchParams.set('where', finalWhere);
+
+            // Forward the request to Electric
+            const response = await fetch(electricUrl.toString());
+
+            if (!response.ok) {
+                console.error('Electric request failed:', response.status, response.statusText);
+                return res.status(response.status).json({ 
+                    error: 'Electric sync failed',
+                    details: response.statusText 
+                });
+            }
+
+            // Stream the response back to the client
+            // Remove content-encoding headers that might interfere with streaming
+            const headers = new Headers(response.headers);
+            headers.delete('content-encoding');
+            headers.delete('content-length');
+
+            // Set response headers
+            headers.forEach((value, key) => {
+                res.setHeader(key, value);
+            });
+
+            // Stream the body
+            if (response.body) {
+                response.body.pipeTo(new WritableStream({
+                    write(chunk) {
+                        res.write(chunk);
+                    },
+                    close() {
+                        res.end();
+                    },
+                    abort(err) {
+                        console.error('Stream aborted:', err);
+                        res.end();
+                    }
+                }));
+            } else {
+                res.end();
+            }
+
+        } catch (error) {
+            console.error('Electric proxy error:', error);
+            res.status(500).json({ error: 'Electric proxy failed' });
+        }
+    });
+
+    return router;
+}
+```
+
+### 2.2 Electric Configuration with Auth
+
+```typescript
+// src/common/config/electric.ts - NEW FILE
+
+export const ELECTRIC_URL = process.env.ELECTRIC_URL || 'http://localhost:3000';
+
+// Electric config for authenticated requests
+export const createElectricConfig = () => {
+    return {
+        // Use our auth proxy instead of direct Electric URL
+        url: '/api/electric/v1/shape',
+        // Headers will be handled by the browser's cookie system
+        // No need to manually set Authorization header since we use HTTP-only cookies
+    };
+};
+
+// For development with debug token
+export const createElectricConfigWithDebugAuth = () => {
+    return {
+        url: '/api/electric/v1/shape',
+        headers: {
+            'Authorization': 'Bearer debug-auth-token-script-writer-dev'
+        }
+    };
+};
+```
+
+### 2.3 Docker Compose for Development
 
 ```yaml
 # docker-compose.yml - NEW FILE
@@ -845,7 +1013,22 @@ export class BrainstormService {
 }
 ```
 
-### 3.2 Simplified Routes
+### 3.2 Server Integration
+
+```typescript
+// src/server/index.ts - ADD Electric proxy routes
+
+import { createElectricProxyRoutes } from './routes/electricProxy';
+
+// ... existing imports and setup ...
+
+// Mount Electric proxy routes (BEFORE other routes to avoid conflicts)
+app.use('/api/electric', createElectricProxyRoutes(authDB));
+
+// ... existing routes ...
+```
+
+### 3.3 Simplified Routes
 
 ```typescript
 // src/server/routes/brainstormRoutes.ts - NEW FILE
@@ -924,7 +1107,7 @@ export const electricConfig = {
 
 import { useEffect, useMemo } from 'react';
 import { useShape } from '@electric-sql/react';
-import { ELECTRIC_URL } from '../../common/config/electric';
+import { createElectricConfig } from '../../common/config/electric';
 
 interface BrainstormFlow {
     project_id: string;
@@ -943,13 +1126,12 @@ interface BrainstormFlow {
 }
 
 export function useElectricBrainstorm(projectId: string) {
-    // Subscribe to brainstorm flows for this project
+    // Subscribe to brainstorm flows for this project using authenticated proxy
     const { data: flows, isLoading } = useShape<BrainstormFlow>({
-        url: `${ELECTRIC_URL}/v1/shape`,
+        ...createElectricConfig(),
         params: {
             table: 'brainstorm_flows',
-            where: `project_id = $1`,
-            params: [projectId],
+            where: `project_id = '${projectId}'`, // User scoping handled by proxy
             columns: [
                 'project_id', 'project_name', 'transform_id', 'transform_status',
                 'progress_percentage', 'error_message', 'artifact_id', 'artifact_status',
@@ -1237,7 +1419,45 @@ export const NewProjectFromBrainstormPage: React.FC = () => {
 };
 ```
 
-## Phase 5: Implementation Timeline
+## Phase 5: Authentication Security & Considerations
+
+### 5.1 Security Features
+
+**User Data Isolation**:
+- All Electric shape requests are automatically scoped to authenticated user's projects
+- Proxy validates JWT tokens and sessions on every request
+- Database-level WHERE clauses prevent cross-user data access
+- No user can access another user's brainstorming data
+
+**Debug Token Support**:
+- Development workflow maintained with `debug-auth-token-script-writer-dev`
+- Debug tokens only work in development environment
+- Production deployments ignore debug tokens
+
+**Session Management**:
+- Existing session lifecycle maintained (7-day expiry)
+- Session invalidation on logout works with Electric
+- Concurrent session support maintained
+
+### 5.2 Electric Auth Flow
+
+1. **Frontend Request**: User opens brainstorm page
+2. **Shape Request**: `useElectricBrainstorm` hook makes shape request to `/api/electric/v1/shape`
+3. **Auth Validation**: Proxy extracts JWT from HTTP-only cookie, validates session
+4. **User Scoping**: Proxy adds `WHERE project_id IN (user's projects)` to shape query
+5. **Electric Proxy**: Validated request forwarded to Electric with user scoping
+6. **Real-time Sync**: Electric streams user-scoped data back through proxy
+7. **Auto-Updates**: Frontend receives real-time updates for user's data only
+
+### 5.3 Migration Benefits
+
+- **Zero Auth Changes**: Existing login/logout/session management unchanged
+- **Automatic Security**: User scoping enforced at proxy level
+- **Development Workflow**: Debug tokens continue to work
+- **Performance**: Single auth check per shape connection (not per update)
+- **Scalability**: Electric handles real-time distribution, auth handled once
+
+## Phase 6: Implementation Timeline
 
 ### Week 1: Database & Kysely Migration
 - [ ] Set up Postgres + Electric with Docker Compose
@@ -1246,25 +1466,31 @@ export const NewProjectFromBrainstormPage: React.FC = () => {
 - [ ] Generate Kysely types with `kysely-codegen`
 - [ ] Test database connection and Electric sync
 
-### Week 2: Backend Refactor with Kysely
+### Week 2: Backend Refactor with Kysely + Electric Auth
 - [ ] Rewrite ArtifactRepository and TransformRepository with Kysely
 - [ ] Create BrainstormService with Electric updates
+- [ ] **Create Electric proxy with authentication** (`electricProxy.ts`)
+- [ ] **Integrate Electric proxy into server** (`app.use('/api/electric')`)
 - [ ] Create simplified brainstormRoutes.ts
 - [ ] Remove SSE infrastructure (JobBroadcaster, StreamingTransformExecutor)
-- [ ] Test background job updates sync through Electric
+- [ ] Test background job updates sync through Electric with user scoping
 
-### Week 3: Frontend Migration
+### Week 3: Frontend Migration with Auth
 - [ ] Install Electric React libraries
-- [ ] Create useElectricBrainstorm hook
+- [ ] **Create Electric configuration with auth proxy** (`createElectricConfig`)
+- [ ] Create useElectricBrainstorm hook with authenticated shapes
 - [ ] Refactor ProjectBrainstormPage to use Electric
 - [ ] Refactor NewProjectFromBrainstormPage
-- [ ] Test real-time updates
+- [ ] **Test real-time updates with user isolation**
+- [ ] **Verify debug token workflow still works**
 
-### Week 4: Integration & Testing
-- [ ] End-to-end testing of brainstorm flow
+### Week 4: Integration & Security Testing
+- [ ] End-to-end testing of authenticated brainstorm flow
+- [ ] **Security testing: verify user data isolation**
+- [ ] **Test session expiry handling with Electric**
+- [ ] **Test concurrent users cannot see each other's data**
 - [ ] Performance testing and Kysely query optimization
 - [ ] Error handling and edge cases
-- [ ] Authentication integration
 - [ ] Clean up unused Knex code and files
 
 ## Success Metrics

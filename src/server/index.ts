@@ -92,6 +92,10 @@ const yjs = setupYjsWebSocketServer(server, authDB);
 // Mount authentication routes
 app.use('/auth', createAuthRoutes(authDB, authMiddleware));
 
+// Mount Electric proxy routes (BEFORE other routes to avoid conflicts)
+import { createElectricProxyRoutes } from './routes/electricProxy';
+app.use('/api/electric', createElectricProxyRoutes(authDB));
+
 // Mount project routes
 app.use('/api/projects', createProjectRoutes(authMiddleware, projectService, agentService));
 
