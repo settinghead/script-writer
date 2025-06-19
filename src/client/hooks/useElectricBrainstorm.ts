@@ -92,7 +92,7 @@ export function useElectricBrainstorm(projectId: string): UseElectricBrainstormR
   // Extract ideas from the latest artifact - return IdeaWithTitle format
   const ideas: IdeaWithTitle[] = (() => {
     if (!latestArtifact?.data) {
-      console.log('[useElectricBrainstorm] No artifact data available')
+      // console.log('[useElectricBrainstorm] No artifact data available')
       return []
     }
 
@@ -103,7 +103,7 @@ export function useElectricBrainstorm(projectId: string): UseElectricBrainstormR
         parsedData = JSON.parse(parsedData)
       }
 
-      console.log('[useElectricBrainstorm] Parsed artifact data:', parsedData)
+      // console.log('[useElectricBrainstorm] Parsed artifact data:', parsedData)
 
       // Ensure it's an array
       if (Array.isArray(parsedData)) {

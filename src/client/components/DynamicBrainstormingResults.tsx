@@ -260,7 +260,7 @@ export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsPr
                         
                         return (
                             <Card
-                                key={idea.artifactId || `idea-${index}`}
+                                key={`${idea.artifactId || 'idea'}-${index}`}
                                 style={{
                                     backgroundColor: isSelected ? '#2d3436' : '#262626',
                                     border: isSelected ? '1px solid #1890ff' : '1px solid #434343',
@@ -534,7 +534,7 @@ export const ModernBrainstormingResults: React.FC<{
                     
                     return (
                         <Card
-                            key={`idea-${index}`}
+                            key={`${idea.artifactId || 'idea'}-${index}`}
                             style={{
                                 backgroundColor: isSelected ? '#2d3436' : '#262626',
                                 border: isSelected ? '1px solid #1890ff' : '1px solid #434343',

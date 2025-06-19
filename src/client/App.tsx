@@ -8,7 +8,6 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Layout, Typography, ConfigProvider, theme, Button, Drawer, Menu, Dropdown, Avatar } from 'antd';
 import { MenuOutlined, UserOutlined, LogoutOutlined, LoginOutlined } from '@ant-design/icons';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { EpisodeProvider } from './contexts/EpisodeContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './components/LoginPage';
 import IdeationTab from './components/IdeationTab';
@@ -208,9 +207,7 @@ const AppContent: React.FC = () => {
                 } />
                 <Route path="/projects/:projectId/*" element={
                   <ProtectedRoute>
-                    <EpisodeProvider>
                       <ProjectLayout />
-                    </EpisodeProvider>
                   </ProtectedRoute>
                 }>
                   <Route path="brainstorm" element={<ProjectBrainstormPage />} />
@@ -274,9 +271,7 @@ const AppContent: React.FC = () => {
                 } />
                 <Route path="/projects/:projectId/*" element={
                   <ProtectedRoute>
-                    <EpisodeProvider>
                       <ProjectLayout />
-                    </EpisodeProvider>
                   </ProtectedRoute>
                 }>
                   <Route path="brainstorm" element={<ProjectBrainstormPage />} />

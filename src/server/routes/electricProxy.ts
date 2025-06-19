@@ -62,8 +62,8 @@ export function createElectricProxyRoutes(authDB: AuthDatabase) {
             
             electricUrl.searchParams.set('where', finalWhereClause);
 
-            console.log(`[Electric Proxy] User ${user.id} requesting table ${table}`);
-            console.log(`[Electric Proxy] Final URL: ${electricUrl.toString()}`);
+            // console.log(`[Electric Proxy] User ${user.id} requesting table ${table}`);
+            // console.log(`[Electric Proxy] Final URL: ${electricUrl.toString()}`);
 
             // Forward the request to Electric
             const response = await fetch(electricUrl.toString());
