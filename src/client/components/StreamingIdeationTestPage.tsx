@@ -198,17 +198,11 @@ const StreamingIdeationTestPage: React.FC = () => {
     const handleStart = () => {
         const values = form.getFieldsValue();
 
-        // Ensure userRequest is provided
-        if (!values.userRequest?.trim()) {
-            form.setFields([{
-                name: 'userRequest',
-                errors: ['请输入用户需求']
-            }]);
-            return;
-        }
+        // Hardcode userRequest and dynamically insert platform/genre if they exist.
+        const userRequest = `I need to create story ideas for ${values.platform || 'social media'} videos. The genre should be ${values.genre || 'any'}. The main story is about a modern CEO who accidentally travels back to ancient times, becomes a fallen noble family's young master, uses modern knowledge for business and court intrigue, eventually becomes incredibly wealthy and wins the heart of a beautiful woman. Keywords should include business warfare, political schemes, and face-slapping moments. The style should be fast-paced with many plot twists.`;
 
         const request: AgentIdeationRequest = {
-            userRequest: values.userRequest.trim(),
+            userRequest,
             platform: values.platform?.trim(),
             genre: values.genre?.trim(),
             other_requirements: values.other_requirements?.trim(),
@@ -221,7 +215,6 @@ const StreamingIdeationTestPage: React.FC = () => {
         form.resetFields();
         // Set some example values
         form.setFieldsValue({
-            userRequest: "我需要为抖音创作故事创意。题材应该是穿越和爽文。主要故事是一个现代CEO意外穿越到古代，成为没落贵族家的少爷，利用现代知识进行商业和朝堂争斗，最终变得非常富有并赢得美女芳心。关键词应该包括商战、政治阴谋和打脸时刻。风格应该快节奏，有很多情节转折。",
             platform: "抖音",
             genre: "穿越, 爽文",
         });
@@ -231,7 +224,7 @@ const StreamingIdeationTestPage: React.FC = () => {
         <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
             <Card title={<Title level={4}>智能创意生成测试 (Agent架构)</Title>}>
                 <Paragraph>
-                    使用AI Agent架构生成创意内容。输入您的需求描述，Agent将自动调用合适的工具来生成故事创意。
+                    使用AI Agent架构生成创意内容。Agent将自动调用合适的工具来生成故事创意。
                 </Paragraph>
 
                 <Form
@@ -239,18 +232,7 @@ const StreamingIdeationTestPage: React.FC = () => {
                     layout="vertical"
                     style={{ marginBottom: '20px' }}
                 >
-                    <Form.Item
-                        label="用户需求描述"
-                        name="userRequest"
-                        rules={[{ required: true, message: '请输入用户需求描述' }]}
-                    >
-                        <TextArea
-                            rows={4}
-                            placeholder="请详细描述您的创意需求，包括平台、题材、故事要点、关键词、风格等..."
-                        />
-                    </Form.Item>
-
-                    <Divider orientation="left">可选参数 (Agent会根据需求自动提取，也可手动指定)</Divider>
+                    <Divider orientation="left">可指定参数</Divider>
 
                     <Space direction="vertical" style={{ width: '100%' }}>
                         <Form.Item label="目标平台" name="platform">
