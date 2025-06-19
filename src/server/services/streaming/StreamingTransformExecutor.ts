@@ -480,7 +480,6 @@ export class StreamingTransformExecutor {
             userId,
             jobParams.platform,
             jobParams.genrePaths,
-            jobParams.genreProportions,
             [], // No initial ideas for brainstorming job
             [], // No initial idea titles
             jobParams.requirements
@@ -615,7 +614,7 @@ export class StreamingTransformExecutor {
                 artifacts: {},
                 params: {
                     platform: jobParams.platform,
-                    genre: this.buildGenrePromptString(jobParams.genrePaths, jobParams.genreProportions),
+                    genre: this.buildGenrePromptString(jobParams.genrePaths),
                     requirementsSection: requirementsSection
                 }
             });
@@ -630,17 +629,11 @@ export class StreamingTransformExecutor {
         );
     }
 
-    private buildGenrePromptString(genrePaths: string[][], genreProportions: number[]): string {
+    private buildGenrePromptString(genrePaths: string[][]): string {
         if (!genrePaths || genrePaths.length === 0) return '未指定';
 
-        return genrePaths.map((path: string[], index: number) => {
-            const proportion = genreProportions && genreProportions[index] !== undefined
-                ? genreProportions[index]
-                : (100 / genrePaths.length);
-            const pathString = path.join(' > ');
-            return genrePaths.length > 1
-                ? `${pathString} (${proportion.toFixed(0)}%)`
-                : pathString;
+        return genrePaths.map((path: string[]) => {
+            return path.join(' > ');
         }).join(', ');
     }
 

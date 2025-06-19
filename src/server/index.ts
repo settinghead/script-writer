@@ -326,7 +326,6 @@ app.post("/api/ideations/create_run_with_ideas",
     const {
       selectedPlatform,
       genrePaths,
-      genreProportions,
       initialIdeas,
       initialIdeaTitles,
       requirements
@@ -342,7 +341,6 @@ app.post("/api/ideations/create_run_with_ideas",
         user.id,
         selectedPlatform || '',
         genrePaths || [],
-        genreProportions || [],
         initialIdeas,
         initialIdeaTitles || [],
         requirements || ''
@@ -369,7 +367,6 @@ app.post("/api/ideations/create_run_and_generate_plot",
       userInput,
       selectedPlatform,
       genrePaths,
-      genreProportions,
       initialIdeas,
       ideationTemplate,
       requirements
@@ -386,7 +383,6 @@ app.post("/api/ideations/create_run_and_generate_plot",
         userInput,
         selectedPlatform || '',
         genrePaths || [],
-        genreProportions || [],
         initialIdeas || [],
         requirements || '',
         ideationTemplate
@@ -1464,7 +1460,7 @@ app.get("/api/debug/performance", authMiddleware.authenticate, async (req: any, 
 app.post("/api/ideations/create-brainstorming-job",
   authMiddleware.authenticate,
   async (req: any, res: any) => {
-    const { platform, genrePaths, genreProportions, requirements } = req.body;
+    const { platform, genrePaths, requirements } = req.body;
 
     const user = authMiddleware.getCurrentUser(req);
     if (!user) {
@@ -1475,7 +1471,6 @@ app.post("/api/ideations/create-brainstorming-job",
       const jobParams: BrainstormingJobParamsV1 = {
         platform: platform || '通用短视频平台',
         genrePaths: genrePaths || [],
-        genreProportions: genreProportions || [],
         requirements: requirements || '',
         requestedAt: new Date().toISOString()
       };

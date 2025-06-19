@@ -23,25 +23,23 @@ export function createIdeationRoutes(
                 return res.status(401).json({ error: "User not authenticated" });
             }
 
-            const { platform, genrePaths, genreProportions, requirements } = req.body;
+            const { platform, genrePaths, requirements } = req.body;
 
             // Validate required fields
-            if (!platform || !genrePaths || !genreProportions) {
+            if (!platform || !genrePaths) {
                 return res.status(400).json({
-                    error: "Missing required fields: platform, genrePaths, genreProportions"
+                    error: "Missing required fields: platform, genrePaths"
                 });
             }
 
             const jobParams: BrainstormingJobParamsV1 = {
                 platform,
                 genrePaths,
-                genreProportions,
                 requirements: requirements || '',
                 requestedAt: new Date().toISOString()
             };
 
             // Use the injected streaming executor
-
             const { ideationRunId, transformId } = await streamingExecutor
                 .startBrainstormingJob(user.id, jobParams);
 

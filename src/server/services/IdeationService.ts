@@ -26,7 +26,6 @@ export class IdeationService {
         userId: string,
         selectedPlatform: string,
         genrePaths: string[][],
-        genreProportions: number[],
         initialIdeas: string[],
         initialIdeaTitles: string[] = [],
         requirements: string
@@ -50,7 +49,6 @@ export class IdeationService {
             {
                 platform: selectedPlatform,
                 genre_paths: genrePaths,
-                genre_proportions: genreProportions,
                 requirements
             } as BrainstormParamsV1
         );
@@ -88,7 +86,6 @@ export class IdeationService {
                 form_data: {
                     selectedPlatform,
                     genrePaths,
-                    genreProportions,
                     requirements
                 }
             },
@@ -106,7 +103,6 @@ export class IdeationService {
         userInput: string,
         selectedPlatform: string,
         genrePaths: string[][],
-        genreProportions: number[],
         initialIdeas: string[],
         requirements: string,
         ideationTemplate: string
@@ -129,7 +125,6 @@ export class IdeationService {
             {
                 platform: selectedPlatform,
                 genre_paths: genrePaths,
-                genre_proportions: genreProportions,
                 requirements
             } as BrainstormParamsV1
         );
@@ -163,14 +158,8 @@ export class IdeationService {
         // Build genre string for prompt
         const buildGenrePromptString = (): string => {
             if (!genrePaths || genrePaths.length === 0) return '未指定';
-            return genrePaths.map((path: string[], index: number) => {
-                const proportion = genreProportions && genreProportions[index] !== undefined
-                    ? genreProportions[index]
-                    : (100 / genrePaths.length);
-                const pathString = path.join(' > ');
-                return genrePaths.length > 1
-                    ? `${pathString} (${proportion.toFixed(0)}%)`
-                    : pathString;
+            return genrePaths.map((path: string[]) => {
+                return path.join(' > ');
             }).join(', ');
         };
 
@@ -220,7 +209,7 @@ export class IdeationService {
         const userTransforms = await this.transformRepo.getUserTransforms(userId);
         const relatedArtifactIds = new Set<string>();
         relatedArtifactIds.add(sessionArtifact.id);
-        
+
         const sessionId = sessionArtifact.data.id; // Extract the session ID from session data
 
         for (const transform of userTransforms) {
@@ -252,7 +241,7 @@ export class IdeationService {
         try {
             // Use unified streaming service to get data from database
             const ideationData = await this.unifiedStreamingService.getIdeationRun(userId, sessionId);
-            
+
             if (!ideationData) {
                 return null;
             }
@@ -530,7 +519,7 @@ export class IdeationService {
 
             // Get the actual session artifact first
             const sessionArtifact = await this.validateSessionOwnership(userId, sessionId);
-            
+
             // Get all brainstorm_idea artifacts for this session
             const sessionArtifacts = await this.getSessionRelatedArtifacts(userId, sessionArtifact);
             const brainstormIdeas = sessionArtifacts.filter(a => a.type === 'brainstorm_idea');
@@ -554,15 +543,15 @@ export class IdeationService {
 
     private async findOutlinesForIdea(userId: string, ideaId: string, userTransforms: any[]): Promise<any[]> {
         const outlines: any[] = [];
-        
+
         // Track all artifact IDs that are derived from this idea
         const derivedArtifactIds = new Set<string>([ideaId]);
-        
+
         // Find all transforms that have this idea or its derivatives as input
         for (const transform of userTransforms) {
             const inputs = await this.transformRepo.getTransformInputs(transform.id);
             const hasIdeaInput = inputs.some(input => derivedArtifactIds.has(input.artifact_id));
-            
+
             if (hasIdeaInput) {
                 // If this is a human transform that created a user_input, track the output
                 if (transform.type === 'human') {
@@ -571,11 +560,11 @@ export class IdeationService {
                         derivedArtifactIds.add(output.artifact_id);
                     });
                 }
-                
+
                 // If this transform has outline_session_id in execution context, it's an outline job
                 if (transform.execution_context?.outline_session_id) {
                     const outlineSessionId = transform.execution_context.outline_session_id;
-                    
+
                     // Get outline session details
                     try {
                         const outlineSession = await this.getOutlineSessionInfo(userId, outlineSessionId);
@@ -596,7 +585,7 @@ export class IdeationService {
                 }
             }
         }
-        
+
         return outlines.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }
 
@@ -605,14 +594,14 @@ export class IdeationService {
             // Get outline session artifact
             const sessionArtifacts = await this.artifactRepo.getArtifactsByType(userId, 'outline_session');
             const sessionArtifact = sessionArtifacts.find(a => a.data.id === sessionId);
-            
+
             if (!sessionArtifact) {
                 return null;
             }
 
             // Get related outline artifacts
             const userTransforms = await this.transformRepo.getUserTransforms(userId);
-            const outlineTransforms = userTransforms.filter(t => 
+            const outlineTransforms = userTransforms.filter(t =>
                 t.execution_context?.outline_session_id === sessionId
             );
 
@@ -620,17 +609,17 @@ export class IdeationService {
             for (const transform of outlineTransforms) {
                 const inputs = await this.transformRepo.getTransformInputs(transform.id);
                 const outputs = await this.transformRepo.getTransformOutputs(transform.id);
-                
+
                 inputs.forEach(i => relatedArtifactIds.add(i.artifact_id));
                 outputs.forEach(o => relatedArtifactIds.add(o.artifact_id));
             }
 
             const relatedArtifacts = await this.artifactRepo.getArtifactsByIds([...relatedArtifactIds], userId);
-            
+
             // Extract key information
             const titleArtifact = relatedArtifacts.find(a => a.type === 'outline_title');
             const genreArtifact = relatedArtifacts.find(a => a.type === 'outline_genre');
-            const sourceArtifact = relatedArtifacts.find(a => 
+            const sourceArtifact = relatedArtifacts.find(a =>
                 a.type === 'brainstorm_idea' || a.type === 'user_input'
             );
 
