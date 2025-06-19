@@ -21,6 +21,7 @@ import ProjectLayout from './components/ProjectLayout';
 import ProjectBrainstormPage from './components/ProjectBrainstormPage';
 import Breadcrumb from './components/Breadcrumb';
 import StagewiseToolbar from './components/StagewiseToolbar';
+import StreamingIdeationTestPage from './components/StreamingIdeationTestPage';
 
 // Import CSS for any custom styling needed
 import "./index.css";
@@ -244,6 +245,11 @@ const AppContent: React.FC = () => {
                     <ScriptTab />
                   </ProtectedRoute>
                 } />
+                <Route path="/test-streaming-ideation" element={
+                  <ProtectedRoute>
+                    <StreamingIdeationTestPage />
+                  </ProtectedRoute>
+                } />
                 <Route path="/" element={<Navigate to="/projects" replace />} />
               </Routes>
             </div>
@@ -303,6 +309,11 @@ const AppContent: React.FC = () => {
                 <Route path="/script" element={
                   <ProtectedRoute>
                     <ScriptTab />
+                  </ProtectedRoute>
+                } />
+                <Route path="/test-streaming-ideation" element={
+                  <ProtectedRoute>
+                    <StreamingIdeationTestPage />
                   </ProtectedRoute>
                 } />
                 <Route path="/" element={<Navigate to="/projects" replace />} />

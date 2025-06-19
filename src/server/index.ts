@@ -35,6 +35,9 @@ import { OutlineGenerateRequest, OutlineGenerateResponse } from '../common/strea
 import { createOutlineRoutes } from './routes/outlineRoutes';
 // Import LLM configuration
 import { getLLMCredentials } from './services/LLMConfig';
+import { createScriptRoutes } from './routes/scriptRoutes.js';
+import { executeStreamingIdeationTransform } from './transforms/ideation-stream.js';
+import { IdeationInputSchema } from '../common/transform_schemas.js';
 
 dotenv.config();
 
@@ -855,8 +858,47 @@ import { createEpisodeRoutes } from './routes/episodes.js';
 app.use('/api/episodes', createEpisodeRoutes(artifactRepo, transformRepo, authMiddleware));
 
 // Mount script routes
-import { createScriptRoutes } from './routes/scriptRoutes.js';
 app.use('/api/scripts', createScriptRoutes(artifactRepo, transformRepo, authMiddleware));
+
+// ========== NEW STREAMING TEST ROUTE ==========
+app.get("/api/ideation/stream/test", authMiddleware.authenticate, async (req: any, res: any) => {
+    try {
+        // 1. Validate input from the request query
+        const validatedInput = IdeationInputSchema.parse(req.query);
+
+        // 2. Set up SSE headers
+        res.writeHead(200, {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+        });
+
+        // 3. Execute the streaming transform
+        const partialObjectStream = await executeStreamingIdeationTransform(validatedInput);
+
+        // 4. Stream partial objects to the client
+        for await (const partialObject of partialObjectStream) {
+            res.write(`data: ${JSON.stringify(partialObject)}\n\n`);
+        }
+
+        // 5. Send a 'done' event before closing the stream
+        res.write('event: done\ndata: {"status": "completed"}\n\n');
+
+        res.end();
+
+    } catch (error: any) {
+        console.error('Error in streaming ideation test endpoint:', error);
+        if (!res.headersSent) {
+            res.status(500).json({
+                error: "Failed to start ideation stream",
+                details: error.message
+            });
+        } else {
+            // If headers are sent, we can't send a status code, just end the response.
+            res.end();
+        }
+    }
+});
 
 // ========== STREAMING ENDPOINTS ==========
 
