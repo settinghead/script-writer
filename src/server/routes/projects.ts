@@ -154,5 +154,33 @@ export function createProjectRoutes(
         }
     });
 
+    // Get project by ID
+    router.get('/:id', authMiddleware.authenticate, async (req: any, res: any) => {
+        try {
+            const user = authMiddleware.getCurrentUser(req);
+            if (!user) {
+                return res.status(401).json({ error: "User not authenticated" });
+            }
+
+            const { id } = req.params;
+            const project = await projectService.getProject(id, user.id);
+
+            if (!project) {
+                return res.status(404).json({ error: "Project not found" });
+            }
+
+            res.json(project);
+        } catch (error: any) {
+            console.error('Error getting project:', error);
+            if (error.message.includes('not found') || error.message.includes('access denied')) {
+                return res.status(404).json({ error: error.message });
+            }
+            res.status(500).json({
+                error: 'Failed to get project',
+                details: error.message
+            });
+        }
+    });
+
     return router;
 } 

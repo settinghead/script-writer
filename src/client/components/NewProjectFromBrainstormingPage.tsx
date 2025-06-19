@@ -180,7 +180,7 @@ const NewProjectFromBrainstormingPage: React.FC = () => {
                     />
                 )}
 
-                <div style={{ marginTop: '24px', padding: '16px', backgroundColor: '#f5f5f5', borderRadius: '6px' }}>
+                <div style={{ marginTop: '24px', padding: '16px', borderRadius: '6px' }}>
                     <Text type="secondary">
                         <strong>说明：</strong>
                         点击"开始生成"后，系统将：
