@@ -117,7 +117,7 @@ const BrainstormingInputForm: React.FC<BrainstormingInputFormProps> = ({
             {/* Requirements Input */}
             <div>
                 <Text style={{ color: '#d9d9d9', marginBottom: '8px', display: 'block', fontWeight: 500 }}>
-                    具体要求 (可选)
+                    其他要求 (可选)
                 </Text>
                 <Input.TextArea
                     value={requirements}
