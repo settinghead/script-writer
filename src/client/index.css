@@ -226,13 +226,12 @@ body {
 @keyframes pulse {
 
   0%,
-  50% {
+  100% {
     opacity: 1;
   }
 
-  51%,
-  100% {
-    opacity: 0;
+  50% {
+    opacity: 0.7;
   }
 }
 
@@ -284,13 +283,12 @@ body {
 @keyframes pulse {
 
   0%,
-  50% {
+  100% {
     opacity: 1;
   }
 
-  51%,
-  100% {
-    opacity: 0;
+  50% {
+    opacity: 0.7;
   }
 }
 
@@ -306,4 +304,24 @@ body {
 
 .ant-tree-node-content-wrapper[aria-disabled="true"] .ant-tree-title {
   color: #6e7681 !important;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@keyframes pulse-background {
+
+  0%,
+  100% {
+    background-color: #141414;
+  }
+
+  50% {
+    background-color: #1f1f1f;
+  }
+}
+
+.pulsing-card {
+  animation: pulse-background 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }

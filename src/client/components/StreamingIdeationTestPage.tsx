@@ -295,35 +295,36 @@ const StreamingIdeationTestPage: React.FC = () => {
                 )}
 
                 <div style={{ marginTop: '20px' }}>
-                    <Spin spinning={status === 'streaming'} tip="Agent正在工作中...">
-                        {status === 'error' && (
-                            <Alert message={error} type="error" showIcon style={{ marginBottom: '20px' }} />
-                        )}
 
-                        <div style={{ minHeight: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            {ideas && ideas.length > 0 ? (
-                                <Flex wrap="wrap" gap="middle">
-                                    {ideas.map((idea, index) => (
-                                        <Card
-                                            key={index}
-                                            title={idea.title || 'Generating Title...'}
-                                            style={{ flex: '1 1 300px', minWidth: '300px' }}
-                                            loading={!idea.body}
-                                        >
-                                            <Paragraph style={{ minHeight: '100px' }}>
-                                                {idea.body}
-                                            </Paragraph>
-                                        </Card>
-                                    ))}
-                                </Flex>
-                            ) : (
-                                <>
-                                    {status === 'completed' && <Empty description="没有生成任何创意" />}
-                                    {status === 'idle' && <Empty description="点击'开始生成'来创建创意" />}
-                                </>
-                            )}
-                        </div>
-                    </Spin>
+                    {status === 'error' && (
+                        <Alert message={error} type="error" showIcon style={{ marginBottom: '20px' }} />
+                    )}
+
+                    <div style={{ minHeight: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {ideas && ideas.length > 0 ? (
+                            <Flex wrap="wrap" gap="middle">
+                                {ideas.map((idea, index) => (
+                                    <Card
+                                        key={index}
+                                        title={idea.title || 'Generating Title...'}
+                                        style={{ flex: '1 1 300px', minWidth: '300px' }}
+                                        className={status === 'streaming' ? 'pulsing-card' : ''}
+                                        loading={!idea.body}
+                                    >
+                                        <Paragraph style={{ minHeight: '100px' }}>
+                                            {idea.body}
+                                        </Paragraph>
+                                    </Card>
+                                ))}
+                            </Flex>
+                        ) : (
+                            <>
+                                {status === 'streaming' && <Spin tip="Agent正在工作中..." />}
+                                {status === 'completed' && <Empty description="没有生成任何创意" />}
+                                {status === 'idle' && <Empty description="点击'开始生成'来创建创意" />}
+                            </>
+                        )}
+                    </div>
                 </div>
             </Card>
         </div>

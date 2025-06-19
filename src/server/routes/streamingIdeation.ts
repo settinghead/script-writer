@@ -53,7 +53,7 @@ export function createStreamingIdeationRoutes(authDB: AuthDatabase) {
                 userRequest: validatedInput.userRequest,
                 toolDefinitions: [brainstormToolDef],
                 maxSteps: 3,
-                onStreamChunk: (chunk: any) => {
+                onStreamChunk: ({ chunk }: { chunk: any }) => {
                     // Send streaming chunks to client
                     res.write(`data: ${JSON.stringify({ type: 'chunk', data: chunk })}\n\n`);
                 },
