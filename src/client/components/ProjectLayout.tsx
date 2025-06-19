@@ -23,7 +23,10 @@ interface ProjectData {
 const ProjectLayout: React.FC = () => {
     const { projectId } = useParams<{ projectId: string }>();
     const navigate = useNavigate();
-    const project = useProjectStore(state => state.projects[projectId!] || {});
+    
+    // Cache the selector to avoid infinite loop warning
+    const projectSelector = useMemo(() => (state: any) => state.projects[projectId!] || {}, [projectId]);
+    const project = useProjectStore(projectSelector);
     const { name, description, loading, error } = project;
 
     // Fetch project data using our main hook

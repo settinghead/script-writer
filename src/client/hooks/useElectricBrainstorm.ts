@@ -47,7 +47,8 @@ export function useElectricBrainstorm(projectId: string): UseElectricBrainstormR
 
   // Watch for brainstorm_idea_collection artifacts for this project
   // User scoping is handled automatically by the proxy
-  const { data: artifacts, isLoading: artifactsLoading } = useShape({
+  // Note: This will fail until we migrate to Postgres schema
+  const { data: artifacts, isLoading: artifactsLoading, error: artifactsError } = useShape({
     ...electricConfig,
     params: {
       table: 'artifacts',
@@ -57,13 +58,22 @@ export function useElectricBrainstorm(projectId: string): UseElectricBrainstormR
 
   // Watch for transforms to get status information
   // User scoping is handled automatically by the proxy
-  const { data: transforms, isLoading: transformsLoading } = useShape({
+  // Note: This will fail until we migrate to Postgres schema
+  const { data: transforms, isLoading: transformsLoading, error: transformsError } = useShape({
     ...electricConfig,
     params: {
       table: 'transforms',
       where: `project_id = '${projectId}' AND type = 'llm'`,
     },
   })
+
+  // Log errors for debugging (temporary)
+  if (artifactsError) {
+    console.log('[useElectricBrainstorm] Artifacts error (expected until Postgres migration):', artifactsError);
+  }
+  if (transformsError) {
+    console.log('[useElectricBrainstorm] Transforms error (expected until Postgres migration):', transformsError);
+  }
 
   const isLoading = artifactsLoading || transformsLoading
 

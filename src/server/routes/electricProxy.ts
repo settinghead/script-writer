@@ -27,35 +27,40 @@ export function createElectricProxyRoutes(authDB: AuthDatabase) {
 
             // Get the table being requested
             const table = url.searchParams.get('table');
+
+            // 1. Get all project IDs the user has access to.
+            const allowedProjectIds = await req.authDB.getProjectIdsForUser(user.id);
+
+            if (allowedProjectIds.length === 0) {
+                // If user has no projects, return an empty result set immediately.
+                // This prevents any data leakage and is more efficient.
+                res.status(200).json([]);
+                return;
+            }
+
+            // 2. Construct a user-scoping WHERE clause.
+            const projectIdsInClause = allowedProjectIds.map(id => `'${id}'`).join(',');
+            const userScopedWhere = `project_id IN (${projectIdsInClause})`;
             
-            // Apply user-scoped WHERE clauses based on table
+            // 3. Apply user-scoped WHERE clauses based on table
             const existingWhere = url.searchParams.get('where');
-            let userScopedWhere = '';
+            let finalWhereClause = '';
 
             switch (table) {
                 case 'brainstorm_flows':
-                    // brainstorm_flows view already includes project_id, need to scope by user
-                    userScopedWhere = `project_id IN (SELECT id FROM projects WHERE id IN (SELECT project_id FROM projects_users WHERE user_id = '${user.id}'))`;
-                    break;
                 case 'projects':
-                    userScopedWhere = `id IN (SELECT project_id FROM projects_users WHERE user_id = '${user.id}')`;
-                    break;
                 case 'artifacts':
-                    userScopedWhere = `project_id IN (SELECT project_id FROM projects_users WHERE user_id = '${user.id}')`;
-                    break;
                 case 'transforms':
-                    userScopedWhere = `project_id IN (SELECT project_id FROM projects_users WHERE user_id = '${user.id}')`;
+                    // All these tables/views are scoped by project_id.
+                    finalWhereClause = existingWhere
+                        ? `(${existingWhere}) AND (${userScopedWhere})`
+                        : userScopedWhere;
                     break;
                 default:
                     return res.status(400).json({ error: `Table ${table} not authorized for Electric sync` });
             }
-
-            // Combine existing WHERE with user scoping
-            const finalWhere = existingWhere 
-                ? `(${existingWhere}) AND (${userScopedWhere})`
-                : userScopedWhere;
             
-            electricUrl.searchParams.set('where', finalWhere);
+            electricUrl.searchParams.set('where', finalWhereClause);
 
             console.log(`[Electric Proxy] User ${user.id} requesting table ${table}`);
             console.log(`[Electric Proxy] Final URL: ${electricUrl.toString()}`);

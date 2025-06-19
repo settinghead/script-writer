@@ -257,4 +257,14 @@ export class AuthDatabase {
             return false;
         }
     }
+
+    async getProjectIdsForUser(userId: string): Promise<string[]> {
+        const results = await this.db
+            .selectFrom('projects_users')
+            .select('project_id')
+            .where('user_id', '=', userId)
+            .execute();
+        
+        return results.map(row => row.project_id);
+    }
 } 
