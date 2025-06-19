@@ -37,15 +37,30 @@ export class JobBroadcaster {
 
         clients.forEach((client, index) => {
             try {
-                // Ensure message is in SSE format with proper termination
+                // Handle different message formats
                 let formattedMessage = message;
-                if (!formattedMessage.startsWith('data: ')) {
-                    formattedMessage = `data: ${formattedMessage}`;
+                
+                // If message is in "0:{json}" format, convert to agent framework format
+                if (message.startsWith('0:')) {
+                    try {
+                        const jsonPart = message.substring(2);
+                        const chunkData = JSON.parse(jsonPart);
+                        formattedMessage = `data: ${JSON.stringify({ type: 'chunk', data: chunkData })}\n\n`;
+                    } catch (e) {
+                        console.warn('[JobBroadcaster] Failed to parse chunk:', message);
+                        return; // Skip this message
+                    }
+                } else {
+                    // Ensure message is in SSE format with proper termination
+                    if (!formattedMessage.startsWith('data: ')) {
+                        formattedMessage = `data: ${formattedMessage}`;
+                    }
+                    // Ensure message ends with double newline for proper SSE format
+                    if (!formattedMessage.endsWith('\n\n')) {
+                        formattedMessage = formattedMessage.trimEnd() + '\n\n';
+                    }
                 }
-                // Ensure message ends with double newline for proper SSE format
-                if (!formattedMessage.endsWith('\n\n')) {
-                    formattedMessage = formattedMessage.trimEnd() + '\n\n';
-                }
+                
                 client.res.write(formattedMessage);
             } catch (error) {
                 // Remove failed client

@@ -74,7 +74,23 @@ export function createProjectStreamingRoutes(
                     const chunks = await transformRepo.getTransformChunks(transform.id);
                     if (chunks.length > 0) {
                         for (const chunk of chunks) {
-                            res.write(`data: ${chunk}\n\n`);
+                            // Chunks are stored in format "0:{json}" 
+                            // We need to extract the JSON and format it as a proper streaming chunk
+                            if (chunk.startsWith('0:')) {
+                                try {
+                                    // Extract the JSON part and parse it
+                                    const jsonPart = chunk.substring(2);
+                                    const chunkData = JSON.parse(jsonPart);
+                                    
+                                    // Send in the same format as the agent framework
+                                    res.write(`data: ${JSON.stringify({ type: 'chunk', data: chunkData })}\n\n`);
+                                } catch (e) {
+                                    console.warn('[Project Stream] Failed to parse chunk:', chunk);
+                                }
+                            } else {
+                                // If it's already properly formatted, send as-is
+                                res.write(`${chunk}\n\n`);
+                            }
                         }
                     }
                 }

@@ -104,15 +104,31 @@ export const useProjectStreaming = (projectId: string | null) => {
                             console.log(`[Project Streaming] Status: ${data.message}`);
                             break;
                         default:
-                            // Handle other streaming formats (like "0:..." chunks)
-                            if (typeof event.data === 'string' && event.data.startsWith('0:')) {
-                                try {
-                                    const chunkContent = JSON.parse(event.data.substring(2));
-                                    if (Array.isArray(chunkContent)) {
-                                        newData.streamingData = chunkContent;
+                            // Handle direct streaming data (from brainstorming)
+                            if (Array.isArray(data)) {
+                                // Direct array of ideas
+                                newData.streamingData = data;
+                            } else if (data && typeof data === 'object') {
+                                // Single idea object
+                                if (data.title || data.body) {
+                                    const existingData = newData.streamingData || [];
+                                    const updatedData = [...existingData];
+                                    
+                                    // Check if this is an update to an existing idea
+                                    const existingIndex = updatedData.findIndex(item => 
+                                        item.title === data.title || 
+                                        (item.title === undefined && data.title)
+                                    );
+                                    
+                                    if (existingIndex >= 0) {
+                                        // Update existing idea
+                                        updatedData[existingIndex] = { ...updatedData[existingIndex], ...data };
+                                    } else {
+                                        // Add new idea
+                                        updatedData.push(data);
                                     }
-                                } catch (e) {
-                                    console.warn('[Project Streaming] Failed to parse chunk:', e);
+                                    
+                                    newData.streamingData = updatedData;
                                 }
                             }
                     }
