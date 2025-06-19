@@ -486,11 +486,6 @@ export class StreamingTransformExecutor {
 
         // This method is deprecated - use startBrainstormingJobForProject instead
         throw new Error('startBrainstormingJob is deprecated - use startBrainstormingJobForProject instead');
-
-        return {
-            ideationRunId,
-            transformId
-        };
     }
 
     // New method: Start brainstorming job for a specific project
