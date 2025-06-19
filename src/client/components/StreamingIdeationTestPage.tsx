@@ -130,30 +130,35 @@ const StreamingIdeationTestPage: React.FC = () => {
             </Flex>
             
             <div style={{ marginTop: '20px' }}>
-                {status === 'streaming' && !ideas && <Spin tip="Connecting to stream..." />}
-                
-                {status === 'error' && (
-                    <Alert message={error} type="error" showIcon />
-                )}
+                <Spin spinning={status === 'streaming'} tip="Generating ideas...">
+                    {status === 'error' && (
+                        <Alert message={error} type="error" showIcon style={{ marginBottom: '20px' }}/>
+                    )}
 
-                {ideas && ideas.length > 0 ? (
-                    <Flex wrap="wrap" gap="middle" style={{marginTop: '20px'}}>
-                        {ideas.map((idea, index) => (
-                            <Card 
-                                key={index} 
-                                title={idea.title || 'Generating Title...'} 
-                                style={{ flex: '1 1 300px', minWidth: '300px' }}
-                                loading={!idea.body}
-                            >
-                                <Paragraph style={{ minHeight: '100px' }}>
-                                    {idea.body}
-                                </Paragraph>
-                            </Card>
-                        ))}
-                    </Flex>
-                ) : (
-                    status === 'completed' && ideas && ideas.length === 0 && <Empty description="No ideas were generated." style={{marginTop: '20px'}} />
-                )}
+                    <div style={{ minHeight: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {ideas && ideas.length > 0 ? (
+                            <Flex wrap="wrap" gap="middle">
+                                {ideas.map((idea, index) => (
+                                    <Card 
+                                        key={index} 
+                                        title={idea.title || 'Generating Title...'} 
+                                        style={{ flex: '1 1 300px', minWidth: '300px' }}
+                                        loading={!idea.body}
+                                    >
+                                        <Paragraph style={{ minHeight: '100px' }}>
+                                            {idea.body}
+                                        </Paragraph>
+                                    </Card>
+                                ))}
+                            </Flex>
+                        ) : (
+                            <>
+                                {status === 'completed' && <Empty description="No ideas were generated." />}
+                                {status === 'idle' && <Empty description="Click 'Start Generating' to begin." />}
+                            </>
+                        )}
+                    </div>
+                </Spin>
             </div>
         </Card>
     );
