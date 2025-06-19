@@ -3,11 +3,13 @@ import type { DB } from './types';
 
 export async function maybeSeedTestUsers(db: Kysely<DB>) {
     try {
-        // Check if test users exist
+        // Check if test users exist (check both users and auth_providers)
         const existingUser = await db
-            .selectFrom('users')
-            .select(['id'])
-            .where('id', '=', 'test-user-1')
+            .selectFrom('users as u')
+            .innerJoin('auth_providers as ap', 'u.id', 'ap.user_id')
+            .select(['u.id'])
+            .where('u.id', '=', 'test-user-1')
+            .where('ap.provider_type', '=', 'dropdown')
             .executeTakeFirst();
 
         if (!existingUser) {
@@ -43,7 +45,10 @@ export async function maybeSeedTestUsers(db: Kysely<DB>) {
                         provider_data: JSON.stringify({ test_user: true }),
                         created_at: new Date().toISOString(),
                     })
-                    .onConflict((oc) => oc.columns(['provider_type', 'provider_user_id']).doNothing())
+                    .onConflict((oc) => oc.columns(['provider_type', 'provider_user_id']).doUpdateSet({
+                        user_id: user.id,
+                        provider_data: JSON.stringify({ test_user: true }),
+                    }))
                     .execute();
 
                 console.log(`✅ Created test user: ${user.username} (${user.display_name})`);

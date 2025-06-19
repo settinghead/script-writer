@@ -23,14 +23,15 @@ interface ProjectData {
 const ProjectLayout: React.FC = () => {
     const { projectId } = useParams<{ projectId: string }>();
     const navigate = useNavigate();
-    
+
     // Cache the selector to avoid infinite loop warning
-    const project = useProjectStore(useMemo(() => (state: any) => state.projects[projectId!] || {}, [projectId]));
+    const emptyProject = useMemo(() => ({}), []);
+    const project = useProjectStore(useMemo(() => (state: any) => state.projects[projectId!] || emptyProject, [projectId, emptyProject]));
     const { name, description, loading, error } = project;
 
     // Fetch project data using our main hook
     useProjectData(projectId!);
-    
+
     // Note: Removed useProjectStreaming - now using Electric SQL in individual pages
 
     const handleGoBack = () => {
@@ -107,7 +108,7 @@ const ProjectLayout: React.FC = () => {
             </Sider>
             <Content style={{ padding: '24px', overflowY: 'auto' }}>
                 <Outlet />
-                
+
                 {/* Note: Streaming UI removed - now handled by individual pages with Electric SQL */}
             </Content>
         </Layout>
