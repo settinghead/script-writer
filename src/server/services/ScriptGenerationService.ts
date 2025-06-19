@@ -1,6 +1,6 @@
 import { ArtifactRepository } from '../repositories/ArtifactRepository.js';
 import { TransformRepository } from '../repositories/TransformRepository.js';
-import { StreamingTransformExecutor } from './streaming/StreamingTransformExecutor.js';
+import { TransformExecutor } from './TransformExecutor.js';
 import { TemplateService } from './templates/TemplateService.js';
 import { EpisodeSynopsisV1, PlotOutlineV1, BrainstormParamsV1, OutlineJobParamsV1 } from '../types/artifacts.js';
 import { EpisodeScriptV1 } from '../../common/streaming/types.js';
@@ -9,7 +9,7 @@ export class ScriptGenerationService {
     constructor(
         private artifactRepo: ArtifactRepository,
         private transformRepo: TransformRepository,
-        private streamingExecutor: StreamingTransformExecutor,
+        private transformExecutor: TransformExecutor,
         private templateService: TemplateService
     ) {}
 
@@ -73,15 +73,22 @@ export class ScriptGenerationService {
         // Generate session ID
         const sessionId = `script-${userId}-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
 
-        // Execute streaming script generation job
-        const result = await this.streamingExecutor.startScriptGenerationJob(
+        // Get script generation template
+        const scriptTemplate = this.templateService.getTemplate('script_generation');
+        
+        // Execute script generation transform
+        const result = await this.transformExecutor.executeLLMTransform(
             userId,
-            templateParams
+            [latestSynopsis], // Input artifacts
+            scriptTemplate.promptTemplate,
+            templateParams,
+            'episode_script', // Output artifact type
+            'v1'
         );
 
         return {
-            transformId: result.transformId,
-            sessionId: result.scriptSessionId
+            transformId: result.transform.id,
+            sessionId: sessionId
         };
     }
 

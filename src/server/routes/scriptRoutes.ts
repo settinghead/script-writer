@@ -3,7 +3,7 @@ import { AuthMiddleware } from '../middleware/auth.js';
 import { ScriptGenerationService } from '../services/ScriptGenerationService.js';
 import { ArtifactRepository } from '../repositories/ArtifactRepository.js';
 import { TransformRepository } from '../repositories/TransformRepository.js';
-import { StreamingTransformExecutor } from '../services/streaming/StreamingTransformExecutor.js';
+import { TransformExecutor } from '../services/TransformExecutor.js';
 import { TemplateService } from '../services/templates/TemplateService.js';
 import { ScriptGenerateRequest, ScriptGenerateResponse } from '../../common/streaming/types.js';
 
@@ -16,12 +16,12 @@ export function createScriptRoutes(
     
     // Dependencies
     const templateService = new TemplateService();
-    const streamingExecutor = new StreamingTransformExecutor(artifactRepo, transformRepo, templateService);
+    const transformExecutor = new TransformExecutor(artifactRepo, transformRepo, templateService);
 
     const scriptService = new ScriptGenerationService(
         artifactRepo,
         transformRepo,
-        streamingExecutor,
+        transformExecutor,
         templateService
     );
 

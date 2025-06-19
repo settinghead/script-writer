@@ -5,7 +5,7 @@ import { DynamicBrainstormingResults } from './DynamicBrainstormingResults'
 import { ReasoningIndicator } from './shared/ReasoningIndicator'
 import { StreamingProgress } from './shared/StreamingProgress'
 
-export function ProjectBrainstormPage() {
+export default function ProjectBrainstormPage() {
   const { projectId } = useParams<{ projectId: string }>()
   const navigate = useNavigate()
 
