@@ -582,7 +582,6 @@ async function findBrainstormParamsInLineage(userId: string, sourceArtifactId: s
           data: {
             platform: artifact.data.platform,
             genre_paths: artifact.data.genrePaths,
-            genre_proportions: artifact.data.genreProportions,
             requirements: artifact.data.requirements
           }
         };

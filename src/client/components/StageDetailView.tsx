@@ -131,7 +131,6 @@ export const StageDetailView: React.FC<StageDetailViewProps> = ({
                         cascadedParams = {
                             platform: latestBrainstorm.data.platform,
                             genre_paths: latestBrainstorm.data.genre_paths,
-                            genre_proportions: latestBrainstorm.data.genre_proportions,
                             requirements: latestBrainstorm.data.requirements,
                             ...cascadedParams
                         };

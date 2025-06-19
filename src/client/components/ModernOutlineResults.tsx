@@ -14,7 +14,6 @@ interface ModernOutlineResultsProps {
   cascadedParams?: {
     platform: string;
     genre_paths: string[][];
-    genre_proportions: number[];
     requirements: string;
   };
   onComplete?: (outline: Outline) => void;

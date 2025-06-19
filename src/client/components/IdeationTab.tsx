@@ -463,9 +463,7 @@ const IdeationTab: React.FC = () => {
                         </div>
                     </div>
 
-                    <Paragraph>
-                        输入你的故事灵感，然后点击"开始设计大纲"生成完整的故事大纲。
-                    </Paragraph>
+               
 
                     {/* Brainstorming Section */}
                     {ideationRunId ? (
@@ -548,24 +546,7 @@ const IdeationTab: React.FC = () => {
                     ) : (
                         // For new ideation, show input form with toggle
                         <>
-                            <div style={{
-                                marginBottom: '16px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                padding: '12px',
-                                background: '#1a1a1a',
-                                borderRadius: '6px',
-                                border: '1px solid #303030'
-                            }}>
-                                <BulbOutlined style={{ color: '#52c41a' }} />
-                                <Text style={{ color: '#d9d9d9' }}>启用头脑风暴</Text>
-                                <Switch
-                                    checked={brainstormingEnabled}
-                                    onChange={handleBrainstormingToggle}
-                                    size="small"
-                                />
-                            </div>
+                    
 
                             {brainstormingEnabled && (
                                 <BrainstormingInputForm

@@ -155,7 +155,6 @@ export class ScriptGenerationService {
         const cascadedParams = {
             platform: brainstormParams?.platform || 'unknown',
             genre_paths: brainstormParams?.genre_paths || [],
-            genre_proportions: brainstormParams?.genre_proportions || [],
             requirements: brainstormParams?.requirements || '',
             totalEpisodes: outlineJobParams?.totalEpisodes || 10,
             episodeDuration: outlineJobParams?.episodeDuration || 3

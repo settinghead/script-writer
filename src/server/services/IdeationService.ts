@@ -315,14 +315,9 @@ export class IdeationService {
             // Build genre prompt string
             const buildGenrePromptString = (params: any): string => {
                 if (!params?.genre_paths || params.genre_paths.length === 0) return '未指定';
-                return params.genre_paths.map((path: string[], index: number) => {
-                    const proportion = params.genre_proportions && params.genre_proportions[index] !== undefined
-                        ? params.genre_proportions[index]
-                        : (100 / params.genre_paths.length);
+                return params.genre_paths.map((path: string[]) => {
                     const pathString = path.join(' > ');
-                    return params.genre_paths.length > 1
-                        ? `${pathString} (${proportion.toFixed(0)}%)`
-                        : pathString;
+                    return pathString;
                 }).join(', ');
             };
 
@@ -332,7 +327,7 @@ export class IdeationService {
                 selected_platform: brainstormParams?.data.platform || '',
                 genre_prompt_string: buildGenrePromptString(brainstormParams?.data),
                 genre_paths: brainstormParams?.data.genre_paths || [],
-                genre_proportions: brainstormParams?.data.genre_proportions || [],
+
                 initial_ideas: brainstormIdeas.map(idea => idea.data.idea_text),
                 initial_idea_titles: brainstormIdeas.map(idea => idea.data.idea_title || ''),
                 created_at: sessionArtifact.created_at
@@ -400,14 +395,9 @@ export class IdeationService {
             const buildGenrePromptString = (): string => {
                 const params = brainstormParams.data;
                 if (!params.genre_paths || params.genre_paths.length === 0) return '未指定';
-                return params.genre_paths.map((path: string[], index: number) => {
-                    const proportion = params.genre_proportions && params.genre_proportions[index] !== undefined
-                        ? params.genre_proportions[index]
-                        : (100 / params.genre_paths.length);
+                return params.genre_paths.map((path: string[]) => {
                     const pathString = path.join(' > ');
-                    return params.genre_paths.length > 1
-                        ? `${pathString} (${proportion.toFixed(0)}%)`
-                        : pathString;
+                    return pathString;
                 }).join(', ');
             };
 
@@ -484,14 +474,9 @@ export class IdeationService {
         const buildGenrePromptString = (): string => {
             const params = brainstormParams.data;
             if (!params.genre_paths || params.genre_paths.length === 0) return '未指定';
-            return params.genre_paths.map((path: string[], index: number) => {
-                const proportion = params.genre_proportions && params.genre_proportions[index] !== undefined
-                    ? params.genre_proportions[index]
-                    : (100 / params.genre_paths.length);
+            return params.genre_paths.map((path: string[]) => {
                 const pathString = path.join(' > ');
-                return params.genre_paths.length > 1
-                    ? `${pathString} (${proportion.toFixed(0)}%)`
-                    : pathString;
+                return pathString;
             }).join(', ');
         };
 

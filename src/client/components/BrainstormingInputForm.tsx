@@ -60,9 +60,7 @@ const BrainstormingInputForm: React.FC<BrainstormingInputFormProps> = ({
         }}>
             {/* Platform Selection */}
             <div>
-                <Text style={{ color: '#d9d9d9', marginBottom: '8px', display: 'block', fontWeight: 500 }}>
-                    目标平台
-                </Text>
+                
                 <PlatformSelection
                     selectedPlatform={selectedPlatform}
                     onPlatformChange={onPlatformChange}

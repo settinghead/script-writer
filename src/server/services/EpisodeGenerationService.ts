@@ -77,7 +77,6 @@ export class EpisodeGenerationService {
                 completeCascadedParams = {
                     platform: completeCascadedParams.platform || brainstormParams?.platform || '通用',
                     genre_paths: completeCascadedParams.genre_paths || brainstormParams?.genre_paths || [['其他']],
-                    genre_proportions: completeCascadedParams.genre_proportions || brainstormParams?.genre_proportions || [100],
                     requirements: completeCascadedParams.requirements || brainstormParams?.requirements || '',
                     totalEpisodes: completeCascadedParams.totalEpisodes || outlineJobParams?.totalEpisodes || 60,
                     episodeDuration: completeCascadedParams.episodeDuration || outlineJobParams?.episodeDuration || 3
@@ -91,7 +90,6 @@ export class EpisodeGenerationService {
                 completeCascadedParams = {
                     platform: '通用',
                     genre_paths: [['其他']],
-                    genre_proportions: [100],
                     requirements: '',
                     totalEpisodes: completeCascadedParams.totalEpisodes || 60,
                     episodeDuration: completeCascadedParams.episodeDuration || 3,

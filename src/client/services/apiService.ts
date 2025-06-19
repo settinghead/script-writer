@@ -119,7 +119,6 @@ class ApiService {
         cascadedParams?: {
             platform: string;
             genre_paths: string[][];
-            genre_proportions: number[];
             requirements: string;
             totalEpisodes?: number;
             episodeDuration?: number;

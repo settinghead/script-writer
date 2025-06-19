@@ -263,7 +263,6 @@ export interface EpisodeGenerationParamsV1 {
 export interface ScriptGenerationJobParamsV1 {
     platform: string;
     genre_paths: string[][];
-    genre_proportions: number[];
     requirements: string;
     totalEpisodes: number;
     episodeDuration: number;
@@ -588,7 +587,6 @@ function isScriptGenerationJobParamsV1(data: any): data is ScriptGenerationJobPa
     return typeof data === 'object' &&
         typeof data.platform === 'string' &&
         Array.isArray(data.genre_paths) &&
-        Array.isArray(data.genre_proportions) &&
         typeof data.requirements === 'string' &&
         typeof data.totalEpisodes === 'number' &&
         typeof data.episodeDuration === 'number' &&

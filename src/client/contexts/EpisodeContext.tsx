@@ -285,7 +285,6 @@ export class EpisodeApiService {
                     const latestBrainstorm = brainstormArtifacts[0];
                     cascadedParams.platform = latestBrainstorm.data.platform;
                     cascadedParams.genre_paths = latestBrainstorm.data.genre_paths;
-                    cascadedParams.genre_proportions = latestBrainstorm.data.genre_proportions;
                     cascadedParams.requirements = latestBrainstorm.data.requirements;
                 }
             }
