@@ -1,11 +1,6 @@
 import { useShape } from '@electric-sql/react'
 import { useMutation, useMutationState } from '@tanstack/react-query'
-
-interface IdeaWithTitle {
-  title: string
-  body: string
-  artifactId?: string
-}
+import { IdeaWithTitle } from '../types/brainstorm'
 
 interface BrainstormArtifact {
   id: string

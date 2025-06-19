@@ -4,7 +4,7 @@ import { StopOutlined, ReloadOutlined, EyeOutlined } from '@ant-design/icons';
 import { IdeaCard } from './shared/streaming';
 import { ThinkingIndicator } from './shared/ThinkingIndicator';
 import { ReasoningIndicator } from './shared/ReasoningIndicator';
-import { IdeaWithTitle } from '../services/implementations/BrainstormingStreamingService';
+import { IdeaWithTitle } from '../types/brainstorm';
 import { apiService } from '../services/apiService';
 import { useNavigate } from 'react-router-dom';
 import { ReasoningEvent } from '../../common/streaming/types';

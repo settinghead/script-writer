@@ -3,7 +3,6 @@ import { Outlet, useParams, useNavigate } from 'react-router-dom';
 import { Layout, Breadcrumb, Typography, Spin, Alert, Space, Button, Card, List } from 'antd';
 import { HomeOutlined, ProjectOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { useProjectData } from '../hooks/useProjectData';
-import { useProjectStreaming } from '../hooks/useProjectStreaming';
 import { useProjectStore } from '../stores/projectStore';
 
 const { Sider, Content } = Layout;
@@ -25,13 +24,12 @@ const ProjectLayout: React.FC = () => {
     const { projectId } = useParams<{ projectId: string }>();
     const navigate = useNavigate();
     const project = useProjectStore(state => state.projects[projectId!] || {});
-    const { name, description, loading, error, brainstormIdeas, streamingError, streamingStatus } = project;
+    const { name, description, loading, error } = project;
 
     // Fetch project data using our main hook
     useProjectData(projectId!);
     
-    // Connect to project-level streaming
-    useProjectStreaming(projectId!);
+    // Note: Removed useProjectStreaming - now using Electric SQL in individual pages
 
     const handleGoBack = () => {
         navigate('/');
@@ -108,57 +106,7 @@ const ProjectLayout: React.FC = () => {
             <Content style={{ padding: '24px', overflowY: 'auto' }}>
                 <Outlet />
                 
-                {/* Display streaming status */}
-                {streamingStatus && streamingStatus !== 'idle' && (
-                    <Alert
-                        message={
-                            streamingStatus === 'connecting' ? 'Connecting to stream...' :
-                            streamingStatus === 'streaming' ? 'Generating ideas...' :
-                            streamingStatus === 'completed' ? 'Generation completed!' :
-                            streamingStatus === 'error' ? 'Streaming error occurred' :
-                            'Unknown status'
-                        }
-                        type={
-                            streamingStatus === 'connecting' || streamingStatus === 'streaming' ? 'info' :
-                            streamingStatus === 'completed' ? 'success' :
-                            'error'
-                        }
-                        showIcon
-                        style={{ marginBottom: 16 }}
-                    />
-                )}
-
-                {/* Display streaming brainstorm ideas */}
-                {brainstormIdeas && (
-                    <Card 
-                        title="Brainstorming Results" 
-                        style={{ marginTop: 24 }}
-                        loading={streamingStatus === 'streaming' || streamingStatus === 'connecting'}
-                    >
-                        <List
-                            dataSource={brainstormIdeas}
-                            renderItem={(idea: any) => (
-                                <List.Item>
-                                    <List.Item.Meta
-                                        title={idea.title}
-                                        description={idea.body}
-                                    />
-                                </List.Item>
-                            )}
-                        />
-                    </Card>
-                )}
-
-                {streamingError && (
-                    <Alert
-                        message="Streaming Error"
-                        description={streamingError}
-                        type="error"
-                        showIcon
-                        style={{ marginTop: 24 }}
-                    />
-                )}
-
+                {/* Note: Streaming UI removed - now handled by individual pages with Electric SQL */}
             </Content>
         </Layout>
     );
