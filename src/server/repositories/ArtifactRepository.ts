@@ -247,10 +247,10 @@ export class ArtifactRepository {
     // Get all artifacts for a user (legacy method for backward compatibility)
     async getUserArtifacts(userId: string, limit?: number): Promise<Artifact[]> {
         // In the new project-based system, we need to get artifacts for all user's projects
-        // For now, return all artifacts where project_id matches user's projects
+        // Use the projects_users junction table to find user's projects
         let query = this.db('artifacts')
-            .join('projects', 'artifacts.project_id', 'projects.id')
-            .where('projects.user_id', userId)
+            .join('projects_users', 'artifacts.project_id', 'projects_users.project_id')
+            .where('projects_users.user_id', userId)
             .select('artifacts.*')
             .orderBy('artifacts.created_at', 'desc');
 

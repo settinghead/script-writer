@@ -512,7 +512,7 @@ export class StreamingTransformExecutor {
 
         // 1. Create ideation run using existing service
         const { runId: ideationRunId } = await this.ideationService.createRunWithIdeas(
-            userId,
+            projectId,
             jobParams.platform,
             jobParams.genrePaths,
             [], // No initial ideas for brainstorming job
