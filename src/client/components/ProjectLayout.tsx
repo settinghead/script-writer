@@ -25,8 +25,7 @@ const ProjectLayout: React.FC = () => {
     const navigate = useNavigate();
     
     // Cache the selector to avoid infinite loop warning
-    const projectSelector = useMemo(() => (state: any) => state.projects[projectId!] || {}, [projectId]);
-    const project = useProjectStore(projectSelector);
+    const project = useProjectStore(useMemo(() => (state: any) => state.projects[projectId!] || {}, [projectId]));
     const { name, description, loading, error } = project;
 
     // Fetch project data using our main hook

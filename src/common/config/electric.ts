@@ -56,4 +56,58 @@ export const disableElectricDebugAuth = () => {
         localStorage.removeItem('electric-debug-auth');
         console.log('🔧 Electric debug auth disabled. Refresh the page to use normal auth.');
     }
+};
+
+// Electric debugging utilities (browser-safe)
+export const enableElectricDebugLogging = () => {
+    if (typeof window !== 'undefined') {
+        localStorage.setItem('electric-debug-logging', 'true');
+        console.log('🔧 Electric debug logging enabled. Shape errors will be logged in detail.');
+    }
+};
+
+export const disableElectricDebugLogging = () => {
+    if (typeof window !== 'undefined') {
+        localStorage.removeItem('electric-debug-logging');
+        console.log('🔧 Electric debug logging disabled.');
+    }
+};
+
+export const isElectricDebugLoggingEnabled = (): boolean => {
+    if (typeof window !== 'undefined') {
+        return localStorage.getItem('electric-debug-logging') === 'true';
+    }
+    return false;
+};
+
+// Utility to help troubleshoot Electric 409 conflicts
+export const logElectricShapeInfo = (tableName: string, whereClause?: string) => {
+    if (typeof window !== 'undefined' && isElectricDebugLoggingEnabled()) {
+        console.group(`🔍 Electric Shape Debug: ${tableName}`);
+        console.log('Table:', tableName);
+        console.log('Where clause:', whereClause || 'none');
+        console.log('Timestamp:', new Date().toISOString());
+        console.log('URL:', `${window.location.origin}/api/electric/v1/shape?table=${tableName}${whereClause ? `&where=${encodeURIComponent(whereClause)}` : ''}`);
+        console.groupEnd();
+    }
+};
+
+// Helper to clear Electric client cache (useful after 409 conflicts)
+export const clearElectricCache = () => {
+    if (typeof window !== 'undefined') {
+        // Clear any Electric-related localStorage entries
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && (key.startsWith('electric-') || key.includes('shape-'))) {
+                keysToRemove.push(key);
+            }
+        }
+        
+        keysToRemove.forEach(key => localStorage.removeItem(key));
+        
+        console.log(`🧹 Cleared ${keysToRemove.length} Electric cache entries. Consider refreshing the page.`);
+        return keysToRemove.length;
+    }
+    return 0;
 }; 

@@ -8,6 +8,8 @@ export function createElectricProxyRoutes(authDB: AuthDatabase) {
 
     // Electric proxy endpoint with authentication
     router.get('/v1/shape', authMiddleware.authenticate, async (req: Request, res: Response): Promise<void> => {
+        let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+        
         try {
             const user = authMiddleware.getCurrentUser(req);
             if (!user) {
@@ -67,11 +69,36 @@ export function createElectricProxyRoutes(authDB: AuthDatabase) {
             // console.log(`[Electric Proxy] User ${user.id} requesting table ${table}`);
             // console.log(`[Electric Proxy] Final URL: ${electricUrl.toString()}`);
 
-            // Forward the request to Electric
-            const response = await fetch(electricUrl.toString());
+            // Forward the request to Electric with timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
+            const response = await fetch(electricUrl.toString(), {
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
 
             if (!response.ok) {
-                // console.error('Electric request failed:', response.status, response.statusText);
+                console.error(`[Electric Proxy] Electric request failed: ${response.status} ${response.statusText}`);
+                
+                // Handle specific Electric errors
+                if (response.status === 409) {
+                    // Pass through 409 conflicts with proper headers for client retry
+                    const electricHandle = response.headers.get('electric-handle');
+                    if (electricHandle) {
+                        res.setHeader('electric-handle', electricHandle);
+                    }
+                    
+                    // Try to get the response body for 409 errors
+                    try {
+                        const errorBody = await response.text();
+                        res.status(409).send(errorBody);
+                    } catch {
+                        res.status(409).json([{ headers: { control: 'must-refetch' } }]);
+                    }
+                    return;
+                }
+                
                 res.status(response.status).json({ 
                     error: 'Electric sync failed',
                     details: response.statusText 
@@ -89,24 +116,51 @@ export function createElectricProxyRoutes(authDB: AuthDatabase) {
                 res.setHeader(key, value);
             });
 
-            // Stream the response body back to the client
+            // Stream the response body back to the client with error handling
             if (response.body) {
-                const reader = response.body.getReader();
+                reader = response.body.getReader();
                 
                 const pump = async () => {
                     try {
                         while (true) {
-                            const { done, value } = await reader.read();
+                            const { done, value } = await reader!.read();
                             if (done) break;
                             
-                            res.write(value);
+                            // Validate that we have valid data before writing
+                            if (value && value.length > 0) {
+                                if (!res.destroyed && res.writable) {
+                                    res.write(value);
+                                } else {
+                                    console.log('[Electric Proxy] Response stream closed by client');
+                                    break;
+                                }
+                            }
                         }
                         res.end();
                     } catch (error) {
-                        console.error('Stream error:', error);
-                        res.end();
+                        console.error('[Electric Proxy] Stream error:', error);
+                        if (!res.destroyed && res.writable) {
+                            res.status(500).json({ error: 'Stream interrupted' });
+                        }
+                    } finally {
+                        // Clean up reader
+                        if (reader) {
+                            try {
+                                await reader.cancel();
+                            } catch {
+                                // Ignore cleanup errors
+                            }
+                        }
                     }
                 };
+                
+                // Handle client disconnect
+                req.on('close', () => {
+                    console.log('[Electric Proxy] Client disconnected, cleaning up stream');
+                    if (reader) {
+                        reader.cancel().catch(() => {});
+                    }
+                });
                 
                 pump();
             } else {
@@ -114,8 +168,20 @@ export function createElectricProxyRoutes(authDB: AuthDatabase) {
             }
 
         } catch (error) {
-            console.error('Electric proxy error:', error);
-            res.status(500).json({ error: 'Electric proxy failed' });
+            console.error('[Electric Proxy] Proxy error:', error);
+            
+            // Clean up reader on error
+            if (reader) {
+                try {
+                    await reader.cancel();
+                } catch {
+                    // Ignore cleanup errors
+                }
+            }
+            
+            if (!res.headersSent) {
+                res.status(500).json({ error: 'Electric proxy failed' });
+            }
         }
     });
 

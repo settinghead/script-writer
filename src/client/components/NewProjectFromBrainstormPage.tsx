@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Card, Typography, Spin, Flex, Form, Input, Space, Divider, message } from 'antd';
+import { Button, Card, Typography, Spin, Flex, Form, Input, Space, Divider, App } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 
@@ -25,6 +25,7 @@ interface CreateProjectResponse {
 const NewProjectFromBrainstormPage: React.FC = () => {
     const [form] = Form.useForm();
     const navigate = useNavigate();
+    const { message } = App.useApp();
 
     // TanStack Query mutation for creating projects with optimistic updates
     const createProjectMutation = useMutation({

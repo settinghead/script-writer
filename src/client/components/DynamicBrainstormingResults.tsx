@@ -268,7 +268,7 @@ export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsPr
                                     transition: 'all 0.2s ease',
                                     animation: 'fadeIn 0.3s ease-out'
                                 }}
-                                bodyStyle={{ padding: '12px' }}
+                                styles={{ body: { padding: '12px' } }}
                                 hoverable={!isSelected}
                                 onClick={() => handleIdeaClick(idea, index)}
                                 onMouseEnter={(e) => {
