@@ -196,8 +196,7 @@ export class EpisodeGenerationService {
         const templateService = new TemplateService();
         const executor = new TransformExecutor(
             this.artifactRepo,
-            this.transformRepo,
-            templateService
+            this.transformRepo
         );
 
         // Start the job execution immediately in the background

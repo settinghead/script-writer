@@ -571,7 +571,6 @@ export function createElectricProxyRoutes(authDB: AuthDatabase) {
             const response = await fetch(electricUrl.toString());
 
             if (!response.ok) {
-                console.error('Electric request failed:', response.status, response.statusText);
                 return res.status(response.status).json({ 
                     error: 'Electric sync failed',
                     details: response.statusText 

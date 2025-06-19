@@ -210,7 +210,7 @@ export class TransformRepository {
             id: row.id,
             transform_id: row.transform_id,
             artifact_id: row.artifact_id,
-            input_role: row.input_role
+            input_role: row.input_role || undefined
         }));
     }
 
@@ -226,7 +226,7 @@ export class TransformRepository {
             id: row.id,
             transform_id: row.transform_id,
             artifact_id: row.artifact_id,
-            output_role: row.output_role
+            output_role: row.output_role || undefined
         }));
     }
 
@@ -281,7 +281,7 @@ export class TransformRepository {
             transform_id: row.transform_id,
             action_type: row.action_type,
             interface_context: row.interface_context ? JSON.parse(row.interface_context) : null,
-            change_description: row.change_description
+            change_description: row.change_description || undefined
         };
     }
 
@@ -298,7 +298,7 @@ export class TransformRepository {
         return rows.map(row => ({
             id: row.id,
             project_id: row.project_id,
-            type: row.type,
+            type: row.type as 'llm' | 'human',
             type_version: row.type_version,
             status: row.status as any,
             retry_count: row.retry_count || 0,
@@ -325,7 +325,7 @@ export class TransformRepository {
         return rows.map(row => ({
             id: row.id,
             project_id: row.project_id,
-            type: row.type,
+            type: row.type as 'llm' | 'human',
             type_version: row.type_version,
             status: row.status as any,
             retry_count: row.retry_count || 0,
@@ -398,8 +398,8 @@ export class TransformRepository {
             .where('t.status', 'in', ['running', 'pending'])
             .where((eb) => 
                 eb.or([
-                    sql`a.data->>'id' = ${ideationRunId}`,
-                    sql`a.data->>'ideation_session_id' = ${ideationRunId}`
+                    eb(sql`a.data->>'id'`, '=', ideationRunId),
+                    eb(sql`a.data->>'ideation_session_id'`, '=', ideationRunId)
                 ])
             )
             .orderBy('t.created_at', 'desc')
@@ -412,17 +412,13 @@ export class TransformRepository {
         return {
             id: row.id,
             project_id: row.project_id,
-            type: row.type,
+            type: row.type as 'llm' | 'human',
             type_version: row.type_version,
             status: row.status as any,
             retry_count: row.retry_count || 0,
             max_retries: row.max_retries || 2,
-            progress_percentage: row.progress_percentage ? Number(row.progress_percentage) : null,
-            error_message: row.error_message,
-            streaming_status: row.streaming_status,
             execution_context: row.execution_context ? JSON.parse(row.execution_context) : null,
-            created_at: row.created_at?.toISOString() || new Date().toISOString(),
-            updated_at: row.updated_at?.toISOString() || new Date().toISOString()
+            created_at: row.created_at?.toISOString() || new Date().toISOString()
         };
     }
 
@@ -436,8 +432,8 @@ export class TransformRepository {
             .where('t.project_id', '=', projectId)
             .where((eb) => 
                 eb.or([
-                    sql`a.data->>'id' = ${ideationRunId}`,
-                    sql`a.data->>'ideation_session_id' = ${ideationRunId}`
+                    eb(sql`a.data->>'id'`, '=', ideationRunId),
+                    eb(sql`a.data->>'ideation_session_id'`, '=', ideationRunId)
                 ])
             )
             .orderBy('t.created_at', 'desc')
@@ -446,7 +442,7 @@ export class TransformRepository {
         return rows.map(row => ({
             id: row.id,
             project_id: row.project_id,
-            type: row.type,
+            type: row.type as 'llm' | 'human',
             type_version: row.type_version,
             status: row.status as any,
             retry_count: row.retry_count || 0,
@@ -470,8 +466,8 @@ export class TransformRepository {
             .where('t.project_id', '=', projectId)
             .where((eb) => 
                 eb.or([
-                    sql`a.data->>'id' = ${outlineSessionId}`,
-                    sql`a.data->>'outline_session_id' = ${outlineSessionId}`
+                    eb(sql`a.data->>'id'`, '=', outlineSessionId),
+                    eb(sql`a.data->>'outline_session_id'`, '=', outlineSessionId)
                 ])
             )
             .orderBy('t.created_at', 'desc')
@@ -480,7 +476,7 @@ export class TransformRepository {
         return rows.map(row => ({
             id: row.id,
             project_id: row.project_id,
-            type: row.type,
+            type: row.type as 'llm' | 'human',
             type_version: row.type_version,
             status: row.status as any,
             retry_count: row.retry_count || 0,

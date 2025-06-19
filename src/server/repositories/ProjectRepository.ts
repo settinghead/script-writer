@@ -71,9 +71,9 @@ export class ProjectRepository {
         return {
             id: row.id,
             name: row.name,
-            description: row.description,
-            project_type: row.project_type,
-            status: row.status,
+            description: row.description || undefined,
+            project_type: row.project_type || 'default',
+            status: (row.status as 'active' | 'archived' | 'deleted') || 'active',
             created_at: row.created_at?.toISOString() || new Date().toISOString(),
             updated_at: row.updated_at?.toISOString() || new Date().toISOString()
         };
@@ -98,9 +98,9 @@ export class ProjectRepository {
         return rows.map(row => ({
             id: row.id,
             name: row.name,
-            description: row.description,
-            project_type: row.project_type,
-            status: row.status,
+            description: row.description || undefined,
+            project_type: row.project_type || 'default',
+            status: (row.status as 'active' | 'archived' | 'deleted') || 'active',
             created_at: row.created_at?.toISOString() || new Date().toISOString(),
             updated_at: row.updated_at?.toISOString() || new Date().toISOString()
         }));
@@ -182,7 +182,7 @@ export class ProjectRepository {
             id: row.id,
             project_id: row.project_id,
             user_id: row.user_id,
-            role: row.role,
+            role: (row.role as 'owner' | 'collaborator' | 'viewer') || 'collaborator',
             joined_at: row.joined_at?.toISOString() || new Date().toISOString()
         }));
     }

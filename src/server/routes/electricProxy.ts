@@ -7,11 +7,12 @@ export function createElectricProxyRoutes(authDB: AuthDatabase) {
     const authMiddleware = new AuthMiddleware(authDB);
 
     // Electric proxy endpoint with authentication
-    router.get('/v1/shape', authMiddleware.authenticate, async (req: Request, res: Response) => {
+    router.get('/v1/shape', authMiddleware.authenticate, async (req: Request, res: Response): Promise<void> => {
         try {
             const user = authMiddleware.getCurrentUser(req);
             if (!user) {
-                return res.status(401).json({ error: 'Authentication required' });
+                res.status(401).json({ error: 'Authentication required' });
+                return;
             }
 
             // Construct the upstream Electric URL
@@ -29,7 +30,7 @@ export function createElectricProxyRoutes(authDB: AuthDatabase) {
             const table = url.searchParams.get('table');
 
             // 1. Get all project IDs the user has access to.
-            const allowedProjectIds = await req.authDB.getProjectIdsForUser(user.id);
+            const allowedProjectIds = await req.authDB!.getProjectIdsForUser(user.id);
 
             if (allowedProjectIds.length === 0) {
                 // If user has no projects, return an empty result set immediately.
@@ -57,7 +58,8 @@ export function createElectricProxyRoutes(authDB: AuthDatabase) {
                         : userScopedWhere;
                     break;
                 default:
-                    return res.status(400).json({ error: `Table ${table} not authorized for Electric sync` });
+                    res.status(400).json({ error: `Table ${table} not authorized for Electric sync` });
+                    return;
             }
             
             electricUrl.searchParams.set('where', finalWhereClause);
@@ -69,11 +71,12 @@ export function createElectricProxyRoutes(authDB: AuthDatabase) {
             const response = await fetch(electricUrl.toString());
 
             if (!response.ok) {
-                console.error('Electric request failed:', response.status, response.statusText);
-                return res.status(response.status).json({ 
+                // console.error('Electric request failed:', response.status, response.statusText);
+                res.status(response.status).json({ 
                     error: 'Electric sync failed',
                     details: response.statusText 
                 });
+                return;
             }
 
             // Copy response headers, but remove problematic ones

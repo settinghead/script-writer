@@ -64,7 +64,7 @@ export function createBrainstormToolDefinition(
                 const outputArtifact = await artifactRepo.createArtifact(
                     projectId,
                     'brainstorm_idea_collection',
-                    { ideas: [] }, // Start with proper structure
+                    [], // Start with empty array - matches BrainstormIdeaCollectionV1 validation
                     'v1',
                     { 
                         status: 'streaming',
@@ -87,11 +87,11 @@ export function createBrainstormToolDefinition(
                 for await (const partial of stream) {
                     chunkCount++;
                     
-                    // Update the artifact with the current partial result in proper format
+                    // Update the artifact with the current partial result
                     // This will trigger Electric to sync the update to the frontend immediately
                     await artifactRepo.updateArtifact(
                         outputArtifact.id,
-                        { ideas: partial }, // Wrap in proper structure for BrainstormArtifactData
+                        partial, // Direct array - matches BrainstormIdeaCollectionV1 validation
                         { 
                             status: 'streaming',
                             chunkCount,
@@ -107,7 +107,7 @@ export function createBrainstormToolDefinition(
                 // 5. Final update to mark as completed
                 await artifactRepo.updateArtifact(
                     outputArtifact.id,
-                    { ideas: finalResult }, // Wrap in proper structure
+                    finalResult, // Direct array - matches BrainstormIdeaCollectionV1 validation
                     { 
                         status: 'completed',
                         chunkCount,

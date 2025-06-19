@@ -16,7 +16,7 @@ export function createScriptRoutes(
     
     // Dependencies
     const templateService = new TemplateService();
-    const transformExecutor = new TransformExecutor(artifactRepo, transformRepo, templateService);
+    const transformExecutor = new TransformExecutor(artifactRepo, transformRepo);
 
     const scriptService = new ScriptGenerationService(
         artifactRepo,

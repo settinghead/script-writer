@@ -62,20 +62,27 @@ export function useElectricBrainstorm(projectId: string): UseElectricBrainstormR
     }
 
     try {
-      // Parse the JSON data
-      const parsedData: BrainstormArtifactData = JSON.parse(latestArtifact.data)
+      // Parse the JSON data - should be a direct array for brainstorm_idea_collection
+      const parsedData = JSON.parse(latestArtifact.data)
 
-      // Ensure it's the expected format
-      if (parsedData && Array.isArray(parsedData.ideas)) {
-        return parsedData.ideas.map((item: any) => ({
-          title: item.title || '无标题',
-          body: item.body || item.description || '',
-          artifactId: latestArtifact.id
-        }))
+      // Handle both formats: direct array (new) and { ideas: [] } (legacy)
+      let ideasArray: any[] = []
+      if (Array.isArray(parsedData)) {
+        // New format: direct array
+        ideasArray = parsedData
+      } else if (parsedData && Array.isArray(parsedData.ideas)) {
+        // Legacy format: { ideas: [] }
+        ideasArray = parsedData.ideas
       } else {
         console.warn('[useElectricBrainstorm] Data is not in expected format:', parsedData)
         return []
       }
+
+      return ideasArray.map((item: any) => ({
+        title: item.title || '无标题',
+        body: item.body || item.description || '',
+        artifactId: latestArtifact.id
+      }))
     } catch (error) {
       console.error('[useElectricBrainstorm] Failed to parse artifact data:', error, latestArtifact.data)
       return []

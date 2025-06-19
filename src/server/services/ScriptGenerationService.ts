@@ -61,13 +61,17 @@ export class ScriptGenerationService {
             }
         }
 
-        // Prepare template parameters
-        const templateParams = {
-            ...cascadedParams,
+        // Prepare template parameters - all values must be strings
+        const templateParams: Record<string, string> = {
+            platform: cascadedParams.platform,
+            genre_paths: JSON.stringify(cascadedParams.genre_paths),
+            requirements: cascadedParams.requirements,
+            totalEpisodes: cascadedParams.totalEpisodes.toString(),
+            episodeDuration: cascadedParams.episodeDuration.toString(),
             episode_synopsis: JSON.stringify(latestSynopsis.data),
             characters_info: charactersInfo,
             user_requirements: userRequirements || '无特殊要求',
-            episode_number: parseInt(episodeId)
+            episode_number: parseInt(episodeId).toString()
         };
 
         // Generate session ID
@@ -75,6 +79,10 @@ export class ScriptGenerationService {
 
         // Get script generation template
         const scriptTemplate = this.templateService.getTemplate('script_generation');
+        
+        if (!scriptTemplate) {
+            throw new Error('Script generation template not found');
+        }
         
         // Execute script generation transform
         const result = await this.transformExecutor.executeLLMTransform(
