@@ -1,5 +1,6 @@
-import { Knex } from 'knex';
+import { Kysely, sql } from 'kysely';
 import { v4 as uuidv4 } from 'uuid';
+import type { DB } from './types';
 
 export interface User {
     id: string;
@@ -27,7 +28,7 @@ export interface UserSession {
 }
 
 export class AuthDatabase {
-    constructor(private db: Knex) { }
+    constructor(private db: Kysely<DB>) { }
 
     // Initialize authentication tables (now handled by migrations)
     async initializeAuthTables(): Promise<void> {
@@ -45,51 +46,89 @@ export class AuthDatabase {
 
     // User management
     async createUser(id: string, username: string, displayName?: string): Promise<User> {
-        const now = new Date().toISOString();
+        const now = new Date();
 
         const userData = {
             id,
             username,
-            display_name: displayName,
+            display_name: displayName || null,
             created_at: now,
             updated_at: now,
             status: 'active'
         };
 
-        await this.db('users').insert(userData);
+        await this.db
+            .insertInto('users')
+            .values(userData)
+            .execute();
 
-        return userData;
+        return {
+            id,
+            username,
+            display_name: displayName,
+            created_at: now.toISOString(),
+            updated_at: now.toISOString(),
+            status: 'active'
+        };
     }
 
     async getUserById(id: string): Promise<User | null> {
-        const user = await this.db('users')
-            .where({ id })
-            .first();
+        const user = await this.db
+            .selectFrom('users')
+            .selectAll()
+            .where('id', '=', id)
+            .executeTakeFirst();
 
-        return user || null;
+        if (!user) return null;
+
+        return {
+            id: user.id,
+            username: user.username,
+            display_name: user.display_name || undefined,
+            created_at: user.created_at?.toISOString() || new Date().toISOString(),
+            updated_at: user.updated_at?.toISOString() || new Date().toISOString(),
+            status: user.status || 'active'
+        };
     }
 
     async getUserByUsername(username: string): Promise<User | null> {
-        const user = await this.db('users')
-            .where({ username })
-            .first();
+        const user = await this.db
+            .selectFrom('users')
+            .selectAll()
+            .where('username', '=', username)
+            .executeTakeFirst();
 
-        return user || null;
+        if (!user) return null;
+
+        return {
+            id: user.id,
+            username: user.username,
+            display_name: user.display_name || undefined,
+            created_at: user.created_at?.toISOString() || new Date().toISOString(),
+            updated_at: user.updated_at?.toISOString() || new Date().toISOString(),
+            status: user.status || 'active'
+        };
     }
 
     // Auth provider management
     async createAuthProvider(userId: string, providerType: string, providerUserId?: string, providerData?: any): Promise<AuthProvider> {
-        const now = new Date().toISOString();
+        const now = new Date();
 
         const providerDataToInsert = {
             user_id: userId,
             provider_type: providerType,
-            provider_user_id: providerUserId,
-            provider_data: JSON.stringify(providerData),
+            provider_user_id: providerUserId || null,
+            provider_data: providerData ? JSON.stringify(providerData) : null,
             created_at: now
         };
 
-        const [id] = await this.db('auth_providers').insert(providerDataToInsert);
+        const result = await this.db
+            .insertInto('auth_providers')
+            .values(providerDataToInsert)
+            .returning('id')
+            .execute();
+
+        const id = result[0]?.id || 0;
 
         return {
             id,
@@ -97,79 +136,120 @@ export class AuthDatabase {
             provider_type: providerType,
             provider_user_id: providerUserId,
             provider_data: providerData,
-            created_at: now
+            created_at: now.toISOString()
         };
     }
 
     async getUserByProvider(providerType: string, providerUserId: string): Promise<User | null> {
-        const user = await this.db('users as u')
-            .join('auth_providers as ap', 'u.id', 'ap.user_id')
-            .where({
-                'ap.provider_type': providerType,
-                'ap.provider_user_id': providerUserId
-            })
-            .select('u.*')
-            .first();
+        const user = await this.db
+            .selectFrom('users as u')
+            .innerJoin('auth_providers as ap', 'u.id', 'ap.user_id')
+            .select(['u.id', 'u.username', 'u.display_name', 'u.created_at', 'u.updated_at', 'u.status'])
+            .where('ap.provider_type', '=', providerType)
+            .where('ap.provider_user_id', '=', providerUserId)
+            .executeTakeFirst();
 
-        return user || null;
+        if (!user) return null;
+
+        return {
+            id: user.id,
+            username: user.username,
+            display_name: user.display_name || undefined,
+            created_at: user.created_at?.toISOString() || new Date().toISOString(),
+            updated_at: user.updated_at?.toISOString() || new Date().toISOString(),
+            status: user.status || 'active'
+        };
     }
 
     // Session management
     async createSession(sessionId: string, userId: string, expiresAt: Date): Promise<UserSession> {
-        const now = new Date().toISOString();
+        const now = new Date();
 
         const sessionData = {
             id: sessionId,
             user_id: userId,
-            expires_at: expiresAt.toISOString(),
+            expires_at: expiresAt,
             created_at: now
         };
 
-        await this.db('user_sessions').insert(sessionData);
+        await this.db
+            .insertInto('user_sessions')
+            .values(sessionData)
+            .execute();
 
-        return sessionData;
+        return {
+            id: sessionId,
+            user_id: userId,
+            expires_at: expiresAt.toISOString(),
+            created_at: now.toISOString()
+        };
     }
 
     async getSession(sessionId: string): Promise<UserSession | null> {
-        const session = await this.db('user_sessions')
-            .where('id', sessionId)
-            .where('expires_at', '>', this.db.fn.now())
-            .first();
+        const session = await this.db
+            .selectFrom('user_sessions')
+            .selectAll()
+            .where('id', '=', sessionId)
+            .where('expires_at', '>', sql`NOW()`)
+            .executeTakeFirst();
 
-        return session || null;
+        if (!session) return null;
+
+        return {
+            id: session.id,
+            user_id: session.user_id,
+            expires_at: session.expires_at.toISOString(),
+            created_at: session.created_at?.toISOString() || new Date().toISOString()
+        };
     }
 
     async deleteSession(sessionId: string): Promise<void> {
-        await this.db('user_sessions')
-            .where({ id: sessionId })
-            .del();
+        await this.db
+            .deleteFrom('user_sessions')
+            .where('id', '=', sessionId)
+            .execute();
     }
 
     // Get all test users for dropdown
     async getTestUsers(): Promise<User[]> {
-        const users = await this.db('users as u')
-            .join('auth_providers as ap', 'u.id', 'ap.user_id')
-            .where('ap.provider_type', 'dropdown')
-            .select('u.*')
-            .orderBy('u.username');
+        const users = await this.db
+            .selectFrom('users as u')
+            .innerJoin('auth_providers as ap', 'u.id', 'ap.user_id')
+            .select(['u.id', 'u.username', 'u.display_name', 'u.created_at', 'u.updated_at', 'u.status'])
+            .where('ap.provider_type', '=', 'dropdown')
+            .orderBy('u.username')
+            .execute();
 
-        return users || [];
+        return users.map(user => ({
+            id: user.id,
+            username: user.username,
+            display_name: user.display_name || undefined,
+            created_at: user.created_at?.toISOString() || new Date().toISOString(),
+            updated_at: user.updated_at?.toISOString() || new Date().toISOString(),
+            status: user.status || 'active'
+        }));
     }
 
     // Clean up expired sessions
     async cleanupExpiredSessions(): Promise<void> {
-        await this.db('user_sessions')
-            .where('expires_at', '<=', this.db.fn.now())
-            .del();
+        await this.db
+            .deleteFrom('user_sessions')
+            .where('expires_at', '<=', sql`NOW()`)
+            .execute();
     }
 
     // Check if user can access a room (for YJS WebSocket connections)
     async canUserAccessRoom(roomId: string, userId: string): Promise<boolean> {
         try {
-            const result = await this.db('scripts')
-                .where({ room_id: roomId, user_id: userId })
-                .select('id')
-                .first();
+            // Note: This assumes there's a scripts table or similar
+            // You may need to adjust this based on your actual room access logic
+            const result = await this.db
+                .selectFrom('projects as p')
+                .innerJoin('projects_users as pu', 'p.id', 'pu.project_id')
+                .select('p.id')
+                .where('pu.user_id', '=', userId)
+                .where('p.id', '=', roomId) // Assuming roomId maps to project ID
+                .executeTakeFirst();
 
             return !!result;
         } catch (error) {

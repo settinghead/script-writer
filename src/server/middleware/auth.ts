@@ -33,7 +33,7 @@ export class AuthMiddleware {
     // Main authentication middleware
     authenticate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
-            const token = this.extractTokenFromCookies(req);
+            const token = this.extractTokenFromCookies(req) || this.extractTokenFromHeader(req);
 
             if (!token) {
                 res.status(401).json({
@@ -41,6 +41,16 @@ export class AuthMiddleware {
                     code: 'NO_TOKEN'
                 });
                 return;
+            }
+
+            // Check for debug test token first
+            if (this.isTestToken(token)) {
+                const testUser = await this.getTestUser();
+                if (testUser) {
+                    req.user = testUser;
+                    next();
+                    return;
+                }
             }
 
             const jwtSecret = process.env.JWT_SECRET;
@@ -109,10 +119,20 @@ export class AuthMiddleware {
     // Optional authentication - doesn't fail if no token, but attaches user if valid token
     optionalAuth = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
-            const token = this.extractTokenFromCookies(req);
+            const token = this.extractTokenFromCookies(req) || this.extractTokenFromHeader(req);
 
             if (!token) {
                 next(); // Continue without user
+                return;
+            }
+
+            // Check for debug test token first
+            if (this.isTestToken(token)) {
+                const testUser = await this.getTestUser();
+                if (testUser) {
+                    req.user = testUser;
+                }
+                next();
                 return;
             }
 
@@ -150,6 +170,40 @@ export class AuthMiddleware {
         if (!tokenCookie) return null;
 
         return tokenCookie.split('=')[1];
+    }
+
+    // Extract token from Authorization header (for API testing)
+    private extractTokenFromHeader(req: Request): string | null {
+        const authHeader = req.headers.authorization;
+        if (!authHeader) return null;
+
+        const [type, token] = authHeader.split(' ');
+        if (type !== 'Bearer') return null;
+
+        return token;
+    }
+
+    // Check if token is the debug test token
+    private isTestToken(token: string): boolean {
+        const DEBUG_AUTH_TOKEN = 'debug-auth-token-script-writer-dev';
+        return token === DEBUG_AUTH_TOKEN;
+    }
+
+    // Get the test user for debug authentication
+    private async getTestUser(): Promise<User | null> {
+        try {
+            // Return the first available test user, or create a default one
+            const testUsers = await this.authDB.getTestUsers();
+            if (testUsers.length > 0) {
+                return testUsers[0];
+            }
+
+            // Fallback: get test-user-1 directly
+            return await this.authDB.getUserById('test-user-1');
+        } catch (error) {
+            console.error('Error getting test user for debug token:', error);
+            return null;
+        }
     }
 
     // Generate JWT token

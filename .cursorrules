@@ -31,16 +31,22 @@
 - WebSocket connections must verify room ownership before allowing access
 - Debug endpoints must scope data to authenticated user only
 
+### 5. Debug Authentication
+- **For development/testing**: Use debug token `debug-auth-token-script-writer-dev` in Authorization header
+- Debug token bypasses JWT validation and authenticates as test-user-1
+- Example: `Authorization: Bearer debug-auth-token-script-writer-dev`
+- **NEVER use debug token in production** - only for local development and testing
+
 ## TypeScript & Code Organization
 
-### 5. Type Safety
+### 6. Type Safety
 - Use strict TypeScript throughout both frontend and backend
 - **ALWAYS define shared types in `src/common/`** - whenever types can be shared between frontend and backend, they MUST be placed under `/src/common` for consistency and single source of truth
 - Define interfaces with version suffixes (e.g., `IdeationSessionV1`) for artifact types
 - Properly type all streaming services and API responses
 - Frontend-only types go in `src/client/types/`, backend-only types go in `src/server/types/`
 
-### 6. File Structure
+### 7. File Structure
 ```
 src/
 ├── client/                 # React frontend
@@ -61,21 +67,21 @@ src/
 
 ## Database & Performance
 
-### 9. Database Operations
+### 10. Database Operations
 - Use `ArtifactRepository` and `TransformRepository` for flow related data access
 - Use `UnifiedStreamingService` for streaming data and real-time state management
 
 
 ## API Endpoint Patterns
 
-### 11. Route Organization
+### 12. Route Organization
 - Group routes by domain: `/api/projects`, `/api/scripts`, `/api/brainstorm`
 - Use RESTful conventions where appropriate
 - Streaming endpoints use `/stream` suffix
 - Debug endpoints under `/debug/` (development only)
 - Authentication endpoints under `/auth/`
 
-### 12. Request/Response Patterns
+### 13. Request/Response Patterns
 - Always validate input parameters
 - Return domain objects, not raw artifacts
 - Include proper error handling with user-friendly messages
@@ -85,23 +91,23 @@ src/
 
 ## Development & Testing
 
-### 15. Error Handling
+### 16. Error Handling
 - Use try-catch blocks for all async operations
 - Log errors with sufficient context for debugging
 - Return appropriate HTTP status codes
 - Include user-friendly error messages for frontend
 
-### 16. TypeScript Script Execution
+### 17. TypeScript Script Execution
 - **ALWAYS use `./run-ts` when running TypeScript Node.js scripts** - never use `npx tsx` or `node` directly
 - The `./run-ts` script handles proper TypeScript configuration, dotenv loading, and module resolution
 - Example: `./run-ts src/server/test-script.ts` instead of `npx tsx src/server/test-script.ts`
 
-### 17. Debugging & Analytics
+### 18. Debugging & Analytics
 - If a new flow is constructed or modified, test by creating a node.js only testing script that executes transforms
 
 ## Data Validation
 
-### 21. Input Validation
+### 19. Input Validation
 - Validate all input data at API boundaries
 - Use TypeScript for compile-time type checking
 - Include runtime validation for external data

@@ -1,39 +1,22 @@
-import knex, { Knex } from 'knex';
-import config from "./knexfile.js";
+import { Kysely, PostgresDialect } from 'kysely';
+import { Pool } from 'pg';
+import type { DB } from './types';
 
-const environment = process.env.NODE_ENV || 'development';
-const knexConfig = (config as any)[environment];
-// Create the database connection
-export const db: Knex = knex(knexConfig);
+const pool = new Pool({
+  host: process.env.DATABASE_HOST || 'localhost',
+  port: parseInt(process.env.DATABASE_PORT || '5432'),
+  database: process.env.DATABASE_NAME || 'script_writer',
+  user: process.env.DATABASE_USER || 'postgres',
+  password: process.env.DATABASE_PASSWORD || 'password',
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+});
 
-// Initialize database with migrations and seeds
-export const initializeDatabase = async (): Promise<void> => {
-    try {
-        // Run migrations
-        await db.migrate.latest();
-        console.log('Database migrations completed');
-
-        // Run seeds in development
-        if (environment === 'development') {
-            await db.seed.run();
-            console.log('Database seeds completed');
-        }
-
-        console.log('Database initialized successfully');
-    } catch (error) {
-        console.error('Error initializing database:', error);
-        throw error;
-    }
-};
-
-// Graceful shutdown
-export const closeDatabase = async (): Promise<void> => {
-    try {
-        await db.destroy();
-        console.log('Database connection closed');
-    } catch (error) {
-        console.error('Error closing database:', error);
-    }
-};
+export const db = new Kysely<DB>({
+  dialect: new PostgresDialect({
+    pool,
+  }),
+});
 
 export default db; 

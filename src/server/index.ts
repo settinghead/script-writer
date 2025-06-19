@@ -23,7 +23,7 @@ import {
 } from './middleware/validation';
 import { ReplayService } from './services/ReplayService';
 import { UnifiedStreamingService } from './services/UnifiedStreamingService';
-import { db, initializeDatabase } from './database/connection';
+import { db } from './database/connection';
 // New streaming framework imports
 import { TemplateService } from './services/templates/TemplateService';
 import { StreamingTransformExecutor } from './services/streaming/StreamingTransformExecutor';
@@ -41,6 +41,9 @@ import { ProjectRepository } from './repositories/ProjectRepository.js';
 import { AgentService } from './services/AgentService.js';
 import { JobBroadcaster } from './services/streaming/JobBroadcaster.js';
 import { createStreamingRoutes } from './routes/streamingRoutes.js';
+import { BrainstormService } from './services/BrainstormService';
+import { LLMService } from './services/LLMService';
+import { createBrainstormRoutes } from './routes/brainstormRoutes';
 
 dotenv.config();
 
@@ -49,9 +52,6 @@ const app = express();
 
 app.use(express.json()); // Middleware to parse JSON bodies
 app.use(cookieParser()); // Middleware to parse cookies
-
-// Initialize database with Knex
-initializeDatabase().catch(console.error);
 
 // Initialize authentication system
 const authDB = new AuthDatabase(db);
@@ -77,6 +77,10 @@ const agentService = new AgentService(transformRepo, artifactRepo, jobBroadcaste
 
 // Initialize new streaming framework services
 const templateService = new TemplateService();
+
+// Initialize new Electric-compatible services
+const llmService = new LLMService();
+const brainstormService = new BrainstormService(db, artifactRepo, transformRepo, templateService, llmService);
 const streamingTransformExecutor = new StreamingTransformExecutor(
   artifactRepo,
   transformRepo,
@@ -104,6 +108,9 @@ app.use('/api/projects', createProjectRoutes(authMiddleware, projectService, age
 
 // Mount streaming routes
 app.use('/api/streaming', createStreamingRoutes(authMiddleware, transformRepo, artifactRepo));
+
+// Mount new brainstorm routes (Electric-compatible)
+app.use('/api/brainstorm', createBrainstormRoutes(authMiddleware, brainstormService));
 
 // Mount ideation routes - now serving projects list
 app.use('/api/ideations', createIdeationRoutes(authMiddleware, artifactRepo, transformRepo, streamingTransformExecutor));

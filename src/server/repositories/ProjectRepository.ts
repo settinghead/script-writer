@@ -1,9 +1,10 @@
-import { Knex } from 'knex';
+import { Kysely } from 'kysely';
 import { v4 as uuidv4 } from 'uuid';
 import { Project, ProjectUser } from '../types/artifacts';
+import type { DB } from '../database/types';
 
 export class ProjectRepository {
-    constructor(private db: Knex) { }
+    constructor(private db: Kysely<DB>) { }
 
     // Create a new project
     async createProject(
@@ -13,29 +14,35 @@ export class ProjectRepository {
         projectType: string = 'script'
     ): Promise<Project> {
         const id = uuidv4();
-        const now = new Date().toISOString();
+        const now = new Date();
 
         const projectData = {
             id,
             name,
-            description,
+            description: description || null,
             project_type: projectType,
             status: 'active',
             created_at: now,
             updated_at: now
         };
 
-        await this.db.transaction(async (trx) => {
+        await this.db.transaction().execute(async (trx) => {
             // Create the project
-            await trx('projects').insert(projectData);
+            await trx
+                .insertInto('projects')
+                .values(projectData)
+                .execute();
 
             // Add the owner to the project
-            await trx('projects_users').insert({
-                project_id: id,
-                user_id: ownerId,
-                role: 'owner',
-                joined_at: now
-            });
+            await trx
+                .insertInto('projects_users')
+                .values({
+                    project_id: id,
+                    user_id: ownerId,
+                    role: 'owner',
+                    joined_at: now
+                })
+                .execute();
         });
 
         return {
@@ -44,39 +51,59 @@ export class ProjectRepository {
             description,
             project_type: projectType,
             status: 'active',
-            created_at: now,
-            updated_at: now
+            created_at: now.toISOString(),
+            updated_at: now.toISOString()
         };
     }
 
     // Get project by ID
     async getProject(projectId: string): Promise<Project | null> {
-        const row = await this.db('projects')
-            .where('id', projectId)
-            .first();
+        const row = await this.db
+            .selectFrom('projects')
+            .selectAll()
+            .where('id', '=', projectId)
+            .executeTakeFirst();
 
         if (!row) {
             return null;
         }
 
-        return row;
+        return {
+            id: row.id,
+            name: row.name,
+            description: row.description,
+            project_type: row.project_type,
+            status: row.status,
+            created_at: row.created_at?.toISOString() || new Date().toISOString(),
+            updated_at: row.updated_at?.toISOString() || new Date().toISOString()
+        };
     }
 
     // Get projects for a user
     async getUserProjects(userId: string, limit?: number): Promise<Project[]> {
-        let query = this.db('projects as p')
-            .join('projects_users as pu', 'p.id', 'pu.project_id')
-            .where('pu.user_id', userId)
-            .where('p.status', 'active')
-            .select('p.*')
+        let query = this.db
+            .selectFrom('projects as p')
+            .innerJoin('projects_users as pu', 'p.id', 'pu.project_id')
+            .select(['p.id', 'p.name', 'p.description', 'p.project_type', 'p.status', 'p.created_at', 'p.updated_at'])
+            .where('pu.user_id', '=', userId)
+            .where('p.status', '=', 'active')
             .orderBy('p.updated_at', 'desc');
 
         if (limit) {
             query = query.limit(limit);
         }
 
-        const rows = await query;
-        return rows;
+        const rows = await query.execute();
+
+        return rows.map(row => ({
+            id: row.id,
+            name: row.name,
+            description: row.description,
+            project_type: row.project_type,
+            status: row.status,
+            created_at: row.created_at?.toISOString() || new Date().toISOString(),
+            updated_at: row.updated_at?.toISOString() || new Date().toISOString()
+        }));
     }
 
     // Update project
@@ -84,14 +111,16 @@ export class ProjectRepository {
         projectId: string,
         updates: Partial<Omit<Project, 'id' | 'created_at'>>
     ): Promise<void> {
-        const now = new Date().toISOString();
+        const now = new Date();
 
-        await this.db('projects')
-            .where('id', projectId)
-            .update({
+        await this.db
+            .updateTable('projects')
+            .set({
                 ...updates,
                 updated_at: now
-            });
+            })
+            .where('id', '=', projectId)
+            .execute();
     }
 
     // Delete project (soft delete)
@@ -105,7 +134,7 @@ export class ProjectRepository {
         userId: string,
         role: 'owner' | 'collaborator' | 'viewer' = 'collaborator'
     ): Promise<ProjectUser> {
-        const now = new Date().toISOString();
+        const now = new Date();
 
         const projectUserData = {
             project_id: projectId,
@@ -114,52 +143,70 @@ export class ProjectRepository {
             joined_at: now
         };
 
-        const [id] = await this.db('projects_users').insert(projectUserData);
+        const result = await this.db
+            .insertInto('projects_users')
+            .values(projectUserData)
+            .returning('id')
+            .execute();
+
+        const id = result[0]?.id || 0;
 
         return {
             id,
             project_id: projectId,
             user_id: userId,
             role,
-            joined_at: now
+            joined_at: now.toISOString()
         };
     }
 
     // Remove user from project
     async removeUserFromProject(projectId: string, userId: string): Promise<void> {
-        await this.db('projects_users')
-            .where('project_id', projectId)
-            .where('user_id', userId)
-            .del();
+        await this.db
+            .deleteFrom('projects_users')
+            .where('project_id', '=', projectId)
+            .where('user_id', '=', userId)
+            .execute();
     }
 
     // Get project users
     async getProjectUsers(projectId: string): Promise<ProjectUser[]> {
-        const rows = await this.db('projects_users')
-            .where('project_id', projectId)
-            .orderBy('joined_at', 'asc');
+        const rows = await this.db
+            .selectFrom('projects_users')
+            .selectAll()
+            .where('project_id', '=', projectId)
+            .orderBy('joined_at', 'asc')
+            .execute();
 
-        return rows;
+        return rows.map(row => ({
+            id: row.id,
+            project_id: row.project_id,
+            user_id: row.user_id,
+            role: row.role,
+            joined_at: row.joined_at?.toISOString() || new Date().toISOString()
+        }));
     }
 
     // Check if user has access to project
     async userHasAccess(projectId: string, userId: string): Promise<boolean> {
-        const count = await this.db('projects_users')
-            .where('project_id', projectId)
-            .where('user_id', userId)
-            .count('id as count')
-            .first();
+        const result = await this.db
+            .selectFrom('projects_users')
+            .select(this.db.fn.count('id').as('count'))
+            .where('project_id', '=', projectId)
+            .where('user_id', '=', userId)
+            .executeTakeFirst();
 
-        return Number(count?.count ?? 0) > 0;
+        return Number(result?.count ?? 0) > 0;
     }
 
     // Get user role in project
     async getUserRole(projectId: string, userId: string): Promise<string | null> {
-        const row = await this.db('projects_users')
-            .where('project_id', projectId)
-            .where('user_id', userId)
+        const row = await this.db
+            .selectFrom('projects_users')
             .select('role')
-            .first();
+            .where('project_id', '=', projectId)
+            .where('user_id', '=', userId)
+            .executeTakeFirst();
 
         return row?.role || null;
     }

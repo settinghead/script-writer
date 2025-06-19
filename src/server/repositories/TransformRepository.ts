@@ -1,4 +1,4 @@
-import { Knex } from 'knex';
+import { Kysely, sql } from 'kysely';
 import { v4 as uuidv4 } from 'uuid';
 import {
     Transform,
@@ -8,9 +8,10 @@ import {
     LLMTransform,
     HumanTransform
 } from '../types/artifacts';
+import type { DB } from '../database/types';
 
 export class TransformRepository {
-    constructor(private db: Knex) { }
+    constructor(private db: Kysely<DB>) { }
 
     // Create a new transform
     async createTransform(
@@ -21,7 +22,7 @@ export class TransformRepository {
         executionContext?: any
     ): Promise<Transform> {
         const id = uuidv4();
-        const now = new Date().toISOString();
+        const now = new Date();
 
         const transformData = {
             id,
@@ -31,11 +32,15 @@ export class TransformRepository {
             status,
             retry_count: 0,
             max_retries: executionContext?.max_retries || 2,
-            execution_context: JSON.stringify(executionContext),
-            created_at: now
+            execution_context: executionContext ? JSON.stringify(executionContext) : null,
+            created_at: now,
+            updated_at: now
         };
 
-        await this.db('transforms').insert(transformData);
+        await this.db
+            .insertInto('transforms')
+            .values(transformData)
+            .execute();
 
         return {
             id,
@@ -46,7 +51,7 @@ export class TransformRepository {
             retry_count: 0,
             max_retries: executionContext?.max_retries || 2,
             execution_context: executionContext,
-            created_at: now
+            created_at: now.toISOString()
         };
     }
 
@@ -58,10 +63,13 @@ export class TransformRepository {
         const inputData = artifacts.map(({ artifactId, inputRole }) => ({
             transform_id: transformId,
             artifact_id: artifactId,
-            input_role: inputRole
+            input_role: inputRole || null
         }));
 
-        await this.db('transform_inputs').insert(inputData);
+        await this.db
+            .insertInto('transform_inputs')
+            .values(inputData)
+            .execute();
     }
 
     // Add output artifacts to a transform
@@ -72,10 +80,13 @@ export class TransformRepository {
         const outputData = artifacts.map(({ artifactId, outputRole }) => ({
             transform_id: transformId,
             artifact_id: artifactId,
-            output_role: outputRole
+            output_role: outputRole || null
         }));
 
-        await this.db('transform_outputs').insert(outputData);
+        await this.db
+            .insertInto('transform_outputs')
+            .values(outputData)
+            .execute();
     }
 
     // Add LLM-specific data
@@ -83,12 +94,15 @@ export class TransformRepository {
         const llmData = {
             transform_id: llmTransform.transform_id,
             model_name: llmTransform.model_name,
-            model_parameters: JSON.stringify(llmTransform.model_parameters),
-            raw_response: llmTransform.raw_response,
-            token_usage: JSON.stringify(llmTransform.token_usage)
+            model_parameters: llmTransform.model_parameters ? JSON.stringify(llmTransform.model_parameters) : null,
+            raw_response: llmTransform.raw_response || null,
+            token_usage: llmTransform.token_usage ? JSON.stringify(llmTransform.token_usage) : null
         };
 
-        await this.db('llm_transforms').insert(llmData);
+        await this.db
+            .insertInto('llm_transforms')
+            .values(llmData)
+            .execute();
     }
 
     // Add LLM prompts
@@ -103,7 +117,10 @@ export class TransformRepository {
             prompt_role: promptRole
         }));
 
-        await this.db('llm_prompts').insert(promptData);
+        await this.db
+            .insertInto('llm_prompts')
+            .values(promptData)
+            .execute();
     }
 
     // Add human-specific data
@@ -111,30 +128,47 @@ export class TransformRepository {
         const humanData = {
             transform_id: humanTransform.transform_id,
             action_type: humanTransform.action_type,
-            interface_context: JSON.stringify(humanTransform.interface_context),
-            change_description: humanTransform.change_description
+            interface_context: humanTransform.interface_context ? JSON.stringify(humanTransform.interface_context) : null,
+            change_description: humanTransform.change_description || null
         };
 
-        await this.db('human_transforms').insert(humanData);
+        await this.db
+            .insertInto('human_transforms')
+            .values(humanData)
+            .execute();
     }
 
     // Get transform by ID with all related data
     async getTransform(transformId: string, projectId?: string): Promise<any | null> {
-        let query = this.db('transforms').where('id', transformId);
+        let query = this.db
+            .selectFrom('transforms')
+            .selectAll()
+            .where('id', '=', transformId);
 
         if (projectId) {
-            query = query.where('project_id', projectId);
+            query = query.where('project_id', '=', projectId);
         }
 
-        const row = await query.first();
+        const row = await query.executeTakeFirst();
 
         if (!row) {
             return null;
         }
 
         const transform = {
-            ...row,
-            execution_context: row.execution_context ? JSON.parse(row.execution_context) : null
+            id: row.id,
+            project_id: row.project_id,
+            type: row.type,
+            type_version: row.type_version,
+            status: row.status,
+            retry_count: row.retry_count,
+            max_retries: row.max_retries,
+            progress_percentage: row.progress_percentage ? Number(row.progress_percentage) : null,
+            error_message: row.error_message,
+            streaming_status: row.streaming_status,
+            execution_context: row.execution_context ? JSON.parse(row.execution_context) : null,
+            created_at: row.created_at?.toISOString() || new Date().toISOString(),
+            updated_at: row.updated_at?.toISOString() || new Date().toISOString()
         };
 
         // Get inputs
@@ -166,236 +200,297 @@ export class TransformRepository {
 
     // Get transform inputs
     async getTransformInputs(transformId: string): Promise<TransformInput[]> {
-        const rows = await this.db('transform_inputs')
-            .where('transform_id', transformId);
+        const rows = await this.db
+            .selectFrom('transform_inputs')
+            .selectAll()
+            .where('transform_id', '=', transformId)
+            .execute();
 
-        return rows || [];
+        return rows.map(row => ({
+            id: row.id,
+            transform_id: row.transform_id,
+            artifact_id: row.artifact_id,
+            input_role: row.input_role
+        }));
     }
 
     // Get transform outputs
     async getTransformOutputs(transformId: string): Promise<TransformOutput[]> {
-        const rows = await this.db('transform_outputs')
-            .where('transform_id', transformId);
+        const rows = await this.db
+            .selectFrom('transform_outputs')
+            .selectAll()
+            .where('transform_id', '=', transformId)
+            .execute();
 
-        return rows || [];
+        return rows.map(row => ({
+            id: row.id,
+            transform_id: row.transform_id,
+            artifact_id: row.artifact_id,
+            output_role: row.output_role
+        }));
     }
 
     // Get LLM transform data
     async getLLMTransformData(transformId: string): Promise<any | null> {
         // Get LLM transform metadata
-        const row = await this.db('llm_transforms')
-            .where('transform_id', transformId)
-            .first();
+        const row = await this.db
+            .selectFrom('llm_transforms')
+            .selectAll()
+            .where('transform_id', '=', transformId)
+            .executeTakeFirst();
 
         if (!row) {
             return null;
         }
 
         // Get prompts
-        const prompts = await this.db('llm_prompts')
-            .where('transform_id', transformId);
+        const prompts = await this.db
+            .selectFrom('llm_prompts')
+            .selectAll()
+            .where('transform_id', '=', transformId)
+            .execute();
 
         return {
-            ...row,
+            transform_id: row.transform_id,
+            model_name: row.model_name,
             model_parameters: row.model_parameters ? JSON.parse(row.model_parameters) : null,
+            raw_response: row.raw_response,
             token_usage: row.token_usage ? JSON.parse(row.token_usage) : null,
-            prompts: prompts || []
+            prompts: prompts.map(p => ({
+                id: p.id,
+                transform_id: p.transform_id,
+                prompt_text: p.prompt_text,
+                prompt_role: p.prompt_role
+            }))
         };
     }
 
     // Get human transform data
     async getHumanTransformData(transformId: string): Promise<HumanTransform | null> {
-        const row = await this.db('human_transforms')
-            .where('transform_id', transformId)
-            .first();
+        const row = await this.db
+            .selectFrom('human_transforms')
+            .selectAll()
+            .where('transform_id', '=', transformId)
+            .executeTakeFirst();
 
         if (!row) {
             return null;
         }
 
         return {
-            ...row,
-            interface_context: row.interface_context ? JSON.parse(row.interface_context) : null
+            transform_id: row.transform_id,
+            action_type: row.action_type,
+            interface_context: row.interface_context ? JSON.parse(row.interface_context) : null,
+            change_description: row.change_description
         };
     }
 
-    // Get transforms for a specific project
+    // Get all transforms for a project
     async getProjectTransforms(projectId: string, limit: number = 50): Promise<Transform[]> {
-        const transforms = await this.db
-            .select('*')
-            .from('transforms')
-            .where('project_id', projectId)
+        const rows = await this.db
+            .selectFrom('transforms')
+            .selectAll()
+            .where('project_id', '=', projectId)
             .orderBy('created_at', 'desc')
-            .limit(limit);
+            .limit(limit)
+            .execute();
 
-        return transforms.map(row => ({
+        return rows.map(row => ({
             id: row.id,
             project_id: row.project_id,
             type: row.type,
             type_version: row.type_version,
-            status: row.status,
-            retry_count: row.retry_count,
-            max_retries: row.max_retries,
+            status: row.status as any,
+            retry_count: row.retry_count || 0,
+            max_retries: row.max_retries || 2,
+            progress_percentage: row.progress_percentage ? Number(row.progress_percentage) : null,
+            error_message: row.error_message,
+            streaming_status: row.streaming_status,
             execution_context: row.execution_context ? JSON.parse(row.execution_context) : null,
-            created_at: row.created_at
+            created_at: row.created_at?.toISOString() || new Date().toISOString(),
+            updated_at: row.updated_at?.toISOString() || new Date().toISOString()
         }));
     }
 
-    // Legacy method - get user transforms (now searches across all user's projects)
+    // Get transforms for a user across all their projects
     async getUserTransforms(userId: string): Promise<Transform[]> {
-        // This method now needs to find all projects the user has access to
-        // and then get transforms for those projects
-        const transforms = await this.db
-            .select('t.*')
-            .from('transforms as t')
-            .join('projects_users as pu', 't.project_id', 'pu.project_id')
-            .where('pu.user_id', userId)
-            .orderBy('t.created_at', 'desc');
+        const rows = await this.db
+            .selectFrom('transforms')
+            .innerJoin('projects_users', 'transforms.project_id', 'projects_users.project_id')
+            .select(['transforms.id', 'transforms.project_id', 'transforms.type', 'transforms.type_version', 'transforms.status', 'transforms.retry_count', 'transforms.max_retries', 'transforms.progress_percentage', 'transforms.error_message', 'transforms.streaming_status', 'transforms.execution_context', 'transforms.created_at', 'transforms.updated_at'])
+            .where('projects_users.user_id', '=', userId)
+            .orderBy('transforms.created_at', 'desc')
+            .execute();
 
-        return transforms.map(row => ({
+        return rows.map(row => ({
             id: row.id,
             project_id: row.project_id,
             type: row.type,
             type_version: row.type_version,
-            status: row.status,
-            retry_count: row.retry_count,
-            max_retries: row.max_retries,
+            status: row.status as any,
+            retry_count: row.retry_count || 0,
+            max_retries: row.max_retries || 2,
+            progress_percentage: row.progress_percentage ? Number(row.progress_percentage) : null,
+            error_message: row.error_message,
+            streaming_status: row.streaming_status,
             execution_context: row.execution_context ? JSON.parse(row.execution_context) : null,
-            created_at: row.created_at
+            created_at: row.created_at?.toISOString() || new Date().toISOString(),
+            updated_at: row.updated_at?.toISOString() || new Date().toISOString()
         }));
     }
 
     // Update transform status
     async updateTransformStatus(transformId: string, status: string): Promise<void> {
-        await this.db('transforms')
-            .where('id', transformId)
-            .update({ status });
+        await this.db
+            .updateTable('transforms')
+            .set({ 
+                status, 
+                updated_at: new Date() 
+            })
+            .where('id', '=', transformId)
+            .execute();
     }
 
-    // Update transform with any fields
+    // Update transform with arbitrary fields
     async updateTransform(transformId: string, updates: any): Promise<void> {
-        await this.db('transforms')
-            .where('id', transformId)
-            .update({
-                ...updates,
-                updated_at: new Date().toISOString()
-            });
+        const updateData = { 
+            ...updates, 
+            updated_at: new Date() 
+        };
+
+        await this.db
+            .updateTable('transforms')
+            .set(updateData)
+            .where('id', '=', transformId)
+            .execute();
     }
 
-    // Get active transform for an ideation run
+    // Update transform streaming status and progress
+    async updateTransformStreamingStatus(
+        transformId: string, 
+        streamingStatus: string, 
+        progress?: number
+    ): Promise<void> {
+        const updateData: any = {
+            streaming_status: streamingStatus,
+            updated_at: new Date()
+        };
+
+        if (progress !== undefined) {
+            updateData.progress_percentage = progress.toString();
+        }
+
+        await this.db
+            .updateTable('transforms')
+            .set(updateData)
+            .where('id', '=', transformId)
+            .execute();
+    }
+
+    // Get active transform for a specific ideation run
     async getActiveTransformForRun(projectId: string, ideationRunId: string): Promise<Transform | null> {
-        const row = await this.db('transforms')
-            .where('project_id', projectId)
-            .where('status', 'running')
-            .whereRaw("JSON_EXTRACT(execution_context, '$.ideation_run_id') = ?", [ideationRunId])
-            .orderBy('created_at', 'desc')
-            .first();
+        const row = await this.db
+            .selectFrom('transforms as t')
+            .innerJoin('transform_inputs as ti', 't.id', 'ti.transform_id')
+            .innerJoin('artifacts as a', 'ti.artifact_id', 'a.id')
+            .select(['t.id', 't.project_id', 't.type', 't.type_version', 't.status', 't.retry_count', 't.max_retries', 't.progress_percentage', 't.error_message', 't.streaming_status', 't.execution_context', 't.created_at', 't.updated_at'])
+            .where('t.project_id', '=', projectId)
+            .where('t.status', 'in', ['running', 'pending'])
+            .where((eb) => 
+                eb.or([
+                    sql`a.data->>'id' = ${ideationRunId}`,
+                    sql`a.data->>'ideation_session_id' = ${ideationRunId}`
+                ])
+            )
+            .orderBy('t.created_at', 'desc')
+            .executeTakeFirst();
 
         if (!row) {
             return null;
         }
 
         return {
-            ...row,
-            execution_context: row.execution_context ? JSON.parse(row.execution_context) : null
+            id: row.id,
+            project_id: row.project_id,
+            type: row.type,
+            type_version: row.type_version,
+            status: row.status as any,
+            retry_count: row.retry_count || 0,
+            max_retries: row.max_retries || 2,
+            progress_percentage: row.progress_percentage ? Number(row.progress_percentage) : null,
+            error_message: row.error_message,
+            streaming_status: row.streaming_status,
+            execution_context: row.execution_context ? JSON.parse(row.execution_context) : null,
+            created_at: row.created_at?.toISOString() || new Date().toISOString(),
+            updated_at: row.updated_at?.toISOString() || new Date().toISOString()
         };
     }
 
-    // Transform chunks methods for persistent streaming storage
-
-    // Add a chunk to a transform (replaces StreamingCache.addChunk)
-    async addTransformChunk(transformId: string, chunkData: string): Promise<number> {
-        // Get the next chunk index
-        const result = await this.db('transform_chunks')
-            .where('transform_id', transformId)
-            .max('chunk_index as max_index')
-            .first();
-
-        const nextIndex = (result?.max_index ?? -1) + 1;
-
-        // Import UUID generation
-        const { v4: uuidv4 } = await import('uuid');
-
-        await this.db('transform_chunks').insert({
-            id: uuidv4(),
-            transform_id: transformId,
-            chunk_index: nextIndex,
-            chunk_data: chunkData
-        });
-
-        return nextIndex;
-    }
-
-    // Get all chunks for a transform (replaces StreamingCache.getChunks)
-    async getTransformChunks(transformId: string): Promise<string[]> {
-        const rows = await this.db('transform_chunks')
-            .where('transform_id', transformId)
-            .orderBy('chunk_index', 'asc')
-            .select('chunk_data');
-
-        return rows.map(row => row.chunk_data);
-    }
-
-    // Get accumulated content from chunks (replaces StreamingCache.getAccumulatedContent)
-    async getTransformAccumulatedContent(transformId: string): Promise<string> {
-        const chunks = await this.getTransformChunks(transformId);
-        const content = chunks
-            .map(chunk => {
-                // Extract text from streaming format "0:..."
-                if (chunk.startsWith('0:')) {
-                    try {
-                        return JSON.parse(chunk.substring(2));
-                    } catch {
-                        return '';
-                    }
-                }
-                return '';
-            })
-            .join('');
-
-        return content.trim();
-    }
-
-    // Check if transform has chunks (replaces StreamingCache existence check)
-    async hasTransformChunks(transformId: string): Promise<boolean> {
-        const count = await this.db('transform_chunks')
-            .where('transform_id', transformId)
-            .count('id as count')
-            .first();
-
-        return Number(count?.count ?? 0) > 0;
-    }
-
-    // Clean up chunks for completed transforms (replaces StreamingCache.clear)
-    async cleanupTransformChunks(transformId: string): Promise<void> {
-        await this.db('transform_chunks')
-            .where('transform_id', transformId)
-            .del();
-    }
-
-    // Get transforms by ideation run ID
+    // Get transforms by ideation run
     async getTransformsByIdeationRun(projectId: string, ideationRunId: string): Promise<Transform[]> {
-        const rows = await this.db('transforms')
-            .where('project_id', projectId)
-            .whereRaw("JSON_EXTRACT(execution_context, '$.ideation_run_id') = ?", [ideationRunId])
-            .orderBy('created_at', 'desc');
+        const rows = await this.db
+            .selectFrom('transforms as t')
+            .innerJoin('transform_inputs as ti', 't.id', 'ti.transform_id')
+            .innerJoin('artifacts as a', 'ti.artifact_id', 'a.id')
+            .select(['t.id', 't.project_id', 't.type', 't.type_version', 't.status', 't.retry_count', 't.max_retries', 't.progress_percentage', 't.error_message', 't.streaming_status', 't.execution_context', 't.created_at', 't.updated_at'])
+            .where('t.project_id', '=', projectId)
+            .where((eb) => 
+                eb.or([
+                    sql`a.data->>'id' = ${ideationRunId}`,
+                    sql`a.data->>'ideation_session_id' = ${ideationRunId}`
+                ])
+            )
+            .orderBy('t.created_at', 'desc')
+            .execute();
 
         return rows.map(row => ({
-            ...row,
-            execution_context: row.execution_context ? JSON.parse(row.execution_context) : null
+            id: row.id,
+            project_id: row.project_id,
+            type: row.type,
+            type_version: row.type_version,
+            status: row.status as any,
+            retry_count: row.retry_count || 0,
+            max_retries: row.max_retries || 2,
+            progress_percentage: row.progress_percentage ? Number(row.progress_percentage) : null,
+            error_message: row.error_message,
+            streaming_status: row.streaming_status,
+            execution_context: row.execution_context ? JSON.parse(row.execution_context) : null,
+            created_at: row.created_at?.toISOString() || new Date().toISOString(),
+            updated_at: row.updated_at?.toISOString() || new Date().toISOString()
         }));
     }
 
-    // Get transforms by outline session ID
+    // Get transforms by outline session
     async getTransformsByOutlineSession(projectId: string, outlineSessionId: string): Promise<Transform[]> {
-        const rows = await this.db('transforms')
-            .where('project_id', projectId)
-            .whereRaw("JSON_EXTRACT(execution_context, '$.outline_session_id') = ?", [outlineSessionId])
-            .orderBy('created_at', 'desc');
+        const rows = await this.db
+            .selectFrom('transforms as t')
+            .innerJoin('transform_inputs as ti', 't.id', 'ti.transform_id')
+            .innerJoin('artifacts as a', 'ti.artifact_id', 'a.id')
+            .select(['t.id', 't.project_id', 't.type', 't.type_version', 't.status', 't.retry_count', 't.max_retries', 't.progress_percentage', 't.error_message', 't.streaming_status', 't.execution_context', 't.created_at', 't.updated_at'])
+            .where('t.project_id', '=', projectId)
+            .where((eb) => 
+                eb.or([
+                    sql`a.data->>'id' = ${outlineSessionId}`,
+                    sql`a.data->>'outline_session_id' = ${outlineSessionId}`
+                ])
+            )
+            .orderBy('t.created_at', 'desc')
+            .execute();
 
         return rows.map(row => ({
-            ...row,
-            execution_context: row.execution_context ? JSON.parse(row.execution_context) : null
+            id: row.id,
+            project_id: row.project_id,
+            type: row.type,
+            type_version: row.type_version,
+            status: row.status as any,
+            retry_count: row.retry_count || 0,
+            max_retries: row.max_retries || 2,
+            progress_percentage: row.progress_percentage ? Number(row.progress_percentage) : null,
+            error_message: row.error_message,
+            streaming_status: row.streaming_status,
+            execution_context: row.execution_context ? JSON.parse(row.execution_context) : null,
+            created_at: row.created_at?.toISOString() || new Date().toISOString(),
+            updated_at: row.updated_at?.toISOString() || new Date().toISOString()
         }));
     }
 }
