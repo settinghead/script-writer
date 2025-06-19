@@ -16,9 +16,27 @@ import {
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ProjectFlow } from '../../common/types';
 
 const { Title, Text, Paragraph } = Typography;
+
+// Updated interface to match ProjectService.listUserProjects() return type
+interface ProjectSummary {
+    id: string;
+    name: string;
+    description: string;
+    currentPhase: 'brainstorming' | 'outline' | 'episodes' | 'scripts';
+    status: 'active' | 'completed' | 'failed';
+    platform?: string;
+    genre?: string;
+    createdAt: string;
+    updatedAt: string;
+    artifactCounts: {
+        ideations: number;
+        outlines: number;
+        episodes: number;
+        scripts: number;
+    };
+}
 
 const HomePage: React.FC = () => {
     const navigate = useNavigate();
@@ -34,18 +52,18 @@ const HomePage: React.FC = () => {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    // Fetch all project flows
+    // Fetch all projects from the new endpoint
     const {
-        data: flows = [],
+        data: projects = [],
         isLoading: loading,
         error,
-        refetch: loadFlows
-    } = useQuery<ProjectFlow[]>({
-        queryKey: ['project-flows'],
+        refetch: loadProjects
+    } = useQuery<ProjectSummary[]>({
+        queryKey: ['user-projects'],
         queryFn: async () => {
-            const response = await fetch('/api/flows');
+            const response = await fetch('/api/ideations');
             if (!response.ok) {
-                throw new Error(`Failed to fetch flows: ${response.status}`);
+                throw new Error(`Failed to fetch projects: ${response.status}`);
             }
             return response.json();
         },
@@ -66,27 +84,23 @@ const HomePage: React.FC = () => {
         navigate('/projects/new/outline');
     };
 
-    const handleViewFlow = (flow: ProjectFlow) => {
+    const handleViewProject = (project: ProjectSummary) => {
         // Navigate based on current phase
-        switch (flow.currentPhase) {
+        switch (project.currentPhase) {
             case 'brainstorming':
-                if (flow.sourceType === 'brainstorm') {
-                    navigate(`/ideation/${flow.id}`);
-                } else {
-                    navigate(`/projects/${flow.id}/outline`);
-                }
+                navigate('/ideation');
                 break;
             case 'outline':
-                navigate(`/projects/${flow.id}/outline`);
+                navigate(`/projects/${project.id}/outline`);
                 break;
             case 'episodes':
-                navigate(`/projects/${flow.id}/episodes`);
+                navigate(`/projects/${project.id}/episodes`);
                 break;
             case 'scripts':
-                navigate(`/projects/${flow.id}/scripts`);
+                navigate(`/projects/${project.id}/scripts`);
                 break;
             default:
-                navigate(`/projects/${flow.id}/outline`);
+                navigate('/ideation');
         }
     };
 
@@ -170,13 +184,13 @@ const HomePage: React.FC = () => {
         });
     };
 
-    const getProgressValue = (flow: ProjectFlow) => {
+    const getProgressValue = (project: ProjectSummary) => {
         const phases = ['brainstorming', 'outline', 'episodes', 'scripts'];
-        const currentIndex = phases.indexOf(flow.currentPhase);
+        const currentIndex = phases.indexOf(project.currentPhase);
         return ((currentIndex + 1) / phases.length) * 100;
     };
 
-    const renderStageProgression = (flow: ProjectFlow) => {
+    const renderStageProgression = (project: ProjectSummary) => {
         const stages = [
             { key: 'brainstorming', label: '创意构思', icon: <BulbOutlined /> },
             { key: 'outline', label: '大纲设计', icon: <FileTextOutlined /> },
@@ -184,7 +198,7 @@ const HomePage: React.FC = () => {
             { key: 'scripts', label: '剧本创作', icon: <FileDoneOutlined /> }
         ];
 
-        const currentIndex = stages.findIndex(stage => stage.key === flow.currentPhase);
+        const currentIndex = stages.findIndex(stage => stage.key === project.currentPhase);
 
         return (
             <div style={{
@@ -217,13 +231,13 @@ const HomePage: React.FC = () => {
                                     justifyContent: 'center',
                                     fontSize: '12px',
                                     backgroundColor: isActive
-                                        ? getPhaseColor(flow.currentPhase)
+                                        ? getPhaseColor(project.currentPhase)
                                         : isCompleted
                                             ? '#52c41a'
                                             : '#434343',
                                     color: isActive || isCompleted ? '#fff' : '#999',
-                                    border: isActive ? `2px solid ${getPhaseColor(flow.currentPhase)}` : 'none',
-                                    boxShadow: isActive ? `0 0 8px ${getPhaseColor(flow.currentPhase)}40` : 'none'
+                                    border: isActive ? `2px solid ${getPhaseColor(project.currentPhase)}` : 'none',
+                                    boxShadow: isActive ? `0 0 8px ${getPhaseColor(project.currentPhase)}40` : 'none'
                                 }}>
                                     {isCompleted ? <CheckCircleOutlined style={{ fontSize: '12px' }} /> : stage.icon}
                                 </div>
@@ -231,7 +245,7 @@ const HomePage: React.FC = () => {
                                     fontSize: '10px',
                                     marginTop: '4px',
                                     color: isActive
-                                        ? getPhaseColor(flow.currentPhase)
+                                        ? getPhaseColor(project.currentPhase)
                                         : isCompleted
                                             ? '#52c41a'
                                             : isFuture
@@ -277,12 +291,12 @@ const HomePage: React.FC = () => {
         return (
             <Alert
                 message="加载失败"
-                description={error instanceof Error ? error.message : '加载项目流程失败'}
+                description={error instanceof Error ? error.message : '加载项目失败'}
                 type="error"
                 showIcon
                 style={{ margin: '20px 0' }}
                 action={
-                    <Button onClick={() => loadFlows()} size="small">
+                    <Button onClick={() => loadProjects()} size="small">
                         重试
                     </Button>
                 }
@@ -314,9 +328,9 @@ const HomePage: React.FC = () => {
                 </Button>
             </div>
 
-            {flows.length === 0 ? (
+            {projects.length === 0 ? (
                 <Empty
-                    description="还没有项目流程"
+                    description="还没有项目"
                     style={{ margin: '60px 0' }}
                     image={<FileTextOutlined style={{ fontSize: '64px', color: '#999' }} />}
                 >
@@ -338,8 +352,8 @@ const HomePage: React.FC = () => {
                         xl: 3,
                         xxl: 3,
                     }}
-                    dataSource={flows}
-                    renderItem={(flow) => (
+                    dataSource={projects}
+                    renderItem={(project) => (
                         <List.Item>
                             <Card
                                 hoverable
@@ -348,7 +362,7 @@ const HomePage: React.FC = () => {
                                     height: 'auto',
                                     cursor: 'pointer'
                                 }}
-                                onClick={() => handleViewFlow(flow)}
+                                onClick={() => handleViewProject(project)}
                                 actions={[
                                     <Button
                                         key="view"
@@ -356,7 +370,7 @@ const HomePage: React.FC = () => {
                                         icon={<EyeOutlined />}
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            handleViewFlow(flow);
+                                            handleViewProject(project);
                                         }}
                                         style={{ color: '#1890ff' }}
                                     >
@@ -367,23 +381,15 @@ const HomePage: React.FC = () => {
                                 <div style={{ marginBottom: '12px' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                                         <Title level={4} style={{ margin: 0, color: '#fff' }}>
-                                            {flow.title}
+                                            {project.name}
                                         </Title>
-                                        <Tooltip title={getStatusText(flow.status)}>
-                                            {getStatusIcon(flow.status)}
+                                        <Tooltip title={getStatusText(project.status)}>
+                                            {getStatusIcon(project.status)}
                                         </Tooltip>
                                     </div>
 
                                     <div style={{ marginBottom: '12px' }}>
-                                        {renderStageProgression(flow)}
-                                        <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
-                                            {flow.sourceType === 'brainstorm' && (
-                                                <Tag color="orange">从头脑风暴开始</Tag>
-                                            )}
-                                            {flow.sourceType === 'direct_outline' && (
-                                                <Tag color="blue">直接大纲</Tag>
-                                            )}
-                                        </div>
+                                        {renderStageProgression(project)}
                                     </div>
                                 </div>
 
@@ -396,43 +402,38 @@ const HomePage: React.FC = () => {
                                     }}
                                     ellipsis={{ rows: 2 }}
                                 >
-                                    {flow.description || '暂无描述'}
+                                    {project.description || '暂无描述'}
                                 </Paragraph>
 
                                 <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                                    {flow.platform && (
+                                    {project.platform && (
                                         <Text type="secondary" style={{ fontSize: '12px' }}>
-                                            平台: {flow.platform}
+                                            平台: {project.platform}
                                         </Text>
                                     )}
-                                    {flow.genre && (
+                                    {project.genre && (
                                         <Text type="secondary" style={{ fontSize: '12px' }}>
-                                            类型: {flow.genre}
-                                        </Text>
-                                    )}
-                                    {flow.totalEpisodes && (
-                                        <Text type="secondary" style={{ fontSize: '12px' }}>
-                                            {flow.totalEpisodes}集 · {flow.episodeDuration}分钟/集
+                                            类型: {project.genre}
                                         </Text>
                                     )}
 
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
                                         <Space size="small">
-                                            {flow.artifactCounts.ideas > 0 && (
-                                                <Tag style={{ fontSize: '11px' }}>{flow.artifactCounts.ideas}个想法</Tag>
+                                            {project.artifactCounts.ideations > 0 && (
+                                                <Tag style={{ fontSize: '11px' }}>{project.artifactCounts.ideations}个想法</Tag>
                                             )}
-                                            {flow.artifactCounts.outlines > 0 && (
-                                                <Tag style={{ fontSize: '11px' }}>{flow.artifactCounts.outlines}个大纲组件</Tag>
+                                            {project.artifactCounts.outlines > 0 && (
+                                                <Tag style={{ fontSize: '11px' }}>{project.artifactCounts.outlines}个大纲</Tag>
                                             )}
-                                            {flow.artifactCounts.episodes > 0 && (
-                                                <Tag style={{ fontSize: '11px' }}>{flow.artifactCounts.episodes}集大纲</Tag>
+                                            {project.artifactCounts.episodes > 0 && (
+                                                <Tag style={{ fontSize: '11px' }}>{project.artifactCounts.episodes}集大纲</Tag>
                                             )}
-                                            {flow.artifactCounts.scripts > 0 && (
-                                                <Tag style={{ fontSize: '11px' }}>{flow.artifactCounts.scripts}个剧本</Tag>
+                                            {project.artifactCounts.scripts > 0 && (
+                                                <Tag style={{ fontSize: '11px' }}>{project.artifactCounts.scripts}个剧本</Tag>
                                             )}
                                         </Space>
                                         <Text type="secondary" style={{ fontSize: '11px' }}>
-                                            {formatDate(flow.updatedAt)}
+                                            {formatDate(project.updatedAt)}
                                         </Text>
                                     </div>
                                 </Space>
