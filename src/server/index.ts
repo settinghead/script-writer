@@ -103,7 +103,7 @@ app.use('/auth', createAuthRoutes(authDB, authMiddleware));
 app.use('/api/projects', createProjectRoutes(authMiddleware, projectService, agentService));
 
 // Mount streaming routes
-app.use('/api/streaming', createStreamingRoutes(authMiddleware, transformRepo));
+app.use('/api/streaming', createStreamingRoutes(authMiddleware, transformRepo, artifactRepo));
 
 // Mount ideation routes - now serving projects list
 app.use('/api/ideations', createIdeationRoutes(authMiddleware, artifactRepo, transformRepo, streamingTransformExecutor));

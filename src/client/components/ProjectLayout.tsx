@@ -25,7 +25,7 @@ const ProjectLayout: React.FC = () => {
     const { projectId } = useParams<{ projectId: string }>();
     const navigate = useNavigate();
     const project = useProjectStore(state => state.projects[projectId!] || {});
-    const { name, description, loading, error, brainstormIdeas, streamingError } = project;
+    const { name, description, loading, error, brainstormIdeas, streamingError, streamingStatus } = project;
 
     // Fetch project data using our main hook
     useProjectData(projectId!);
@@ -108,9 +108,33 @@ const ProjectLayout: React.FC = () => {
             <Content style={{ padding: '24px', overflowY: 'auto' }}>
                 <Outlet />
                 
+                {/* Display streaming status */}
+                {streamingStatus && streamingStatus !== 'idle' && (
+                    <Alert
+                        message={
+                            streamingStatus === 'connecting' ? 'Connecting to stream...' :
+                            streamingStatus === 'streaming' ? 'Generating ideas...' :
+                            streamingStatus === 'completed' ? 'Generation completed!' :
+                            streamingStatus === 'error' ? 'Streaming error occurred' :
+                            'Unknown status'
+                        }
+                        type={
+                            streamingStatus === 'connecting' || streamingStatus === 'streaming' ? 'info' :
+                            streamingStatus === 'completed' ? 'success' :
+                            'error'
+                        }
+                        showIcon
+                        style={{ marginBottom: 16 }}
+                    />
+                )}
+
                 {/* Display streaming brainstorm ideas */}
                 {brainstormIdeas && (
-                    <Card title="Brainstorming Results" style={{ marginTop: 24 }}>
+                    <Card 
+                        title="Brainstorming Results" 
+                        style={{ marginTop: 24 }}
+                        loading={streamingStatus === 'streaming' || streamingStatus === 'connecting'}
+                    >
                         <List
                             dataSource={brainstormIdeas}
                             renderItem={(idea: any) => (

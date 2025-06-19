@@ -46,6 +46,7 @@ interface ProjectData {
   streamingTransformId: string | null;
   streamingError: string | null;
   brainstormIdeas?: any[];
+  streamingStatus?: 'idle' | 'connecting' | 'streaming' | 'completed' | 'error';
 }
 
 // Define the store's state and actions
@@ -86,6 +87,9 @@ interface ProjectStoreState {
   
   // New action to set streaming error
   setStreamingError: (projectId: string, error: string | null) => void;
+  
+  // New action to set streaming status
+  setStreamingStatus: (projectId: string, status: 'idle' | 'connecting' | 'streaming' | 'completed' | 'error') => void;
 }
 
 // Helper function to create empty project data
@@ -105,6 +109,7 @@ const createEmptyProject = (id: string): ProjectData => ({
   streamingTransformId: null,
   streamingError: null,
   brainstormIdeas: undefined,
+  streamingStatus: 'idle',
 });
 
 export const useProjectStore = create<ProjectStoreState>((set, get) => ({
@@ -368,6 +373,23 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
             [projectId]: {
               ...project,
               streamingError: error
+            }
+          }
+        }
+      }
+      return state;
+    }),
+  
+  setStreamingStatus: (projectId, status) =>
+    set(state => {
+      const project = state.projects[projectId];
+      if (project) {
+        return {
+          projects: {
+            ...state.projects,
+            [projectId]: {
+              ...project,
+              streamingStatus: status
             }
           }
         }
