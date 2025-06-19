@@ -1,45 +1,13 @@
 import { useShape } from '@electric-sql/react'
-import { useMutation, useMutationState } from '@tanstack/react-query'
-import { IdeaWithTitle } from '../types/brainstorm'
 import { createElectricConfig } from '../../common/config/electric'
-
-interface BrainstormArtifact {
-  id: string
-  project_id: string
-  type: string
-  type_version: string
-  data: IdeaWithTitle[] | string  // Could be parsed or string
-  metadata: {
-    status: 'streaming' | 'completed' | 'failed'
-    chunkCount: number
-    startedAt?: string
-    lastUpdated?: string
-    completedAt?: string
-  }
-  created_at: string
-  updated_at: string
-}
-
-interface Transform {
-  id: string
-  project_id: string
-  status: 'pending' | 'running' | 'completed' | 'failed'
-  streaming_status: string
-  progress_percentage: number
-  type: string
-  created_at: string
-  updated_at: string
-}
-
-interface UseElectricBrainstormResult {
-  ideas: IdeaWithTitle[]
-  status: 'idle' | 'streaming' | 'completed' | 'failed'
-  progress: number
-  error: string | null
-  isLoading: boolean
-  lastSyncedAt: string | null
-  chunkCount: number
-}
+import { 
+  IdeaWithTitle,
+  ElectricArtifact,
+  ElectricTransform,
+  BrainstormArtifactData,
+  BrainstormArtifactMetadata,
+  UseElectricBrainstormResult
+} from '../../common/types'
 
 export function useElectricBrainstorm(projectId: string): UseElectricBrainstormResult {
   // Get authenticated Electric config
@@ -48,7 +16,7 @@ export function useElectricBrainstorm(projectId: string): UseElectricBrainstormR
   // Watch for brainstorm_idea_collection artifacts for this project
   // User scoping is handled automatically by the proxy
   // Note: This will fail until we migrate to Postgres schema
-  const { data: artifacts, isLoading: artifactsLoading, error: artifactsError } = useShape({
+  const { data: artifacts, isLoading: artifactsLoading, error: artifactsError } = useShape<ElectricArtifact>({
     ...electricConfig,
     params: {
       table: 'artifacts',
@@ -59,7 +27,7 @@ export function useElectricBrainstorm(projectId: string): UseElectricBrainstormR
   // Watch for transforms to get status information
   // User scoping is handled automatically by the proxy
   // Note: This will fail until we migrate to Postgres schema
-  const { data: transforms, isLoading: transformsLoading, error: transformsError } = useShape({
+  const { data: transforms, isLoading: transformsLoading, error: transformsError } = useShape<ElectricTransform>({
     ...electricConfig,
     params: {
       table: 'transforms',
@@ -79,46 +47,48 @@ export function useElectricBrainstorm(projectId: string): UseElectricBrainstormR
 
   // Process the artifacts data
   const latestArtifact = artifacts && artifacts.length > 0 
-    ? (artifacts as BrainstormArtifact[])
-        .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0]
+    ? artifacts.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0]
     : null
 
   // Process the transforms data for status
   const latestTransform = transforms && transforms.length > 0
-    ? (transforms as Transform[])
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
+    ? transforms.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
     : null
 
   // Extract ideas from the latest artifact - return IdeaWithTitle format
   const ideas: IdeaWithTitle[] = (() => {
     if (!latestArtifact?.data) {
-      // console.log('[useElectricBrainstorm] No artifact data available')
       return []
     }
 
     try {
-      // The data might be a string that needs parsing, or already an object
-      let parsedData = latestArtifact.data
-      if (typeof parsedData === 'string') {
-        parsedData = JSON.parse(parsedData)
-      }
+      // Parse the JSON data
+      const parsedData: BrainstormArtifactData = JSON.parse(latestArtifact.data)
 
-      // console.log('[useElectricBrainstorm] Parsed artifact data:', parsedData)
-
-      // Ensure it's an array
-      if (Array.isArray(parsedData)) {
-        return parsedData.map((item: any, index: number) => ({
+      // Ensure it's the expected format
+      if (parsedData && Array.isArray(parsedData.ideas)) {
+        return parsedData.ideas.map((item: any) => ({
           title: item.title || '无标题',
           body: item.body || item.description || '',
-          artifactId: latestArtifact.id  // Use the artifact ID
+          artifactId: latestArtifact.id
         }))
       } else {
-        console.warn('[useElectricBrainstorm] Data is not an array:', parsedData)
+        console.warn('[useElectricBrainstorm] Data is not in expected format:', parsedData)
         return []
       }
     } catch (error) {
       console.error('[useElectricBrainstorm] Failed to parse artifact data:', error, latestArtifact.data)
       return []
+    }
+  })()
+
+  // Parse metadata if available
+  const metadata: BrainstormArtifactMetadata | null = (() => {
+    if (!latestArtifact?.metadata) return null
+    try {
+      return JSON.parse(latestArtifact.metadata)
+    } catch {
+      return null
     }
   })()
 
@@ -128,16 +98,30 @@ export function useElectricBrainstorm(projectId: string): UseElectricBrainstormR
   let error: string | null = null
 
   if (latestArtifact) {
-    const artifactStatus = latestArtifact.metadata?.status
-    if (artifactStatus === 'streaming') {
+    // Use streaming_status from the artifact (Electric schema)
+    if (latestArtifact.streaming_status === 'streaming') {
       status = 'streaming'
-      progress = Math.min(90, (latestArtifact.metadata?.chunkCount || 0) * 10) // Estimate progress
-    } else if (artifactStatus === 'completed') {
+      progress = latestArtifact.streaming_progress || 0
+    } else if (latestArtifact.streaming_status === 'completed') {
       status = 'completed'
       progress = 100
-    } else if (artifactStatus === 'failed') {
+    } else if (latestArtifact.streaming_status === 'failed') {
       status = 'failed'
       error = 'Brainstorm generation failed'
+    }
+
+    // Fallback to metadata status if streaming_status is not available
+    if (status === 'idle' && metadata?.status) {
+      if (metadata.status === 'streaming') {
+        status = 'streaming'
+        progress = Math.min(90, (metadata.chunkCount || 0) * 10)
+      } else if (metadata.status === 'completed') {
+        status = 'completed'
+        progress = 100
+      } else if (metadata.status === 'failed') {
+        status = 'failed'
+        error = 'Brainstorm generation failed'
+      }
     }
   }
 
@@ -145,8 +129,8 @@ export function useElectricBrainstorm(projectId: string): UseElectricBrainstormR
   if (latestTransform) {
     if (latestTransform.status === 'failed') {
       status = 'failed'
-      error = 'Transform failed'
-    } else if (latestTransform.status === 'running') {
+      error = latestTransform.error_message || 'Transform failed'
+    } else if (latestTransform.status === 'running' || latestTransform.streaming_status === 'running') {
       status = 'streaming'
       progress = Math.max(progress, latestTransform.progress_percentage || 0)
     } else if (latestTransform.status === 'completed') {
@@ -162,6 +146,6 @@ export function useElectricBrainstorm(projectId: string): UseElectricBrainstormR
     error,
     isLoading,
     lastSyncedAt: latestArtifact?.updated_at || null,
-    chunkCount: latestArtifact?.metadata?.chunkCount || 0
+    chunkCount: metadata?.chunkCount || 0
   }
 } 

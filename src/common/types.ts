@@ -311,4 +311,77 @@ export const AgentBrainstormRequestSchema = z.object({
     other_requirements: z.string().optional(),
 });
 
-export type AgentBrainstormRequest = z.infer<typeof AgentBrainstormRequestSchema>; 
+export type AgentBrainstormRequest = z.infer<typeof AgentBrainstormRequestSchema>;
+
+// Electric SQL Database Types
+export interface ElectricArtifact {
+    id: string
+    project_id: string
+    type: string
+    type_version: string
+    data: string // JSON string
+    metadata: string | null // JSON string
+    created_at: string
+    updated_at: string
+    streaming_status: 'streaming' | 'completed' | 'failed' | 'cancelled'
+    streaming_progress: number
+    partial_data: any | null // JSONB
+}
+
+export interface ElectricTransform {
+    id: string
+    project_id: string
+    type: string
+    type_version: string
+    status: 'pending' | 'running' | 'completed' | 'failed'
+    execution_context: string | null
+    created_at: string
+    updated_at: string
+    streaming_status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
+    progress_percentage: number
+    error_message: string | null
+    retry_count: number
+    max_retries: number
+}
+
+export interface ElectricBrainstormFlow {
+    project_id: string
+    project_name: string
+    transform_id: string
+    transform_status: string
+    progress_percentage: number
+    error_message: string | null
+    transform_created_at: string
+    transform_updated_at: string
+    artifact_id: string | null
+    artifact_type: string | null
+    artifact_status: string | null
+    streaming_progress: number | null
+    artifact_data: string | null
+    artifact_partial_data: any | null
+    artifact_created_at: string | null
+    artifact_updated_at: string | null
+}
+
+// Brainstorm-specific types
+export interface BrainstormArtifactData {
+    ideas: IdeaWithTitle[]
+}
+
+export interface BrainstormArtifactMetadata {
+    status: 'streaming' | 'completed' | 'failed'
+    chunkCount: number
+    startedAt?: string
+    lastUpdated?: string
+    completedAt?: string
+}
+
+export interface UseElectricBrainstormResult {
+    ideas: IdeaWithTitle[]
+    status: 'idle' | 'streaming' | 'completed' | 'failed'
+    progress: number
+    error: string | null
+    isLoading: boolean
+    lastSyncedAt: string | null
+    chunkCount: number
+} 

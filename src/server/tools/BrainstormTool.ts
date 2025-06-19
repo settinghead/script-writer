@@ -4,14 +4,21 @@ import { IdeationInputSchema, IdeationOutputSchema, IdeationInput, IdeationOutpu
 import { TransformRepository } from '../repositories/TransformRepository';
 import { ArtifactRepository } from '../repositories/ArtifactRepository';
 
-// Temporary type definition for Electric Sync migration
+// Temporary type definition for Electric Sync migration - matches actual StreamingAgentFramework
 interface StreamingToolDefinition<TInput, TOutput> {
     name: string;
     description: string;
     inputSchema: any;
     outputSchema: any;
-    execute: (params: TInput) => Promise<TOutput>;
+    execute: (params: TInput) => Promise<any>; // Changed to match actual framework
 }
+
+// Tool execution result type
+interface BrainstormToolResult {
+    outputArtifactId: string;
+    finishReason: string;
+}
+
 /**
  * Factory function that creates a brainstorm tool definition
  */
@@ -20,13 +27,13 @@ export function createBrainstormToolDefinition(
     artifactRepo: ArtifactRepository,
     projectId: string,
     userId: string,
-): StreamingToolDefinition<IdeationInput, IdeationOutput> {
+): StreamingToolDefinition<IdeationInput, BrainstormToolResult> {
     return {
         name: 'brainstorm',
         description: 'Generates creative story ideas based on platform and genre. Use this tool when users want to brainstorm, generate, or create story concepts for short-form video content.',
         inputSchema: IdeationInputSchema,
         outputSchema: IdeationOutputSchema,
-        execute: async (params: IdeationInput) => {
+        execute: async (params: IdeationInput): Promise<BrainstormToolResult> => {
             let toolTransformId: string | null = null;
             try {
                 // 1. Create a transform for this specific tool execution
@@ -34,10 +41,10 @@ export function createBrainstormToolDefinition(
                     projectId,
                     'llm', // The tool is an LLM operation
                     'running',
-                    { 
+                    JSON.stringify({ // Fix: Convert to string for execution_context
                         toolName: 'brainstorm',
                         params 
-                    }
+                    })
                 );
                 toolTransformId = transform.id;
 
@@ -57,7 +64,7 @@ export function createBrainstormToolDefinition(
                 const outputArtifact = await artifactRepo.createArtifact(
                     projectId,
                     'brainstorm_idea_collection',
-                    [], // Start with empty array
+                    { ideas: [] }, // Start with proper structure
                     'v1',
                     { 
                         status: 'streaming',
@@ -73,18 +80,18 @@ export function createBrainstormToolDefinition(
                 // 3. Execute the underlying transform which returns a stream
                 const stream = await executeStreamingIdeationTransform(params);
 
-                let finalResult: any = [];
+                let finalResult: IdeationOutput = [];
                 let chunkCount = 0;
 
                 // 4. Process the stream: update artifact with each chunk for real-time Electric sync
                 for await (const partial of stream) {
                     chunkCount++;
                     
-                    // Update the artifact with the current partial result
+                    // Update the artifact with the current partial result in proper format
                     // This will trigger Electric to sync the update to the frontend immediately
                     await artifactRepo.updateArtifact(
                         outputArtifact.id,
-                        partial, // The current partial result
+                        { ideas: partial }, // Wrap in proper structure for BrainstormArtifactData
                         { 
                             status: 'streaming',
                             chunkCount,
@@ -100,7 +107,7 @@ export function createBrainstormToolDefinition(
                 // 5. Final update to mark as completed
                 await artifactRepo.updateArtifact(
                     outputArtifact.id,
-                    finalResult,
+                    { ideas: finalResult }, // Wrap in proper structure
                     { 
                         status: 'completed',
                         chunkCount,
