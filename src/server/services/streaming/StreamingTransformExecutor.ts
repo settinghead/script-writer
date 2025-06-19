@@ -380,6 +380,11 @@ export class StreamingTransformExecutor {
         rawContent: string
     ): Promise<void> {
         try {
+            const projectId = transform.project_id;
+            if (!projectId) {
+                throw new Error('project_id is required in transform');
+            }
+            
             // Create individual brainstorm idea artifacts
             for (let i = 0; i < jsonData.length; i++) {
                 const item = jsonData[i];
@@ -393,7 +398,7 @@ export class StreamingTransformExecutor {
                 };
 
                 const artifact = await this.artifactRepo.createArtifact(
-                    userId,
+                    projectId,
                     'brainstorm_idea',
                     brainstormIdeaData,
                     'v1',
@@ -420,8 +425,12 @@ export class StreamingTransformExecutor {
         executionContext: Record<string, any> = {}
     ): Promise<{ transformId: string }> {
         // 1. Create job parameters artifact
+        const projectId = executionContext.project_id;
+        if (!projectId) {
+            throw new Error('project_id is required in execution context');
+        }
         const paramsArtifact = await this.artifactRepo.createArtifact(
-            userId,
+            projectId,
             `${templateId}_job_params`,
             jobParams,
             'v1'
@@ -432,7 +441,7 @@ export class StreamingTransformExecutor {
 
         // 3. Create transform with 'running' status
         const transform = await this.transformRepo.createTransform(
-            userId,
+            projectId, // Use the same projectId for the transform
             'llm',
             'v1',
             'running',
@@ -475,24 +484,8 @@ export class StreamingTransformExecutor {
             throw new Error('IdeationService not available for job creation');
         }
 
-        // 1. Create ideation run using existing service
-        const { runId: ideationRunId } = await this.ideationService.createRunWithIdeas(
-            userId,
-            jobParams.platform,
-            jobParams.genrePaths,
-            [], // No initial ideas for brainstorming job
-            [], // No initial idea titles
-            jobParams.requirements
-        );
-
-        // 2. Use generalized job creation
-        const { transformId } = await this.createStreamingJob(
-            userId,
-            'brainstorming',
-            jobParams,
-            [], // No additional inputs for brainstorming
-            { ideation_run_id: ideationRunId }
-        );
+        // This method is deprecated - use startBrainstormingJobForProject instead
+        throw new Error('startBrainstormingJob is deprecated - use startBrainstormingJobForProject instead');
 
         return {
             ideationRunId,
@@ -1106,12 +1099,17 @@ export class StreamingTransformExecutor {
         outlineData: any
     ): Promise<void> {
         try {
+            const projectId = transform.project_id;
+            if (!projectId) {
+                throw new Error('project_id is required in transform');
+            }
+            
             // Create individual outline component artifacts based on the JSON structure
 
             // 1. Title
             if (outlineData.title) {
                 const titleArtifact = await this.artifactRepo.createArtifact(
-                    userId,
+                    projectId,
                     'outline_title',
                     { title: outlineData.title },
                     'v1',
@@ -1125,7 +1123,7 @@ export class StreamingTransformExecutor {
             // 2. Genre
             if (outlineData.genre) {
                 const genreArtifact = await this.artifactRepo.createArtifact(
-                    userId,
+                    projectId,
                     'outline_genre',
                     { genre: outlineData.genre },
                     'v1',
@@ -1139,7 +1137,7 @@ export class StreamingTransformExecutor {
             // 3. Selling Points
             if (outlineData.selling_points && Array.isArray(outlineData.selling_points)) {
                 const sellingPointsArtifact = await this.artifactRepo.createArtifact(
-                    userId,
+                    projectId,
                     'outline_selling_points',
                     { selling_points: outlineData.selling_points.join('\n') },
                     'v1',
@@ -1157,7 +1155,7 @@ export class StreamingTransformExecutor {
                     : String(outlineData.setting);
 
                 const settingArtifact = await this.artifactRepo.createArtifact(
-                    userId,
+                    projectId,
                     'outline_setting',
                     { setting: settingData },
                     'v1',
@@ -1171,7 +1169,7 @@ export class StreamingTransformExecutor {
             // 5. Synopsis
             if (outlineData.synopsis) {
                 const synopsisArtifact = await this.artifactRepo.createArtifact(
-                    userId,
+                    projectId,
                     'outline_synopsis',
                     { synopsis: outlineData.synopsis },
                     'v1',
@@ -1185,7 +1183,7 @@ export class StreamingTransformExecutor {
             // 6. Target Audience
             if (outlineData.target_audience) {
                 const targetAudienceArtifact = await this.artifactRepo.createArtifact(
-                    userId,
+                    projectId,
                     'outline_target_audience',
                     {
                         demographic: outlineData.target_audience.demographic || '',
@@ -1202,7 +1200,7 @@ export class StreamingTransformExecutor {
             // 7. Satisfaction Points
             if (outlineData.satisfaction_points && Array.isArray(outlineData.satisfaction_points)) {
                 const satisfactionPointsArtifact = await this.artifactRepo.createArtifact(
-                    userId,
+                    projectId,
                     'outline_satisfaction_points',
                     {
                         satisfaction_points: outlineData.satisfaction_points
@@ -1218,7 +1216,7 @@ export class StreamingTransformExecutor {
             // 8. Characters
             if (outlineData.characters && Array.isArray(outlineData.characters)) {
                 const charactersArtifact = await this.artifactRepo.createArtifact(
-                    userId,
+                    projectId,
                     'outline_characters',
                     {
                         characters: outlineData.characters.map((char: any) => ({
@@ -1265,7 +1263,7 @@ export class StreamingTransformExecutor {
                         console.log(`Creating stage ${i + 1} - Enhanced format: ${isEnhancedFormat}`);
 
                         const stageArtifact = await this.artifactRepo.createArtifact(
-                            userId,
+                            projectId,
                             'outline_synopsis_stage',
                             {
                                 stageNumber: i + 1,
@@ -1311,6 +1309,8 @@ export class StreamingTransformExecutor {
         episodeData: any[]
     ): Promise<void> {
         try {
+            const projectId = transform.project_id;
+            
             // Get episode generation session ID from transform context
             const sessionId = transform.execution_context?.episode_generation_session_id;
             const stageArtifactId = transform.execution_context?.stage_artifact_id;
@@ -1335,7 +1335,7 @@ export class StreamingTransformExecutor {
             if (stageArtifactId) {
                 try {
                     // Get current stage artifact to find its stage number and outlineSessionId
-                    const currentStageArtifact = await this.artifactRepo.getArtifact(stageArtifactId, userId);
+                    const currentStageArtifact = await this.artifactRepo.getArtifact(stageArtifactId, projectId);
                     console.log(`🔍 [DEBUG] Current stage artifact:`, currentStageArtifact ? 'found' : 'not found');
 
                     if (currentStageArtifact && currentStageArtifact.data) {
@@ -1353,7 +1353,7 @@ export class StreamingTransformExecutor {
                         if (outlineSessionId && currentStageNumber) {
                             // Get all stage artifacts for this outline session
                             const allStageArtifacts = await this.artifactRepo.getArtifactsByType(
-                                userId,
+                                projectId,
                                 'outline_synopsis_stage'
                             );
 
@@ -1421,7 +1421,7 @@ export class StreamingTransformExecutor {
                 });
 
                 const episodeArtifact = await this.artifactRepo.createArtifact(
-                    userId,
+                    projectId,
                     'episode_synopsis',
                     {
                         episodeNumber: correctEpisodeNumber,
@@ -1458,7 +1458,7 @@ export class StreamingTransformExecutor {
                 try {
                     // Find and update the session artifact
                     const sessionArtifacts = await this.artifactRepo.getArtifactsByType(
-                        userId,
+                        projectId,
                         'episode_generation_session'
                     );
 
@@ -1474,7 +1474,7 @@ export class StreamingTransformExecutor {
                         };
 
                         await this.artifactRepo.createArtifact(
-                            userId,
+                            projectId,
                             'episode_generation_session',
                             updatedSessionData,
                             'v1',
@@ -1503,6 +1503,8 @@ export class StreamingTransformExecutor {
         scriptData: any
     ): Promise<void> {
         try {
+            const projectId = transform.project_id;
+            
             // Validate required fields
             if (!scriptData.episodeNumber) {
                 throw new Error(`Missing episodeNumber in scriptData: ${JSON.stringify(scriptData, null, 2)}`);
@@ -1516,7 +1518,7 @@ export class StreamingTransformExecutor {
                 throw new Error('Missing job params for script generation');
             }
 
-            const paramsArtifact = await this.artifactRepo.getArtifact(paramsInput.artifact_id, userId);
+            const paramsArtifact = await this.artifactRepo.getArtifact(paramsInput.artifact_id, projectId);
             if (!paramsArtifact) {
                 throw new Error('Job parameters artifact not found');
             }
@@ -1525,7 +1527,7 @@ export class StreamingTransformExecutor {
 
             // Create episode script artifact with proper EpisodeScriptV1 structure
             const scriptArtifact = await this.artifactRepo.createArtifact(
-                userId,
+                projectId,
                 'episode_script',
                 {
                     episodeNumber: scriptData.episodeNumber,
