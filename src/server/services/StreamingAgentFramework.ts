@@ -81,8 +81,17 @@ export function createStreamingToolWithResultId<TInput, TOutput>(
           }
         }
         
-        // Clear the log-update display and show completion message
+        // Clear the log-update display and show the final result
         logUpdate.clear();
+        
+        // Show the final streamed result before completion message
+        const finalDisplayText = Array.isArray(finalResult) && finalResult.length > 0 
+          ? JSON.stringify(finalResult, null, 2)
+          : JSON.stringify(finalResult, null, 2);
+        
+        console.log(`[Final Result - Chunk ${chunkCount}]`);
+        console.log(finalDisplayText);
+        
         console.log(`\n[Tool Execution] Completed streaming with ${chunkCount} chunks`);
         
         // Store the final result in global memory
@@ -246,11 +255,7 @@ export async function runStreamingAgent(config: StreamingAgentConfig): Promise<{
         console.log(`Stored ${count} items`);
       }
     });
-    console.log(`---------------------------------`);
-    
-    console.log(`\n--- Test Completed Successfully ---`);
-    console.log(`Generated ${resultIds.length} result(s): ${resultIds.join(', ')}`);
-    
+
     return {
       resultIds,
       finishReason,
