@@ -1,5 +1,12 @@
 import { OutlineSessionSummary, OutlineSessionData } from '../../server/services/OutlineService';
 import { OutlineGenerateRequest, OutlineGenerateResponse } from '../../common/streaming/types';
+import {
+    BrainstormingJobParamsV1,
+    OutlineJobParamsV1,
+    ProjectSummary,
+    IdeationRun,
+    AgentBrainstormRequest,
+} from '../../common/types';
 
 class ApiService {
     private baseUrl = '/api';
@@ -289,6 +296,30 @@ class ApiService {
         const response = await fetch(`${this.baseUrl}/projects/${ideationRunId}/idea-outlines`);
         if (!response.ok) {
             throw new Error(`Failed to fetch idea outlines: ${response.status}`);
+        }
+        return response.json();
+    }
+
+    async createProjectFromBrainstorm(request: AgentBrainstormRequest): Promise<{ projectId: string }> {
+        const response = await fetch(`${this.baseUrl}/projects/create-from-brainstorm`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'include', // Send cookies along with the request
+            body: JSON.stringify(request),
+        });
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ error: 'Request failed with status ' + response.status }));
+            throw new Error(errorData.error || 'Failed to create project from brainstorm');
+        }
+        return response.json();
+    }
+
+    async getProject(projectId: string): Promise<any> {
+        const response = await fetch(`${this.baseUrl}/projects/${projectId}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch project: ${response.status}`);
         }
         return response.json();
     }

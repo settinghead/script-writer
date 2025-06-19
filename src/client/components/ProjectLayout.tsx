@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, useParams, useNavigate } from 'react-router-dom';
-import { Layout, Breadcrumb, Typography, Spin, Alert, Space, Button } from 'antd';
+import { Layout, Breadcrumb, Typography, Spin, Alert, Space, Button, Card, List } from 'antd';
 import { HomeOutlined, ProjectOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import { useProjectData } from '../hooks/useProjectData';
+import { useProjectStreaming } from '../hooks/useProjectStreaming';
+import { useProjectStore } from '../stores/projectStore';
 
-const { Content } = Layout;
+const { Sider, Content } = Layout;
 const { Title, Text } = Typography;
 
 interface ProjectData {
@@ -21,46 +24,20 @@ interface ProjectData {
 const ProjectLayout: React.FC = () => {
     const { projectId } = useParams<{ projectId: string }>();
     const navigate = useNavigate();
-    const [projectData, setProjectData] = useState<ProjectData | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const project = useProjectStore(state => state.projects[projectId!] || {});
+    const { name, description, loading, error, brainstormIdeas, streamingError } = project;
 
-    useEffect(() => {
-        if (!projectId) return;
-
-        const fetchProjectData = async () => {
-            try {
-                setLoading(true);
-                const response = await fetch(`/api/projects/${projectId}`);
-                
-                if (!response.ok) {
-                    if (response.status === 404) {
-                        setError('项目不存在');
-                    } else {
-                        throw new Error(`Failed to fetch project: ${response.status}`);
-                    }
-                    return;
-                }
-
-                const data = await response.json();
-                setProjectData(data);
-                setError(null);
-            } catch (err) {
-                console.error('Error fetching project data:', err);
-                setError(err instanceof Error ? err.message : '获取项目信息失败');
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchProjectData();
-    }, [projectId]);
+    // Fetch project data using our main hook
+    useProjectData(projectId!);
+    
+    // Connect to project-level streaming
+    useProjectStreaming(projectId!);
 
     const handleGoBack = () => {
         navigate('/');
     };
 
-    if (loading) {
+    if (loading && !name) {
         return (
             <Layout style={{ minHeight: '100vh', background: '#0a0a0a' }}>
                 <Content style={{ padding: '24px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
@@ -111,59 +88,53 @@ const ProjectLayout: React.FC = () => {
             title: (
                 <Space>
                     <ProjectOutlined />
-                    {projectData?.name || '未命名项目'}
+                    {name || '未命名项目'}
                 </Space>
             ),
         }
     ];
 
     return (
-        <Layout style={{ minHeight: '100vh', background: '#0a0a0a' }}>
-            <Content style={{ padding: '16px 24px' }}>
-                {/* Header with breadcrumb and project info */}
-                <div style={{ marginBottom: '24px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', gap: '12px' }}>
-                        <Button 
-                            icon={<ArrowLeftOutlined />} 
-                            onClick={handleGoBack}
-                            type="text"
-                            style={{ color: '#666' }}
+        <Layout style={{ height: '100%', overflow: 'hidden' }}>
+            <Sider width={250} theme="light" style={{ borderRight: '1px solid #f0f0f0' }}>
+                <div style={{ padding: '16px' }}>
+                    <Title level={4}>{name || 'Project'}</Title>
+                    <Typography.Paragraph type="secondary" ellipsis={{ rows: 3 }}>
+                        {description || 'No description available.'}
+                    </Typography.Paragraph>
+                </div>
+                {/* Future navigation will go here */}
+            </Sider>
+            <Content style={{ padding: '24px', overflowY: 'auto' }}>
+                <Outlet />
+                
+                {/* Display streaming brainstorm ideas */}
+                {brainstormIdeas && (
+                    <Card title="Brainstorming Results" style={{ marginTop: 24 }}>
+                        <List
+                            dataSource={brainstormIdeas}
+                            renderItem={(idea: any) => (
+                                <List.Item>
+                                    <List.Item.Meta
+                                        title={idea.title}
+                                        description={idea.body}
+                                    />
+                                </List.Item>
+                            )}
                         />
-                        <Breadcrumb items={breadcrumbItems} />
-                    </div>
-                    
-                    {projectData && (
-                        <div style={{ marginLeft: '44px' }}>
-                            <Title level={3} style={{ margin: 0, color: '#fff' }}>
-                                {projectData.name}
-                            </Title>
-                            {projectData.description && (
-                                <Text type="secondary" style={{ display: 'block', marginTop: '4px' }}>
-                                    {projectData.description}
-                                </Text>
-                            )}
-                            {(projectData.platform || projectData.genre) && (
-                                <Space style={{ marginTop: '8px' }}>
-                                    {projectData.platform && (
-                                        <Text type="secondary" style={{ fontSize: '12px' }}>
-                                            平台: {projectData.platform}
-                                        </Text>
-                                    )}
-                                    {projectData.genre && (
-                                        <Text type="secondary" style={{ fontSize: '12px' }}>
-                                            类型: {projectData.genre}
-                                        </Text>
-                                    )}
-                                </Space>
-                            )}
-                        </div>
-                    )}
-                </div>
+                    </Card>
+                )}
 
-                {/* Project content */}
-                <div style={{ marginLeft: '44px' }}>
-                    <Outlet />
-                </div>
+                {streamingError && (
+                    <Alert
+                        message="Streaming Error"
+                        description={streamingError}
+                        type="error"
+                        showIcon
+                        style={{ marginTop: 24 }}
+                    />
+                )}
+
             </Content>
         </Layout>
     );

@@ -120,6 +120,19 @@ export interface BrainstormingJobParamsV1 {
     requestedAt: string; // ISO timestamp
 }
 
+// Input parameters for brainstorm tool execution
+export interface BrainstormToolInputV1 {
+    platform: string;
+    genre: string;
+    other_requirements?: string;
+}
+
+// Collection of brainstorm ideas (output from brainstorm tool)
+export interface BrainstormIdeaCollectionV1 extends Array<{
+    title: string;
+    body: string;
+}> {}
+
 // ========== WORKFLOW CASCADING PARAMETERS ==========
 
 // Common parameters that cascade through workflow stages
@@ -325,6 +338,10 @@ export function validateArtifactData(type: string, typeVersion: string, data: an
             return isBrainstormIdeaV1(data);
         case 'brainstorming_job_params:v1':
             return isBrainstormingJobParamsV1(data);
+        case 'brainstorm_tool_input:v1':
+            return isBrainstormToolInputV1(data);
+        case 'brainstorm_idea_collection:v1':
+            return isBrainstormIdeaCollectionV1(data);
         case 'outline_job_params:v1':
             return isOutlineJobParamsV1(data);
         case 'user_input:v1':
@@ -417,6 +434,22 @@ function isBrainstormingJobParamsV1(data: any): data is BrainstormingJobParamsV1
         Array.isArray(data.genrePaths) &&
         typeof data.requirements === 'string' &&
         typeof data.requestedAt === 'string';
+}
+
+function isBrainstormToolInputV1(data: any): data is BrainstormToolInputV1 {
+    return typeof data === 'object' &&
+        typeof data.platform === 'string' &&
+        typeof data.genre === 'string' &&
+        (data.other_requirements === undefined || typeof data.other_requirements === 'string');
+}
+
+function isBrainstormIdeaCollectionV1(data: any): data is BrainstormIdeaCollectionV1 {
+    return Array.isArray(data) &&
+        data.every((idea: any) => 
+            typeof idea === 'object' &&
+            typeof idea.title === 'string' &&
+            typeof idea.body === 'string'
+        );
 }
 
 function isOutlineJobParamsV1(data: any): data is OutlineJobParamsV1 {

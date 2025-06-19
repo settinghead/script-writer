@@ -21,10 +21,8 @@ import ProjectLayout from './components/ProjectLayout';
 import ProjectBrainstormPage from './components/ProjectBrainstormPage';
 import Breadcrumb from './components/Breadcrumb';
 import StagewiseToolbar from './components/StagewiseToolbar';
-import StreamingIdeationTestPage from './components/StreamingIdeationTestPage';
-import NewProjectFromBrainstormingPage from './components/NewProjectFromBrainstormingPage';
-import ProjectStreamingDisplay from './components/ProjectStreamingDisplay';
-import ProjectStreamingDisplayWrapper from './components/ProjectStreamingDisplayWrapper';
+import { StageDetailView } from './components/StageDetailView';
+import NewProjectFromBrainstormPage from './components/NewProjectFromBrainstormPage';
 
 // Import CSS for any custom styling needed
 import "./index.css";
@@ -215,9 +213,8 @@ const AppContent: React.FC = () => {
                     </EpisodeProvider>
                   </ProtectedRoute>
                 }>
-                  <Route index element={<ProjectStreamingDisplayWrapper />} />
                   <Route path="brainstorm" element={<ProjectBrainstormPage />} />
-                  {/* Add other project sub-routes here in the future */}
+                  <Route path="stage/:stageId" element={<StageDetailView />} />
                 </Route>
                 <Route path="/ideation/:id" element={
                   <ProtectedRoute>
@@ -251,7 +248,7 @@ const AppContent: React.FC = () => {
                 } />
                 <Route path="/new-project-from-brainstorming" element={
                   <ProtectedRoute>
-                    <NewProjectFromBrainstormingPage />
+                    <NewProjectFromBrainstormPage />
                   </ProtectedRoute>
                 } />
                 <Route path="/" element={<Navigate to="/projects" replace />} />
@@ -282,7 +279,6 @@ const AppContent: React.FC = () => {
                     </EpisodeProvider>
                   </ProtectedRoute>
                 }>
-                  <Route index element={<ProjectStreamingDisplayWrapper />} />
                   <Route path="brainstorm" element={<ProjectBrainstormPage />} />
                   {/* Add other project sub-routes here in the future */}
                 </Route>
@@ -318,7 +314,7 @@ const AppContent: React.FC = () => {
                 } />
                 <Route path="/new-project-from-brainstorming" element={
                   <ProtectedRoute>
-                    <NewProjectFromBrainstormingPage />
+                    <NewProjectFromBrainstormPage />
                   </ProtectedRoute>
                 } />
                 <Route path="/" element={<Navigate to="/projects" replace />} />

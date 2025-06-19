@@ -7,6 +7,7 @@ import {
     LegacyKeyMilestone,
     LegacyOutlineStage
 } from './llm/outlineTypes.js';
+import { z } from 'zod';
 
 // ========== SHARED TYPES FOR CLIENT AND SERVER ==========
 
@@ -297,4 +298,17 @@ export interface ProjectFlow {
         episodes: number;
         scripts: number;
     };
-} 
+}
+
+export interface IdeationRun {
+    // ... existing code ...
+}
+
+export const AgentBrainstormRequestSchema = z.object({
+    userRequest: z.string(),
+    platform: z.string().optional(),
+    genre: z.string().optional(),
+    other_requirements: z.string().optional(),
+});
+
+export type AgentBrainstormRequest = z.infer<typeof AgentBrainstormRequestSchema>; 

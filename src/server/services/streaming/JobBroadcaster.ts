@@ -1,100 +1,67 @@
 import { Response } from 'express';
 
-interface StreamingClient {
+interface Client {
     res: Response;
-    userId: string;
 }
 
 export class JobBroadcaster {
     private static instance: JobBroadcaster;
-    private activeJobs = new Map<string, StreamingClient[]>();
+    private clients: Map<string, Response[]> = new Map(); // Key: projectId
 
     private constructor() { }
 
-    static getInstance(): JobBroadcaster {
+    public static getInstance(): JobBroadcaster {
         if (!JobBroadcaster.instance) {
             JobBroadcaster.instance = new JobBroadcaster();
         }
         return JobBroadcaster.instance;
     }
 
-    addClient(transformId: string, userId: string, res: Response): void {
-        if (!this.activeJobs.has(transformId)) {
-            this.activeJobs.set(transformId, []);
+    public addClient(projectId: string, res: Response): void {
+        if (!this.clients.has(projectId)) {
+            this.clients.set(projectId, []);
         }
+        this.clients.get(projectId)!.push(res);
+        console.log(`[JobBroadcaster] Client added for project ${projectId}. Total clients: ${this.clients.get(projectId)!.length}`);
 
-        const clients = this.activeJobs.get(transformId)!;
-        clients.push({ res, userId });
-
-        // Clean up on connection close
         res.on('close', () => {
-            this.removeClient(transformId, res);
+            this.removeClient(projectId, res);
         });
     }
 
-    broadcast(transformId: string, message: string): void {
-        const clients = this.activeJobs.get(transformId) || [];
-
-        clients.forEach((client, index) => {
-            try {
-                // Handle different message formats
-                let formattedMessage = message;
-                
-                // If message is in "0:{json}" format, convert to agent framework format
-                if (message.startsWith('0:')) {
-                    try {
-                        const jsonPart = message.substring(2);
-                        const chunkData = JSON.parse(jsonPart);
-                        formattedMessage = `data: ${JSON.stringify({ type: 'chunk', data: chunkData })}\n\n`;
-                    } catch (e) {
-                        console.warn('[JobBroadcaster] Failed to parse chunk:', message);
-                        return; // Skip this message
-                    }
-                } else {
-                    // Ensure message is in SSE format with proper termination
-                    if (!formattedMessage.startsWith('data: ')) {
-                        formattedMessage = `data: ${formattedMessage}`;
-                    }
-                    // Ensure message ends with double newline for proper SSE format
-                    if (!formattedMessage.endsWith('\n\n')) {
-                        formattedMessage = formattedMessage.trimEnd() + '\n\n';
-                    }
-                }
-                
-                client.res.write(formattedMessage);
-            } catch (error) {
-                // Remove failed client
-                this.removeClient(transformId, client.res);
+    public removeClient(projectId: string, res: Response): void {
+        const projectClients = this.clients.get(projectId);
+        if (projectClients) {
+            const filteredClients = projectClients.filter(clientRes => clientRes !== res);
+            if (filteredClients.length > 0) {
+                this.clients.set(projectId, filteredClients);
+            } else {
+                this.clients.delete(projectId);
             }
-        });
-    }
-
-    hasClients(transformId: string): boolean {
-        const clients = this.activeJobs.get(transformId);
-        return clients ? clients.length > 0 : false;
-    }
-
-    getClientCount(transformId: string): number {
-        const clients = this.activeJobs.get(transformId);
-        return clients ? clients.length : 0;
-    }
-
-    private removeClient(transformId: string, res: Response): void {
-        const clients = this.activeJobs.get(transformId);
-        if (!clients) return;
-
-        const index = clients.findIndex(client => client.res === res);
-        if (index !== -1) {
-            clients.splice(index, 1);
-        }
-
-        // Clean up empty job entries
-        if (clients.length === 0) {
-            this.activeJobs.delete(transformId);
+            console.log(`[JobBroadcaster] Client removed for project ${projectId}. Remaining clients: ${filteredClients.length}`);
         }
     }
 
-    cleanup(transformId: string): void {
-        this.activeJobs.delete(transformId);
+    public broadcastChunk(projectId: string, chunk: string): void {
+        const projectClients = this.clients.get(projectId);
+        if (projectClients) {
+            console.log(`[JobBroadcaster] Broadcasting chunk to ${projectClients.length} clients for project ${projectId}`);
+            projectClients.forEach(clientRes => {
+                clientRes.write(`data: ${chunk}\n\n`);
+            });
+        }
+    }
+
+    public closeConnection(projectId: string, finalData: any): void {
+        const projectClients = this.clients.get(projectId);
+        if (projectClients) {
+            console.log(`[JobBroadcaster] Closing connection for ${projectClients.length} clients for project ${projectId}`);
+            projectClients.forEach(clientRes => {
+                clientRes.write(`data: ${JSON.stringify(finalData)}\n\n`);
+                clientRes.write(`event: done\ndata: ${JSON.stringify({ status: 'completed' })}\n\n`);
+                clientRes.end();
+            });
+            this.clients.delete(projectId);
+        }
     }
 } 

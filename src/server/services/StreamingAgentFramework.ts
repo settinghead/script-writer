@@ -3,19 +3,6 @@ import { z } from 'zod';
 import { createOpenAI } from '@ai-sdk/openai';
 import { getLLMCredentials } from './LLMConfig';
 
-// Global in-memory storage for results
-const RESULTS_STORE = new Map<string, any>();
-
-// Utility function to generate simple 5-character alphanumeric ID
-function generateResultId(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let result = '';
-  for (let i = 0; i < 5; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
-}
-
 /**
  * Interface that encapsulates all information needed to define a streaming tool
  */
@@ -23,73 +10,22 @@ export interface StreamingToolDefinition<TInput, TOutput> {
   name: string;
   description: string;
   inputSchema: z.ZodSchema<TInput>;
-  outputSchema: z.ZodSchema<TOutput>;
-  executeFunction: (input: TInput) => Promise<AsyncIterable<Partial<TOutput>>>;
+  outputSchema: z.ZodSchema<TOutput>; // This is now for documentation/validation, not direct streaming output
+  execute: (input: TInput) => Promise<any>;
 }
 
 /**
- * Generic factory function that creates a streaming tool with result ID management.
- * This tool has a "side-streaming" capability and stores results in global memory.
+ * Generic factory function that creates a tool for the `ai` SDK.
+ * The actual streaming, DB interaction, and result storage is handled within the tool's `execute` method.
  */
-export function createStreamingToolWithResultId<TInput, TOutput>(
-  toolDef: StreamingToolDefinition<TInput, TOutput>,
-  onStreamChunk: (chunk: any) => void,
-  onResultId: (resultId: string) => void
+export function createAgentTool<TInput, TOutput>(
+  toolDef: StreamingToolDefinition<TInput, TOutput>
 ) {
   return tool({
     description: toolDef.description,
     parameters: toolDef.inputSchema,
-    execute: async (params: TInput) => {
-      // Generate result ID immediately when tool execution starts
-      const resultId = generateResultId();
-      console.log(`\n\n[Tool Execution] Agent called '${toolDef.name}' tool with result ID: ${resultId}`);
-      console.log(`[Tool Execution] Params:`, params);
-
-      // Notify the caller about the result ID
-      onResultId(resultId);
-
-      process.stdout.write(`[Tool Side-Stream ${toolDef.name.toUpperCase()}] -> `);
-
-      try {
-        const stream = await toolDef.executeFunction(params);
-
-        let finalResult: any[] = [];
-        let chunkCount = 0;
-
-        for await (const partial of stream) {
-          chunkCount++;
-
-          onStreamChunk({ chunk: partial, chunkCount }); // Pass chunk and count to the handler
-
-          // Since the chunks are arrays, we should use the latest array as our result
-          if (Array.isArray(partial) && partial.length > 0) {
-            finalResult = partial;
-          }
-        }
-
-        console.log(`\n[Tool Execution] Completed streaming with ${chunkCount} chunks`);
-
-        // Store the final result in global memory
-        const storedResultId = generateResultId();
-        RESULTS_STORE.set(storedResultId, finalResult);
-        console.log(`\n[Tool Execution] Stored ${Array.isArray(finalResult) ? finalResult.length : 1} brainstorm results in global memory with ID: ${storedResultId}`);
-
-        return {
-          resultId: storedResultId,
-          finishReason: 'stop'
-        };
-
-      } catch (error) {
-        console.error('\n[Tool Execution] Error:', error);
-        throw error;
-      }
-    },
+    execute: toolDef.execute,
   });
-}
-
-// Utility function to retrieve results from global storage
-export function getResultById(resultId: string): any {
-  return RESULTS_STORE.get(resultId);
 }
 
 /**
@@ -112,10 +48,10 @@ Your task is to:
 2. Determine which tool would best fulfill the user's needs
 3. Extract the necessary parameters from the user request based on the tool's schema requirements
 4. Call the appropriate tool with the extracted parameters
-5. Once you receive a result ID, return it in JSON format like {"resultId": "ABC12"}
+5. The tool will execute and store its results. Your job is to confirm that the task is complete.
 6. Write "TASK_COMPLETE" on a new line when done
 
-Important: Do NOT return or display the actual results - only return the result ID. The tool will handle storing the results separately.
+Important: The tool will handle storing and streaming the results. Do not attempt to display them.
 
 Begin by analyzing the request and calling the most appropriate tool.`;
 }
@@ -127,48 +63,22 @@ export interface StreamingAgentConfig {
   userRequest: string;
   toolDefinitions: StreamingToolDefinition<any, any>[];
   maxSteps?: number;
-  onStreamChunk?: (chunk: any) => void;
-  onResultId?: (resultId: string) => void;
 }
 
 /**
  * Runs a streaming agent with the provided configuration
  */
 export async function runStreamingAgent(config: StreamingAgentConfig): Promise<{
-  resultIds: string[];
   finishReason: any;
   toolCalls: any[];
   toolResults: any[];
 }> {
   console.log('--- Starting Streaming Agent ---');
 
-  // Track result IDs as they're generated
-  const resultIds: string[] = [];
-
-  // Default handlers
-  const sideStreamHandler = config.onStreamChunk || ((chunk: any) => {
-    // Default: do nothing, just let the ⚡️ symbols show progress
-  });
-
-  const resultIdHandler = config.onResultId || ((resultId: string) => {
-    console.log(`\n[Agent] Received result ID: ${resultId}`);
-    resultIds.push(resultId);
-  });
-
-  // If custom handler is provided, wrap it to ensure resultIds tracking
-  const wrappedResultIdHandler = (resultId: string) => {
-    resultIds.push(resultId); // Always track result IDs
-    if (config.onResultId) {
-      config.onResultId(resultId); // Call custom handler if provided
-    } else {
-      console.log(`\n[Agent] Received result ID: ${resultId}`); // Default logging
-    }
-  };
-
-  // Create streaming tools with result ID management
+  // Create agent tools
   const tools: Record<string, any> = {};
   for (const toolDef of config.toolDefinitions) {
-    tools[toolDef.name] = createStreamingToolWithResultId(toolDef, sideStreamHandler, wrappedResultIdHandler);
+    tools[toolDef.name] = createAgentTool(toolDef);
   }
 
   // Initialize model
@@ -219,20 +129,9 @@ export async function runStreamingAgent(config: StreamingAgentConfig): Promise<{
     console.log(`Finish Reason: ${finishReason}`);
     console.log(`\nTool Calls Made: ${toolCallsMade}`);
     console.log(`\nTool Results Received by Agent: ${toolResultsReceived}`);
-
-    // Show only the result IDs stored, not the full data
-    console.log(`\n--- Stored Results in Global Memory ---`);
-    resultIds.forEach(id => {
-      const result = RESULTS_STORE.get(id);
-      if (result) {
-        const count = Array.isArray(result) ? result.length : 1;
-        console.log(`\nResult ID: ${id}`);
-        console.log(`Stored ${count} items`);
-      }
-    });
+    console.log(JSON.stringify(toolResults, null, 2));
 
     return {
-      resultIds,
       finishReason,
       toolCalls,
       toolResults

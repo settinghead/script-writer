@@ -35,6 +35,12 @@ import { createOutlineRoutes } from './routes/outlineRoutes';
 // Import LLM configuration
 import { getLLMCredentials } from './services/LLMConfig';
 import { createScriptRoutes } from './routes/scriptRoutes.js';
+import { createProjectRoutes } from './routes/projectRoutes.js';
+import { ProjectService } from './services/ProjectService.js';
+import { ProjectRepository } from './repositories/ProjectRepository.js';
+import { AgentService } from './services/AgentService.js';
+import { JobBroadcaster } from './services/streaming/JobBroadcaster.js';
+import { createStreamingRoutes } from './routes/streamingRoutes.js';
 
 dotenv.config();
 
@@ -54,9 +60,11 @@ const authMiddleware = createAuthMiddleware(authDB);
 // Initialize repositories
 const artifactRepo = new ArtifactRepository(db);
 const transformRepo = new TransformRepository(db);
+const projectRepo = new ProjectRepository(db);
 
 // Initialize unified streaming service
 const unifiedStreamingService = new UnifiedStreamingService(artifactRepo, transformRepo);
+const jobBroadcaster = JobBroadcaster.getInstance();
 
 // Initialize services with unified streaming
 const transformExecutor = new TransformExecutor(artifactRepo, transformRepo, unifiedStreamingService);
@@ -64,6 +72,8 @@ const ideationService = new IdeationService(artifactRepo, transformRepo, transfo
 const outlineService = new OutlineService(artifactRepo, transformRepo, unifiedStreamingService);
 const scriptService = new ScriptService(artifactRepo, transformExecutor);
 const replayService = new ReplayService(artifactRepo, transformRepo, transformExecutor);
+const projectService = new ProjectService(projectRepo, artifactRepo, transformRepo);
+const agentService = new AgentService(transformRepo, artifactRepo, jobBroadcaster);
 
 // Initialize new streaming framework services
 const templateService = new TemplateService();
@@ -90,15 +100,13 @@ const yjs = setupYjsWebSocketServer(server, authDB);
 app.use('/auth', createAuthRoutes(authDB, authMiddleware));
 
 // Mount project routes
-import { createProjectRoutes } from './routes/projects';
-app.use('/api/projects', createProjectRoutes(authMiddleware, artifactRepo, transformRepo));
+app.use('/api/projects', createProjectRoutes(authMiddleware, projectService, agentService));
 
-// Mount ideation routes (legacy compatibility)
+// Mount streaming routes
+app.use('/api/streaming', createStreamingRoutes(authMiddleware, transformRepo));
+
+// Mount ideation routes - now serving projects list
 app.use('/api/ideations', createIdeationRoutes(authMiddleware, artifactRepo, transformRepo, streamingTransformExecutor));
-
-// Mount project streaming routes
-import { createProjectStreamingRoutes } from './routes/projectStreaming';
-app.use('/api/project-stream', createProjectStreamingRoutes(authMiddleware, transformRepo));
 
 // Attach authDB to all requests
 app.use(authMiddleware.attachAuthDB);

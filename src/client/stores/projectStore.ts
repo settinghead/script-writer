@@ -30,6 +30,8 @@ export interface StageEpisodeState {
 // Define the shape of a single project's data
 interface ProjectData {
   id: string;
+  name?: string;
+  description?: string;
   outline: OutlineSessionData | null;
   stages: Stage[];
   episodes: Record<string, StageEpisodeState>; // Keyed by stage artifactId
@@ -42,6 +44,8 @@ interface ProjectData {
   // Streaming state
   activeStreamingStageId: string | null;
   streamingTransformId: string | null;
+  streamingError: string | null;
+  brainstormIdeas?: any[];
 }
 
 // Define the store's state and actions
@@ -73,11 +77,22 @@ interface ProjectStoreState {
   
   // Helper action to ensure project exists
   ensureProject: (projectId: string) => void;
+  
+  // New action to set project data
+  setProject: (projectId: string, projectData: ProjectData) => void;
+  
+  // New action to set brainstorm ideas
+  setBrainstormIdeas: (projectId: string, ideas: any[]) => void;
+  
+  // New action to set streaming error
+  setStreamingError: (projectId: string, error: string | null) => void;
 }
 
 // Helper function to create empty project data
 const createEmptyProject = (id: string): ProjectData => ({
   id,
+  name: undefined,
+  description: undefined,
   outline: null,
   stages: [],
   episodes: {},
@@ -88,6 +103,8 @@ const createEmptyProject = (id: string): ProjectData => ({
   error: null,
   activeStreamingStageId: null,
   streamingTransformId: null,
+  streamingError: null,
+  brainstormIdeas: undefined,
 });
 
 export const useProjectStore = create<ProjectStoreState>((set, get) => ({
@@ -306,4 +323,55 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
       },
     };
   }),
+  
+  setProject: (projectId, projectData) =>
+    set(state => {
+      const project = state.projects[projectId] || createEmptyProject(projectId);
+      return {
+        projects: {
+          ...state.projects,
+          [projectId]: {
+            ...project,
+            ...projectData,
+            loading: false,
+          }
+        }
+      }
+    }),
+  
+  setBrainstormIdeas: (projectId, ideas) =>
+    set(state => {
+      console.log('[Store] Setting brainstorm ideas for project', projectId, ':', ideas);
+      const project = state.projects[projectId];
+      if (project) {
+        return {
+          projects: {
+            ...state.projects,
+            [projectId]: {
+              ...project,
+              brainstormIdeas: ideas
+            }
+          }
+        }
+      }
+      console.log('[Store] Project not found for brainstorm ideas:', projectId);
+      return state;
+    }),
+  
+  setStreamingError: (projectId, error) =>
+    set(state => {
+      const project = state.projects[projectId];
+      if (project) {
+        return {
+          projects: {
+            ...state.projects,
+            [projectId]: {
+              ...project,
+              streamingError: error
+            }
+          }
+        }
+      }
+      return state;
+    }),
 })); 

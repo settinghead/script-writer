@@ -14,26 +14,40 @@ export const projectKeys = {
 
 // The main hook for loading project data
 export const useProjectData = (projectId: string) => {
+  const setProject = useProjectStore(state => state.setProject);
   const setOutline = useProjectStore(state => state.setOutline);
   const setStages = useProjectStore(state => state.setStages);
   const setLoading = useProjectStore(state => state.setLoading);
   const setError = useProjectStore(state => state.setError);
 
-  // 1. Fetch Outline
-  const { data: outlineData, isLoading: isOutlineLoading, error: outlineError } = useQuery({
-    queryKey: projectKeys.outline(projectId),
-    queryFn: () => apiService.getOutlineSession(projectId),
+  // 0. Fetch Core Project Data
+  const { data: projectData, isLoading: isProjectLoading, error: projectError } = useQuery({
+    queryKey: projectKeys.detail(projectId),
+    queryFn: () => apiService.getProject(projectId),
     enabled: !!projectId,
   });
 
-  // 2. Fetch Stages - using existing API endpoint
+  // 1. Fetch Outline (disabled for new project-based architecture)
+  const { data: outlineData, isLoading: isOutlineLoading, error: outlineError } = useQuery({
+    queryKey: projectKeys.outline(projectId),
+    queryFn: () => apiService.getOutlineSession(projectId),
+    enabled: false, // Disabled - we'll get outline data from project artifacts instead
+  });
+
+  // 2. Fetch Stages (disabled for new project-based architecture)
   const { data: stagesData, isLoading: areStagesLoading, error: stagesError } = useQuery({
     queryKey: projectKeys.stages(projectId),
     queryFn: () => apiService.getStageArtifacts(projectId),
-    enabled: !!projectId,
+    enabled: false, // Disabled - we'll get stage data from project artifacts instead
   });
   
   // Sync fetched data with Zustand store
+  useEffect(() => {
+    if (projectData && projectId) {
+      setProject(projectId, projectData);
+    }
+  }, [projectData, projectId, setProject]);
+
   useEffect(() => {
     if (outlineData && projectId) {
       setOutline(projectId, outlineData);
@@ -58,22 +72,22 @@ export const useProjectData = (projectId: string) => {
   // Update loading state in store
   useEffect(() => {
     if (projectId) {
-      setLoading(projectId, isOutlineLoading || areStagesLoading);
+      setLoading(projectId, isProjectLoading || isOutlineLoading || areStagesLoading);
     }
-  }, [isOutlineLoading, areStagesLoading, projectId, setLoading]);
+  }, [isProjectLoading, isOutlineLoading, areStagesLoading, projectId, setLoading]);
 
   // Update error state in store
   useEffect(() => {
     if (projectId) {
-      const error = outlineError || stagesError;
+      const error = projectError || outlineError || stagesError;
       setError(projectId, error ? error.message : null);
     }
-  }, [outlineError, stagesError, projectId, setError]);
+  }, [projectError, outlineError, stagesError, projectId, setError]);
 
   // Return query results for UI to handle loading/error states
   return {
-    isLoading: isOutlineLoading || areStagesLoading,
-    error: outlineError || stagesError,
+    isLoading: isProjectLoading || isOutlineLoading || areStagesLoading,
+    error: projectError || outlineError || stagesError,
   };
 };
 

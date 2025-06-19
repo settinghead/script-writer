@@ -1,220 +1,68 @@
-import { useEffect, useRef, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef } from 'react';
+import { useProjectStore } from '../stores/projectStore';
 
-interface ProjectStreamingState {
-    status: 'idle' | 'connecting' | 'connected' | 'error';
-    operations: Array<{
-        transformId: string;
-        type: string;
-        status: string;
-        created_at: string;
-    }>;
-    streamingData: any[];
-    error: string | null;
-    connectionTime?: string;
-}
-
-export const useProjectStreaming = (projectId: string | null) => {
-    const queryClient = useQueryClient();
+export const useProjectStreaming = (projectId: string | undefined) => {
+    const setBrainstormIdeas = useProjectStore(state => state.setBrainstormIdeas);
+    const setStreamingError = useProjectStore(state => state.setStreamingError);
+    const ensureProject = useProjectStore(state => state.ensureProject);
     const eventSourceRef = useRef<EventSource | null>(null);
-    const [isManuallyDisconnected, setIsManuallyDisconnected] = useState(false);
 
-    const queryKey = ['project-streaming', projectId];
-
-    const { data: streamingState } = useQuery<ProjectStreamingState>({
-        queryKey,
-        queryFn: () => Promise.resolve({
-            status: 'idle',
-            operations: [],
-            streamingData: [],
-            error: null,
-        }),
-        initialData: {
-            status: 'idle',
-            operations: [],
-            streamingData: [],
-            error: null,
-        },
-        staleTime: Infinity,
-        gcTime: Infinity,
-        enabled: !!projectId,
-    });
-
-    const connect = () => {
-        if (!projectId || eventSourceRef.current || isManuallyDisconnected) {
+    useEffect(() => {
+        if (!projectId) {
             return;
         }
 
-        console.log(`[Project Streaming] Connecting to project ${projectId}`);
+        // Ensure project exists in store
+        ensureProject(projectId);
 
-        // Update state to connecting
-        queryClient.setQueryData<ProjectStreamingState>(queryKey, (oldData) => ({
-            ...(oldData || {}),
-            status: 'connecting',
-            error: null,
-        } as ProjectStreamingState));
+        // Close any existing connection
+        if (eventSourceRef.current) {
+            eventSourceRef.current.close();
+        }
 
-        const eventSource = new EventSource(`/api/project-stream/${projectId}/stream`, {
-            withCredentials: true,
-        });
-
+        // Open new SSE connection
+        const eventSource = new EventSource(`/api/streaming/project/${projectId}`, { withCredentials: true });
         eventSourceRef.current = eventSource;
 
         eventSource.onopen = () => {
-            console.log(`[Project Streaming] Connected to project ${projectId}`);
-            queryClient.setQueryData<ProjectStreamingState>(queryKey, (oldData) => ({
-                ...(oldData || {}),
-                status: 'connected',
-                connectionTime: new Date().toISOString(),
-                error: null,
-            } as ProjectStreamingState));
+            console.log(`[SSE] Connection opened for project ${projectId}`);
+            setStreamingError(projectId, null);
         };
 
         eventSource.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
-                console.log(`[Project Streaming] Received data:`, data);
+                console.log('[SSE] Received message:', data);
 
-                queryClient.setQueryData<ProjectStreamingState>(queryKey, (oldData) => {
-                    if (!oldData) return oldData;
+                if (data.type === 'chunk' && data.data) {
+                    console.log('[SSE] Processing chunk data:', data.data);
+                    // Assuming the chunk is for brainstorming for now
+                    // This can be expanded with more message types
+                    setBrainstormIdeas(projectId, data.data);
+                }
+                
+                if (data.type === 'error') {
+                     setStreamingError(projectId, data.error || 'An unknown streaming error occurred');
+                }
 
-                    const newData = { ...oldData };
-
-                    switch (data.type) {
-                        case 'active_operations':
-                            newData.operations = data.operations || [];
-                            break;
-                        case 'chunk':
-                            // Handle streaming chunks from active operations
-                            if (Array.isArray(data.data)) {
-                                newData.streamingData = data.data;
-                            }
-                            break;
-                        case 'complete':
-                            // Handle completion of operations
-                            if (Array.isArray(data.results)) {
-                                newData.streamingData = data.results.flat();
-                            }
-                            break;
-                        case 'error':
-                            newData.error = data.error;
-                            break;
-                        case 'status':
-                            // Handle status messages
-                            console.log(`[Project Streaming] Status: ${data.message}`);
-                            break;
-                        default:
-                            // Handle direct streaming data (from brainstorming)
-                            if (Array.isArray(data)) {
-                                // Direct array of ideas
-                                newData.streamingData = data;
-                            } else if (data && typeof data === 'object') {
-                                // Single idea object
-                                if (data.title || data.body) {
-                                    const existingData = newData.streamingData || [];
-                                    const updatedData = [...existingData];
-                                    
-                                    // Check if this is an update to an existing idea
-                                    const existingIndex = updatedData.findIndex(item => 
-                                        item.title === data.title || 
-                                        (item.title === undefined && data.title)
-                                    );
-                                    
-                                    if (existingIndex >= 0) {
-                                        // Update existing idea
-                                        updatedData[existingIndex] = { ...updatedData[existingIndex], ...data };
-                                    } else {
-                                        // Add new idea
-                                        updatedData.push(data);
-                                    }
-                                    
-                                    newData.streamingData = updatedData;
-                                }
-                            }
-                    }
-
-                    return newData;
-                });
-            } catch (e) {
-                console.error('[Project Streaming] Error parsing message:', e);
+            } catch (error) {
+                console.error('[SSE] Error parsing message data:', error);
             }
         };
 
         eventSource.onerror = (error) => {
-            console.error(`[Project Streaming] Connection error for project ${projectId}:`, error);
-            queryClient.setQueryData<ProjectStreamingState>(queryKey, (oldData) => ({
-                ...(oldData || {}),
-                status: 'error',
-                error: 'Connection failed',
-            } as ProjectStreamingState));
-
-            // Clean up
+            console.error('[SSE] Connection error:', error);
+            setStreamingError(projectId, 'Connection to the server was lost.');
             eventSource.close();
-            eventSourceRef.current = null;
-
-            // Retry connection after a delay unless manually disconnected
-            if (!isManuallyDisconnected) {
-                setTimeout(() => {
-                    if (!isManuallyDisconnected) {
-                        connect();
-                    }
-                }, 3000);
-            }
         };
-    };
 
-    const disconnect = () => {
-        console.log(`[Project Streaming] Disconnecting from project ${projectId}`);
-        setIsManuallyDisconnected(true);
-        
-        if (eventSourceRef.current) {
-            eventSourceRef.current.close();
-            eventSourceRef.current = null;
-        }
-
-        queryClient.setQueryData<ProjectStreamingState>(queryKey, (oldData) => ({
-            ...(oldData || {}),
-            status: 'idle',
-        } as ProjectStreamingState));
-    };
-
-    const reconnect = () => {
-        setIsManuallyDisconnected(false);
-        disconnect();
-        setTimeout(connect, 100);
-    };
-
-    // Auto-connect when projectId changes
-    useEffect(() => {
-        if (projectId && !isManuallyDisconnected) {
-            connect();
-        }
-
+        // Cleanup on component unmount
         return () => {
             if (eventSourceRef.current) {
                 eventSourceRef.current.close();
-                eventSourceRef.current = null;
+                console.log(`[SSE] Connection closed for project ${projectId}`);
             }
         };
-    }, [projectId]);
 
-    // Cleanup on unmount
-    useEffect(() => {
-        return () => {
-            if (eventSourceRef.current) {
-                eventSourceRef.current.close();
-                eventSourceRef.current = null;
-            }
-        };
-    }, []);
-
-    return {
-        streamingState,
-        connect,
-        disconnect,
-        reconnect,
-        isConnected: streamingState?.status === 'connected',
-        isConnecting: streamingState?.status === 'connecting',
-        hasError: streamingState?.status === 'error',
-    };
+    }, [projectId, setBrainstormIdeas, setStreamingError]);
 }; 
