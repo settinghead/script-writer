@@ -7,7 +7,7 @@ export class ArtifactRepository {
 
     // Create a new artifact
     async createArtifact(
-        userId: string,
+        projectId: string,
         type: string,
         data: any,
         typeVersion: string = 'v1',
@@ -23,7 +23,7 @@ export class ArtifactRepository {
 
         const artifactData = {
             id,
-            user_id: userId,
+            project_id: projectId,
             type,
             type_version: typeVersion,
             data: JSON.stringify(data),
@@ -35,7 +35,7 @@ export class ArtifactRepository {
 
         return {
             id,
-            user_id: userId,
+            project_id: projectId,
             type,
             type_version: typeVersion,
             data,
@@ -45,11 +45,11 @@ export class ArtifactRepository {
     }
 
     // Get artifact by ID
-    async getArtifact(artifactId: string, userId?: string): Promise<Artifact | null> {
+    async getArtifact(artifactId: string, projectId?: string): Promise<Artifact | null> {
         let query = this.db('artifacts').where('id', artifactId);
 
-        if (userId) {
-            query = query.where('user_id', userId);
+        if (projectId) {
+            query = query.where('project_id', projectId);
         }
 
         const row = await query.first();
@@ -65,14 +65,14 @@ export class ArtifactRepository {
         };
     }
 
-    // Get artifacts by type for a user
+    // Get artifacts by type for a project
     async getArtifactsByType(
-        userId: string,
+        projectId: string,
         type: string,
         typeVersion?: string
     ): Promise<Artifact[]> {
         let query = this.db('artifacts')
-            .where('user_id', userId)
+            .where('project_id', projectId)
             .where('type', type);
 
         if (typeVersion) {
@@ -90,10 +90,10 @@ export class ArtifactRepository {
         return artifacts;
     }
 
-    // Get all artifacts for a user
-    async getUserArtifacts(userId: string, limit?: number): Promise<Artifact[]> {
+    // Get all artifacts for a project
+    async getProjectArtifacts(projectId: string, limit?: number): Promise<Artifact[]> {
         let query = this.db('artifacts')
-            .where('user_id', userId)
+            .where('project_id', projectId)
             .orderBy('created_at', 'desc');
 
         if (limit) {
@@ -112,14 +112,14 @@ export class ArtifactRepository {
     }
 
     // Get artifacts by IDs
-    async getArtifactsByIds(artifactIds: string[], userId?: string): Promise<Artifact[]> {
+    async getArtifactsByIds(artifactIds: string[], projectId?: string): Promise<Artifact[]> {
         if (artifactIds.length === 0) return [];
 
         let query = this.db('artifacts')
             .whereIn('id', artifactIds);
 
-        if (userId) {
-            query = query.where('user_id', userId);
+        if (projectId) {
+            query = query.where('project_id', projectId);
         }
 
         const rows = await query.orderBy('created_at', 'asc');
@@ -135,13 +135,13 @@ export class ArtifactRepository {
 
     // Get artifacts by type for a specific session
     async getArtifactsByTypeForSession(
-        userId: string,
+        projectId: string,
         type: string,
         sessionId: string,
         typeVersion?: string
     ): Promise<Artifact[]> {
         let query = this.db('artifacts as a')
-            .where('a.user_id', userId)
+            .where('a.project_id', projectId)
             .where('a.type', type)
             .where(function () {
                 this.whereRaw("JSON_EXTRACT(a.data, '$.id') = ?", [sessionId])
@@ -166,7 +166,7 @@ export class ArtifactRepository {
 
     // Get latest user input for a session (ideation or outline)
     async getLatestUserInputForSession(
-        userId: string,
+        projectId: string,
         sessionId: string
     ): Promise<Artifact | null> {
         const row = await this.db('artifacts as a')
@@ -174,7 +174,7 @@ export class ArtifactRepository {
             .join('transforms as t', 'ti.transform_id', 't.id')
             .join('transform_inputs as ti2', 't.id', 'ti2.transform_id')
             .join('artifacts as session_a', 'ti2.artifact_id', 'session_a.id')
-            .where('a.user_id', userId)
+            .where('a.project_id', projectId)
             .where('a.type', 'user_input')
             .where(function () {
                 this.whereRaw("JSON_EXTRACT(session_a.data, '$.id') = ?", [sessionId])
@@ -197,10 +197,10 @@ export class ArtifactRepository {
     }
 
     // Delete artifact (should be rare since artifacts are immutable)
-    async deleteArtifact(artifactId: string, userId: string): Promise<boolean> {
+    async deleteArtifact(artifactId: string, projectId: string): Promise<boolean> {
         const deletedCount = await this.db('artifacts')
             .where('id', artifactId)
-            .where('user_id', userId)
+            .where('project_id', projectId)
             .del();
 
         return deletedCount > 0;

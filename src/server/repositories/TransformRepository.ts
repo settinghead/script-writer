@@ -14,7 +14,7 @@ export class TransformRepository {
 
     // Create a new transform
     async createTransform(
-        userId: string,
+        projectId: string,
         type: 'llm' | 'human',
         typeVersion: string = 'v1',
         status: string = 'running',
@@ -25,7 +25,7 @@ export class TransformRepository {
 
         const transformData = {
             id,
-            user_id: userId,
+            project_id: projectId,
             type,
             type_version: typeVersion,
             status,
@@ -39,7 +39,7 @@ export class TransformRepository {
 
         return {
             id,
-            user_id: userId,
+            project_id: projectId,
             type,
             type_version: typeVersion,
             status: status as any,
@@ -119,11 +119,11 @@ export class TransformRepository {
     }
 
     // Get transform by ID with all related data
-    async getTransform(transformId: string, userId?: string): Promise<any | null> {
+    async getTransform(transformId: string, projectId?: string): Promise<any | null> {
         let query = this.db('transforms').where('id', transformId);
 
-        if (userId) {
-            query = query.where('user_id', userId);
+        if (projectId) {
+            query = query.where('project_id', projectId);
         }
 
         const row = await query.first();
@@ -219,10 +219,10 @@ export class TransformRepository {
         };
     }
 
-    // Get transforms for a user
-    async getUserTransforms(userId: string, limit?: number): Promise<Transform[]> {
+    // Get transforms for a project
+    async getProjectTransforms(projectId: string, limit?: number): Promise<Transform[]> {
         let query = this.db('transforms')
-            .where('user_id', userId)
+            .where('project_id', projectId)
             .orderBy('created_at', 'desc');
 
         if (limit) {
@@ -257,9 +257,9 @@ export class TransformRepository {
     }
 
     // Get active transform for an ideation run
-    async getActiveTransformForRun(userId: string, ideationRunId: string): Promise<Transform | null> {
+    async getActiveTransformForRun(projectId: string, ideationRunId: string): Promise<Transform | null> {
         const row = await this.db('transforms')
-            .where('user_id', userId)
+            .where('project_id', projectId)
             .where('status', 'running')
             .whereRaw("JSON_EXTRACT(execution_context, '$.ideation_run_id') = ?", [ideationRunId])
             .orderBy('created_at', 'desc')
@@ -348,9 +348,9 @@ export class TransformRepository {
     }
 
     // Get transforms by ideation run ID
-    async getTransformsByIdeationRun(userId: string, ideationRunId: string): Promise<Transform[]> {
+    async getTransformsByIdeationRun(projectId: string, ideationRunId: string): Promise<Transform[]> {
         const rows = await this.db('transforms')
-            .where('user_id', userId)
+            .where('project_id', projectId)
             .whereRaw("JSON_EXTRACT(execution_context, '$.ideation_run_id') = ?", [ideationRunId])
             .orderBy('created_at', 'desc');
 
@@ -361,9 +361,9 @@ export class TransformRepository {
     }
 
     // Get transforms by outline session ID
-    async getTransformsByOutlineSession(userId: string, outlineSessionId: string): Promise<Transform[]> {
+    async getTransformsByOutlineSession(projectId: string, outlineSessionId: string): Promise<Transform[]> {
         const rows = await this.db('transforms')
-            .where('user_id', userId)
+            .where('project_id', projectId)
             .whereRaw("JSON_EXTRACT(execution_context, '$.outline_session_id') = ?", [outlineSessionId])
             .orderBy('created_at', 'desc');
 

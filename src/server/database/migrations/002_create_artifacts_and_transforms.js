@@ -2,30 +2,30 @@ exports.up = async function (knex) {
     // Create artifacts table
     await knex.schema.createTable('artifacts', (table) => {
         table.string('id').primary();
-        table.string('user_id').notNullable();
+        table.string('project_id').notNullable();
         table.string('type').notNullable();
         table.string('type_version').notNullable().defaultTo('v1');
         table.text('data').notNullable();
         table.text('metadata');
         table.timestamp('created_at').defaultTo(knex.fn.now());
 
-        table.foreign('user_id').references('id').inTable('users');
-        table.index(['user_id', 'type'], 'idx_artifacts_user_type');
-        table.index(['user_id', 'created_at'], 'idx_artifacts_user_created');
+        table.foreign('project_id').references('id').inTable('projects');
+        table.index(['project_id', 'type'], 'idx_artifacts_project_type');
+        table.index(['project_id', 'created_at'], 'idx_artifacts_project_created');
     });
 
     // Create transforms table
     await knex.schema.createTable('transforms', (table) => {
         table.string('id').primary();
-        table.string('user_id').notNullable();
+        table.string('project_id').notNullable();
         table.string('type').notNullable();
         table.string('type_version').notNullable().defaultTo('v1');
         table.string('status').defaultTo('completed');
         table.text('execution_context');
         table.timestamp('created_at').defaultTo(knex.fn.now());
 
-        table.foreign('user_id').references('id').inTable('users');
-        table.index(['user_id', 'created_at'], 'idx_transforms_user_created');
+        table.foreign('project_id').references('id').inTable('projects');
+        table.index(['project_id', 'created_at'], 'idx_transforms_project_created');
     });
 
     // Create transform_inputs table

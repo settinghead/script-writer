@@ -6,10 +6,29 @@ import type { OutlineCharacter, OutlineCharactersV1 } from '../../common/types';
 
 // ========== LEGACY: These will be removed once migration is complete ==========
 
+// Project-related interfaces
+export interface Project {
+    id: string;
+    name: string;
+    description?: string;
+    project_type: string;
+    status: 'active' | 'archived' | 'deleted';
+    created_at: string;
+    updated_at: string;
+}
+
+export interface ProjectUser {
+    id: number;
+    project_id: string;
+    user_id: string;
+    role: 'owner' | 'collaborator' | 'viewer';
+    joined_at: string;
+}
+
 // Base artifact interface
 export interface Artifact {
     id: string;
-    user_id: string;
+    project_id: string;
     type: string;
     type_version: string;
     data: any;
@@ -20,7 +39,7 @@ export interface Artifact {
 // Base transform interface
 export interface Transform {
     id: string;
-    user_id: string;
+    project_id: string;
     type: 'llm' | 'human';
     type_version: string;
     status: 'running' | 'completed' | 'failed' | 'cancelled';
