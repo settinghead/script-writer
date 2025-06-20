@@ -79,8 +79,18 @@ exports.up = async function (knex) {
         table.string('action_type').notNullable();
         table.text('interface_context');
         table.text('change_description');
+        
+        // Path-based artifact derivation fields
+        table.string('source_artifact_id');
+        table.text('derivation_path').defaultTo('');
+        table.string('derived_artifact_id');
 
         table.foreign('transform_id').references('id').inTable('transforms').onDelete('CASCADE');
+        table.foreign('source_artifact_id').references('id').inTable('artifacts');
+        table.foreign('derived_artifact_id').references('id').inTable('artifacts');
+        
+        // Index for fast path-based lookups
+        table.index(['source_artifact_id', 'derivation_path'], 'idx_human_transforms_derivation');
     });
 };
 

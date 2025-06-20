@@ -1,154 +1,151 @@
-import { Router } from 'express';
+import express from 'express';
+import { requireAuth } from '../middleware/auth';
 import { ArtifactRepository } from '../repositories/ArtifactRepository';
 import { TransformRepository } from '../repositories/TransformRepository';
+import { TransformExecutor } from '../services/TransformExecutor';
+import { db } from '../database/connection';
 
-export function createArtifactRoutes(
-    authMiddleware: any,
-    artifactRepo: ArtifactRepository,
-    transformRepo: TransformRepository
-): Router {
-    const router = Router();
+const router = express.Router();
 
-    // Get artifacts for a project
-    router.get('/project/:projectId', authMiddleware.authenticate, async (req: any, res: any) => {
-        try {
-            const { projectId } = req.params;
-            const { type } = req.query;
-            const userId = req.user.id;
+// Initialize repositories
+const artifactRepo = new ArtifactRepository(db);
+const transformRepo = new TransformRepository(db);
+const transformExecutor = new TransformExecutor(artifactRepo, transformRepo);
 
-            // TODO: Verify user has access to this project
+// Get artifact by ID
+router.get('/:id', requireAuth, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.id;
+        
+        const artifact = await artifactRepo.getArtifact(id);
+        if (!artifact) {
+            return res.status(404).json({ error: 'Artifact not found' });
+        }
 
-            const artifacts = await artifactRepo.getArtifactsByType(
-                projectId,
-                type || undefined
+        // Verify user has access to this artifact's project
+        const hasAccess = await artifactRepo.userHasProjectAccess(userId, artifact.project_id);
+        if (!hasAccess) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+
+        res.json(artifact);
+    } catch (error) {
+        console.error('Error fetching artifact:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Edit artifact with path-based derivation
+router.post('/:id/edit-with-path', requireAuth, async (req, res) => {
+    try {
+        const { id: artifactId } = req.params;
+        const { path = "", field, value } = req.body;
+        const userId = req.user.id;
+
+        // Validate required fields
+        if (!field || value === undefined) {
+            return res.status(400).json({ error: 'Field and value are required' });
+        }
+
+        // Get artifact to verify access
+        const artifact = await artifactRepo.getArtifact(artifactId);
+        if (!artifact) {
+            return res.status(404).json({ error: 'Artifact not found' });
+        }
+
+        // Verify user has access to this artifact's project
+        const hasAccess = await artifactRepo.userHasProjectAccess(userId, artifact.project_id);
+        if (!hasAccess) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+
+        // Execute human transform with path
+        const result = await transformExecutor.executeHumanTransformWithPath(
+            artifact.project_id,
+            artifactId,
+            path,
+            field,
+            value,
+            userId
+        );
+
+        res.json({
+            artifactId: result.derivedArtifact.id,
+            wasTransformed: result.wasTransformed,
+            transformId: result.transform.id
+        });
+    } catch (error) {
+        console.error('Error editing artifact with path:', error);
+        res.status(500).json({ error: error.message || 'Internal server error' });
+    }
+});
+
+// Get human transform for artifact and path
+router.get('/:id/human-transform', requireAuth, async (req, res) => {
+    try {
+        const { id: artifactId } = req.params;
+        const { path = "" } = req.query;
+        const userId = req.user.id;
+
+        // Get artifact to verify access
+        const artifact = await artifactRepo.getArtifact(artifactId);
+        if (!artifact) {
+            return res.status(404).json({ error: 'Artifact not found' });
+        }
+
+        // Verify user has access to this artifact's project
+        const hasAccess = await artifactRepo.userHasProjectAccess(userId, artifact.project_id);
+        if (!hasAccess) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+
+        // Find human transform
+        const transform = await transformRepo.findHumanTransform(
+            artifactId, 
+            path as string, 
+            artifact.project_id
+        );
+
+        res.json(transform);
+    } catch (error) {
+        console.error('Error fetching human transform:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// List artifacts by type and project
+router.get('/', requireAuth, async (req, res) => {
+    try {
+        const { projectId, type, typeVersion = 'v1' } = req.query;
+        const userId = req.user.id;
+
+        if (!projectId) {
+            return res.status(400).json({ error: 'projectId is required' });
+        }
+
+        // Verify user has access to this project
+        const hasAccess = await artifactRepo.userHasProjectAccess(userId, projectId as string);
+        if (!hasAccess) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+
+        let artifacts;
+        if (type) {
+            artifacts = await artifactRepo.getArtifactsByType(
+                projectId as string, 
+                type as string, 
+                typeVersion as string
             );
-
-            res.json(artifacts);
-        } catch (error) {
-            console.error('Error getting artifacts:', error);
-            res.status(500).json({
-                error: error instanceof Error ? error.message : 'Internal server error'
-            });
+        } else {
+            artifacts = await artifactRepo.getProjectArtifacts(projectId as string);
         }
-    });
 
-    // Edit an artifact (LLM→Human transform logic)
-    router.post('/:artifactId/edit', authMiddleware.authenticate, async (req: any, res: any) => {
-        try {
-            const { artifactId } = req.params;
-            const { field, value, projectId } = req.body;
-            const userId = req.user.id;
+        res.json(artifacts);
+    } catch (error) {
+        console.error('Error fetching artifacts:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
 
-            // Validate required fields
-            if (!field || value === undefined || !projectId) {
-                return res.status(400).json({
-                    error: 'VALIDATION_ERROR',
-                    message: 'Missing required fields: field, value, projectId'
-                });
-            }
-
-            // Get the original artifact
-            const artifact = await artifactRepo.getArtifact(artifactId, projectId);
-            if (!artifact) {
-                return res.status(404).json({
-                    error: 'NOT_FOUND',
-                    message: 'Artifact not found'
-                });
-            }
-
-            // TODO: Verify user has access to this project
-
-            // Parse metadata to check if it's LLM-generated
-            let metadata = {};
-            try {
-                metadata = artifact.metadata ? JSON.parse(artifact.metadata as string) : {};
-            } catch (e) {
-                console.warn('Failed to parse artifact metadata:', e);
-            }
-
-            const isLLMGenerated = (metadata as any).source === 'llm';
-
-            if (isLLMGenerated) {
-                // Create human transform + new artifact for LLM-generated content
-                const transform = await transformRepo.createTransform(
-                    projectId,
-                    'human',
-                    'v1',
-                    'completed'
-                );
-
-                // Parse existing data and update the field
-                let newData = {};
-                try {
-                    newData = JSON.parse(artifact.data as string);
-                } catch (e) {
-                    console.warn('Failed to parse artifact data:', e);
-                    newData = {};
-                }
-                (newData as any)[field] = value;
-
-                // Create new artifact with user modification
-                const newArtifact = await artifactRepo.createArtifact(
-                    projectId,
-                    artifact.type,
-                    newData,
-                    artifact.type_version,
-                    {
-                        source: 'human',
-                        original_artifact_id: artifactId,
-                        modified_field: field,
-                        modified_at: new Date().toISOString()
-                    }
-                );
-
-                // Link transform inputs and outputs
-                await transformRepo.addTransformInputs(transform.id, [{ artifactId }]);
-                await transformRepo.addTransformOutputs(transform.id, [{ artifactId: newArtifact.id }]);
-
-                // Add human transform details
-                await transformRepo.addHumanTransform({
-                    transform_id: transform.id,
-                    action_type: 'field_edit',
-                    interface_context: { field, originalValue: (artifact.data as any)[field], newValue: value },
-                    change_description: `User modified ${field} field`
-                });
-
-                res.json({
-                    artifactId: newArtifact.id,
-                    wasTransformed: true,
-                    transformId: transform.id
-                });
-            } else {
-                // Direct update for user-generated content
-                let updatedData = {};
-                try {
-                    updatedData = JSON.parse(artifact.data as string);
-                } catch (e) {
-                    console.warn('Failed to parse artifact data:', e);
-                    updatedData = {};
-                }
-                (updatedData as any)[field] = value;
-
-                await artifactRepo.updateArtifact(artifactId, updatedData, {
-                    ...metadata,
-                    last_modified: new Date().toISOString(),
-                    modified_field: field
-                });
-
-                res.json({
-                    artifactId,
-                    wasTransformed: false
-                });
-            }
-
-        } catch (error) {
-            console.error('Error editing artifact:', error);
-            res.status(500).json({
-                error: 'INTERNAL_ERROR',
-                message: error instanceof Error ? error.message : 'Internal server error'
-            });
-        }
-    });
-
-    return router;
-} 
+export default router; 

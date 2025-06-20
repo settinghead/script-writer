@@ -123,19 +123,62 @@ export class TransformRepository {
             .execute();
     }
 
-    // Add human-specific data
-    async addHumanTransform(humanTransform: HumanTransform): Promise<void> {
+    // Add human-specific data with path-based derivation support
+    async addHumanTransform(humanTransform: HumanTransform & {
+        source_artifact_id?: string;
+        derivation_path?: string;
+        derived_artifact_id?: string;
+    }): Promise<void> {
         const humanData = {
             transform_id: humanTransform.transform_id,
             action_type: humanTransform.action_type,
             interface_context: humanTransform.interface_context ? JSON.stringify(humanTransform.interface_context) : null,
-            change_description: humanTransform.change_description || null
+            change_description: humanTransform.change_description || null,
+            source_artifact_id: humanTransform.source_artifact_id || null,
+            derivation_path: humanTransform.derivation_path || '',
+            derived_artifact_id: humanTransform.derived_artifact_id || null
         };
 
         await this.db
             .insertInto('human_transforms')
             .values(humanData)
             .execute();
+    }
+
+    // Find existing human transform by source artifact and path
+    async findHumanTransform(
+        sourceArtifactId: string, 
+        derivationPath: string = '', 
+        projectId: string
+    ): Promise<any | null> {
+        const result = await this.db
+            .selectFrom('human_transforms as ht')
+            .innerJoin('transforms as t', 't.id', 'ht.transform_id')
+            .selectAll(['ht', 't'])
+            .where('ht.source_artifact_id', '=', sourceArtifactId)
+            .where('ht.derivation_path', '=', derivationPath)
+            .where('t.project_id', '=', projectId)
+            .executeTakeFirst();
+        
+        if (!result) return null;
+
+        return {
+            transform_id: result.transform_id,
+            action_type: result.action_type,
+            interface_context: result.interface_context ? JSON.parse(result.interface_context) : null,
+            change_description: result.change_description,
+            source_artifact_id: result.source_artifact_id,
+            derivation_path: result.derivation_path,
+            derived_artifact_id: result.derived_artifact_id,
+            transform: {
+                id: result.id,
+                project_id: result.project_id,
+                type: result.type,
+                status: result.status,
+                created_at: result.created_at?.toISOString(),
+                updated_at: result.updated_at?.toISOString()
+            }
+        };
     }
 
     // Get transform by ID with all related data

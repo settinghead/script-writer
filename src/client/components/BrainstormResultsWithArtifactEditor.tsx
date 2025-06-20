@@ -15,41 +15,32 @@ export const BrainstormResultsWithArtifactEditor: React.FC<BrainstormResultsWith
 }) => {
     const electricConfig = getElectricConfig();
 
-    // Fetch individual brainstorm_idea artifacts for this project
+    // Fetch brainstorm_idea_collection artifacts (not individual ideas)
     const { data: artifacts, isLoading, error } = useShape({
         url: electricConfig.url,
         params: {
             table: 'artifacts',
-            where: `project_id = '${projectId}' AND type = 'brainstorm_idea'`
+            where: `project_id = '${projectId}' AND type = 'brainstorm_idea_collection'`
         }
     });
 
-    // Convert artifacts to our expected format and sort by creation time
-    const ideaArtifacts = useMemo(() => {
-        if (!artifacts || !Array.isArray(artifacts)) return [];
-
-        return (artifacts as unknown as ElectricArtifact[])
-            .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-            .map(artifact => {
-                try {
-                    const data = JSON.parse(artifact.data as string);
-                    return {
-                        artifactId: artifact.id,
-                        title: data.idea_title || '无标题',
-                        body: data.idea_text || '',
-                        orderIndex: data.order_index || 0
-                    };
-                } catch (error) {
-                    console.warn('Failed to parse brainstorm idea artifact:', error);
-                    return {
-                        artifactId: artifact.id,
-                        title: '解析错误',
-                        body: '',
-                        orderIndex: 0
-                    };
-                }
-            })
-            .sort((a, b) => a.orderIndex - b.orderIndex);
+    // Get the latest collection artifact and parse ideas from it
+    const { latestCollection, ideas } = useMemo(() => {
+        if (!artifacts || !Array.isArray(artifacts)) return { latestCollection: null, ideas: [] };
+        
+        const latestCollection = (artifacts as unknown as ElectricArtifact[])
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+        
+        if (!latestCollection?.data) return { latestCollection, ideas: [] };
+        
+        try {
+            const data = JSON.parse(latestCollection.data as string);
+            const ideas = Array.isArray(data) ? data : data.ideas || [];
+            return { latestCollection, ideas };
+        } catch (error) {
+            console.warn('Failed to parse collection data:', error);
+            return { latestCollection, ideas: [] };
+        }
     }, [artifacts]);
 
     if (isLoading) {
@@ -71,7 +62,7 @@ export const BrainstormResultsWithArtifactEditor: React.FC<BrainstormResultsWith
         );
     }
 
-    if (ideaArtifacts.length === 0) {
+    if (!latestCollection || ideas.length === 0) {
         return (
             <div className="text-center py-12">
                 <div className="text-4xl mb-4">💡</div>
@@ -89,7 +80,7 @@ export const BrainstormResultsWithArtifactEditor: React.FC<BrainstormResultsWith
         <div className="space-y-6">
             <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold text-white">
-                    创意列表 ({ideaArtifacts.length})
+                    创意列表 ({ideas.length})
                 </h2>
                 {isStreaming && (
                     <div className="flex items-center gap-2 text-sm text-blue-400">
@@ -100,24 +91,42 @@ export const BrainstormResultsWithArtifactEditor: React.FC<BrainstormResultsWith
             </div>
 
             <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
-                {ideaArtifacts.map((idea, index) => (
-                    <div key={idea.artifactId} className="space-y-2">
+                {ideas.map((idea, index) => (
+                    <div key={index} className="space-y-2">
                         <div className="flex items-center gap-2 mb-2">
                             <span className="text-xs text-gray-500 font-mono">
                                 #{index + 1}
                             </span>
                             <span className="text-xs text-gray-500">
-                                ID: {idea.artifactId.slice(-8)}
+                                Collection: {latestCollection.id.slice(-8)}
                             </span>
                         </div>
 
-                        <ArtifactEditor
-                            artifactId={idea.artifactId}
-                            className="bg-gray-800 hover:bg-gray-750 transition-colors"
-                            onTransition={(newArtifactId) => {
-                                console.log(`Idea ${index + 1} transitioned from ${idea.artifactId} to ${newArtifactId}`);
-                            }}
-                        />
+                        {/* Edit title with path-based derivation */}
+                        <div className="mb-2">
+                            <label className="text-xs text-gray-400 mb-1 block">标题</label>
+                            <ArtifactEditor
+                                artifactId={latestCollection.id}
+                                path={`[${index}].title`}
+                                className="bg-gray-800 hover:bg-gray-750 transition-colors"
+                                onTransition={(newArtifactId) => {
+                                    console.log(`Idea ${index + 1} title transitioned to ${newArtifactId}`);
+                                }}
+                            />
+                        </div>
+
+                        {/* Edit body with path-based derivation */}
+                        <div>
+                            <label className="text-xs text-gray-400 mb-1 block">内容</label>
+                            <ArtifactEditor
+                                artifactId={latestCollection.id}
+                                path={`[${index}].body`}
+                                className="bg-gray-800 hover:bg-gray-750 transition-colors"
+                                onTransition={(newArtifactId) => {
+                                    console.log(`Idea ${index + 1} body transitioned to ${newArtifactId}`);
+                                }}
+                            />
+                        </div>
                     </div>
                 ))}
             </div>

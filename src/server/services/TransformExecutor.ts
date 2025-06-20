@@ -657,6 +657,108 @@ export class TransformExecutor {
         return { transform };
     }
 
+    // Execute a human transform with path-based artifact derivation
+    async executeHumanTransformWithPath(
+        projectId: string,
+        sourceArtifactId: string,
+        derivationPath: string,
+        field: string,
+        value: any,
+        userId?: string
+    ): Promise<{ transform: any; derivedArtifact: Artifact; wasTransformed: boolean }> {
+        // Import path utilities
+        const { extractDataAtPath, setDataAtPath } = await import('../../common/utils/pathExtraction');
+
+        // Check for existing human transform
+        const existingTransform = await this.transformRepo.findHumanTransform(
+            sourceArtifactId, derivationPath, projectId
+        );
+        
+        if (existingTransform && existingTransform.derived_artifact_id) {
+            // Edit existing derived artifact
+            const currentArtifact = await this.artifactRepo.getArtifact(existingTransform.derived_artifact_id);
+            if (!currentArtifact) {
+                throw new Error('Derived artifact not found');
+            }
+
+            // Update the field in the derived artifact
+            const currentData = typeof currentArtifact.data === 'string' ? 
+                JSON.parse(currentArtifact.data) : currentArtifact.data;
+            const updatedData = { ...currentData, [field]: value };
+
+            const updatedArtifact = await this.artifactRepo.updateArtifact(
+                existingTransform.derived_artifact_id, 
+                updatedData
+            );
+            
+            return { 
+                transform: existingTransform.transform, 
+                derivedArtifact: updatedArtifact, 
+                wasTransformed: false 
+            };
+        }
+
+        // First edit - create atomic human transform
+        const sourceArtifact = await this.artifactRepo.getArtifact(sourceArtifactId);
+        if (!sourceArtifact) {
+            throw new Error('Source artifact not found');
+        }
+
+        const sourceData = typeof sourceArtifact.data === 'string' ? 
+            JSON.parse(sourceArtifact.data) : sourceArtifact.data;
+        
+        // Extract data at path
+        const pathData = derivationPath ? 
+            extractDataAtPath(sourceData, derivationPath) : 
+            sourceData;
+        
+        // Create new data with edit
+        const newData = { ...pathData, [field]: value };
+        
+        // Create transform and derived artifact atomically
+        const transform = await this.transformRepo.createTransform(
+            projectId,
+            'human',
+            'v1',
+            'completed',
+            { 
+                timestamp: new Date().toISOString(), 
+                action_type: 'edit',
+                derivation_path: derivationPath,
+                field_edited: field
+            }
+        );
+        
+        // Create derived user_input artifact
+        const derivedArtifact = await this.artifactRepo.createArtifact(
+            projectId,
+            'user_input',
+            newData,
+            'v1',
+            { 
+                source: 'human', 
+                original_artifact_id: sourceArtifactId,
+                derivation_path: derivationPath
+            }
+        );
+        
+        // Link transform
+        await this.transformRepo.addTransformInputs(transform.id, [{ artifactId: sourceArtifactId }]);
+        await this.transformRepo.addTransformOutputs(transform.id, [{ artifactId: derivedArtifact.id }]);
+        
+        // Store human transform metadata
+        await this.transformRepo.addHumanTransform({
+            transform_id: transform.id,
+            action_type: 'edit',
+            source_artifact_id: sourceArtifactId,
+            derivation_path: derivationPath,
+            derived_artifact_id: derivedArtifact.id,
+            change_description: `Edited ${field} at path ${derivationPath || 'root'}`
+        });
+        
+        return { transform, derivedArtifact, wasTransformed: true };
+    }
+
     /**
      * Determine the generation phase from the artifact type
      */

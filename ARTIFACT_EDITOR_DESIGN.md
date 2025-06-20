@@ -3,7 +3,24 @@
 ## Overview
 Create a universal artifact editing component that handles path-based artifact derivation with atomic human transforms, Electric SQL real-time sync, and optimistic updates using TanStack Query.
 
-## 1. Path-Based Artifact Derivation
+## 1. Current State Analysis
+
+### Existing Architecture
+The codebase currently has:
+- **Individual `brainstorm_idea` artifacts** - Each idea is stored as a separate artifact
+- **`brainstorm_idea_collection` artifacts** - Collections of ideas from LLM generation
+- **`BrainstormResultsWithArtifactEditor`** - Component that loads individual `brainstorm_idea` artifacts
+- **`ArtifactEditor`** - Component that supports limited artifact types
+- **Kysely + PostgreSQL** - Database layer (migrated from Knex)
+- **Electric SQL** - Real-time sync with authenticated proxy
+
+### Current Problem
+- `ArtifactEditor` doesn't support `brainstorm_idea_collection` type
+- No path-based derivation for editing individual ideas within collections
+- No human transform tracking for LLM→Human transitions
+- Missing database fields for artifact derivation
+
+## 2. Path-Based Artifact Derivation
 
 ### Core Concept
 - **No separate services needed** - `ArtifactEditor` handles derivation internally
@@ -40,10 +57,152 @@ const existingTransform = await db.query(`
 `, [artifactId, path || ""]);
 ```
 
-## 2. Component Architecture
+## 3. Refactor Plan
 
-### ArtifactEditor Interface
+### Phase 1: Database Schema Updates
+
+#### Modify Existing Migration (002_create_artifacts_and_transforms.js)
+```javascript
+// Add to human_transforms table creation
+await knex.schema.createTable('human_transforms', (table) => {
+    table.string('transform_id').primary();
+    table.string('action_type').notNullable();
+    table.text('interface_context');
+    table.text('change_description');
+    
+    // NEW: Path-based derivation fields
+    table.string('source_artifact_id'); // Source artifact for derivation
+    table.text('derivation_path').defaultTo(''); // JSON path (empty for root)
+    table.string('derived_artifact_id'); // Resulting artifact after derivation
+
+    table.foreign('transform_id').references('id').inTable('transforms').onDelete('CASCADE');
+    table.foreign('source_artifact_id').references('id').inTable('artifacts');
+    table.foreign('derived_artifact_id').references('id').inTable('artifacts');
+});
+
+// Add index for fast lookups
+await knex.schema.raw(`
+    CREATE INDEX idx_human_transforms_derivation 
+    ON human_transforms(source_artifact_id, derivation_path)
+`);
+```
+
+#### Update schema.sql for Electric SQL
+```sql
+-- Extend human_transforms table
+ALTER TABLE human_transforms ADD COLUMN source_artifact_id TEXT REFERENCES artifacts(id);
+ALTER TABLE human_transforms ADD COLUMN derivation_path TEXT DEFAULT '';
+ALTER TABLE human_transforms ADD COLUMN derived_artifact_id TEXT REFERENCES artifacts(id);
+
+-- Add index for fast lookups
+CREATE INDEX idx_human_transforms_derivation 
+ON human_transforms(source_artifact_id, derivation_path);
+```
+
+### Phase 2: Backend API Updates
+
+#### New API Endpoint: `/api/artifacts/:id/edit-with-path`
 ```typescript
+// src/server/routes/artifactRoutes.ts
+router.post('/:id/edit-with-path', requireAuth, async (req, res) => {
+  const { id: artifactId } = req.params;
+  const { path = "", field, value } = req.body;
+  const userId = req.user.id;
+
+  try {
+    const result = await artifactService.editArtifactWithPath(
+      artifactId, path, field, value, userId
+    );
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Human transform lookup endpoint
+router.get('/:id/human-transform/:path?', requireAuth, async (req, res) => {
+  const { id: artifactId, path = "" } = req.params;
+  const userId = req.user.id;
+
+  try {
+    const transform = await transformRepo.findHumanTransform(artifactId, path, userId);
+    res.json(transform);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+```
+
+#### Update TransformExecutor for Human Transforms
+```typescript
+// src/server/services/TransformExecutor.ts
+async executeHumanTransformWithPath(
+  userId: string,
+  sourceArtifactId: string,
+  derivationPath: string,
+  field: string,
+  value: any
+): Promise<{ transform: any; derivedArtifact: Artifact }> {
+  // Check for existing human transform
+  const existingTransform = await this.transformRepo.findHumanTransform(
+    sourceArtifactId, derivationPath, userId
+  );
+  
+  if (existingTransform) {
+    // Edit existing derived artifact
+    const derivedArtifact = await this.artifactRepo.updateArtifact(
+      existingTransform.derived_artifact_id, { [field]: value }
+    );
+    return { transform: existingTransform, derivedArtifact };
+  }
+
+  // First edit - create atomic human transform
+  const sourceArtifact = await this.artifactRepo.getArtifact(sourceArtifactId);
+  const sourceData = derivationPath ? 
+    extractDataAtPath(sourceArtifact.data, derivationPath) : 
+    sourceArtifact.data;
+  
+  const newData = { ...sourceData, [field]: value };
+  
+  // Atomic operation
+  return await this.db.transaction(async (trx) => {
+    const transform = await this.transformRepo.createTransform(
+      userId, 'human', 'v1', 'completed',
+      { timestamp: new Date().toISOString(), action_type: 'edit' },
+      trx
+    );
+    
+    const derivedArtifact = await this.artifactRepo.createArtifact(
+      userId, 'user_input',
+      { text: JSON.stringify(newData) },
+      'v1',
+      { source: 'human', original_artifact_id: sourceArtifactId },
+      trx
+    );
+    
+    // Link transform
+    await this.transformRepo.addTransformInputs(transform.id, [{ artifactId: sourceArtifactId }], trx);
+    await this.transformRepo.addTransformOutputs(transform.id, [{ artifactId: derivedArtifact.id }], trx);
+    
+    // Store human transform metadata
+    await this.transformRepo.addHumanTransform({
+      transform_id: transform.id,
+      action_type: 'edit',
+      source_artifact_id: sourceArtifactId,
+      derivation_path: derivationPath,
+      derived_artifact_id: derivedArtifact.id
+    }, trx);
+    
+    return { transform, derivedArtifact };
+  });
+}
+```
+
+### Phase 3: Frontend Component Updates
+
+#### Update ArtifactEditor Interface
+```typescript
+// src/client/components/shared/ArtifactEditor.tsx
 interface ArtifactEditorProps {
   artifactId: string;
   path?: string;           // JSON path for derivation (optional, defaults to root)
@@ -51,14 +210,6 @@ interface ArtifactEditorProps {
   onTransition?: (newArtifactId: string) => void;
 }
 
-// Usage examples:
-<ArtifactEditor artifactId="abc123" />                    // Edit root artifact
-<ArtifactEditor artifactId="abc123" path="ideas[0]" />    // Edit first idea
-<ArtifactEditor artifactId="abc123" path="ideas[1].title" /> // Edit second idea's title
-```
-
-### Internal Logic Flow
-```typescript
 function ArtifactEditor({ artifactId, path = "" }: ArtifactEditorProps) {
   // 1. Look up existing human transform for (artifactId, path)
   const existingTransform = useQuery({
@@ -101,128 +252,173 @@ function ArtifactEditor({ artifactId, path = "" }: ArtifactEditorProps) {
 }
 ```
 
-## 3. Backend Implementation
-
-### New API Endpoint: `/api/artifacts/:id/edit-with-path`
-
+#### Add brainstorm_idea_collection Support
 ```typescript
-POST /api/artifacts/:id/edit-with-path
-{
-  path?: string;           // JSON path (empty string for root)
-  field: string;           // Field to edit within the path
-  value: any;              // New value
-  projectId: string;
-}
-
-Response:
-{
-  artifactId: string;        // New artifact ID if transform occurred
-  wasTransformed: boolean;   // True if human transform was created
-  transformId?: string;      // Transform ID if created
-}
+// src/client/components/shared/ArtifactEditor.tsx
+const ARTIFACT_FIELD_MAPPING = {
+  'brainstorm_idea': [
+    { field: 'idea_title', component: 'input', maxLength: 20 },
+    { field: 'idea_text', component: 'textarea', rows: 6 }
+  ],
+  'brainstorm_idea_collection': [
+    // This will be handled via path-based derivation
+    { field: 'ideas', component: 'collection', itemType: 'brainstorm_idea' }
+  ],
+  'user_input': [
+    { field: 'text', component: 'textarea', rows: 4 }
+  ],
+  'outline_title': [
+    { field: 'title', component: 'input', maxLength: 50 }
+  ]
+} as const;
 ```
 
-### Atomic Transform Logic
+#### Update BrainstormResultsWithArtifactEditor
 ```typescript
-async function editArtifactWithPath(
-  artifactId: string, 
-  path: string = "", 
-  field: string, 
-  value: any, 
-  userId: string
-) {
-  // 1. Check for existing human transform
-  const existingTransform = await findHumanTransform(artifactId, path);
-  
-  if (existingTransform) {
-    // Edit existing derived artifact
-    const derivedArtifactId = existingTransform.derived_artifact_id;
-    await artifactRepo.updateArtifact(derivedArtifactId, { [field]: value });
-    return { artifactId: derivedArtifactId, wasTransformed: false };
-  }
+// src/client/components/BrainstormResultsWithArtifactEditor.tsx
+export const BrainstormResultsWithArtifactEditor: React.FC<BrainstormResultsWithArtifactEditorProps> = ({
+    projectId,
+    isStreaming
+}) => {
+    const electricConfig = getElectricConfig();
 
-  // 2. First edit - create atomic human transform
-  const sourceArtifact = await artifactRepo.getArtifact(artifactId);
-  
-  // Extract data at path
-  const sourceData = path ? extractDataAtPath(sourceArtifact.data, path) : sourceArtifact.data;
-  
-  // Create new data with edit
-  const newData = { ...sourceData, [field]: value };
-  
-  // 3. Atomic operation: create transform + derived artifact
-  const result = await db.transaction(async (trx) => {
-    // Create human transform
-    const transform = await transformRepo.createTransform(
-      userId, 'human', 'v1', 'completed',
-      { timestamp: new Date().toISOString(), action_type: 'edit' },
-      trx
+    // Fetch brainstorm_idea_collection artifacts (not individual ideas)
+    const { data: artifacts, isLoading, error } = useShape({
+        url: electricConfig.url,
+        params: {
+            table: 'artifacts',
+            where: `project_id = '${projectId}' AND type = 'brainstorm_idea_collection'`
+        }
+    });
+
+    // Get the latest collection artifact
+    const latestCollection = useMemo(() => {
+        if (!artifacts || !Array.isArray(artifacts)) return null;
+        return (artifacts as unknown as ElectricArtifact[])
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+    }, [artifacts]);
+
+    // Parse ideas from collection
+    const ideas = useMemo(() => {
+        if (!latestCollection?.data) return [];
+        try {
+            const data = JSON.parse(latestCollection.data as string);
+            return Array.isArray(data) ? data : data.ideas || [];
+        } catch (error) {
+            console.warn('Failed to parse collection data:', error);
+            return [];
+        }
+    }, [latestCollection]);
+
+    if (isLoading) {
+        return (
+            <div className="space-y-4">
+                {[1, 2, 3].map(i => (
+                    <div key={i} className="animate-pulse bg-gray-800 h-32 rounded-lg"></div>
+                ))}
+            </div>
+        );
+    }
+
+    if (!latestCollection || ideas.length === 0) {
+        return (
+            <div className="text-center py-12">
+                <div className="text-4xl mb-4">💡</div>
+                <h3 className="text-lg font-medium text-gray-300 mb-2">
+                    {isStreaming ? '正在生成创意...' : '暂无创意'}
+                </h3>
+                <p className="text-gray-400 text-sm">
+                    {isStreaming ? '创意将会逐个出现在这里' : '开始头脑风暴以生成创意'}
+                </p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-6">
+            <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold text-white">
+                    创意列表 ({ideas.length})
+                </h2>
+                {isStreaming && (
+                    <div className="flex items-center gap-2 text-sm text-blue-400">
+                        <div className="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                        生成中...
+                    </div>
+                )}
+            </div>
+
+            <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
+                {ideas.map((idea, index) => (
+                    <div key={index} className="space-y-2">
+                        <div className="flex items-center gap-2 mb-2">
+                            <span className="text-xs text-gray-500 font-mono">
+                                #{index + 1}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                                Collection: {latestCollection.id.slice(-8)}
+                            </span>
+                        </div>
+
+                        {/* Edit title with path-based derivation */}
+                        <div className="mb-2">
+                            <label className="text-xs text-gray-400 mb-1 block">标题</label>
+                            <ArtifactEditor
+                                artifactId={latestCollection.id}
+                                path={`[${index}].title`}
+                                className="bg-gray-800 hover:bg-gray-750 transition-colors"
+                                onTransition={(newArtifactId) => {
+                                    console.log(`Idea ${index + 1} title transitioned to ${newArtifactId}`);
+                                }}
+                            />
+                        </div>
+
+                        {/* Edit body with path-based derivation */}
+                        <div>
+                            <label className="text-xs text-gray-400 mb-1 block">内容</label>
+                            <ArtifactEditor
+                                artifactId={latestCollection.id}
+                                path={`[${index}].body`}
+                                className="bg-gray-800 hover:bg-gray-750 transition-colors"
+                                onTransition={(newArtifactId) => {
+                                    console.log(`Idea ${index + 1} body transitioned to ${newArtifactId}`);
+                                }}
+                            />
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {isStreaming && (
+                <div className="text-center text-sm text-gray-400 mt-6">
+                    💡 新创意正在生成中，将自动显示在上方
+                </div>
+            )}
+        </div>
     );
-    
-    // Create derived user_input artifact
-    const derivedArtifact = await artifactRepo.createArtifact(
-      userId,
-      'user_input',
-      { text: JSON.stringify(newData) }, // Or appropriate structure
-      'v1',
-      { source: 'human', original_artifact_id: artifactId },
-      trx
-    );
-    
-    // Link transform
-    await transformRepo.addTransformInputs(transform.id, [{ artifactId }], trx);
-    await transformRepo.addTransformOutputs(transform.id, [{ artifactId: derivedArtifact.id }], trx);
-    
-    // Store human transform metadata
-    await transformRepo.addHumanTransform({
-      transform_id: transform.id,
-      action_type: 'edit',
-      source_artifact_id: artifactId,
-      derivation_path: path,
-      derived_artifact_id: derivedArtifact.id
-    }, trx);
-    
-    return { artifactId: derivedArtifact.id, transformId: transform.id };
-  });
-  
-  return { ...result, wasTransformed: true };
-}
+};
 ```
 
-### Database Schema Extensions
+### Phase 4: Path Extraction Utilities
 
-```sql
--- Extend human_transforms table
-ALTER TABLE human_transforms ADD COLUMN source_artifact_id VARCHAR(255);
-ALTER TABLE human_transforms ADD COLUMN derivation_path TEXT DEFAULT '';
-ALTER TABLE human_transforms ADD COLUMN derived_artifact_id VARCHAR(255);
-
--- Add index for fast lookups
-CREATE INDEX idx_human_transforms_derivation 
-ON human_transforms(source_artifact_id, derivation_path);
-```
-
-## 4. Path Extraction Utilities
-
-### JSON Path Helper Functions
+#### JSON Path Helper Functions
 ```typescript
-// Extract data at a JSON path
-function extractDataAtPath(data: any, path: string): any {
+// src/common/utils/pathExtraction.ts
+export function extractDataAtPath(data: any, path: string): any {
   if (!path) return data;
   
-  // Handle array indices: ideas[0].title -> ideas.0.title
-  const normalizedPath = path.replace(/\[(\d+)\]/g, '.$1');
+  // Handle array indices: [0].title -> 0.title
+  const normalizedPath = path.replace(/\[(\d+)\]/g, '$1');
   
   return normalizedPath.split('.').reduce((obj, key) => {
     return obj?.[key];
   }, data);
 }
 
-// Set data at a JSON path (for updates)
-function setDataAtPath(data: any, path: string, value: any): any {
+export function setDataAtPath(data: any, path: string, value: any): any {
   if (!path) return value;
   
-  const normalizedPath = path.replace(/\[(\d+)\]/g, '.$1');
+  const normalizedPath = path.replace(/\[(\d+)\]/g, '$1');
   const keys = normalizedPath.split('.');
   const result = JSON.parse(JSON.stringify(data)); // Deep clone
   
@@ -238,85 +434,8 @@ function setDataAtPath(data: any, path: string, value: any): any {
   current[keys[keys.length - 1]] = value;
   return result;
 }
-```
 
-## 5. Usage Examples
-
-### Brainstorm Collection Editing
-```typescript
-// In ProjectBrainstormPage.tsx
-function BrainstormResults({ collectionArtifactId }: { collectionArtifactId: string }) {
-  const { data: artifacts } = useShape({
-    url: `${ELECTRIC_URL}/v1/shape`,
-    params: {
-      table: 'artifacts',
-      where: `id = '${collectionArtifactId}'`
-    }
-  });
-  
-  const collection = artifacts?.[0];
-  const ideas = collection?.data?.ideas || [];
-  
-  return (
-    <div>
-      {ideas.map((idea, index) => (
-        <div key={index} className="idea-card">
-          {/* Edit individual idea titles */}
-          <ArtifactEditor 
-            artifactId={collectionArtifactId} 
-            path={`ideas[${index}].title`}
-          />
-          
-          {/* Edit individual idea bodies */}
-          <ArtifactEditor 
-            artifactId={collectionArtifactId} 
-            path={`ideas[${index}].body`}
-          />
-        </div>
-      ))}
-    </div>
-  );
-}
-```
-
-### Single Artifact Editing
-```typescript
-// For outline components
-<ArtifactEditor artifactId="outline-123" path="title" />
-<ArtifactEditor artifactId="outline-123" path="synopsis" />
-
-// For root-level editing (path defaults to "")
-<ArtifactEditor artifactId="user-input-456" />
-```
-
-## 6. State Management Strategy
-
-### Simplified Architecture
-- **Electric SQL**: Real-time data sync (reads only)
-- **TanStack Query**: API calls with optimistic updates + transform lookups
-- **Local React State**: Component-level editing state (no Zustand needed)
-
-### Transform Caching
-```typescript
-// Cache human transforms for fast lookups
-const transformQuery = useQuery({
-  queryKey: ['human-transform', artifactId, path],
-  queryFn: () => api.getHumanTransform(artifactId, path),
-  staleTime: 5 * 60 * 1000, // 5 minutes
-  gcTime: 10 * 60 * 1000    // 10 minutes
-});
-```
-
-## 7. Error Handling & Edge Cases
-
-### Concurrent Edits
-- **Same path**: Last write wins (Electric SQL handles sync)
-- **Different paths**: Independent edits, no conflicts
-- **Transform conflicts**: Rare, but handled by database constraints
-
-### Path Validation
-```typescript
-function validatePath(data: any, path: string): boolean {
+export function validatePath(data: any, path: string): boolean {
   try {
     const value = extractDataAtPath(data, path);
     return value !== undefined;
@@ -326,50 +445,101 @@ function validatePath(data: any, path: string): boolean {
 }
 ```
 
-### Graceful Degradation
-- **Invalid paths**: Show error message, disable editing
-- **Missing artifacts**: Show loading state, retry logic
-- **Transform failures**: Fallback to read-only mode
+### Phase 5: Repository Updates (Kysely)
 
-## 8. Performance Considerations
+#### Update TransformRepository
+```typescript
+// src/server/repositories/TransformRepository.ts
+export class TransformRepository {
+  // Find existing human transform by source artifact and path
+  async findHumanTransform(
+    sourceArtifactId: string, 
+    derivationPath: string, 
+    userId: string
+  ): Promise<any | null> {
+    const result = await this.db
+      .selectFrom('human_transforms as ht')
+      .innerJoin('transforms as t', 't.id', 'ht.transform_id')
+      .selectAll()
+      .where('ht.source_artifact_id', '=', sourceArtifactId)
+      .where('ht.derivation_path', '=', derivationPath)
+      .where('t.project_id', 'in', 
+        this.db.selectFrom('projects_users')
+          .select('project_id')
+          .where('user_id', '=', userId)
+      )
+      .executeTakeFirst();
+    
+    return result || null;
+  }
 
-### Optimization Strategies
-- **Path-based caching**: Cache extracted data to avoid re-computation
-- **Debounced saves**: 500ms delay to reduce API calls
-- **Selective re-renders**: Only re-render when target path data changes
-- **Transform lookup caching**: Cache human transform queries
+  // Add human transform with derivation metadata
+  async addHumanTransform(data: {
+    transform_id: string;
+    action_type: string;
+    source_artifact_id?: string;
+    derivation_path?: string;
+    derived_artifact_id?: string;
+    interface_context?: string;
+    change_description?: string;
+  }): Promise<void> {
+    await this.db
+      .insertInto('human_transforms')
+      .values({
+        transform_id: data.transform_id,
+        action_type: data.action_type,
+        source_artifact_id: data.source_artifact_id || null,
+        derivation_path: data.derivation_path || '',
+        derived_artifact_id: data.derived_artifact_id || null,
+        interface_context: data.interface_context || null,
+        change_description: data.change_description || null
+      })
+      .execute();
+  }
+}
+```
 
-### Memory Management
-- **Shallow cloning**: Only clone data when actually editing
-- **Query cleanup**: Proper cleanup of TanStack Query caches
-- **Electric SQL subscriptions**: Minimize subscription scope
+## 4. Implementation Steps
 
-## 9. Implementation Steps
+### Phase 1: Database & Backend (Week 1)
+1. ✅ Modify existing migration 002_create_artifacts_and_transforms.js
+2. ✅ Update schema.sql for Electric SQL compatibility
+3. ✅ Add path extraction utilities
+4. ✅ Update TransformRepository with Kysely queries
+5. ✅ Create new API endpoints for path-based editing
 
-### Phase 1: Core Path Logic
-1. ✅ Implement path extraction utilities
-2. ✅ Create human transform lookup API
-3. ✅ Add database schema extensions
-4. ✅ Test path validation and edge cases
-
-### Phase 2: ArtifactEditor Refactor
-1. ✅ Update component to accept path prop
+### Phase 2: ArtifactEditor Refactor (Week 2)
+1. ✅ Update ArtifactEditor to accept path prop
 2. ✅ Implement transform lookup logic
-3. ✅ Add atomic edit endpoint
-4. ✅ Test with collection artifacts
+3. ✅ Add support for brainstorm_idea_collection
+4. ✅ Test path-based derivation with collections
 
-### Phase 3: Integration
-1. ✅ Update brainstorm results to use path-based editing
-2. ✅ Ensure Electric SQL sync works with derived artifacts
-3. ✅ Handle artifact transitions and animations
-4. ✅ Performance optimization and caching
+### Phase 3: Component Integration (Week 3)
+1. ✅ Update BrainstormResultsWithArtifactEditor to use collections
+2. ✅ Implement path-based editing for individual ideas
+3. ✅ Ensure Electric SQL sync works with derived artifacts
+4. ✅ Handle artifact transitions and animations
 
-### Phase 4: Polish & Testing
-1. ✅ Add comprehensive error handling
-2. ✅ Implement concurrent edit handling
-3. ✅ Add visual feedback for transform states
-4. ✅ End-to-end testing with real-time sync
+### Phase 4: Testing & Polish (Week 4)
+1. ✅ End-to-end testing with real brainstorm collections
+2. ✅ Performance optimization and caching
+3. ✅ Error handling for invalid paths
+4. ✅ Visual feedback for transform states
+
+## 5. Migration Compatibility
+
+### Existing Data Handling
+- **Existing `brainstorm_idea` artifacts** will continue to work with root path (`""`)
+- **New `brainstorm_idea_collection` artifacts** will use path-based derivation
+- **Backward compatibility** maintained for all existing components
+- **Gradual migration** - old and new approaches can coexist
+
+### Database Migration Strategy
+- **Modify existing migration** instead of creating new one
+- **Add nullable columns** to human_transforms table
+- **Create index** for fast path-based lookups
+- **Update Electric SQL schema** to match PostgreSQL structure
 
 ---
 
-This revised design eliminates the need for separate services while providing a clean, atomic approach to artifact derivation through path-based editing. The `ArtifactEditor` becomes a universal component that can handle both simple edits and complex collection derivations seamlessly. 
+This refactor plan provides a comprehensive path from the current state to the desired path-based artifact derivation system, maintaining backward compatibility while enabling powerful new editing capabilities. 

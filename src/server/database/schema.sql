@@ -121,7 +121,12 @@ CREATE TABLE human_transforms (
     transform_id TEXT PRIMARY KEY REFERENCES transforms(id) ON DELETE CASCADE,
     action_type TEXT NOT NULL,
     interface_context TEXT,
-    change_description TEXT
+    change_description TEXT,
+    
+    -- Path-based artifact derivation fields
+    source_artifact_id TEXT REFERENCES artifacts(id),
+    derivation_path TEXT DEFAULT '',
+    derived_artifact_id TEXT REFERENCES artifacts(id)
 );
 
 -- Auto-update timestamps
@@ -147,6 +152,9 @@ CREATE INDEX idx_transforms_project_created ON transforms(project_id, created_at
 CREATE INDEX idx_transforms_streaming ON transforms(streaming_status) WHERE streaming_status IN ('running', 'pending');
 CREATE INDEX idx_projects_users_user_id ON projects_users(user_id);
 CREATE INDEX idx_projects_users_project_id ON projects_users(project_id);
+
+-- Index for path-based artifact derivation lookups
+CREATE INDEX idx_human_transforms_derivation ON human_transforms(source_artifact_id, derivation_path);
 
 -- Electric-optimized view for brainstorming flows
 CREATE VIEW brainstorm_flows AS

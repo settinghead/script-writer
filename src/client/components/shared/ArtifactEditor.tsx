@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useShape } from '@electric-sql/react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { message } from 'antd';
 import { useDebouncedCallback } from '../../hooks/useDebounce';
 import { EditableField } from './EditableField';
 import type { ElectricArtifact } from '../../../common/types';
 import { getElectricConfig } from '../../../common/config/electric';
+import { extractDataAtPath, getPathDescription } from '../../../common/utils/pathExtraction';
 
 // Artifact type to field mapping
 interface FieldConfig {
@@ -31,6 +32,7 @@ const ARTIFACT_FIELD_MAPPING: Record<string, FieldConfig[]> = {
 
 interface ArtifactEditorProps {
     artifactId: string;
+    path?: string;           // JSON path for derivation (optional, defaults to root)
     className?: string;
     onTransition?: (newArtifactId: string) => void;
 }
@@ -38,7 +40,7 @@ interface ArtifactEditorProps {
 interface EditArtifactRequest {
     field: string;
     value: any;
-    projectId: string;
+    path?: string;
 }
 
 interface EditArtifactResponse {
@@ -49,16 +51,35 @@ interface EditArtifactResponse {
 
 export const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
     artifactId,
+    path = "",
     className = '',
     onTransition
 }) => {
-    // Electric SQL real-time data
+    // 1. Look up existing human transform for (artifactId, path)
+    const { data: existingTransform } = useQuery({
+        queryKey: ['human-transform', artifactId, path],
+        queryFn: async () => {
+            const response = await fetch(`/api/artifacts/${artifactId}/human-transform?path=${encodeURIComponent(path)}`, {
+                credentials: 'include'
+            });
+            if (!response.ok) {
+                if (response.status === 404) return null;
+                throw new Error('Failed to fetch human transform');
+            }
+            return response.json();
+        }
+    });
+
+    // 2. Determine which artifact to load
+    const targetArtifactId = existingTransform?.derived_artifact_id || artifactId;
+
+    // 3. Electric SQL real-time data
     const electricConfig = getElectricConfig();
     const { data: artifacts, isLoading, error } = useShape({
         url: electricConfig.url,
         params: {
             table: 'artifacts',
-            where: `id = '${artifactId}'`
+            where: `id = '${targetArtifactId}'`
         }
     });
 
@@ -70,13 +91,19 @@ export const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
     const [pendingSaves, setPendingSaves] = useState<Set<string>>(new Set());
 
     const artifact = artifacts?.[0] as unknown as ElectricArtifact | undefined;
-    const artifactData = artifact ? JSON.parse(artifact.data as string) : null;
-    const isLLMGenerated = artifact?.metadata ? JSON.parse(artifact.metadata as string).source === 'llm' : false;
+    const rawArtifactData = artifact ? JSON.parse(artifact.data as string) : null;
+    
+    // 4. Extract data using path if needed
+    const artifactData = path && rawArtifactData ? 
+        extractDataAtPath(rawArtifactData, path) : 
+        rawArtifactData;
+    
+    const isLLMGenerated = existingTransform ? false : (artifact?.metadata ? JSON.parse(artifact.metadata as string).source === 'llm' : false);
 
-    // TanStack Query mutation for edits
+    // TanStack Query mutation for edits with path support
     const editMutation = useMutation<EditArtifactResponse, Error, EditArtifactRequest>({
         mutationFn: async (editData) => {
-            const response = await fetch(`/api/artifacts/${currentArtifactId}/edit`, {
+            const response = await fetch(`/api/artifacts/${artifactId}/edit-with-path`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -119,17 +146,15 @@ export const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
         }
     });
 
-    // Debounced save function
+    // Debounced save function with path support
     const debouncedSave = useDebouncedCallback((field: string, value: any) => {
-        if (!artifact?.project_id) return;
-
         // Track pending save
         setPendingSaves(prev => new Set(prev).add(field));
 
         editMutation.mutate({
             field,
             value,
-            projectId: artifact.project_id
+            path
         });
     }, 500);
 
@@ -176,14 +201,32 @@ export const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
         );
     }
 
-    // Get field mapping for this artifact type
-    const fieldMapping = ARTIFACT_FIELD_MAPPING[artifact.type as keyof typeof ARTIFACT_FIELD_MAPPING];
+    // Get field mapping for this artifact type or path-based editing
+    let fieldMapping = ARTIFACT_FIELD_MAPPING[artifact.type as keyof typeof ARTIFACT_FIELD_MAPPING];
 
-    if (!fieldMapping) {
+    // For path-based editing, determine fields from the actual data structure
+    if (!fieldMapping && path && artifactData && typeof artifactData === 'object') {
+        fieldMapping = Object.keys(artifactData).map(key => {
+            const value = artifactData[key];
+            if (typeof value === 'string') {
+                return {
+                    field: key,
+                    component: value.length > 50 ? 'textarea' as const : 'input' as const,
+                    maxLength: key === 'title' ? 20 : undefined,
+                    rows: key === 'body' ? 6 : undefined,
+                    placeholder: key === 'title' ? '标题...' : key === 'body' ? '内容...' : `${key}...`
+                };
+            }
+            return null;
+        }).filter(Boolean) as FieldConfig[];
+    }
+
+    if (!fieldMapping || fieldMapping.length === 0) {
         return (
             <div className={`artifact-editor unsupported ${className}`}>
                 <div className="text-yellow-400 text-sm">
                     不支持的内容类型: {artifact.type}
+                    {path && ` (路径: ${path})`}
                 </div>
             </div>
         );
@@ -213,6 +256,7 @@ export const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
                     />
                     <span className="text-xs text-gray-400">
                         {isLLMGenerated && !isTransitioning ? 'AI生成' : '用户修改'}
+                        {path && ` • ${getPathDescription(path)}`}
                     </span>
                 </div>
 

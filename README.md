@@ -220,7 +220,7 @@ The application previously used Server-Sent Events (SSE) for real-time updates. 
 #### Backend (Legacy)
 - **Express.js** server with TypeScript
 - **SQLite** database (migrating to PostgreSQL)
-- **Knex.js** for database operations (migrating to Kysely)
+- **Kysely** for type-safe database operations (migrated from Knex)
 - **Server-Sent Events** for real-time updates (being replaced by Electric)
 - **Yjs WebSocket server** for real-time collaboration
 
