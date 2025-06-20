@@ -32,7 +32,8 @@
     "allowImportingTsExtensions": true
   },
   "include": [
-    "vite.config.ts"
+    "vite.config.ts",
+    "src/**/*"
   ],
   "exclude": [
     "node_modules",

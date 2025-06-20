@@ -109,6 +109,10 @@ app.use('/api/brainstorm', createBrainstormRoutes(authMiddleware, brainstormServ
 // Mount ideation routes - now serving projects list
 app.use('/api/ideations', createIdeationRoutes(authMiddleware, artifactRepo, transformRepo));
 
+// Mount artifact routes
+import { createArtifactRoutes } from './routes/artifactRoutes';
+app.use('/api/artifacts', createArtifactRoutes(authMiddleware, artifactRepo, transformRepo));
+
 // Attach authDB to all requests
 app.use(authMiddleware.attachAuthDB);
 

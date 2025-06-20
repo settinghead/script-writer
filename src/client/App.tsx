@@ -22,6 +22,7 @@ import Breadcrumb from './components/Breadcrumb';
 import StagewiseToolbar from './components/StagewiseToolbar';
 import { StageDetailView } from './components/StageDetailView';
 import NewProjectFromBrainstormPage from './components/NewProjectFromBrainstormPage';
+import { TestArtifactEditor } from './components/TestArtifactEditor';
 
 // Import CSS for any custom styling needed
 import "./index.css";
@@ -207,7 +208,7 @@ const AppContent: React.FC = () => {
                 } />
                 <Route path="/projects/:projectId/*" element={
                   <ProtectedRoute>
-                      <ProjectLayout />
+                    <ProjectLayout />
                   </ProtectedRoute>
                 }>
                   <Route path="brainstorm" element={<ProjectBrainstormPage />} />
@@ -248,6 +249,11 @@ const AppContent: React.FC = () => {
                     <NewProjectFromBrainstormPage />
                   </ProtectedRoute>
                 } />
+                <Route path="/test-artifact-editor" element={
+                  <ProtectedRoute>
+                    <TestArtifactEditor />
+                  </ProtectedRoute>
+                } />
                 <Route path="/" element={<Navigate to="/projects" replace />} />
               </Routes>
             </div>
@@ -271,7 +277,7 @@ const AppContent: React.FC = () => {
                 } />
                 <Route path="/projects/:projectId/*" element={
                   <ProtectedRoute>
-                      <ProjectLayout />
+                    <ProjectLayout />
                   </ProtectedRoute>
                 }>
                   <Route path="brainstorm" element={<ProjectBrainstormPage />} />
@@ -310,6 +316,11 @@ const AppContent: React.FC = () => {
                 <Route path="/new-project-from-brainstorming" element={
                   <ProtectedRoute>
                     <NewProjectFromBrainstormPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/test-artifact-editor" element={
+                  <ProtectedRoute>
+                    <TestArtifactEditor />
                   </ProtectedRoute>
                 } />
                 <Route path="/" element={<Navigate to="/projects" replace />} />
@@ -351,8 +362,4 @@ const App: React.FC = () => {
   );
 };
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+export default App;

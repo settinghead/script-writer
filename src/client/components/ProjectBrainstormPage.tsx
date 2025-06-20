@@ -106,6 +106,11 @@ export default function ProjectBrainstormPage() {
           <DynamicBrainstormingResults
             ideas={ideas}
             isStreaming={status === 'streaming'}
+            onIdeaSelect={(ideaText) => {
+              // For now, just log the selected idea
+              // TODO: Implement proper idea selection logic
+              console.log('Selected idea:', ideaText)
+            }}
           />
         ) : status === 'idle' ? (
           <div className="text-center py-12">
