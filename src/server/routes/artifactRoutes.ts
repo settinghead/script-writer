@@ -1,19 +1,19 @@
 import express from 'express';
-import { requireAuth } from '../middleware/auth';
+import { AuthMiddleware } from '../middleware/auth';
 import { ArtifactRepository } from '../repositories/ArtifactRepository';
 import { TransformRepository } from '../repositories/TransformRepository';
 import { TransformExecutor } from '../services/TransformExecutor';
-import { db } from '../database/connection';
 
-const router = express.Router();
+export function createArtifactRoutes(
+    authMiddleware: AuthMiddleware,
+    artifactRepo: ArtifactRepository,
+    transformRepo: TransformRepository
+) {
+    const router = express.Router();
+    const transformExecutor = new TransformExecutor(artifactRepo, transformRepo);
 
-// Initialize repositories
-const artifactRepo = new ArtifactRepository(db);
-const transformRepo = new TransformRepository(db);
-const transformExecutor = new TransformExecutor(artifactRepo, transformRepo);
-
-// Get artifact by ID
-router.get('/:id', requireAuth, async (req, res) => {
+    // Get artifact by ID
+    router.get('/:id', authMiddleware.authenticate, async (req, res) => {
     try {
         const { id } = req.params;
         const userId = req.user.id;
@@ -36,8 +36,8 @@ router.get('/:id', requireAuth, async (req, res) => {
     }
 });
 
-// Edit artifact with path-based derivation
-router.post('/:id/edit-with-path', requireAuth, async (req, res) => {
+    // Edit artifact with path-based derivation
+    router.post('/:id/edit-with-path', authMiddleware.authenticate, async (req, res) => {
     try {
         const { id: artifactId } = req.params;
         const { path = "", field, value } = req.body;
@@ -81,8 +81,8 @@ router.post('/:id/edit-with-path', requireAuth, async (req, res) => {
     }
 });
 
-// Get human transform for artifact and path
-router.get('/:id/human-transform', requireAuth, async (req, res) => {
+    // Get human transform for artifact and path
+    router.get('/:id/human-transform', authMiddleware.authenticate, async (req, res) => {
     try {
         const { id: artifactId } = req.params;
         const { path = "" } = req.query;
@@ -114,8 +114,8 @@ router.get('/:id/human-transform', requireAuth, async (req, res) => {
     }
 });
 
-// List artifacts by type and project
-router.get('/', requireAuth, async (req, res) => {
+    // List artifacts by type and project
+    router.get('/', authMiddleware.authenticate, async (req, res) => {
     try {
         const { projectId, type, typeVersion = 'v1' } = req.query;
         const userId = req.user.id;
@@ -148,4 +148,5 @@ router.get('/', requireAuth, async (req, res) => {
     }
 });
 
-export default router; 
+    return router;
+} 
