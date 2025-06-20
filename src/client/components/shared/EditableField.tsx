@@ -12,6 +12,7 @@ interface EditableFieldProps {
     isLLMGenerated: boolean;
     isTransitioning: boolean;
     isFocused: boolean;
+    hasPendingSave?: boolean;
     onChange: (value: string) => void;
     onFocus: () => void;
     onBlur: () => void;
@@ -26,6 +27,7 @@ export const EditableField: React.FC<EditableFieldProps> = ({
     isLLMGenerated,
     isTransitioning,
     isFocused,
+    hasPendingSave = false,
     onChange,
     onFocus,
     onBlur
@@ -54,6 +56,7 @@ export const EditableField: React.FC<EditableFieldProps> = ({
       placeholder:text-gray-500
       ${isLLMGenerated && !isTransitioning ? 'text-blue-100' : 'text-green-100'}
       ${isFocused ? 'text-white' : ''}
+      ${hasPendingSave ? 'text-yellow-200' : ''}
       resize-none
     `.replace(/\s+/g, ' ').trim()
     };

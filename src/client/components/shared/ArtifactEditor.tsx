@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useShape } from '@electric-sql/react';
 import { useMutation } from '@tanstack/react-query';
 import { message } from 'antd';
-import { debounce } from 'lodash';
+import { useDebouncedCallback } from '../../hooks/useDebounce';
 import { EditableField } from './EditableField';
 import type { ElectricArtifact } from '../../../common/types';
 import { getElectricConfig } from '../../../common/config/electric';
@@ -67,6 +67,7 @@ export const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
     const [isTransitioning, setIsTransitioning] = useState(false);
     const [currentArtifactId, setCurrentArtifactId] = useState(artifactId);
     const [editingField, setEditingField] = useState<string | null>(null);
+    const [pendingSaves, setPendingSaves] = useState<Set<string>>(new Set());
 
     const artifact = artifacts?.[0] as unknown as ElectricArtifact | undefined;
     const artifactData = artifact ? JSON.parse(artifact.data as string) : null;
@@ -92,6 +93,9 @@ export const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
             return response.json();
         },
         onSuccess: (response) => {
+            // Clear pending saves
+            setPendingSaves(new Set());
+
             if (response.wasTransformed) {
                 // Artifact ID changed due to LLM→Human transform
                 setCurrentArtifactId(response.artifactId);
@@ -109,23 +113,25 @@ export const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
             }
         },
         onError: (error) => {
+            // Clear pending saves on error
+            setPendingSaves(new Set());
             message.error(`保存失败: ${error.message}`);
         }
     });
 
     // Debounced save function
-    const debouncedSave = useCallback(
-        debounce((field: string, value: any) => {
-            if (!artifact?.project_id) return;
+    const debouncedSave = useDebouncedCallback((field: string, value: any) => {
+        if (!artifact?.project_id) return;
 
-            editMutation.mutate({
-                field,
-                value,
-                projectId: artifact.project_id
-            });
-        }, 500),
-        [artifact?.project_id, editMutation]
-    );
+        // Track pending save
+        setPendingSaves(prev => new Set(prev).add(field));
+
+        editMutation.mutate({
+            field,
+            value,
+            projectId: artifact.project_id
+        });
+    }, 500);
 
     // Handle field changes
     const handleFieldChange = (field: string, value: any) => {
@@ -210,9 +216,18 @@ export const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
                     </span>
                 </div>
 
-                {editMutation.isPending && (
-                    <div className="text-xs text-blue-400">保存中...</div>
-                )}
+                {/* Save status */}
+                <div className="flex items-center gap-2">
+                    {pendingSaves.size > 0 && !editMutation.isPending && (
+                        <div className="text-xs text-yellow-400">待保存...</div>
+                    )}
+                    {editMutation.isPending && (
+                        <div className="text-xs text-blue-400">保存中...</div>
+                    )}
+                    {!editMutation.isPending && pendingSaves.size === 0 && editMutation.isSuccess && (
+                        <div className="text-xs text-green-400">已保存</div>
+                    )}
+                </div>
             </div>
 
             {/* Editable fields */}
@@ -227,6 +242,7 @@ export const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
                         isLLMGenerated={isLLMGenerated && !isTransitioning}
                         isTransitioning={isTransitioning}
                         isFocused={editingField === field}
+                        hasPendingSave={pendingSaves.has(field)}
                         onChange={(value) => handleFieldChange(field, value)}
                         onFocus={() => handleFieldFocus(field)}
                         onBlur={handleFieldBlur}
