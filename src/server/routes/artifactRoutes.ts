@@ -24,8 +24,8 @@ export function createArtifactRoutes(
             res.json(artifacts);
         } catch (error) {
             console.error('Error getting artifacts:', error);
-            res.status(500).json({ 
-                error: error instanceof Error ? error.message : 'Internal server error' 
+            res.status(500).json({
+                error: error instanceof Error ? error.message : 'Internal server error'
             });
         }
     });

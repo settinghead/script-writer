@@ -75,12 +75,12 @@ export default function ProjectBrainstormPage() {
                 </p>
               )}
             </div>
-            
+
             {/* Status indicator */}
             <div className="flex items-center gap-4">
               {status === 'streaming' && (
                 <div className="flex items-center gap-2">
-                  <ReasoningIndicator />
+                  <ReasoningIndicator isVisible={false} />
                   <span className="text-sm text-blue-400">Generating ideas...</span>
                 </div>
               )}
@@ -96,14 +96,14 @@ export default function ProjectBrainstormPage() {
           {/* Progress bar */}
           {status === 'streaming' && (
             <div className="mt-4">
-              <StreamingProgress progress={progress} />
+              正在生成想法...
             </div>
           )}
         </div>
 
         {/* Results */}
         {ideas.length > 0 ? (
-          <DynamicBrainstormingResults 
+          <DynamicBrainstormingResults
             ideas={ideas}
             isStreaming={status === 'streaming'}
           />
@@ -112,7 +112,7 @@ export default function ProjectBrainstormPage() {
             <div className="text-6xl mb-4">🤔</div>
             <h2 className="text-xl font-semibold mb-2">No brainstorm started yet</h2>
             <p className="text-gray-400 mb-6">
-              This project doesn't have any brainstorm results. 
+              This project doesn't have any brainstorm results.
               Go back to start a new brainstorm.
             </p>
             <button
