@@ -1,332 +1,375 @@
 # ArtifactEditor Component Design Plan
 
 ## Overview
-Create a universal artifact editing component that handles brainstorm ideas with Electric SQL real-time sync, LLM→Human transform pattern, and optimistic updates using TanStack Query + Zustand.
+Create a universal artifact editing component that handles path-based artifact derivation with atomic human transforms, Electric SQL real-time sync, and optimistic updates using TanStack Query.
 
-## 1. Data Structure Refactoring
+## 1. Path-Based Artifact Derivation
 
-### Current State Analysis
-From the screenshot, brainstorm ideas have:
-- **Title**: Short name (e.g., "逆世商凰", "智穿山河")
-- **Body**: Detailed description (long text)
+### Core Concept
+- **No separate services needed** - `ArtifactEditor` handles derivation internally
+- **Atomic human transforms** - first edit creates transform + derived artifact in one operation
+- **JSON path-based derivation** - use paths like `ideas[0].title` or `ideas[1].body` to specify artifact parts
+- **Automatic lookup** - editor checks for existing human transforms before deciding what to load
 
-### Target Artifact Structure
+### Path Examples
 ```typescript
-// Ensure each idea is a separate artifact
-interface BrainstormIdeaArtifact {
-  id: string;
-  type: 'brainstorm_idea';
-  type_version: 'v1';
-  data: {
-    idea_title: string;    // Short title
-    idea_text: string;     // Detailed body
-    order_index: number;
-    confidence_score?: number;
-  };
-  metadata: {
-    source: 'llm' | 'human';
-    original_artifact_id?: string; // For human transforms
-  };
+// Collection artifacts (fan-out)
+"ideas[0].title"     // First idea's title
+"ideas[1].body"      // Second idea's body
+"characters[2].name" // Third character's name
+
+// Single artifacts (1-to-1, root path)
+""                   // Root path (default)
+"title"              // Direct field access
+"synopsis"           // Direct field access
+```
+
+### Transform Lookup Strategy
+```typescript
+// Composite key for finding existing human transforms
+interface TransformLookupKey {
+  source_artifact_id: string;
+  derivation_path: string; // JSON path, empty string for root
 }
+
+// Database query example
+const existingTransform = await db.query(`
+  SELECT ht.*, t.* FROM human_transforms ht
+  JOIN transforms t ON ht.transform_id = t.id
+  WHERE ht.source_artifact_id = ? AND ht.derivation_path = ?
+`, [artifactId, path || ""]);
 ```
 
 ## 2. Component Architecture
 
-### Frontend Components
-
-#### `ArtifactEditor`
+### ArtifactEditor Interface
 ```typescript
 interface ArtifactEditorProps {
   artifactId: string;
+  path?: string;           // JSON path for derivation (optional, defaults to root)
   className?: string;
   onTransition?: (newArtifactId: string) => void;
 }
+
+// Usage examples:
+<ArtifactEditor artifactId="abc123" />                    // Edit root artifact
+<ArtifactEditor artifactId="abc123" path="ideas[0]" />    // Edit first idea
+<ArtifactEditor artifactId="abc123" path="ideas[1].title" /> // Edit second idea's title
 ```
 
-**Features:**
-- Electric SQL `useShape` for real-time artifact data
-- TanStack Query for API calls with optimistic updates
-- Zustand for local editing state management
-- Debounced auto-save (500ms)
-- Visual state transitions with animations
-
-#### `EditableField`
+### Internal Logic Flow
 ```typescript
-interface EditableFieldProps {
-  value: string;
-  fieldType: 'title' | 'body' | 'text';
-  isLLMGenerated: boolean;
-  isTransitioning: boolean;
-  onChange: (value: string) => void;
-  className?: string;
-}
-```
+function ArtifactEditor({ artifactId, path = "" }: ArtifactEditorProps) {
+  // 1. Look up existing human transform for (artifactId, path)
+  const existingTransform = useQuery({
+    queryKey: ['human-transform', artifactId, path],
+    queryFn: () => api.getHumanTransform(artifactId, path)
+  });
 
-### Artifact Type Mapping
-```typescript
-const ARTIFACT_FIELD_MAPPING = {
-  'brainstorm_idea': [
-    { field: 'idea_title', component: 'input', maxLength: 20 },
-    { field: 'idea_text', component: 'textarea', rows: 6 }
-  ],
-  'user_input': [
-    { field: 'text', component: 'textarea', rows: 4 }
-  ],
-  'outline_title': [
-    { field: 'title', component: 'input', maxLength: 50 }
-  ]
-} as const;
-```
+  // 2. Determine which artifact to load
+  const targetArtifactId = existingTransform?.data?.derived_artifact_id || artifactId;
+  const targetPath = existingTransform?.data ? "" : path; // If derived, use root path
 
-## 3. State Management Strategy
-
-**Key Principle**: Each tool handles what it's best at:
-- **Electric SQL**: Real-time data sync (reads only)
-- **TanStack Query**: API calls for writes with optimistic updates
-- **Zustand**: Local UI state only (not artifacts)
-
-### Electric SQL Integration (Data Reads)
-```typescript
-// Custom hook for artifact editing
-function useArtifactEditor(artifactId: string) {
-  // ✅ Electric SQL handles real-time artifact data
+  // 3. Load artifact data with Electric SQL
   const { data: artifacts } = useShape({
     url: `${ELECTRIC_URL}/v1/shape`,
     params: {
       table: 'artifacts',
-      where: `id = '${artifactId}'`
+      where: `id = '${targetArtifactId}'`
     }
   });
-  
-  const artifact = artifacts?.[0]; // Single artifact
-  
-  // ✅ TanStack Query handles write operations only
-  const editMutation = useMutation({
-    mutationFn: (editData) => fetch(`/api/artifacts/${artifactId}/edit`, {
-      method: 'POST',
-      body: JSON.stringify(editData)
-    }).then(res => res.json()),
-    
-    // No optimistic updates needed - Electric SQL will sync the changes!
-    onSuccess: (response) => {
-      if (response.wasTransformed) {
-        // Artifact ID changed due to LLM→Human transform
-        onArtifactTransition?.(response.artifactId);
-      }
-    }
-  });
-  
-  return { artifact, editMutation };
-}
-```
 
-### Local Component State (No Zustand Needed)
-```typescript
-// ✅ SIMPLIFIED: Use React's built-in useState for local UI state
-function ArtifactEditor({ artifactId }: { artifactId: string }) {
-  // Electric SQL provides real-time data
-  const { data: artifacts } = useShape({
-    url: `${ELECTRIC_URL}/v1/shape`,
-    params: { table: 'artifacts', where: `id = '${artifactId}'` }
-  });
-  
-  // Local component state - no global store needed
-  const [isEditing, setIsEditing] = useState(false);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  const [currentArtifactId, setCurrentArtifactId] = useState(artifactId);
-  
+  // 4. Extract data using path if needed
   const artifact = artifacts?.[0];
-  
-  // TanStack Query for write operations
+  const editableData = targetPath ? 
+    extractDataAtPath(artifact?.data, targetPath) : 
+    artifact?.data;
+
+  // 5. Handle edits with atomic transform creation
   const editMutation = useMutation({
-    mutationFn: editArtifact,
+    mutationFn: (editData) => api.editArtifactWithPath({
+      artifactId,
+      path,
+      editData
+    }),
     onSuccess: (response) => {
       if (response.wasTransformed) {
-        // Artifact ID changed, trigger transition animation
-        setCurrentArtifactId(response.artifactId);
-        setIsTransitioning(true);
-        setTimeout(() => setIsTransitioning(false), 600);
+        onTransition?.(response.newArtifactId);
       }
     }
   });
 }
 ```
 
-### Why Skip Zustand for ArtifactEditor?
+## 3. Backend Implementation
 
-**Current Zustand Usage in Codebase:**
-- ✅ **Cross-component state** (project data shared across pages)
-- ✅ **Complex hierarchical data** (projects → stages → episodes)
-- ✅ **UI persistence** (expanded tree nodes, selections)
-
-**ArtifactEditor is Different:**
-- ❌ **Self-contained component** - no cross-component sharing needed
-- ❌ **Simple single-artifact scope** - not complex hierarchical data
-- ❌ **Temporary local state** - editing states don't need persistence
-
-**Benefits of Local State Approach:**
-1. **Simpler architecture** - no global store setup needed
-2. **Better encapsulation** - component owns its state
-3. **Easier testing** - no store mocking required
-4. **Less coupling** - component works independently
-5. **Electric SQL handles data** - real-time sync automatically
-
-## 4. Backend Implementation
-
-### New API Endpoint: `/api/artifacts/:id/edit`
+### New API Endpoint: `/api/artifacts/:id/edit-with-path`
 
 ```typescript
-POST /api/artifacts/:id/edit
+POST /api/artifacts/:id/edit-with-path
 {
-  field: string;
-  value: any;
+  path?: string;           // JSON path (empty string for root)
+  field: string;           // Field to edit within the path
+  value: any;              // New value
   projectId: string;
 }
 
 Response:
 {
-  artifactId: string;        // Same ID if user_input, new ID if LLM→Human
-  wasTransformed: boolean;   // True if LLM→Human transform occurred
-  transformId?: string;      // If transform was created
+  artifactId: string;        // New artifact ID if transform occurred
+  wasTransformed: boolean;   // True if human transform was created
+  transformId?: string;      // Transform ID if created
 }
 ```
 
-### Transform Logic
+### Atomic Transform Logic
 ```typescript
-async function editArtifact(artifactId: string, field: string, value: any, projectId: string) {
-  const artifact = await artifactRepo.getArtifact(artifactId, projectId);
+async function editArtifactWithPath(
+  artifactId: string, 
+  path: string = "", 
+  field: string, 
+  value: any, 
+  userId: string
+) {
+  // 1. Check for existing human transform
+  const existingTransform = await findHumanTransform(artifactId, path);
   
-  if (artifact.metadata?.source === 'llm') {
-    // Create human transform + new artifact
-    const transformId = await transformRepo.createTransform(
-      projectId, 'human', 'v1', 'completed'
+  if (existingTransform) {
+    // Edit existing derived artifact
+    const derivedArtifactId = existingTransform.derived_artifact_id;
+    await artifactRepo.updateArtifact(derivedArtifactId, { [field]: value });
+    return { artifactId: derivedArtifactId, wasTransformed: false };
+  }
+
+  // 2. First edit - create atomic human transform
+  const sourceArtifact = await artifactRepo.getArtifact(artifactId);
+  
+  // Extract data at path
+  const sourceData = path ? extractDataAtPath(sourceArtifact.data, path) : sourceArtifact.data;
+  
+  // Create new data with edit
+  const newData = { ...sourceData, [field]: value };
+  
+  // 3. Atomic operation: create transform + derived artifact
+  const result = await db.transaction(async (trx) => {
+    // Create human transform
+    const transform = await transformRepo.createTransform(
+      userId, 'human', 'v1', 'completed',
+      { timestamp: new Date().toISOString(), action_type: 'edit' },
+      trx
     );
     
-    const newArtifact = await artifactRepo.createArtifact(
-      projectId,
-      artifact.type,
-      { ...artifact.data, [field]: value },
-      artifact.type_version,
-      { source: 'human', original_artifact_id: artifactId }
+    // Create derived user_input artifact
+    const derivedArtifact = await artifactRepo.createArtifact(
+      userId,
+      'user_input',
+      { text: JSON.stringify(newData) }, // Or appropriate structure
+      'v1',
+      { source: 'human', original_artifact_id: artifactId },
+      trx
     );
     
     // Link transform
-    await transformRepo.addTransformInputs(transformId, [{ artifactId }]);
-    await transformRepo.addTransformOutputs(transformId, [{ artifactId: newArtifact.id }]);
+    await transformRepo.addTransformInputs(transform.id, [{ artifactId }], trx);
+    await transformRepo.addTransformOutputs(transform.id, [{ artifactId: derivedArtifact.id }], trx);
     
-    return { artifactId: newArtifact.id, wasTransformed: true, transformId };
-  } else {
-    // Direct update for user artifacts
-    await artifactRepo.updateArtifact(artifactId, { [field]: value });
-    return { artifactId, wasTransformed: false };
+    // Store human transform metadata
+    await transformRepo.addHumanTransform({
+      transform_id: transform.id,
+      action_type: 'edit',
+      source_artifact_id: artifactId,
+      derivation_path: path,
+      derived_artifact_id: derivedArtifact.id
+    }, trx);
+    
+    return { artifactId: derivedArtifact.id, transformId: transform.id };
+  });
+  
+  return { ...result, wasTransformed: true };
+}
+```
+
+### Database Schema Extensions
+
+```sql
+-- Extend human_transforms table
+ALTER TABLE human_transforms ADD COLUMN source_artifact_id VARCHAR(255);
+ALTER TABLE human_transforms ADD COLUMN derivation_path TEXT DEFAULT '';
+ALTER TABLE human_transforms ADD COLUMN derived_artifact_id VARCHAR(255);
+
+-- Add index for fast lookups
+CREATE INDEX idx_human_transforms_derivation 
+ON human_transforms(source_artifact_id, derivation_path);
+```
+
+## 4. Path Extraction Utilities
+
+### JSON Path Helper Functions
+```typescript
+// Extract data at a JSON path
+function extractDataAtPath(data: any, path: string): any {
+  if (!path) return data;
+  
+  // Handle array indices: ideas[0].title -> ideas.0.title
+  const normalizedPath = path.replace(/\[(\d+)\]/g, '.$1');
+  
+  return normalizedPath.split('.').reduce((obj, key) => {
+    return obj?.[key];
+  }, data);
+}
+
+// Set data at a JSON path (for updates)
+function setDataAtPath(data: any, path: string, value: any): any {
+  if (!path) return value;
+  
+  const normalizedPath = path.replace(/\[(\d+)\]/g, '.$1');
+  const keys = normalizedPath.split('.');
+  const result = JSON.parse(JSON.stringify(data)); // Deep clone
+  
+  let current = result;
+  for (let i = 0; i < keys.length - 1; i++) {
+    const key = keys[i];
+    if (!(key in current)) {
+      current[key] = {};
+    }
+    current = current[key];
+  }
+  
+  current[keys[keys.length - 1]] = value;
+  return result;
+}
+```
+
+## 5. Usage Examples
+
+### Brainstorm Collection Editing
+```typescript
+// In ProjectBrainstormPage.tsx
+function BrainstormResults({ collectionArtifactId }: { collectionArtifactId: string }) {
+  const { data: artifacts } = useShape({
+    url: `${ELECTRIC_URL}/v1/shape`,
+    params: {
+      table: 'artifacts',
+      where: `id = '${collectionArtifactId}'`
+    }
+  });
+  
+  const collection = artifacts?.[0];
+  const ideas = collection?.data?.ideas || [];
+  
+  return (
+    <div>
+      {ideas.map((idea, index) => (
+        <div key={index} className="idea-card">
+          {/* Edit individual idea titles */}
+          <ArtifactEditor 
+            artifactId={collectionArtifactId} 
+            path={`ideas[${index}].title`}
+          />
+          
+          {/* Edit individual idea bodies */}
+          <ArtifactEditor 
+            artifactId={collectionArtifactId} 
+            path={`ideas[${index}].body`}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+### Single Artifact Editing
+```typescript
+// For outline components
+<ArtifactEditor artifactId="outline-123" path="title" />
+<ArtifactEditor artifactId="outline-123" path="synopsis" />
+
+// For root-level editing (path defaults to "")
+<ArtifactEditor artifactId="user-input-456" />
+```
+
+## 6. State Management Strategy
+
+### Simplified Architecture
+- **Electric SQL**: Real-time data sync (reads only)
+- **TanStack Query**: API calls with optimistic updates + transform lookups
+- **Local React State**: Component-level editing state (no Zustand needed)
+
+### Transform Caching
+```typescript
+// Cache human transforms for fast lookups
+const transformQuery = useQuery({
+  queryKey: ['human-transform', artifactId, path],
+  queryFn: () => api.getHumanTransform(artifactId, path),
+  staleTime: 5 * 60 * 1000, // 5 minutes
+  gcTime: 10 * 60 * 1000    // 10 minutes
+});
+```
+
+## 7. Error Handling & Edge Cases
+
+### Concurrent Edits
+- **Same path**: Last write wins (Electric SQL handles sync)
+- **Different paths**: Independent edits, no conflicts
+- **Transform conflicts**: Rare, but handled by database constraints
+
+### Path Validation
+```typescript
+function validatePath(data: any, path: string): boolean {
+  try {
+    const value = extractDataAtPath(data, path);
+    return value !== undefined;
+  } catch {
+    return false;
   }
 }
 ```
 
-## 5. Visual Design & Animation
-
-### Color Scheme
-- **LLM Generated**: `border-blue-300` (default state)
-- **User Modified**: `border-green-400` (after transform)
-- **Editing**: `border-blue-500` (focus state)
-- **Error**: `border-red-400` (error state)
-
-### Animations
-```css
-.artifact-editor {
-  @apply transition-all duration-300 ease-in-out;
-}
-
-.artifact-editor.transitioning {
-  @apply border-green-400 shadow-lg;
-  animation: glow 0.6s ease-in-out;
-}
-
-@keyframes glow {
-  0% { box-shadow: 0 0 5px rgba(34, 197, 94, 0.5); }
-  50% { box-shadow: 0 0 20px rgba(34, 197, 94, 0.8); }
-  100% { box-shadow: 0 0 5px rgba(34, 197, 94, 0.5); }
-}
-```
-
-## 6. Implementation Steps
-
-### Phase 1: Core Component
-1. ✅ Create `ArtifactEditor` component with Electric SQL integration
-2. ✅ Implement `EditableField` with proper input types
-3. ✅ Add debounced auto-save functionality
-4. ✅ Create artifact type mapping system
-
-### Phase 2: Backend Integration
-1. ✅ Create `/api/artifacts/:id/edit` endpoint
-2. ✅ Implement LLM→Human transform logic
-3. ✅ Add proper error handling and validation
-4. ✅ Test with Electric SQL sync
-
-### Phase 3: State Management
-1. ✅ Integrate TanStack Query for optimistic updates
-2. ✅ Add Zustand store for editor state
-3. ✅ Implement proper caching strategies
-4. ✅ Handle concurrent edit conflicts
-
-### Phase 4: Visual Polish
-1. ✅ Add color transitions and animations
-2. ✅ Implement loading and error states
-3. ✅ Add subtle visual feedback
-4. ✅ Test responsive design
-
-### Phase 5: Integration
-1. ✅ Replace existing idea display in `ProjectBrainstormPage`
-2. ✅ Ensure Electric SQL real-time updates work
-3. ✅ Handle edge cases and error scenarios
-4. ✅ Performance optimization
-
-## 7. Error Handling Strategy
-
-### Frontend Error States
-- **Network errors**: Show retry button with offline indicator
-- **Validation errors**: Inline field-level error messages
-- **Conflict resolution**: Show conflict dialog with merge options
-- **Transform failures**: Graceful fallback to read-only mode
-
-### Backend Error Responses
-```typescript
-{
-  error: 'TRANSFORM_FAILED' | 'VALIDATION_ERROR' | 'PERMISSION_DENIED';
-  message: string;
-  details?: any;
-}
-```
+### Graceful Degradation
+- **Invalid paths**: Show error message, disable editing
+- **Missing artifacts**: Show loading state, retry logic
+- **Transform failures**: Fallback to read-only mode
 
 ## 8. Performance Considerations
 
 ### Optimization Strategies
+- **Path-based caching**: Cache extracted data to avoid re-computation
 - **Debounced saves**: 500ms delay to reduce API calls
-- **TanStack Query caching**: 5-minute stale time for artifacts
-- **Electric SQL subscriptions**: Minimize re-renders with proper memoization
-- **Virtualization**: For large lists of editable artifacts (future)
+- **Selective re-renders**: Only re-render when target path data changes
+- **Transform lookup caching**: Cache human transform queries
 
-### Monitoring Points
-- API call frequency and success rates
-- Electric SQL sync latency
-- Component re-render counts
-- Memory usage with large artifact sets
+### Memory Management
+- **Shallow cloning**: Only clone data when actually editing
+- **Query cleanup**: Proper cleanup of TanStack Query caches
+- **Electric SQL subscriptions**: Minimize subscription scope
 
-## 9. Testing Strategy
+## 9. Implementation Steps
 
-### Unit Tests
-- Component rendering with different artifact types
-- Transform logic correctness
-- Debounced save behavior
-- Error handling scenarios
+### Phase 1: Core Path Logic
+1. ✅ Implement path extraction utilities
+2. ✅ Create human transform lookup API
+3. ✅ Add database schema extensions
+4. ✅ Test path validation and edge cases
 
-### Integration Tests
-- Electric SQL real-time sync
-- TanStack Query optimistic updates
-- Multi-user concurrent editing
-- Backend API endpoint functionality
+### Phase 2: ArtifactEditor Refactor
+1. ✅ Update component to accept path prop
+2. ✅ Implement transform lookup logic
+3. ✅ Add atomic edit endpoint
+4. ✅ Test with collection artifacts
+
+### Phase 3: Integration
+1. ✅ Update brainstorm results to use path-based editing
+2. ✅ Ensure Electric SQL sync works with derived artifacts
+3. ✅ Handle artifact transitions and animations
+4. ✅ Performance optimization and caching
+
+### Phase 4: Polish & Testing
+1. ✅ Add comprehensive error handling
+2. ✅ Implement concurrent edit handling
+3. ✅ Add visual feedback for transform states
+4. ✅ End-to-end testing with real-time sync
 
 ---
 
-This design provides a robust, scalable foundation for artifact editing with real-time collaboration and smooth user experience. 
-This design provides a robust, scalable foundation for artifact editing with real-time collaboration and smooth user experience. 
+This revised design eliminates the need for separate services while providing a clean, atomic approach to artifact derivation through path-based editing. The `ArtifactEditor` becomes a universal component that can handle both simple edits and complex collection derivations seamlessly. 
