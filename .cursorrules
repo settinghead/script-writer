@@ -112,3 +112,7 @@ src/
 - Use TypeScript for compile-time type checking
 - Include runtime validation for external data
 - Test edge cases and error conditions
+
+### Electric Doc
+
+For Electric specific implementations, refer to /electric-llms.txt
