@@ -1,6 +1,6 @@
-import React from 'react';
-import { Space, Button, Typography, Spin, Empty, Card, Tag, Alert } from 'antd';
-import { StopOutlined, ReloadOutlined, EyeOutlined } from '@ant-design/icons';
+import React, { useState, useCallback } from 'react';
+import { Space, Button, Typography, Spin, Empty, Card, Tag, Alert, Input } from 'antd';
+import { StopOutlined, ReloadOutlined, EyeOutlined, EditOutlined, SaveOutlined, CloseOutlined } from '@ant-design/icons';
 import { IdeaCard } from './shared/streaming';
 import { ThinkingIndicator } from './shared/ThinkingIndicator';
 import { ReasoningIndicator } from './shared/ReasoningIndicator';
@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { ReasoningEvent } from '../../common/streaming/types';
 // NEW: Import the new streamObject hook
 import { useBrainstormingStream } from '../hooks/useStreamObject';
+import { useMutation } from '@tanstack/react-query';
 
 const { Text } = Typography;
 
@@ -116,6 +117,219 @@ const IdeaOutlines: React.FC<{
     );
 };
 
+// Add this new component for editable idea cards
+const EditableIdeaCard: React.FC<{
+    idea: IdeaWithTitle;
+    index: number;
+    isSelected: boolean;
+    ideaOutlines: any[];
+    onIdeaClick: (idea: IdeaWithTitle, index: number) => void;
+}> = ({ idea, index, isSelected, ideaOutlines, onIdeaClick }) => {
+    const [isEditing, setIsEditing] = useState(false);
+    const [editTitle, setEditTitle] = useState(idea.title);
+    const [editBody, setEditBody] = useState(idea.body);
+    const [isSaving, setIsSaving] = useState(false);
+
+    // Mutation for saving idea changes
+    const saveIdeaMutation = useMutation({
+        mutationFn: async ({ title, body }: { title: string; body: string }) => {
+            // For now, just simulate saving
+            // TODO: Implement actual save to backend
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            console.log('Saving idea:', { title, body, artifactId: idea.artifactId });
+            return { title, body };
+        },
+        onSuccess: (data) => {
+            // Update the idea object (in a real implementation, this would come from server)
+            idea.title = data.title;
+            idea.body = data.body;
+            setIsEditing(false);
+            setIsSaving(false);
+        },
+        onError: (error) => {
+            console.error('Failed to save idea:', error);
+            setIsSaving(false);
+        }
+    });
+
+    const handleSave = useCallback(() => {
+        if (editTitle.trim() && editBody.trim()) {
+            setIsSaving(true);
+            saveIdeaMutation.mutate({ title: editTitle.trim(), body: editBody.trim() });
+        }
+    }, [editTitle, editBody, saveIdeaMutation]);
+
+    const handleCancel = useCallback(() => {
+        setEditTitle(idea.title);
+        setEditBody(idea.body);
+        setIsEditing(false);
+    }, [idea.title, idea.body]);
+
+    const handleCardClick = useCallback(() => {
+        if (!isEditing) {
+            onIdeaClick(idea, index);
+        }
+    }, [isEditing, onIdeaClick, idea, index]);
+
+    return (
+        <Card
+            key={`${idea.artifactId || 'idea'}-${index}`}
+            style={{
+                backgroundColor: isSelected ? '#2d3436' : '#262626',
+                border: isSelected ? '1px solid #1890ff' : isEditing ? '1px solid #52c41a' : '1px solid #434343',
+                cursor: isEditing ? 'default' : 'pointer',
+                transition: 'all 0.2s ease',
+                animation: 'fadeIn 0.3s ease-out',
+                position: 'relative'
+            }}
+            styles={{ body: { padding: '12px' } }}
+            hoverable={!isSelected && !isEditing}
+            onClick={handleCardClick}
+            onMouseEnter={(e) => {
+                if (!isSelected && !isEditing) {
+                    e.currentTarget.style.borderColor = '#1890ff';
+                    e.currentTarget.style.backgroundColor = '#2d3436';
+                }
+            }}
+            onMouseLeave={(e) => {
+                if (!isSelected && !isEditing) {
+                    e.currentTarget.style.borderColor = '#434343';
+                    e.currentTarget.style.backgroundColor = '#262626';
+                }
+            }}
+        >
+            <div>
+                {/* Edit button */}
+                {!isEditing && (
+                    <Button
+                        size="small"
+                        type="text"
+                        icon={<EditOutlined />}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setIsEditing(true);
+                        }}
+                        style={{
+                            position: 'absolute',
+                            top: '8px',
+                            right: '8px',
+                            color: '#1890ff',
+                            opacity: 0.7
+                        }}
+                        className="edit-button"
+                    />
+                )}
+
+                {/* Save/Cancel buttons when editing */}
+                {isEditing && (
+                    <div style={{
+                        position: 'absolute',
+                        top: '8px',
+                        right: '8px',
+                        display: 'flex',
+                        gap: '4px'
+                    }}>
+                        <Button
+                            size="small"
+                            type="text"
+                            icon={<SaveOutlined />}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleSave();
+                            }}
+                            loading={isSaving}
+                            style={{ color: '#52c41a' }}
+                        />
+                        <Button
+                            size="small"
+                            type="text"
+                            icon={<CloseOutlined />}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleCancel();
+                            }}
+                            style={{ color: '#ff4d4f' }}
+                        />
+                    </div>
+                )}
+
+                {/* Idea header - editable */}
+                <div style={{ marginBottom: '8px', paddingRight: '60px' }}>
+                    {isEditing ? (
+                        <Input
+                            value={editTitle}
+                            onChange={(e) => setEditTitle(e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            placeholder="输入标题..."
+                            style={{
+                                fontSize: '14px',
+                                fontWeight: 'bold',
+                                backgroundColor: '#1a1a1a',
+                                border: '1px solid #52c41a',
+                                color: '#d9d9d9'
+                            }}
+                            onPressEnter={(e) => {
+                                e.stopPropagation();
+                                handleSave();
+                            }}
+                        />
+                    ) : (
+                        <Typography.Text strong style={{
+                            color: '#d9d9d9',
+                            fontSize: '14px'
+                        }}>
+                            {idea.title}
+                        </Typography.Text>
+                    )}
+                </div>
+
+                {/* Idea body - editable */}
+                <div style={{ marginBottom: ideaOutlines.length > 0 ? '8px' : '0', paddingRight: '60px' }}>
+                    {isEditing ? (
+                        <Input.TextArea
+                            value={editBody}
+                            onChange={(e) => setEditBody(e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            placeholder="输入内容..."
+                            autoSize={{ minRows: 3, maxRows: 6 }}
+                            style={{
+                                fontSize: '13px',
+                                backgroundColor: '#1a1a1a',
+                                border: '1px solid #52c41a',
+                                color: '#a6a6a6'
+                            }}
+                        />
+                    ) : (
+                        <Typography.Text style={{
+                            color: '#a6a6a6',
+                            fontSize: '13px',
+                            lineHeight: '1.4',
+                            display: 'block'
+                        }}>
+                            {idea.body}
+                        </Typography.Text>
+                    )}
+                </div>
+
+                {/* Associated outlines - only show if there are outlines */}
+                {ideaOutlines.length > 0 && (
+                    <div style={{
+                        borderTop: '1px solid #434343',
+                        marginTop: '8px',
+                        paddingTop: '8px'
+                    }}>
+                        <IdeaOutlines
+                            ideaId={idea.artifactId || ''}
+                            outlines={ideaOutlines}
+                            isLoading={false}
+                        />
+                    </div>
+                )}
+            </div>
+        </Card>
+    );
+};
+
 export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsProps> = ({
     ideas,
     onIdeaSelect,
@@ -166,8 +380,6 @@ export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsPr
 
     // Determine if reasoning is active
     const isReasoning = reasoningEvent?.type === 'reasoning_start';
-
-
 
     return (
         <div style={{
@@ -259,69 +471,14 @@ export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsPr
                         const ideaOutlinesForThis = ideaOutlines[idea.artifactId || ''] || [];
 
                         return (
-                            <Card
+                            <EditableIdeaCard
                                 key={`${idea.artifactId || 'idea'}-${index}`}
-                                style={{
-                                    backgroundColor: isSelected ? '#2d3436' : '#262626',
-                                    border: isSelected ? '1px solid #1890ff' : '1px solid #434343',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s ease',
-                                    animation: 'fadeIn 0.3s ease-out'
-                                }}
-                                styles={{ body: { padding: '12px' } }}
-                                hoverable={!isSelected}
-                                onClick={() => handleIdeaClick(idea, index)}
-                                onMouseEnter={(e) => {
-                                    if (!isSelected) {
-                                        e.currentTarget.style.borderColor = '#1890ff';
-                                        e.currentTarget.style.backgroundColor = '#2d3436';
-                                    }
-                                }}
-                                onMouseLeave={(e) => {
-                                    if (!isSelected) {
-                                        e.currentTarget.style.borderColor = '#434343';
-                                        e.currentTarget.style.backgroundColor = '#262626';
-                                    }
-                                }}
-                            >
-                                <div>
-                                    {/* Idea header */}
-                                    <div style={{ marginBottom: '8px' }}>
-                                        <Text strong style={{
-                                            color: '#d9d9d9',
-                                            fontSize: '14px'
-                                        }}>
-                                            {idea.title}
-                                        </Text>
-                                    </div>
-
-                                    {/* Idea body */}
-                                    <Text style={{
-                                        color: '#a6a6a6',
-                                        fontSize: '13px',
-                                        lineHeight: '1.4',
-                                        display: 'block',
-                                        marginBottom: ideaOutlinesForThis.length > 0 ? '8px' : '0'
-                                    }}>
-                                        {idea.body}
-                                    </Text>
-
-                                    {/* Associated outlines - only show if there are outlines */}
-                                    {ideaOutlinesForThis.length > 0 && (
-                                        <div style={{
-                                            borderTop: '1px solid #434343',
-                                            marginTop: '8px',
-                                            paddingTop: '8px'
-                                        }}>
-                                            <IdeaOutlines
-                                                ideaId={idea.artifactId || ''}
-                                                outlines={ideaOutlinesForThis}
-                                                isLoading={false}
-                                            />
-                                        </div>
-                                    )}
-                                </div>
-                            </Card>
+                                idea={idea}
+                                index={index}
+                                isSelected={isSelected}
+                                ideaOutlines={ideaOutlinesForThis}
+                                onIdeaClick={handleIdeaClick}
+                            />
                         );
                     })}
                 </Space>
@@ -533,38 +690,14 @@ export const ModernBrainstormingResults: React.FC<{
                         const isSelected = selectedIdeaIndex === index;
 
                         return (
-                            <Card
+                            <EditableIdeaCard
                                 key={`${idea.artifactId || 'idea'}-${index}`}
-                                style={{
-                                    backgroundColor: isSelected ? '#2d3436' : '#262626',
-                                    border: isSelected ? '1px solid #1890ff' : '1px solid #434343',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s ease'
-                                }}
-                                bodyStyle={{ padding: '12px' }}
-                                hoverable={!isSelected}
-                                onClick={() => handleIdeaClick(idea, index)}
-                            >
-                                <div>
-                                    <div style={{ marginBottom: '8px' }}>
-                                        <Text strong style={{
-                                            color: '#d9d9d9',
-                                            fontSize: '14px'
-                                        }}>
-                                            {idea.title}
-                                        </Text>
-                                    </div>
-
-                                    <Text style={{
-                                        color: '#a6a6a6',
-                                        fontSize: '13px',
-                                        lineHeight: '1.4',
-                                        display: 'block'
-                                    }}>
-                                        {idea.body}
-                                    </Text>
-                                </div>
-                            </Card>
+                                idea={idea}
+                                index={index}
+                                isSelected={isSelected}
+                                ideaOutlines={ideaOutlines[idea.artifactId || ''] || []}
+                                onIdeaClick={handleIdeaClick}
+                            />
                         );
                     })}
                 </Space>
