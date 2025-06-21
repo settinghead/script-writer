@@ -81,8 +81,8 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
     // Memoize where clause to prevent unnecessary re-renders
     const projectWhereClause = useMemo(() => `project_id = '${projectId}'`, [projectId]);
     
-    // Enhanced error handler for Electric 409 conflicts
-    const handleElectricError = useCallback((error: any, tableName: string) => {
+    // Enhanced error handler for Electric 409 conflicts - stable reference
+    const handleElectricError = useRef((error: any, tableName: string) => {
         if (error?.status === 409) {
             console.log(`[ProjectDataContext] Electric 409 conflict on ${tableName}, will auto-retry`);
             if (isElectricDebugLoggingEnabled()) {
@@ -94,31 +94,40 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
         if (isElectricDebugLoggingEnabled()) {
             console.log(`[ProjectDataContext] Electric error on ${tableName}:`, error?.message || error);
         }
-    }, []);
+    }).current;
 
     // Log shape info for debugging
     const lastProjectIdRef = useRef<string>();
+    const renderCountRef = useRef<number>(0);
+    renderCountRef.current++;
+    
     if (lastProjectIdRef.current !== projectId) {
         lastProjectIdRef.current = projectId;
+        console.log(`[ProjectDataContext] Project changed to ${projectId}, creating new subscriptions`);
         logElectricShapeInfo('artifacts', projectWhereClause);
         logElectricShapeInfo('transforms', projectWhereClause);
+    } else {
+        console.log(`[ProjectDataContext] Re-render #${renderCountRef.current} for project ${projectId} (should reuse subscriptions)`);
     }
 
     // Stable configuration objects to prevent unnecessary re-subscriptions
-    const artifactsConfig = useMemo(() => ({
-        ...electricConfig,
-        params: {
-            table: 'artifacts',
-            where: projectWhereClause,
-        },
-        onError: (error: any) => handleElectricError(error, 'artifacts'),
-        backoffOptions: {
-            initialDelay: 200,
-            maxDelay: 5000,
-            multiplier: 2.0,
-            maxRetries: 3
-        }
-    }), [electricConfig, projectWhereClause, handleElectricError]);
+    const artifactsConfig = useMemo(() => {
+        console.log(`[ProjectDataContext] Creating new artifacts config for project ${projectId}`);
+        return {
+            ...electricConfig,
+            params: {
+                table: 'artifacts',
+                where: projectWhereClause,
+            },
+            onError: (error: any) => handleElectricError(error, 'artifacts'),
+            backoffOptions: {
+                initialDelay: 200,
+                maxDelay: 5000,
+                multiplier: 2.0,
+                maxRetries: 3
+            }
+        };
+    }, [electricConfig, projectWhereClause]); // Removed handleElectricError from deps
 
     // Electric SQL subscriptions
     const { data: artifacts, isLoading: artifactsLoading, error: artifactsError } = useShape<ElectricArtifact>(artifactsConfig);
@@ -151,7 +160,7 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
             multiplier: 2.0,
             maxRetries: 3
         }
-    }), [electricConfig, projectWhereClause, handleElectricError]);
+    }), [electricConfig, projectWhereClause]);
 
     const { data: transforms, isLoading: transformsLoading, error: transformsError } = useShape<ElectricTransform>(transformsConfig);
 
@@ -168,7 +177,7 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
             multiplier: 2.0,
             maxRetries: 3
         }
-    }), [electricConfig, projectWhereClause, handleElectricError]);
+    }), [electricConfig, projectWhereClause]);
 
     const transformInputsConfig = useMemo(() => ({
         ...electricConfig,
@@ -183,7 +192,7 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
             multiplier: 2.0,
             maxRetries: 3
         }
-    }), [electricConfig, projectWhereClause, handleElectricError]);
+    }), [electricConfig, projectWhereClause]);
 
     const transformOutputsConfig = useMemo(() => ({
         ...electricConfig,
@@ -198,7 +207,7 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
             multiplier: 2.0,
             maxRetries: 3
         }
-    }), [electricConfig, projectWhereClause, handleElectricError]);
+    }), [electricConfig, projectWhereClause]);
 
     const llmPromptsConfig = useMemo(() => ({
         ...electricConfig,
@@ -213,7 +222,7 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
             multiplier: 2.0,
             maxRetries: 3
         }
-    }), [electricConfig, projectWhereClause, handleElectricError]);
+    }), [electricConfig, projectWhereClause]);
 
     const llmTransformsConfig = useMemo(() => ({
         ...electricConfig,
@@ -228,7 +237,7 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
             multiplier: 2.0,
             maxRetries: 3
         }
-    }), [electricConfig, projectWhereClause, handleElectricError]);
+    }), [electricConfig, projectWhereClause]);
 
     const { data: humanTransforms, isLoading: humanTransformsLoading } = useShape<ElectricHumanTransform>(humanTransformsConfig);
     const { data: transformInputs, isLoading: transformInputsLoading } = useShape<ElectricTransformInput>(transformInputsConfig);

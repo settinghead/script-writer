@@ -10,7 +10,6 @@ import { MenuOutlined, UserOutlined, LogoutOutlined, LoginOutlined } from '@ant-
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './components/LoginPage';
-import IdeationTab from './components/IdeationTab';
 import ProjectsList from './components/IdeationsList';
 import HomePage from './components/HomePage';
 import { OutlineTab } from './components/OutlineTab';
@@ -214,16 +213,6 @@ const AppContent: React.FC = () => {
                   <Route path="brainstorm" element={<ProjectBrainstormPage />} />
                   <Route path="stage/:stageId" element={<StageDetailView />} />
                 </Route>
-                <Route path="/ideation/:id" element={
-                  <ProtectedRoute>
-                    <IdeationTab />
-                  </ProtectedRoute>
-                } />
-                <Route path="/ideation" element={
-                  <ProtectedRoute>
-                    <IdeationTab />
-                  </ProtectedRoute>
-                } />
                 <Route path="/new-outline" element={
                   <ProtectedRoute>
                     <OutlineTab />
@@ -281,18 +270,8 @@ const AppContent: React.FC = () => {
                   </ProtectedRoute>
                 }>
                   <Route path="brainstorm" element={<ProjectBrainstormPage />} />
-                  {/* Add other project sub-routes here in the future */}
                 </Route>
-                <Route path="/ideation/:id" element={
-                  <ProtectedRoute>
-                    <IdeationTab />
-                  </ProtectedRoute>
-                } />
-                <Route path="/ideation" element={
-                  <ProtectedRoute>
-                    <IdeationTab />
-                  </ProtectedRoute>
-                } />
+
                 <Route path="/new-outline" element={
                   <ProtectedRoute>
                     <OutlineTab />
