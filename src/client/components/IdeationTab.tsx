@@ -208,7 +208,7 @@ const IdeationTab: React.FC = () => {
         }
     };
 
-    const handleIdeaSelect = (ideaBody: string) => {
+    const handleIdeaSelect = useCallback((ideaBody: string) => {
         setUserInput(ideaBody);
         setBrainstormingCollapsed(true);
 
@@ -237,7 +237,7 @@ const IdeationTab: React.FC = () => {
                 }
             }
         }
-    };
+    }, [brainstormingData.generatedIdeas, brainstormingData.generatedIdeaArtifacts, ideationRunId, navigate]);
 
     const handleStreamingComplete = useCallback(() => {
         setIsStreamingJob(false);
@@ -254,7 +254,7 @@ const IdeationTab: React.FC = () => {
         }
     }, [ideationRunId, navigate]);
 
-    const generateIdeas = async () => {
+    const generateIdeas = useCallback(async () => {
         if (!brainstormingData.selectedGenrePaths.length) {
             setError(new Error('请至少选择一个故事类型'));
             return;
@@ -291,16 +291,16 @@ const IdeationTab: React.FC = () => {
             console.error('Error creating project and brainstorming job:', err);
             setError(err instanceof Error ? err : new Error('Failed to create project and start brainstorming'));
         }
-    };
+    }, [brainstormingData.selectedGenrePaths, brainstormingData.selectedPlatform, brainstormingData.requirements, navigate]);
 
-    const handleRegenerate = () => {
+    const handleRegenerate = useCallback(() => {
         setBrainstormingData(prev => ({
             ...prev,
             generatedIdeas: []
         }));
         setSelectedIdeaIndex(null);
         generateIdeas();
-    };
+    }, [generateIdeas]);
 
     const checkActiveStreamingJob = async (runId: string) => {
         try {
@@ -331,7 +331,7 @@ const IdeationTab: React.FC = () => {
         };
     }, []);
 
-    const handleRestart = () => {
+    const handleRestart = useCallback(() => {
         // Clear all states
         setUserInput('');
         setBrainstormingData({
@@ -348,7 +348,7 @@ const IdeationTab: React.FC = () => {
 
         // Navigate to base route
         navigate('/ideation');
-    };
+    }, [navigate]);
 
     const handleDeleteIdeation = async () => {
         if (!ideationRunId) return;

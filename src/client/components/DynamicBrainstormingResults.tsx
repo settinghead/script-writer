@@ -118,7 +118,7 @@ const IdeaOutlines: React.FC<{
 };
 
 // Simplified idea card component that delegates editing to ArtifactEditor
-const EditableIdeaCard: React.FC<{
+const EditableIdeaCardComponent: React.FC<{
     idea: IdeaWithTitle;
     index: number;
     isSelected: boolean;
@@ -141,6 +141,13 @@ const EditableIdeaCard: React.FC<{
             setShowSavedCheckmark(false);
         }, 2000); // Show checkmark for 2 seconds
     }, []);
+
+    // Stable callback for onTransition to prevent re-renders
+    const handleTransition = useCallback((newArtifactId: string) => {
+        console.log(`Idea ${index + 1} transitioned from ${idea.artifactId} to ${newArtifactId}`);
+    }, [index, idea.artifactId]);
+    
+    // Callback should now be stable with proper memoization
 
     // If editing and we have an artifactId, use ArtifactEditor
     if (isEditing && idea.artifactId) {
@@ -180,9 +187,7 @@ const EditableIdeaCard: React.FC<{
                             path={`[${index}]`}
                             transformName="edit_brainstorm_idea"
                             className="!border-none !p-0"
-                            onTransition={(newArtifactId) => {
-                                console.log(`Idea ${index + 1} transitioned from ${idea.artifactId} to ${newArtifactId}`);
-                            }}
+                            onTransition={handleTransition}
                             onSaveSuccess={handleSaveSuccess}
                         />
                     </div>
@@ -312,6 +317,22 @@ const EditableIdeaCard: React.FC<{
     );
 };
 
+// Memoized version to prevent unnecessary re-renders
+const EditableIdeaCard = React.memo(EditableIdeaCardComponent, (prevProps, nextProps) => {
+    const isEqual = (
+        prevProps.idea.artifactId === nextProps.idea.artifactId &&
+        prevProps.idea.title === nextProps.idea.title &&
+        prevProps.idea.body === nextProps.idea.body &&
+        prevProps.index === nextProps.index &&
+        prevProps.isSelected === nextProps.isSelected &&
+        prevProps.ideaOutlines.length === nextProps.ideaOutlines.length
+        // Note: We don't compare onIdeaClick as it's likely to be a new function each render
+    );
+    
+    // React.memo should now work properly with stable callbacks
+    return isEqual;
+});
+
 export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsProps> = ({
     ideas,
     onIdeaSelect,
@@ -326,6 +347,8 @@ export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsPr
     ideationRunId,
     reasoningEvent
 }) => {
+    // Debug logging removed - issue should be fixed with proper useCallback usage
+    
     const [ideaOutlines, setIdeaOutlines] = React.useState<{ [ideaId: string]: any[] }>({});
     const [outlinesLoading, setOutlinesLoading] = React.useState(false);
     const navigate = useNavigate();
@@ -359,6 +382,8 @@ export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsPr
         const ideaText = `${idea.title}: ${idea.body}`;
         onIdeaSelect(ideaText);
     }, [onIdeaSelect]);
+    
+    // Callback should now be stable due to proper memoization in parent
 
     // Determine if reasoning is active
     const isReasoning = reasoningEvent?.type === 'reasoning_start';

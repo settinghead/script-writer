@@ -49,7 +49,7 @@ interface CreateTransformResponse {
     derivedArtifact: any;
 }
 
-export const ArtifactEditor: React.FC<ArtifactEditorProps> = React.memo(({
+const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
     artifactId,
     path = "",
     transformName,
@@ -57,6 +57,8 @@ export const ArtifactEditor: React.FC<ArtifactEditorProps> = React.memo(({
     onTransition,
     onSaveSuccess
 }) => {
+    // Component should now mount/unmount properly with stable props
+
     // State management
     const [isEditing, setIsEditing] = useState(false);
     const [editingField, setEditingField] = useState<string | null>(null);
@@ -95,7 +97,8 @@ export const ArtifactEditor: React.FC<ArtifactEditorProps> = React.memo(({
         if (existingTransform?.derived_artifact_id) {
             ids.push(existingTransform.derived_artifact_id);
         }
-        return `id IN ('${ids.join("', '")}')`;
+        const whereClause = `id IN ('${ids.join("', '")}')`;
+        return whereClause;
     }, [artifactId, existingTransform?.derived_artifact_id]);
 
     const { data: artifacts, isLoading: isLoadingArtifact, error } = useShape({
@@ -456,4 +459,21 @@ export const ArtifactEditor: React.FC<ArtifactEditorProps> = React.memo(({
             </div>
         </div>
     );
-}); 
+};
+
+// Custom comparison function for React.memo to prevent unnecessary re-renders
+const arePropsEqual = (prevProps: ArtifactEditorProps, nextProps: ArtifactEditorProps) => {
+    const isEqual = (
+        prevProps.artifactId === nextProps.artifactId &&
+        prevProps.path === nextProps.path &&
+        prevProps.transformName === nextProps.transformName &&
+        prevProps.className === nextProps.className
+        // Note: We don't compare onTransition and onSaveSuccess as they're likely to be new functions each render
+    );
+    
+    // Props should now be stable with proper useCallback usage in parent components
+    
+    return isEqual;
+};
+
+export const ArtifactEditor = React.memo(ArtifactEditorComponent, arePropsEqual); 
