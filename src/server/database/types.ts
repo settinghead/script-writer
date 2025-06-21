@@ -9,62 +9,27 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
   ? ColumnType<S, I | undefined, U>
   : ColumnType<T, T | undefined, T>;
 
-export type Json = JsonValue;
-
-export type JsonArray = JsonValue[];
-
-export type JsonObject = {
-  [x: string]: JsonValue | undefined;
-};
-
-export type JsonPrimitive = boolean | number | string | null;
-
-export type JsonValue = JsonArray | JsonObject | JsonPrimitive;
-
 export type Numeric = ColumnType<string, number | string, number | string>;
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
 export interface Artifacts {
-  created_at: Generated<Timestamp | null>;
+  created_at: Generated<Timestamp>;
   data: string;
   id: string;
   metadata: string | null;
-  partial_data: Json | null;
   project_id: string;
-  streaming_progress: Generated<Numeric | null>;
-  streaming_status: Generated<string | null>;
   type: string;
   type_version: Generated<string>;
-  updated_at: Generated<Timestamp | null>;
 }
 
 export interface AuthProviders {
-  created_at: Generated<Timestamp | null>;
+  created_at: Generated<Timestamp>;
   id: Generated<number>;
+  provider: string;
   provider_data: string | null;
-  provider_type: string;
-  provider_user_id: string | null;
+  provider_id: string;
   user_id: string;
-}
-
-export interface BrainstormFlows {
-  artifact_created_at: Timestamp | null;
-  artifact_data: string | null;
-  artifact_id: string | null;
-  artifact_partial_data: Json | null;
-  artifact_status: string | null;
-  artifact_type: string | null;
-  artifact_updated_at: Timestamp | null;
-  error_message: string | null;
-  progress_percentage: Numeric | null;
-  project_id: string | null;
-  project_name: string | null;
-  streaming_progress: Numeric | null;
-  transform_created_at: Timestamp | null;
-  transform_id: string | null;
-  transform_status: string | null;
-  transform_updated_at: Timestamp | null;
 }
 
 export interface HumanTransforms {
@@ -73,6 +38,7 @@ export interface HumanTransforms {
   derivation_path: Generated<string | null>;
   derived_artifact_id: string | null;
   interface_context: string | null;
+  project_id: string;
   source_artifact_id: string | null;
   transform_id: string;
   transform_name: string | null;
@@ -80,6 +46,7 @@ export interface HumanTransforms {
 
 export interface LlmPrompts {
   id: string;
+  project_id: string;
   prompt_role: Generated<string | null>;
   prompt_text: string;
   transform_id: string;
@@ -88,24 +55,25 @@ export interface LlmPrompts {
 export interface LlmTransforms {
   model_name: string;
   model_parameters: string | null;
+  project_id: string;
   raw_response: string | null;
   token_usage: string | null;
   transform_id: string;
 }
 
 export interface Projects {
-  created_at: Generated<Timestamp | null>;
+  created_at: Generated<Timestamp>;
   description: string | null;
   id: string;
   name: string;
   project_type: Generated<string | null>;
   status: Generated<string | null>;
-  updated_at: Generated<Timestamp | null>;
+  updated_at: Generated<Timestamp>;
 }
 
 export interface ProjectsUsers {
   id: Generated<number>;
-  joined_at: Generated<Timestamp | null>;
+  joined_at: Generated<Timestamp>;
   project_id: string;
   role: Generated<string | null>;
   user_id: string;
@@ -115,6 +83,7 @@ export interface TransformInputs {
   artifact_id: string;
   id: Generated<number>;
   input_role: string | null;
+  project_id: string;
   transform_id: string;
 }
 
@@ -122,36 +91,36 @@ export interface TransformOutputs {
   artifact_id: string;
   id: Generated<number>;
   output_role: string | null;
+  project_id: string;
   transform_id: string;
 }
 
 export interface Transforms {
-  created_at: Generated<Timestamp | null>;
+  created_at: Generated<Timestamp>;
   error_message: string | null;
   execution_context: string | null;
   id: string;
   max_retries: Generated<number | null>;
-  progress_percentage: Generated<Numeric | null>;
+  progress_percentage: Numeric | null;
   project_id: string;
   retry_count: Generated<number | null>;
   status: Generated<string | null>;
-  streaming_status: Generated<string | null>;
+  streaming_status: string | null;
   type: string;
   type_version: Generated<string>;
-  updated_at: Generated<Timestamp | null>;
+  updated_at: Generated<Timestamp>;
 }
 
 export interface Users {
-  created_at: Generated<Timestamp | null>;
-  display_name: string | null;
+  created_at: Generated<Timestamp>;
+  email: string | null;
   id: string;
-  status: Generated<string | null>;
-  updated_at: Generated<Timestamp | null>;
+  updated_at: Generated<Timestamp>;
   username: string;
 }
 
 export interface UserSessions {
-  created_at: Generated<Timestamp | null>;
+  created_at: Generated<Timestamp>;
   expires_at: Timestamp;
   id: string;
   user_id: string;
@@ -160,7 +129,6 @@ export interface UserSessions {
 export interface DB {
   artifacts: Artifacts;
   auth_providers: AuthProviders;
-  brainstorm_flows: BrainstormFlows;
   human_transforms: HumanTransforms;
   llm_prompts: LlmPrompts;
   llm_transforms: LlmTransforms;

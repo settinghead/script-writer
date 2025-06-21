@@ -1,9 +1,10 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useElectricBrainstorm } from '../hooks/useElectricBrainstorm'
+import { useProjectData } from '../contexts/ProjectDataContext'
 import { DynamicBrainstormingResults } from './DynamicBrainstormingResults'
 import { ReasoningIndicator } from './shared/ReasoningIndicator'
 import { StreamingProgress } from './shared/StreamingProgress'
+import type { IdeaWithTitle } from '../types/brainstorm'
 
 export default function ProjectBrainstormPage() {
   const { projectId } = useParams<{ projectId: string }>()
@@ -14,14 +15,76 @@ export default function ProjectBrainstormPage() {
     return null
   }
 
-  const {
-    ideas,
-    status,
-    progress,
-    error,
-    isLoading,
-    lastSyncedAt
-  } = useElectricBrainstorm(projectId)
+  // Use unified project data context
+  const projectData = useProjectData()
+
+  // Extract brainstorm data from the unified context
+  const { ideas, status, progress, error, isLoading, lastSyncedAt } = useMemo(() => {
+    const brainstormArtifacts = projectData.getBrainstormArtifacts()
+    
+    // Find the latest brainstorm artifact
+    const latestBrainstorm = brainstormArtifacts
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
+
+    if (!latestBrainstorm) {
+      return {
+        ideas: [],
+        status: 'idle' as const,
+        progress: 0,
+        error: null,
+        isLoading: projectData.isLoading,
+        lastSyncedAt: null
+      }
+    }
+
+    // Parse the ideas from the artifact data
+    let ideas: IdeaWithTitle[] = []
+    let status: 'idle' | 'streaming' | 'completed' | 'failed' = 'idle'
+    let progress = 0
+
+    try {
+      // Check if it's streaming
+      if (latestBrainstorm.streaming_status === 'streaming') {
+        status = 'streaming'
+        progress = latestBrainstorm.streaming_progress || 0
+
+        // Use partial data if available during streaming
+        if (latestBrainstorm.partial_data?.ideas) {
+          ideas = latestBrainstorm.partial_data.ideas.map((idea: any, index: number) => ({
+            ...idea,
+            artifactId: latestBrainstorm.id,
+            index
+          }))
+        }
+      } else if (latestBrainstorm.streaming_status === 'completed') {
+        status = 'completed'
+        progress = 100
+
+        // Parse completed data
+        const artifactData = JSON.parse(latestBrainstorm.data)
+        if (artifactData.ideas) {
+          ideas = artifactData.ideas.map((idea: any, index: number) => ({
+            ...idea,
+            artifactId: latestBrainstorm.id,
+            index
+          }))
+        }
+      } else if (latestBrainstorm.streaming_status === 'failed') {
+        status = 'failed'
+      }
+    } catch (err) {
+      console.error('Failed to parse brainstorm data:', err)
+    }
+
+    return {
+      ideas,
+      status,
+      progress,
+      error: projectData.error?.message || null,
+      isLoading: projectData.isLoading,
+      lastSyncedAt: latestBrainstorm.updated_at
+    }
+  }, [projectData])
 
   // Show loading state during initial sync
   if (isLoading && ideas.length === 0) {

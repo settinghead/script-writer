@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useShape } from '@electric-sql/react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { message, Button } from 'antd';
 import { useDebouncedCallback } from '../../hooks/useDebounce';
 import { EditableField } from './EditableField';
+import { useProjectData } from '../../contexts/ProjectDataContext';
 import type { ElectricArtifact } from '../../../common/types';
-import { getElectricConfig } from '../../../common/config/electric';
 import { extractDataAtPath, getPathDescription } from '../../../common/utils/pathExtraction';
 import { CheckOutlined, EditOutlined, LoadingOutlined } from '@ant-design/icons';
 
@@ -57,7 +56,8 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
     onTransition,
     onSaveSuccess
 }) => {
-    // Component should now mount/unmount properly with stable props
+    // Get unified project data context
+    const projectData = useProjectData();
 
     // State management
     const [isEditing, setIsEditing] = useState(false);
@@ -66,63 +66,30 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
     const [typingFields, setTypingFields] = useState<Set<string>>(new Set());
     const [isCreatingTransform, setIsCreatingTransform] = useState(false);
 
-    // 1. Check for existing human transform for this path
-    const { data: existingTransform, refetch: refetchTransform, isLoading: isLoadingTransform } = useQuery({
-        queryKey: ['human-transform', artifactId, path],
-        queryFn: async () => {
-            const response = await fetch(`/api/artifacts/${artifactId}/human-transform?path=${encodeURIComponent(path)}`, {
-                credentials: 'include'
-            });
-            if (!response.ok) {
-                if (response.status === 404) return null;
-                throw new Error('Failed to fetch human transform');
-            }
-            return response.json();
-        },
-        staleTime: 5000,
-        refetchOnWindowFocus: false
-    });
+    // 1. Check for existing human transform for this path using the unified context
+    const existingTransform = useMemo(() => {
+        const humanTransforms = projectData.getHumanTransformsForArtifact(artifactId, path);
+        return humanTransforms.length > 0 ? humanTransforms[0] : null;
+    }, [projectData, artifactId, path]);
 
     // 2. Determine which artifact to display/edit
     const targetArtifactId = existingTransform?.derived_artifact_id || artifactId;
     const shouldShowEditButton = !existingTransform && transformName;
 
-    // 3. Electric SQL real-time data
-    const electricConfig = useMemo(() => getElectricConfig(), []);
-    
-    // Create a stable where clause that includes both original and derived artifact IDs
-    // This way we maintain a single subscription that covers both cases
-    const stableWhereClause = useMemo(() => {
-        const ids = [artifactId];
-        if (existingTransform?.derived_artifact_id) {
-            ids.push(existingTransform.derived_artifact_id);
-        }
-        const whereClause = `id IN ('${ids.join("', '")}')`;
-        return whereClause;
-    }, [artifactId, existingTransform?.derived_artifact_id]);
-
-    const { data: artifacts, isLoading: isLoadingArtifact, error } = useShape({
-        url: electricConfig.url,
-        params: {
-            table: 'artifacts',
-            where: stableWhereClause
-        }
-    });
-
-    // Select the appropriate artifact (derived if available, otherwise original)
+    // 3. Get artifact from unified context
     const artifact = useMemo(() => {
-        if (!artifacts || artifacts.length === 0) return undefined;
-        
         // If we have a derived artifact ID, prefer that one
         if (existingTransform?.derived_artifact_id) {
-            const derivedArtifact = artifacts.find(a => a.id === existingTransform.derived_artifact_id);
-            if (derivedArtifact) return derivedArtifact as unknown as ElectricArtifact;
+            return projectData.getArtifactById(existingTransform.derived_artifact_id);
         }
         
         // Otherwise, use the original artifact
-        const originalArtifact = artifacts.find(a => a.id === artifactId);
-        return originalArtifact as unknown as ElectricArtifact;
-    }, [artifacts, existingTransform?.derived_artifact_id, artifactId]);
+        return projectData.getArtifactById(artifactId);
+    }, [projectData, existingTransform?.derived_artifact_id, artifactId]);
+
+    // Loading and error states from unified context
+    const isLoadingArtifact = projectData.isLoading;
+    const error = projectData.error;
 
     // 4. Process artifact data
     const processedArtifactData = useMemo(() => {
@@ -153,93 +120,11 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
 
     const { artifactData, isUserInput } = processedArtifactData;
 
-    // 5. Create transform mutation
-    const createTransformMutation = useMutation<CreateTransformResponse, Error, CreateTransformRequest>({
-        mutationFn: async (request) => {
-            const response = await fetch(`/api/artifacts/${artifactId}/schema-transform`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                credentials: 'include',
-                body: JSON.stringify({
-                    transformName: request.transformName,
-                    derivationPath: request.derivationPath,
-                    fieldUpdates: {} // Empty - just creating the transform
-                })
-            });
+    // 5. Create transform mutation using unified context
+    const createTransformMutation = projectData.createSchemaTransform;
 
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
-            }
-
-            return response.json();
-        },
-        onSuccess: (response) => {
-            setIsCreatingTransform(false);
-            setIsEditing(true);
-            
-            // Refetch the human transform query
-            refetchTransform();
-            
-            // Notify parent component
-            onTransition?.(response.derivedArtifact.id);
-            
-            message.success('开始编辑');
-        },
-        onError: (error) => {
-            setIsCreatingTransform(false);
-            message.error(`创建编辑失败: ${error.message}`);
-        }
-    });
-
-    // 6. Update mutation for user_input and brainstorm_idea artifacts
-    const updateMutation = useMutation<any, Error, Record<string, any>>({
-        mutationFn: async (fieldUpdates) => {
-            let requestBody;
-            
-            if (isUserInput) {
-                // For user_input artifacts, we need to send the data as 'text' field
-                // Convert the structured data back to JSON string
-                const textData = JSON.stringify(fieldUpdates);
-                requestBody = { text: textData };
-            } else if (artifact.type === 'brainstorm_idea') {
-                // For brainstorm_idea artifacts, send the data directly
-                requestBody = { data: fieldUpdates };
-            } else {
-                throw new Error('Unsupported artifact type for editing');
-            }
-            
-            const response = await fetch(`/api/artifacts/${targetArtifactId}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                credentials: 'include',
-                body: JSON.stringify(requestBody)
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
-            }
-
-            return response.json();
-        },
-        onSuccess: () => {
-            // Clear pending saves and typing states
-            setPendingSaves(new Set());
-            setTypingFields(new Set());
-            onSaveSuccess?.();
-        },
-        onError: (error) => {
-            // Clear pending saves and typing states on error
-            setPendingSaves(new Set());
-            setTypingFields(new Set());
-            message.error(`保存失败: ${error.message}`);
-        }
-    });
+    // 6. Update mutation for user_input and brainstorm_idea artifacts using unified context
+    const updateMutation = projectData.updateArtifact;
 
     // 7. Debounced save function with ref to avoid stale closures
     const saveRef = useRef<(fieldUpdates: Record<string, any>, field: string) => void>();
@@ -252,7 +137,34 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
                 newSet.delete(field);
                 return newSet;
             });
-            updateMutation.mutate(fieldUpdates);
+            
+            // Prepare request based on artifact type
+            let requestData;
+            if (isUserInput) {
+                // For user_input artifacts, we need to send the data as 'text' field
+                requestData = { text: JSON.stringify(fieldUpdates) };
+            } else if (artifact.type === 'brainstorm_idea') {
+                // For brainstorm_idea artifacts, send the data directly
+                requestData = fieldUpdates;
+            }
+            
+            updateMutation.mutate({
+                artifactId: targetArtifactId,
+                data: requestData
+            }, {
+                onSuccess: () => {
+                    // Clear pending saves and typing states
+                    setPendingSaves(new Set());
+                    setTypingFields(new Set());
+                    onSaveSuccess?.();
+                },
+                onError: (error) => {
+                    // Clear pending saves and typing states on error
+                    setPendingSaves(new Set());
+                    setTypingFields(new Set());
+                    message.error(`保存失败: ${error.message}`);
+                }
+            });
         }
     };
 
@@ -270,9 +182,25 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
         setIsCreatingTransform(true);
         createTransformMutation.mutate({
             transformName,
-            derivationPath: path
+            sourceArtifactId: artifactId,
+            derivationPath: path,
+            fieldUpdates: {} // Empty - just creating the transform
+        }, {
+            onSuccess: (response) => {
+                setIsCreatingTransform(false);
+                setIsEditing(true);
+                
+                // Notify parent component
+                onTransition?.(response.derivedArtifact.id);
+                
+                message.success('开始编辑');
+            },
+            onError: (error) => {
+                setIsCreatingTransform(false);
+                message.error(`创建编辑失败: ${error.message}`);
+            }
         });
-    }, [transformName, path, createTransformMutation]);
+    }, [transformName, path, createTransformMutation, artifactId, onTransition]);
 
     const handleFieldChange = useCallback((field: string, value: any) => {
         if (!isUserInput && (!artifact || artifact.type !== 'brainstorm_idea')) return;
@@ -305,7 +233,7 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
     }, []);
 
     // Loading state
-    if (isLoadingTransform || isLoadingArtifact) {
+    if (isLoadingArtifact) {
         return (
             <div className={`artifact-editor loading ${className}`}>
                 <div className="animate-pulse bg-gray-700 h-20 rounded"></div>

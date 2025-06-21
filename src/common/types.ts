@@ -8,6 +8,7 @@ import {
     LegacyOutlineStage
 } from './llm/outlineTypes.js';
 import { z } from 'zod';
+import { UseMutationResult } from '@tanstack/react-query';
 
 // ========== SHARED TYPES FOR CLIENT AND SERVER ==========
 
@@ -320,75 +321,179 @@ export const AgentBrainstormRequestSchema = z.object({
 
 export type AgentBrainstormRequest = z.infer<typeof AgentBrainstormRequestSchema>;
 
-// Electric SQL Database Types
+// Existing types...
+export interface User {
+    id: string;
+    username: string;
+    email?: string;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface Project {
+    id: string;
+    name: string;
+    description?: string;
+    project_type: string;
+    status: string;
+    created_at: string;
+    updated_at: string;
+}
+
+// Electric SQL types for real-time subscriptions
 export interface ElectricArtifact {
-    id: string
-    project_id: string
-    type: string
-    type_version: string
-    data: string // JSON string
-    metadata: string | null // JSON string
-    created_at: string
-    updated_at: string
-    streaming_status: 'streaming' | 'completed' | 'failed' | 'cancelled'
-    streaming_progress: number
-    partial_data: any | null // JSONB
+    id: string;
+    project_id: string;
+    type: string;
+    type_version: string;
+    data: string;
+    metadata?: string;
+    created_at: string;
+    updated_at?: string;
+    streaming_status?: 'streaming' | 'completed' | 'failed' | 'cancelled';
+    streaming_progress?: number;
+    partial_data?: any;
 }
 
 export interface ElectricTransform {
-    id: string
-    project_id: string
-    type: string
-    type_version: string
-    status: 'pending' | 'running' | 'completed' | 'failed'
-    execution_context: string | null
-    created_at: string
-    updated_at: string
-    streaming_status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
-    progress_percentage: number
-    error_message: string | null
-    retry_count: number
-    max_retries: number
+    id: string;
+    project_id: string;
+    type: 'llm' | 'human';
+    type_version: string;
+    status: string;
+    retry_count: number;
+    max_retries: number;
+    execution_context?: string;
+    created_at: string;
+    updated_at: string;
+    streaming_status?: string;
+    progress_percentage?: number;
+    error_message?: string;
 }
 
-export interface ElectricBrainstormFlow {
-    project_id: string
-    project_name: string
-    transform_id: string
-    transform_status: string
-    progress_percentage: number
-    error_message: string | null
-    transform_created_at: string
-    transform_updated_at: string
-    artifact_id: string | null
-    artifact_type: string | null
-    artifact_status: string | null
-    streaming_progress: number | null
-    artifact_data: string | null
-    artifact_partial_data: any | null
-    artifact_created_at: string | null
-    artifact_updated_at: string | null
+export interface ElectricHumanTransform {
+    transform_id: string;
+    project_id: string;
+    action_type: string;
+    interface_context?: string;
+    change_description?: string;
+    source_artifact_id?: string;
+    derivation_path: string;
+    derived_artifact_id?: string;
+    transform_name?: string;
 }
 
-// Brainstorm-specific types
+export interface ElectricTransformInput {
+    id: number;
+    project_id: string;
+    transform_id: string;
+    artifact_id: string;
+    input_role?: string;
+}
+
+export interface ElectricTransformOutput {
+    id: number;
+    project_id: string;
+    transform_id: string;
+    artifact_id: string;
+    output_role?: string;
+}
+
+export interface ElectricLLMPrompt {
+    id: string;
+    project_id: string;
+    transform_id: string;
+    prompt_text: string;
+    prompt_role: string;
+}
+
+export interface ElectricLLMTransform {
+    transform_id: string;
+    project_id: string;
+    model_name: string;
+    model_parameters?: string;
+    raw_response?: string;
+    token_usage?: string;
+}
+
+// Mutation request types
+export interface CreateTransformRequest {
+    projectId: string;
+    type: 'llm' | 'human';
+    typeVersion?: string;
+    status?: string;
+    executionContext?: any;
+}
+
+export interface UpdateArtifactRequest {
+    artifactId: string;
+    data?: any;
+    metadata?: any;
+}
+
+export interface SchemaTransformRequest {
+    transformName: string;
+    sourceArtifactId: string;
+    derivationPath: string;
+    fieldUpdates?: Record<string, any>;
+}
+
+// Project Data Context interface
+export interface ProjectDataContextType {
+    // Data subscriptions
+    artifacts: ElectricArtifact[];
+    transforms: ElectricTransform[];
+    humanTransforms: ElectricHumanTransform[];
+    transformInputs: ElectricTransformInput[];
+    transformOutputs: ElectricTransformOutput[];
+    llmPrompts: ElectricLLMPrompt[];
+    llmTransforms: ElectricLLMTransform[];
+    
+    // Loading states
+    isLoading: boolean;
+    isError: boolean;
+    error: Error | null;
+    
+    // Selectors (memoized)
+    getBrainstormArtifacts: () => ElectricArtifact[];
+    getOutlineArtifacts: () => ElectricArtifact[];
+    getArtifactById: (id: string) => ElectricArtifact | undefined;
+    getTransformById: (id: string) => ElectricTransform | undefined;
+    getHumanTransformsForArtifact: (artifactId: string, path?: string) => ElectricHumanTransform[];
+    getTransformInputsForTransform: (transformId: string) => ElectricTransformInput[];
+    getTransformOutputsForTransform: (transformId: string) => ElectricTransformOutput[];
+    
+    // Mutations (TanStack Query + optimistic updates)
+    createTransform: UseMutationResult<any, Error, CreateTransformRequest>;
+    updateArtifact: UseMutationResult<any, Error, UpdateArtifactRequest>;
+    createSchemaTransform: UseMutationResult<any, Error, SchemaTransformRequest>;
+    
+    // Local state management for optimistic updates
+    localUpdates: Map<string, any>;
+    addLocalUpdate: (key: string, update: any) => void;
+    removeLocalUpdate: (key: string) => void;
+    hasLocalUpdate: (key: string) => boolean;
+}
+
+// Existing types for backward compatibility...
 export interface BrainstormArtifactData {
-    ideas: IdeaWithTitle[]
+    ideas: Array<{
+        title: string;
+        body: string;
+    }>;
 }
 
 export interface BrainstormArtifactMetadata {
-    status: 'streaming' | 'completed' | 'failed'
-    chunkCount: number
-    startedAt?: string
-    lastUpdated?: string
-    completedAt?: string
+    status?: 'streaming' | 'completed' | 'failed';
+    chunkCount?: number;
+    totalExpected?: number;
 }
 
 export interface UseElectricBrainstormResult {
-    ideas: IdeaWithTitle[]
-    status: 'idle' | 'streaming' | 'completed' | 'failed'
-    progress: number
-    error: string | null
-    isLoading: boolean
-    lastSyncedAt: string | null
-    chunkCount: number
+    ideas: IdeaWithTitle[];
+    isLoading: boolean;
+    error: string | null;
+    status: 'idle' | 'streaming' | 'completed' | 'failed';
+    progress: number;
+    metadata: BrainstormArtifactMetadata | null;
 } 
