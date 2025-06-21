@@ -54,6 +54,11 @@ export function createElectricProxyRoutes(authDB: AuthDatabase) {
                 case 'projects':
                 case 'artifacts':
                 case 'transforms':
+                case 'human_transforms':
+                case 'llm_transforms':
+                case 'transform_inputs':
+                case 'transform_outputs':
+                case 'llm_prompts':
                     // All these tables/views are scoped by project_id.
                     finalWhereClause = existingWhere
                         ? `(${existingWhere}) AND (${userScopedWhere})`

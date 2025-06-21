@@ -58,12 +58,14 @@ export class TransformRepository {
     // Add input artifacts to a transform
     async addTransformInputs(
         transformId: string,
-        artifacts: Array<{ artifactId: string; inputRole?: string }>
+        artifacts: Array<{ artifactId: string; inputRole?: string }>,
+        projectId: string
     ): Promise<void> {
         const inputData = artifacts.map(({ artifactId, inputRole }) => ({
             transform_id: transformId,
             artifact_id: artifactId,
-            input_role: inputRole || null
+            input_role: inputRole || null,
+            project_id: projectId
         }));
 
         await this.db
@@ -75,12 +77,14 @@ export class TransformRepository {
     // Add output artifacts to a transform
     async addTransformOutputs(
         transformId: string,
-        artifacts: Array<{ artifactId: string; outputRole?: string }>
+        artifacts: Array<{ artifactId: string; outputRole?: string }>,
+        projectId: string
     ): Promise<void> {
         const outputData = artifacts.map(({ artifactId, outputRole }) => ({
             transform_id: transformId,
             artifact_id: artifactId,
-            output_role: outputRole || null
+            output_role: outputRole || null,
+            project_id: projectId
         }));
 
         await this.db
@@ -90,13 +94,14 @@ export class TransformRepository {
     }
 
     // Add LLM-specific data
-    async addLLMTransform(llmTransform: LLMTransform): Promise<void> {
+    async addLLMTransform(llmTransform: LLMTransform & { project_id: string }): Promise<void> {
         const llmData = {
             transform_id: llmTransform.transform_id,
             model_name: llmTransform.model_name,
             model_parameters: llmTransform.model_parameters ? JSON.stringify(llmTransform.model_parameters) : null,
             raw_response: llmTransform.raw_response || null,
-            token_usage: llmTransform.token_usage ? JSON.stringify(llmTransform.token_usage) : null
+            token_usage: llmTransform.token_usage ? JSON.stringify(llmTransform.token_usage) : null,
+            project_id: llmTransform.project_id
         };
 
         await this.db
@@ -108,13 +113,15 @@ export class TransformRepository {
     // Add LLM prompts
     async addLLMPrompts(
         transformId: string,
-        prompts: Array<{ promptText: string; promptRole?: string }>
+        prompts: Array<{ promptText: string; promptRole?: string }>,
+        projectId: string
     ): Promise<void> {
         const promptData = prompts.map(({ promptText, promptRole = 'primary' }) => ({
             id: uuidv4(),
             transform_id: transformId,
             prompt_text: promptText,
-            prompt_role: promptRole
+            prompt_role: promptRole,
+            project_id: projectId
         }));
 
         await this.db
@@ -129,6 +136,7 @@ export class TransformRepository {
         derivation_path?: string;
         derived_artifact_id?: string;
         transform_name?: string;
+        project_id: string;
     }): Promise<void> {
         const humanData = {
             transform_id: humanTransform.transform_id,
@@ -138,7 +146,8 @@ export class TransformRepository {
             source_artifact_id: humanTransform.source_artifact_id || null,
             derivation_path: humanTransform.derivation_path || '',
             derived_artifact_id: humanTransform.derived_artifact_id || null,
-            transform_name: humanTransform.transform_name || null
+            transform_name: humanTransform.transform_name || null,
+            project_id: humanTransform.project_id
         };
 
         await this.db

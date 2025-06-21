@@ -126,7 +126,7 @@ export class EpisodeGenerationService {
             // Link human transform to params artifact
             await this.transformRepo.addTransformOutputs(humanTransform.id, [
                 { artifactId: paramsArtifact.id, outputRole: 'episode_params' }
-            ]);
+            ], userId);
         } else {
             // No user modifications, but still create artifact with default params and cascaded data
             // This ensures the StreamingTransformExecutor always has access to cascaded parameters
@@ -151,7 +151,7 @@ export class EpisodeGenerationService {
             // Link system transform to params artifact
             await this.transformRepo.addTransformOutputs(systemTransform.id, [
                 { artifactId: paramsArtifact.id, outputRole: 'episode_params' }
-            ]);
+            ], userId);
         }
 
         // 3. Create episode generation session
@@ -186,7 +186,7 @@ export class EpisodeGenerationService {
             { artifactId: stageArtifactId, inputRole: 'stage_data' },
             { artifactId: paramsArtifact.id, inputRole: 'episode_params' }
         ];
-        await this.transformRepo.addTransformInputs(transform.id, inputArtifacts);
+        await this.transformRepo.addTransformInputs(transform.id, inputArtifacts, userId);
 
         // 6. Start the streaming job in the background
         // Import and use TransformExecutor to start the job

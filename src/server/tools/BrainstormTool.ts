@@ -58,7 +58,7 @@ export function createBrainstormToolDefinition(
                 );
                 await transformRepo.addTransformInputs(toolTransformId, [
                     { artifactId: inputArtifact.id, inputRole: 'tool_input' }
-                ]);
+                ], projectId);
 
                 // 2. Create initial output artifact that will be updated with streaming chunks
                 const outputArtifact = await artifactRepo.createArtifact(
@@ -75,7 +75,7 @@ export function createBrainstormToolDefinition(
                 
                 await transformRepo.addTransformOutputs(toolTransformId, [
                     { artifactId: outputArtifact.id, outputRole: 'streaming_result' }
-                ]);
+                ], projectId);
 
                 // 3. Execute the underlying transform which returns a stream
                 const stream = await executeStreamingIdeationTransform(params);

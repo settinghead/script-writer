@@ -69,7 +69,7 @@ export class BrainstormService {
         // Link input artifact to transform
         await this.transformRepo.addTransformInputs(transform.id, [
             { artifactId: userInputArtifact.id, inputRole: 'brainstorm_params' }
-        ]);
+        ], projectId);
 
         // Start background processing using StreamingAgentFramework
         this.processBrainstormWithAgent(transform.id, projectId, params);
