@@ -1,6 +1,6 @@
 import React from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useProjectElectric } from '../contexts/ProjectElectricContext'
+import { useElectricBrainstorm } from '../hooks/useElectricBrainstorm'
 import { DynamicBrainstormingResults } from './DynamicBrainstormingResults'
 import { ReasoningIndicator } from './shared/ReasoningIndicator'
 import { StreamingProgress } from './shared/StreamingProgress'
@@ -14,21 +14,14 @@ export default function ProjectBrainstormPage() {
     return null
   }
 
-  // Use unified Electric context
-  const { 
-    getBrainstormIdeas,
+  const {
+    ideas,
+    status,
+    progress,
+    error,
     isLoading,
-    error: contextError
-  } = useProjectElectric()
-
-  // Get brainstorm ideas for this project
-  const ideas = getBrainstormIdeas()
-  
-  // Determine status based on context data
-  const status = isLoading ? 'streaming' : ideas.length > 0 ? 'completed' : 'idle'
-  const error = contextError?.message || null
-  const progress = 0 // Progress will be determined by streaming status
-  const lastSyncedAt = new Date().toISOString() // Current sync time
+    lastSyncedAt
+  } = useElectricBrainstorm(projectId)
 
   // Show loading state during initial sync
   if (isLoading && ideas.length === 0) {
