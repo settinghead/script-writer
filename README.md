@@ -35,6 +35,7 @@ A collaborative script writing application with AI assistance, real-time collabo
 - **Transform instantiation registry** - Extensible system for defining new transform types
 - **Automatic artifact versioning** - Creates new artifact versions while preserving history
 - **User input artifacts** - Seamless transition from AI-generated to user-modified content
+- **Concurrent editing protection** - Database-level unique constraints prevent race conditions
 
 ### 👥 Collaboration & Project Management
 - **Project-based workflow** - Organize work into projects with episodes and scripts
@@ -188,32 +189,114 @@ const editBrainstormIdeaTransform = {
 };
 ```
 
+### Database Architecture
+
+The application uses **PostgreSQL** with **Electric SQL** for real-time synchronization and **Kysely** for type-safe database operations.
+
 #### Database Schema
 ```sql
--- Core artifacts table
+-- Core users and authentication
+CREATE TABLE users (
+  id TEXT PRIMARY KEY,
+  username TEXT NOT NULL UNIQUE,
+  email TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Projects and collaboration
+CREATE TABLE projects (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  project_type TEXT DEFAULT 'script',
+  status TEXT DEFAULT 'active',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE projects_users (
+  id SERIAL PRIMARY KEY,
+  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  role TEXT DEFAULT 'member',
+  joined_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(project_id, user_id)
+);
+
+-- Core artifacts with streaming support
 CREATE TABLE artifacts (
   id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
-  session_id TEXT,
+  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   type TEXT NOT NULL,
+  type_version TEXT NOT NULL DEFAULT 'v1',
   data TEXT NOT NULL,
   metadata TEXT,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  
+  -- Electric streaming fields
+  streaming_status TEXT DEFAULT 'completed' CHECK (streaming_status IN ('streaming', 'completed', 'failed', 'cancelled')),
+  streaming_progress DECIMAL(5,2) DEFAULT 100.00,
+  partial_data JSONB -- Store partial results during streaming
 );
 
 -- Transform tracking with lineage
+CREATE TABLE transforms (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  type TEXT NOT NULL,
+  type_version TEXT NOT NULL DEFAULT 'v1',
+  status TEXT DEFAULT 'running',
+  execution_context TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  
+  -- Electric streaming fields
+  streaming_status TEXT DEFAULT 'pending' CHECK (streaming_status IN ('pending', 'running', 'completed', 'failed', 'cancelled')),
+  progress_percentage DECIMAL(5,2) DEFAULT 0.00,
+  error_message TEXT,
+  retry_count INTEGER DEFAULT 0,
+  max_retries INTEGER DEFAULT 2
+);
+
+-- Human transforms with concurrent editing protection
 CREATE TABLE human_transforms (
   id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
-  input_artifact_id TEXT NOT NULL,
-  output_artifact_id TEXT NOT NULL,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  input_artifact_id TEXT NOT NULL REFERENCES artifacts(id),
+  output_artifact_id TEXT NOT NULL REFERENCES artifacts(id),
   transform_name TEXT NOT NULL,
   path TEXT NOT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (input_artifact_id) REFERENCES artifacts(id),
-  FOREIGN KEY (output_artifact_id) REFERENCES artifacts(id)
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT unique_human_transform_per_artifact_path UNIQUE (input_artifact_id, path)
 );
 ```
+
+#### Kysely Benefits
+- **Type Safety**: Auto-generated types from schema prevent runtime errors
+- **Performance**: More efficient queries than Knex, optimized for Electric's real-time patterns
+- **Developer Experience**: Better IntelliSense, compile-time query validation
+- **Electric Integration**: Database-level sync works seamlessly with Kysely's query patterns
+
+### Electric SQL Integration
+
+Electric SQL provides real-time database synchronization with **authenticated proxy pattern**:
+
+#### Authentication Flow
+1. **Frontend Request**: Client makes shape request to `/api/electric/v1/shape`
+2. **Auth Validation**: Proxy extracts JWT from HTTP-only cookie, validates session
+3. **User Scoping**: Proxy adds `WHERE project_id IN (user's projects)` to shape query
+4. **Electric Proxy**: Validated request forwarded to Electric with user scoping
+5. **Real-time Sync**: Electric streams user-scoped data back through proxy
+6. **Auto-Updates**: Frontend receives real-time updates for user's data only
+
+#### Security Features
+- **User Data Isolation**: All Electric shape requests automatically scoped to authenticated user's projects
+- **Proxy validates JWT tokens** and sessions on every request
+- **Database-level WHERE clauses** prevent cross-user data access
+- **Debug Token Support**: Development workflow maintained with `debug-auth-token-script-writer-dev`
+- **Session Management**: Existing session lifecycle maintained (7-day expiry)
 
 ### Frontend Architecture
 - **React 19** with TypeScript
@@ -222,11 +305,12 @@ CREATE TABLE human_transforms (
 - **Ant Design** component library with responsive multi-column layouts
 - **React Router** for navigation with protected routes
 - **Schema-based artifact editor** with real-time validation
+- **Electric SQL React hooks** for real-time data synchronization
 
 ### Backend Architecture
 - **Express.js** server with TypeScript
 - **PostgreSQL** database with **Kysely** for type-safe database operations
-- **Electric SQL** for real-time database synchronization
+- **Electric SQL** for real-time database synchronization with authenticated proxy
 - **Schema Transform Executor** for validated transform execution
 - **Transform Instantiation Registry** for extensible transform definitions
 - **Server-Sent Events** for real-time streaming updates
@@ -290,6 +374,9 @@ const editMutation = useMutation({
 - `POST /api/episodes/generate/stream` - Generate episode content with streaming
 - `POST /api/scripts/generate/stream` - Generate script content with streaming
 
+### Electric SQL Proxy (Authenticated)
+- `GET /api/electric/v1/shape` - Authenticated proxy to Electric SQL with automatic user scoping
+
 ### Real-time Collaboration
 - `WebSocket /yjs?room={roomId}` - Join collaborative editing session (authenticated)
 
@@ -301,12 +388,14 @@ const editMutation = useMutation({
 - **User-scoped data access** - all queries automatically filtered by user_id
 - **Project-based isolation** - users can only access their own projects
 - **Debug token support** - Development workflow with `debug-auth-token-script-writer-dev`
+- **Electric SQL proxy authentication** - All real-time data access authenticated and user-scoped
 
 ### Data Security
 - **Input validation** on all endpoints with Zod schemas
 - **SQL injection protection** through Kysely's type-safe query builder
 - **CORS configuration** for cross-origin requests
 - **Session cleanup** for expired tokens
+- **Concurrent editing protection** - Database-level unique constraints prevent race conditions
 
 ## Development
 
@@ -325,12 +414,15 @@ src/
 │   ├── hooks/             # Custom hooks
 │   │   ├── useProjectData.ts             # TanStack Query hooks
 │   │   ├── useStreamingLLM.ts            # Streaming LLM integration
+│   │   ├── useElectricBrainstorm.ts      # Electric SQL real-time hooks
 │   │   └── useDebounce.ts                # Debounced auto-save
 │   ├── services/          # API services
 │   │   └── apiService.ts  # Centralized API client
 │   └── stores/            # Zustand stores
 │       └── projectStore.ts # Global project state management
 ├── common/                # Shared frontend/backend types
+│   ├── config/            # Configuration
+│   │   └── electric.ts    # Electric SQL configuration
 │   ├── schemas/           # Zod schemas
 │   │   ├── artifacts.ts   # Artifact type definitions
 │   │   └── transforms.ts  # Transform definitions with path patterns
@@ -344,6 +436,7 @@ src/
     ├── routes/            # API routes
     │   ├── artifactRoutes.ts # Schema transform API
     │   ├── brainstormRoutes.ts # Brainstorming endpoints
+    │   ├── electricProxy.ts # Electric SQL authenticated proxy
     │   └── auth.ts        # Authentication routes
     ├── services/          # Business logic
     │   ├── SchemaTransformExecutor.ts # Core transform execution
@@ -387,11 +480,24 @@ npm run migrate
 # Seed test users
 npm run seed
 
-# Debug database state (via Electric SQL proxy)
-curl "http://localhost:3000/v1/shape?table=artifacts&offset=-1" | jq
+# Generate Kysely types from database schema
+npm run db:generate-types
 
 # Direct PostgreSQL access
 psql -h localhost -U postgres -d script_writer -c "SELECT * FROM artifacts ORDER BY created_at DESC LIMIT 10;"
+```
+
+#### Electric SQL Development
+```bash
+# Start PostgreSQL + Electric SQL
+docker compose up -d
+
+# Check Electric SQL health
+curl http://localhost:3000
+
+# Test authenticated Electric proxy
+curl -H "Authorization: Bearer debug-auth-token-script-writer-dev" \
+  "http://localhost:4600/api/electric/v1/shape?table=artifacts&offset=-1"
 ```
 
 ## Schema Transform System Deep Dive
@@ -427,10 +533,11 @@ export const editBrainstormIdeaTransform: TransformDefinition = {
 3. **Transform Instantiation** - Execute registered instantiation function
 4. **Artifact Creation** - Create new derived artifact or update existing
 5. **Lineage Tracking** - Record transform relationship in database
+6. **Electric Sync** - Real-time updates automatically synced to all connected clients
 
 ### Artifact Editor Integration
 
-The `ArtifactEditor` component provides seamless editing:
+The `ArtifactEditor` component provides seamless editing with real-time sync:
 
 ```typescript
 // Automatic transform selection based on path
@@ -449,12 +556,49 @@ const editMutation = useMutation({
   mutationFn: executeSchemaTransform,
   onSuccess: () => {
     showSavedCheckmark();
-    refetchArtifacts();
+    // Electric SQL automatically syncs changes - no manual refetch needed
   }
 });
 ```
 
+### Electric SQL Real-time Integration
+
+```typescript
+// Real-time brainstorm data with authentication
+export function useElectricBrainstorm(projectId: string) {
+  const { data: flows } = useShape<BrainstormFlow>({
+    url: '/api/electric/v1/shape', // Authenticated proxy
+    params: {
+      table: 'brainstorm_flows',
+      where: `project_id = '${projectId}'`, // User scoping handled by proxy
+    }
+  });
+
+  // Extract real-time ideas with streaming support
+  const ideas = useMemo(() => {
+    const currentFlow = flows?.[0];
+    if (!currentFlow?.artifact_id) return [];
+    
+    // Use partial_data if streaming, otherwise use main data
+    const dataSource = currentFlow.artifact_status === 'streaming' 
+      ? currentFlow.artifact_partial_data 
+      : (currentFlow.artifact_data ? JSON.parse(currentFlow.artifact_data) : null);
+    
+    return dataSource?.ideas || [];
+  }, [flows]);
+
+  return { ideas, isStreaming: flows?.[0]?.artifact_status === 'streaming' };
+}
+```
+
 ## Recent Major Changes
+
+### PostgreSQL + Electric SQL Migration
+- **Complete database migration** from SQLite to PostgreSQL with logical replication
+- **Electric SQL integration** for real-time synchronization with authenticated proxy pattern
+- **Kysely adoption** for type-safe database operations with auto-generated types
+- **Streaming artifact support** with `partial_data` JSONB fields for real-time updates
+- **User data isolation** enforced at proxy level with automatic WHERE clause injection
 
 ### Schema-Driven Transform System Implementation
 - **Complete transform lineage tracking** - Full audit trail from AI generation to user edits
@@ -462,6 +606,7 @@ const editMutation = useMutation({
 - **Path-based editing system** - Support for granular field-level and object-level modifications
 - **Transform instantiation registry** - Extensible system for defining new transform types
 - **Immutable artifact architecture** - Original AI content preserved, user edits create derived artifacts
+- **Concurrent editing protection** - Database-level unique constraints prevent race conditions
 - **Comprehensive testing framework** - Full test suite validates all transform functionality
 
 ### User Experience Improvements
@@ -470,18 +615,28 @@ const editMutation = useMutation({
 - **Subtle visual feedback** - Non-intrusive save indicators with spinners and checkmarks
 - **Seamless content transition** - Proper artifact loading when switching between original and derived content
 - **Enhanced error handling** - Graceful handling of schema validation and transform errors
+- **Real-time collaboration** - Electric SQL enables instant updates across all connected clients
+
+### Authentication & Security Enhancements
+- **Electric SQL proxy authentication** - All real-time data access authenticated and user-scoped
+- **Debug token workflow** - Development authentication maintained with Electric integration
+- **Session-based security** - HTTP-only cookies with automatic session validation
+- **Project-based isolation** - Users can only access their own projects and data
+- **Concurrent editing safety** - Database constraints prevent data corruption from simultaneous edits
 
 ### Database Architecture Updates
-- **Added transform_name column** - Better transform tracking and debugging capabilities
 - **Enhanced artifact metadata** - Comprehensive context and lineage information
-- **Optimized queries** - Efficient artifact and transform retrieval patterns
-- **PostgreSQL + Electric SQL** - Real-time synchronization with type-safe database operations
+- **Streaming status tracking** - Real-time progress and status fields for all operations
+- **Optimized queries** - Efficient artifact and transform retrieval patterns with Kysely
+- **Electric-optimized views** - Database views designed for efficient real-time synchronization
+- **PostgreSQL triggers** - Automatic timestamp updates and data consistency
 
 ### Frontend Architecture Improvements
 - **React hooks compliance** - Fixed critical hooks order violations that caused render errors
 - **Improved state management** - Better separation of server state, client state, and local UI state
 - **Enhanced TypeScript safety** - Strict typing throughout with proper prop validation
 - **Modern component patterns** - Consistent use of modern React patterns and best practices
+- **Electric SQL integration** - Real-time hooks for seamless data synchronization
 
 ## Testing
 
@@ -492,6 +647,9 @@ npm run test:schema
 
 # Test specific scenarios
 ./run-ts src/server/scripts/test-schema-fix.ts
+
+# Test Electric SQL integration
+./run-ts src/server/scripts/test-electric-auth.ts
 ```
 
 The test suite validates:
@@ -500,6 +658,57 @@ The test suite validates:
 - **Artifact creation and updates** - Tests both new artifact creation and existing artifact updates
 - **Lineage tracking** - Validates complete transform relationship recording
 - **Error handling** - Tests graceful handling of invalid inputs and edge cases
+- **Electric SQL sync** - Validates real-time updates and user data isolation
+- **Concurrent editing protection** - Tests database-level race condition prevention
+
+## Docker & Deployment
+
+### Development Environment
+```yaml
+# docker-compose.yaml
+name: "script_writer_electric"
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: script_writer
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    command:
+      - postgres
+      - -c
+      - wal_level=logical  # Required for Electric SQL
+      - -c
+      - max_replication_slots=10
+      - -c
+      - max_wal_senders=10
+
+  electric:
+    image: electricsql/electric:latest
+    environment:
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/script_writer
+      ELECTRIC_WRITE_TO_PG_MODE: direct_writes
+      AUTH_MODE: insecure
+      ELECTRIC_INSECURE: "true"  # Development only
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+```
+
+### Key Benefits of Current Architecture
+
+1. **Real-time by Default**: Electric SQL handles all real-time updates automatically
+2. **Type Safety**: Kysely provides compile-time type checking with auto-generated types
+3. **Authentication Security**: Proxy pattern ensures all data access is authenticated and user-scoped
+4. **Performance**: Database-level sync is more efficient than application-level SSE
+5. **Scalability**: Electric handles concurrent users with low latency and memory usage
+6. **Developer Experience**: Simplified real-time development with automatic sync
+7. **Graph Structure Preserved**: Maintains artifact → transform → artifact flow for complex workflows
+8. **Concurrent Editing Safety**: Database constraints prevent data corruption from simultaneous edits
 
 ## Contributing
 
@@ -511,6 +720,7 @@ The test suite validates:
    - **Follow TypeScript strict typing** throughout
    - **Use `./run-ts` for all TypeScript scripts** instead of `npx tsx`
    - **Test with comprehensive schema validation**
+   - **Ensure Electric SQL integration** for real-time features
 4. Run the test suite to ensure functionality
 5. Submit a pull request
 

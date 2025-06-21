@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useShape } from '@electric-sql/react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { message } from 'antd';
@@ -58,7 +58,7 @@ interface SchemaTransformResponse {
     wasTransformed: boolean;
 }
 
-export const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
+export const ArtifactEditor: React.FC<ArtifactEditorProps> = React.memo(({
     artifactId,
     path = "",
     transformName,
@@ -66,15 +66,21 @@ export const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
     onTransition,
     onSaveSuccess
 }) => {
-    // Local component state
-    const [isEditing, setIsEditing] = useState(false);
-    const [isTransitioning, setIsTransitioning] = useState(false);
+    // State for artifact ID management - use a more stable approach
     const [currentArtifactId, setCurrentArtifactId] = useState(artifactId);
+    const [isTransitioning, setIsTransitioning] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
     const [editingField, setEditingField] = useState<string | null>(null);
     const [pendingSaves, setPendingSaves] = useState<Set<string>>(new Set());
-    const [typingFields, setTypingFields] = useState<Set<string>>(new Set()); // Track fields being typed in
+    const [typingFields, setTypingFields] = useState<Set<string>>(new Set());
 
-    // 1. Look up existing human transform for (artifactId, path)
+    // Memoize the Electric SQL query parameters to prevent unnecessary re-renders
+    const electricQueryParams = useMemo(() => ({
+        table: 'artifacts',
+        where: `id = '${currentArtifactId}'`
+    }), [currentArtifactId]);
+
+    // 1. Check for existing human transform for this path
     const { data: existingTransform, refetch: refetchTransform } = useQuery({
         queryKey: ['human-transform', artifactId, path],
         queryFn: async () => {
@@ -86,14 +92,20 @@ export const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
                 throw new Error('Failed to fetch human transform');
             }
             return response.json();
-        }
+        },
+        // Add staleTime to reduce refetching
+        staleTime: 5000,
+        // Only refetch when explicitly needed
+        refetchOnWindowFocus: false
     });
 
-    // 2. Determine which artifact to load - prioritize currentArtifactId if it's different from original
-    const targetArtifactId = currentArtifactId !== artifactId ? currentArtifactId : (existingTransform?.derived_artifact_id || artifactId);
+    // 2. Determine which artifact to load - use memoization for stability
+    const targetArtifactId = useMemo(() => {
+        return currentArtifactId !== artifactId ? currentArtifactId : (existingTransform?.derived_artifact_id || artifactId);
+    }, [currentArtifactId, artifactId, existingTransform?.derived_artifact_id]);
 
-    // 3. Electric SQL real-time data
-    const electricConfig = getElectricConfig();
+    // 3. Electric SQL real-time data with memoized config
+    const electricConfig = useMemo(() => getElectricConfig(), []);
     const { data: artifacts, isLoading, error } = useShape({
         url: electricConfig.url,
         params: {
@@ -102,85 +114,96 @@ export const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
         }
     });
 
-    const artifact = artifacts?.[0] as unknown as ElectricArtifact | undefined;
-    const rawArtifactData = artifact ? JSON.parse(artifact.data as string) : null;
-    
-    // 4. Handle different artifact types and extract data appropriately
-    let actualData = rawArtifactData;
-    
-    if (artifact?.type === 'user_input' && artifact.metadata) {
-        // Handle user_input artifacts with derived data
-        const metadata = JSON.parse(artifact.metadata as string);
-        if (metadata.derived_data) {
-            // Use the derived data stored in metadata
-            actualData = metadata.derived_data;
-        } else if (rawArtifactData?.text) {
-            // Fallback: try to parse the text field
-            try {
-                actualData = JSON.parse(rawArtifactData.text);
-            } catch (e) {
-                console.warn('Failed to parse user_input text field:', e);
+    // Memoize artifact processing to prevent unnecessary recalculations
+    const processedArtifactData = useMemo(() => {
+        const artifact = artifacts?.[0] as unknown as ElectricArtifact | undefined;
+        if (!artifact) return { artifact: null, artifactData: null, actualData: null };
+
+        const rawArtifactData = artifact ? JSON.parse(artifact.data as string) : null;
+        
+        // 4. Handle different artifact types and extract data appropriately
+        let actualData = rawArtifactData;
+        
+        if (artifact?.type === 'user_input' && artifact.metadata) {
+            // Handle user_input artifacts with derived data
+            const metadata = JSON.parse(artifact.metadata as string);
+            if (metadata.derived_data) {
+                // Use the derived data stored in metadata
+                actualData = metadata.derived_data;
+            } else if (rawArtifactData?.text) {
+                // Fallback: try to parse the text field
+                try {
+                    actualData = JSON.parse(rawArtifactData.text);
+                } catch (e) {
+                    console.warn('Failed to parse user_input text field:', e);
+                    actualData = rawArtifactData;
+                }
+            }
+        } else if (artifact?.type === 'brainstorm_idea') {
+            // Handle brainstorm_idea artifacts - normalize legacy structure
+            if (rawArtifactData?.idea_title && rawArtifactData?.idea_text) {
+                // Legacy structure: convert to new format
+                actualData = {
+                    title: rawArtifactData.idea_title,
+                    body: rawArtifactData.idea_text
+                };
+            } else if (rawArtifactData?.title && rawArtifactData?.body) {
+                // New structure: use as-is
                 actualData = rawArtifactData;
             }
         }
-    } else if (artifact?.type === 'brainstorm_idea') {
-        // Handle brainstorm_idea artifacts - normalize legacy structure
-        if (rawArtifactData?.idea_title && rawArtifactData?.idea_text) {
-            // Legacy structure: convert to new format
-            actualData = {
-                title: rawArtifactData.idea_title,
-                body: rawArtifactData.idea_text
-            };
-        } else if (rawArtifactData?.title && rawArtifactData?.body) {
-            // New structure: use as-is
-            actualData = rawArtifactData;
-        }
-    }
-    
-    // 5. Extract data using path if needed
-    let artifactData;
-    if (path && actualData) {
-        // Special case: brainstorm_idea artifacts are single objects, not arrays
-        if (artifact?.type === 'brainstorm_idea' && path.match(/^\[\d+\]$/)) {
-            // For brainstorm_idea artifacts, the data is the direct object
-            // The path [0], [1], [2] etc. was used to extract from the original collection
-            // but now we have a single idea artifact, so return the object itself
-            artifactData = actualData;
-        }
-        // Special case: user_input artifacts from legacy edit_brainstorm_idea transforms
-        else if (artifact?.type === 'user_input' && path.match(/^\[\d+\]$/) && 
-            actualData && typeof actualData === 'object' && !Array.isArray(actualData) &&
-            (actualData.title || actualData.body)) {
-            // This is a user_input artifact that contains brainstorm idea data
-            // The path [0] should return the object itself since it's not an array
-            artifactData = actualData;
+        
+        // 5. Extract data using path if needed
+        let artifactData;
+        if (path && actualData) {
+            // Special case: brainstorm_idea artifacts are single objects, not arrays
+            if (artifact?.type === 'brainstorm_idea' && path.match(/^\[\d+\]$/)) {
+                // For brainstorm_idea artifacts, the data is the direct object
+                // The path [0], [1], [2] etc. was used to extract from the original collection
+                // but now we have a single idea artifact, so return the object itself
+                artifactData = actualData;
+            }
+            // Special case: user_input artifacts from legacy edit_brainstorm_idea transforms
+            else if (artifact?.type === 'user_input' && path.match(/^\[\d+\]$/) && 
+                actualData && typeof actualData === 'object' && !Array.isArray(actualData) &&
+                (actualData.title || actualData.body)) {
+                // This is a user_input artifact that contains brainstorm idea data
+                // The path [0] should return the object itself since it's not an array
+                artifactData = actualData;
+            } else {
+                // Normal path extraction
+                artifactData = extractDataAtPath(actualData, path);
+            }
         } else {
-            // Normal path extraction
-            artifactData = extractDataAtPath(actualData, path);
+            artifactData = actualData;
         }
-    } else {
-        artifactData = actualData;
-    }
+
+        return { artifact, artifactData, actualData, rawArtifactData };
+    }, [artifacts, path]);
+
+    const { artifact, artifactData, actualData, rawArtifactData } = processedArtifactData;
     
-    // Debug logging
-    if (path) {
-        console.log('ArtifactEditor Debug:', {
-            artifactId,
-            path,
-            artifactType: artifact?.type,
-            rawArtifactData,
-            actualData,
-            extractedData: artifactData,
-            hasExistingTransform: !!existingTransform,
-            targetArtifactId,
-            metadata: artifact?.metadata ? JSON.parse(artifact.metadata as string) : null
-        });
-    }
+    // Reduced debug logging - only when path exists and limit frequency
+    useEffect(() => {
+        if (path && artifact) {
+            console.log('ArtifactEditor Debug:', {
+                artifactId,
+                path,
+                artifactType: artifact?.type,
+                rawArtifactData,
+                actualData,
+                extractedData: artifactData,
+                hasExistingTransform: !!existingTransform,
+                targetArtifactId,
+                metadata: artifact?.metadata ? JSON.parse(artifact.metadata as string) : null
+            });
+        }
+    }, [artifact?.type, targetArtifactId, !!existingTransform]); // Reduced dependencies
     
     const isLLMGenerated = existingTransform ? false : (artifact?.metadata ? JSON.parse(artifact.metadata as string).source === 'llm' : false);
 
-    // Determine transform name based on artifact type and path
-    const getTransformName = (): string | null => {
+    // Memoize transform name detection
+    const detectedTransformName = useMemo(() => {
         if (transformName) return transformName;
         
         // Auto-detect transform based on artifact type and path
@@ -196,13 +219,11 @@ export const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
         }
         
         return null;
-    };
+    }, [transformName, artifact?.type, path]);
 
     // TanStack Query mutation for schema-based transforms
     const editMutation = useMutation<SchemaTransformResponse, Error, Record<string, any>>({
         mutationFn: async (fieldUpdates) => {
-            const detectedTransformName = getTransformName();
-            
             if (!detectedTransformName) {
                 throw new Error('No transform definition found for this artifact type and path');
             }
@@ -277,8 +298,8 @@ export const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
         editMutation.mutate(fieldUpdates);
     }, 500);
 
-    // Handle field changes
-    const handleFieldChange = (field: string, value: any) => {
+    // Memoize event handlers to prevent unnecessary re-renders
+    const handleFieldChange = useCallback((field: string, value: any) => {
         // Mark field as being typed in (but not yet saved)
         setTypingFields(prev => new Set(prev).add(field));
         
@@ -290,25 +311,24 @@ export const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
         });
         
         debouncedSave(field, value);
-    };
+    }, [debouncedSave]);
 
-    // Handle field focus/blur
-    const handleFieldFocus = (field: string) => {
+    const handleFieldFocus = useCallback((field: string) => {
         setIsEditing(true);
         setEditingField(field);
-    };
+    }, []);
 
-    const handleFieldBlur = () => {
+    const handleFieldBlur = useCallback(() => {
         setIsEditing(false);
         setEditingField(null);
-    };
+    }, []);
 
-    // Update current artifact ID when prop changes
+    // Update current artifact ID when prop changes - but only if necessary
     useEffect(() => {
-        if (artifactId !== currentArtifactId) {
+        if (artifactId !== currentArtifactId && !isTransitioning) {
             setCurrentArtifactId(artifactId);
         }
-    }, [artifactId, currentArtifactId]);
+    }, [artifactId, currentArtifactId, isTransitioning]);
 
     // Loading state
     if (isLoading) {
@@ -334,7 +354,6 @@ export const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
     let fieldMapping: FieldConfig[] | null = null;
     
     // 1. Check if we have a transform definition for this path
-    const detectedTransformName = getTransformName();
     if (detectedTransformName && path && artifactData && typeof artifactData === 'object') {
         // Use schema-based field mapping for path-based editing
         fieldMapping = Object.keys(artifactData).map(key => {
@@ -440,4 +459,4 @@ export const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
             ))}
         </div>
     );
-}; 
+}); 
