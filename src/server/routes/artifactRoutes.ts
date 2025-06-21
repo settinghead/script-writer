@@ -15,51 +15,66 @@ export function createArtifactRoutes(
     const schemaExecutor = new SchemaTransformExecutor(artifactRepo, transformRepo);
 
     // Get artifact by ID
-    router.get('/:id', authMiddleware.authenticate, async (req, res) => {
+    router.get('/:id', authMiddleware.authenticate, async (req: any, res: any) => {
     try {
         const { id } = req.params;
-        const userId = req.user.id;
+        const userId = req.user?.id;
+        
+        if (!userId) {
+            res.status(401).json({ error: 'User not authenticated' });
+            return;
+        }
         
         const artifact = await artifactRepo.getArtifact(id);
         if (!artifact) {
-            return res.status(404).json({ error: 'Artifact not found' });
+            res.status(404).json({ error: 'Artifact not found' });
+            return;
         }
 
         // Verify user has access to this artifact's project
         const hasAccess = await artifactRepo.userHasProjectAccess(userId, artifact.project_id);
         if (!hasAccess) {
-            return res.status(403).json({ error: 'Access denied' });
+            res.status(403).json({ error: 'Access denied' });
+            return;
         }
 
         res.json(artifact);
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error fetching artifact:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
 
     // Edit artifact with path-based derivation
-    router.post('/:id/edit-with-path', authMiddleware.authenticate, async (req, res) => {
+    router.post('/:id/edit-with-path', authMiddleware.authenticate, async (req: any, res: any) => {
     try {
         const { id: artifactId } = req.params;
         const { path = "", field, value } = req.body;
-        const userId = req.user.id;
+        const userId = req.user?.id;
+        
+        if (!userId) {
+            res.status(401).json({ error: 'User not authenticated' });
+            return;
+        }
 
         // Validate required fields
         if (!field || value === undefined) {
-            return res.status(400).json({ error: 'Field and value are required' });
+            res.status(400).json({ error: 'Field and value are required' });
+            return;
         }
 
         // Get artifact to verify access
         const artifact = await artifactRepo.getArtifact(artifactId);
         if (!artifact) {
-            return res.status(404).json({ error: 'Artifact not found' });
+            res.status(404).json({ error: 'Artifact not found' });
+            return;
         }
 
         // Verify user has access to this artifact's project
         const hasAccess = await artifactRepo.userHasProjectAccess(userId, artifact.project_id);
         if (!hasAccess) {
-            return res.status(403).json({ error: 'Access denied' });
+            res.status(403).json({ error: 'Access denied' });
+            return;
         }
 
         // Execute human transform with path
@@ -77,29 +92,36 @@ export function createArtifactRoutes(
             wasTransformed: result.wasTransformed,
             transformId: result.transform.id
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error editing artifact with path:', error);
         res.status(500).json({ error: error.message || 'Internal server error' });
     }
 });
 
     // Get human transform for artifact and path
-    router.get('/:id/human-transform', authMiddleware.authenticate, async (req, res) => {
+    router.get('/:id/human-transform', authMiddleware.authenticate, async (req: any, res: any) => {
     try {
         const { id: artifactId } = req.params;
         const { path = "" } = req.query;
-        const userId = req.user.id;
+        const userId = req.user?.id;
+        
+        if (!userId) {
+            res.status(401).json({ error: 'User not authenticated' });
+            return;
+        }
 
         // Get artifact to verify access
         const artifact = await artifactRepo.getArtifact(artifactId);
         if (!artifact) {
-            return res.status(404).json({ error: 'Artifact not found' });
+            res.status(404).json({ error: 'Artifact not found' });
+            return;
         }
 
         // Verify user has access to this artifact's project
         const hasAccess = await artifactRepo.userHasProjectAccess(userId, artifact.project_id);
         if (!hasAccess) {
-            return res.status(403).json({ error: 'Access denied' });
+            res.status(403).json({ error: 'Access denied' });
+            return;
         }
 
         // Find human transform
@@ -110,26 +132,33 @@ export function createArtifactRoutes(
         );
 
         res.json(transform);
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error fetching human transform:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
 
     // List artifacts by type and project
-    router.get('/', authMiddleware.authenticate, async (req, res) => {
+    router.get('/', authMiddleware.authenticate, async (req: any, res: any) => {
     try {
         const { projectId, type, typeVersion = 'v1' } = req.query;
-        const userId = req.user.id;
+        const userId = req.user?.id;
+        
+        if (!userId) {
+            res.status(401).json({ error: 'User not authenticated' });
+            return;
+        }
 
         if (!projectId) {
-            return res.status(400).json({ error: 'projectId is required' });
+            res.status(400).json({ error: 'projectId is required' });
+            return;
         }
 
         // Verify user has access to this project
         const hasAccess = await artifactRepo.userHasProjectAccess(userId, projectId as string);
         if (!hasAccess) {
-            return res.status(403).json({ error: 'Access denied' });
+            res.status(403).json({ error: 'Access denied' });
+            return;
         }
 
         let artifacts;
@@ -144,33 +173,41 @@ export function createArtifactRoutes(
         }
 
         res.json(artifacts);
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error fetching artifacts:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
 
     // Schema-driven transform route
-    router.post('/:id/schema-transform', authMiddleware.authenticate, async (req, res) => {
+    router.post('/:id/schema-transform', authMiddleware.authenticate, async (req: any, res: any) => {
         try {
             const { id: artifactId } = req.params;
             const { transformName, derivationPath, fieldUpdates } = req.body;
-            const userId = req.user.id;
+            const userId = req.user?.id;
+            
+            if (!userId) {
+                res.status(401).json({ error: 'User not authenticated' });
+                return;
+            }
 
             if (!transformName || !derivationPath) {
-                return res.status(400).json({ error: "transformName and derivationPath are required" });
+                res.status(400).json({ error: "transformName and derivationPath are required" });
+                return;
             }
 
             // Get artifact to verify access
             const artifact = await artifactRepo.getArtifact(artifactId);
             if (!artifact) {
-                return res.status(404).json({ error: 'Artifact not found' });
+                res.status(404).json({ error: 'Artifact not found' });
+                return;
             }
 
             // Verify user has access to this artifact's project
             const hasAccess = await artifactRepo.userHasProjectAccess(userId, artifact.project_id);
             if (!hasAccess) {
-                return res.status(403).json({ error: 'Access denied' });
+                res.status(403).json({ error: 'Access denied' });
+                return;
             }
 
             const result = await schemaExecutor.executeSchemaHumanTransform(
