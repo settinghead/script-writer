@@ -117,7 +117,7 @@ export class AuthDatabase {
         const providerDataToInsert = {
             user_id: userId,
             provider: providerType,
-            provider_id: providerUserId || null,
+            provider_id: providerUserId || '',
             provider_data: providerData ? JSON.stringify(providerData) : null,
             created_at: now
         };

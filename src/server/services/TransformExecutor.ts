@@ -709,7 +709,7 @@ export class TransformExecutor {
                 source_artifact_id: sourceArtifactId
             };
 
-            const updatedArtifact = await this.artifactRepo.updateArtifact(
+            await this.artifactRepo.updateArtifact(
                 existingTransform.derived_artifact_id, 
                 userInputData,
                 { 
@@ -717,6 +717,12 @@ export class TransformExecutor {
                     derived_data: updatedData  // Update the derived data in metadata
                 }
             );
+            
+            // Get the updated artifact
+            const updatedArtifact = await this.artifactRepo.getArtifact(existingTransform.derived_artifact_id);
+            if (!updatedArtifact) {
+                throw new Error('Failed to retrieve updated artifact');
+            }
             
             return { 
                 transform: existingTransform.transform, 

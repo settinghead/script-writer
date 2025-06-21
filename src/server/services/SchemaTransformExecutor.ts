@@ -177,12 +177,12 @@ export class SchemaTransformExecutor {
         validationResult = BrainstormIdeaSchema.safeParse(updatedData);
       } else {
         // For other user_input cases, validate as UserInput
-        const targetSchema = ARTIFACT_SCHEMAS[transformDef.targetArtifactType];
+        const targetSchema = ARTIFACT_SCHEMAS[transformDef.targetArtifactType as keyof typeof ARTIFACT_SCHEMAS];
         validationResult = targetSchema.safeParse(updatedData);
       }
     } else {
       // For direct artifact types (like brainstorm_idea), validate against target schema
-      const targetSchema = ARTIFACT_SCHEMAS[transformDef.targetArtifactType];
+      const targetSchema = ARTIFACT_SCHEMAS[transformDef.targetArtifactType as keyof typeof ARTIFACT_SCHEMAS];
       validationResult = targetSchema.safeParse(updatedData);
     }
     
@@ -242,7 +242,7 @@ export class SchemaTransformExecutor {
       throw new Error('Source artifact not found');
     }
 
-    const sourceSchema = ARTIFACT_SCHEMAS[transformDef.sourceArtifactType];
+    const sourceSchema = ARTIFACT_SCHEMAS[transformDef.sourceArtifactType as keyof typeof ARTIFACT_SCHEMAS];
     const sourceData = sourceArtifact.data; // Already parsed by ArtifactRepository
     const sourceValidation = sourceSchema.safeParse(sourceData);
     
@@ -259,7 +259,7 @@ export class SchemaTransformExecutor {
     );
 
     // 3. Validate instantiated data
-    const targetSchema = ARTIFACT_SCHEMAS[transformDef.targetArtifactType];
+    const targetSchema = ARTIFACT_SCHEMAS[transformDef.targetArtifactType as keyof typeof ARTIFACT_SCHEMAS];
     const targetValidation = targetSchema.safeParse(initialData);
     
     if (!targetValidation.success) {
