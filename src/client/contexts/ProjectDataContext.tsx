@@ -50,20 +50,20 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
 }) => {
     const queryClient = useQueryClient();
     const [localUpdates, setLocalUpdates] = useState<Map<string, any>>(new Map());
-    
+
     // Create AbortController for cleanup
     const abortControllerRef = useRef<AbortController>();
-    
+
     // Initialize AbortController when projectId changes
     useEffect(() => {
         // Abort previous subscriptions
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
         }
-        
+
         // Create new controller for this project
         abortControllerRef.current = new AbortController();
-        
+
         // Cleanup on unmount or projectId change
         return () => {
             if (abortControllerRef.current) {
@@ -71,16 +71,16 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
             }
         };
     }, [projectId]);
-    
+
     // Get authenticated Electric config with abort signal
     const electricConfig = useMemo(() => ({
         ...createElectricConfig(),
         signal: abortControllerRef.current?.signal
     }), [projectId]); // Re-create when projectId changes
-    
+
     // Memoize where clause to prevent unnecessary re-renders
     const projectWhereClause = useMemo(() => `project_id = '${projectId}'`, [projectId]);
-    
+
     // Enhanced error handler for Electric 409 conflicts - stable reference
     const handleElectricError = useRef((error: any, tableName: string) => {
         if (error?.status === 409) {
@@ -90,7 +90,7 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
             }
             return;
         }
-        
+
         if (isElectricDebugLoggingEnabled()) {
             console.log(`[ProjectDataContext] Electric error on ${tableName}:`, error?.message || error);
         }
@@ -100,7 +100,7 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
     const lastProjectIdRef = useRef<string>();
     const renderCountRef = useRef<number>(0);
     renderCountRef.current++;
-    
+
     if (lastProjectIdRef.current !== projectId) {
         lastProjectIdRef.current = projectId;
         console.log(`[ProjectDataContext] Project changed to ${projectId}, creating new subscriptions`);
@@ -131,7 +131,7 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
 
     // Electric SQL subscriptions
     const { data: artifacts, isLoading: artifactsLoading, error: artifactsError } = useShape<ElectricArtifact>(artifactsConfig);
-    
+
     // DEBUG: Log artifacts when they change
     React.useEffect(() => {
         if (artifacts) {
@@ -246,9 +246,9 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
     const { data: llmTransforms, isLoading: llmTransformsLoading } = useShape<ElectricLLMTransform>(llmTransformsConfig);
 
     // Aggregate loading state
-    const isLoading = artifactsLoading || transformsLoading || humanTransformsLoading || 
-                     transformInputsLoading || transformOutputsLoading || llmPromptsLoading || llmTransformsLoading;
-    
+    const isLoading = artifactsLoading || transformsLoading || humanTransformsLoading ||
+        transformInputsLoading || transformOutputsLoading || llmPromptsLoading || llmTransformsLoading;
+
     // Aggregate error state
     const error = artifactsError || transformsError || null;
     const isError = !!error;
@@ -272,12 +272,12 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
 
     // Memoized selectors
     const selectors = useMemo(() => ({
-        getBrainstormArtifacts: () => 
+        getBrainstormArtifacts: () =>
             artifacts?.filter(a => a.type === 'brainstorm_idea_collection') || [],
-            
+
         getOutlineArtifacts: () =>
             artifacts?.filter(a => a.type === 'outline_input' || a.type === 'outline_response') || [],
-            
+
         getArtifactById: (id: string) => {
             // Check local updates first, then Electric data
             const localUpdate = localUpdates.get(`artifact-${id}`);
@@ -287,7 +287,7 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
             }
             return baseArtifact;
         },
-        
+
         getTransformById: (id: string) => {
             const localUpdate = localUpdates.get(`transform-${id}`);
             const baseTransform = transforms?.find(t => t.id === id);
@@ -296,16 +296,16 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
             }
             return baseTransform;
         },
-        
+
         getHumanTransformsForArtifact: (artifactId: string, path?: string) =>
-            humanTransforms?.filter(ht => 
-                ht.source_artifact_id === artifactId && 
+            humanTransforms?.filter(ht =>
+                ht.source_artifact_id === artifactId &&
                 (!path || ht.derivation_path === path)
             ) || [],
-            
+
         getTransformInputsForTransform: (transformId: string) =>
             transformInputs?.filter(ti => ti.transform_id === transformId) || [],
-            
+
         getTransformOutputsForTransform: (transformId: string) =>
             transformOutputs?.filter(to => to.transform_id === transformId) || []
     }), [artifacts, transforms, humanTransforms, transformInputs, transformOutputs, localUpdates]);
@@ -396,20 +396,20 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
             }
 
             const result = await response.json();
-            
+
             // Wait for Electric sync
             await Promise.all([
                 waitForElectricSync(result.transform.id, 'transforms'),
                 waitForElectricSync(result.derivedArtifact.id, 'artifacts')
             ]);
-            
+
             return result;
         },
         onMutate: (request) => {
             // Create optimistic updates for both transform and derived artifact
             const transformId = `temp-transform-${Date.now()}`;
             const artifactId = `temp-artifact-${Date.now()}`;
-            
+
             const optimisticTransform = {
                 id: transformId,
                 project_id: projectId,
@@ -421,7 +421,7 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
             };
-            
+
             const optimisticArtifact = {
                 id: artifactId,
                 project_id: projectId,
@@ -431,10 +431,10 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
             };
-            
+
             addLocalUpdate(`transform-${transformId}`, optimisticTransform);
             addLocalUpdate(`artifact-${artifactId}`, optimisticArtifact);
-            
+
             return { transformId, artifactId };
         },
         onSuccess: (data, variables, optimisticData) => {
@@ -464,20 +464,20 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
         transformOutputs: transformOutputs || [],
         llmPrompts: llmPrompts || [],
         llmTransforms: llmTransforms || [],
-        
+
         // Loading states
         isLoading,
         isError,
         error,
-        
+
         // Selectors
         ...selectors,
-        
+
         // Mutations
         createTransform: createTransformMutation,
         updateArtifact: updateArtifactMutation,
         createSchemaTransform: createSchemaTransformMutation,
-        
+
         // Local state management
         localUpdates,
         addLocalUpdate,

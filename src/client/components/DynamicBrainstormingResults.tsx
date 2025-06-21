@@ -146,7 +146,7 @@ const EditableIdeaCardComponent: React.FC<{
     const handleTransition = useCallback((newArtifactId: string) => {
         console.log(`Idea ${index + 1} transitioned from ${idea.artifactId} to ${newArtifactId}`);
     }, [index, idea.artifactId]);
-    
+
     // Callback should now be stable with proper memoization
 
     // If editing and we have an artifactId, use ArtifactEditor
@@ -256,22 +256,22 @@ const EditableIdeaCardComponent: React.FC<{
                             <CheckOutlined />
                         </div>
                     ) : (
-                    <Button
-                        size="small"
-                        type="text"
-                        icon={<EditOutlined />}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setIsEditing(true);
-                        }}
-                        style={{
-                            position: 'absolute',
-                            top: '8px',
-                            right: '8px',
-                            color: '#1890ff',
-                            opacity: 0.7
-                        }}
-                        className="edit-button"
+                        <Button
+                            size="small"
+                            type="text"
+                            icon={<EditOutlined />}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setIsEditing(true);
+                            }}
+                            style={{
+                                position: 'absolute',
+                                top: '8px',
+                                right: '8px',
+                                color: '#1890ff',
+                                opacity: 0.7
+                            }}
+                            className="edit-button"
                             title="编辑"
                         />
                     )
@@ -279,23 +279,23 @@ const EditableIdeaCardComponent: React.FC<{
 
                 {/* Read-only display */}
                 <div style={{ marginBottom: '8px', paddingRight: '60px' }}>
-                        <Typography.Text strong style={{
-                            color: '#d9d9d9',
-                            fontSize: '14px'
-                        }}>
-                            {idea.title}
-                        </Typography.Text>
+                    <Typography.Text strong style={{
+                        color: '#d9d9d9',
+                        fontSize: '14px'
+                    }}>
+                        {idea.title}
+                    </Typography.Text>
                 </div>
 
                 <div style={{ marginBottom: ideaOutlines.length > 0 ? '8px' : '0', paddingRight: '60px' }}>
-                        <Typography.Text style={{
-                            color: '#a6a6a6',
-                            fontSize: '13px',
-                            lineHeight: '1.4',
-                            display: 'block'
-                        }}>
-                            {idea.body}
-                        </Typography.Text>
+                    <Typography.Text style={{
+                        color: '#a6a6a6',
+                        fontSize: '13px',
+                        lineHeight: '1.4',
+                        display: 'block'
+                    }}>
+                        {idea.body}
+                    </Typography.Text>
                 </div>
 
                 {/* Associated outlines - only show if there are outlines */}
@@ -328,7 +328,7 @@ const EditableIdeaCard = React.memo(EditableIdeaCardComponent, (prevProps, nextP
         prevProps.ideaOutlines.length === nextProps.ideaOutlines.length
         // Note: We don't compare onIdeaClick as it's likely to be a new function each render
     );
-    
+
     // React.memo should now work properly with stable callbacks
     return isEqual;
 });
@@ -348,7 +348,7 @@ export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsPr
     reasoningEvent
 }) => {
     // Debug logging removed - issue should be fixed with proper useCallback usage
-    
+
     const [ideaOutlines, setIdeaOutlines] = React.useState<{ [ideaId: string]: any[] }>({});
     const [outlinesLoading, setOutlinesLoading] = React.useState(false);
     const navigate = useNavigate();
@@ -382,7 +382,7 @@ export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsPr
         const ideaText = `${idea.title}: ${idea.body}`;
         onIdeaSelect(ideaText);
     }, [onIdeaSelect]);
-    
+
     // Callback should now be stable due to proper memoization in parent
 
     // Determine if reasoning is active

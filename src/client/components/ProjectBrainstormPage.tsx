@@ -21,8 +21,8 @@ export default function ProjectBrainstormPage() {
   // Extract brainstorm data from the unified context
   const { ideas, status, progress, error, isLoading, lastSyncedAt } = useMemo(() => {
     const brainstormArtifacts = projectData.getBrainstormArtifacts()
-    
-   
+
+
     // Find the latest brainstorm artifact
     const latestBrainstorm = brainstormArtifacts
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
@@ -44,46 +44,28 @@ export default function ProjectBrainstormPage() {
     let progress = 0
 
     try {
-      // Parse metadata to get status information
-      let metadata: any = {}
-      if (latestBrainstorm.metadata) {
-        try {
-          metadata = JSON.parse(latestBrainstorm.metadata)
-        } catch (metaErr) {
-          console.warn('Failed to parse artifact metadata:', metaErr)
-        }
-      }
+      // Check streaming status directly from artifact
+      const streamingStatus = latestBrainstorm.streaming_status || 'completed'
 
-
-      // Check status from metadata
-      if (metadata.status === 'streaming') {
+      if (streamingStatus === 'streaming') {
         status = 'streaming'
-        progress = metadata.progress || 0
-
-        // Use partial data if available during streaming
-        if (latestBrainstorm.data) {
-          try {
-            const partialData = JSON.parse(latestBrainstorm.data)
-            if (Array.isArray(partialData)) {
-              ideas = partialData.map((idea: any, index: number) => ({
-                ...idea,
-                artifactId: latestBrainstorm.id,
-                index
-              }))
-            }
-          } catch (parseErr) {
-            console.warn('Failed to parse streaming data:', parseErr)
-          }
-        }
-      } else if (metadata.status === 'completed') {
+        progress = 50 // Generic progress for streaming state
+      } else if (streamingStatus === 'completed') {
         status = 'completed'
         progress = 100
+      } else if (streamingStatus === 'failed') {
+        status = 'failed'
+        progress = 0
+      } else {
+        status = 'completed'
+        progress = 100
+      }
 
-
-        // Parse completed data
-        if (latestBrainstorm.data) {
+      // Parse data (same for both streaming and completed states)
+      if (latestBrainstorm.data) {
+        try {
           const artifactData = JSON.parse(latestBrainstorm.data)
-          
+
           if (Array.isArray(artifactData)) {
             // Data is directly an array of ideas
             ideas = artifactData.map((idea: any, index: number) => ({
@@ -99,29 +81,8 @@ export default function ProjectBrainstormPage() {
               index
             }))
           }
-        }
-      } else if (metadata.status === 'failed') {
-        status = 'failed'
-      } else {
-        // Default to completed if no status in metadata but data exists
-        if (latestBrainstorm.data) {
-          status = 'completed'
-          progress = 100
-          
-          const artifactData = JSON.parse(latestBrainstorm.data)
-          if (Array.isArray(artifactData)) {
-            ideas = artifactData.map((idea: any, index: number) => ({
-              ...idea,
-              artifactId: latestBrainstorm.id,
-              index
-            }))
-          } else if (artifactData.ideas && Array.isArray(artifactData.ideas)) {
-            ideas = artifactData.ideas.map((idea: any, index: number) => ({
-              ...idea,
-              artifactId: latestBrainstorm.id,
-              index
-            }))
-          }
+        } catch (parseErr) {
+          console.warn('Failed to parse brainstorm data:', parseErr)
         }
       }
 

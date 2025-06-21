@@ -19,6 +19,7 @@ export interface Artifacts {
   id: string;
   metadata: string | null;
   project_id: string;
+  streaming_status: Generated<string | null>;
   type: string;
   type_version: Generated<string>;
 }

@@ -8,7 +8,7 @@ export class AgentService {
     constructor(
         private transformRepo: TransformRepository,
         private artifactRepo: ArtifactRepository,
-    ) {}
+    ) { }
 
     public async runBrainstormAgent(
         projectId: string,
@@ -23,9 +23,9 @@ export class AgentService {
                 'llm', // An agent is an LLM-driven process
                 'v1',
                 'running',
-                { 
+                {
                     transform_name: 'agent_brainstorm_session',
-                    request 
+                    request
                 }
             );
             agentTransformId = agentTransform.id;
@@ -64,11 +64,11 @@ export class AgentService {
             // Link output artifacts to the agent transform
             const outputArtifacts = outputArtifactIds
                 .filter(id => id) // Filter out null/undefined
-                .map(artifactId => ({ 
-                    artifactId, 
-                    outputRole: 'brainstorm_idea_collection' 
+                .map(artifactId => ({
+                    artifactId,
+                    outputRole: 'brainstorm_idea_collection'
                 }));
-            
+
             if (outputArtifacts.length > 0) {
                 await this.transformRepo.addTransformOutputs(agentTransformId, outputArtifacts, projectId);
             }

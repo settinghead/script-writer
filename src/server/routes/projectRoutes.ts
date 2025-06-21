@@ -10,6 +10,25 @@ export function createProjectRoutes(
 ) {
     const router = express.Router();
 
+    // GET /api/projects - List all projects for authenticated user
+    router.get('/', authMiddleware.authenticate, async (req: any, res: any) => {
+        try {
+            const user = authMiddleware.getCurrentUser(req);
+            if (!user) {
+                return res.status(401).json({ error: "User not authenticated" });
+            }
+
+            const projects = await projectService.listUserProjects(user.id);
+            res.json(projects);
+        } catch (error: any) {
+            console.error('Error fetching projects:', error);
+            res.status(500).json({
+                error: 'Failed to fetch projects',
+                details: error.message
+            });
+        }
+    });
+
     router.get('/:id', authMiddleware.authenticate, async (req: any, res: any) => {
         try {
             const user = authMiddleware.getCurrentUser(req);
@@ -19,7 +38,7 @@ export function createProjectRoutes(
 
             const projectId = req.params.id;
             const project = await projectService.getProject(projectId, user.id);
-            
+
             if (!project) {
                 return res.status(404).json({ error: "Project not found" });
             }

@@ -351,8 +351,6 @@ export interface ElectricArtifact {
     created_at: string;
     updated_at?: string;
     streaming_status?: 'streaming' | 'completed' | 'failed' | 'cancelled';
-    streaming_progress?: number;
-    partial_data?: any;
 }
 
 export interface ElectricTransform {
@@ -448,12 +446,12 @@ export interface ProjectDataContextType {
     transformOutputs: ElectricTransformOutput[];
     llmPrompts: ElectricLLMPrompt[];
     llmTransforms: ElectricLLMTransform[];
-    
+
     // Loading states
     isLoading: boolean;
     isError: boolean;
     error: Error | null;
-    
+
     // Selectors (memoized)
     getBrainstormArtifacts: () => ElectricArtifact[];
     getOutlineArtifacts: () => ElectricArtifact[];
@@ -462,12 +460,12 @@ export interface ProjectDataContextType {
     getHumanTransformsForArtifact: (artifactId: string, path?: string) => ElectricHumanTransform[];
     getTransformInputsForTransform: (transformId: string) => ElectricTransformInput[];
     getTransformOutputsForTransform: (transformId: string) => ElectricTransformOutput[];
-    
+
     // Mutations (TanStack Query + optimistic updates)
     createTransform: UseMutationResult<any, Error, CreateTransformRequest>;
     updateArtifact: UseMutationResult<any, Error, UpdateArtifactRequest>;
     createSchemaTransform: UseMutationResult<any, Error, SchemaTransformRequest>;
-    
+
     // Local state management for optimistic updates
     localUpdates: Map<string, any>;
     addLocalUpdate: (key: string, update: any) => void;

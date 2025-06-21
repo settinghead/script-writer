@@ -649,7 +649,7 @@ app.put("/api/artifacts/:artifactId",
       }
 
       let updatedData;
-      
+
       if (existingArtifact.type === 'user_input') {
         // Validate required fields for user_input
         if (!text || typeof text !== 'string' || !text.trim()) {

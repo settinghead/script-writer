@@ -235,10 +235,8 @@ CREATE TABLE artifacts (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   
-  -- Electric streaming fields
-  streaming_status TEXT DEFAULT 'completed' CHECK (streaming_status IN ('streaming', 'completed', 'failed', 'cancelled')),
-  streaming_progress DECIMAL(5,2) DEFAULT 100.00,
-  partial_data JSONB -- Store partial results during streaming
+  -- Electric streaming field
+  streaming_status TEXT DEFAULT 'completed' CHECK (streaming_status IN ('streaming', 'completed', 'failed', 'cancelled'))
 );
 
 -- Transform tracking with lineage
@@ -593,7 +591,7 @@ const editMutation = useMutation({
 - **Complete database migration** from SQLite to PostgreSQL with logical replication
 - **Electric SQL integration** for real-time synchronization with authenticated proxy pattern
 - **Kysely adoption** for type-safe database operations with auto-generated types
-- **Streaming artifact support** with `partial_data` JSONB fields for real-time updates
+- **Streaming artifact support** with unified `data` field and `streaming_status` for real-time updates
 - **User data isolation** enforced at proxy level with automatic WHERE clause injection
 
 ### Schema-Driven Transform System Implementation

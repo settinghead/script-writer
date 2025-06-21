@@ -12,7 +12,8 @@ export class ArtifactRepository {
         type: string,
         data: any,
         typeVersion: string = 'v1',
-        metadata?: any
+        metadata?: any,
+        streamingStatus: string = 'completed'
     ): Promise<Artifact> {
         // Validate artifact data
         if (!validateArtifactData(type, typeVersion, data)) {
@@ -29,6 +30,7 @@ export class ArtifactRepository {
             type_version: typeVersion,
             data: JSON.stringify(data),
             metadata: metadata ? JSON.stringify(metadata) : null,
+            streaming_status: streamingStatus,
             created_at: now
         };
 
@@ -202,7 +204,7 @@ export class ArtifactRepository {
             .selectAll()
             .where('a.project_id', '=', projectId)
             .where('a.type', '=', type)
-            .where((eb) => 
+            .where((eb) =>
                 eb.or([
                     eb(sql`a.data->>'id'`, '=', sessionId),
                     eb(sql`a.data->>'ideation_session_id'`, '=', sessionId),
@@ -243,7 +245,7 @@ export class ArtifactRepository {
             .select(['a.id', 'a.project_id', 'a.type', 'a.type_version', 'a.data', 'a.metadata', 'a.created_at'])
             .where('a.project_id', '=', projectId)
             .where('a.type', '=', 'user_input')
-            .where((eb) => 
+            .where((eb) =>
                 eb.or([
                     eb(sql`session_a.data->>'id'`, '=', sessionId),
                     eb(sql`session_a.data->>'ideation_session_id'`, '=', sessionId)
@@ -278,8 +280,7 @@ export class ArtifactRepository {
         return result.length > 0 && Number(result[0].numDeletedRows) > 0;
     }
 
-    // Update artifact data
-    async updateArtifact(artifactId: string, data: any, metadata?: any): Promise<void> {
+    async updateArtifact(artifactId: string, data: any, metadata?: any, streamingStatus?: string): Promise<void> {
         const updateData: any = {
             data: JSON.stringify(data)
         };
@@ -288,30 +289,8 @@ export class ArtifactRepository {
             updateData.metadata = metadata ? JSON.stringify(metadata) : null;
         }
 
-        await this.db
-            .updateTable('artifacts')
-            .set(updateData)
-            .where('id', '=', artifactId)
-            .execute();
-    }
-
-    // Update artifact streaming status and progress
-    async updateArtifactStreamingStatus(
-        artifactId: string, 
-        status: string, 
-        progress?: number, 
-        partialData?: any
-    ): Promise<void> {
-        const updateData: any = {
-            streaming_status: status
-        };
-
-        if (progress !== undefined) {
-            updateData.streaming_progress = progress.toString();
-        }
-
-        if (partialData !== undefined) {
-            updateData.partial_data = JSON.stringify(partialData);
+        if (streamingStatus !== undefined) {
+            updateData.streaming_status = streamingStatus;
         }
 
         await this.db
@@ -320,6 +299,8 @@ export class ArtifactRepository {
             .where('id', '=', artifactId)
             .execute();
     }
+
+
 
     // Get all artifacts for a user (legacy method for backward compatibility)
     async getUserArtifacts(userId: string, limit?: number): Promise<Artifact[]> {

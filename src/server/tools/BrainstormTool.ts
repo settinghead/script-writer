@@ -43,7 +43,7 @@ export function createBrainstormToolDefinition(
                     'running',
                     JSON.stringify({ // Fix: Convert to string for execution_context
                         toolName: 'brainstorm',
-                        params 
+                        params
                     })
                 );
                 toolTransformId = transform.id;
@@ -66,15 +66,15 @@ export function createBrainstormToolDefinition(
                     'brainstorm_idea_collection',
                     [], // Start with empty array - matches BrainstormIdeaCollectionV1 validation
                     'v1',
-                    { 
-                        status: 'streaming',
+                    {
                         chunkCount: 0,
                         startedAt: new Date().toISOString()
-                    }
+                    },
+                    'streaming' // Start with streaming status
                 );
-                
+
                 console.log(`[BrainstormTool] Created artifact ${outputArtifact.id} for project ${projectId}`);
-                
+
                 await transformRepo.addTransformOutputs(toolTransformId, [
                     { artifactId: outputArtifact.id, outputRole: 'streaming_result' }
                 ], projectId);
@@ -91,11 +91,11 @@ export function createBrainstormToolDefinition(
                 for await (const partial of stream) {
                     chunkCount++;
                     const currentTime = Date.now();
-                    
+
                     // Throttle updates to prevent Electric 409 conflicts
                     // Only update if enough time has passed or this is the final chunk
                     const shouldUpdate = (currentTime - lastUpdateTime) >= UPDATE_THROTTLE_MS;
-                    
+
                     if (shouldUpdate) {
                         try {
                             // Update the artifact with the current partial result
@@ -103,11 +103,11 @@ export function createBrainstormToolDefinition(
                             await artifactRepo.updateArtifact(
                                 outputArtifact.id,
                                 partial, // Direct array - matches BrainstormIdeaCollectionV1 validation
-                                { 
-                                    status: 'streaming',
+                                {
                                     chunkCount,
                                     lastUpdated: new Date().toISOString()
-                                }
+                                },
+                                'streaming' // Set streaming status
                             );
 
                             console.log(`[BrainstormTool] Updated artifact ${outputArtifact.id} with chunk ${chunkCount} (throttled)`);
@@ -117,20 +117,22 @@ export function createBrainstormToolDefinition(
                             console.warn(`[BrainstormTool] Failed to update artifact ${outputArtifact.id} at chunk ${chunkCount}:`, updateError);
                         }
                     }
-                    
+
                     finalResult = partial; // Keep track of the latest result
                 }
+
+
 
                 // 5. Final update to mark as completed (always do this one)
                 try {
                     await artifactRepo.updateArtifact(
                         outputArtifact.id,
                         finalResult, // Direct array - matches BrainstormIdeaCollectionV1 validation
-                        { 
-                            status: 'completed',
+                        {
                             chunkCount,
                             completedAt: new Date().toISOString()
-                        }
+                        },
+                        'completed' // Set streaming status to completed
                     );
                     console.log(`[BrainstormTool] Completed artifact ${outputArtifact.id} with ${chunkCount} total chunks`);
                     console.log(`[BrainstormTool] Final data:`, JSON.stringify(finalResult).substring(0, 200) + '...');
@@ -141,7 +143,7 @@ export function createBrainstormToolDefinition(
 
                 // 6. Mark transform as completed
                 await transformRepo.updateTransformStatus(toolTransformId, 'completed');
-                
+
                 // The agent framework expects a result object, which includes the ID of the artifact created
                 return {
                     outputArtifactId: outputArtifact.id,
