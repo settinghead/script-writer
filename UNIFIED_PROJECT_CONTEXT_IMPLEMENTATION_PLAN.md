@@ -242,8 +242,6 @@ const handleFieldChange = (field: string, value: any) => {
 
 **DynamicBrainstormingResults Changes:**
 ```typescript
-// Remove useElectricBrainstorm hook
-// const { ideas, isStreaming } = useElectricBrainstorm(projectId) // REMOVE
 
 // Use context instead
 const { getBrainstormArtifacts, transforms } = useProjectData()

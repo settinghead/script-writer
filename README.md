@@ -440,7 +440,6 @@ src/
 │   ├── hooks/             # Custom hooks
 │   │   ├── useProjectData.ts             # TanStack Query hooks
 │   │   ├── useStreamingLLM.ts            # Streaming LLM integration
-│   │   ├── useElectricBrainstorm.ts      # Electric SQL real-time hooks
 │   │   └── useDebounce.ts                # Debounced auto-save
 │   ├── services/          # API services
 │   │   └── apiService.ts  # Centralized API client
@@ -587,35 +586,6 @@ const editMutation = useMutation({
 });
 ```
 
-### Electric SQL Real-time Integration
-
-```typescript
-// Real-time brainstorm data with authentication
-export function useElectricBrainstorm(projectId: string) {
-  const { data: flows } = useShape<BrainstormFlow>({
-    url: '/api/electric/v1/shape', // Authenticated proxy
-    params: {
-      table: 'brainstorm_flows',
-      where: `project_id = '${projectId}'`, // User scoping handled by proxy
-    }
-  });
-
-  // Extract real-time ideas with streaming support
-  const ideas = useMemo(() => {
-    const currentFlow = flows?.[0];
-    if (!currentFlow?.artifact_id) return [];
-    
-    // Use partial_data if streaming, otherwise use main data
-    const dataSource = currentFlow.artifact_status === 'streaming' 
-      ? currentFlow.artifact_partial_data 
-      : (currentFlow.artifact_data ? JSON.parse(currentFlow.artifact_data) : null);
-    
-    return dataSource?.ideas || [];
-  }, [flows]);
-
-  return { ideas, isStreaming: flows?.[0]?.artifact_status === 'streaming' };
-}
-```
 
 ## Recent Major Changes
 

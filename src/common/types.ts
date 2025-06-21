@@ -488,12 +488,3 @@ export interface BrainstormArtifactMetadata {
     chunkCount?: number;
     totalExpected?: number;
 }
-
-export interface UseElectricBrainstormResult {
-    ideas: IdeaWithTitle[];
-    isLoading: boolean;
-    error: string | null;
-    status: 'idle' | 'streaming' | 'completed' | 'failed';
-    progress: number;
-    metadata: BrainstormArtifactMetadata | null;
-} 

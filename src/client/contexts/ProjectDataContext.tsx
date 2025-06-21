@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo, useState, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { useShape } from '@electric-sql/react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createElectricConfig, logElectricShapeInfo, isElectricDebugLoggingEnabled } from '../../common/config/electric';
@@ -51,8 +51,32 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
     const queryClient = useQueryClient();
     const [localUpdates, setLocalUpdates] = useState<Map<string, any>>(new Map());
     
-    // Get authenticated Electric config
-    const electricConfig = useMemo(() => createElectricConfig(), []);
+    // Create AbortController for cleanup
+    const abortControllerRef = useRef<AbortController>();
+    
+    // Initialize AbortController when projectId changes
+    useEffect(() => {
+        // Abort previous subscriptions
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+        
+        // Create new controller for this project
+        abortControllerRef.current = new AbortController();
+        
+        // Cleanup on unmount or projectId change
+        return () => {
+            if (abortControllerRef.current) {
+                abortControllerRef.current.abort();
+            }
+        };
+    }, [projectId]);
+    
+    // Get authenticated Electric config with abort signal
+    const electricConfig = useMemo(() => ({
+        ...createElectricConfig(),
+        signal: abortControllerRef.current?.signal
+    }), [projectId]); // Re-create when projectId changes
     
     // Memoize where clause to prevent unnecessary re-renders
     const projectWhereClause = useMemo(() => `project_id = '${projectId}'`, [projectId]);
@@ -80,21 +104,24 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
         logElectricShapeInfo('transforms', projectWhereClause);
     }
 
-    // Electric SQL subscriptions
-    const { data: artifacts, isLoading: artifactsLoading, error: artifactsError } = useShape<ElectricArtifact>({
+    // Stable configuration objects to prevent unnecessary re-subscriptions
+    const artifactsConfig = useMemo(() => ({
         ...electricConfig,
         params: {
             table: 'artifacts',
             where: projectWhereClause,
         },
-        onError: useCallback((error: any) => handleElectricError(error, 'artifacts'), [handleElectricError]),
+        onError: (error: any) => handleElectricError(error, 'artifacts'),
         backoffOptions: {
             initialDelay: 200,
             maxDelay: 5000,
             multiplier: 2.0,
             maxRetries: 3
         }
-    });
+    }), [electricConfig, projectWhereClause, handleElectricError]);
+
+    // Electric SQL subscriptions
+    const { data: artifacts, isLoading: artifactsLoading, error: artifactsError } = useShape<ElectricArtifact>(artifactsConfig);
     
     // DEBUG: Log artifacts when they change
     React.useEffect(() => {
@@ -111,95 +138,103 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
         }
     }, [artifacts, projectId]);
 
-    const { data: transforms, isLoading: transformsLoading, error: transformsError } = useShape<ElectricTransform>({
+    const transformsConfig = useMemo(() => ({
         ...electricConfig,
         params: {
             table: 'transforms',
             where: projectWhereClause,
         },
-        onError: useCallback((error: any) => handleElectricError(error, 'transforms'), [handleElectricError]),
+        onError: (error: any) => handleElectricError(error, 'transforms'),
         backoffOptions: {
             initialDelay: 200,
             maxDelay: 5000,
             multiplier: 2.0,
             maxRetries: 3
         }
-    });
+    }), [electricConfig, projectWhereClause, handleElectricError]);
 
-    const { data: humanTransforms, isLoading: humanTransformsLoading } = useShape<ElectricHumanTransform>({
+    const { data: transforms, isLoading: transformsLoading, error: transformsError } = useShape<ElectricTransform>(transformsConfig);
+
+    const humanTransformsConfig = useMemo(() => ({
         ...electricConfig,
         params: {
             table: 'human_transforms',
             where: projectWhereClause,
         },
-        onError: useCallback((error: any) => handleElectricError(error, 'human_transforms'), [handleElectricError]),
+        onError: (error: any) => handleElectricError(error, 'human_transforms'),
         backoffOptions: {
             initialDelay: 200,
             maxDelay: 5000,
             multiplier: 2.0,
             maxRetries: 3
         }
-    });
+    }), [electricConfig, projectWhereClause, handleElectricError]);
 
-    const { data: transformInputs, isLoading: transformInputsLoading } = useShape<ElectricTransformInput>({
+    const transformInputsConfig = useMemo(() => ({
         ...electricConfig,
         params: {
             table: 'transform_inputs',
             where: projectWhereClause,
         },
-        onError: useCallback((error: any) => handleElectricError(error, 'transform_inputs'), [handleElectricError]),
+        onError: (error: any) => handleElectricError(error, 'transform_inputs'),
         backoffOptions: {
             initialDelay: 200,
             maxDelay: 5000,
             multiplier: 2.0,
             maxRetries: 3
         }
-    });
+    }), [electricConfig, projectWhereClause, handleElectricError]);
 
-    const { data: transformOutputs, isLoading: transformOutputsLoading } = useShape<ElectricTransformOutput>({
+    const transformOutputsConfig = useMemo(() => ({
         ...electricConfig,
         params: {
             table: 'transform_outputs',
             where: projectWhereClause,
         },
-        onError: useCallback((error: any) => handleElectricError(error, 'transform_outputs'), [handleElectricError]),
+        onError: (error: any) => handleElectricError(error, 'transform_outputs'),
         backoffOptions: {
             initialDelay: 200,
             maxDelay: 5000,
             multiplier: 2.0,
             maxRetries: 3
         }
-    });
+    }), [electricConfig, projectWhereClause, handleElectricError]);
 
-    const { data: llmPrompts, isLoading: llmPromptsLoading } = useShape<ElectricLLMPrompt>({
+    const llmPromptsConfig = useMemo(() => ({
         ...electricConfig,
         params: {
             table: 'llm_prompts',
             where: projectWhereClause,
         },
-        onError: useCallback((error: any) => handleElectricError(error, 'llm_prompts'), [handleElectricError]),
+        onError: (error: any) => handleElectricError(error, 'llm_prompts'),
         backoffOptions: {
             initialDelay: 200,
             maxDelay: 5000,
             multiplier: 2.0,
             maxRetries: 3
         }
-    });
+    }), [electricConfig, projectWhereClause, handleElectricError]);
 
-    const { data: llmTransforms, isLoading: llmTransformsLoading } = useShape<ElectricLLMTransform>({
+    const llmTransformsConfig = useMemo(() => ({
         ...electricConfig,
         params: {
             table: 'llm_transforms',
             where: projectWhereClause,
         },
-        onError: useCallback((error: any) => handleElectricError(error, 'llm_transforms'), [handleElectricError]),
+        onError: (error: any) => handleElectricError(error, 'llm_transforms'),
         backoffOptions: {
             initialDelay: 200,
             maxDelay: 5000,
             multiplier: 2.0,
             maxRetries: 3
         }
-    });
+    }), [electricConfig, projectWhereClause, handleElectricError]);
+
+    const { data: humanTransforms, isLoading: humanTransformsLoading } = useShape<ElectricHumanTransform>(humanTransformsConfig);
+    const { data: transformInputs, isLoading: transformInputsLoading } = useShape<ElectricTransformInput>(transformInputsConfig);
+    const { data: transformOutputs, isLoading: transformOutputsLoading } = useShape<ElectricTransformOutput>(transformOutputsConfig);
+    const { data: llmPrompts, isLoading: llmPromptsLoading } = useShape<ElectricLLMPrompt>(llmPromptsConfig);
+    const { data: llmTransforms, isLoading: llmTransformsLoading } = useShape<ElectricLLMTransform>(llmTransformsConfig);
 
     // Aggregate loading state
     const isLoading = artifactsLoading || transformsLoading || humanTransformsLoading || 

@@ -22,19 +22,7 @@ export default function ProjectBrainstormPage() {
   const { ideas, status, progress, error, isLoading, lastSyncedAt } = useMemo(() => {
     const brainstormArtifacts = projectData.getBrainstormArtifacts()
     
-    // DEBUG: Log all artifacts for this project
-    console.log(`[ProjectBrainstormPage] Project ${projectId} - All artifacts:`, projectData.artifacts?.length || 0)
-    console.log(`[ProjectBrainstormPage] Brainstorm artifacts:`, brainstormArtifacts.length)
-    brainstormArtifacts.forEach((artifact, index) => {
-      console.log(`[ProjectBrainstormPage] Artifact ${index}:`, {
-        id: artifact.id,
-        type: artifact.type,
-        streaming_status: artifact.streaming_status,
-        created_at: artifact.created_at,
-        data_length: artifact.data?.length || 0
-      })
-    })
-    
+   
     // Find the latest brainstorm artifact
     const latestBrainstorm = brainstormArtifacts
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
@@ -66,7 +54,6 @@ export default function ProjectBrainstormPage() {
         }
       }
 
-      console.log(`[ProjectBrainstormPage] Parsed metadata:`, metadata)
 
       // Check status from metadata
       if (metadata.status === 'streaming') {
@@ -92,12 +79,10 @@ export default function ProjectBrainstormPage() {
         status = 'completed'
         progress = 100
 
-        console.log(`[ProjectBrainstormPage] Parsing completed data, raw data:`, latestBrainstorm.data?.substring(0, 200) + '...')
 
         // Parse completed data
         if (latestBrainstorm.data) {
           const artifactData = JSON.parse(latestBrainstorm.data)
-          console.log(`[ProjectBrainstormPage] Parsed artifact data:`, artifactData)
           
           if (Array.isArray(artifactData)) {
             // Data is directly an array of ideas
@@ -140,7 +125,6 @@ export default function ProjectBrainstormPage() {
         }
       }
 
-      console.log(`[ProjectBrainstormPage] Final parsed state:`, { status, progress, ideasCount: ideas.length })
     } catch (err) {
       console.error('Failed to parse brainstorm data:', err)
     }
