@@ -307,11 +307,11 @@ export class SchemaTransformExecutor {
     // 6. Link relationships
     await this.transformRepo.addTransformInputs(transform.id, [
       { artifactId: sourceArtifactId, inputRole: 'source' }
-    ]);
+    ], projectId);
     
     await this.transformRepo.addTransformOutputs(transform.id, [
       { artifactId: derivedArtifact.id, outputRole: 'derived' }
-    ]);
+    ], projectId);
 
     // 7. Store human transform metadata
     await this.transformRepo.addHumanTransform({
