@@ -14,8 +14,8 @@ export interface User {
 export interface AuthProvider {
     id: number;
     user_id: string;
-    provider_type: string;
-    provider_user_id?: string;
+    provider: string;
+    provider_id?: string;
     provider_data?: any;
     created_at: string;
 }
@@ -84,10 +84,10 @@ export class AuthDatabase {
         return {
             id: user.id,
             username: user.username,
-            display_name: user.display_name || undefined,
+            display_name: user.username, // Use username as display name
             created_at: user.created_at?.toISOString() || new Date().toISOString(),
             updated_at: user.updated_at?.toISOString() || new Date().toISOString(),
-            status: user.status || 'active'
+            status: 'active' // Default status
         };
     }
 
@@ -103,10 +103,10 @@ export class AuthDatabase {
         return {
             id: user.id,
             username: user.username,
-            display_name: user.display_name || undefined,
+            display_name: user.username, // Use username as display name
             created_at: user.created_at?.toISOString() || new Date().toISOString(),
             updated_at: user.updated_at?.toISOString() || new Date().toISOString(),
-            status: user.status || 'active'
+            status: 'active' // Default status
         };
     }
 
@@ -116,8 +116,8 @@ export class AuthDatabase {
 
         const providerDataToInsert = {
             user_id: userId,
-            provider_type: providerType,
-            provider_user_id: providerUserId || null,
+            provider: providerType,
+            provider_id: providerUserId || null,
             provider_data: providerData ? JSON.stringify(providerData) : null,
             created_at: now
         };
@@ -133,8 +133,8 @@ export class AuthDatabase {
         return {
             id,
             user_id: userId,
-            provider_type: providerType,
-            provider_user_id: providerUserId,
+            provider: providerType,
+            provider_id: providerUserId,
             provider_data: providerData,
             created_at: now.toISOString()
         };
@@ -144,9 +144,9 @@ export class AuthDatabase {
         const user = await this.db
             .selectFrom('users as u')
             .innerJoin('auth_providers as ap', 'u.id', 'ap.user_id')
-            .select(['u.id', 'u.username', 'u.display_name', 'u.created_at', 'u.updated_at', 'u.status'])
-            .where('ap.provider_type', '=', providerType)
-            .where('ap.provider_user_id', '=', providerUserId)
+            .select(['u.id', 'u.username', 'u.created_at', 'u.updated_at'])
+            .where('ap.provider', '=', providerType)
+            .where('ap.provider_id', '=', providerUserId)
             .executeTakeFirst();
 
         if (!user) return null;
@@ -154,10 +154,10 @@ export class AuthDatabase {
         return {
             id: user.id,
             username: user.username,
-            display_name: user.display_name || undefined,
+            display_name: user.username, // Use username as display name
             created_at: user.created_at?.toISOString() || new Date().toISOString(),
             updated_at: user.updated_at?.toISOString() || new Date().toISOString(),
-            status: user.status || 'active'
+            status: 'active' // Default status
         };
     }
 
@@ -215,18 +215,18 @@ export class AuthDatabase {
         const users = await this.db
             .selectFrom('users as u')
             .innerJoin('auth_providers as ap', 'u.id', 'ap.user_id')
-            .select(['u.id', 'u.username', 'u.display_name', 'u.created_at', 'u.updated_at', 'u.status'])
-            .where('ap.provider_type', '=', 'dropdown')
+            .select(['u.id', 'u.username', 'u.created_at', 'u.updated_at'])
+            .where('ap.provider', '=', 'test') // Use 'test' provider from our seeded data
             .orderBy('u.username')
             .execute();
 
         return users.map(user => ({
             id: user.id,
             username: user.username,
-            display_name: user.display_name || undefined,
+            display_name: user.username, // Use username as display name
             created_at: user.created_at?.toISOString() || new Date().toISOString(),
             updated_at: user.updated_at?.toISOString() || new Date().toISOString(),
-            status: user.status || 'active'
+            status: 'active' // Default status
         }));
     }
 

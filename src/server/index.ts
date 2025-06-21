@@ -41,7 +41,7 @@ import { AgentService } from './services/AgentService.js';
 import { BrainstormService } from './services/BrainstormService';
 import { LLMService } from './services/LLMService';
 import { createBrainstormRoutes } from './routes/brainstormRoutes';
-import { maybeSeedTestUsers } from './database/seedTestUsers';
+
 
 dotenv.config();
 
@@ -55,8 +55,7 @@ app.use(cookieParser()); // Middleware to parse cookies
 const authDB = new AuthDatabase(db);
 const authMiddleware = createAuthMiddleware(authDB);
 
-// Auto-seed test users for development
-maybeSeedTestUsers(db);
+// Test users can be seeded manually with: npm run seed
 
 // Initialize repositories
 const artifactRepo = new ArtifactRepository(db);

@@ -47,6 +47,8 @@ export class BrainstormService {
             ].filter(Boolean).join('; ') // Combine all requirements into a single string
         };
 
+
+
         // Create user input artifact with the properly formatted schema
         const userInputArtifact = await this.artifactRepo.createArtifact(
             projectId,

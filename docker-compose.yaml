@@ -1,4 +1,3 @@
-version: '3.8'
 name: "script_writer_electric"
 
 services:
@@ -34,13 +33,14 @@ services:
       DATABASE_URL: postgresql://postgres:password@postgres:5432/script_writer
       ELECTRIC_WRITE_TO_PG_MODE: direct_writes
       AUTH_MODE: insecure
+      ELECTRIC_INSECURE: "true"
     ports:
       - "3000:3000"
     depends_on:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:3000 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5

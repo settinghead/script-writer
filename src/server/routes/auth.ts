@@ -25,8 +25,9 @@ export const createAuthRoutes = (authDB: AuthDatabase, authMiddleware: AuthMiddl
             // Handle different provider types
             switch (provider) {
                 case 'dropdown':
+                case 'test':
                     // For dropdown (test) login, find user by username
-                    user = await authDB.getUserByProvider('dropdown', username);
+                    user = await authDB.getUserByProvider('test', username);
                     if (!user) {
                         res.status(401).json({
                             error: 'Invalid test user',
