@@ -328,7 +328,18 @@ export interface WorkflowContextV1 {
 }
 
 // Type guards for artifact data validation
+// Add to existing validateArtifactData function
+import { ARTIFACT_SCHEMAS } from '../../common/schemas/artifacts';
+
 export function validateArtifactData(type: string, typeVersion: string, data: any): boolean {
+  // Use Zod schemas for new artifact types
+  if (type in ARTIFACT_SCHEMAS) {
+    const schema = ARTIFACT_SCHEMAS[type as keyof typeof ARTIFACT_SCHEMAS];
+    const result = schema.safeParse(data);
+    return result.success;
+  }
+  
+  // Fallback to existing validation for legacy types
     switch (`${type}:${typeVersion}`) {
         case 'ideation_session:v1':
             return isIdeationSessionV1(data);

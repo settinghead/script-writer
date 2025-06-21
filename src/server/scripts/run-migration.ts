@@ -1,50 +1,59 @@
 #!/usr/bin/env node
 
 import { db } from '../database/connection';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { sql } from 'kysely';
 
 async function runMigration() {
-    console.log('🔧 Running path-based derivation migration...');
+    console.log('🔄 Running Kysely-based migration: add transform_name column');
     
     try {
-        // Check if columns already exist
+        // Check if transform_name column already exists
         const result = await db
             .selectFrom('information_schema.columns')
             .select('column_name')
             .where('table_name', '=', 'human_transforms')
-            .where('column_name', 'in', ['source_artifact_id', 'derivation_path', 'derived_artifact_id'])
-            .execute();
+            .where('column_name', '=', 'transform_name')
+            .executeTakeFirst();
         
-        if (result.length === 3) {
-            console.log('✅ Migration already applied - columns exist');
+        if (result) {
+            console.log('⏭️  transform_name column already exists, skipping migration');
             return;
         }
+
+        // Read and execute raw SQL migration
+        const migrationSQL = readFileSync(
+            join(__dirname, '../database/migrations/006_add_transform_name.sql'), 
+            'utf8'
+        );
         
-        // Add the new columns
-        await db.schema
-            .alterTable('human_transforms')
-            .addColumn('source_artifact_id', 'text', (col) => col.references('artifacts.id'))
-            .addColumn('derivation_path', 'text', (col) => col.defaultTo(''))
-            .addColumn('derived_artifact_id', 'text', (col) => col.references('artifacts.id'))
-            .execute();
+        // Execute the SQL migration
+        await sql`${sql.raw(migrationSQL)}`.execute(db);
         
-        console.log('✅ Added path-based derivation columns');
-        
-        // Create index for fast lookups
-        await db.schema
-            .createIndex('idx_human_transforms_derivation')
-            .on('human_transforms')
-            .columns(['source_artifact_id', 'derivation_path'])
-            .execute();
-        
-        console.log('✅ Created derivation lookup index');
-        console.log('🎉 Migration completed successfully!');
+        console.log('✅ Migration completed successfully');
+        console.log('📝 Please run: npm run db:generate-types');
         
     } catch (error) {
         console.error('❌ Migration failed:', error);
         throw error;
-    } finally {
-        await db.destroy();
     }
 }
 
-runMigration().catch(console.error); 
+// Run if called directly
+if (require.main === module) {
+    runMigration()
+        .then(() => {
+            console.log('✅ Migration completed successfully');
+            process.exit(0);
+        })
+        .catch((error) => {
+            console.error('❌ Migration failed:', error);
+            process.exit(1);
+        })
+        .finally(() => {
+            db.destroy();
+        });
+}
+
+export { runMigration }; 

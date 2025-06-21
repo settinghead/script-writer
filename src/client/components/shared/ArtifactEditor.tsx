@@ -7,6 +7,7 @@ import { EditableField } from './EditableField';
 import type { ElectricArtifact } from '../../../common/types';
 import { getElectricConfig } from '../../../common/config/electric';
 import { extractDataAtPath, getPathDescription } from '../../../common/utils/pathExtraction';
+import { HUMAN_TRANSFORM_DEFINITIONS } from '../../../common/schemas/transforms';
 
 // Artifact type to field mapping
 interface FieldConfig {
@@ -17,41 +18,44 @@ interface FieldConfig {
     placeholder?: string;
 }
 
+// Schema-based field mapping for known artifact types
 const ARTIFACT_FIELD_MAPPING: Record<string, FieldConfig[]> = {
-    'brainstorm_idea': [
-        { field: 'idea_title', component: 'input', maxLength: 20, placeholder: '故事标题...' },
-        { field: 'idea_text', component: 'textarea', rows: 6, placeholder: '详细描述...' }
+    'brainstorm_idea_collection': [
+        { field: 'title', component: 'input', maxLength: 50, placeholder: '故事标题...' },
+        { field: 'body', component: 'textarea', rows: 6, placeholder: '详细描述...' }
     ],
     'user_input': [
         { field: 'text', component: 'textarea', rows: 4, placeholder: '输入内容...' }
     ],
-    'outline_title': [
-        { field: 'title', component: 'input', maxLength: 50, placeholder: '大纲标题...' }
+    'outline_input': [
+        { field: 'content', component: 'textarea', rows: 8, placeholder: '大纲内容...' }
     ]
 };
 
 interface ArtifactEditorProps {
     artifactId: string;
     path?: string;           // JSON path for derivation (optional, defaults to root)
+    transformName?: string;  // Transform name for schema-based editing
     className?: string;
     onTransition?: (newArtifactId: string) => void;
 }
 
-interface EditArtifactRequest {
-    field: string;
-    value: any;
-    path?: string;
+interface SchemaTransformRequest {
+    transformName: string;
+    derivationPath: string;
+    fieldUpdates: Record<string, any>;
 }
 
-interface EditArtifactResponse {
-    artifactId: string;
+interface SchemaTransformResponse {
+    transform: any;
+    derivedArtifact: any;
     wasTransformed: boolean;
-    transformId?: string;
 }
 
 export const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
     artifactId,
     path = "",
+    transformName,
     className = '',
     onTransition
 }) => {
@@ -132,16 +136,41 @@ export const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
     
     const isLLMGenerated = existingTransform ? false : (artifact?.metadata ? JSON.parse(artifact.metadata as string).source === 'llm' : false);
 
-    // TanStack Query mutation for edits with path support
-    const editMutation = useMutation<EditArtifactResponse, Error, EditArtifactRequest>({
-        mutationFn: async (editData) => {
-            const response = await fetch(`/api/artifacts/${artifactId}/edit-with-path`, {
+    // Determine transform name based on artifact type and path
+    const getTransformName = (): string | null => {
+        if (transformName) return transformName;
+        
+        // Auto-detect transform based on artifact type and path
+        if (artifact?.type === 'brainstorm_idea_collection' && path.match(/^\[\d+\]\.(title|body)$/)) {
+            return 'edit_brainstorm_idea';
+        }
+        if (artifact?.type === 'brainstorm_idea_collection' && path.match(/^\[\d+\]$/)) {
+            return 'brainstorm_to_outline';
+        }
+        
+        return null;
+    };
+
+    // TanStack Query mutation for schema-based transforms
+    const editMutation = useMutation<SchemaTransformResponse, Error, Record<string, any>>({
+        mutationFn: async (fieldUpdates) => {
+            const detectedTransformName = getTransformName();
+            
+            if (!detectedTransformName) {
+                throw new Error('No transform definition found for this artifact type and path');
+            }
+
+            const response = await fetch(`/api/artifacts/${artifactId}/schema-transform`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 credentials: 'include',
-                body: JSON.stringify(editData)
+                body: JSON.stringify({
+                    transformName: detectedTransformName,
+                    derivationPath: path,
+                    fieldUpdates
+                })
             });
 
             if (!response.ok) {
@@ -156,15 +185,15 @@ export const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
             setPendingSaves(new Set());
 
             if (response.wasTransformed) {
-                // Artifact ID changed due to LLM→Human transform
-                setCurrentArtifactId(response.artifactId);
+                // Artifact ID changed due to new transform
+                setCurrentArtifactId(response.derivedArtifact.id);
                 setIsTransitioning(true);
 
                 // Trigger green glow animation
                 setTimeout(() => setIsTransitioning(false), 600);
 
                 // Notify parent component
-                onTransition?.(response.artifactId);
+                onTransition?.(response.derivedArtifact.id);
 
                 message.success('内容已修改并保存');
             } else {
@@ -178,16 +207,15 @@ export const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
         }
     });
 
-    // Debounced save function with path support
+    // Debounced save function for schema-based transforms
     const debouncedSave = useDebouncedCallback((field: string, value: any) => {
         // Track pending save
         setPendingSaves(prev => new Set(prev).add(field));
 
-        editMutation.mutate({
-            field,
-            value,
-            path
-        });
+        // Create field updates object
+        const fieldUpdates = { [field]: value };
+        
+        editMutation.mutate(fieldUpdates);
     }, 500);
 
     // Handle field changes
@@ -233,31 +261,39 @@ export const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
         );
     }
 
-    // Get field mapping for this artifact type or path-based editing
-    let fieldMapping = ARTIFACT_FIELD_MAPPING[artifact.type as keyof typeof ARTIFACT_FIELD_MAPPING];
-
-    // For path-based editing, determine fields from the actual data structure
-    if (path && artifactData && typeof artifactData === 'object') {
+    // Get field mapping - prioritize schema-based approach
+    let fieldMapping: FieldConfig[] | null = null;
+    
+    // 1. Check if we have a transform definition for this path
+    const detectedTransformName = getTransformName();
+    if (detectedTransformName && path && artifactData && typeof artifactData === 'object') {
+        // Use schema-based field mapping for path-based editing
         fieldMapping = Object.keys(artifactData).map(key => {
             const value = artifactData[key];
             if (typeof value === 'string') {
                 return {
                     field: key,
                     component: value.length > 50 ? 'textarea' as const : 'input' as const,
-                    maxLength: key === 'title' ? 20 : undefined,
-                    rows: key === 'body' ? 6 : undefined,
-                    placeholder: key === 'title' ? '标题...' : key === 'body' ? '内容...' : `${key}...`
+                    maxLength: key === 'title' ? 50 : undefined,
+                    rows: key === 'body' ? 6 : key === 'content' ? 8 : undefined,
+                    placeholder: key === 'title' ? '标题...' : key === 'body' ? '内容...' : key === 'content' ? '大纲内容...' : `${key}...`
                 };
             }
             return null;
         }).filter(Boolean) as FieldConfig[];
-        
-        console.log('Dynamic field mapping:', {
-            path,
-            artifactData,
-            fieldMapping
-        });
+    } else {
+        // 2. Fallback to static mapping for known artifact types
+        fieldMapping = ARTIFACT_FIELD_MAPPING[artifact.type as keyof typeof ARTIFACT_FIELD_MAPPING];
     }
+
+    console.log('ArtifactEditor field mapping:', {
+        artifactType: artifact.type,
+        path,
+        detectedTransformName,
+        artifactData,
+        fieldMapping,
+        hasTransformDef: !!detectedTransformName
+    });
 
     if (!fieldMapping || fieldMapping.length === 0) {
         return (
@@ -265,6 +301,7 @@ export const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
                 <div className="text-yellow-400 text-sm">
                     不支持的内容类型: {artifact.type}
                     {path && ` (路径: ${path})`}
+                    {!detectedTransformName && path && <div className="text-xs mt-1">未找到匹配的转换定义</div>}
                 </div>
             </div>
         );

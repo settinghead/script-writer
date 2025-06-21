@@ -128,6 +128,7 @@ export class TransformRepository {
         source_artifact_id?: string;
         derivation_path?: string;
         derived_artifact_id?: string;
+        transform_name?: string;
     }): Promise<void> {
         const humanData = {
             transform_id: humanTransform.transform_id,
@@ -136,13 +137,52 @@ export class TransformRepository {
             change_description: humanTransform.change_description || null,
             source_artifact_id: humanTransform.source_artifact_id || null,
             derivation_path: humanTransform.derivation_path || '',
-            derived_artifact_id: humanTransform.derived_artifact_id || null
+            derived_artifact_id: humanTransform.derived_artifact_id || null,
+            transform_name: humanTransform.transform_name || null
         };
 
         await this.db
             .insertInto('human_transforms')
             .values(humanData)
             .execute();
+    }
+
+    // Get transforms that produced a specific artifact (for graph traversal)
+    async getTransformsByOutput(artifactId: string): Promise<Transform[]> {
+        const rows = await this.db
+            .selectFrom('transforms as t')
+            .innerJoin('transform_outputs as to', 'to.transform_id', 't.id')
+            .selectAll('t')
+            .where('to.artifact_id', '=', artifactId)
+            .execute();
+
+        return rows.map(this.mapTransformRow);
+    }
+
+    // Get transforms that used a specific artifact as input (for graph traversal)
+    async getTransformsByInput(artifactId: string): Promise<Transform[]> {
+        const rows = await this.db
+            .selectFrom('transforms as t')
+            .innerJoin('transform_inputs as ti', 'ti.transform_id', 't.id')
+            .selectAll('t')
+            .where('ti.artifact_id', '=', artifactId)
+            .execute();
+
+        return rows.map(this.mapTransformRow);
+    }
+
+    private mapTransformRow(row: any): Transform {
+        return {
+            id: row.id,
+            project_id: row.project_id,
+            type: row.type,
+            type_version: row.type_version,
+            status: row.status,
+            retry_count: row.retry_count || 0,
+            max_retries: row.max_retries || 2,
+            execution_context: row.execution_context ? JSON.parse(row.execution_context) : undefined,
+            created_at: row.created_at?.toISOString() || new Date().toISOString()
+        };
     }
 
     // Find existing human transform by source artifact and path
@@ -241,7 +281,7 @@ export class TransformRepository {
         };
     }
 
-    // Get transform inputs
+    // Get transform inputs (already exists but ensuring it's properly typed)
     async getTransformInputs(transformId: string): Promise<TransformInput[]> {
         const rows = await this.db
             .selectFrom('transform_inputs')

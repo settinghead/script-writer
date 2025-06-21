@@ -35,13 +35,11 @@ npm ci
 # Run tests
 npm run test
 
-# Build the project
-cp /var/www/.env.prod $DEPLOY_DIR/.env
+# Build the application
 npm run build
 
-# Run database migrations
-echo "Running database migrations..."
-NODE_ENV=production npx knex migrate:latest --knexfile src/server/database/knexfile.js
+# Run database migrations using Kysely approach
+NODE_ENV=production ./run-ts src/server/scripts/run-migration.ts
 
 # Run database seeds (only if needed - typically not in production)
 # Uncomment the next line if you want to run seeds in production
@@ -55,10 +53,8 @@ mkdir -p /var/www/$PROJECT_NAME
 ln -sfn $DEPLOY_DIR/dist-client /var/www/$PROJECT_NAME-current/dist-client
 ln -sfn $DEPLOY_DIR/dist-server /var/www/$PROJECT_NAME-current/dist-server
 
-# Restart backend with PM2
-pm2 delete $PROJECT_NAME-api || true
-cd $DEPLOY_DIR
-NODE_ENV=production pm2 start dist-server/server/index.js --name $PROJECT_NAME-api
+# Start the production server
+NODE_ENV=production npm start
 
 # Keep only the 5 most recent deployments
 cd /var/www

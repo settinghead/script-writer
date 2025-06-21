@@ -70,8 +70,12 @@ export interface BrainstormFlows {
 export interface HumanTransforms {
   action_type: string;
   change_description: string | null;
+  derivation_path: Generated<string | null>;
+  derived_artifact_id: string | null;
   interface_context: string | null;
+  source_artifact_id: string | null;
   transform_id: string;
+  transform_name: string | null;
 }
 
 export interface LlmPrompts {

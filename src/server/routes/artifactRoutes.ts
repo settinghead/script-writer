@@ -3,6 +3,7 @@ import { AuthMiddleware } from '../middleware/auth';
 import { ArtifactRepository } from '../repositories/ArtifactRepository';
 import { TransformRepository } from '../repositories/TransformRepository';
 import { TransformExecutor } from '../services/TransformExecutor';
+import { SchemaTransformExecutor } from '../services/SchemaTransformExecutor';
 
 export function createArtifactRoutes(
     authMiddleware: AuthMiddleware,
@@ -11,6 +12,7 @@ export function createArtifactRoutes(
 ) {
     const router = express.Router();
     const transformExecutor = new TransformExecutor(artifactRepo, transformRepo);
+    const schemaExecutor = new SchemaTransformExecutor(artifactRepo, transformRepo);
 
     // Get artifact by ID
     router.get('/:id', authMiddleware.authenticate, async (req, res) => {
@@ -147,6 +149,44 @@ export function createArtifactRoutes(
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+
+    // Schema-driven transform route
+    router.post('/:id/schema-transform', authMiddleware.authenticate, async (req, res) => {
+        try {
+            const { id: artifactId } = req.params;
+            const { transformName, derivationPath, fieldUpdates } = req.body;
+            const userId = req.user.id;
+
+            if (!transformName || !derivationPath) {
+                return res.status(400).json({ error: "transformName and derivationPath are required" });
+            }
+
+            // Get artifact to verify access
+            const artifact = await artifactRepo.getArtifact(artifactId);
+            if (!artifact) {
+                return res.status(404).json({ error: 'Artifact not found' });
+            }
+
+            // Verify user has access to this artifact's project
+            const hasAccess = await artifactRepo.userHasProjectAccess(userId, artifact.project_id);
+            if (!hasAccess) {
+                return res.status(403).json({ error: 'Access denied' });
+            }
+
+            const result = await schemaExecutor.executeSchemaHumanTransform(
+                transformName,
+                artifactId,
+                derivationPath,
+                artifact.project_id,
+                fieldUpdates
+            );
+
+            res.json(result);
+        } catch (error: any) {
+            console.error('Schema transform error:', error);
+            res.status(500).json({ error: error.message });
+        }
+    });
 
     return router;
 } 

@@ -165,16 +165,17 @@ const EditableIdeaCard: React.FC<{
                         title="退出编辑"
                     />
 
-                    {/* Use ArtifactEditor with path-based editing */}
+                    {/* Use ArtifactEditor with schema-based editing */}
                     <div style={{ paddingRight: '40px' }}>
                         {collectionArtifactId ? (
-                            // Path-based editing: one editor per idea using [index] path
+                            // Schema-based editing: one editor per idea using [index] path and transform name
                             <ArtifactEditor
                                 artifactId={collectionArtifactId}
                                 path={`[${index}]`}
+                                transformName="edit_brainstorm_idea"
                                 className="!border-none !p-0"
                                 onTransition={(newArtifactId) => {
-                                    console.log(`Idea ${index + 1} transitioned to ${newArtifactId}`);
+                                    console.log(`Idea ${index + 1} transitioned to derived artifact: ${newArtifactId}`);
                                 }}
                             />
                         ) : (
