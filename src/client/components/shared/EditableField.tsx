@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Input } from 'antd';
 
 const { TextArea } = Input;
@@ -35,13 +35,45 @@ export const EditableField: React.FC<EditableFieldProps> = ({
     // Local state to handle typing smoothly
     const [localValue, setLocalValue] = useState(value);
     const [isTyping, setIsTyping] = useState(false);
+    const lastTypingTime = useRef<number>(0);
+    const lastExternalUpdate = useRef<number>(0);
+    const isFocusedRef = useRef<boolean>(false);
 
-    // Update local value when prop value changes (but not when user is typing)
+    // Track focus state
     useEffect(() => {
-        if (!isTyping) {
+        isFocusedRef.current = isFocused;
+    }, [isFocused]);
+
+    // Update local value when prop value changes, but be smart about concurrent editing
+    useEffect(() => {
+        const now = Date.now();
+        const timeSinceLastTyping = now - lastTypingTime.current;
+        const timeSinceLastExternal = now - lastExternalUpdate.current;
+        
+        // Only update from external source if:
+        // 1. User is not currently typing (not focused and not recently typed)
+        // 2. OR it's been more than 2 seconds since last typing (user stopped typing)
+        // 3. OR this is the first value (initialization)
+        const shouldUpdateFromExternal = (
+            (!isFocusedRef.current && !isTyping && timeSinceLastTyping > 2000) ||
+            timeSinceLastTyping > 2000 ||
+            localValue === '' ||
+            lastExternalUpdate.current === 0
+        );
+
+        if (shouldUpdateFromExternal && value !== localValue) {
+            console.log('EditableField: Updating from external source', {
+                value,
+                localValue,
+                isTyping,
+                isFocused: isFocusedRef.current,
+                timeSinceLastTyping,
+                shouldUpdateFromExternal
+            });
             setLocalValue(value);
+            lastExternalUpdate.current = now;
         }
-    }, [value, isTyping]);
+    }, [value, localValue, isTyping]);
 
     // Reset typing state after a delay
     useEffect(() => {
@@ -56,18 +88,24 @@ export const EditableField: React.FC<EditableFieldProps> = ({
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const newValue = e.target.value;
+        const now = Date.now();
+        
         setLocalValue(newValue);
         setIsTyping(true);
+        lastTypingTime.current = now;
+        
         onChange(newValue);
     };
 
     const handleFocus = () => {
         setIsTyping(true);
+        lastTypingTime.current = Date.now();
         onFocus();
     };
 
     const handleBlur = () => {
-        setIsTyping(false);
+        // Don't immediately stop typing state on blur, let the timeout handle it
+        // This prevents issues when user clicks between fields quickly
         onBlur();
     };
 
