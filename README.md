@@ -397,6 +397,32 @@ const editMutation = useMutation({
 - **Session cleanup** for expired tokens
 - **Concurrent editing protection** - Database-level unique constraints prevent race conditions
 
+### Project-Based Access Control Architecture
+
+**IMPORTANT**: The application uses **project-based access control**, not direct user-based access control:
+
+- **Artifacts and Transforms DO NOT have `user_id` fields**
+- **All artifacts and transforms have `project_id` fields instead**
+- **Access control is managed through project membership** via the `projects_users` table
+- **Users can only access artifacts/transforms within projects they are members of**
+- **Authentication middleware validates project membership before allowing access**
+
+This architecture provides:
+- **Multi-user collaboration** - Multiple users can work on the same project
+- **Clean separation of concerns** - Project management is separate from content management
+- **Scalable permissions** - Easy to add role-based permissions within projects
+- **Data organization** - All content is naturally grouped by project
+
+```sql
+-- Correct access pattern: Filter by project membership
+SELECT a.* FROM artifacts a
+JOIN projects_users pu ON pu.project_id = a.project_id
+WHERE pu.user_id = ? AND a.id = ?;
+
+-- WRONG: Artifacts do not have user_id
+SELECT * FROM artifacts WHERE user_id = ? AND id = ?; -- ❌ This column doesn't exist
+```
+
 ## Development
 
 ### Project Structure

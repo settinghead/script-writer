@@ -538,10 +538,16 @@ app.post("/api/transforms/:transformId/stop",
     }
 
     try {
-      // Verify transform ownership
-      const transform = await transformRepo.getTransform(transformId, user.id);
+      // Get transform first
+      const transform = await transformRepo.getTransform(transformId);
       if (!transform) {
-        return res.status(404).json({ error: "Transform not found or access denied" });
+        return res.status(404).json({ error: "Transform not found" });
+      }
+
+      // Check if user has access to the project containing this transform
+      const hasAccess = await artifactRepo.userHasProjectAccess(user.id, transform.project_id);
+      if (!hasAccess) {
+        return res.status(403).json({ error: "Access denied - user not member of project" });
       }
 
       // Check if transform is actually running
@@ -590,8 +596,13 @@ async function findBrainstormParamsInLineage(userId: string, sourceArtifactId: s
     visitedArtifacts.add(currentArtifactId);
 
     // Check if this artifact is brainstorm_params or brainstorming_job_params (which contains the same data)
-    const artifact = await artifactRepo.getArtifact(currentArtifactId, userId);
+    const artifact = await artifactRepo.getArtifact(currentArtifactId);
     if (artifact) {
+      // Verify user has access to this artifact's project
+      const hasAccess = await artifactRepo.userHasProjectAccess(userId, artifact.project_id);
+      if (!hasAccess) {
+        continue; // Skip artifacts user doesn't have access to
+      }
       if (artifact.type === 'brainstorm_params') {
         brainstormParams.push(artifact);
       } else if (artifact.type === 'brainstorming_job_params') {
@@ -806,37 +817,56 @@ app.put("/api/artifacts/:artifactId",
   authMiddleware.authenticate,
   async (req: any, res: any) => {
     const { artifactId } = req.params;
-    const { text } = req.body;
+    const { text, data } = req.body;
 
     const user = authMiddleware.getCurrentUser(req);
     if (!user) {
       return res.status(401).json({ error: "User not authenticated" });
     }
 
-    // Validate required fields
-    if (!text || typeof text !== 'string' || !text.trim()) {
-      return res.status(400).json({
-        error: "Missing or empty text",
-        details: "text must be a non-empty string"
-      });
-    }
-
     try {
-      // Get existing artifact to validate ownership and type
-      const existingArtifact = await artifactRepo.getArtifact(artifactId, user.id);
+      // Get existing artifact first
+      const existingArtifact = await artifactRepo.getArtifact(artifactId);
       if (!existingArtifact) {
         return res.status(404).json({ error: "Artifact not found" });
       }
 
-      if (existingArtifact.type !== 'user_input') {
-        return res.status(400).json({ error: "Can only update user_input artifacts" });
+      // Check if user has access to the project containing this artifact
+      const hasAccess = await artifactRepo.userHasProjectAccess(user.id, existingArtifact.project_id);
+      if (!hasAccess) {
+        return res.status(403).json({ error: "Access denied - user not member of project" });
       }
 
-      // Update the artifact in place (for user_input artifacts only)
-      const updatedData = {
-        ...existingArtifact.data,
-        text: text.trim()
-      };
+      let updatedData;
+      
+      if (existingArtifact.type === 'user_input') {
+        // Validate required fields for user_input
+        if (!text || typeof text !== 'string' || !text.trim()) {
+          return res.status(400).json({
+            error: "Missing or empty text",
+            details: "text must be a non-empty string for user_input artifacts"
+          });
+        }
+
+        // Update the artifact in place (for user_input artifacts)
+        updatedData = {
+          ...existingArtifact.data,
+          text: text.trim()
+        };
+      } else if (existingArtifact.type === 'brainstorm_idea') {
+        // Validate required fields for brainstorm_idea
+        if (!data || typeof data !== 'object') {
+          return res.status(400).json({
+            error: "Missing or invalid data",
+            details: "data must be an object for brainstorm_idea artifacts"
+          });
+        }
+
+        // Update the artifact in place (for brainstorm_idea artifacts)
+        updatedData = data;
+      } else {
+        return res.status(400).json({ error: `Cannot update artifacts of type: ${existingArtifact.type}` });
+      }
 
       // Update the artifact directly in the database using Kysely
       await db
@@ -846,7 +876,6 @@ app.put("/api/artifacts/:artifactId",
           metadata: JSON.stringify(existingArtifact.metadata)
         })
         .where('id', '=', artifactId)
-        .where('project_id', '=', user.id) // Note: This might need adjustment based on actual schema
         .execute();
 
       // Return the updated artifact with the same ID
@@ -858,9 +887,9 @@ app.put("/api/artifacts/:artifactId",
       res.json(updatedArtifact);
 
     } catch (error: any) {
-      console.error('Error updating user input artifact:', error);
+      console.error('Error updating artifact:', error);
       res.status(500).json({
-        error: "Failed to update user input artifact",
+        error: "Failed to update artifact",
         details: error.message,
         timestamp: new Date().toISOString()
       });

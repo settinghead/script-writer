@@ -72,7 +72,15 @@ export function createBrainstormRoutes(
                 return res.status(400).json({ error: 'Missing projectId or params' });
             }
 
-            // TODO: Verify user has access to project
+            // Verify user has access to project
+            const { ArtifactRepository } = await import('../repositories/ArtifactRepository');
+            const { db } = await import('../database/connection');
+            const artifactRepo = new ArtifactRepository(db);
+            
+            const hasAccess = await artifactRepo.userHasProjectAccess(userId, projectId);
+            if (!hasAccess) {
+                return res.status(403).json({ error: 'Access denied - user not member of project' });
+            }
             
             const result = await brainstormService.startBrainstorm({
                 projectId,
@@ -94,6 +102,24 @@ export function createBrainstormRoutes(
             const { transformId } = req.params;
             const userId = req.user.id;
 
+            // Get transform first to check project access
+            const { TransformRepository } = await import('../repositories/TransformRepository');
+            const { ArtifactRepository } = await import('../repositories/ArtifactRepository');
+            const { db } = await import('../database/connection');
+            const transformRepo = new TransformRepository(db);
+            const artifactRepo = new ArtifactRepository(db);
+            
+            const transform = await transformRepo.getTransform(transformId);
+            if (!transform) {
+                return res.status(404).json({ error: 'Transform not found' });
+            }
+
+            // Check if user has access to the project containing this transform
+            const hasAccess = await artifactRepo.userHasProjectAccess(userId, transform.project_id);
+            if (!hasAccess) {
+                return res.status(403).json({ error: 'Access denied - user not member of project' });
+            }
+
             const status = await brainstormService.getBrainstormStatus(transformId);
             res.json(status);
         } catch (error) {
@@ -110,7 +136,15 @@ export function createBrainstormRoutes(
             const { projectId } = req.params;
             const userId = req.user.id;
 
-            // TODO: Verify user has access to project
+            // Verify user has access to project
+            const { ArtifactRepository } = await import('../repositories/ArtifactRepository');
+            const { db } = await import('../database/connection');
+            const artifactRepo = new ArtifactRepository(db);
+            
+            const hasAccess = await artifactRepo.userHasProjectAccess(userId, projectId);
+            if (!hasAccess) {
+                return res.status(403).json({ error: 'Access denied - user not member of project' });
+            }
 
             const result = await brainstormService.getBrainstormResult(projectId);
             res.json(result);
@@ -145,8 +179,17 @@ export function createBrainstormRoutes(
             const { projectId } = req.params;
             const userId = req.user.id;
 
-            // Find the latest brainstorm transform for this project
+            // Verify user has access to project
+            const { ArtifactRepository } = await import('../repositories/ArtifactRepository');
             const { db } = await import('../database/connection');
+            const artifactRepo = new ArtifactRepository(db);
+            
+            const hasAccess = await artifactRepo.userHasProjectAccess(userId, projectId);
+            if (!hasAccess) {
+                return res.status(403).json({ error: 'Access denied - user not member of project' });
+            }
+
+            // Find the latest brainstorm transform for this project
             const transform = await db
                 .selectFrom('transforms')
                 .selectAll()
