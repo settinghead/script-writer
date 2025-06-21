@@ -68,7 +68,7 @@ A collaborative script writing application with AI assistance, real-time collabo
 ### Prerequisites
 - Node.js 18+ 
 - npm or yarn
-- SQLite (for local development)
+- Docker and Docker Compose (for PostgreSQL + Electric SQL)
 
 ### Installation
 
@@ -104,16 +104,31 @@ COOKIE_DOMAIN=localhost
 # Server Configuration
 PORT=4600
 
-# Database Configuration
-DB_PATH=./ideations.db
+# PostgreSQL + Electric SQL Configuration
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=script_writer
+DB_USER=postgres
+DB_PASSWORD=password
+ELECTRIC_URL=http://localhost:3000
 ```
 
-4. Start the development server:
+4. Start PostgreSQL and Electric SQL:
+```bash
+docker compose up -d
+```
+
+5. Run database migrations:
+```bash
+npm run migrate
+```
+
+6. Start the development server:
 ```bash
 npm run dev
 ```
 
-5. Open your browser and navigate to `http://localhost:4600`
+7. Open your browser and navigate to `http://localhost:4600`
 
 ### First Login
 
@@ -210,7 +225,8 @@ CREATE TABLE human_transforms (
 
 ### Backend Architecture
 - **Express.js** server with TypeScript
-- **SQLite** database with **Kysely** for type-safe database operations
+- **PostgreSQL** database with **Kysely** for type-safe database operations
+- **Electric SQL** for real-time database synchronization
 - **Schema Transform Executor** for validated transform execution
 - **Transform Instantiation Registry** for extensible transform definitions
 - **Server-Sent Events** for real-time streaming updates
@@ -345,6 +361,10 @@ src/
 - `npm run dev` - Start development server
 - `npm run build` - Build for production  
 - `npm run start` - Start production server
+- `npm run migrate` - Run database migrations
+- `npm run migrate:down` - Roll back last migration
+- `npm run migrate:status` - Show migration status
+- `npm run seed` - Seed test users
 - `npm run test:schema` - Test schema transform system
 - `./run-ts <script>` - Run TypeScript scripts with proper configuration
 
@@ -362,13 +382,16 @@ src/
 #### Database Management
 ```bash
 # Run database migrations
-./run-ts src/server/scripts/run-migration.ts
+npm run migrate
 
 # Seed test users
-./run-ts src/server/scripts/seed-test-users.ts
+npm run seed
 
-# Debug database state
-sqlite3 ideations.db "SELECT * FROM artifacts ORDER BY created_at DESC LIMIT 10;"
+# Debug database state (via Electric SQL proxy)
+curl "http://localhost:3000/v1/shape?table=artifacts&offset=-1" | jq
+
+# Direct PostgreSQL access
+psql -h localhost -U postgres -d script_writer -c "SELECT * FROM artifacts ORDER BY created_at DESC LIMIT 10;"
 ```
 
 ## Schema Transform System Deep Dive
@@ -452,7 +475,7 @@ const editMutation = useMutation({
 - **Added transform_name column** - Better transform tracking and debugging capabilities
 - **Enhanced artifact metadata** - Comprehensive context and lineage information
 - **Optimized queries** - Efficient artifact and transform retrieval patterns
-- **Migration from Knex to Kysely** - Type-safe database operations throughout
+- **PostgreSQL + Electric SQL** - Real-time synchronization with type-safe database operations
 
 ### Frontend Architecture Improvements
 - **React hooks compliance** - Fixed critical hooks order violations that caused render errors

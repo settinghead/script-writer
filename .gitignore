@@ -7,8 +7,9 @@ dist-server
 dist
 dist-client
 
-*.db
-*.sqlite
+# Database files are now handled by Docker
+# *.db (legacy SQLite - removed)
+# *.sqlite (legacy SQLite - removed)
 *.db-journal
 
 

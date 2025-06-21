@@ -15,8 +15,10 @@
     "lint": "eslint src/ --ext .ts,.tsx",
     "lint:fix": "eslint src/ --ext .ts,.tsx --fix",
     "db:generate-types": "kysely-codegen --out-file src/server/database/types.ts",
-    "db:seed": "./run-ts src/server/scripts/seed-test-users.ts",
-    "db:migrate": "./run-ts src/server/scripts/run-migration.ts",
+    "migrate": "./run-ts src/server/scripts/migrate.ts",
+    "migrate:down": "./run-ts src/server/scripts/migrate.ts down",
+    "migrate:status": "./run-ts src/server/scripts/migrate.ts status",
+    "seed": "./run-ts src/server/scripts/seed.ts",
     "test:schema": "./run-ts src/server/scripts/test-schema-system.ts",
     "test:brainstorm": "./run-ts src/server/scripts/test-brainstorm-frontend.ts"
   },

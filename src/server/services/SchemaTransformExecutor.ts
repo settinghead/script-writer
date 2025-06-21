@@ -18,7 +18,7 @@ export class SchemaTransformExecutor {
   }
 
   /**
-   * Execute a schema-validated human transform
+   * Execute a schema-validated human transform with race condition protection
    */
   async executeSchemaHumanTransform(
     transformName: string,
@@ -55,14 +55,80 @@ export class SchemaTransformExecutor {
       );
     }
 
-    // 4. Create new derived artifact
-    return this.createNewDerivedArtifact(
+    // 4. Create new derived artifact with race condition protection
+    return this.createNewDerivedArtifactWithRetry(
       transformName,
       sourceArtifactId,
       derivationPath,
       projectId,
-      transformDef
+      transformDef,
+      fieldUpdates
     );
+  }
+
+  /**
+   * Create new derived artifact with retry logic for race conditions
+   */
+  private async createNewDerivedArtifactWithRetry(
+    transformName: string,
+    sourceArtifactId: string,
+    derivationPath: string,
+    projectId: string,
+    transformDef: any,
+    fieldUpdates?: Record<string, any>,
+    retryCount: number = 0
+  ): Promise<{ transform: any; derivedArtifact: any; wasTransformed: boolean }> {
+    try {
+      return await this.createNewDerivedArtifact(
+        transformName,
+        sourceArtifactId,
+        derivationPath,
+        projectId,
+        transformDef
+      );
+    } catch (error: any) {
+      // Check if this is a unique constraint violation
+      const isUniqueConstraintError = 
+        error.code === '23505' || // PostgreSQL unique violation
+        (error.message && error.message.includes('unique_human_transform_per_artifact_path')) ||
+        (error.message && error.message.includes('duplicate key value violates unique constraint'));
+
+      if (isUniqueConstraintError && retryCount < 3) {
+        console.log(`Unique constraint violation detected, retrying... (attempt ${retryCount + 1})`);
+        
+        // Another process created the transform, try to find and update it
+        await new Promise(resolve => setTimeout(resolve, 50 * (retryCount + 1))); // Exponential backoff
+        
+        const existingTransform = await this.transformRepo.findHumanTransform(
+          sourceArtifactId, 
+          derivationPath, 
+          projectId
+        );
+
+        if (existingTransform && existingTransform.derived_artifact_id) {
+          // Found the transform created by another process, update it
+          return this.updateExistingDerivedArtifact(
+            existingTransform, 
+            fieldUpdates || {}, 
+            transformDef
+          );
+        } else {
+          // Still not found, retry creation
+          return this.createNewDerivedArtifactWithRetry(
+            transformName,
+            sourceArtifactId,
+            derivationPath,
+            projectId,
+            transformDef,
+            fieldUpdates,
+            retryCount + 1
+          );
+        }
+      }
+      
+      // Re-throw if not a unique constraint error or max retries exceeded
+      throw error;
+    }
   }
 
   private async updateExistingDerivedArtifact(
