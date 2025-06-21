@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useShape } from '@electric-sql/react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { message, Button } from 'antd';
 import { useDebouncedCallback } from '../../hooks/useDebounce';
 import { EditableField } from './EditableField';
 import type { ElectricArtifact } from '../../../common/types';
-import { getElectricConfig } from '../../../common/config/electric';
+import { useProjectElectric } from '../../contexts/ProjectElectricContext';
 import { extractDataAtPath, getPathDescription } from '../../../common/utils/pathExtraction';
 import { CheckOutlined, EditOutlined, LoadingOutlined } from '@ant-design/icons';
 
@@ -87,42 +86,30 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
     const targetArtifactId = existingTransform?.derived_artifact_id || artifactId;
     const shouldShowEditButton = !existingTransform && transformName;
 
-    // 3. Electric SQL real-time data
-    const electricConfig = useMemo(() => getElectricConfig(), []);
-    
-    // Create a stable where clause that includes both original and derived artifact IDs
-    // This way we maintain a single subscription that covers both cases
-    const stableWhereClause = useMemo(() => {
-        const ids = [artifactId];
-        if (existingTransform?.derived_artifact_id) {
-            ids.push(existingTransform.derived_artifact_id);
-        }
-        const whereClause = `id IN ('${ids.join("', '")}')`;
-        return whereClause;
-    }, [artifactId, existingTransform?.derived_artifact_id]);
+    // 3. Use unified Electric context
+    const { 
+        getArtifactById, 
+        getDerivedArtifactId,
+        createSchemaTransform,
+        updateArtifact,
+        isLoading: isLoadingArtifact,
+        error: contextError
+    } = useProjectElectric();
 
-    const { data: artifacts, isLoading: isLoadingArtifact, error } = useShape({
-        url: electricConfig.url,
-        params: {
-            table: 'artifacts',
-            where: stableWhereClause
-        }
-    });
-
-    // Select the appropriate artifact (derived if available, otherwise original)
+    // Get the appropriate artifact (derived if available, otherwise original)
     const artifact = useMemo(() => {
-        if (!artifacts || artifacts.length === 0) return undefined;
-        
-        // If we have a derived artifact ID, prefer that one
-        if (existingTransform?.derived_artifact_id) {
-            const derivedArtifact = artifacts.find(a => a.id === existingTransform.derived_artifact_id);
-            if (derivedArtifact) return derivedArtifact as unknown as ElectricArtifact;
+        // Check for derived artifact first
+        const derivedArtifactId = getDerivedArtifactId(artifactId, path);
+        if (derivedArtifactId) {
+            const derivedArtifact = getArtifactById(derivedArtifactId);
+            if (derivedArtifact) return derivedArtifact;
         }
         
         // Otherwise, use the original artifact
-        const originalArtifact = artifacts.find(a => a.id === artifactId);
-        return originalArtifact as unknown as ElectricArtifact;
-    }, [artifacts, existingTransform?.derived_artifact_id, artifactId]);
+        return getArtifactById(artifactId);
+    }, [getArtifactById, getDerivedArtifactId, artifactId, path]);
+
+    const error = contextError;
 
     // 4. Process artifact data
     const processedArtifactData = useMemo(() => {
@@ -153,28 +140,15 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
 
     const { artifactData, isUserInput } = processedArtifactData;
 
-    // 5. Create transform mutation
+    // 5. Create transform mutation using unified context
     const createTransformMutation = useMutation<CreateTransformResponse, Error, CreateTransformRequest>({
         mutationFn: async (request) => {
-            const response = await fetch(`/api/artifacts/${artifactId}/schema-transform`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                credentials: 'include',
-                body: JSON.stringify({
-                    transformName: request.transformName,
-                    derivationPath: request.derivationPath,
-                    fieldUpdates: {} // Empty - just creating the transform
-                })
+            return await createSchemaTransform({
+                transformName: request.transformName,
+                sourceArtifactId: artifactId,
+                derivationPath: request.derivationPath,
+                fieldUpdates: {} // Empty - just creating the transform
             });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
-            }
-
-            return response.json();
         },
         onSuccess: (response) => {
             setIsCreatingTransform(false);
@@ -194,38 +168,10 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
         }
     });
 
-    // 6. Update mutation for user_input and brainstorm_idea artifacts
+    // 6. Update mutation using unified context
     const updateMutation = useMutation<any, Error, Record<string, any>>({
         mutationFn: async (fieldUpdates) => {
-            let requestBody;
-            
-            if (isUserInput) {
-                // For user_input artifacts, we need to send the data as 'text' field
-                // Convert the structured data back to JSON string
-                const textData = JSON.stringify(fieldUpdates);
-                requestBody = { text: textData };
-            } else if (artifact.type === 'brainstorm_idea') {
-                // For brainstorm_idea artifacts, send the data directly
-                requestBody = { data: fieldUpdates };
-            } else {
-                throw new Error('Unsupported artifact type for editing');
-            }
-            
-            const response = await fetch(`/api/artifacts/${targetArtifactId}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                credentials: 'include',
-                body: JSON.stringify(requestBody)
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
-            }
-
-            return response.json();
+            return await updateArtifact(targetArtifactId, fieldUpdates);
         },
         onSuccess: () => {
             // Clear pending saves and typing states

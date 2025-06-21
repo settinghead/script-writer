@@ -320,7 +320,7 @@ export const AgentBrainstormRequestSchema = z.object({
 
 export type AgentBrainstormRequest = z.infer<typeof AgentBrainstormRequestSchema>;
 
-// Electric SQL Database Types
+// Electric SQL Database Types (matches actual database schema)
 export interface ElectricArtifact {
     id: string
     project_id: string
@@ -329,10 +329,8 @@ export interface ElectricArtifact {
     data: string // JSON string
     metadata: string | null // JSON string
     created_at: string
-    updated_at: string
-    streaming_status: 'streaming' | 'completed' | 'failed' | 'cancelled'
-    streaming_progress: number
-    partial_data: any | null // JSONB
+    // Note: streaming columns don't exist in current schema
+    // updated_at, streaming_status, streaming_progress, partial_data are not available
 }
 
 export interface ElectricTransform {

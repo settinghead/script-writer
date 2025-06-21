@@ -4,6 +4,7 @@ import { Layout, Breadcrumb, Typography, Spin, Alert, Space, Button, Card, List 
 import { HomeOutlined, ProjectOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { useProjectData } from '../hooks/useProjectData';
 import { useProjectStore } from '../stores/projectStore';
+import { ProjectElectricProvider } from '../contexts/ProjectElectricContext';
 
 const { Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -96,22 +97,24 @@ const ProjectLayout: React.FC = () => {
     ];
 
     return (
-        <Layout style={{ height: '100%', overflow: 'hidden' }}>
-            <Sider width={250} theme="light" style={{ borderRight: '1px solid #f0f0f0' }}>
-                <div style={{ padding: '16px' }}>
-                    <Title level={4}>{name || 'Project'}</Title>
-                    <Typography.Paragraph type="secondary" ellipsis={{ rows: 3 }}>
-                        {description || 'No description available.'}
-                    </Typography.Paragraph>
-                </div>
-                {/* Future navigation will go here */}
-            </Sider>
-            <Content style={{ padding: '24px', overflowY: 'auto' }}>
-                <Outlet />
+        <ProjectElectricProvider projectId={projectId!}>
+            <Layout style={{ height: '100%', overflow: 'hidden' }}>
+                <Sider width={250} theme="light" style={{ borderRight: '1px solid #f0f0f0' }}>
+                    <div style={{ padding: '16px' }}>
+                        <Title level={4}>{name || 'Project'}</Title>
+                        <Typography.Paragraph type="secondary" ellipsis={{ rows: 3 }}>
+                            {description || 'No description available.'}
+                        </Typography.Paragraph>
+                    </div>
+                    {/* Future navigation will go here */}
+                </Sider>
+                <Content style={{ padding: '24px', overflowY: 'auto' }}>
+                    <Outlet />
 
-                {/* Note: Streaming UI removed - now handled by individual pages with Electric SQL */}
-            </Content>
-        </Layout>
+                    {/* Note: Streaming UI removed - now handled by individual pages with Electric SQL */}
+                </Content>
+            </Layout>
+        </ProjectElectricProvider>
     );
 };
 
