@@ -93,10 +93,42 @@ export const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
     const artifact = artifacts?.[0] as unknown as ElectricArtifact | undefined;
     const rawArtifactData = artifact ? JSON.parse(artifact.data as string) : null;
     
-    // 4. Extract data using path if needed
-    const artifactData = path && rawArtifactData ? 
-        extractDataAtPath(rawArtifactData, path) : 
-        rawArtifactData;
+    // 4. Handle user_input artifacts with derived data
+    let actualData = rawArtifactData;
+    if (artifact?.type === 'user_input' && artifact.metadata) {
+        const metadata = JSON.parse(artifact.metadata as string);
+        if (metadata.derived_data) {
+            // Use the derived data stored in metadata
+            actualData = metadata.derived_data;
+        } else if (rawArtifactData?.text) {
+            // Fallback: try to parse the text field
+            try {
+                actualData = JSON.parse(rawArtifactData.text);
+            } catch (e) {
+                console.warn('Failed to parse user_input text field:', e);
+                actualData = rawArtifactData;
+            }
+        }
+    }
+    
+    // 5. Extract data using path if needed
+    const artifactData = path && actualData ? 
+        extractDataAtPath(actualData, path) : 
+        actualData;
+    
+    // Debug logging
+    if (path) {
+        console.log('ArtifactEditor Debug:', {
+            artifactId,
+            path,
+            artifactType: artifact?.type,
+            rawArtifactData,
+            actualData,
+            extractedData: artifactData,
+            hasExistingTransform: !!existingTransform,
+            targetArtifactId
+        });
+    }
     
     const isLLMGenerated = existingTransform ? false : (artifact?.metadata ? JSON.parse(artifact.metadata as string).source === 'llm' : false);
 
@@ -205,7 +237,7 @@ export const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
     let fieldMapping = ARTIFACT_FIELD_MAPPING[artifact.type as keyof typeof ARTIFACT_FIELD_MAPPING];
 
     // For path-based editing, determine fields from the actual data structure
-    if (!fieldMapping && path && artifactData && typeof artifactData === 'object') {
+    if (path && artifactData && typeof artifactData === 'object') {
         fieldMapping = Object.keys(artifactData).map(key => {
             const value = artifactData[key];
             if (typeof value === 'string') {
@@ -219,6 +251,12 @@ export const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
             }
             return null;
         }).filter(Boolean) as FieldConfig[];
+        
+        console.log('Dynamic field mapping:', {
+            path,
+            artifactData,
+            fieldMapping
+        });
     }
 
     if (!fieldMapping || fieldMapping.length === 0) {

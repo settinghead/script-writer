@@ -285,12 +285,12 @@ export const BrainstormResultsWithArtifactEditor: React.FC<BrainstormResultsWith
     // Fetch brainstorm_idea_collection artifacts (not individual ideas)
     const { data: artifacts, isLoading, error } = useShape({
         url: electricConfig.url,
-        params: {
-            table: 'artifacts',
+    params: {
+      table: 'artifacts',
             where: `project_id = '${projectId}' AND type = 'brainstorm_idea_collection'`
-        }
-    });
-
+    }
+  });
+  
     // Get the latest collection artifact
     const latestCollection = useMemo(() => {
         if (!artifacts || !Array.isArray(artifacts)) return null;

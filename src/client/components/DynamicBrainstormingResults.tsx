@@ -124,7 +124,8 @@ const EditableIdeaCard: React.FC<{
     isSelected: boolean;
     ideaOutlines: any[];
     onIdeaClick: (idea: IdeaWithTitle, index: number) => void;
-}> = ({ idea, index, isSelected, ideaOutlines, onIdeaClick }) => {
+    collectionArtifactId?: string; // Add collection artifact ID for path-based editing
+}> = ({ idea, index, isSelected, ideaOutlines, onIdeaClick, collectionArtifactId }) => {
     const [isEditing, setIsEditing] = useState(false);
 
     const handleCardClick = useCallback(() => {
@@ -164,17 +165,30 @@ const EditableIdeaCard: React.FC<{
                         title="退出编辑"
                     />
 
-                    {/* Use ArtifactEditor for all editing logic */}
+                    {/* Use ArtifactEditor with path-based editing */}
                     <div style={{ paddingRight: '40px' }}>
-                        <ArtifactEditor
-                            artifactId={idea.artifactId}
-                            className="!border-none !p-0"
-                            onTransition={(newArtifactId) => {
-                                console.log(`Idea ${index + 1} transitioned from ${idea.artifactId} to ${newArtifactId}`);
-                                // Update the idea's artifactId if needed
-                                idea.artifactId = newArtifactId;
-                            }}
-                        />
+                        {collectionArtifactId ? (
+                            // Path-based editing: one editor per idea using [index] path
+                            <ArtifactEditor
+                                artifactId={collectionArtifactId}
+                                path={`[${index}]`}
+                                className="!border-none !p-0"
+                                onTransition={(newArtifactId) => {
+                                    console.log(`Idea ${index + 1} transitioned to ${newArtifactId}`);
+                                }}
+                            />
+                        ) : (
+                            // Fallback for individual idea artifacts
+                            <ArtifactEditor
+                                artifactId={idea.artifactId}
+                                className="!border-none !p-0"
+                                onTransition={(newArtifactId) => {
+                                    console.log(`Idea ${index + 1} transitioned from ${idea.artifactId} to ${newArtifactId}`);
+                                    // Update the idea's artifactId if needed
+                                    idea.artifactId = newArtifactId;
+                                }}
+                            />
+                        )}
                     </div>
 
                     {/* Associated outlines - only show if there are outlines */}
@@ -435,6 +449,7 @@ export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsPr
                                 isSelected={isSelected}
                                 ideaOutlines={ideaOutlinesForThis}
                                 onIdeaClick={handleIdeaClick}
+                                collectionArtifactId={idea.artifactId}
                             />
                         );
                     })}

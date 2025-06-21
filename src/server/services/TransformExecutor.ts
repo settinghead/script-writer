@@ -684,16 +684,37 @@ export class TransformExecutor {
             // Update the field in the derived artifact
             const currentData = typeof currentArtifact.data === 'string' ? 
                 JSON.parse(currentArtifact.data) : currentArtifact.data;
-            const updatedData = { ...currentData, [field]: value };
+            
+            // Extract the actual derived data from user_input format
+            const actualData = currentArtifact.metadata?.derived_data || 
+                (currentData.text ? JSON.parse(currentData.text) : currentData);
+            
+            // For existing artifacts, we should just update the field directly since
+            // the derived artifact already contains the extracted object
+            const updatedData = { ...actualData, [field]: value };
+            
+            // Update in user_input format
+            const userInputData = {
+                text: JSON.stringify(updatedData),
+                source: 'modified_brainstorm' as const,
+                source_artifact_id: sourceArtifactId
+            };
 
             const updatedArtifact = await this.artifactRepo.updateArtifact(
                 existingTransform.derived_artifact_id, 
-                updatedData
+                userInputData,
+                { 
+                    ...currentArtifact.metadata,
+                    derived_data: updatedData  // Update the derived data in metadata
+                }
             );
             
             return { 
                 transform: existingTransform.transform, 
-                derivedArtifact: updatedArtifact, 
+                derivedArtifact: {
+                    ...updatedArtifact,
+                    data: updatedData  // Return the actual derived data, not the user_input format
+                }, 
                 wasTransformed: false 
             };
         }
@@ -707,13 +728,30 @@ export class TransformExecutor {
         const sourceData = typeof sourceArtifact.data === 'string' ? 
             JSON.parse(sourceArtifact.data) : sourceArtifact.data;
         
-        // Extract data at path
-        const pathData = derivationPath ? 
-            extractDataAtPath(sourceData, derivationPath) : 
-            sourceData;
+        // For path-based editing, we need to extract the parent object and update the field
+        let newData;
+        if (derivationPath && derivationPath.includes('.')) {
+            // Path like "[0].title" - extract the parent object "[0]" and update the field "title"
+            const lastDotIndex = derivationPath.lastIndexOf('.');
+            const parentPath = derivationPath.substring(0, lastDotIndex);
+            const fieldToUpdate = derivationPath.substring(lastDotIndex + 1);
+            
+            const parentData = extractDataAtPath(sourceData, parentPath);
+            newData = { ...parentData, [fieldToUpdate]: value };
+        } else {
+            // Root level or simple path
+            const pathData = derivationPath ? 
+                extractDataAtPath(sourceData, derivationPath) : 
+                sourceData;
+            newData = { ...pathData, [field]: value };
+        }
         
-        // Create new data with edit
-        const newData = { ...pathData, [field]: value };
+        // For user_input artifacts, we need a specific format
+        const userInputData = {
+            text: JSON.stringify(newData),
+            source: 'modified_brainstorm' as const,
+            source_artifact_id: sourceArtifactId
+        };
         
         // Create transform and derived artifact atomically
         const transform = await this.transformRepo.createTransform(
@@ -733,12 +771,13 @@ export class TransformExecutor {
         const derivedArtifact = await this.artifactRepo.createArtifact(
             projectId,
             'user_input',
-            newData,
+            userInputData,
             'v1',
             { 
                 source: 'human', 
                 original_artifact_id: sourceArtifactId,
-                derivation_path: derivationPath
+                derivation_path: derivationPath,
+                derived_data: newData  // Store the actual derived data in metadata
             }
         );
         
@@ -756,7 +795,14 @@ export class TransformExecutor {
             change_description: `Edited ${field} at path ${derivationPath || 'root'}`
         });
         
-        return { transform, derivedArtifact, wasTransformed: true };
+        return { 
+            transform, 
+            derivedArtifact: {
+                ...derivedArtifact,
+                data: newData  // Return the actual derived data, not the user_input format
+            }, 
+            wasTransformed: true 
+        };
     }
 
     /**
