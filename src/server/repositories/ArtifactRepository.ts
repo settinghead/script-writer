@@ -29,8 +29,7 @@ export class ArtifactRepository {
             type_version: typeVersion,
             data: JSON.stringify(data),
             metadata: metadata ? JSON.stringify(metadata) : null,
-            created_at: now,
-            updated_at: now
+            created_at: now
         };
 
         await this.db
@@ -282,8 +281,7 @@ export class ArtifactRepository {
     // Update artifact data
     async updateArtifact(artifactId: string, data: any, metadata?: any): Promise<void> {
         const updateData: any = {
-            data: JSON.stringify(data),
-            updated_at: new Date()
+            data: JSON.stringify(data)
         };
 
         if (metadata !== undefined) {
@@ -305,8 +303,7 @@ export class ArtifactRepository {
         partialData?: any
     ): Promise<void> {
         const updateData: any = {
-            streaming_status: status,
-            updated_at: new Date()
+            streaming_status: status
         };
 
         if (progress !== undefined) {
