@@ -791,8 +791,8 @@ export class TransformExecutor {
         );
         
         // Link transform
-        await this.transformRepo.addTransformInputs(transform.id, [{ artifactId: sourceArtifactId }]);
-        await this.transformRepo.addTransformOutputs(transform.id, [{ artifactId: derivedArtifact.id }]);
+        await this.transformRepo.addTransformInputs(transform.id, [{ artifactId: sourceArtifactId }], projectId);
+        await this.transformRepo.addTransformOutputs(transform.id, [{ artifactId: derivedArtifact.id }], projectId);
         
         // Store human transform metadata
         await this.transformRepo.addHumanTransform({
@@ -801,7 +801,8 @@ export class TransformExecutor {
             source_artifact_id: sourceArtifactId,
             derivation_path: derivationPath,
             derived_artifact_id: derivedArtifact.id,
-            change_description: `Edited ${field} at path ${derivationPath || 'root'}`
+            change_description: `Edited ${field} at path ${derivationPath || 'root'}`,
+            project_id: projectId
         });
         
         return { 
