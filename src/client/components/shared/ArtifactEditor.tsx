@@ -85,17 +85,41 @@ export const ArtifactEditor: React.FC<ArtifactEditorProps> = React.memo(({
     const targetArtifactId = existingTransform?.derived_artifact_id || artifactId;
     const shouldShowEditButton = !existingTransform && transformName;
 
-    // 3. Electric SQL real-time data for the target artifact
+    // 3. Electric SQL real-time data
     const electricConfig = useMemo(() => getElectricConfig(), []);
+    
+    // Create a stable where clause that includes both original and derived artifact IDs
+    // This way we maintain a single subscription that covers both cases
+    const stableWhereClause = useMemo(() => {
+        const ids = [artifactId];
+        if (existingTransform?.derived_artifact_id) {
+            ids.push(existingTransform.derived_artifact_id);
+        }
+        return `id IN ('${ids.join("', '")}')`;
+    }, [artifactId, existingTransform?.derived_artifact_id]);
+
     const { data: artifacts, isLoading: isLoadingArtifact, error } = useShape({
         url: electricConfig.url,
         params: {
             table: 'artifacts',
-            where: `id = '${targetArtifactId}'`
+            where: stableWhereClause
         }
     });
 
-    const artifact = artifacts?.[0] as unknown as ElectricArtifact | undefined;
+    // Select the appropriate artifact (derived if available, otherwise original)
+    const artifact = useMemo(() => {
+        if (!artifacts || artifacts.length === 0) return undefined;
+        
+        // If we have a derived artifact ID, prefer that one
+        if (existingTransform?.derived_artifact_id) {
+            const derivedArtifact = artifacts.find(a => a.id === existingTransform.derived_artifact_id);
+            if (derivedArtifact) return derivedArtifact as unknown as ElectricArtifact;
+        }
+        
+        // Otherwise, use the original artifact
+        const originalArtifact = artifacts.find(a => a.id === artifactId);
+        return originalArtifact as unknown as ElectricArtifact;
+    }, [artifacts, existingTransform?.derived_artifact_id, artifactId]);
 
     // 4. Process artifact data
     const processedArtifactData = useMemo(() => {

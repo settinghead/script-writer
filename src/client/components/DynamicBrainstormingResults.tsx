@@ -124,8 +124,7 @@ const EditableIdeaCard: React.FC<{
     isSelected: boolean;
     ideaOutlines: any[];
     onIdeaClick: (idea: IdeaWithTitle, index: number) => void;
-    collectionArtifactId?: string; // Add collection artifact ID for path-based editing
-}> = ({ idea, index, isSelected, ideaOutlines, onIdeaClick, collectionArtifactId }) => {
+}> = ({ idea, index, isSelected, ideaOutlines, onIdeaClick }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [showSavedCheckmark, setShowSavedCheckmark] = useState(false);
 
@@ -174,33 +173,18 @@ const EditableIdeaCard: React.FC<{
                         title="退出编辑"
                     />
 
-                    {/* Use ArtifactEditor with schema-based editing */}
+                    {/* Use ArtifactEditor with path-based editing for collection artifacts */}
                     <div style={{ paddingRight: '40px' }}>
-                        {collectionArtifactId ? (
-                            // Schema-based editing: one editor per idea using [index] path and transform name
-                            <ArtifactEditor
-                                artifactId={collectionArtifactId}
-                                path={`[${index}]`}
-                                transformName="edit_brainstorm_idea"
-                                className="!border-none !p-0"
-                                onTransition={(newArtifactId) => {
-                                    console.log(`Idea ${index + 1} transitioned to derived artifact: ${newArtifactId}`);
-                                }}
-                                onSaveSuccess={handleSaveSuccess}
-                            />
-                        ) : (
-                            // Fallback for individual idea artifacts
-                            <ArtifactEditor
-                                artifactId={idea.artifactId}
-                                className="!border-none !p-0"
-                                onTransition={(newArtifactId) => {
-                                    console.log(`Idea ${index + 1} transitioned from ${idea.artifactId} to ${newArtifactId}`);
-                                    // Update the idea's artifactId if needed
-                                    idea.artifactId = newArtifactId;
-                                }}
-                                onSaveSuccess={handleSaveSuccess}
-                            />
-                        )}
+                        <ArtifactEditor
+                            artifactId={idea.artifactId}
+                            path={`[${index}]`}
+                            transformName="edit_brainstorm_idea"
+                            className="!border-none !p-0"
+                            onTransition={(newArtifactId) => {
+                                console.log(`Idea ${index + 1} transitioned from ${idea.artifactId} to ${newArtifactId}`);
+                            }}
+                            onSaveSuccess={handleSaveSuccess}
+                        />
                     </div>
 
                     {/* Associated outlines - only show if there are outlines */}
@@ -267,22 +251,22 @@ const EditableIdeaCard: React.FC<{
                             <CheckOutlined />
                         </div>
                     ) : (
-                        <Button
-                            size="small"
-                            type="text"
-                            icon={<EditOutlined />}
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setIsEditing(true);
-                            }}
-                            style={{
-                                position: 'absolute',
-                                top: '8px',
-                                right: '8px',
-                                color: '#1890ff',
-                                opacity: 0.7
-                            }}
-                            className="edit-button"
+                    <Button
+                        size="small"
+                        type="text"
+                        icon={<EditOutlined />}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setIsEditing(true);
+                        }}
+                        style={{
+                            position: 'absolute',
+                            top: '8px',
+                            right: '8px',
+                            color: '#1890ff',
+                            opacity: 0.7
+                        }}
+                        className="edit-button"
                             title="编辑"
                         />
                     )
@@ -290,23 +274,23 @@ const EditableIdeaCard: React.FC<{
 
                 {/* Read-only display */}
                 <div style={{ marginBottom: '8px', paddingRight: '60px' }}>
-                    <Typography.Text strong style={{
-                        color: '#d9d9d9',
-                        fontSize: '14px'
-                    }}>
-                        {idea.title}
-                    </Typography.Text>
+                        <Typography.Text strong style={{
+                            color: '#d9d9d9',
+                            fontSize: '14px'
+                        }}>
+                            {idea.title}
+                        </Typography.Text>
                 </div>
 
                 <div style={{ marginBottom: ideaOutlines.length > 0 ? '8px' : '0', paddingRight: '60px' }}>
-                    <Typography.Text style={{
-                        color: '#a6a6a6',
-                        fontSize: '13px',
-                        lineHeight: '1.4',
-                        display: 'block'
-                    }}>
-                        {idea.body}
-                    </Typography.Text>
+                        <Typography.Text style={{
+                            color: '#a6a6a6',
+                            fontSize: '13px',
+                            lineHeight: '1.4',
+                            display: 'block'
+                        }}>
+                            {idea.body}
+                        </Typography.Text>
                 </div>
 
                 {/* Associated outlines - only show if there are outlines */}
@@ -476,7 +460,6 @@ export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsPr
                                 isSelected={isSelected}
                                 ideaOutlines={ideaOutlinesForThis}
                                 onIdeaClick={handleIdeaClick}
-                                collectionArtifactId={idea.artifactId}
                             />
                         );
                     })}
