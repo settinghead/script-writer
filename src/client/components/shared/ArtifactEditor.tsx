@@ -8,6 +8,7 @@ import type { ElectricArtifact } from '../../../common/types';
 import { getElectricConfig } from '../../../common/config/electric';
 import { extractDataAtPath, getPathDescription } from '../../../common/utils/pathExtraction';
 import { HUMAN_TRANSFORM_DEFINITIONS } from '../../../common/schemas/transforms';
+import { CheckOutlined } from '@ant-design/icons';
 
 // Artifact type to field mapping
 interface FieldConfig {
@@ -21,6 +22,10 @@ interface FieldConfig {
 // Schema-based field mapping for known artifact types
 const ARTIFACT_FIELD_MAPPING: Record<string, FieldConfig[]> = {
     'brainstorm_idea_collection': [
+        { field: 'title', component: 'input', maxLength: 50, placeholder: '故事标题...' },
+        { field: 'body', component: 'textarea', rows: 6, placeholder: '详细描述...' }
+    ],
+    'brainstorm_idea': [
         { field: 'title', component: 'input', maxLength: 50, placeholder: '故事标题...' },
         { field: 'body', component: 'textarea', rows: 6, placeholder: '详细描述...' }
     ],
@@ -38,6 +43,7 @@ interface ArtifactEditorProps {
     transformName?: string;  // Transform name for schema-based editing
     className?: string;
     onTransition?: (newArtifactId: string) => void;
+    onSaveSuccess?: () => void; // Callback when save is successful
 }
 
 interface SchemaTransformRequest {
@@ -57,10 +63,19 @@ export const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
     path = "",
     transformName,
     className = '',
-    onTransition
+    onTransition,
+    onSaveSuccess
 }) => {
+    // Local component state
+    const [isEditing, setIsEditing] = useState(false);
+    const [isTransitioning, setIsTransitioning] = useState(false);
+    const [currentArtifactId, setCurrentArtifactId] = useState(artifactId);
+    const [editingField, setEditingField] = useState<string | null>(null);
+    const [pendingSaves, setPendingSaves] = useState<Set<string>>(new Set());
+    const [typingFields, setTypingFields] = useState<Set<string>>(new Set()); // Track fields being typed in
+
     // 1. Look up existing human transform for (artifactId, path)
-    const { data: existingTransform } = useQuery({
+    const { data: existingTransform, refetch: refetchTransform } = useQuery({
         queryKey: ['human-transform', artifactId, path],
         queryFn: async () => {
             const response = await fetch(`/api/artifacts/${artifactId}/human-transform?path=${encodeURIComponent(path)}`, {
@@ -74,8 +89,8 @@ export const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
         }
     });
 
-    // 2. Determine which artifact to load
-    const targetArtifactId = existingTransform?.derived_artifact_id || artifactId;
+    // 2. Determine which artifact to load - prioritize currentArtifactId if it's different from original
+    const targetArtifactId = currentArtifactId !== artifactId ? currentArtifactId : (existingTransform?.derived_artifact_id || artifactId);
 
     // 3. Electric SQL real-time data
     const electricConfig = getElectricConfig();
@@ -87,19 +102,14 @@ export const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
         }
     });
 
-    // Local component state
-    const [isEditing, setIsEditing] = useState(false);
-    const [isTransitioning, setIsTransitioning] = useState(false);
-    const [currentArtifactId, setCurrentArtifactId] = useState(artifactId);
-    const [editingField, setEditingField] = useState<string | null>(null);
-    const [pendingSaves, setPendingSaves] = useState<Set<string>>(new Set());
-
     const artifact = artifacts?.[0] as unknown as ElectricArtifact | undefined;
     const rawArtifactData = artifact ? JSON.parse(artifact.data as string) : null;
     
-    // 4. Handle user_input artifacts with derived data
+    // 4. Handle different artifact types and extract data appropriately
     let actualData = rawArtifactData;
+    
     if (artifact?.type === 'user_input' && artifact.metadata) {
+        // Handle user_input artifacts with derived data
         const metadata = JSON.parse(artifact.metadata as string);
         if (metadata.derived_data) {
             // Use the derived data stored in metadata
@@ -113,12 +123,44 @@ export const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
                 actualData = rawArtifactData;
             }
         }
+    } else if (artifact?.type === 'brainstorm_idea') {
+        // Handle brainstorm_idea artifacts - normalize legacy structure
+        if (rawArtifactData?.idea_title && rawArtifactData?.idea_text) {
+            // Legacy structure: convert to new format
+            actualData = {
+                title: rawArtifactData.idea_title,
+                body: rawArtifactData.idea_text
+            };
+        } else if (rawArtifactData?.title && rawArtifactData?.body) {
+            // New structure: use as-is
+            actualData = rawArtifactData;
+        }
     }
     
     // 5. Extract data using path if needed
-    const artifactData = path && actualData ? 
-        extractDataAtPath(actualData, path) : 
-        actualData;
+    let artifactData;
+    if (path && actualData) {
+        // Special case: brainstorm_idea artifacts are single objects, not arrays
+        if (artifact?.type === 'brainstorm_idea' && path.match(/^\[\d+\]$/)) {
+            // For brainstorm_idea artifacts, the data is the direct object
+            // The path [0], [1], [2] etc. was used to extract from the original collection
+            // but now we have a single idea artifact, so return the object itself
+            artifactData = actualData;
+        }
+        // Special case: user_input artifacts from legacy edit_brainstorm_idea transforms
+        else if (artifact?.type === 'user_input' && path.match(/^\[\d+\]$/) && 
+            actualData && typeof actualData === 'object' && !Array.isArray(actualData) &&
+            (actualData.title || actualData.body)) {
+            // This is a user_input artifact that contains brainstorm idea data
+            // The path [0] should return the object itself since it's not an array
+            artifactData = actualData;
+        } else {
+            // Normal path extraction
+            artifactData = extractDataAtPath(actualData, path);
+        }
+    } else {
+        artifactData = actualData;
+    }
     
     // Debug logging
     if (path) {
@@ -130,7 +172,8 @@ export const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
             actualData,
             extractedData: artifactData,
             hasExistingTransform: !!existingTransform,
-            targetArtifactId
+            targetArtifactId,
+            metadata: artifact?.metadata ? JSON.parse(artifact.metadata as string) : null
         });
     }
     
@@ -141,11 +184,15 @@ export const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
         if (transformName) return transformName;
         
         // Auto-detect transform based on artifact type and path
-        if (artifact?.type === 'brainstorm_idea_collection' && path.match(/^\[\d+\]\.(title|body)$/)) {
-            return 'edit_brainstorm_idea';
+        // Handle both original and derived artifact types
+        if ((artifact?.type === 'brainstorm_idea_collection' || 
+             artifact?.type === 'user_input' || 
+             artifact?.type === 'brainstorm_idea') && path.match(/^\[\d+\]$/)) {
+            return 'edit_brainstorm_idea'; // Object-level editing
         }
-        if (artifact?.type === 'brainstorm_idea_collection' && path.match(/^\[\d+\]$/)) {
-            return 'brainstorm_to_outline';
+        if ((artifact?.type === 'brainstorm_idea_collection' || 
+             artifact?.type === 'user_input') && path.match(/^\[\d+\]\.(title|body)$/)) {
+            return 'edit_brainstorm_idea_field'; // Field-level editing
         }
         
         return null;
@@ -181,13 +228,17 @@ export const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
             return response.json();
         },
         onSuccess: (response) => {
-            // Clear pending saves
+            // Clear pending saves and typing states
             setPendingSaves(new Set());
+            setTypingFields(new Set());
 
             if (response.wasTransformed) {
                 // Artifact ID changed due to new transform
                 setCurrentArtifactId(response.derivedArtifact.id);
                 setIsTransitioning(true);
+
+                // Refetch the human transform query to get the updated transform
+                refetchTransform();
 
                 // Trigger green glow animation
                 setTimeout(() => setIsTransitioning(false), 600);
@@ -195,21 +246,29 @@ export const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
                 // Notify parent component
                 onTransition?.(response.derivedArtifact.id);
 
-                message.success('内容已修改并保存');
-            } else {
-                message.success('内容已保存');
+                // No toast notification - just rely on visual indicators
             }
+            // No toast notification for regular saves either
+
+            // Call onSaveSuccess callback
+            onSaveSuccess?.();
         },
         onError: (error) => {
-            // Clear pending saves on error
+            // Clear pending saves and typing states on error
             setPendingSaves(new Set());
+            setTypingFields(new Set());
             message.error(`保存失败: ${error.message}`);
         }
     });
 
     // Debounced save function for schema-based transforms
     const debouncedSave = useDebouncedCallback((field: string, value: any) => {
-        // Track pending save
+        // Clear typing state and set pending save when actually executing
+        setTypingFields(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(field);
+            return newSet;
+        });
         setPendingSaves(prev => new Set(prev).add(field));
 
         // Create field updates object
@@ -220,6 +279,16 @@ export const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
 
     // Handle field changes
     const handleFieldChange = (field: string, value: any) => {
+        // Mark field as being typed in (but not yet saved)
+        setTypingFields(prev => new Set(prev).add(field));
+        
+        // Clear any pending save state for this field (user is still typing)
+        setPendingSaves(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(field);
+            return newSet;
+        });
+        
         debouncedSave(field, value);
     };
 
@@ -332,20 +401,21 @@ export const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
                     <span className="text-xs text-gray-400">
                         {isLLMGenerated && !isTransitioning ? 'AI生成' : '用户修改'}
                         {path && ` • ${getPathDescription(path)}`}
+
+                        {editMutation.isPending && (
+                        <span className="w-4 h-4 border border-blue-400 border-t-transparent rounded-full animate-spin"></span>
+                    )}
+                    {!editMutation.isPending && editMutation.isSuccess && pendingSaves.size === 0 && typingFields.size === 0 && (
+                        <span className="text-green-400">
+                            <CheckOutlined />
+                        </span>
+                    )}
                     </span>
                 </div>
 
-                {/* Save status */}
+                {/* Simple save indicator */}
                 <div className="flex items-center gap-2">
-                    {pendingSaves.size > 0 && !editMutation.isPending && (
-                        <div className="text-xs text-yellow-400">待保存...</div>
-                    )}
-                    {editMutation.isPending && (
-                        <div className="text-xs text-blue-400">保存中...</div>
-                    )}
-                    {!editMutation.isPending && pendingSaves.size === 0 && editMutation.isSuccess && (
-                        <div className="text-xs text-green-400">已保存</div>
-                    )}
+           
                 </div>
             </div>
 

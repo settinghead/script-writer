@@ -1,7 +1,10 @@
 import { ArtifactRepository } from '../repositories/ArtifactRepository';
 import { TransformRepository } from '../repositories/TransformRepository';
 import { TransformInstantiationRegistry } from './TransformInstantiationRegistry';
-import { ARTIFACT_SCHEMAS } from '../../common/schemas/artifacts';
+import { 
+  ARTIFACT_SCHEMAS,
+  BrainstormIdeaSchema
+} from '../../common/schemas/artifacts';
 import { HUMAN_TRANSFORM_DEFINITIONS, validateTransformPath } from '../../common/schemas/transforms';
 
 export class SchemaTransformExecutor {
@@ -78,44 +81,75 @@ export class SchemaTransformExecutor {
     // Get current data and apply updates
     let currentData = currentArtifact.data; // Already parsed by ArtifactRepository
     
-    // Handle user_input artifacts with metadata
-    if (currentArtifact.type === 'user_input' && currentArtifact.metadata) {
-      const metadata = currentArtifact.metadata; // Already parsed by ArtifactRepository
-      if (metadata.derived_data) {
-        currentData = metadata.derived_data;
+    // Handle user_input artifacts with derived data
+    if (currentArtifact.type === 'user_input') {
+      // First try to get derived_data from metadata
+      if (currentArtifact.metadata && currentArtifact.metadata.derived_data) {
+        currentData = currentArtifact.metadata.derived_data;
+      } else if (currentArtifact.data && currentArtifact.data.text) {
+        // Fallback: try to parse JSON from text field
+        try {
+          currentData = JSON.parse(currentArtifact.data.text);
+        } catch (e) {
+          // If not JSON, treat as plain text
+          currentData = { text: currentArtifact.data.text };
+        }
       }
     }
+    // For brainstorm_idea artifacts, use data directly
+    // (currentData is already set above)
 
     const updatedData = { ...currentData, ...fieldUpdates };
     
-    // Validate against target schema
-    const targetSchema = ARTIFACT_SCHEMAS[transformDef.targetArtifactType];
-    const validationResult = targetSchema.safeParse(updatedData);
+    // Validate against the correct schema based on target type
+    let validationResult;
+    if (transformDef.targetArtifactType === 'user_input') {
+      // For user_input, validate the derived data against the source element schema
+      if (transformDef.sourceArtifactType === 'brainstorm_idea_collection' && 
+          transformDef.name === 'edit_brainstorm_idea') {
+        // This is editing an entire brainstorm idea stored in user_input
+        validationResult = BrainstormIdeaSchema.safeParse(updatedData);
+      } else {
+        // For other user_input cases, validate as UserInput
+        const targetSchema = ARTIFACT_SCHEMAS[transformDef.targetArtifactType];
+        validationResult = targetSchema.safeParse(updatedData);
+      }
+    } else {
+      // For direct artifact types (like brainstorm_idea), validate against target schema
+      const targetSchema = ARTIFACT_SCHEMAS[transformDef.targetArtifactType];
+      validationResult = targetSchema.safeParse(updatedData);
+    }
     
     if (!validationResult.success) {
       throw new Error(`Schema validation failed: ${validationResult.error.message}`);
     }
 
     // Update artifact with validated data
-    let finalData = validationResult.data;
-    let finalMetadata = currentArtifact.metadata;
+    let finalData;
+    let finalMetadata = currentArtifact.metadata || {};
 
     // Special handling for user_input artifacts
     if (transformDef.targetArtifactType === 'user_input') {
+      // Store the actual validated data in metadata
+      finalMetadata = {
+        ...finalMetadata,
+        derived_data: validationResult.data
+      };
+      
+      // Store as JSON string in the text field for user_input format
       finalData = {
         text: JSON.stringify(validationResult.data),
         source: 'modified_brainstorm'
       };
-      finalMetadata = JSON.stringify({
-        ...(currentArtifact.metadata || {}),
-        derived_data: validationResult.data
-      });
+    } else {
+      // For direct artifact types, store the validated data directly
+      finalData = validationResult.data;
     }
 
     await this.artifactRepo.updateArtifact(
       existingTransform.derived_artifact_id,
       finalData,
-      finalMetadata ? JSON.parse(finalMetadata) : undefined
+      finalMetadata
     );
 
     const updatedArtifact = await this.artifactRepo.getArtifact(

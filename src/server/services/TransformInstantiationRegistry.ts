@@ -1,6 +1,8 @@
 import { HUMAN_TRANSFORM_DEFINITIONS } from '../../common/schemas/transforms';
 import { 
   createOutlineInputFromBrainstormIdea,
+  createUserInputFromBrainstormIdea,
+  createBrainstormIdeaFromBrainstormIdea,
   createUserInputFromBrainstormField 
 } from './transform-instantiations/brainstormTransforms';
 
@@ -18,6 +20,8 @@ export class TransformInstantiationRegistry {
 
   private registerFunctions() {
     this.functions.set('createOutlineInputFromBrainstormIdea', createOutlineInputFromBrainstormIdea);
+    this.functions.set('createUserInputFromBrainstormIdea', createUserInputFromBrainstormIdea);
+    this.functions.set('createBrainstormIdeaFromBrainstormIdea', createBrainstormIdeaFromBrainstormIdea);
     this.functions.set('createUserInputFromBrainstormField', createUserInputFromBrainstormField);
   }
 

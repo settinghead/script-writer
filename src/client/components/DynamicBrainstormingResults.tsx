@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { Space, Button, Typography, Spin, Empty, Card, Tag, Alert } from 'antd';
-import { StopOutlined, ReloadOutlined, EyeOutlined, EditOutlined } from '@ant-design/icons';
+import { StopOutlined, ReloadOutlined, EyeOutlined, EditOutlined, CheckOutlined } from '@ant-design/icons';
 import { IdeaCard } from './shared/streaming';
 import { ThinkingIndicator } from './shared/ThinkingIndicator';
 import { ReasoningIndicator } from './shared/ReasoningIndicator';
@@ -127,12 +127,21 @@ const EditableIdeaCard: React.FC<{
     collectionArtifactId?: string; // Add collection artifact ID for path-based editing
 }> = ({ idea, index, isSelected, ideaOutlines, onIdeaClick, collectionArtifactId }) => {
     const [isEditing, setIsEditing] = useState(false);
+    const [showSavedCheckmark, setShowSavedCheckmark] = useState(false);
 
     const handleCardClick = useCallback(() => {
         if (!isEditing) {
             onIdeaClick(idea, index);
         }
     }, [isEditing, onIdeaClick, idea, index]);
+
+    // Handle successful save - show checkmark briefly
+    const handleSaveSuccess = useCallback(() => {
+        setShowSavedCheckmark(true);
+        setTimeout(() => {
+            setShowSavedCheckmark(false);
+        }, 2000); // Show checkmark for 2 seconds
+    }, []);
 
     // If editing and we have an artifactId, use ArtifactEditor
     if (isEditing && idea.artifactId) {
@@ -177,6 +186,7 @@ const EditableIdeaCard: React.FC<{
                                 onTransition={(newArtifactId) => {
                                     console.log(`Idea ${index + 1} transitioned to derived artifact: ${newArtifactId}`);
                                 }}
+                                onSaveSuccess={handleSaveSuccess}
                             />
                         ) : (
                             // Fallback for individual idea artifacts
@@ -188,6 +198,7 @@ const EditableIdeaCard: React.FC<{
                                     // Update the idea's artifactId if needed
                                     idea.artifactId = newArtifactId;
                                 }}
+                                onSaveSuccess={handleSaveSuccess}
                             />
                         )}
                     </div>
@@ -240,26 +251,41 @@ const EditableIdeaCard: React.FC<{
             }}
         >
             <div>
-                {/* Edit button - only show if we have an artifactId */}
+                {/* Edit button or checkmark - only show if we have an artifactId */}
                 {idea.artifactId && (
-                    <Button
-                        size="small"
-                        type="text"
-                        icon={<EditOutlined />}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setIsEditing(true);
-                        }}
-                        style={{
-                            position: 'absolute',
-                            top: '8px',
-                            right: '8px',
-                            color: '#1890ff',
-                            opacity: 0.7
-                        }}
-                        className="edit-button"
-                        title="编辑"
-                    />
+                    showSavedCheckmark ? (
+                        <div
+                            style={{
+                                position: 'absolute',
+                                top: '8px',
+                                right: '8px',
+                                color: '#52c41a',
+                                opacity: 0.9
+                            }}
+                            title="已保存"
+                        >
+                            <CheckOutlined />
+                        </div>
+                    ) : (
+                        <Button
+                            size="small"
+                            type="text"
+                            icon={<EditOutlined />}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setIsEditing(true);
+                            }}
+                            style={{
+                                position: 'absolute',
+                                top: '8px',
+                                right: '8px',
+                                color: '#1890ff',
+                                opacity: 0.7
+                            }}
+                            className="edit-button"
+                            title="编辑"
+                        />
+                    )
                 )}
 
                 {/* Read-only display */}

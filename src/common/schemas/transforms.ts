@@ -25,6 +25,14 @@ export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinitio
   },
   'edit_brainstorm_idea': {
     name: 'edit_brainstorm_idea',
+    description: 'Edit entire brainstorm idea object',
+    sourceArtifactType: 'brainstorm_idea_collection', 
+    targetArtifactType: 'brainstorm_idea',
+    pathPattern: '^\\[\\d+\\]$', // Matches [0], [1], etc. - entire object
+    instantiationFunction: 'createBrainstormIdeaFromBrainstormIdea'
+  },
+  'edit_brainstorm_idea_field': {
+    name: 'edit_brainstorm_idea_field',
     description: 'Edit individual fields of brainstorm ideas',
     sourceArtifactType: 'brainstorm_idea_collection', 
     targetArtifactType: 'user_input',

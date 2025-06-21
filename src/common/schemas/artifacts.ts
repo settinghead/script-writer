@@ -29,6 +29,7 @@ export const UserInputSchema = z.object({
 // Schema registry
 export const ARTIFACT_SCHEMAS = {
   'brainstorm_idea_collection': BrainstormIdeaCollectionSchema,
+  'brainstorm_idea': BrainstormIdeaSchema,
   'outline_input': OutlineInputSchema,
   'user_input': UserInputSchema
 } as const;

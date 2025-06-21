@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Input } from 'antd';
 
 const { TextArea } = Input;
@@ -32,18 +32,53 @@ export const EditableField: React.FC<EditableFieldProps> = ({
     onFocus,
     onBlur
 }) => {
+    // Local state to handle typing smoothly
+    const [localValue, setLocalValue] = useState(value);
+    const [isTyping, setIsTyping] = useState(false);
+
+    // Update local value when prop value changes (but not when user is typing)
+    useEffect(() => {
+        if (!isTyping) {
+            setLocalValue(value);
+        }
+    }, [value, isTyping]);
+
+    // Reset typing state after a delay
+    useEffect(() => {
+        if (isTyping) {
+            const timeout = setTimeout(() => {
+                setIsTyping(false);
+            }, 1000); // Reset typing state after 1 second of no changes
+
+            return () => clearTimeout(timeout);
+        }
+    }, [localValue, isTyping]);
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        onChange(e.target.value);
+        const newValue = e.target.value;
+        setLocalValue(newValue);
+        setIsTyping(true);
+        onChange(newValue);
+    };
+
+    const handleFocus = () => {
+        setIsTyping(true);
+        onFocus();
+    };
+
+    const handleBlur = () => {
+        setIsTyping(false);
+        onBlur();
     };
 
     // Common props for both input types
     const commonProps = {
-        value,
+        value: localValue, // Use local value instead of prop value
         placeholder,
         maxLength,
         onChange: handleChange,
-        onFocus,
-        onBlur,
+        onFocus: handleFocus,
+        onBlur: handleBlur,
         className: `
       !bg-transparent
       !border-none
