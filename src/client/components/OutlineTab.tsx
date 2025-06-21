@@ -78,19 +78,7 @@ export const OutlineTab: React.FC = () => {
             const data = await apiService.getOutlineSession(sessionId);
             setSessionData(data);
 
-            // Check if there's an active streaming job (only if no transform ID in URL)
-            if (!transformId) {
-                try {
-                    const activeJob = await apiService.checkActiveStreamingJob(sessionId);
-                    if (activeJob) {
-                        // Navigate to the streaming URL to trigger streaming
-                        navigate(`/projects/${sessionId}/outline?transform=${activeJob.transformId}`, { replace: true });
-                    }
-                } catch (error) {
-                    // Expected for completed sessions
-                    console.log('No active streaming job found (this is normal for completed outlines)');
-                }
-            }
+        
 
         } catch (error) {
             console.error('Error loading outline session:', error);

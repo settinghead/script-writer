@@ -226,18 +226,6 @@ class ApiService {
         return response.json();
     }
 
-    // Streaming operations
-    async checkActiveStreamingJob(sessionId: string): Promise<any> {
-        const response = await fetch(`${this.baseUrl}/outlines/${sessionId}/active-job`);
-        if (response.status === 404) {
-            // 404 is expected for completed outlines
-            return null;
-        }
-        if (!response.ok) {
-            throw new Error(`Failed to check active streaming job: ${response.status}`);
-        }
-        return response.json();
-    }
 
     async stopStreamingJob(transformId: string): Promise<void> {
         const response = await fetch(`${this.baseUrl}/transforms/${transformId}/stop`, {
