@@ -70,7 +70,7 @@ export class AgentService {
                 }));
             
             if (outputArtifacts.length > 0) {
-                await this.transformRepo.addTransformOutputs(agentTransformId, outputArtifacts);
+                await this.transformRepo.addTransformOutputs(agentTransformId, outputArtifacts, projectId);
             }
 
             console.log(`[AgentService] Brainstorm agent completed for project ${projectId}.`);

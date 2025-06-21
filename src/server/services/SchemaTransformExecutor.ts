@@ -321,7 +321,8 @@ export class SchemaTransformExecutor {
       derivation_path: derivationPath,
       derived_artifact_id: derivedArtifact.id,
       transform_name: transformName,
-      change_description: `Schema transform: ${transformName} at path ${derivationPath}`
+      change_description: `Schema transform: ${transformName} at path ${derivationPath}`,
+      project_id: projectId
     });
 
     return {

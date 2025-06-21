@@ -172,7 +172,7 @@ export function createOutlineRoutes(
             // Add the inputs and outputs
             await transformRepo.addTransformOutputs(humanTransform.id, [
                 { artifactId: newArtifact.id, outputRole: 'edited_content' }
-            ]);
+            ], userId);
 
             // Add human-specific data
             await transformRepo.addHumanTransform({
@@ -183,7 +183,8 @@ export function createOutlineRoutes(
                     interface: 'outline_editor',
                     outline_session_id: sessionId
                 },
-                change_description: `Edited ${componentType} field`
+                change_description: `Edited ${componentType} field`,
+                project_id: userId
             });
 
             res.json({

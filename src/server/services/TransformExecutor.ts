@@ -48,7 +48,8 @@ export class TransformExecutor {
             // Link input artifacts
             await this.transformRepo.addTransformInputs(
                 transform.id,
-                inputArtifacts.map(artifact => ({ artifactId: artifact.id }))
+                inputArtifacts.map(artifact => ({ artifactId: artifact.id })),
+                userId
             );
 
             // Build the final prompt
@@ -60,7 +61,7 @@ export class TransformExecutor {
             // Store the prompt
             await this.transformRepo.addLLMPrompts(transform.id, [
                 { promptText: finalPrompt, promptRole: 'primary' }
-            ]);
+            ], userId);
 
             // Execute the LLM call with reasoning support
             const result = await this.llmService.generateText(finalPrompt, modelName);
@@ -74,7 +75,8 @@ export class TransformExecutor {
                     prompt_tokens: result.usage.promptTokens,
                     completion_tokens: result.usage.completionTokens,
                     total_tokens: result.usage.totalTokens
-                } : null
+                } : null,
+                project_id: userId
             });
 
             // Clean the response - remove think tags, code wrappers, etc.
@@ -264,7 +266,8 @@ export class TransformExecutor {
             // Link output artifacts
             await this.transformRepo.addTransformOutputs(
                 transform.id,
-                outputArtifacts.map(artifact => ({ artifactId: artifact.id }))
+                outputArtifacts.map(artifact => ({ artifactId: artifact.id })),
+                userId
             );
 
             // Update transform status
@@ -310,7 +313,8 @@ export class TransformExecutor {
                     // Link input artifacts
                     await this.transformRepo.addTransformInputs(
                         transform.id,
-                        inputArtifacts.map(artifact => ({ artifactId: artifact.id }))
+                        inputArtifacts.map(artifact => ({ artifactId: artifact.id })),
+                        userId
                     );
 
                     // Build the final prompt
@@ -322,7 +326,7 @@ export class TransformExecutor {
                     // Store the prompt
                     await this.transformRepo.addLLMPrompts(transform.id, [
                         { promptText: finalPrompt, promptRole: 'primary' }
-                    ]);
+                    ], userId);
 
                     // Send initial status
                     dataStream.writeData({
@@ -443,7 +447,8 @@ export class TransformExecutor {
                             prompt_tokens: (await finalResult.usage).promptTokens,
                             completion_tokens: (await finalResult.usage).completionTokens,
                             total_tokens: (await finalResult.usage).totalTokens
-                        } : null
+                        } : null,
+                        project_id: userId
                     });
 
                     dataStream.writeData({
@@ -566,7 +571,8 @@ export class TransformExecutor {
                     // Link output artifacts
                     await this.transformRepo.addTransformOutputs(
                         transform.id,
-                        outputArtifacts.map(artifact => ({ artifactId: artifact.id }))
+                        outputArtifacts.map(artifact => ({ artifactId: artifact.id })),
+                        userId
                     );
 
                     // Update transform status
@@ -634,7 +640,8 @@ export class TransformExecutor {
         if (inputArtifacts.length > 0) {
             await this.transformRepo.addTransformInputs(
                 transform.id,
-                inputArtifacts.map(artifact => ({ artifactId: artifact.id }))
+                inputArtifacts.map(artifact => ({ artifactId: artifact.id })),
+                userId
             );
         }
 
@@ -642,7 +649,8 @@ export class TransformExecutor {
         if (outputArtifacts.length > 0) {
             await this.transformRepo.addTransformOutputs(
                 transform.id,
-                outputArtifacts.map(artifact => ({ artifactId: artifact.id }))
+                outputArtifacts.map(artifact => ({ artifactId: artifact.id })),
+                userId
             );
         }
 
@@ -651,7 +659,8 @@ export class TransformExecutor {
             transform_id: transform.id,
             action_type: actionType,
             interface_context: interfaceContext,
-            change_description: changeDescription
+            change_description: changeDescription,
+            project_id: userId
         });
 
         return { transform };

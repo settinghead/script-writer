@@ -10,7 +10,6 @@ export function createProjectRoutes(
 ) {
     const router = express.Router();
 
-    // GET /api/projects/:id - Get a specific project
     router.get('/:id', authMiddleware.authenticate, async (req: any, res: any) => {
         try {
             const user = authMiddleware.getCurrentUser(req);

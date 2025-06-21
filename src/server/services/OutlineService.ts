@@ -489,7 +489,7 @@ export class OutlineService {
             await this.transformRepo.addTransformInputs(transform.id, [
                 { artifactId: sourceArtifactId },
                 { artifactId: jobParamsArtifact.id }
-            ]);
+            ], userId);
 
             console.log(`[OutlineService] Created outline session ${sessionId} with transform ${transform.id}`);
 

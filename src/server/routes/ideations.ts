@@ -4,7 +4,6 @@ import { TransformRepository } from '../repositories/TransformRepository';
 import { ArtifactRepository } from '../repositories/ArtifactRepository';
 import { ProjectRepository } from '../repositories/ProjectRepository';
 import { ProjectService } from '../services/ProjectService';
-import { IdeationService } from '../services/IdeationService';
 import { TransformExecutor } from '../services/TransformExecutor';
 import { UnifiedStreamingService } from '../services/UnifiedStreamingService';
 
@@ -23,7 +22,6 @@ export function createIdeationRoutes(
     // Initialize ideation service for backward compatibility
     const unifiedStreamingService = new UnifiedStreamingService(artifactRepo, transformRepo);
     const transformExecutor = new TransformExecutor(artifactRepo, transformRepo, unifiedStreamingService);
-    const ideationService = new IdeationService(artifactRepo, transformRepo, transformExecutor, unifiedStreamingService);
 
     // ========== NEW PROJECT ENDPOINTS ==========
 

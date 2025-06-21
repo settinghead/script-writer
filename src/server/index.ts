@@ -12,7 +12,6 @@ import { createAuthRoutes } from './routes/auth';
 import { ArtifactRepository } from './repositories/ArtifactRepository';
 import { TransformRepository } from './repositories/TransformRepository';
 import { TransformExecutor } from './services/TransformExecutor';
-import { IdeationService } from './services/IdeationService';
 import { OutlineService } from './services/OutlineService';
 import { ScriptService } from './services/ScriptService';
 import {
@@ -67,7 +66,6 @@ const unifiedStreamingService = new UnifiedStreamingService(artifactRepo, transf
 
 // Initialize services with unified streaming
 const transformExecutor = new TransformExecutor(artifactRepo, transformRepo, unifiedStreamingService);
-const ideationService = new IdeationService(artifactRepo, transformRepo, transformExecutor, unifiedStreamingService);
 const outlineService = new OutlineService(artifactRepo, transformRepo, unifiedStreamingService);
 const scriptService = new ScriptService(artifactRepo, transformExecutor);
 const replayService = new ReplayService(artifactRepo, transformRepo, transformExecutor);
@@ -333,196 +331,9 @@ app.post("/llm-api/script/edit", authMiddleware.authenticate, async (req: any, r
   }
 });
 
-// ========== UPDATED IDEATION ENDPOINTS (with validation) ==========
 
-app.post("/api/projects/create_run_with_ideas",
-  authMiddleware.authenticate,
-  validateIdeationCreate,
-  async (req: any, res: any) => {
-    const {
-      selectedPlatform,
-      genrePaths,
-      initialIdeas,
-      initialIdeaTitles,
-      requirements
-    } = req.body;
 
-    const user = authMiddleware.getCurrentUser(req);
-    if (!user) {
-      return res.status(401).json({ error: "User not authenticated" });
-    }
 
-    try {
-      const result = await ideationService.createRunWithIdeas(
-        user.id,
-        selectedPlatform || '',
-        genrePaths || [],
-        initialIdeas,
-        initialIdeaTitles || [],
-        requirements || ''
-      );
-
-      res.json(result);
-
-    } catch (error: any) {
-      console.error('Error in create_run_with_ideas:', error);
-      res.status(500).json({
-        error: "Failed to create ideation run",
-        details: error.message,
-        timestamp: new Date().toISOString()
-      });
-    }
-  }
-);
-
-app.post("/api/projects/create_run_and_generate_plot",
-  authMiddleware.authenticate,
-  validatePlotGeneration,
-  async (req: any, res: any) => {
-    const {
-      userInput,
-      selectedPlatform,
-      genrePaths,
-      initialIdeas,
-      ideationTemplate,
-      requirements
-    } = req.body;
-
-    const user = authMiddleware.getCurrentUser(req);
-    if (!user) {
-      return res.status(401).json({ error: "User not authenticated" });
-    }
-
-    try {
-      const result = await ideationService.createRunAndGeneratePlot(
-        user.id,
-        userInput,
-        selectedPlatform || '',
-        genrePaths || [],
-        initialIdeas || [],
-        requirements || '',
-        ideationTemplate
-      );
-
-      res.json(result);
-
-    } catch (error: any) {
-      console.error('Error in create_run_and_generate_plot:', error);
-      res.status(500).json({
-        error: "Failed to create ideation run",
-        details: error.message,
-        timestamp: new Date().toISOString()
-      });
-    }
-  }
-);
-
-app.get("/api/projects/:id", authMiddleware.authenticate, async (req: any, res: any) => {
-  const { id } = req.params;
-
-  // Get authenticated user
-  const user = authMiddleware.getCurrentUser(req);
-  if (!user) {
-    return res.status(401).json({ error: "User not authenticated" });
-  }
-
-  try {
-    const ideationRun = await ideationService.getIdeationRun(user.id, id);
-
-    if (!ideationRun) {
-      return res.status(404).json({ error: "Ideation run not found" });
-    }
-
-    res.json(ideationRun);
-
-  } catch (error: any) {
-    console.error('Error fetching ideation run:', error);
-    res.status(500).json({ error: "Failed to fetch ideation run", details: error.message });
-  }
-});
-
-app.get("/api/projects", authMiddleware.authenticate, async (req: any, res: any) => {
-  // Get authenticated user
-  const user = authMiddleware.getCurrentUser(req);
-  if (!user) {
-    return res.status(401).json({ error: "User not authenticated" });
-  }
-
-  try {
-    const ideationRuns = await ideationService.listIdeationRuns(user.id);
-    res.json(ideationRuns);
-
-  } catch (error: any) {
-    console.error('Error fetching ideation runs:', error);
-    res.status(500).json({ error: "Failed to fetch ideation runs", details: error.message });
-  }
-});
-
-app.delete("/api/projects/:id", authMiddleware.authenticate, async (req: any, res: any) => {
-  const { id } = req.params;
-
-  // Get authenticated user
-  const user = authMiddleware.getCurrentUser(req);
-  if (!user) {
-    return res.status(401).json({ error: "User not authenticated" });
-  }
-
-  try {
-    const deleted = await ideationService.deleteIdeationRun(user.id, id);
-
-    if (!deleted) {
-      return res.status(404).json({ error: "Ideation run not found" });
-    }
-
-    res.json({ success: true, message: "Ideation deleted successfully" });
-
-  } catch (error: any) {
-    console.error('Error deleting ideation:', error);
-    res.status(500).json({ error: "Failed to delete ideation", details: error.message });
-  }
-});
-
-app.post("/api/projects/:id/generate_plot",
-  authMiddleware.authenticate,
-  validatePlotGeneration,
-  async (req: any, res: any) => {
-    const { id: runId } = req.params;
-    const { userInput, ideationTemplate } = req.body;
-
-    const user = authMiddleware.getCurrentUser(req);
-    if (!user) {
-      return res.status(401).json({ error: "User not authenticated" });
-    }
-
-    try {
-      const result = await ideationService.generatePlotForRun(
-        user.id,
-        runId,
-        userInput,
-        ideationTemplate
-      );
-
-      res.json(result);
-
-    } catch (error: any) {
-      console.error('Error in generate_plot:', error);
-
-      // Handle specific error types
-      if (error.message.includes('not found or not accessible')) {
-        return res.status(404).json({ error: "Ideation run not found" });
-      }
-      if (error.message.includes('cannot be empty')) {
-        return res.status(400).json({ error: error.message });
-      }
-
-      res.status(500).json({
-        error: "Failed to generate plot",
-        details: error.message,
-        timestamp: new Date().toISOString()
-      });
-    }
-  }
-);
 
 // ========== TRANSFORM ENDPOINTS ==========
 
@@ -910,50 +721,6 @@ app.use('/api/scripts', createScriptRoutes(artifactRepo, transformRepo, authMidd
 
 // Legacy streaming ideation routes removed as part of Electric Sync migration
 
-// ========== STREAMING ENDPOINTS ==========
-
-// Streaming endpoint for plot generation
-app.post("/api/projects/:id/generate_plot/stream",
-  authMiddleware.authenticate,
-  async (req: any, res: any) => {
-    const { id: runId } = req.params;
-    const { userInput, ideationTemplate } = req.body;
-
-    const user = authMiddleware.getCurrentUser(req);
-    if (!user) {
-      return res.status(401).json({ error: "User not authenticated" });
-    }
-
-    try {
-      const streamResponse = await ideationService.generatePlotForRunStream(
-        user.id,
-        runId,
-        userInput,
-        ideationTemplate
-      );
-
-      // Return the streaming response directly
-      return streamResponse;
-
-    } catch (error: any) {
-      console.error('Error in streaming plot generation:', error);
-
-      // Handle specific error types
-      if (error.message.includes('not found or not accessible')) {
-        return res.status(404).json({ error: "Ideation run not found" });
-      }
-      if (error.message.includes('cannot be empty')) {
-        return res.status(400).json({ error: error.message });
-      }
-
-      return res.status(500).json({
-        error: "Failed to generate plot",
-        details: error.message,
-        timestamp: new Date().toISOString()
-      });
-    }
-  }
-);
 
 
 // ========== REMOVED LEGACY SSE ENDPOINTS ==========
@@ -1397,23 +1164,12 @@ app.post("/api/outline/generate/stream",
     }
 
     try {
-      // Import the new StreamObjectService
-      const { StreamObjectService } = await import('./services/streaming/StreamObjectService');
-      const streamService = new StreamObjectService(
-        artifactRepo,
-        transformRepo,
-        templateService
-      );
-
-      // Prepare parameters for the new service
-      const params = {
-        totalEpisodes: totalEpisodes || 30,
-        episodeDuration: episodeDuration || 2,
-        cascadedParams: cascadedParams || {}
-      };
-
-      // Use the new streamOutline method
-      await streamService.streamOutline(user.id, params, [sourceArtifactId], res);
+      // StreamObjectService has been removed - return deprecated message
+      return res.status(410).json({
+        error: "This endpoint has been deprecated",
+        message: "Streaming outline generation is no longer supported",
+        timestamp: new Date().toISOString()
+      });
 
     } catch (error: any) {
       console.error('Error in streaming outline generation:', error);
@@ -1448,23 +1204,12 @@ app.post("/api/episodes/generate/stream",
     }
 
     try {
-      // Import the new StreamObjectService
-      const { StreamObjectService } = await import('./services/streaming/StreamObjectService');
-      const streamService = new StreamObjectService(
-        artifactRepo,
-        transformRepo,
-        templateService
-      );
-
-      // Prepare parameters for the episode service
-      const params = {
-        totalEpisodes: totalEpisodes || 30,
-        episodeDuration: episodeDuration || 2,
-        customRequirements: customRequirements || ''
-      };
-
-      // Use the new streamEpisodes method
-      await streamService.streamEpisodes(user.id, params, [outlineSessionId, stageArtifactId], res);
+      // StreamObjectService has been removed - return deprecated message
+      return res.status(410).json({
+        error: "This endpoint has been deprecated",
+        message: "Streaming episode generation is no longer supported",
+        timestamp: new Date().toISOString()
+      });
 
     } catch (error: any) {
       console.error('Error in streaming episode generation:', error);
