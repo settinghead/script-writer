@@ -955,54 +955,6 @@ app.post("/api/projects/:id/generate_plot/stream",
   }
 );
 
-// Streaming endpoint for brainstorming/idea generation (MIGRATED TO STREAMOBJECT)
-app.post("/api/brainstorm/generate/stream",
-  authMiddleware.authenticate,
-  async (req: any, res: any) => {
-    const {
-      selectedPlatform,
-      selectedGenrePaths,
-      genreProportions,
-      requirements
-    } = req.body;
-
-    const user = authMiddleware.getCurrentUser(req);
-    if (!user) {
-      return res.status(401).json({ error: "User not authenticated" });
-    }
-
-    try {
-      // Import the new StreamObjectService
-      const { StreamObjectService } = await import('./services/streaming/StreamObjectService');
-      const streamService = new StreamObjectService(
-        artifactRepo,
-        transformRepo,
-        templateService
-      );
-
-      // Convert parameters for the new service
-      const params = {
-        platform: selectedPlatform || '通用短视频平台',
-        genrePaths: selectedGenrePaths || [],
-        genreProportions: genreProportions || [],
-        requirements: requirements || ''
-      };
-
-      // Use the new streamBrainstorming method
-      await streamService.streamBrainstorming(user.id, params, res);
-
-    } catch (error: any) {
-      console.error('Error in streaming brainstorm generation:', error);
-      if (!res.headersSent) {
-        return res.status(500).json({
-          error: "Failed to generate ideas",
-          details: error.message,
-          timestamp: new Date().toISOString()
-        });
-      }
-    }
-  }
-);
 
 // ========== REMOVED LEGACY SSE ENDPOINTS ==========
 // Legacy SSE endpoints have been removed as part of Electric Sync migration.

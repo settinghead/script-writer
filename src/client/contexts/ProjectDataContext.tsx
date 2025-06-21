@@ -95,6 +95,21 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
             maxRetries: 3
         }
     });
+    
+    // DEBUG: Log artifacts when they change
+    React.useEffect(() => {
+        if (artifacts) {
+            console.log(`[ProjectDataContext] Artifacts updated for project ${projectId}:`, artifacts.length);
+            artifacts.forEach((artifact, index) => {
+                console.log(`[ProjectDataContext] Artifact ${index}:`, {
+                    id: artifact.id,
+                    type: artifact.type,
+                    data_length: artifact.data?.length || 0,
+                    metadata: artifact.metadata
+                });
+            });
+        }
+    }, [artifacts, projectId]);
 
     const { data: transforms, isLoading: transformsLoading, error: transformsError } = useShape<ElectricTransform>({
         ...electricConfig,

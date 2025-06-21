@@ -73,6 +73,8 @@ export function createBrainstormToolDefinition(
                     }
                 );
                 
+                console.log(`[BrainstormTool] Created artifact ${outputArtifact.id} for project ${projectId}`);
+                
                 await transformRepo.addTransformOutputs(toolTransformId, [
                     { artifactId: outputArtifact.id, outputRole: 'streaming_result' }
                 ], projectId);
@@ -131,6 +133,7 @@ export function createBrainstormToolDefinition(
                         }
                     );
                     console.log(`[BrainstormTool] Completed artifact ${outputArtifact.id} with ${chunkCount} total chunks`);
+                    console.log(`[BrainstormTool] Final data:`, JSON.stringify(finalResult).substring(0, 200) + '...');
                 } catch (finalUpdateError) {
                     console.error(`[BrainstormTool] Failed to mark artifact ${outputArtifact.id} as completed:`, finalUpdateError);
                     // Don't throw here - the data is still valid
