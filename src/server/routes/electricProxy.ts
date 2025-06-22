@@ -161,7 +161,6 @@ export function createElectricProxyRoutes(authDB: AuthDatabase) {
 
                 // Handle client disconnect
                 req.on('close', () => {
-                    // console.log('[Electric Proxy] Client disconnected, cleaning up stream');
                     if (reader) {
                         reader.cancel().catch(() => { });
                     }
