@@ -18,9 +18,9 @@ export function createArtifactRoutes(
     router.get('/:id', authMiddleware.authenticate, async (req: any, res: any) => {
         try {
             const { id } = req.params;
-            const userId = req.user?.id;
+            const user = authMiddleware.getCurrentUser(req);
 
-            if (!userId) {
+            if (!user) {
                 res.status(401).json({ error: 'User not authenticated' });
                 return;
             }
@@ -32,7 +32,7 @@ export function createArtifactRoutes(
             }
 
             // Verify user has access to this artifact's project
-            const hasAccess = await artifactRepo.userHasProjectAccess(userId, artifact.project_id);
+            const hasAccess = await artifactRepo.userHasProjectAccess(user.id, artifact.project_id);
             if (!hasAccess) {
                 res.status(403).json({ error: 'Access denied' });
                 return;
@@ -41,7 +41,11 @@ export function createArtifactRoutes(
             res.json(artifact);
         } catch (error: any) {
             console.error('Error fetching artifact:', error);
-            res.status(500).json({ error: 'Internal server error' });
+            res.status(500).json({
+                error: 'Failed to fetch artifact',
+                details: error.message,
+                timestamp: new Date().toISOString()
+            });
         }
     });
 

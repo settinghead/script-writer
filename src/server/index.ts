@@ -551,35 +551,7 @@ app.get("/api/artifacts",
   }
 );
 
-app.get("/api/artifacts/:artifactId",
-  authMiddleware.authenticate,
-  async (req: any, res: any) => {
-    const { artifactId } = req.params;
 
-    const user = authMiddleware.getCurrentUser(req);
-    if (!user) {
-      return res.status(401).json({ error: "User not authenticated" });
-    }
-
-    try {
-      const artifact = await artifactRepo.getArtifact(artifactId, user.id);
-
-      if (!artifact) {
-        return res.status(404).json({ error: "Artifact not found" });
-      }
-
-      res.json(artifact);
-
-    } catch (error: any) {
-      console.error('Error fetching artifact:', error);
-      res.status(500).json({
-        error: "Failed to fetch artifact",
-        details: error.message,
-        timestamp: new Date().toISOString()
-      });
-    }
-  }
-);
 
 app.post("/api/artifacts/user-input",
   authMiddleware.authenticate,
