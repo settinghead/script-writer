@@ -1,10 +1,7 @@
 import { OutlineSessionSummary, OutlineSessionData } from '../../server/services/OutlineService';
 import { OutlineGenerateRequest, OutlineGenerateResponse } from '../../common/streaming/types';
 import {
-    BrainstormingJobParamsV1,
-    OutlineJobParamsV1,
-    ProjectSummary,
-    IdeationRun,
+
     AgentBrainstormRequest,
 } from '../../common/types';
 

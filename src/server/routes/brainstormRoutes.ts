@@ -23,7 +23,7 @@ export function createBrainstormRoutes(
             const projectName = `Project - ${new Date().toLocaleString()}`;
 
             // Insert project into database
-            const { db } = await import('../database/connection');
+            const { db } = await import('../database/connection.js');
             await db.insertInto('projects')
                 .values({
                     id: projectId,
@@ -73,8 +73,8 @@ export function createBrainstormRoutes(
             }
 
             // Verify user has access to project
-            const { ArtifactRepository } = await import('../repositories/ArtifactRepository');
-            const { db } = await import('../database/connection');
+            const { ArtifactRepository } = await import('../repositories/ArtifactRepository.js');
+            const { db } = await import('../database/connection.js');
             const artifactRepo = new ArtifactRepository(db);
 
             const hasAccess = await artifactRepo.userHasProjectAccess(userId, projectId);
@@ -103,9 +103,9 @@ export function createBrainstormRoutes(
             const userId = req.user.id;
 
             // Get transform first to check project access
-            const { TransformRepository } = await import('../repositories/TransformRepository');
-            const { ArtifactRepository } = await import('../repositories/ArtifactRepository');
-            const { db } = await import('../database/connection');
+            const { TransformRepository } = await import('../repositories/TransformRepository.js');
+            const { ArtifactRepository } = await import('../repositories/ArtifactRepository.js');
+            const { db } = await import('../database/connection.js');
             const transformRepo = new TransformRepository(db);
             const artifactRepo = new ArtifactRepository(db);
 
@@ -137,8 +137,8 @@ export function createBrainstormRoutes(
             const userId = req.user.id;
 
             // Verify user has access to project
-            const { ArtifactRepository } = await import('../repositories/ArtifactRepository');
-            const { db } = await import('../database/connection');
+            const { ArtifactRepository } = await import('../repositories/ArtifactRepository.js');
+            const { db } = await import('../database/connection.js');
             const artifactRepo = new ArtifactRepository(db);
 
             const hasAccess = await artifactRepo.userHasProjectAccess(userId, projectId);
@@ -180,8 +180,8 @@ export function createBrainstormRoutes(
             const userId = req.user.id;
 
             // Verify user has access to project
-            const { ArtifactRepository } = await import('../repositories/ArtifactRepository');
-            const { db } = await import('../database/connection');
+            const { ArtifactRepository } = await import('../repositories/ArtifactRepository.js');
+            const { db } = await import('../database/connection.js');
             const artifactRepo = new ArtifactRepository(db);
 
             const hasAccess = await artifactRepo.userHasProjectAccess(userId, projectId);

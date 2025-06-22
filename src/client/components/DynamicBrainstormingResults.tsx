@@ -83,15 +83,14 @@ const IdeaOutlines: React.FC<{
                                 {outline.title || '未命名大纲'}
                             </Text>
                             {outline.genre && (
-                                <Tag size="small" style={{ marginLeft: '4px', fontSize: '10px' }}>
+                                <Tag style={{ marginLeft: '4px', fontSize: '10px', padding: '0 4px', height: '18px', lineHeight: '16px' }}>
                                     {outline.genre}
                                 </Tag>
                             )}
                             {outline.status && (
                                 <Tag
-                                    size="small"
                                     color={outline.status === 'completed' ? 'green' : outline.status === 'failed' ? 'red' : 'blue'}
-                                    style={{ marginLeft: '4px', fontSize: '10px' }}
+                                    style={{ marginLeft: '4px', fontSize: '10px', padding: '0 4px', height: '18px', lineHeight: '16px' }}
                                 >
                                     {outline.status === 'completed' ? '已完成' :
                                         outline.status === 'failed' ? '失败' : '进行中'}
@@ -198,7 +197,6 @@ const EditableIdeaCardComponent: React.FC<{
             }}
             styles={{ body: { padding: '12px' } }}
             hoverable={!isSelected}
-            onClick={handleCardClick}
             onMouseEnter={(e) => {
                 if (!isSelected) {
                     e.currentTarget.style.borderColor = '#1890ff';
@@ -352,7 +350,7 @@ export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsPr
     // Handle idea selection
     const handleIdeaClick = React.useCallback((idea: IdeaWithTitle, index: number) => {
         const ideaText = `${idea.title}: ${idea.body}`;
-        onIdeaSelect(ideaText);
+        onIdeaSelect?.(ideaText);
     }, [onIdeaSelect]);
 
     // Callback should now be stable due to proper memoization in parent
@@ -524,6 +522,7 @@ export const ModernBrainstormingResults: React.FC<{
 }) => {
         const navigate = useNavigate();
         const [selectedIdeaIndex, setSelectedIdeaIndex] = React.useState<number | null>(null);
+        const [ideaOutlines, setIdeaOutlines] = React.useState<{ [ideaId: string]: any[] }>({});
 
         // Use the new streamObject hook - much simpler!
         const brainstormingStream = useBrainstormingStream((ideas) => {
@@ -597,7 +596,7 @@ export const ModernBrainstormingResults: React.FC<{
             );
         }
 
-        const ideas = brainstormingStream.object || [];
+        const ideas = Array.isArray(brainstormingStream.object) ? brainstormingStream.object : [];
 
         if (ideas.length === 0) {
             return (
