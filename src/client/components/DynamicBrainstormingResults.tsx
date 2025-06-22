@@ -137,12 +137,6 @@ const EditableIdeaCardComponent: React.FC<{
         }, 2000); // Show checkmark for 2 seconds
     }, []);
 
-    // Stable callback for onTransition to prevent re-renders
-    const handleTransition = useCallback((newArtifactId: string) => {
-        console.log(`Idea ${index + 1} transitioned from ${idea.artifactId} to ${newArtifactId}`);
-    }, [index, idea.artifactId]);
-
-    // Callback should now be stable with proper memoization
 
     if (idea.artifactId) {
         return (
@@ -166,9 +160,9 @@ const EditableIdeaCardComponent: React.FC<{
                             path={`[${index}]`}
                             transformName="edit_brainstorm_idea"
                             className="!border-none !p-0"
-                            onTransition={handleTransition}
                             onSaveSuccess={handleSaveSuccess}
                         />
+
                     </div>
 
                     {/* Associated outlines - only show if there are outlines */}

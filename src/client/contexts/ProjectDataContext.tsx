@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { useShape } from '@electric-sql/react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createElectricConfig, logElectricShapeInfo, isElectricDebugLoggingEnabled } from '../../common/config/electric';
+import { createElectricConfig, isElectricDebugLoggingEnabled } from '../../common/config/electric';
 import { apiService } from '../services/apiService';
 import type {
     ProjectDataContextType,
@@ -52,7 +52,7 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
     const [localUpdates, setLocalUpdates] = useState<Map<string, any>>(new Map());
 
     // Create AbortController for cleanup
-    const abortControllerRef = useRef<AbortController>();
+    const abortControllerRef = useRef<AbortController | null>(null);
 
     // Initialize AbortController when projectId changes
     useEffect(() => {
@@ -93,7 +93,7 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
     }).current;
 
     // Log shape info for debugging
-    const lastProjectIdRef = useRef<string>();
+    const lastProjectIdRef = useRef<string | undefined>(undefined);
     const renderCountRef = useRef<number>(0);
     renderCountRef.current++;
 

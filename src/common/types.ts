@@ -351,6 +351,7 @@ export interface ElectricArtifact {
     created_at: string;
     updated_at?: string;
     streaming_status?: 'streaming' | 'completed' | 'failed' | 'cancelled';
+    [key: string]: unknown;
 }
 
 export interface ElectricTransform {
@@ -367,6 +368,7 @@ export interface ElectricTransform {
     streaming_status?: string;
     progress_percentage?: number;
     error_message?: string;
+    [key: string]: unknown;
 }
 
 export interface ElectricHumanTransform {
@@ -379,6 +381,7 @@ export interface ElectricHumanTransform {
     derivation_path: string;
     derived_artifact_id?: string;
     transform_name?: string;
+    [key: string]: unknown;
 }
 
 export interface ElectricTransformInput {
@@ -387,6 +390,7 @@ export interface ElectricTransformInput {
     transform_id: string;
     artifact_id: string;
     input_role?: string;
+    [key: string]: unknown;
 }
 
 export interface ElectricTransformOutput {
@@ -395,6 +399,7 @@ export interface ElectricTransformOutput {
     transform_id: string;
     artifact_id: string;
     output_role?: string;
+    [key: string]: unknown;
 }
 
 export interface ElectricLLMPrompt {
@@ -403,6 +408,7 @@ export interface ElectricLLMPrompt {
     transform_id: string;
     prompt_text: string;
     prompt_role: string;
+    [key: string]: unknown;
 }
 
 export interface ElectricLLMTransform {
@@ -412,6 +418,7 @@ export interface ElectricLLMTransform {
     model_parameters?: string;
     raw_response?: string;
     token_usage?: string;
+    [key: string]: unknown;
 }
 
 // Mutation request types

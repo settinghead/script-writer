@@ -81,11 +81,7 @@ const AppRoutes: React.FC = () => {
           <NewProjectFromBrainstormPage />
         </ProtectedRoute>
       } />
-      <Route path="/test-artifact-editor" element={
-        <ProtectedRoute>
-          <TestArtifactEditor />
-        </ProtectedRoute>
-      } />
+
       <Route path="/" element={<Navigate to="/projects" replace />} />
     </Routes>
   );
