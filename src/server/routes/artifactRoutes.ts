@@ -229,5 +229,85 @@ export function createArtifactRoutes(
         }
     });
 
+    // Update artifact by ID
+    router.put('/:id', authMiddleware.authenticate, async (req: any, res: any) => {
+        try {
+            const { id: artifactId } = req.params;
+            const { text, data } = req.body;
+            const user = authMiddleware.getCurrentUser(req);
+
+            if (!user) {
+                res.status(401).json({ error: 'User not authenticated' });
+                return;
+            }
+
+            // Get existing artifact first
+            const existingArtifact = await artifactRepo.getArtifact(artifactId);
+            if (!existingArtifact) {
+                res.status(404).json({ error: 'Artifact not found' });
+                return;
+            }
+
+            // Check if user has access to the project containing this artifact
+            const hasAccess = await artifactRepo.userHasProjectAccess(user.id, existingArtifact.project_id);
+            if (!hasAccess) {
+                res.status(403).json({ error: 'Access denied - user not member of project' });
+                return;
+            }
+
+            let updatedData;
+
+            if (existingArtifact.type === 'user_input') {
+                // Validate required fields for user_input
+                if (!text || typeof text !== 'string' || !text.trim()) {
+                    res.status(400).json({
+                        error: 'Missing or empty text',
+                        details: 'text must be a non-empty string for user_input artifacts'
+                    });
+                    return;
+                }
+
+                // Update the artifact in place (for user_input artifacts)
+                updatedData = {
+                    ...existingArtifact.data,
+                    text: text.trim()
+                };
+            } else if (existingArtifact.type === 'brainstorm_idea') {
+                // Validate required fields for brainstorm_idea
+                if (!data || typeof data !== 'object') {
+                    res.status(400).json({
+                        error: 'Missing or invalid data',
+                        details: 'data must be an object for brainstorm_idea artifacts'
+                    });
+                    return;
+                }
+
+                // Update the artifact in place (for brainstorm_idea artifacts)
+                updatedData = data;
+            } else {
+                res.status(400).json({ error: `Cannot update artifacts of type: ${existingArtifact.type}` });
+                return;
+            }
+
+            // Update the artifact using the repository
+            await artifactRepo.updateArtifact(artifactId, updatedData, existingArtifact.metadata);
+
+            // Return the updated artifact with the same ID
+            const updatedArtifact = {
+                ...existingArtifact,
+                data: updatedData
+            };
+
+            res.json(updatedArtifact);
+        } catch (error: any) {
+            console.error('Error updating artifact:', error);
+            res.status(500).json({
+                error: 'Failed to update artifact',
+                details: error.message,
+                timestamp: new Date().toISOString()
+            });
+        }
+    });
+
     return router;
 } 
