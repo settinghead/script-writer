@@ -21,7 +21,7 @@ import Breadcrumb from './components/Breadcrumb';
 import StagewiseToolbar from './components/StagewiseToolbar';
 import { StageDetailView } from './components/StageDetailView';
 import NewProjectFromBrainstormPage from './components/NewProjectFromBrainstormPage';
-import { TestArtifactEditor } from './components/TestArtifactEditor';
+
 
 // Import CSS for any custom styling needed
 import "./index.css";
