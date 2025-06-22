@@ -20,8 +20,8 @@ export function createBrainstormRoutes(
             // Create project first
             const { v4: uuidv4 } = await import('uuid');
             const projectId = uuidv4();
-            const projectName = `Brainstorm Project - ${new Date().toLocaleString()}`;
-            
+            const projectName = `Project - ${new Date().toLocaleString()}`;
+
             // Insert project into database
             const { db } = await import('../database/connection');
             await db.insertInto('projects')
@@ -49,15 +49,15 @@ export function createBrainstormRoutes(
                 params
             });
 
-            res.json({ 
+            res.json({
                 projectId,
                 transformId: result.transformId,
                 message: 'Project created and brainstorming started'
             });
         } catch (error) {
             console.error('Error creating project and starting brainstorm:', error);
-            res.status(500).json({ 
-                error: error instanceof Error ? error.message : 'Internal server error' 
+            res.status(500).json({
+                error: error instanceof Error ? error.message : 'Internal server error'
             });
         }
     });
@@ -76,12 +76,12 @@ export function createBrainstormRoutes(
             const { ArtifactRepository } = await import('../repositories/ArtifactRepository');
             const { db } = await import('../database/connection');
             const artifactRepo = new ArtifactRepository(db);
-            
+
             const hasAccess = await artifactRepo.userHasProjectAccess(userId, projectId);
             if (!hasAccess) {
                 return res.status(403).json({ error: 'Access denied - user not member of project' });
             }
-            
+
             const result = await brainstormService.startBrainstorm({
                 projectId,
                 params
@@ -90,8 +90,8 @@ export function createBrainstormRoutes(
             res.json(result);
         } catch (error) {
             console.error('Error starting brainstorm:', error);
-            res.status(500).json({ 
-                error: error instanceof Error ? error.message : 'Internal server error' 
+            res.status(500).json({
+                error: error instanceof Error ? error.message : 'Internal server error'
             });
         }
     });
@@ -108,7 +108,7 @@ export function createBrainstormRoutes(
             const { db } = await import('../database/connection');
             const transformRepo = new TransformRepository(db);
             const artifactRepo = new ArtifactRepository(db);
-            
+
             const transform = await transformRepo.getTransform(transformId);
             if (!transform) {
                 return res.status(404).json({ error: 'Transform not found' });
@@ -124,8 +124,8 @@ export function createBrainstormRoutes(
             res.json(status);
         } catch (error) {
             console.error('Error getting brainstorm status:', error);
-            res.status(500).json({ 
-                error: error instanceof Error ? error.message : 'Internal server error' 
+            res.status(500).json({
+                error: error instanceof Error ? error.message : 'Internal server error'
             });
         }
     });
@@ -140,7 +140,7 @@ export function createBrainstormRoutes(
             const { ArtifactRepository } = await import('../repositories/ArtifactRepository');
             const { db } = await import('../database/connection');
             const artifactRepo = new ArtifactRepository(db);
-            
+
             const hasAccess = await artifactRepo.userHasProjectAccess(userId, projectId);
             if (!hasAccess) {
                 return res.status(403).json({ error: 'Access denied - user not member of project' });
@@ -150,8 +150,8 @@ export function createBrainstormRoutes(
             res.json(result);
         } catch (error) {
             console.error('Error getting brainstorm result:', error);
-            res.status(500).json({ 
-                error: error instanceof Error ? error.message : 'Internal server error' 
+            res.status(500).json({
+                error: error instanceof Error ? error.message : 'Internal server error'
             });
         }
     });
@@ -167,8 +167,8 @@ export function createBrainstormRoutes(
             res.json(result);
         } catch (error) {
             console.error('Error getting brainstorm result:', error);
-            res.status(500).json({ 
-                error: error instanceof Error ? error.message : 'Internal server error' 
+            res.status(500).json({
+                error: error instanceof Error ? error.message : 'Internal server error'
             });
         }
     });
@@ -183,7 +183,7 @@ export function createBrainstormRoutes(
             const { ArtifactRepository } = await import('../repositories/ArtifactRepository');
             const { db } = await import('../database/connection');
             const artifactRepo = new ArtifactRepository(db);
-            
+
             const hasAccess = await artifactRepo.userHasProjectAccess(userId, projectId);
             if (!hasAccess) {
                 return res.status(403).json({ error: 'Access denied - user not member of project' });
@@ -213,8 +213,8 @@ export function createBrainstormRoutes(
             res.json(status);
         } catch (error) {
             console.error('Error getting brainstorm status:', error);
-            res.status(500).json({ 
-                error: error instanceof Error ? error.message : 'Internal server error' 
+            res.status(500).json({
+                error: error instanceof Error ? error.message : 'Internal server error'
             });
         }
     });

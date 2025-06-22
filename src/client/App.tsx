@@ -39,6 +39,58 @@ const queryClient = new QueryClient({
   },
 });
 
+// Extracted common routes component to eliminate duplication
+const AppRoutes: React.FC = () => {
+  return (
+    <Routes>
+      <Route path="/projects" element={
+        <ProtectedRoute>
+          <ProjectsList />
+        </ProtectedRoute>
+      } />
+      <Route path="/projects/:projectId/*" element={
+        <ProtectedRoute>
+          <ProjectLayout />
+        </ProtectedRoute>
+      }>
+        <Route path="brainstorm" element={<ProjectBrainstormPage />} />
+        <Route path="stage/:stageId" element={<StageDetailView />} />
+      </Route>
+      <Route path="/new-outline" element={
+        <ProtectedRoute>
+          <OutlineTab />
+        </ProtectedRoute>
+      } />
+      <Route path="/outlines" element={
+        <ProtectedRoute>
+          <OutlineTab />
+        </ProtectedRoute>
+      } />
+      <Route path="/chat" element={
+        <ProtectedRoute>
+          <ChatTab />
+        </ProtectedRoute>
+      } />
+      <Route path="/script" element={
+        <ProtectedRoute>
+          <ScriptTab />
+        </ProtectedRoute>
+      } />
+      <Route path="/new-project-from-brainstorming" element={
+        <ProtectedRoute>
+          <NewProjectFromBrainstormPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/test-artifact-editor" element={
+        <ProtectedRoute>
+          <TestArtifactEditor />
+        </ProtectedRoute>
+      } />
+      <Route path="/" element={<Navigate to="/projects" replace />} />
+    </Routes>
+  );
+};
+
 const AppContent: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -94,6 +146,17 @@ const AppContent: React.FC = () => {
       onClick: () => handleMenuClick('/script')
     }
   ];
+
+  // Common content wrapper styles
+  const getContentWrapperStyle = () => ({
+    flexGrow: 1,
+    overflow: isMobile ? 'auto' : 'hidden',
+    padding: isMobile
+      ? '0 10px'
+      : (location.pathname.includes('/projects/') ? '0' : '20px'),
+    display: 'flex',
+    flexDirection: 'column' as const
+  });
 
   return (
     <Layout style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -182,131 +245,28 @@ const AppContent: React.FC = () => {
         </div>
       </Header>
       <Content style={{ flexGrow: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
-        {isMobile ? (
-          <>
-            <Drawer
-              title="菜单"
-              placement="right"
-              onClose={() => setMenuVisible(false)}
-              open={menuVisible}
-              style={{ padding: 0 }}
-            >
-              <Menu
-                mode="vertical"
-                items={menuItems}
-                style={{ height: '100%' }}
-              />
-            </Drawer>
-            <div style={{ flexGrow: 1, overflow: 'auto', padding: '0 10px' }}>
-              <Breadcrumb />
-              <Routes>
-                <Route path="/projects" element={
-                  <ProtectedRoute>
-                    <ProjectsList />
-                  </ProtectedRoute>
-                } />
-                <Route path="/projects/:projectId/*" element={
-                  <ProtectedRoute>
-                    <ProjectLayout />
-                  </ProtectedRoute>
-                }>
-                  <Route path="brainstorm" element={<ProjectBrainstormPage />} />
-                  <Route path="stage/:stageId" element={<StageDetailView />} />
-                </Route>
-                <Route path="/new-outline" element={
-                  <ProtectedRoute>
-                    <OutlineTab />
-                  </ProtectedRoute>
-                } />
-                <Route path="/outlines" element={
-                  <ProtectedRoute>
-                    <OutlineTab />
-                  </ProtectedRoute>
-                } />
-                <Route path="/chat" element={
-                  <ProtectedRoute>
-                    <ChatTab />
-                  </ProtectedRoute>
-                } />
-                <Route path="/script" element={
-                  <ProtectedRoute>
-                    <ScriptTab />
-                  </ProtectedRoute>
-                } />
-                <Route path="/new-project-from-brainstorming" element={
-                  <ProtectedRoute>
-                    <NewProjectFromBrainstormPage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/test-artifact-editor" element={
-                  <ProtectedRoute>
-                    <TestArtifactEditor />
-                  </ProtectedRoute>
-                } />
-                <Route path="/" element={<Navigate to="/projects" replace />} />
-              </Routes>
-            </div>
-          </>
-        ) : (
-          <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-            {/* Content Area with Breadcrumbs */}
-            <div style={{
-              flexGrow: 1,
-              overflow: 'hidden',
-              padding: location.pathname.includes('/projects/') ? '0' : '20px',
-              display: 'flex',
-              flexDirection: 'column'
-            }}>
-              <Breadcrumb />
-              <Routes>
-                <Route path="/projects" element={
-                  <ProtectedRoute>
-                    <ProjectsList />
-                  </ProtectedRoute>
-                } />
-                <Route path="/projects/:projectId/*" element={
-                  <ProtectedRoute>
-                    <ProjectLayout />
-                  </ProtectedRoute>
-                }>
-                  <Route path="brainstorm" element={<ProjectBrainstormPage />} />
-                </Route>
-
-                <Route path="/new-outline" element={
-                  <ProtectedRoute>
-                    <OutlineTab />
-                  </ProtectedRoute>
-                } />
-                <Route path="/outlines" element={
-                  <ProtectedRoute>
-                    <OutlineTab />
-                  </ProtectedRoute>
-                } />
-                <Route path="/chat" element={
-                  <ProtectedRoute>
-                    <ChatTab />
-                  </ProtectedRoute>
-                } />
-                <Route path="/script" element={
-                  <ProtectedRoute>
-                    <ScriptTab />
-                  </ProtectedRoute>
-                } />
-                <Route path="/new-project-from-brainstorming" element={
-                  <ProtectedRoute>
-                    <NewProjectFromBrainstormPage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/test-artifact-editor" element={
-                  <ProtectedRoute>
-                    <TestArtifactEditor />
-                  </ProtectedRoute>
-                } />
-                <Route path="/" element={<Navigate to="/projects" replace />} />
-              </Routes>
-            </div>
-          </div>
+        {/* Mobile Drawer Menu */}
+        {isMobile && (
+          <Drawer
+            title="菜单"
+            placement="right"
+            onClose={() => setMenuVisible(false)}
+            open={menuVisible}
+            style={{ padding: 0 }}
+          >
+            <Menu
+              mode="vertical"
+              items={menuItems}
+              style={{ height: '100%' }}
+            />
+          </Drawer>
         )}
+
+        {/* Unified Content Area */}
+        <div style={getContentWrapperStyle()}>
+          <Breadcrumb />
+          <AppRoutes />
+        </div>
       </Content>
     </Layout>
   );

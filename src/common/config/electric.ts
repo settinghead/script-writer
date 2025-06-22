@@ -1,10 +1,10 @@
 // Electric config for authenticated requests (browser-safe)
 export const createElectricConfig = () => {
     // Use absolute URL to avoid "Invalid URL" errors in Electric client
-    const baseUrl = typeof window !== 'undefined' 
-        ? window.location.origin 
+    const baseUrl = typeof window !== 'undefined'
+        ? window.location.origin
         : 'http://localhost:4600';
-    
+
     return {
         // Use our auth proxy instead of direct Electric URL
         url: `${baseUrl}/api/electric/v1/shape`,
@@ -16,10 +16,10 @@ export const createElectricConfig = () => {
 // For development with debug token (browser-safe)
 export const createElectricConfigWithDebugAuth = () => {
     // Use absolute URL to avoid "Invalid URL" errors in Electric client
-    const baseUrl = typeof window !== 'undefined' 
-        ? window.location.origin 
+    const baseUrl = typeof window !== 'undefined'
+        ? window.location.origin
         : 'http://localhost:4600';
-    
+
     return {
         url: `${baseUrl}/api/electric/v1/shape`,
         headers: {
@@ -37,7 +37,7 @@ export const getElectricConfig = () => {
         const isDebugMode = localStorage.getItem('electric-debug-auth') === 'true';
         return isDebugMode ? createElectricConfigWithDebugAuth() : createElectricConfig();
     }
-    
+
     // Server-side (Node.js) - can use process.env
     const isDebugMode = process.env.NODE_ENV === 'development' && process.env.USE_DEBUG_AUTH === 'true';
     return isDebugMode ? createElectricConfigWithDebugAuth() : createElectricConfig();
@@ -80,17 +80,7 @@ export const isElectricDebugLoggingEnabled = (): boolean => {
     return false;
 };
 
-// Utility to help troubleshoot Electric 409 conflicts
-export const logElectricShapeInfo = (tableName: string, whereClause?: string) => {
-    if (typeof window !== 'undefined' && isElectricDebugLoggingEnabled()) {
-        console.group(`🔍 Electric Shape Debug: ${tableName}`);
-        console.log('Table:', tableName);
-        console.log('Where clause:', whereClause || 'none');
-        console.log('Timestamp:', new Date().toISOString());
-        console.log('URL:', `${window.location.origin}/api/electric/v1/shape?table=${tableName}${whereClause ? `&where=${encodeURIComponent(whereClause)}` : ''}`);
-        console.groupEnd();
-    }
-};
+
 
 // Helper to clear Electric client cache (useful after 409 conflicts)
 export const clearElectricCache = () => {
@@ -103,9 +93,9 @@ export const clearElectricCache = () => {
                 keysToRemove.push(key);
             }
         }
-        
+
         keysToRemove.forEach(key => localStorage.removeItem(key));
-        
+
         console.log(`🧹 Cleared ${keysToRemove.length} Electric cache entries. Consider refreshing the page.`);
         return keysToRemove.length;
     }

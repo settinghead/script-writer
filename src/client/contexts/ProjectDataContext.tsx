@@ -84,16 +84,12 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
     // Enhanced error handler for Electric 409 conflicts - stable reference
     const handleElectricError = useRef((error: any, tableName: string) => {
         if (error?.status === 409) {
-            console.log(`[ProjectDataContext] Electric 409 conflict on ${tableName}, will auto-retry`);
             if (isElectricDebugLoggingEnabled()) {
-                console.log(`[ProjectDataContext] 409 error details for ${tableName}:`, error);
             }
             return;
         }
 
-        if (isElectricDebugLoggingEnabled()) {
-            console.log(`[ProjectDataContext] Electric error on ${tableName}:`, error?.message || error);
-        }
+
     }).current;
 
     // Log shape info for debugging
@@ -101,18 +97,10 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
     const renderCountRef = useRef<number>(0);
     renderCountRef.current++;
 
-    if (lastProjectIdRef.current !== projectId) {
-        lastProjectIdRef.current = projectId;
-        console.log(`[ProjectDataContext] Project changed to ${projectId}, creating new subscriptions`);
-        logElectricShapeInfo('artifacts', projectWhereClause);
-        logElectricShapeInfo('transforms', projectWhereClause);
-    } else {
-        console.log(`[ProjectDataContext] Re-render #${renderCountRef.current} for project ${projectId} (should reuse subscriptions)`);
-    }
+
 
     // Stable configuration objects to prevent unnecessary re-subscriptions
     const artifactsConfig = useMemo(() => {
-        console.log(`[ProjectDataContext] Creating new artifacts config for project ${projectId}`);
         return {
             ...electricConfig,
             params: {
@@ -132,20 +120,6 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
     // Electric SQL subscriptions
     const { data: artifacts, isLoading: artifactsLoading, error: artifactsError } = useShape<ElectricArtifact>(artifactsConfig);
 
-    // DEBUG: Log artifacts when they change
-    React.useEffect(() => {
-        if (artifacts) {
-            console.log(`[ProjectDataContext] Artifacts updated for project ${projectId}:`, artifacts.length);
-            artifacts.forEach((artifact, index) => {
-                console.log(`[ProjectDataContext] Artifact ${index}:`, {
-                    id: artifact.id,
-                    type: artifact.type,
-                    data_length: artifact.data?.length || 0,
-                    metadata: artifact.metadata
-                });
-            });
-        }
-    }, [artifacts, projectId]);
 
     const transformsConfig = useMemo(() => ({
         ...electricConfig,

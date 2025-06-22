@@ -125,14 +125,9 @@ const EditableIdeaCardComponent: React.FC<{
     ideaOutlines: any[];
     onIdeaClick: (idea: IdeaWithTitle, index: number) => void;
 }> = ({ idea, index, isSelected, ideaOutlines, onIdeaClick }) => {
-    const [isEditing, setIsEditing] = useState(false);
     const [showSavedCheckmark, setShowSavedCheckmark] = useState(false);
 
-    const handleCardClick = useCallback(() => {
-        if (!isEditing) {
-            onIdeaClick(idea, index);
-        }
-    }, [isEditing, onIdeaClick, idea, index]);
+
 
     // Handle successful save - show checkmark briefly
     const handleSaveSuccess = useCallback(() => {
@@ -149,14 +144,13 @@ const EditableIdeaCardComponent: React.FC<{
 
     // Callback should now be stable with proper memoization
 
-    // If editing and we have an artifactId, use ArtifactEditor
-    if (isEditing && idea.artifactId) {
+    if (idea.artifactId) {
         return (
             <Card
                 key={`${idea.artifactId || 'idea'}-${index}`}
                 style={{
                     backgroundColor: isSelected ? '#2d3436' : '#262626',
-                    border: '1px solid #52c41a',
+                    border: '1px solid #a1a1a1',
                     transition: 'all 0.2s ease',
                     animation: 'fadeIn 0.3s ease-out',
                     position: 'relative'
@@ -164,23 +158,8 @@ const EditableIdeaCardComponent: React.FC<{
                 styles={{ body: { padding: '12px' } }}
             >
                 <div>
-                    {/* Close editing button */}
-                    <Button
-                        size="small"
-                        type="text"
-                        icon={<EditOutlined />}
-                        onClick={() => setIsEditing(false)}
-                        style={{
-                            position: 'absolute',
-                            top: '8px',
-                            right: '8px',
-                            color: '#ff4d4f',
-                            opacity: 0.7
-                        }}
-                        title="退出编辑"
-                    />
 
-                    {/* Use ArtifactEditor with path-based editing for collection artifacts */}
+
                     <div style={{ paddingRight: '40px' }}>
                         <ArtifactEditor
                             artifactId={idea.artifactId}
@@ -262,7 +241,6 @@ const EditableIdeaCardComponent: React.FC<{
                             icon={<EditOutlined />}
                             onClick={(e) => {
                                 e.stopPropagation();
-                                setIsEditing(true);
                             }}
                             style={{
                                 position: 'absolute',
