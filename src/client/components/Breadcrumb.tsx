@@ -15,17 +15,17 @@ interface BreadcrumbItem {
 const Breadcrumb: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    
+
     // Extract project ID from URL
     const pathParts = location.pathname.split('/');
     const projectId = pathParts[1] === 'projects' && pathParts[2] ? pathParts[2] : null;
-    
+
     // Always call the hook, but with conditional enabling
     // This ensures hooks are called in the same order every render
     const { isLoading, error } = useProjectData(projectId || '');
-    
+
     // Get project title from store
-    const projectTitle = useProjectStore(state => 
+    const projectTitle = useProjectStore(state =>
         projectId ? state.projects[projectId]?.outline?.components?.title || '' : ''
     );
 
@@ -71,21 +71,21 @@ const Breadcrumb: React.FC = () => {
             const pathParts = location.pathname.split('/');
             const projectId = pathParts[2];
             const section = pathParts[3];
-            
+
             // Add project title as second level
             items.push({
                 title: projectTitle ? `项目 "${projectTitle}"` : `项目 (${projectId.slice(0, 8)}...)`,
                 icon: <ProjectOutlined />,
                 onClick: () => navigate(`/projects/${projectId}`)
             });
-            
+
             if (section === 'outline') {
                 items.push({
                     title: '大纲',
                     icon: <FileTextOutlined />,
                     onClick: () => navigate(`/projects/${projectId}/outline`)
                 });
-                
+
                 const subsection = pathParts[4];
                 if (subsection) {
                     const sectionNames: { [key: string]: string } = {
@@ -116,14 +116,14 @@ const Breadcrumb: React.FC = () => {
                     icon: <PlayCircleOutlined />,
                     onClick: () => navigate(`/projects/${projectId}/episodes`)
                 });
-                
+
                 if (stageId) {
                     items.push({
                         title: `阶段详情`,
                         icon: <PlayCircleOutlined />,
                         onClick: () => navigate(`/projects/${projectId}/stages/${stageId}`)
                     });
-                    
+
                     const episodeSection = pathParts[5];
                     const episodeId = pathParts[6];
                     if (episodeSection === 'episodes' && episodeId) {
@@ -132,7 +132,7 @@ const Breadcrumb: React.FC = () => {
                             icon: <PlayCircleOutlined />,
                             onClick: () => navigate(`/projects/${projectId}/stages/${stageId}/episodes/${episodeId}`)
                         });
-                        
+
                         if (pathParts[7] === 'script') {
                             items.push({
                                 title: '剧本内容',
@@ -179,7 +179,6 @@ const Breadcrumb: React.FC = () => {
         <div style={{
             padding: '12px 0',
             borderBottom: '1px solid #434343',
-            marginBottom: '16px'
         }}>
             <AntBreadcrumb
                 items={items}

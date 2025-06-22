@@ -82,7 +82,7 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
         if (existingTransform?.derived_artifact_id) {
             return projectData.getArtifactById(existingTransform.derived_artifact_id);
         }
-        
+
         // Otherwise, use the original artifact
         return projectData.getArtifactById(artifactId);
     }, [projectData, existingTransform?.derived_artifact_id, artifactId]);
@@ -127,8 +127,8 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
     const updateMutation = projectData.updateArtifact;
 
     // 7. Debounced save function with ref to avoid stale closures
-    const saveRef = useRef<(fieldUpdates: Record<string, any>, field: string) => void>();
-    
+    const saveRef = useRef<(fieldUpdates: Record<string, any>, field: string) => void>(() => { });
+
     saveRef.current = (fieldUpdates: Record<string, any>, field: string) => {
         if (isUserInput || (artifact && artifact.type === 'brainstorm_idea')) {
             // Clear typing state when actually executing save
@@ -137,17 +137,17 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
                 newSet.delete(field);
                 return newSet;
             });
-            
+
             // Prepare request based on artifact type
             let requestData;
             if (isUserInput) {
                 // For user_input artifacts, we need to send the data as 'text' field
                 requestData = { text: JSON.stringify(fieldUpdates) };
-            } else if (artifact.type === 'brainstorm_idea') {
+            } else if (artifact && artifact.type === 'brainstorm_idea') {
                 // For brainstorm_idea artifacts, send the data directly
                 requestData = fieldUpdates;
             }
-            
+
             updateMutation.mutate({
                 artifactId: targetArtifactId,
                 data: requestData
@@ -189,10 +189,10 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
             onSuccess: (response) => {
                 setIsCreatingTransform(false);
                 setIsEditing(true);
-                
+
                 // Notify parent component
                 onTransition?.(response.derivedArtifact.id);
-                
+
                 message.success('开始编辑');
             },
             onError: (error) => {
@@ -207,20 +207,20 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
 
         // Mark field as being typed in
         setTypingFields(prev => new Set(prev).add(field));
-        
+
         // Clear any pending save state for this field
         setPendingSaves(prev => {
             const newSet = new Set(prev);
             newSet.delete(field);
             return newSet;
         });
-        
+
         // Create the updated data object
         const updatedData = { ...artifactData, [field]: value };
-        
+
         // Set pending save state
         setPendingSaves(prev => new Set(prev).add(field));
-        
+
         debouncedSave(updatedData, field);
     }, [isUserInput, artifact, artifactData, debouncedSave]);
 
@@ -275,7 +275,7 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
                         {isCreatingTransform ? '创建中...' : '编辑'}
                     </Button>
                 </div>
-                
+
                 {/* Read-only display of original data */}
                 <div className="mt-3 p-3 bg-gray-800 rounded">
                     {path ? (
@@ -340,7 +340,7 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
                             {isUserInput ? '用户修改' : '已编辑'}
                             {path && ` • ${getPathDescription(path)}`}
                         </span>
-                    {/* Save indicator */}
+                        {/* Save indicator */}
 
                         {updateMutation.isPending && (
                             <span className={`w-4 h-4 border ${isUserInput ? 'border-green-400' : 'border-blue-400'} border-t-transparent rounded-full animate-spin`}></span>
@@ -352,7 +352,7 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
                         )}
                     </div>
 
-                
+
                 </div>
 
                 {/* Editable fields */}
@@ -398,9 +398,9 @@ const arePropsEqual = (prevProps: ArtifactEditorProps, nextProps: ArtifactEditor
         prevProps.className === nextProps.className
         // Note: We don't compare onTransition and onSaveSuccess as they're likely to be new functions each render
     );
-    
+
     // Props should now be stable with proper useCallback usage in parent components
-    
+
     return isEqual;
 };
 
