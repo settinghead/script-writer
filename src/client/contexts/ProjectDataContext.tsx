@@ -24,25 +24,7 @@ interface ProjectDataProviderProps {
     children: React.ReactNode;
 }
 
-// Utility function to wait for Electric sync confirmation
-const waitForElectricSync = async (
-    expectedId: string,
-    tableName: string,
-    timeout: number = 5000
-): Promise<void> => {
-    return new Promise((resolve, reject) => {
-        const timeoutId = setTimeout(() => {
-            reject(new Error(`Electric sync timeout for ${tableName}:${expectedId}`));
-        }, timeout);
 
-        // In a real implementation, we'd listen to the Electric stream
-        // For now, we'll use a simple timeout
-        setTimeout(() => {
-            clearTimeout(timeoutId);
-            resolve();
-        }, 500); // Assume sync happens quickly
-    });
-};
 
 export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
     projectId,
@@ -282,7 +264,7 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
         mutationKey: ['create-transform', projectId],
         mutationFn: async (request: CreateTransformRequest) => {
             const response = await apiService.createTransform(request);
-            await waitForElectricSync(response.transform.id, 'transforms');
+            // await waitForElectricSync(response.transform.id, 'transforms');
             return response;
         },
         onMutate: (request) => {
@@ -319,7 +301,7 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
         mutationKey: ['update-artifact', projectId],
         mutationFn: async (request: UpdateArtifactRequest) => {
             const response = await apiService.updateArtifact(request);
-            await waitForElectricSync(request.artifactId, 'artifacts');
+            // await waitForElectricSync(request.artifactId, 'artifacts');
             return response;
         },
         onMutate: (request) => {
@@ -365,10 +347,10 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
             const result = await response.json();
 
             // Wait for Electric sync
-            await Promise.all([
-                waitForElectricSync(result.transform.id, 'transforms'),
-                waitForElectricSync(result.derivedArtifact.id, 'artifacts')
-            ]);
+            // await Promise.all([
+            //     waitForElectricSync(result.transform.id, 'transforms'),
+            //     waitForElectricSync(result.derivedArtifact.id, 'artifacts')
+            // ]);
 
             return result;
         },
