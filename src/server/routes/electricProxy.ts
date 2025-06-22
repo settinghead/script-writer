@@ -9,7 +9,7 @@ export function createElectricProxyRoutes(authDB: AuthDatabase) {
     // Electric proxy endpoint with authentication
     router.get('/v1/shape', authMiddleware.authenticate, async (req: Request, res: Response): Promise<void> => {
         let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
-        
+
         try {
             const user = authMiddleware.getCurrentUser(req);
             if (!user) {
@@ -19,7 +19,7 @@ export function createElectricProxyRoutes(authDB: AuthDatabase) {
 
             // Construct the upstream Electric URL
             const electricUrl = new URL(`${process.env.ELECTRIC_URL || 'http://localhost:3000'}/v1/shape`);
-            
+
             // Copy over Electric's query params
             const url = new URL(req.url, `http://${req.headers.host}`);
             url.searchParams.forEach((value, key) => {
@@ -44,7 +44,7 @@ export function createElectricProxyRoutes(authDB: AuthDatabase) {
             // 2. Construct a user-scoping WHERE clause.
             const projectIdsInClause = allowedProjectIds.map(id => `'${id}'`).join(',');
             const userScopedWhere = `project_id IN (${projectIdsInClause})`;
-            
+
             // 3. Apply user-scoped WHERE clauses based on table
             const existingWhere = url.searchParams.get('where');
             let finalWhereClause = '';
@@ -68,7 +68,7 @@ export function createElectricProxyRoutes(authDB: AuthDatabase) {
                     res.status(400).json({ error: `Table ${table} not authorized for Electric sync` });
                     return;
             }
-            
+
             electricUrl.searchParams.set('where', finalWhereClause);
 
             // console.log(`[Electric Proxy] User ${user.id} requesting table ${table}`);
@@ -85,7 +85,7 @@ export function createElectricProxyRoutes(authDB: AuthDatabase) {
 
             if (!response.ok) {
                 console.error(`[Electric Proxy] Electric request failed: ${response.status} ${response.statusText}`);
-                
+
                 // Handle specific Electric errors
                 if (response.status === 409) {
                     // Pass through 409 conflicts with proper headers for client retry
@@ -93,7 +93,7 @@ export function createElectricProxyRoutes(authDB: AuthDatabase) {
                     if (electricHandle) {
                         res.setHeader('electric-handle', electricHandle);
                     }
-                    
+
                     // Try to get the response body for 409 errors
                     try {
                         const errorBody = await response.text();
@@ -103,10 +103,10 @@ export function createElectricProxyRoutes(authDB: AuthDatabase) {
                     }
                     return;
                 }
-                
-                res.status(response.status).json({ 
+
+                res.status(response.status).json({
                     error: 'Electric sync failed',
-                    details: response.statusText 
+                    details: response.statusText
                 });
                 return;
             }
@@ -124,19 +124,19 @@ export function createElectricProxyRoutes(authDB: AuthDatabase) {
             // Stream the response body back to the client with error handling
             if (response.body) {
                 reader = response.body.getReader();
-                
+
                 const pump = async () => {
                     try {
                         while (true) {
                             const { done, value } = await reader!.read();
                             if (done) break;
-                            
+
                             // Validate that we have valid data before writing
                             if (value && value.length > 0) {
                                 if (!res.destroyed && res.writable) {
                                     res.write(value);
                                 } else {
-                                    console.log('[Electric Proxy] Response stream closed by client');
+                                    // console.log('[Electric Proxy] Response stream closed by client');
                                     break;
                                 }
                             }
@@ -158,15 +158,15 @@ export function createElectricProxyRoutes(authDB: AuthDatabase) {
                         }
                     }
                 };
-                
+
                 // Handle client disconnect
                 req.on('close', () => {
-                    console.log('[Electric Proxy] Client disconnected, cleaning up stream');
+                    // console.log('[Electric Proxy] Client disconnected, cleaning up stream');
                     if (reader) {
-                        reader.cancel().catch(() => {});
+                        reader.cancel().catch(() => { });
                     }
                 });
-                
+
                 pump();
             } else {
                 res.end();
@@ -174,7 +174,7 @@ export function createElectricProxyRoutes(authDB: AuthDatabase) {
 
         } catch (error) {
             console.error('[Electric Proxy] Proxy error:', error);
-            
+
             // Clean up reader on error
             if (reader) {
                 try {
@@ -183,7 +183,7 @@ export function createElectricProxyRoutes(authDB: AuthDatabase) {
                     // Ignore cleanup errors
                 }
             }
-            
+
             if (!res.headersSent) {
                 res.status(500).json({ error: 'Electric proxy failed' });
             }

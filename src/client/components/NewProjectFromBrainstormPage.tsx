@@ -75,12 +75,12 @@ const NewProjectFromBrainstormPage: React.FC = () => {
 
             // Use TanStack mutation with optimistic updates
             createProjectMutation.mutate(params);
-            
+
         } catch (error) {
             console.error('Form validation error:', error);
         }
     };
-    
+
     const handleReset = () => {
         form.resetFields();
         // Set some example values

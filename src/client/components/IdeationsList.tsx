@@ -250,9 +250,9 @@ const ProjectsList: React.FC = () => {
     return (
         <div style={{ padding: isMobile ? '0 8px' : '0 4px' }}>
             <div style={{ marginBottom: '16px', textAlign: 'right' }}>
-                <Button 
-                    type="primary" 
-                    icon={<PlusOutlined />} 
+                <Button
+                    type="primary"
+                    icon={<PlusOutlined />}
                     onClick={handleCreateNew}
                     size={isMobile ? 'middle' : 'large'}
                 >
@@ -353,14 +353,14 @@ const ProjectsList: React.FC = () => {
 
                                     <div style={{ marginBottom: '8px' }}>
                                         <Space size={[4, 4]} wrap>
-                                            <Tag 
+                                            <Tag
                                                 icon={getPhaseIcon(project.currentPhase)}
                                                 color="blue"
                                                 style={{ fontSize: '11px' }}
                                             >
                                                 {getPhaseText(project.currentPhase)}
                                             </Tag>
-                                            <Tag 
+                                            <Tag
                                                 color={getStatusColor(project.status)}
                                                 style={{ fontSize: '11px' }}
                                             >

@@ -33,7 +33,7 @@ export class AuthMiddleware {
     authenticate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         // Attach authDB to the request so it's available in protected routes.
         req.authDB = this.authDB;
-        
+
         try {
             const token = this.extractTokenFromCookies(req) || this.extractTokenFromHeader(req);
 

@@ -381,11 +381,11 @@ class ApiService {
         if (path) {
             url.searchParams.set('path', path);
         }
-        
+
         const response = await fetch(url.toString(), {
             credentials: 'include'
         });
-        
+
         if (!response.ok) {
             if (response.status === 404) {
                 return null;
