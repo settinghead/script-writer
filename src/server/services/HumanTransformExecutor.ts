@@ -1,13 +1,13 @@
 import { ArtifactRepository } from '../repositories/ArtifactRepository';
 import { TransformRepository } from '../repositories/TransformRepository';
 import { TransformInstantiationRegistry } from './TransformInstantiationRegistry';
-import { 
+import {
   ARTIFACT_SCHEMAS,
   BrainstormIdeaSchema
 } from '../../common/schemas/artifacts';
 import { HUMAN_TRANSFORM_DEFINITIONS, validateTransformPath } from '../../common/schemas/transforms';
 
-export class SchemaTransformExecutor {
+export class HumanTransformExecutor {
   private instantiationRegistry: TransformInstantiationRegistry;
 
   constructor(
@@ -27,7 +27,7 @@ export class SchemaTransformExecutor {
     projectId: string,
     fieldUpdates?: Record<string, any>
   ): Promise<{ transform: any; derivedArtifact: any; wasTransformed: boolean }> {
-    
+
     // 1. Validate transform definition
     const transformDef = HUMAN_TRANSFORM_DEFINITIONS[transformName];
     if (!transformDef) {
@@ -41,16 +41,16 @@ export class SchemaTransformExecutor {
 
     // 3. Check for existing transform
     const existingTransform = await this.transformRepo.findHumanTransform(
-      sourceArtifactId, 
-      derivationPath, 
+      sourceArtifactId,
+      derivationPath,
       projectId
     );
 
     if (existingTransform && existingTransform.derived_artifact_id) {
       // Update existing derived artifact
       return this.updateExistingDerivedArtifact(
-        existingTransform, 
-        fieldUpdates || {}, 
+        existingTransform,
+        fieldUpdates || {},
         transformDef
       );
     }
@@ -88,28 +88,28 @@ export class SchemaTransformExecutor {
       );
     } catch (error: any) {
       // Check if this is a unique constraint violation
-      const isUniqueConstraintError = 
+      const isUniqueConstraintError =
         error.code === '23505' || // PostgreSQL unique violation
         (error.message && error.message.includes('unique_human_transform_per_artifact_path')) ||
         (error.message && error.message.includes('duplicate key value violates unique constraint'));
 
       if (isUniqueConstraintError && retryCount < 3) {
         console.log(`Unique constraint violation detected, retrying... (attempt ${retryCount + 1})`);
-        
+
         // Another process created the transform, try to find and update it
         await new Promise(resolve => setTimeout(resolve, 50 * (retryCount + 1))); // Exponential backoff
-        
+
         const existingTransform = await this.transformRepo.findHumanTransform(
-          sourceArtifactId, 
-          derivationPath, 
+          sourceArtifactId,
+          derivationPath,
           projectId
         );
 
         if (existingTransform && existingTransform.derived_artifact_id) {
           // Found the transform created by another process, update it
           return this.updateExistingDerivedArtifact(
-            existingTransform, 
-            fieldUpdates || {}, 
+            existingTransform,
+            fieldUpdates || {},
             transformDef
           );
         } else {
@@ -125,7 +125,7 @@ export class SchemaTransformExecutor {
           );
         }
       }
-      
+
       // Re-throw if not a unique constraint error or max retries exceeded
       throw error;
     }
@@ -139,14 +139,14 @@ export class SchemaTransformExecutor {
     const currentArtifact = await this.artifactRepo.getArtifact(
       existingTransform.derived_artifact_id
     );
-    
+
     if (!currentArtifact) {
       throw new Error('Derived artifact not found');
     }
 
     // Get current data and apply updates
     let currentData = currentArtifact.data; // Already parsed by ArtifactRepository
-    
+
     // Handle user_input artifacts with derived data
     if (currentArtifact.type === 'user_input') {
       // First try to get derived_data from metadata
@@ -166,13 +166,13 @@ export class SchemaTransformExecutor {
     // (currentData is already set above)
 
     const updatedData = { ...currentData, ...fieldUpdates };
-    
+
     // Validate against the correct schema based on target type
     let validationResult;
     if (transformDef.targetArtifactType === 'user_input') {
       // For user_input, validate the derived data against the source element schema
-      if (transformDef.sourceArtifactType === 'brainstorm_idea_collection' && 
-          transformDef.name === 'edit_brainstorm_idea') {
+      if (transformDef.sourceArtifactType === 'brainstorm_idea_collection' &&
+        transformDef.name === 'edit_brainstorm_idea') {
         // This is editing an entire brainstorm idea stored in user_input
         validationResult = BrainstormIdeaSchema.safeParse(updatedData);
       } else {
@@ -185,7 +185,7 @@ export class SchemaTransformExecutor {
       const targetSchema = ARTIFACT_SCHEMAS[transformDef.targetArtifactType as keyof typeof ARTIFACT_SCHEMAS];
       validationResult = targetSchema.safeParse(updatedData);
     }
-    
+
     if (!validationResult.success) {
       throw new Error(`Schema validation failed: ${validationResult.error.message}`);
     }
@@ -201,7 +201,7 @@ export class SchemaTransformExecutor {
         ...finalMetadata,
         derived_data: validationResult.data
       };
-      
+
       // Store as JSON string in the text field for user_input format
       finalData = {
         text: JSON.stringify(validationResult.data),
@@ -245,7 +245,7 @@ export class SchemaTransformExecutor {
     const sourceSchema = ARTIFACT_SCHEMAS[transformDef.sourceArtifactType as keyof typeof ARTIFACT_SCHEMAS];
     const sourceData = sourceArtifact.data; // Already parsed by ArtifactRepository
     const sourceValidation = sourceSchema.safeParse(sourceData);
-    
+
     if (!sourceValidation.success) {
       throw new Error(`Source artifact schema validation failed: ${sourceValidation.error.message}`);
     }
@@ -261,7 +261,7 @@ export class SchemaTransformExecutor {
     // 3. Validate instantiated data
     const targetSchema = ARTIFACT_SCHEMAS[transformDef.targetArtifactType as keyof typeof ARTIFACT_SCHEMAS];
     const targetValidation = targetSchema.safeParse(initialData);
-    
+
     if (!targetValidation.success) {
       throw new Error(`Target artifact schema validation failed: ${targetValidation.error.message}`);
     }
@@ -308,7 +308,7 @@ export class SchemaTransformExecutor {
     await this.transformRepo.addTransformInputs(transform.id, [
       { artifactId: sourceArtifactId, inputRole: 'source' }
     ], projectId);
-    
+
     await this.transformRepo.addTransformOutputs(transform.id, [
       { artifactId: derivedArtifact.id, outputRole: 'derived' }
     ], projectId);

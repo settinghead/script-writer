@@ -436,7 +436,7 @@ export interface UpdateArtifactRequest {
     metadata?: any;
 }
 
-export interface SchemaTransformRequest {
+export interface HumanTransformRequest {
     transformName: string;
     sourceArtifactId: string;
     derivationPath: string;
@@ -471,7 +471,7 @@ export interface ProjectDataContextType {
     // Mutations (TanStack Query + optimistic updates)
     createTransform: UseMutationResult<any, Error, CreateTransformRequest>;
     updateArtifact: UseMutationResult<any, Error, UpdateArtifactRequest>;
-    createSchemaTransform: UseMutationResult<any, Error, SchemaTransformRequest>;
+    createHumanTransform: UseMutationResult<any, Error, HumanTransformRequest>;
 
     // Local state management for optimistic updates
     localUpdates: Map<string, any>;

@@ -121,7 +121,7 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
     const { artifactData, isUserInput } = processedArtifactData;
 
     // 5. Create transform mutation using unified context
-    const createTransformMutation = projectData.createSchemaTransform;
+    const createTransformMutation = projectData.createHumanTransform;
 
     // 6. Update mutation for user_input and brainstorm_idea artifacts using unified context
     const updateMutation = projectData.updateArtifact;

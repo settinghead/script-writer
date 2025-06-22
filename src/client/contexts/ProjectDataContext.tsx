@@ -14,7 +14,7 @@ import type {
     ElectricLLMTransform,
     CreateTransformRequest,
     UpdateArtifactRequest,
-    SchemaTransformRequest
+    HumanTransformRequest
 } from '../../common/types';
 
 const ProjectDataContext = createContext<ProjectDataContextType | undefined>(undefined);
@@ -91,13 +91,6 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
 
 
     }).current;
-
-    // Log shape info for debugging
-    const lastProjectIdRef = useRef<string | undefined>(undefined);
-    const renderCountRef = useRef<number>(0);
-    renderCountRef.current++;
-
-
 
     // Stable configuration objects to prevent unnecessary re-subscriptions
     const artifactsConfig = useMemo(() => {
@@ -348,10 +341,10 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
         }
     });
 
-    const createSchemaTransformMutation = useMutation({
-        mutationKey: ['create-schema-transform', projectId],
-        mutationFn: async (request: SchemaTransformRequest) => {
-            const response = await fetch(`/api/artifacts/${request.sourceArtifactId}/schema-transform`, {
+    const createHumanTransformMutation = useMutation({
+        mutationKey: ['create-human-transform', projectId],
+        mutationFn: async (request: HumanTransformRequest) => {
+            const response = await fetch(`/api/artifacts/${request.sourceArtifactId}/human-transform`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -450,7 +443,7 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
         // Mutations
         createTransform: createTransformMutation,
         updateArtifact: updateArtifactMutation,
-        createSchemaTransform: createSchemaTransformMutation,
+        createHumanTransform: createHumanTransformMutation,
 
         // Local state management
         localUpdates,

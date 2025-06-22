@@ -103,7 +103,7 @@ interface ProjectDataContextType {
   // Mutations (TanStack Query + optimistic updates)
   createTransform: UseMutationResult<any, Error, CreateTransformRequest>
   updateArtifact: UseMutationResult<any, Error, UpdateArtifactRequest>
-  createSchemaTransform: UseMutationResult<any, Error, SchemaTransformRequest>
+  createHumanTransform: UseMutationResult<any, Error, HumanTransformRequest>
   
   // Local state management
   localUpdates: Map<string, any> // Optimistic updates not yet synced
@@ -226,12 +226,12 @@ const ProjectLayout: React.FC = () => {
 // const { data: artifacts } = useShape({ ... }) // REMOVE
 
 // Use context instead
-const { getArtifactById, createSchemaTransform } = useProjectData()
+const { getArtifactById, createHumanTransform } = useProjectData()
 const artifact = getArtifactById(artifactId)
 
 // Use context mutation instead of individual useMutation
 const handleFieldChange = (field: string, value: any) => {
-  createSchemaTransform.mutate({
+  createHumanTransform.mutate({
     transformName: 'edit_brainstorm_idea',
     sourceArtifactId: artifactId,
     derivationPath: path,

@@ -327,7 +327,7 @@ The application uses a **modern state management architecture**:
 // Example: Schema-validated artifact editing
 const editMutation = useMutation({
   mutationFn: async ({ path, newData }: EditRequest) => {
-    const response = await fetch(`/api/artifacts/${artifactId}/schema-transform`, {
+    const response = await fetch(`/api/artifacts/${artifactId}/human-transform`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -354,7 +354,7 @@ const editMutation = useMutation({
 - `GET /auth/status` - Check authentication status
 
 ### Schema Transform System
-- `POST /api/artifacts/:id/schema-transform` - Execute schema-validated transform
+- `POST /api/artifacts/:id/human-transform` - Execute schema-validated transform
 - `GET /api/artifacts` - List artifacts with filtering and search
 - `GET /api/artifacts/:id` - Get specific artifact with metadata
 - `GET /api/transforms/human` - List human transforms with lineage
@@ -462,7 +462,7 @@ src/
     │   ├── electricProxy.ts # Electric SQL authenticated proxy
     │   └── auth.ts        # Authentication routes
     ├── services/          # Business logic
-    │   ├── SchemaTransformExecutor.ts # Core transform execution
+    │   ├── HumanTransformExecutor.ts # Core transform execution
     │   ├── TransformInstantiationRegistry.ts # Transform registry
     │   └── templates/     # LLM prompt templates
     ├── repositories/      # Data access layer
@@ -576,7 +576,7 @@ function getTransformName(artifactType: string, path: string): string {
 
 // Debounced auto-save with visual feedback
 const editMutation = useMutation({
-  mutationFn: executeSchemaTransform,
+  mutationFn: executeHumanTransform,
   onSuccess: () => {
     showSavedCheckmark();
     // Electric SQL automatically syncs changes - no manual refetch needed
