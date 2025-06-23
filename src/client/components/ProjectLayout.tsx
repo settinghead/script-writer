@@ -5,6 +5,7 @@ import { HomeOutlined, ProjectOutlined, ArrowLeftOutlined } from '@ant-design/ic
 import { useProjectData } from '../hooks/useProjectData';
 import { useProjectStore } from '../stores/projectStore';
 import { ProjectDataProvider } from '../contexts/ProjectDataContext';
+import { ChatSidebarWrapper } from './chat/ChatSidebarWrapper';
 
 const { Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -99,14 +100,17 @@ const ProjectLayout: React.FC = () => {
     return (
         <ProjectDataProvider projectId={projectId!}>
             <Layout style={{ height: '100%', overflow: 'hidden' }}>
-                <Sider width={250} theme="light" style={{ borderRight: '1px solid #f0f0f0' }}>
-                    <div style={{ padding: '16px' }}>
-                        <Title level={4}>{name || 'Project'}</Title>
-                        <Typography.Paragraph type="secondary" ellipsis={{ rows: 3 }}>
-                            {description || 'No description available.'}
-                        </Typography.Paragraph>
-                    </div>
-                    {/* Future navigation will go here */}
+                <Sider
+                    width={350}
+                    style={{
+                        background: '#1a1a1a',
+                        borderRight: '1px solid #333',
+                        height: '100%',
+                        overflow: 'hidden'
+                    }}
+                    theme="dark"
+                >
+                    <ChatSidebarWrapper projectId={projectId!} />
                 </Sider>
                 <Content style={{ padding: '24px', overflowY: 'auto' }}>
                     <Outlet />

@@ -64,6 +64,14 @@ src/
     └── middleware/       # Authentication and validation
 ```
 
+### 8. UI Component Standards
+- **ALWAYS use Ant Design components and facilities** when building UI components
+- Prefer Ant Design's built-in components over custom CSS implementations
+- Use Ant Design's theming system for consistent dark theme styling
+- Leverage Ant Design's icons, layout components, form controls, and feedback components
+- Only create custom CSS when Ant Design doesn't provide the needed functionality
+- Follow Ant Design's design principles and component patterns
+
 
 ## Database & Performance
 

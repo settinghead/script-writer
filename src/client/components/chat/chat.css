@@ -1,0 +1,56 @@
+/* Chat Sidebar Styles - Minimal overrides for Ant Design */
+.chat-sidebar-resizable {
+    position: relative;
+    background: #1a1a1a;
+    border-left: 1px solid #333;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.chat-sidebar-mobile {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1000;
+}
+
+/* Resize Handle */
+.chat-resize-handle {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 5px;
+    height: 100%;
+    background: #404040;
+    cursor: col-resize;
+    z-index: 1;
+    transition: background-color 0.2s ease;
+}
+
+.chat-resize-handle:hover {
+    background: #606060;
+}
+
+/* Ant Design theme overrides for dark mode */
+.ant-layout {
+    background: #1a1a1a !important;
+}
+
+.ant-layout-header {
+    background: #1e1e1e !important;
+}
+
+.ant-layout-footer {
+    background: #1e1e1e !important;
+}
+
+.ant-typography {
+    color: #e0e0e0 !important;
+}
+
+.ant-empty-description {
+    color: #888 !important;
+}

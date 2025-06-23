@@ -421,6 +421,19 @@ export interface ElectricLLMTransform {
     [key: string]: unknown;
 }
 
+export interface ElectricChatMessage {
+    id: string;
+    project_id: string;
+    role: 'user' | 'assistant' | 'tool';
+    content: string;
+    display_type: 'message' | 'tool_summary' | 'thinking';
+    status: 'pending' | 'streaming' | 'completed' | 'failed';
+    raw_message_id?: string;
+    created_at: string;
+    updated_at: string;
+    [key: string]: unknown;
+}
+
 // Mutation request types
 export interface CreateTransformRequest {
     projectId: string;

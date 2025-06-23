@@ -1,6 +1,10 @@
 import React, { useEffect, useRef } from 'react';
+import { List, Empty, Spin, Typography, Tag } from 'antd';
+import { RobotOutlined, MessageOutlined, EditOutlined, PlayCircleOutlined } from '@ant-design/icons';
 import { ChatMessage } from './ChatMessage';
 import { ChatMessageDisplay } from '../../../common/schemas/chatMessages';
+
+const { Title, Paragraph } = Typography;
 
 interface ChatMessageListProps {
     messages: ChatMessageDisplay[];
@@ -52,46 +56,60 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
     return (
         <div
             ref={containerRef}
-            className="chat-messages-container"
+            style={{
+                height: '100%',
+                padding: '16px',
+                overflow: 'auto',
+                background: '#1a1a1a'
+            }}
         >
             {messages.length === 0 && !isLoading ? (
-                <div className="chat-empty-state">
-                    <div className="chat-empty-icon">💬</div>
-                    <h3>Start a conversation</h3>
-                    <p>Ask me anything about your creative writing project!</p>
-                    <div className="chat-suggestions">
-                        <div className="suggestion-item">💡 "Help me brainstorm story ideas"</div>
-                        <div className="suggestion-item">📝 "Create an outline for my script"</div>
-                        <div className="suggestion-item">🎭 "Write dialogue for this scene"</div>
-                    </div>
-                </div>
-            ) : (
-                <div className="chat-messages-list">
-                    {messages.map((message) => (
-                        <ChatMessage
-                            key={message.id}
-                            message={message}
-                            isStreaming={message.status === 'streaming'}
-                        />
-                    ))}
-
-                    {isLoading && (
-                        <div className="chat-loading-message">
-                            <div className="chat-message chat-message-assistant">
-                                <div className="chat-message-header">
-                                    <span className="chat-message-icon">🤖</span>
-                                    <span className="chat-message-role">AI Assistant</span>
-                                </div>
-                                <div className="chat-message-content">
-                                    <div className="thinking-dots">
-                                        <span></span>
-                                        <span></span>
-                                        <span></span>
-                                    </div>
-                                </div>
+                <Empty
+                    image={<MessageOutlined style={{ fontSize: 64, color: '#666' }} />}
+                    imageStyle={{ height: 80 }}
+                    description={
+                        <div style={{ textAlign: 'center' }}>
+                            <Title level={4} style={{ color: '#ccc', marginBottom: 8 }}>
+                                Start a conversation
+                            </Title>
+                            <Paragraph style={{ color: '#888', marginBottom: 24 }}>
+                                Ask me anything about your creative writing project!
+                            </Paragraph>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
+                                <Tag icon={<EditOutlined />} color="blue" style={{ fontSize: 12 }}>
+                                    "Help me brainstorm story ideas"
+                                </Tag>
+                                <Tag icon={<PlayCircleOutlined />} color="green" style={{ fontSize: 12 }}>
+                                    "Create an outline for my script"
+                                </Tag>
+                                <Tag icon={<MessageOutlined />} color="purple" style={{ fontSize: 12 }}>
+                                    "Write dialogue for this scene"
+                                </Tag>
                             </div>
                         </div>
+                    }
+                />
+            ) : (
+                <List
+                    dataSource={messages}
+                    renderItem={(message) => (
+                        <List.Item style={{ border: 'none', padding: '8px 0' }}>
+                            <ChatMessage
+                                key={message.id}
+                                message={message}
+                                isStreaming={message.status === 'streaming'}
+                            />
+                        </List.Item>
                     )}
+                    style={{ background: 'transparent' }}
+                />
+            )}
+
+            {isLoading && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 0' }}>
+                    <RobotOutlined style={{ fontSize: 20, color: '#10b981' }} />
+                    <Spin size="small" />
+                    <span style={{ color: '#888' }}>AI is thinking...</span>
                 </div>
             )}
 

@@ -88,9 +88,6 @@ const ProjectsList: React.FC = () => {
     const handleViewProject = (project: ProjectSummary) => {
         // Navigate based on current phase
         switch (project.currentPhase) {
-            case 'brainstorming':
-                navigate('/new-project-from-brainstorming');
-                break;
             case 'outline':
                 navigate(`/projects/${project.id}/outline`);
                 break;
@@ -101,7 +98,7 @@ const ProjectsList: React.FC = () => {
                 navigate(`/projects/${project.id}/scripts`);
                 break;
             default:
-                navigate('/new-project-from-brainstorming');
+                throw new Error(`Unknown project phase: ${project.currentPhase}`);
         }
     };
 

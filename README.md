@@ -366,11 +366,6 @@ const editMutation = useMutation({
 - `PUT /api/projects/:id` - Update project details
 - `DELETE /api/projects/:id` - Delete project
 
-### Content Generation
-- `POST /api/brainstorm/generate/stream` - Generate brainstorm ideas with streaming
-- `POST /api/outline/generate/stream` - Generate story outline with streaming
-- `POST /api/episodes/generate/stream` - Generate episode content with streaming
-- `POST /api/scripts/generate/stream` - Generate script content with streaming
 
 ### Electric SQL Proxy (Authenticated)
 - `GET /api/electric/v1/shape` - Authenticated proxy to Electric SQL with automatic user scoping

@@ -194,6 +194,8 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
     const { data: llmPrompts, isLoading: llmPromptsLoading } = useShape<ElectricLLMPrompt>(llmPromptsConfig);
     const { data: llmTransforms, isLoading: llmTransformsLoading } = useShape<ElectricLLMTransform>(llmTransformsConfig);
 
+
+
     // Aggregate loading state
     const isLoading = artifactsLoading || transformsLoading || humanTransformsLoading ||
         transformInputsLoading || transformOutputsLoading || llmPromptsLoading || llmTransformsLoading;
@@ -413,6 +415,7 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
         transformOutputs: transformOutputs || [],
         llmPrompts: llmPrompts || [],
         llmTransforms: llmTransforms || [],
+
 
         // Loading states
         isLoading,

@@ -1,4 +1,9 @@
 import React, { useState, useRef, KeyboardEvent } from 'react';
+import { Input, Button, Space, Tag, Typography } from 'antd';
+import { SendOutlined, LoadingOutlined } from '@ant-design/icons';
+
+const { TextArea } = Input;
+const { Text } = Typography;
 
 interface ChatInputProps {
     onSend: (message: string) => void;
@@ -65,73 +70,67 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     };
 
     return (
-        <div className="chat-input-container">
+        <div style={{ padding: 0 }}>
             {/* Quick suggestions (shown when input is empty) */}
             {message.length === 0 && (
-                <div className="chat-suggestions-quick">
-                    {getSuggestions().slice(0, 3).map((suggestion, index) => (
-                        <button
-                            key={index}
-                            className="suggestion-chip"
-                            onClick={() => handleSuggestionClick(suggestion)}
-                            disabled={disabled}
-                        >
-                            {suggestion}
-                        </button>
-                    ))}
+                <div style={{ marginBottom: 12 }}>
+                    <Space wrap size="small">
+                        {getSuggestions().slice(0, 3).map((suggestion, index) => (
+                            <Tag
+                                key={index}
+                                color="blue"
+                                style={{
+                                    cursor: disabled ? 'not-allowed' : 'pointer',
+                                    opacity: disabled ? 0.5 : 1,
+                                    fontSize: 11,
+                                    padding: '2px 8px'
+                                }}
+                                onClick={() => handleSuggestionClick(suggestion)}
+                            >
+                                {suggestion}
+                            </Tag>
+                        ))}
+                    </Space>
                 </div>
             )}
 
-            <div className="chat-input-wrapper">
-                <textarea
-                    ref={textareaRef}
+            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+                <TextArea
                     value={message}
-                    onChange={handleInputChange}
+                    onChange={(e) => handleInputChange(e as any)}
                     onKeyDown={handleKeyDown}
                     placeholder={disabled ? "AI is thinking..." : placeholder}
                     disabled={disabled}
-                    className="chat-input-textarea"
-                    rows={1}
+                    autoSize={{ minRows: 1, maxRows: 4 }}
                     maxLength={5000}
+                    style={{
+                        background: '#2a2a2a',
+                        borderColor: '#444',
+                        color: '#e0e0e0',
+                        resize: 'none'
+                    }}
+                    showCount={message.length > 4000}
                 />
 
-                <button
+                <Button
+                    type="primary"
+                    icon={disabled ? <LoadingOutlined /> : <SendOutlined />}
                     onClick={handleSend}
                     disabled={disabled || !message.trim()}
-                    className="chat-send-button"
                     title="Send message (Enter)"
-                >
-                    {disabled ? (
-                        <div className="send-button-loading">
-                            <div className="spinner"></div>
-                        </div>
-                    ) : (
-                        <svg
-                            width="20"
-                            height="20"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                        >
-                            <path d="M22 2L11 13" />
-                            <path d="M22 2L15 22L11 13L2 9L22 2Z" />
-                        </svg>
-                    )}
-                </button>
+                    style={{
+                        background: disabled || !message.trim() ? '#374151' : '#4f46e5',
+                        borderColor: disabled || !message.trim() ? '#374151' : '#4f46e5',
+                        height: 'auto',
+                        minHeight: 32
+                    }}
+                />
             </div>
-
-            {/* Character count */}
-            {message.length > 4000 && (
-                <div className="chat-input-counter">
-                    {message.length}/5000 characters
-                </div>
-            )}
 
             {/* Hint text */}
-            <div className="chat-input-hint">
+            <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 8, textAlign: 'center' }}>
                 Press Enter to send, Shift+Enter for new line
-            </div>
+            </Text>
         </div>
     );
 }; 

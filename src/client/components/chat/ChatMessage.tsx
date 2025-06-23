@@ -1,5 +1,9 @@
 import React from 'react';
+import { Avatar, Card, Typography, Tag, Space, Spin } from 'antd';
+import { UserOutlined, RobotOutlined, ToolOutlined, ClockCircleOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { ChatMessageDisplay } from '../../../common/schemas/chatMessages';
+
+const { Text, Paragraph } = Typography;
 
 interface ChatMessageProps {
     message: ChatMessageDisplay;
@@ -7,36 +11,40 @@ interface ChatMessageProps {
 }
 
 export const ChatMessage: React.FC<ChatMessageProps> = ({ message, isStreaming = false }) => {
-    const getMessageClass = () => {
-        const baseClass = 'chat-message';
-        const roleClass = `chat-message-${message.role}`;
-        const statusClass = isStreaming ? 'streaming' : '';
-        const typeClass = message.display_type !== 'message' ? `type-${message.display_type}` : '';
-
-        return [baseClass, roleClass, statusClass, typeClass].filter(Boolean).join(' ');
-    };
-
-    const getMessageIcon = () => {
+    const getAvatarIcon = () => {
         switch (message.role) {
             case 'user':
-                return '👤';
+                return <UserOutlined />;
             case 'assistant':
-                return '🤖';
+                return <RobotOutlined />;
             case 'tool':
-                return '🔧';
+                return <ToolOutlined />;
             default:
-                return '';
+                return <UserOutlined />;
+        }
+    };
+
+    const getAvatarColor = () => {
+        switch (message.role) {
+            case 'user':
+                return '#4f46e5';
+            case 'assistant':
+                return '#10b981';
+            case 'tool':
+                return '#f59e0b';
+            default:
+                return '#666';
         }
     };
 
     const getDisplayContent = () => {
         // Handle different display types
         if (message.display_type === 'thinking' && isStreaming) {
-            return `${message.content}${isStreaming ? ' ⏳' : ''}`;
+            return `${message.content}`;
         }
 
         if (message.display_type === 'tool_summary') {
-            return `${message.content} ✨`;
+            return message.content;
         }
 
         return message.content;
@@ -47,39 +55,93 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, isStreaming =
         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
 
+    const getStatusTag = () => {
+        if (message.status === 'failed') {
+            return <Tag color="error" icon={<ExclamationCircleOutlined />}>Failed</Tag>;
+        }
+        if (isStreaming || message.status === 'streaming') {
+            return <Tag color="processing" icon={<Spin size="small" />}>Thinking...</Tag>;
+        }
+        return null;
+    };
+
+    const isUserMessage = message.role === 'user';
+
     return (
-        <div className={getMessageClass()}>
-            <div className="chat-message-header">
-                <span className="chat-message-icon">{getMessageIcon()}</span>
-                <span className="chat-message-role">
-                    {message.role === 'user' ? 'You' :
-                        message.role === 'assistant' ? 'AI Assistant' :
-                            'System'}
-                </span>
-                <span className="chat-message-timestamp">
-                    {formatTimestamp(message.created_at)}
-                </span>
-            </div>
+        <div style={{
+            display: 'flex',
+            gap: 12,
+            marginBottom: 16,
+            flexDirection: isUserMessage ? 'row-reverse' : 'row',
+            width: '100%'
+        }}>
+            <Avatar
+                icon={getAvatarIcon()}
+                style={{
+                    backgroundColor: getAvatarColor(),
+                    flexShrink: 0
+                }}
+                size="default"
+            />
 
-            <div className="chat-message-content">
-                {getDisplayContent()}
-            </div>
-
-            {message.status === 'failed' && (
-                <div className="chat-message-error">
-                    ⚠️ This message failed to process
+            <div style={{
+                flex: 1,
+                minWidth: 0,
+                maxWidth: '80%',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: isUserMessage ? 'flex-end' : 'flex-start'
+            }}>
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    marginBottom: 4,
+                    flexDirection: isUserMessage ? 'row-reverse' : 'row'
+                }}>
+                    <Text strong style={{ color: '#e0e0e0', fontSize: 12 }}>
+                        {message.role === 'user' ? 'You' :
+                            message.role === 'assistant' ? 'AI Assistant' :
+                                'System'}
+                    </Text>
+                    <Text type="secondary" style={{ fontSize: 11 }}>
+                        <ClockCircleOutlined style={{ marginRight: 4 }} />
+                        {formatTimestamp(message.created_at)}
+                    </Text>
+                    {getStatusTag()}
                 </div>
-            )}
 
-            {message.display_type === 'thinking' && message.status === 'streaming' && (
-                <div className="chat-message-thinking-indicator">
-                    <div className="thinking-dots">
-                        <span></span>
-                        <span></span>
-                        <span></span>
-                    </div>
-                </div>
-            )}
+                <Card
+                    size="small"
+                    style={{
+                        background: isUserMessage ? '#4f46e5' :
+                            message.display_type === 'tool_summary' ? '#f59e0b20' : '#2a2a2a',
+                        border: message.display_type === 'tool_summary' ? '1px solid #f59e0b40' : 'none',
+                        borderRadius: 12,
+                        maxWidth: '100%',
+                        wordBreak: 'break-word'
+                    }}
+                    bodyStyle={{
+                        padding: '12px 16px',
+                        color: isUserMessage ? 'white' :
+                            message.display_type === 'tool_summary' ? '#f59e0b' : '#e0e0e0'
+                    }}
+                >
+                    <Paragraph
+                        style={{
+                            margin: 0,
+                            color: 'inherit',
+                            lineHeight: 1.5,
+                            fontStyle: message.display_type === 'tool_summary' ? 'italic' : 'normal'
+                        }}
+                    >
+                        {getDisplayContent()}
+                        {message.display_type === 'thinking' && isStreaming && (
+                            <Spin size="small" style={{ marginLeft: 8 }} />
+                        )}
+                    </Paragraph>
+                </Card>
+            </div>
         </div>
     );
 }; 

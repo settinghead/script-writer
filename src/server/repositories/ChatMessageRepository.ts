@@ -57,9 +57,14 @@ export class ChatMessageRepository {
 
         return results.map(row => ({
             ...row,
-            tool_parameters: row.tool_parameters ? JSON.parse(row.tool_parameters) : undefined,
-            tool_result: row.tool_result ? JSON.parse(row.tool_result) : undefined,
-            metadata: row.metadata ? JSON.parse(row.metadata) : undefined
+            created_at: row.created_at.toISOString(),
+            updated_at: row.updated_at.toISOString(),
+            tool_parameters: row.tool_parameters && typeof row.tool_parameters === 'string'
+                ? JSON.parse(row.tool_parameters) : row.tool_parameters,
+            tool_result: row.tool_result && typeof row.tool_result === 'string'
+                ? JSON.parse(row.tool_result) : row.tool_result,
+            metadata: row.metadata && typeof row.metadata === 'string'
+                ? JSON.parse(row.metadata) : row.metadata
         })) as ChatMessageRaw[];
     }
 
@@ -74,9 +79,14 @@ export class ChatMessageRepository {
 
         return {
             ...result,
-            tool_parameters: result.tool_parameters ? JSON.parse(result.tool_parameters) : undefined,
-            tool_result: result.tool_result ? JSON.parse(result.tool_result) : undefined,
-            metadata: result.metadata ? JSON.parse(result.metadata) : undefined
+            created_at: result.created_at.toISOString(),
+            updated_at: result.updated_at.toISOString(),
+            tool_parameters: result.tool_parameters && typeof result.tool_parameters === 'string'
+                ? JSON.parse(result.tool_parameters) : result.tool_parameters,
+            tool_result: result.tool_result && typeof result.tool_result === 'string'
+                ? JSON.parse(result.tool_result) : result.tool_result,
+            metadata: result.metadata && typeof result.metadata === 'string'
+                ? JSON.parse(result.metadata) : result.metadata
         } as ChatMessageRaw;
     }
 
@@ -138,7 +148,14 @@ export class ChatMessageRepository {
             .orderBy('created_at', 'asc')
             .execute();
 
-        return results as ChatMessageDisplay[];
+        return results.map(row => ({
+            ...row,
+            created_at: row.created_at.toISOString(),
+            updated_at: row.updated_at.toISOString(),
+            display_type: row.display_type || 'message',
+            status: row.status || 'completed',
+            raw_message_id: row.raw_message_id || undefined
+        })) as ChatMessageDisplay[];
     }
 
     async getDisplayMessageById(id: string): Promise<ChatMessageDisplay | null> {
@@ -148,7 +165,16 @@ export class ChatMessageRepository {
             .where('id', '=', id)
             .executeTakeFirst();
 
-        return result as ChatMessageDisplay | null;
+        if (!result) return null;
+
+        return {
+            ...result,
+            created_at: result.created_at.toISOString(),
+            updated_at: result.updated_at.toISOString(),
+            display_type: result.display_type || 'message',
+            status: result.status || 'completed',
+            raw_message_id: result.raw_message_id || undefined
+        } as ChatMessageDisplay;
     }
 
     // Message sanitization helper
