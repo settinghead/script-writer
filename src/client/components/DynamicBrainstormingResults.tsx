@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { Space, Button, Typography, Spin, Empty, Card, Tag, Alert } from 'antd';
-import { StopOutlined, ReloadOutlined, EyeOutlined, EditOutlined, CheckOutlined } from '@ant-design/icons';
+import { StopOutlined, ReloadOutlined, EyeOutlined, EditOutlined, CheckOutlined, FileTextOutlined } from '@ant-design/icons';
 import { IdeaCard } from './shared/streaming';
 import { ThinkingIndicator } from './shared/ThinkingIndicator';
 import { ReasoningIndicator } from './shared/ReasoningIndicator';
@@ -11,8 +11,49 @@ import { ReasoningEvent } from '../../common/streaming/types';
 // NEW: Import the new streamObject hook
 import { useBrainstormingStream } from '../hooks/useStreamObject';
 import { ArtifactEditor } from './shared/ArtifactEditor';
+import { useProjectData } from '../contexts/ProjectDataContext';
 
 const { Text } = Typography;
+
+// Component to check for human transforms and show outline generation button
+const GenerateOutlineButton: React.FC<{
+    artifactId: string;
+    path: string;
+}> = ({ artifactId, path }) => {
+    const projectData = useProjectData();
+
+    // Check if there's a human transform of type 'edit_brainstorm_idea' for this artifact and path
+    const humanTransforms = projectData.getHumanTransformsForArtifact(artifactId, path);
+    const hasEditTransform = humanTransforms.some(
+        transform => transform.transform_name === 'edit_brainstorm_idea'
+    );
+
+    const handleGenerateOutline = () => {
+        alert('not implemented');
+    };
+
+    // Only show button if user has edited the idea
+    if (!hasEditTransform) {
+        return null;
+    }
+
+    return (
+        <Button
+            type="primary"
+            size="small"
+            icon={<FileTextOutlined />}
+            onClick={handleGenerateOutline}
+            style={{
+                marginTop: '8px',
+                background: 'linear-gradient(135deg, #1890ff, #40a9ff)',
+                border: 'none',
+                borderRadius: '4px'
+            }}
+        >
+            开始生成大纲
+        </Button>
+    );
+};
 
 interface DynamicBrainstormingResultsProps {
     ideas: IdeaWithTitle[];
@@ -162,6 +203,11 @@ const EditableIdeaCardComponent: React.FC<{
                             onSaveSuccess={handleSaveSuccess}
                         />
 
+                        {/* Generate outline button - only shows if user has edited the idea */}
+                        <GenerateOutlineButton
+                            artifactId={idea.artifactId}
+                            path={`[${index}]`}
+                        />
                     </div>
 
                     {/* Associated outlines - only show if there are outlines */}
@@ -267,6 +313,14 @@ const EditableIdeaCardComponent: React.FC<{
                         {idea.body}
                     </Typography.Text>
                 </div>
+
+                {/* Generate outline button - only shows if user has edited the idea */}
+                {idea.artifactId && (
+                    <GenerateOutlineButton
+                        artifactId={idea.artifactId}
+                        path={`[${index}]`}
+                    />
+                )}
 
                 {/* Associated outlines - only show if there are outlines */}
                 {ideaOutlines.length > 0 && (
