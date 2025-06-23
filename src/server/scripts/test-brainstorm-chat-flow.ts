@@ -47,13 +47,13 @@ async function testBrainstormChatFlow() {
         // Test brainstorm parameters
         const params = {
             genre: '穿越, 爽文',
-            theme: 'modern knowledge advantage',
-            character_setting: 'college student protagonist',
-            plot_device: 'time travel to ancient times',
-            ending_type: 'happy ending with success',
-            length: 'short form video series',
+            theme: '现代知识优势',
+            character_setting: '大学生主角',
+            plot_device: '穿越到古代',
+            ending_type: '成功的美好结局',
+            length: '短视频系列',
             platform: '抖音',
-            additional_requirements: 'Focus on business and technology innovations'
+            additional_requirements: '专注于商业和技术创新'
         };
 
         console.log('📝 Starting brainstorm with chat logging...');

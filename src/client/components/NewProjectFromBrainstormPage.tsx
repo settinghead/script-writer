@@ -47,13 +47,13 @@ const NewProjectFromBrainstormPage: React.FC = () => {
             return response.json();
         },
         onSuccess: (data) => {
-            message.success('Project created! Redirecting to brainstorm page...');
+            message.success('项目已创建！正在重定向到头脑风暴页面...');
             // Navigate to the project brainstorm page where Electric will sync the results
             navigate(`/projects/${data.projectId}/brainstorm`);
         },
         onError: (error) => {
             console.error('Error creating project:', error);
-            message.error(error instanceof Error ? error.message : 'Failed to create project. Please try again.');
+            message.error(error instanceof Error ? error.message : '创建项目失败。请重试。');
         }
     });
 
@@ -63,13 +63,13 @@ const NewProjectFromBrainstormPage: React.FC = () => {
 
             // Prepare brainstorm parameters
             const params: BrainstormParams = {
-                genre: values.genre || 'any',
-                theme: values.other_requirements || 'general story',
-                character_setting: 'modern protagonist',
-                plot_device: 'time travel or modern knowledge',
-                ending_type: 'happy ending',
-                length: 'short form video series',
-                platform: values.platform || 'social media',
+                genre: values.genre || '任意类型',
+                theme: values.other_requirements || '通用故事',
+                character_setting: '现代主角',
+                plot_device: '穿越或现代知识',
+                ending_type: '美好结局',
+                length: '短视频系列',
+                platform: values.platform || '社交媒体',
                 additional_requirements: values.other_requirements
             };
 
@@ -93,9 +93,9 @@ const NewProjectFromBrainstormPage: React.FC = () => {
     return (
         <Flex justify="center" align="flex-start" style={{ paddingTop: '2rem' }}>
             <Card style={{ width: 800 }}>
-                <Title level={2}>New Project from Brainstorm</Title>
+                <Title level={2}>从头脑风暴创建新项目</Title>
                 <Paragraph>
-                    Start a new project by providing some initial brainstorming parameters. The AI agent will generate creative story ideas based on your input.
+                    通过提供一些初始头脑风暴参数来开始一个新项目。AI助手将根据您的输入生成创意故事想法。
                 </Paragraph>
 
                 <Divider />
@@ -111,7 +111,7 @@ const NewProjectFromBrainstormPage: React.FC = () => {
                     <Form.Item
                         name="platform"
                         label="目标平台"
-                        rules={[{ required: true, message: 'Please input the target platform!' }]}
+                        rules={[{ required: true, message: '请输入目标平台！' }]}
                     >
                         <Input placeholder="例如: 抖音, 快手, YouTube Shorts" />
                     </Form.Item>
@@ -119,7 +119,7 @@ const NewProjectFromBrainstormPage: React.FC = () => {
                     <Form.Item
                         name="genre"
                         label="故事类型"
-                        rules={[{ required: true, message: 'Please input the story genre!' }]}
+                        rules={[{ required: true, message: '请输入故事类型！' }]}
                     >
                         <Input placeholder="例如: 穿越, 爽文, 甜宠, 悬疑" />
                     </Form.Item>
@@ -141,10 +141,10 @@ const NewProjectFromBrainstormPage: React.FC = () => {
                                 onClick={handleStart}
                                 loading={createProjectMutation.isPending}
                             >
-                                {createProjectMutation.isPending ? 'Creating Project...' : 'Start Generating'}
+                                {createProjectMutation.isPending ? '正在创建项目...' : '开始生成'}
                             </Button>
                             <Button onClick={handleReset} disabled={createProjectMutation.isPending}>
-                                Reset
+                                重置
                             </Button>
                         </Space>
                     </Form.Item>
@@ -153,7 +153,7 @@ const NewProjectFromBrainstormPage: React.FC = () => {
                 {createProjectMutation.isPending && (
                     <Flex vertical align="center" gap="middle" style={{ marginTop: '2rem' }}>
                         <Spin size="large" />
-                        <Text>Your new project is being created. You will be redirected shortly...</Text>
+                        <Text>正在创建您的新项目。您将很快被重定向...</Text>
                     </Flex>
                 )}
 
