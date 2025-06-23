@@ -26,18 +26,17 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ projectId }) => {
             <Header style={{
                 background: '#1e1e1e',
                 borderBottom: '1px solid #333',
-                padding: '16px',
+                paddingLeft: '16px',
+                paddingRight: "16px",
                 height: 'auto'
             }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                     <div>
                         <Title level={4} style={{ margin: 0, color: '#f0f0f0', display: 'flex', alignItems: 'center', gap: 8 }}>
                             <RobotOutlined />
-                            AI助手
+                            觅光助手
                         </Title>
-                        <Text type="secondary" style={{ fontSize: 12 }}>
-                            创意写作助手
-                        </Text>
+
                     </div>
 
                     <Badge
@@ -50,9 +49,9 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ projectId }) => {
                     />
                 </div>
 
-                <Divider style={{ margin: '8px 0', borderColor: '#333' }} />
+                {/* <Divider style={{ margin: '8px 0', borderColor: '#333' }} /> */}
 
-                <div style={{ display: 'flex', gap: 8 }}>
+                {/* <div style={{ display: 'flex', gap: 8 }}>
                     <Tooltip title="清除聊天记录">
                         <Button
                             type="text"
@@ -67,7 +66,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ projectId }) => {
                             }}
                         />
                     </Tooltip>
-                </div>
+                </div> */}
             </Header>
 
             <Content style={{ background: '#1a1a1a', overflow: 'hidden' }}>

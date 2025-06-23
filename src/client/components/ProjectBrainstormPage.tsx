@@ -138,14 +138,7 @@ export default function ProjectBrainstormPage() {
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <button
-                onClick={() => navigate('/projects')}
-                className="text-blue-400 hover:text-blue-300 mb-2 flex items-center gap-2"
-              >
-                ← 返回项目
-              </button>
-              <h1 className="text-3xl font-bold">头脑风暴结果</h1>
-              <p className="text-gray-400 mt-1">项目: {projectId}</p>
+
               {lastSyncedAt && (
                 <p className="text-xs text-gray-500 mt-1">
                   最后同步: {new Date(lastSyncedAt).toLocaleTimeString()}
@@ -161,12 +154,7 @@ export default function ProjectBrainstormPage() {
                   <span className="text-sm text-blue-400">正在生成想法...</span>
                 </div>
               )}
-              {status === 'completed' && (
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span className="text-sm text-green-400">完成</span>
-                </div>
-              )}
+
             </div>
           </div>
 
@@ -216,18 +204,6 @@ export default function ProjectBrainstormPage() {
           </div>
         )}
 
-        {/* Actions */}
-        {ideas.length > 0 && status === 'completed' && (
-          <div className="mt-8 flex justify-center gap-4">
-
-            <button
-              onClick={() => navigate('/projects')}
-              className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
-            >
-              返回项目
-            </button>
-          </div>
-        )}
       </div>
     </div>
   )

@@ -6,7 +6,7 @@ import { EditableField } from './EditableField';
 import { useProjectData } from '../../contexts/ProjectDataContext';
 import type { ElectricArtifact } from '../../../common/types';
 import { extractDataAtPath, getPathDescription } from '../../../common/utils/pathExtraction';
-import { CheckOutlined, EditOutlined, LoadingOutlined } from '@ant-design/icons';
+import { CheckOutlined, LoadingOutlined } from '@ant-design/icons';
 
 // Artifact type to field mapping
 interface FieldConfig {
@@ -193,7 +193,7 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
                 // Notify parent component
                 onTransition?.(response.derivedArtifact.id);
 
-                message.success('开始编辑');
+                message.success('选中灵感，开始编辑');
             },
             onError: (error) => {
                 setIsCreatingTransform(false);
@@ -255,7 +255,11 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
     // Show edit button if no transform exists yet
     if (shouldShowEditButton && !isEditing) {
         return (
-            <div className={`artifact-editor ${className}`}>
+            <div
+                className={`artifact-editor ${className}`}
+                onClick={handleEditClick}
+                style={{ cursor: 'text' }}
+            >
                 <div className="flex items-center justify-between p-4 border-2 border-gray-600 rounded-lg">
                     <div className="flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-blue-400" />
@@ -264,16 +268,9 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
                             {path && ` • ${getPathDescription(path)}`}
                         </span>
                     </div>
-                    <Button
-                        type="primary"
-                        size="small"
-                        icon={isCreatingTransform ? <LoadingOutlined /> : <EditOutlined />}
-                        onClick={handleEditClick}
-                        loading={isCreatingTransform}
-                        disabled={isCreatingTransform}
-                    >
-                        {isCreatingTransform ? '创建中...' : '编辑'}
-                    </Button>
+                    {isCreatingTransform && (
+                        <LoadingOutlined style={{ color: '#1890ff' }} />
+                    )}
                 </div>
 
                 {/* Read-only display of original data */}

@@ -1,6 +1,7 @@
-import React, { useState, useRef, KeyboardEvent } from 'react';
+import React, { useState, useRef, KeyboardEvent, useEffect } from 'react';
 import { Input, Button, Space, Tag, Typography } from 'antd';
 import { SendOutlined, LoadingOutlined } from '@ant-design/icons';
+import { useTypewriter } from '../../hooks/useTypewriter';
 
 const { TextArea } = Input;
 const { Text } = Typography;
@@ -17,7 +18,23 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     placeholder = "向我询问任何关于你的创作项目的问题..."
 }) => {
     const [message, setMessage] = useState('');
+    const [isHidingSuggestions, setIsHidingSuggestions] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    const { displayText, isTyping, startTyping } = useTypewriter({
+        speed: 30, // 30ms per character for smooth but fast typing
+        onComplete: () => {
+            // Auto-resize textarea when typing is complete
+            adjustTextareaHeight();
+        }
+    });
+
+    // Sync the typewriter display text with the message state
+    useEffect(() => {
+        if (isTyping) {
+            setMessage(displayText);
+        }
+    }, [displayText, isTyping]);
 
     const handleSend = () => {
         const trimmedMessage = message.trim();
@@ -51,21 +68,32 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        setMessage(e.target.value);
-        adjustTextareaHeight();
+        // Only allow manual input if not currently typing
+        if (!isTyping) {
+            setMessage(e.target.value);
+            adjustTextareaHeight();
+            // Reset animation state if user manually types
+            if (isHidingSuggestions) {
+                setIsHidingSuggestions(false);
+            }
+        }
     };
 
     const getSuggestions = () => [
-        "帮我头脑风暴故事创意",
-        "为我的剧本创建大纲",
-        "为这个场景写对白",
-        "你能帮我做什么？",
-        "生成角色创意"
+        "都不满意，再生成几个",
+        "太老套，创新一点",
+        "每个再长一点",
     ];
 
     const handleSuggestionClick = (suggestion: string) => {
         if (!disabled) {
-            onSend(suggestion);
+            // Start the hide animation
+            setIsHidingSuggestions(true);
+
+            // Start typewriter effect after animation begins
+            setTimeout(() => {
+                startTyping(suggestion);
+            }, 100);
         }
     };
 
@@ -73,24 +101,66 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         <div style={{ padding: 0 }}>
             {/* Quick suggestions (shown when input is empty) */}
             {message.length === 0 && (
-                <div style={{ marginBottom: 12 }}>
-                    <Space wrap size="small">
-                        {getSuggestions().slice(0, 3).map((suggestion, index) => (
-                            <Tag
-                                key={index}
-                                color="blue"
-                                style={{
-                                    cursor: disabled ? 'not-allowed' : 'pointer',
-                                    opacity: disabled ? 0.5 : 1,
-                                    fontSize: 11,
-                                    padding: '2px 8px'
-                                }}
-                                onClick={() => handleSuggestionClick(suggestion)}
-                            >
-                                {suggestion}
-                            </Tag>
-                        ))}
-                    </Space>
+                <div
+                    style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr 1fr',
+                        gap: 8,
+                        width: '100%',
+                        opacity: isHidingSuggestions ? 0 : 1,
+                        maxHeight: isHidingSuggestions ? 0 : '60px',
+                        overflow: 'hidden',
+                        transition: 'opacity 0.3s ease-out, max-height 0.4s ease-out, margin-bottom 0.4s ease-out',
+                        marginBottom: isHidingSuggestions ? 0 : 12
+                    }}
+                >
+                    {getSuggestions().slice(0, 3).map((suggestion, index) => (
+                        <Tag
+                            key={index}
+                            style={{
+                                cursor: disabled ? 'not-allowed' : 'pointer',
+                                opacity: disabled ? 0.5 : 1,
+                                fontSize: 14,
+                                fontWeight: 500,
+                                padding: '10px 12px',
+                                textAlign: 'center',
+                                margin: 0,
+                                whiteSpace: 'normal',
+                                wordWrap: 'break-word',
+                                lineHeight: '1.3',
+                                minHeight: '44px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                background: '#1e3a8a',
+                                color: '#93c5fd',
+                                border: '1px solid #3b82f6',
+                                borderRadius: '6px',
+                                transition: 'all 0.2s ease-in-out'
+                            }}
+                            onMouseEnter={(e) => {
+                                if (!disabled && !isHidingSuggestions) {
+                                    e.currentTarget.style.background = '#1e40af';
+                                    e.currentTarget.style.color = '#bfdbfe';
+                                    e.currentTarget.style.borderColor = '#60a5fa';
+                                    e.currentTarget.style.transform = 'translateY(-1px)';
+                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)';
+                                }
+                            }}
+                            onMouseLeave={(e) => {
+                                if (!disabled && !isHidingSuggestions) {
+                                    e.currentTarget.style.background = '#1e3a8a';
+                                    e.currentTarget.style.color = '#93c5fd';
+                                    e.currentTarget.style.borderColor = '#3b82f6';
+                                    e.currentTarget.style.transform = 'translateY(0px)';
+                                    e.currentTarget.style.boxShadow = 'none';
+                                }
+                            }}
+                            onClick={() => handleSuggestionClick(suggestion)}
+                        >
+                            {suggestion}
+                        </Tag>
+                    ))}
                 </div>
             )}
 
@@ -100,14 +170,15 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                     onChange={(e) => handleInputChange(e as any)}
                     onKeyDown={handleKeyDown}
                     placeholder={disabled ? "AI正在思考..." : placeholder}
-                    disabled={disabled}
+                    disabled={disabled || isTyping}
                     autoSize={{ minRows: 1, maxRows: 4 }}
                     maxLength={5000}
                     style={{
                         background: '#2a2a2a',
                         borderColor: '#444',
                         color: '#e0e0e0',
-                        resize: 'none'
+                        resize: 'none',
+                        cursor: isTyping ? 'default' : 'text'
                     }}
                     showCount={message.length > 4000}
                 />

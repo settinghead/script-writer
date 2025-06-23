@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { Space, Button, Typography, Spin, Empty, Card, Tag, Alert } from 'antd';
-import { StopOutlined, ReloadOutlined, EyeOutlined, EditOutlined, CheckOutlined, FileTextOutlined } from '@ant-design/icons';
+import { StopOutlined, ReloadOutlined, EyeOutlined, CheckOutlined, FileTextOutlined } from '@ant-design/icons';
 import { ThinkingIndicator } from './shared/ThinkingIndicator';
 import { ReasoningIndicator } from './shared/ReasoningIndicator';
 import { IdeaWithTitle } from '../types/brainstorm';
@@ -182,17 +182,44 @@ const EditableIdeaCardComponent: React.FC<{
                 key={`${idea.artifactId || 'idea'}-${index}`}
                 style={{
                     backgroundColor: isSelected ? '#2d3436' : '#262626',
-                    border: '1px solid #a1a1a1',
+                    border: isSelected ? '1px solid #1890ff' : '1px solid #434343',
                     transition: 'all 0.2s ease',
                     animation: 'fadeIn 0.3s ease-out',
                     position: 'relative'
                 }}
                 styles={{ body: { padding: '12px' } }}
+                hoverable={!isSelected}
+                onMouseEnter={(e) => {
+                    if (!isSelected) {
+                        e.currentTarget.style.borderColor = '#1890ff';
+                        e.currentTarget.style.backgroundColor = '#2d3436';
+                    }
+                }}
+                onMouseLeave={(e) => {
+                    if (!isSelected) {
+                        e.currentTarget.style.borderColor = '#434343';
+                        e.currentTarget.style.backgroundColor = '#262626';
+                    }
+                }}
             >
                 <div>
+                    {/* Show checkmark if recently saved */}
+                    {showSavedCheckmark && (
+                        <div
+                            style={{
+                                position: 'absolute',
+                                top: '8px',
+                                right: '8px',
+                                color: '#52c41a',
+                                opacity: 0.9
+                            }}
+                            title="已保存"
+                        >
+                            <CheckOutlined />
+                        </div>
+                    )}
 
-
-                    <div style={{ paddingRight: '40px' }}>
+                    <div>
                         <ArtifactEditor
                             artifactId={idea.artifactId}
                             path={`[${index}]`}
@@ -227,14 +254,15 @@ const EditableIdeaCardComponent: React.FC<{
         );
     }
 
-    // Default read-only view
+    // Default read-only view - this should not be reached since we always have artifactId
+    // But keeping it as fallback
     return (
         <Card
             key={`${idea.artifactId || 'idea'}-${index}`}
             style={{
                 backgroundColor: isSelected ? '#2d3436' : '#262626',
                 border: isSelected ? '1px solid #1890ff' : '1px solid #434343',
-                cursor: 'pointer',
+                cursor: 'text',
                 transition: 'all 0.2s ease',
                 animation: 'fadeIn 0.3s ease-out',
                 position: 'relative'
@@ -255,44 +283,24 @@ const EditableIdeaCardComponent: React.FC<{
             }}
         >
             <div>
-                {/* Edit button or checkmark - only show if we have an artifactId */}
-                {idea.artifactId && (
-                    showSavedCheckmark ? (
-                        <div
-                            style={{
-                                position: 'absolute',
-                                top: '8px',
-                                right: '8px',
-                                color: '#52c41a',
-                                opacity: 0.9
-                            }}
-                            title="已保存"
-                        >
-                            <CheckOutlined />
-                        </div>
-                    ) : (
-                        <Button
-                            size="small"
-                            type="text"
-                            icon={<EditOutlined />}
-                            onClick={(e) => {
-                                e.stopPropagation();
-                            }}
-                            style={{
-                                position: 'absolute',
-                                top: '8px',
-                                right: '8px',
-                                color: '#1890ff',
-                                opacity: 0.7
-                            }}
-                            className="edit-button"
-                            title="编辑"
-                        />
-                    )
+                {/* Show checkmark if recently saved */}
+                {idea.artifactId && showSavedCheckmark && (
+                    <div
+                        style={{
+                            position: 'absolute',
+                            top: '8px',
+                            right: '8px',
+                            color: '#52c41a',
+                            opacity: 0.9
+                        }}
+                        title="已保存"
+                    >
+                        <CheckOutlined />
+                    </div>
                 )}
 
                 {/* Read-only display */}
-                <div style={{ marginBottom: '8px', paddingRight: '60px' }}>
+                <div style={{ marginBottom: '8px' }}>
                     <Typography.Text strong style={{
                         color: '#d9d9d9',
                         fontSize: '14px'
@@ -301,7 +309,7 @@ const EditableIdeaCardComponent: React.FC<{
                     </Typography.Text>
                 </div>
 
-                <div style={{ marginBottom: ideaOutlines.length > 0 ? '8px' : '0', paddingRight: '60px' }}>
+                <div style={{ marginBottom: ideaOutlines.length > 0 ? '8px' : '0' }}>
                     <Typography.Text style={{
                         color: '#a6a6a6',
                         fontSize: '13px',

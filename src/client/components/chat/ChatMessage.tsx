@@ -63,9 +63,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, isStreaming =
             return <Tag color="processing" icon={<Spin size="small" />}>思考中...</Tag>;
         }
         if (processedMessage.thinkingDuration) {
-            return <Tag color="success" icon={<ClockCircleOutlined />}>
-                完成于 {Math.round(processedMessage.thinkingDuration / 1000)}秒
-            </Tag>;
+            return <></>;
         }
         return null;
     };
@@ -106,7 +104,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, isStreaming =
                 }}>
                     <Text strong style={{ color: '#e0e0e0', fontSize: 12 }}>
                         {message.role === 'user' ? '你' :
-                            message.role === 'assistant' ? 'AI助手' :
+                            message.role === 'assistant' ? '觅光助手' :
                                 '系统'}
                     </Text>
                     <Text type="secondary" style={{ fontSize: 11 }}>
@@ -122,12 +120,12 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, isStreaming =
                         background: isUserMessage ? '#4f46e5' :
                             message.display_type === 'tool_summary' ? '#f59e0b20' : '#2a2a2a',
                         border: message.display_type === 'tool_summary' ? '1px solid #f59e0b40' : 'none',
-                        borderRadius: 12,
+                        borderRadius: 10,
                         maxWidth: '100%',
                         wordBreak: 'break-word'
                     }}
                     bodyStyle={{
-                        padding: '12px 16px',
+                        padding: '10px 10px',
                         color: isUserMessage ? 'white' :
                             message.display_type === 'tool_summary' ? '#f59e0b' : '#e0e0e0'
                     }}
