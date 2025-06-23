@@ -28,7 +28,7 @@ const initialNodes: Node[] = [
                     borderRadius: '12px',
                     color: 'white',
                     fontWeight: 600,
-                    fontSize: '14px',
+                    fontSize: '18px',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '8px',
@@ -40,12 +40,12 @@ const initialNodes: Node[] = [
                 </div>
             )
         },
-        position: { x: 100, y: 100 },
+        position: { x: 50, y: 150 },
         sourcePosition: Position.Right,
         style: {
             background: 'transparent',
             border: 'none',
-            width: 150,
+            width: 180,
         },
     },
     {
@@ -59,7 +59,7 @@ const initialNodes: Node[] = [
                     borderRadius: '12px',
                     color: 'white',
                     fontWeight: 600,
-                    fontSize: '14px',
+                    fontSize: '18px',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '8px',
@@ -67,11 +67,136 @@ const initialNodes: Node[] = [
                     border: '1px solid rgba(255, 255, 255, 0.2)',
                     backdropFilter: 'blur(10px)'
                 }}>
-                    📝 大纲生成
+                    📝 叙事大纲
                 </div>
             )
         },
-        position: { x: 360, y: 100 },
+        position: { x: 280, y: 150 },
+        sourcePosition: Position.Right,
+        targetPosition: Position.Left,
+        style: {
+            background: 'transparent',
+            border: 'none',
+            width: 180,
+        },
+    },
+    {
+        id: '3',
+        type: 'default',
+        data: {
+            label: (
+                <div style={{
+                    padding: '10px 14px',
+                    background: 'linear-gradient(135deg, #722ed1 0%, #9254de 50%, #b37feb 100%)',
+                    borderRadius: '10px',
+                    color: 'white',
+                    fontWeight: 600,
+                    fontSize: '18px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    boxShadow: '0 3px 8px rgba(114, 46, 209, 0.3), 0 1px 4px rgba(114, 46, 209, 0.2)',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    backdropFilter: 'blur(10px)'
+                }}>
+                    🎬 第一幕
+                </div>
+            )
+        },
+        position: { x: 510, y: 80 },
+        targetPosition: Position.Left,
+        style: {
+            background: 'transparent',
+            border: 'none',
+            width: 150,
+        },
+    },
+    {
+        id: '4',
+        type: 'default',
+        data: {
+            label: (
+                <div style={{
+                    padding: '10px 14px',
+                    background: 'linear-gradient(135deg, #fa541c 0%, #ff7a45 50%, #ffa39e 100%)',
+                    borderRadius: '10px',
+                    color: 'white',
+                    fontWeight: 600,
+                    fontSize: '18px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    boxShadow: '0 3px 8px rgba(250, 84, 28, 0.3), 0 1px 4px rgba(250, 84, 28, 0.2)',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    backdropFilter: 'blur(10px)'
+                }}>
+                    🎭 第二幕
+                </div>
+            )
+        },
+        position: { x: 510, y: 130 },
+        targetPosition: Position.Left,
+        style: {
+            background: 'transparent',
+            border: 'none',
+            width: 150,
+        },
+    },
+    {
+        id: '5',
+        type: 'default',
+        data: {
+            label: (
+                <div style={{
+                    padding: '10px 14px',
+                    background: 'linear-gradient(135deg, #13c2c2 0%, #36cfc9 50%, #87e8de 100%)',
+                    borderRadius: '10px',
+                    color: 'white',
+                    fontWeight: 600,
+                    fontSize: '18px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    boxShadow: '0 3px 8px rgba(19, 194, 194, 0.3), 0 1px 4px rgba(19, 194, 194, 0.2)',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    backdropFilter: 'blur(10px)'
+                }}>
+                    🎪 第三幕
+                </div>
+            )
+        },
+        position: { x: 510, y: 180 },
+        targetPosition: Position.Left,
+        style: {
+            background: 'transparent',
+            border: 'none',
+            width: 150,
+        },
+    },
+    {
+        id: '6',
+        type: 'default',
+        data: {
+            label: (
+                <div style={{
+                    padding: '10px 14px',
+                    background: 'linear-gradient(135deg, #eb2f96 0%, #f759ab 50%, #ffadd6 100%)',
+                    borderRadius: '10px',
+                    color: 'white',
+                    fontWeight: 600,
+                    fontSize: '18px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    boxShadow: '0 3px 8px rgba(235, 47, 150, 0.3), 0 1px 4px rgba(235, 47, 150, 0.2)',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    backdropFilter: 'blur(10px)'
+                }}>
+                    🎯 尾声
+                </div>
+            )
+        },
+        position: { x: 510, y: 230 },
         targetPosition: Position.Left,
         style: {
             background: 'transparent',
@@ -86,14 +211,70 @@ const initialEdges: Edge[] = [
         id: 'e1-2',
         source: '1',
         target: '2',
-        type: 'smoothstep',
+        type: 'default',
         style: {
-            stroke: 'url(#edge-gradient)',
+            stroke: '#666',
             strokeWidth: 3,
         },
         markerEnd: {
             type: MarkerType.ArrowClosed,
-            color: '#40a9ff',
+            color: '#666',
+        },
+    },
+    {
+        id: 'e2-3',
+        source: '2',
+        target: '3',
+        type: 'default',
+        style: {
+            stroke: '#666',
+            strokeWidth: 2,
+        },
+        markerEnd: {
+            type: MarkerType.ArrowClosed,
+            color: '#666',
+        },
+    },
+    {
+        id: 'e2-4',
+        source: '2',
+        target: '4',
+        type: 'default',
+        style: {
+            stroke: '#666',
+            strokeWidth: 2,
+        },
+        markerEnd: {
+            type: MarkerType.ArrowClosed,
+            color: '#666',
+        },
+    },
+    {
+        id: 'e2-5',
+        source: '2',
+        target: '5',
+        type: 'default',
+        style: {
+            stroke: '#666',
+            strokeWidth: 2,
+        },
+        markerEnd: {
+            type: MarkerType.ArrowClosed,
+            color: '#666',
+        },
+    },
+    {
+        id: 'e2-6',
+        source: '2',
+        target: '6',
+        type: 'default',
+        style: {
+            stroke: '#666',
+            strokeWidth: 2,
+        },
+        markerEnd: {
+            type: MarkerType.ArrowClosed,
+            color: '#666',
         },
     },
 ];
@@ -133,15 +314,7 @@ const WorkflowVisualization: React.FC<WorkflowVisualizationProps> = ({
           opacity: 0;
         }
       `}</style>
-            <svg width="0" height="0">
-                <defs>
-                    <linearGradient id="edge-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" stopColor="#1890ff" />
-                        <stop offset="50%" stopColor="#40a9ff" />
-                        <stop offset="100%" stopColor="#52c41a" />
-                    </linearGradient>
-                </defs>
-            </svg>
+
             <ReactFlow
                 nodes={nodes}
                 edges={edges}
@@ -174,14 +347,7 @@ const WorkflowVisualization: React.FC<WorkflowVisualizationProps> = ({
                         border: '1px solid #333',
                     }}
                 />
-                <MiniMap
-                    style={{
-                        background: '#0a0a0a',
-                        border: '1px solid #333',
-                    }}
-                    nodeColor="#666"
-                    maskColor="rgba(0, 0, 0, 0.6)"
-                />
+
             </ReactFlow>
         </div>
     );

@@ -94,7 +94,7 @@ const LoginPage: React.FC = () => {
                 <div style={{ textAlign: 'center', marginBottom: '32px' }}>
                     <div style={{
                         width: '64px',
-                        height: '64px',
+                        height: '50px',
                         borderRadius: '50%',
                         background: 'linear-gradient(135deg, #1890ff, #40a9ff)',
                         display: 'flex',
