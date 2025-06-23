@@ -1,6 +1,6 @@
 import express from 'express';
 import { ProjectService } from '../services/ProjectService';
-import { AgentService } from '../services/AgentService';
+import { AgentService, GeneralAgentRequestSchema } from '../services/AgentService';
 import { AgentBrainstormRequestSchema } from '../../common/types';
 
 export function createProjectRoutes(
@@ -48,6 +48,52 @@ export function createProjectRoutes(
             console.error('Error fetching project:', error);
             res.status(500).json({
                 error: 'Failed to fetch project',
+                details: error.message
+            });
+        }
+    });
+
+    // POST /api/projects/:id/agent - General agent endpoint for various tasks
+    router.post('/:id/agent', authMiddleware.authenticate, async (req: any, res: any) => {
+        try {
+            const user = authMiddleware.getCurrentUser(req);
+            if (!user) {
+                return res.status(401).json({ error: "User not authenticated" });
+            }
+
+            const projectId = req.params.id;
+
+            // Verify user has access to this project
+            const project = await projectService.getProject(projectId, user.id);
+            if (!project) {
+                return res.status(404).json({ error: "Project not found" });
+            }
+
+            const validation = GeneralAgentRequestSchema.safeParse({
+                ...req.body,
+                projectId // Add projectId to the request
+            });
+            if (!validation.success) {
+                return res.status(400).json({
+                    error: "Invalid request body",
+                    details: validation.error.format(),
+                });
+            }
+            const agentRequest = validation.data;
+
+            // Start the general agent (this is async and won't be awaited)
+            agentService.runGeneralAgent(projectId, user.id, agentRequest);
+
+            // Return immediately
+            res.status(202).json({
+                projectId: projectId,
+                message: "Agent request received and processing started."
+            });
+
+        } catch (error: any) {
+            console.error('Error running general agent:', error);
+            res.status(500).json({
+                error: 'Failed to run general agent',
                 details: error.message
             });
         }
