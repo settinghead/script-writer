@@ -101,6 +101,7 @@ src/
 - **ALWAYS use `./run-ts` when running TypeScript Node.js scripts** - never use `npx tsx` or `node` directly
 - The `./run-ts` script handles proper TypeScript configuration, dotenv loading, and module resolution
 - Example: `./run-ts src/server/test-script.ts` instead of `npx tsx src/server/test-script.ts`
+- run-ts can only run typescript files. Do not run inline script. Always write down the script in TS file(s).
 
 ### 18. Debugging & Analytics
 - If a new flow is constructed or modified, test by creating a node.js only testing script that executes transforms
