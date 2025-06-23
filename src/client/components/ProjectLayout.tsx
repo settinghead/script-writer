@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Outlet, useParams, useNavigate } from 'react-router-dom';
 import { Layout, Breadcrumb, Typography, Spin, Alert, Space, Button, Card, List } from 'antd';
-import { HomeOutlined, ProjectOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import { HomeOutlined, ProjectOutlined, ArrowLeftOutlined, EyeOutlined, EyeInvisibleOutlined } from '@ant-design/icons';
 import { useProjectData } from '../hooks/useProjectData';
 import { useProjectStore } from '../stores/projectStore';
 import { ProjectDataProvider } from '../contexts/ProjectDataContext';
 import { ChatSidebarWrapper } from './chat/ChatSidebarWrapper';
+import WorkflowVisualization from './WorkflowVisualization';
 
 const { Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -25,6 +26,7 @@ interface ProjectData {
 const ProjectLayout: React.FC = () => {
     const { projectId } = useParams<{ projectId: string }>();
     const navigate = useNavigate();
+    const [showWorkflow, setShowWorkflow] = useState(true);
 
     // Cache the selector to avoid infinite loop warning
     const emptyProject = useMemo(() => ({}), []);
@@ -113,6 +115,43 @@ const ProjectLayout: React.FC = () => {
                     <ChatSidebarWrapper projectId={projectId!} />
                 </Sider>
                 <Content style={{ padding: '24px', overflowY: 'auto' }}>
+                    {/* Workflow Visualization Section */}
+                    <div style={{ marginBottom: '24px' }}>
+                        <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            marginBottom: '12px'
+                        }}>
+                            <Title level={4} style={{ margin: 0, color: '#fff' }}>
+                                工作流程图
+                            </Title>
+                            <Button
+                                type="text"
+                                icon={showWorkflow ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+                                onClick={() => setShowWorkflow(!showWorkflow)}
+                                style={{ color: '#1890ff' }}
+                            >
+                                {showWorkflow ? '隐藏' : '显示'}
+                            </Button>
+                        </div>
+
+                        <div
+                            style={{
+                                height: showWorkflow ? '220px' : '0px',
+                                overflow: 'hidden',
+                                transition: 'height 0.3s ease-in-out',
+                                opacity: showWorkflow ? 1 : 0,
+                                transform: showWorkflow ? 'translateY(0)' : 'translateY(-10px)',
+                                transitionProperty: 'height, opacity, transform',
+                                transitionDuration: '0.3s',
+                                transitionTimingFunction: 'ease-in-out',
+                            }}
+                        >
+                            <WorkflowVisualization height={200} />
+                        </div>
+                    </div>
+
                     <Outlet />
 
                     {/* Note: Streaming UI removed - now handled by individual pages with Electric SQL */}
