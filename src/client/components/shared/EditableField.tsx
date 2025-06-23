@@ -59,7 +59,7 @@ export const EditableField: React.FC<EditableFieldProps> = React.memo(({
         const now = Date.now();
         const timeSinceLastTyping = now - lastTypingTime.current;
         const timeSinceLastExternal = now - lastExternalUpdate.current;
-        
+
         // Don't update from external source if:
         // 1. User is currently focused on this field
         // 2. User has typed recently (within 3 seconds)
@@ -105,12 +105,12 @@ export const EditableField: React.FC<EditableFieldProps> = React.memo(({
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const newValue = e.target.value;
         const now = Date.now();
-        
+
         setLocalValue(newValue);
         setIsTyping(true);
         setHasUserInput(true);
         lastTypingTime.current = now;
-        
+
         onChange(newValue);
     };
 
@@ -119,7 +119,7 @@ export const EditableField: React.FC<EditableFieldProps> = React.memo(({
         setHasUserInput(true);
         lastTypingTime.current = Date.now();
         onFocus();
-        
+
         // Store reference to the input element
         if (inputRef.current !== e.target) {
             inputRef.current = e.target;
@@ -138,7 +138,7 @@ export const EditableField: React.FC<EditableFieldProps> = React.memo(({
             // Restore focus if it was lost during re-render
             const cursorPosition = inputRef.current.selectionStart || 0;
             inputRef.current.focus();
-            
+
             // Use a timeout to ensure focus is restored before setting selection
             setTimeout(() => {
                 if (inputRef.current && typeof inputRef.current.setSelectionRange === 'function') {
@@ -184,7 +184,7 @@ export const EditableField: React.FC<EditableFieldProps> = React.memo(({
             <TextArea
                 {...commonProps}
                 rows={rows}
-                autoSize={{ minRows: rows, maxRows: rows + 2 }}
+                autoSize={{ minRows: 3, }}
             />
         );
     }
