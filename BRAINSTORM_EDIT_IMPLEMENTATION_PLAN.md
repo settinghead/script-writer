@@ -9,339 +9,252 @@ The current script-writer application has a robust brainstorm system that genera
 The existing brainstorm system works as follows:
 1. **Initial Generation**: Agent creates `brainstorm_idea_collection` artifact containing multiple story ideas
 2. **Manual Editing**: Users can edit individual ideas through `ArtifactEditor`, which creates human transforms and `user_input` artifacts
-3. **Simple Lineage**: Currently only supports one level of human editing (original → human_transform → user_input)
+3. **Simple Lineage**: Currently only supports one level of editing (original → user_input)
 
-### Problems with Current System
+### What We're Building
 
-1. **Limited AI Integration**: Users cannot ask the AI to improve or modify existing ideas
-2. **Simple Lineage**: No support for complex transformation chains (AI edit → human edit → AI edit)
-3. **Context Loss**: Agent has no awareness of existing brainstorm ideas when making edits
-4. **Manual Process**: All edits require manual typing rather than natural language instructions
+We want to add **LLM-powered editing** that allows:
+1. **Agent-driven editing**: Chat agent can understand user requests like "make the stories more modern" and automatically edit ideas
+2. **Complex lineage**: Support multiple rounds of editing (original → LLM edit → human edit → LLM edit → etc.)
+3. **Intelligent context**: Agent provides enriched context and instructions to the LLM editing tool
+4. **UI integration**: Frontend can display and interact with the full editing lineage
 
-## Proposed Solution
+## Implementation Phases
 
-We will implement a **multi-phase enhancement** that adds:
+### ✅ Phase 1: LLM Edit Tool & Agent Integration (COMPLETED)
 
-1. **LLM-powered brainstorm editing tool** for the agent
-2. **Complex lineage resolution system** to handle transformation chains
-3. **Agent context enrichment** with existing brainstorm ideas
-4. **Dynamic lineage tracking** in the UI components
+**Status: ✅ COMPLETED - All functionality tested and working**
 
-### Example Use Cases
+**What was implemented:**
+- ✅ **LLM Transform Definition**: Added `llm_edit_brainstorm_idea` transform with Zod schemas
+- ✅ **LLM Edit Template**: Comprehensive Chinese prompt with platform-specific requirements
+- ✅ **Brainstorm Edit Tool**: Handles multiple artifact types with proper lineage tracking
+- ✅ **Enhanced Agent Service**: `runGeneralAgent` with context preparation and tool selection
+- ✅ **API Integration**: `/api/projects/:id/agent` endpoint for general agent requests
+- ✅ **Comprehensive Testing**: Agent successfully handles whining users, specific edits, and bulk changes
 
-**Simple Edit Request:**
-```
-User: "Make the first idea more romantic"
-Agent: Analyzes current ideas → Calls edit tool with detailed requirements → Creates new brainstorm_idea artifact
-```
+**Test Results:**
+- ✅ Agent correctly recognizes edit vs generation requests
+- ✅ Makes multiple tool calls (one per idea) when needed
+- ✅ Handles complex lineage (original → edit → edit)
+- ✅ Produces high-quality Chinese story content
+- ✅ Maintains proper artifact relationships and transforms
 
-**Complex Lineage Chain:**
-```
-brainstorm_collection[0] "复仇公主"
-  → human_transform → user_input (user edited title)
-  → llm_transform(edit) → brainstorm_idea (AI improved plot)
-  → human_transform → user_input (user refined ending)
-  → llm_transform(edit) → brainstorm_idea (AI enhanced romance)
-```
+### 🔄 Phase 2: Lineage Resolution System (IN PROGRESS)
 
-**Agent Context Awareness:**
-```
-Agent Prompt: "Current brainstorm ideas:
-1. 复仇公主 (latest: AI-enhanced with romance) - A princess seeks revenge...
-2. 商战精英 (original) - A business elite discovers...
-3. 时空恋人 (user-edited) - A time traveler meets...
+**Objective**: Create a robust system to resolve complex artifact lineages and determine the "latest" version of any piece of content.
 
-User wants to: 'make the first story less violent'"
-```
+#### 2.1: Core Lineage Resolution Algorithm
 
-## Implementation Plan
+**Goal**: Create pure functions to traverse artifact/transform graphs and find the most recent version of content.
 
-### Phase 1: LLM Edit Tool & Agent Integration
-
-**Goal**: Create the core LLM transform for editing brainstorm ideas and integrate it with the agent framework.
-
-#### 1.1 Create LLM Transform Definition
-
-**File**: `src/common/schemas/transforms.ts`
-- Add new transform definition for `llm_edit_brainstorm_idea`
-- Define input/output schemas and validation rules
-
-#### 1.2 Create LLM Edit Template
-
-**File**: `src/server/services/templates/brainstormEdit.ts`
-- Create prompt template for editing existing brainstorm ideas
-- Include context about original idea and editing requirements
-- Ensure output follows 去脸谱化 (de-stereotyping) guidelines
-
-#### 1.3 Create Brainstorm Edit Tool
-
-**File**: `src/server/tools/BrainstormEditTool.ts`
-- Implement `StreamingToolDefinition` for brainstorm editing
-- Handle input validation (artifactId, ideaIndex, editRequirements)
-- Create LLM transform and new `brainstorm_idea` artifact
-- Follow existing patterns from `BrainstormTool.ts`
-
-#### 1.4 Integrate with Agent Service
-
-**File**: `src/server/services/AgentService.ts`
-- Add brainstorm edit tool to available tools
-- Update agent prompt to recognize edit requests
-- Add context enrichment for existing brainstorm ideas
-
-#### 1.5 Add Agent Tool Registry
-
-**File**: `src/server/services/StreamingAgentFramework.ts`
-- Update agent instructions to handle brainstorm editing requests
-- Add keyword detection for edit vs. create operations
-
-### Phase 2: Lineage Resolution System
-
-**Goal**: Create a robust system for resolving complex artifact transformation chains.
-
-#### 2.1 Create Lineage Resolution Utilities
-
-**File**: `src/common/utils/lineageResolution.ts`
-- Pure functions for traversing artifact → transform → artifact chains
-- Handle multiple types of transforms (human, llm)
-- Support path-based resolution (e.g., `[0]` for first brainstorm idea)
-
-**Core Functions**:
+**Data Structures**:
 ```typescript
 interface LineageNode {
   artifactId: string;
-  artifactType: string;
   transformId?: string;
-  transformType?: 'human' | 'llm';
   path?: string;
+  depth: number;
+  isLeaf: boolean;
 }
 
-// Resolve the latest artifact in a lineage chain
-function resolveLatestArtifact(
-  startArtifactId: string, 
-  path: string,
-  artifacts: ElectricArtifact[],
-  transforms: ElectricTransform[],
-  humanTransforms: ElectricHumanTransform[],
-  transformInputs: ElectricTransformInput[],
-  transformOutputs: ElectricTransformOutput[]
-): LineageNode | null
-
-// Get full lineage chain for debugging/display
-function getFullLineageChain(
-  startArtifactId: string,
-  path: string,
-  // ... same params
-): LineageNode[]
-
-// Validate that a lineage chain is valid
-function validateLineageChain(chain: LineageNode[]): boolean
+interface LineageGraph {
+  nodes: Map<string, LineageNode>;
+  edges: Map<string, string[]>; // artifactId -> [childArtifactIds]
+  paths: Map<string, LineageNode[]>; // path -> [nodes in lineage]
+}
 ```
 
-#### 2.2 Create Comprehensive Tests
+**Core Functions Needed**:
+- `buildLineageGraph(artifacts, transforms, inputs, outputs): LineageGraph`
+- `findLatestArtifact(sourceArtifactId, path?, graph): Artifact | null`
+- `getLineagePath(artifactId, graph): LineageNode[]`
+- `validateLineageIntegrity(graph): ValidationResult`
 
-**File**: `src/common/utils/__tests__/lineageResolution.test.ts`
-- Test simple chains: original → human → user_input
-- Test complex chains: original → human → user_input → llm → brainstorm_idea → human → user_input
-- Test branching scenarios and error cases
-- Test path-based resolution for different indices
+#### 2.2: Lineage Resolution Service
+
+**Goal**: Service layer that uses the core algorithm with real data.
+
+```typescript
+class LineageResolutionService {
+  constructor(
+    private artifactRepo: ArtifactRepository,
+    private transformRepo: TransformRepository
+  ) {}
+  
+  async resolveLatestArtifact(
+    projectId: string, 
+    sourceArtifactId: string, 
+    path?: string
+  ): Promise<Artifact | null>
+  
+  async getFullLineage(
+    projectId: string, 
+    artifactId: string
+  ): Promise<LineageNode[]>
+}
+```
+
+#### 2.3: Comprehensive Testing
 
 **Test Scenarios**:
-```typescript
-describe('Lineage Resolution', () => {
-  test('simple human edit chain', () => {
-    // brainstorm_collection[0] → human_transform → user_input
-  });
-  
-  test('complex multi-step chain', () => {
-    // brainstorm_collection[0] → human → user_input → llm → brainstorm_idea → human → user_input
-  });
-  
-  test('multiple ideas with different lineages', () => {
-    // [0] has complex chain, [1] is original, [2] has simple edit
-  });
-  
-  test('broken lineage handling', () => {
-    // Missing artifacts, circular references, etc.
-  });
-});
-```
-
-#### 2.3 Add Context Translation Utilities
-
-**File**: `src/common/utils/contextTranslation.ts`
-- Convert artifact/transform graph to LLM-friendly context
-- Extract brainstorm ideas with their current state
-- Create human-readable descriptions of editing history
-
-```typescript
-interface BrainstormContextItem {
-  index: number;
-  title: string;
-  body: string;
-  status: 'original' | 'user-edited' | 'ai-enhanced' | 'multi-edited';
-  editHistory: string; // Human-readable description
-}
-
-function translateBrainstormContext(
-  projectArtifacts: ElectricArtifact[],
-  // ... other params
-): BrainstormContextItem[]
-```
+- Simple lineage: A → B → C
+- Branching lineage: A → B, A → C  
+- Complex nested paths: A[0] → B → C[1] → D
+- Missing artifacts/broken chains
+- Circular references (should be impossible but test anyway)
 
 ### Phase 3: UI Integration & Dynamic Lineage
 
-**Goal**: Update the frontend components to use lineage resolution and display the editing capabilities.
+**Objective**: Update `DynamicBrainstormingResults.tsx` to use lineage resolution and pass correct artifact IDs to `ArtifactEditor`.
 
-#### 3.1 Update DynamicBrainstormingResults
+#### 3.1: Update DynamicBrainstormingResults Component
 
-**File**: `src/client/components/DynamicBrainstormingResults.tsx`
-- Add lineage resolution for each brainstorm idea
-- Pass resolved artifact IDs to `ArtifactEditor`
-- Show lineage status indicators (original, edited, AI-enhanced)
-- Keep `ArtifactEditor` props unchanged for compatibility
+**Current Issue**: Component currently passes static artifact IDs to `ArtifactEditor`, but it should resolve the lineage first.
 
-**Key Changes**:
+**Changes Needed**:
 ```typescript
-// For each idea, resolve the latest artifact
-const resolvedArtifactId = useMemo(() => {
-  return resolveLatestArtifact(
-    idea.artifactId,
-    `[${index}]`,
-    projectData.artifacts,
-    projectData.transforms,
-    projectData.humanTransforms,
-    projectData.transformInputs,
-    projectData.transformOutputs
-  )?.artifactId || idea.artifactId;
-}, [idea.artifactId, index, projectData]);
-
-// Pass resolved ID to ArtifactEditor
+// Before (current)
 <ArtifactEditor
-  artifactId={resolvedArtifactId}
-  path="" // Empty since we resolved to the final artifact
+  artifactId={idea.artifactId}
+  path={`[${index}]`}
   transformName="edit_brainstorm_idea"
-  // ... other props
+/>
+
+// After (with lineage resolution)
+<ArtifactEditor
+  artifactId={resolvedArtifactId} // Latest in lineage
+  path={resolvedPath}
+  transformName="edit_brainstorm_idea"
 />
 ```
 
-#### 3.2 Add Lineage Status Indicators
+#### 3.2: Lineage Resolution Hook
 
-- Visual indicators showing edit history
-- Tooltips explaining the transformation chain
-- Different colors/icons for different artifact types
+**Goal**: Create a React hook that resolves lineages on the frontend.
 
-#### 3.3 Update Chat Integration
+```typescript
+function useLineageResolution(
+  sourceArtifactId: string, 
+  path?: string
+): {
+  latestArtifactId: string | null;
+  lineagePath: LineageNode[];
+  isLoading: boolean;
+  error: Error | null;
+}
+```
 
-**File**: `src/server/services/ChatService.ts`
-- Add brainstorm context translation to agent messages
-- Include current brainstorm state in agent prompts
-- Handle edit tool responses in chat interface
+#### 3.3: Visual Lineage Indicators
+
+**Goal**: Show users when ideas have been edited and provide lineage history.
+
+**UI Elements**:
+- Edit history badges (e.g., "Edited 2x")
+- Lineage breadcrumbs showing edit chain
+- "View History" modal with full lineage
+- Diff view between versions
 
 ### Phase 4: Testing & Validation
 
-**Goal**: Ensure the entire system works correctly with comprehensive testing.
+#### 4.1: End-to-End Testing
 
-#### 4.1 Integration Tests
+**Test Scenarios**:
+1. **User edits idea manually** → Creates human transform → `ArtifactEditor` shows latest version
+2. **Agent edits idea via chat** → Creates LLM transform → UI updates automatically  
+3. **Mixed editing workflow** → Manual edit → Agent edit → Manual edit → All tracked correctly
+4. **Multiple ideas edited** → Each maintains independent lineage
+5. **Concurrent editing** → Race conditions handled gracefully
 
-**File**: `src/server/scripts/test-brainstorm-edit-flow.ts`
-- Test complete flow: brainstorm → edit via agent → lineage resolution
-- Validate artifact creation and lineage tracking
-- Test multiple edit rounds
+#### 4.2: Performance Testing
 
-#### 4.2 UI Tests
+**Concerns**:
+- Lineage resolution with large graphs
+- Frontend re-rendering with many artifacts
+- Database query optimization for complex lineages
 
-- Test lineage resolution in `DynamicBrainstormingResults`
-- Verify `ArtifactEditor` works with resolved artifacts
-- Test edit button visibility and functionality
+#### 4.3: Error Handling
 
-#### 4.3 Agent Tests
-
-- Test agent's ability to detect edit requests
-- Validate context enrichment with existing ideas
-- Test tool selection and execution
+**Edge Cases**:
+- Broken lineage chains
+- Missing artifacts
+- Corrupted transform data
+- Network failures during resolution
 
 ## Technical Specifications
 
-### Data Flow
+### Artifact Types & Lineage Flow
 
-1. **User Input**: "Make the first idea more romantic"
-2. **Agent Analysis**: Detects edit request for idea [0]
-3. **Context Enrichment**: Resolves current state of all brainstorm ideas
-4. **Tool Execution**: Calls `BrainstormEditTool` with detailed requirements
-5. **LLM Transform**: Creates new `brainstorm_idea` artifact
-6. **UI Update**: `DynamicBrainstormingResults` resolves new lineage and updates display
-
-### Artifact Types & Transforms
-
-```typescript
-// New LLM Transform
-interface BrainstormEditTransform {
-  type: 'llm';
-  transform_name: 'llm_edit_brainstorm_idea';
-  input: 'brainstorm_idea_collection' | 'brainstorm_idea' | 'user_input';
-  output: 'brainstorm_idea';
-  execution_context: {
-    source_artifact_id: string;
-    idea_index: number;
-    edit_requirements: string;
-    agent_instructions: string;
-  };
-}
+```
+brainstorm_idea_collection (original)
+├── [0] → human_transform → user_input (manual edit)
+│   └── llm_transform → brainstorm_idea (agent edit)
+│       └── human_transform → user_input (manual edit)
+├── [1] → llm_transform → brainstorm_idea (agent edit)
+│   └── llm_transform → brainstorm_idea (agent re-edit)
+└── [2] → (unchanged)
 ```
 
 ### Lineage Resolution Algorithm
 
+**Input**: `sourceArtifactId`, `path` (optional)
+**Process**:
+1. Build graph of all related artifacts and transforms
+2. Find all paths from source artifact
+3. For given path, traverse to deepest leaf node
+4. Return the artifact at the leaf (most recent version)
+
+**Example**:
+```typescript
+// User wants to edit idea [1] from collection abc123
+const latest = await resolveLatestArtifact('abc123', '[1]');
+// Returns: artifact xyz789 (if idea [1] was previously edited)
+// Falls back to: abc123 with path [1] (if never edited)
 ```
-function resolveLatestArtifact(startId, path):
-  1. Find all human_transforms with source_artifact_id = startId AND derivation_path = path
-  2. For each human_transform:
-     a. Get derived_artifact_id
-     b. Check if this artifact is input to any LLM transforms
-     c. If yes, recursively resolve from LLM output
-     d. If no, this is the current end of chain
-  3. Return the artifact at the end of the longest valid chain
-```
 
-### Error Handling
+### Error Handling Strategy
 
-- **Missing Artifacts**: Graceful fallback to original artifact
-- **Broken Lineage**: Log warnings but continue with last valid artifact
-- **Concurrent Edits**: Use existing unique constraint protection
-- **Invalid Paths**: Validate path patterns before resolution
-
-## Security Considerations
-
-- **User Access Control**: All lineage resolution must respect project membership
-- **Data Validation**: Validate all resolved artifacts against schemas
-- **Rate Limiting**: Prevent excessive LLM edit requests
-- **Audit Trail**: Maintain complete transform history for debugging
-
-## Performance Considerations
-
-- **Caching**: Cache lineage resolution results for frequently accessed artifacts
-- **Lazy Loading**: Only resolve lineage when needed for display
-- **Batch Operations**: Group multiple edit requests when possible
-- **Memory Usage**: Avoid loading entire project graph unnecessarily
-
-## Future Enhancements
-
-- **Branching Lineage**: Support multiple parallel edit branches
-- **Merge Operations**: Combine different edit branches
-- **Version History**: UI for browsing complete edit history
-- **Collaborative Editing**: Real-time conflict resolution for concurrent edits
-- **Export Lineage**: Export transformation history for analysis
+1. **Graceful Degradation**: If lineage resolution fails, fall back to original artifact
+2. **User Feedback**: Clear error messages about what went wrong
+3. **Logging**: Comprehensive logging for debugging lineage issues
+4. **Recovery**: Ability to "reset" lineage and start fresh if needed
 
 ## Success Criteria
 
-1. **Functional**: Users can edit brainstorm ideas through natural language chat
-2. **Robust**: System handles complex lineage chains without breaking
-3. **Performant**: Lineage resolution completes within 100ms for typical chains
-4. **Maintainable**: Pure functions with comprehensive test coverage
-5. **User-Friendly**: Clear visual indicators of edit status and history
+### Phase 1: ✅ COMPLETED
+- [x] Agent can edit brainstorm ideas via chat
+- [x] LLM transforms are properly tracked
+- [x] Multiple editing rounds work correctly
+- [x] Tool handles different artifact types
+- [x] API endpoints are functional
 
-## Migration Strategy
+### Phase 2: 🔄 IN PROGRESS
+- [ ] Lineage resolution algorithm works with test data
+- [ ] Service layer integrates with repositories  
+- [ ] Comprehensive test suite passes
+- [ ] Performance is acceptable for expected data volumes
 
-- **Backward Compatibility**: Existing artifacts and transforms remain functional
-- **Gradual Rollout**: Enable new features project-by-project
-- **Data Migration**: No migration needed - new features work with existing data
-- **Fallback Behavior**: If lineage resolution fails, fall back to current behavior 
+### Phase 3: Future
+- [ ] `DynamicBrainstormingResults` uses lineage resolution
+- [ ] `ArtifactEditor` always edits the latest version
+- [ ] UI shows edit history and lineage information
+- [ ] User experience is smooth and intuitive
+
+### Phase 4: Future  
+- [ ] End-to-end workflows work flawlessly
+- [ ] Error handling is robust
+- [ ] Performance meets requirements
+- [ ] System is ready for production use
+
+## Next Steps
+
+**Currently working on**: Phase 2.1 - Core Lineage Resolution Algorithm
+
+**Immediate tasks**:
+1. ✅ Define lineage data structures and interfaces
+2. 🔄 Implement `buildLineageGraph` function
+3. 🔄 Implement `findLatestArtifact` function  
+4. 🔄 Create comprehensive test suite
+5. 🔄 Optimize for performance
+
+**After Phase 2 completion**: Move to Phase 3 for frontend integration. 
