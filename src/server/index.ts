@@ -86,6 +86,10 @@ const brainstormService = new BrainstormService(db, artifactRepo, transformRepo)
 const chatMessageRepo = new ChatMessageRepository(db);
 const chatService = new ChatService(chatMessageRepo, agentService, transformRepo, artifactRepo);
 
+// Inject dependencies to avoid circular dependency issues
+agentService.setChatMessageRepository(chatMessageRepo);
+brainstormService.setAgentService(agentService);
+
 // Make services available to routes via app.locals
 app.locals.transformRepo = transformRepo;
 const server = app.listen(PORT, "0.0.0.0", () =>

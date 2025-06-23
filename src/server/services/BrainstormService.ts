@@ -27,7 +27,13 @@ export class BrainstormService {
         private db: Kysely<DB>,
         private artifactRepo: ArtifactRepository,
         private transformRepo: TransformRepository
-    ) {}
+    ) { }
+
+    // Method to inject AgentService after initialization to avoid circular dependency
+    private agentService?: any;
+    public setAgentService(agentService: any) {
+        this.agentService = agentService;
+    }
 
     // Start brainstorm job - creates transform and begins background processing
     async startBrainstorm(request: BrainstormRequest): Promise<{ transformId: string }> {
@@ -71,13 +77,13 @@ export class BrainstormService {
             { artifactId: userInputArtifact.id, inputRole: 'brainstorm_params' }
         ], projectId);
 
-        // Start background processing using StreamingAgentFramework
+        // Start background processing using AgentService
         this.processBrainstormWithAgent(transform.id, projectId, params);
 
         return { transformId: transform.id };
     }
 
-    // Background processing method using StreamingAgentFramework
+    // Background processing method using AgentService
     private async processBrainstormWithAgent(
         transformId: string,
         projectId: string,
@@ -91,14 +97,6 @@ export class BrainstormService {
             // For now, we'll use a placeholder - this should be passed from the request
             const userId = 'test-user-1'; // TODO: Get from authenticated user context
 
-            // Create brainstorm tool definition
-            const brainstormTool = createBrainstormToolDefinition(
-                this.transformRepo,
-                this.artifactRepo,
-                projectId,
-                userId
-            );
-
             // Prepare agent request based on the parameters
             const userRequest = `Generate creative story ideas for ${params.platform} platform. 
 Genre: ${params.genre}
@@ -110,28 +108,27 @@ Length: ${params.length}
 Additional requirements: ${params.additional_requirements || 'None'}`;
 
             // Update progress
-            await this.transformRepo.updateTransformStreamingStatus(transformId, 'running', 25);
+            await this.transformRepo.updateTransformStreamingStatus(transformId, 'running', 50);
 
-            // Run the streaming agent
-            const result = await runStreamingAgent({
-                userRequest,
-                toolDefinitions: [brainstormTool],
-                maxSteps: 3
-            });
+            // Use AgentService instead of direct streaming framework
+            if (this.agentService) {
+                await this.agentService.runBrainstormAgent(projectId, userId, {
+                    userRequest,
+                    platform: params.platform,
+                    genre: params.genre,
+                    other_requirements: params.additional_requirements
+                });
+            }
 
             // Update progress
-            await this.transformRepo.updateTransformStreamingStatus(transformId, 'running', 75);
-
-            // The tool execution creates its own artifacts and transforms
-            // We just need to mark our main transform as completed
             await this.transformRepo.updateTransformStreamingStatus(transformId, 'completed', 100);
             await this.transformRepo.updateTransformStatus(transformId, 'completed');
 
-            console.log(`Brainstorm completed for project ${projectId}:`, result);
+            console.log(`Brainstorm completed for project ${projectId} via AgentService`);
 
         } catch (error) {
             console.error('Brainstorm processing error:', error);
-            
+
             // Update transform with error
             await this.transformRepo.updateTransform(transformId, {
                 status: 'failed',

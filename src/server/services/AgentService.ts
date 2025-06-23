@@ -4,11 +4,19 @@ import { ArtifactRepository } from '../repositories/ArtifactRepository';
 import { runStreamingAgent } from './StreamingAgentFramework';
 import { createBrainstormToolDefinition } from '../tools/BrainstormTool';
 import { AgentBrainstormRequest } from '../../common/types';
+
 export class AgentService {
+    private chatMessageRepo?: any; // Injected later to avoid circular dependency
+
     constructor(
         private transformRepo: TransformRepository,
         private artifactRepo: ArtifactRepository,
     ) { }
+
+    // Method to inject chat repository after initialization
+    public setChatMessageRepository(chatMessageRepo: any) {
+        this.chatMessageRepo = chatMessageRepo;
+    }
 
     public async runBrainstormAgent(
         projectId: string,
@@ -17,6 +25,30 @@ export class AgentService {
     ) {
         let agentTransformId: string | null = null;
         try {
+            // Log user request as chat message
+            if (this.chatMessageRepo) {
+                await this.chatMessageRepo.createRawMessage(
+                    projectId,
+                    'user',
+                    request.userRequest,
+                    { userId, agentType: 'brainstorm' }
+                );
+                await this.chatMessageRepo.createDisplayMessage(
+                    projectId,
+                    'user',
+                    request.userRequest,
+                    { displayType: 'message', status: 'completed' }
+                );
+
+                // Log agent thinking message
+                await this.chatMessageRepo.createDisplayMessage(
+                    projectId,
+                    'assistant',
+                    'I\'m analyzing your brainstorm request and generating creative story ideas...',
+                    { displayType: 'thinking', status: 'streaming' }
+                );
+            }
+
             // 1. Create a parent transform for the entire agent execution
             const agentTransform = await this.transformRepo.createTransform(
                 projectId,
@@ -73,10 +105,31 @@ export class AgentService {
                 await this.transformRepo.addTransformOutputs(agentTransformId, outputArtifacts, projectId);
             }
 
+            // Log successful completion
+            if (this.chatMessageRepo) {
+                await this.chatMessageRepo.createDisplayMessage(
+                    projectId,
+                    'assistant',
+                    'I\'ve successfully generated creative story ideas for your project! You can find them in the brainstorm results.',
+                    { displayType: 'message', status: 'completed' }
+                );
+            }
+
             console.log(`[AgentService] Brainstorm agent completed for project ${projectId}.`);
 
         } catch (error) {
             console.error(`[AgentService] Brainstorm agent failed for project ${projectId}:`, error);
+
+            // Log error to chat
+            if (this.chatMessageRepo) {
+                await this.chatMessageRepo.createDisplayMessage(
+                    projectId,
+                    'assistant',
+                    'I encountered an error while generating story ideas. Please try again or contact support if the issue persists.',
+                    { displayType: 'message', status: 'failed' }
+                );
+            }
+
             if (agentTransformId) {
                 await this.transformRepo.updateTransform(agentTransformId, { status: 'failed' });
             }
