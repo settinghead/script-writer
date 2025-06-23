@@ -98,14 +98,14 @@ export class BrainstormService {
             const userId = 'test-user-1'; // TODO: Get from authenticated user context
 
             // Prepare agent request based on the parameters
-            const userRequest = `Generate creative story ideas for ${params.platform} platform. 
-Genre: ${params.genre}
-Theme: ${params.theme}
-Character setting: ${params.character_setting}
-Plot device: ${params.plot_device}
-Ending type: ${params.ending_type}
-Length: ${params.length}
-Additional requirements: ${params.additional_requirements || 'None'}`;
+            const userRequest = `为${params.platform}平台生成创意故事想法。
+类型：${params.genre}
+主题：${params.theme}
+角色设定：${params.character_setting}
+情节设定：${params.plot_device}
+结局类型：${params.ending_type}
+长度：${params.length}
+其他要求：${params.additional_requirements || '无'}`;
 
             // Update progress
             await this.transformRepo.updateTransformStreamingStatus(transformId, 'running', 50);
