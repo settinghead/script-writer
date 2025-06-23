@@ -57,14 +57,14 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, isStreaming =
 
     const getStatusTag = () => {
         if (message.status === 'failed') {
-            return <Tag color="error" icon={<ExclamationCircleOutlined />}>Failed</Tag>;
+            return <Tag color="error" icon={<ExclamationCircleOutlined />}>失败</Tag>;
         }
         if (processedMessage.showSpinner) {
-            return <Tag color="processing" icon={<Spin size="small" />}>Thinking...</Tag>;
+            return <Tag color="processing" icon={<Spin size="small" />}>思考中...</Tag>;
         }
         if (processedMessage.thinkingDuration) {
             return <Tag color="success" icon={<ClockCircleOutlined />}>
-                Completed in {Math.round(processedMessage.thinkingDuration / 1000)}s
+                完成于 {Math.round(processedMessage.thinkingDuration / 1000)}秒
             </Tag>;
         }
         return null;
@@ -105,9 +105,9 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, isStreaming =
                     flexDirection: isUserMessage ? 'row-reverse' : 'row'
                 }}>
                     <Text strong style={{ color: '#e0e0e0', fontSize: 12 }}>
-                        {message.role === 'user' ? 'You' :
-                            message.role === 'assistant' ? 'AI Assistant' :
-                                'System'}
+                        {message.role === 'user' ? '你' :
+                            message.role === 'assistant' ? 'AI助手' :
+                                '系统'}
                     </Text>
                     <Text type="secondary" style={{ fontSize: 11 }}>
                         <ClockCircleOutlined style={{ marginRight: 4 }} />

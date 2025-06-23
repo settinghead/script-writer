@@ -17,7 +17,7 @@ async function testEventChatSystem() {
         console.log('📝 Test 1: Creating user message...');
         const userMessage = await chatRepo.createUserMessage(
             projectId,
-            'Can you help me brainstorm some sci-fi story ideas?'
+            '你能帮我头脑风暴一些科幻故事创意吗？'
         );
 
         const userEvents = parseEventMessage(userMessage.content);
@@ -33,7 +33,7 @@ async function testEventChatSystem() {
         console.log('🤔 Test 2: Creating agent thinking message...');
         const thinkingInfo = await chatRepo.createAgentThinkingMessage(
             projectId,
-            'Analyzing your brainstorm request and generating creative story ideas'
+            '分析您的头脑风暴请求并生成创意故事想法'
         );
 
         let thinkingMessage = await chatRepo.getDisplayMessageById(thinkingInfo.messageId);
@@ -51,7 +51,7 @@ async function testEventChatSystem() {
         console.log('✅ Test 3: Finishing agent thinking...');
         await chatRepo.finishAgentThinking(
             thinkingInfo.messageId,
-            'Analyzing your brainstorm request and generating creative story ideas',
+            '分析您的头脑风暴请求并生成创意故事想法',
             thinkingInfo.startTime
         );
 
@@ -69,7 +69,7 @@ async function testEventChatSystem() {
         console.log('💬 Test 4: Adding agent response...');
         await chatRepo.addAgentResponse(
             thinkingInfo.messageId,
-            'I\'ve generated some exciting sci-fi story ideas for you! Here are a few concepts involving space exploration, AI consciousness, and time paradoxes.'
+            '我为您生成了一些令人兴奋的科幻故事创意！这里有一些涉及太空探索、AI意识和时间悖论的概念。'
         );
 
         thinkingMessage = await chatRepo.getDisplayMessageById(thinkingInfo.messageId);
@@ -104,12 +104,12 @@ async function testEventChatSystem() {
         console.log('❌ Test 6: Testing error handling...');
         const errorThinkingInfo = await chatRepo.createAgentThinkingMessage(
             projectId,
-            'Processing your request'
+            '处理您的请求'
         );
 
         await chatRepo.addAgentError(
             errorThinkingInfo.messageId,
-            'I encountered an error while processing your request. Please try again.'
+            '处理您的请求时遇到错误。请重试。'
         );
 
         const errorMessage = await chatRepo.getDisplayMessageById(errorThinkingInfo.messageId);

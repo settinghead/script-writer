@@ -51,7 +51,7 @@ export class ChatService {
             // 3. Create thinking message to show agent is processing
             const thinkingInfo = await this.chatRepo.createAgentThinkingMessage(
                 projectId,
-                'Analyzing your request and determining the best approach'
+                '分析您的请求并确定最佳方法'
             );
 
             // 4. Trigger agent processing in background
@@ -59,7 +59,7 @@ export class ChatService {
                 .catch(error => {
                     console.error('Agent processing failed:', error);
                     // Add error to thinking message
-                    this.chatRepo.addAgentError(thinkingInfo.messageId, 'I encountered an error while processing your request. Please try again.');
+                    this.chatRepo.addAgentError(thinkingInfo.messageId, '处理您的请求时遇到错误。请重试。');
                 });
 
         } catch (error) {
@@ -85,7 +85,7 @@ export class ChatService {
             // Finish thinking and add responses
             await this.chatRepo.finishAgentThinking(
                 thinkingMessageId,
-                'Analyzing your request and determining the best approach',
+                '分析您的请求并确定最佳方法',
                 thinkingStartTime
             );
 
@@ -98,7 +98,7 @@ export class ChatService {
             console.error('Agent processing error:', error);
 
             // Add error to thinking message
-            await this.chatRepo.addAgentError(thinkingMessageId, 'I encountered an error while processing your request. Please try again.');
+            await this.chatRepo.addAgentError(thinkingMessageId, '处理您的请求时遇到错误。请重试。');
         }
     }
 
@@ -112,7 +112,8 @@ export class ChatService {
         const lowerMessage = userMessage.toLowerCase();
 
         try {
-            if (lowerMessage.includes('brainstorm') || lowerMessage.includes('idea') || lowerMessage.includes('story')) {
+            if (lowerMessage.includes('brainstorm') || lowerMessage.includes('idea') || lowerMessage.includes('story') ||
+                lowerMessage.includes('头脑风暴') || lowerMessage.includes('创意') || lowerMessage.includes('故事')) {
                 // Route to brainstorm agent
                 const result = await this.agentService.runBrainstormAgent(projectId, userId, {
                     userRequest: userMessage,
@@ -123,25 +124,25 @@ export class ChatService {
 
                 return [{
                     type: 'tool_call',
-                    content: 'I\'ve generated some creative story ideas based on your request.',
+                    content: '我已根据您的请求生成了一些创意故事想法。',
                     toolName: 'brainstorm',
                     toolResult: result,
                     metadata: { agentType: 'brainstorm' }
                 }];
 
-            } else if (lowerMessage.includes('outline') || lowerMessage.includes('structure')) {
+            } else if (lowerMessage.includes('outline') || lowerMessage.includes('structure') || lowerMessage.includes('大纲') || lowerMessage.includes('结构')) {
                 // Route to outline agent (when implemented)
                 return [{
                     type: 'message',
-                    content: 'I can help you create a story outline. Please provide more details about your story concept, and I\'ll generate a comprehensive outline for you.',
+                    content: '我可以帮您创建故事大纲。请提供更多关于您故事概念的详细信息，我将为您生成一个全面的大纲。',
                     metadata: { agentType: 'outline', needsMoreInfo: true }
                 }];
 
-            } else if (lowerMessage.includes('script') || lowerMessage.includes('dialogue')) {
+            } else if (lowerMessage.includes('script') || lowerMessage.includes('dialogue') || lowerMessage.includes('剧本') || lowerMessage.includes('对白')) {
                 // Route to script agent (when implemented)
                 return [{
                     type: 'message',
-                    content: 'I can help you write scripts. Please provide the story outline or specific scene details, and I\'ll generate script content for you.',
+                    content: '我可以帮您编写剧本。请提供故事大纲或具体场景详情，我将为您生成剧本内容。',
                     metadata: { agentType: 'script', needsMoreInfo: true }
                 }];
 
@@ -158,7 +159,7 @@ export class ChatService {
             console.error('Agent routing error:', error);
             return [{
                 type: 'message',
-                content: 'I apologize, but I encountered an issue while processing your request. Please try rephrasing your question or try again later.',
+                content: '抱歉，处理您的请求时遇到问题。请重新表述您的问题或稍后再试。',
                 metadata: { agentType: 'error', error: error instanceof Error ? error.message : String(error) }
             }];
         }
@@ -168,20 +169,20 @@ export class ChatService {
         const lowerMessage = userMessage.toLowerCase();
 
         // Simple pattern matching for common queries
-        if (lowerMessage.includes('hello') || lowerMessage.includes('hi')) {
-            return 'Hello! I\'m your AI assistant for script writing. I can help you brainstorm ideas, create outlines, and write scripts. What would you like to work on today?';
+        if (lowerMessage.includes('hello') || lowerMessage.includes('hi') || lowerMessage.includes('你好') || lowerMessage.includes('嗨')) {
+            return '您好！我是您的AI剧本写作助手。我可以帮您头脑风暴创意、创建大纲和编写剧本。您今天想要做什么？';
         }
 
-        if (lowerMessage.includes('help')) {
-            return 'I can assist you with various aspects of script writing:\n\n• **Brainstorming**: Generate creative story ideas and concepts\n• **Outlining**: Create detailed story structures and character arcs\n• **Scripting**: Write dialogue and scene descriptions\n\nJust tell me what you\'d like to work on, and I\'ll help you get started!';
+        if (lowerMessage.includes('help') || lowerMessage.includes('帮助')) {
+            return '我可以在剧本写作的各个方面为您提供帮助：\n\n• **头脑风暴**：生成创意故事想法和概念\n• **大纲创建**：创建详细的故事结构和角色弧线\n• **剧本编写**：编写对白和场景描述\n\n只需告诉我您想要做什么，我就会帮您开始！';
         }
 
-        if (lowerMessage.includes('what can you do')) {
-            return 'I\'m specialized in helping with creative writing projects. I can:\n\n• Generate story ideas and plot concepts\n• Create character profiles and development arcs\n• Structure your story with detailed outlines\n• Write scripts with proper formatting\n• Provide feedback and suggestions\n\nWhat type of project are you working on?';
+        if (lowerMessage.includes('what can you do') || lowerMessage.includes('你能做什么')) {
+            return '我专门帮助创意写作项目。我可以：\n\n• 生成故事创意和情节概念\n• 创建角色简介和发展弧线\n• 用详细的大纲构建您的故事\n• 编写格式正确的剧本\n• 提供反馈和建议\n\n您正在做什么类型的项目？';
         }
 
         // Default response
-        return 'I\'m here to help with your creative writing project. Could you tell me more about what you\'d like to work on? For example, you could ask me to brainstorm story ideas, create an outline, or help with script writing.';
+        return '我在这里帮助您的创意写作项目。您能告诉我更多关于您想要做什么的信息吗？例如，您可以要求我头脑风暴故事创意、创建大纲或帮助编写剧本。';
     }
 
     private formatChatHistoryForAgent(chatHistory: ChatMessageDisplay[]): string {

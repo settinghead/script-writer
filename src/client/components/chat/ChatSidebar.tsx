@@ -33,10 +33,10 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ projectId }) => {
                     <div>
                         <Title level={4} style={{ margin: 0, color: '#f0f0f0', display: 'flex', alignItems: 'center', gap: 8 }}>
                             <RobotOutlined />
-                            AI Assistant
+                            AI助手
                         </Title>
                         <Text type="secondary" style={{ fontSize: 12 }}>
-                            Creative Writing Helper
+                            创意写作助手
                         </Text>
                     </div>
 
@@ -44,7 +44,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ projectId }) => {
                         status={isLoading ? "processing" : "success"}
                         text={
                             <Text style={{ fontSize: 12, color: isLoading ? '#fbbf24' : '#4ade80' }}>
-                                {isLoading ? 'Thinking...' : 'Online'}
+                                {isLoading ? '思考中...' : '在线'}
                             </Text>
                         }
                     />
@@ -53,14 +53,14 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ projectId }) => {
                 <Divider style={{ margin: '8px 0', borderColor: '#333' }} />
 
                 <div style={{ display: 'flex', gap: 8 }}>
-                    <Tooltip title="Clear chat history">
+                    <Tooltip title="清除聊天记录">
                         <Button
                             type="text"
                             size="small"
                             icon={<DeleteOutlined />}
                             style={{ color: '#888', border: '1px solid #444' }}
                             onClick={() => {
-                                if (window.confirm('Are you sure you want to clear the chat history?')) {
+                                if (window.confirm('确定要清除聊天记录吗？')) {
                                     // TODO: Implement clear chat functionality
                                     console.log('Clear chat requested');
                                 }

@@ -90,7 +90,7 @@ function processEventHistory(events: ChatEvent[]): EventProcessingResult {
         // Currently thinking
         isThinking = true;
         showSpinner = true;
-        displayContent = `I'm ${thinkingStart.task.toLowerCase()}...`;
+        displayContent = `正在${thinkingStart.task}...`;
     } else if (thinkingStart && thinkingEnd) {
         // Finished thinking
         isThinking = false;
@@ -99,7 +99,7 @@ function processEventHistory(events: ChatEvent[]): EventProcessingResult {
 
         // Show thinking duration
         const durationText = formatDuration(thinkingEnd.duration_ms);
-        displayContent = `Thought for ${durationText}`;
+        displayContent = `思考了 ${durationText}`;
 
         // Add responses if any
         if (responses.length > 0) {
@@ -140,17 +140,17 @@ function formatDuration(milliseconds: number): string {
     const seconds = Math.floor(milliseconds / 1000);
 
     if (seconds < 60) {
-        return `${seconds} second${seconds !== 1 ? 's' : ''}`;
+        return `${seconds}秒`;
     }
 
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
 
     if (remainingSeconds === 0) {
-        return `${minutes} minute${minutes !== 1 ? 's' : ''}`;
+        return `${minutes}分钟`;
     }
 
-    return `${minutes}m ${remainingSeconds}s`;
+    return `${minutes}分${remainingSeconds}秒`;
 }
 
 // Helper function to check if a message is currently thinking

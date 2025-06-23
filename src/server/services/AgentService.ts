@@ -36,7 +36,7 @@ export class AgentService {
                 // Start agent thinking
                 const thinkingInfo = await this.chatMessageRepo.createAgentThinkingMessage(
                     projectId,
-                    'Analyzing brainstorm request and generating creative story ideas'
+                    '分析头脑风暴请求并生成创意故事想法'
                 );
                 thinkingMessageId = thinkingInfo.messageId;
                 thinkingStartTime = thinkingInfo.startTime;
@@ -103,14 +103,14 @@ export class AgentService {
                 // Finish thinking
                 await this.chatMessageRepo.finishAgentThinking(
                     thinkingMessageId,
-                    'Analyzing brainstorm request and generating creative story ideas',
+                    '分析头脑风暴请求并生成创意故事想法',
                     thinkingStartTime
                 );
 
                 // Add success response
                 await this.chatMessageRepo.addAgentResponse(
                     thinkingMessageId,
-                    'I\'ve successfully generated creative story ideas for your project! You can find them in the brainstorm results.'
+                    '我已成功为您的项目生成了创意故事想法！您可以在头脑风暴结果中查看它们。'
                 );
             }
 
@@ -123,7 +123,7 @@ export class AgentService {
             if (this.chatMessageRepo && thinkingMessageId) {
                 await this.chatMessageRepo.addAgentError(
                     thinkingMessageId,
-                    'I encountered an error while generating story ideas. Please try again or contact support if the issue persists.'
+                    '生成故事想法时遇到错误。请重试，如果问题持续存在，请联系支持。'
                 );
             }
 

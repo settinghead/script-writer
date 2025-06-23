@@ -70,20 +70,20 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                     description={
                         <div style={{ textAlign: 'center' }}>
                             <Title level={4} style={{ color: '#ccc', marginBottom: 8 }}>
-                                Start a conversation
+                                开始对话
                             </Title>
                             <Paragraph style={{ color: '#888', marginBottom: 24 }}>
-                                Ask me anything about your creative writing project!
+                                向我询问任何关于你的创作项目的问题！
                             </Paragraph>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
                                 <Tag icon={<EditOutlined />} color="blue" style={{ fontSize: 12 }}>
-                                    "Help me brainstorm story ideas"
+                                    "帮我头脑风暴故事创意"
                                 </Tag>
                                 <Tag icon={<PlayCircleOutlined />} color="green" style={{ fontSize: 12 }}>
-                                    "Create an outline for my script"
+                                    "为我的剧本创建大纲"
                                 </Tag>
                                 <Tag icon={<MessageOutlined />} color="purple" style={{ fontSize: 12 }}>
-                                    "Write dialogue for this scene"
+                                    "为这个场景写对白"
                                 </Tag>
                             </div>
                         </div>
@@ -109,7 +109,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 0' }}>
                     <RobotOutlined style={{ fontSize: 20, color: '#10b981' }} />
                     <Spin size="small" />
-                    <span style={{ color: '#888' }}>AI is thinking...</span>
+                    <span style={{ color: '#888' }}>AI正在思考...</span>
                 </div>
             )}
 

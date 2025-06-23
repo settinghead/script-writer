@@ -14,7 +14,7 @@ interface ChatInputProps {
 export const ChatInput: React.FC<ChatInputProps> = ({
     onSend,
     disabled = false,
-    placeholder = "Ask me anything about your creative project..."
+    placeholder = "向我询问任何关于你的创作项目的问题..."
 }) => {
     const [message, setMessage] = useState('');
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -56,11 +56,11 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     };
 
     const getSuggestions = () => [
-        "Help me brainstorm story ideas",
-        "Create an outline for my script",
-        "Write dialogue for this scene",
-        "What can you help me with?",
-        "Generate character ideas"
+        "帮我头脑风暴故事创意",
+        "为我的剧本创建大纲",
+        "为这个场景写对白",
+        "你能帮我做什么？",
+        "生成角色创意"
     ];
 
     const handleSuggestionClick = (suggestion: string) => {
@@ -99,7 +99,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                     value={message}
                     onChange={(e) => handleInputChange(e as any)}
                     onKeyDown={handleKeyDown}
-                    placeholder={disabled ? "AI is thinking..." : placeholder}
+                    placeholder={disabled ? "AI正在思考..." : placeholder}
                     disabled={disabled}
                     autoSize={{ minRows: 1, maxRows: 4 }}
                     maxLength={5000}
@@ -117,7 +117,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                     icon={disabled ? <LoadingOutlined /> : <SendOutlined />}
                     onClick={handleSend}
                     disabled={disabled || !message.trim()}
-                    title="Send message (Enter)"
+                    title="发送消息 (回车键)"
                     style={{
                         background: disabled || !message.trim() ? '#374151' : '#4f46e5',
                         borderColor: disabled || !message.trim() ? '#374151' : '#4f46e5',
@@ -129,7 +129,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
             {/* Hint text */}
             <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 8, textAlign: 'center' }}>
-                Press Enter to send, Shift+Enter for new line
+                按回车键发送，Shift+回车键换行
             </Text>
         </div>
     );

@@ -304,27 +304,27 @@ export class ChatMessageRepository {
     private sanitizeToolCall(toolName: string, parameters?: any, result?: any): string {
         switch (toolName) {
             case 'brainstorm':
-                return `I've generated some creative story ideas based on your request.`;
+                return `我已根据您的请求生成了一些创意故事想法。`;
             case 'outline':
-                return `I've created a detailed story outline for you.`;
+                return `我已为您创建了详细的故事大纲。`;
             case 'script':
-                return `I've written a script based on your specifications.`;
+                return `我已根据您的规格编写了剧本。`;
             case 'episode':
-                return `I've generated episode content for your story.`;
+                return `我已为您的故事生成了剧集内容。`;
             default:
-                return `I've completed a task to help with your project.`;
+                return `我已完成一项任务来帮助您的项目。`;
         }
     }
 
     private sanitizeAgentThinking(content: string): string {
         // Remove sensitive information, keep user-friendly progress updates
-        if (content.includes('analyzing') || content.includes('processing')) {
-            return `I'm analyzing your request and determining the best approach...`;
+        if (content.includes('analyzing') || content.includes('processing') || content.includes('分析') || content.includes('处理')) {
+            return `我正在分析您的请求并确定最佳方法...`;
         }
-        if (content.includes('generating') || content.includes('creating')) {
-            return `I'm working on creating content for you...`;
+        if (content.includes('generating') || content.includes('creating') || content.includes('生成') || content.includes('创建')) {
+            return `我正在为您创建内容...`;
         }
-        return `I'm thinking about how to help you with this request...`;
+        return `我正在思考如何帮助您处理这个请求...`;
     }
 
     // Utility methods
