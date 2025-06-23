@@ -1,6 +1,6 @@
 # Script Writer
 
-A collaborative script writing application with AI assistance, real-time collaboration, and project-based workflow management with comprehensive data traceability through a schema-driven transform system.
+A collaborative script writing application with AI assistance, real-time collaboration, and project-based workflow management with comprehensive data traceability through a schema-driven transform system and intelligent agent framework.
 
 ## Features
 
@@ -16,16 +16,30 @@ A collaborative script writing application with AI assistance, real-time collabo
 - **Protected API endpoints** - All AI/LLM requests require authentication
 - **Session management** with automatic cleanup
 
-### 🤖 AI-Powered Features
+### 🤖 Agent-Driven AI Framework
+- **Intelligent agent system** - All major operations (brainstorming, outline generation, script writing) routed through context-aware agent framework
+- **Tool-based decision making** - Agent analyzes user requests and selects appropriate tools to accomplish tasks
+- **Real-time chat interface** - ChatGPT-style conversation interface with resizable sidebar for natural interaction
+- **Event-based messaging** - Comprehensive event system tracking user messages, agent thinking, tool calls, and responses
+- **Contextual awareness** - Agent maintains project context and can reference previous work across different stages
 - **Schema-driven artifact editing** with complete transform lineage tracking
 - **Real-time streaming** with progressive UI updates as content arrives
-- **Script editing assistance** using DeepSeek AI
-- **Genre-based content generation** with multi-column responsive display
 - **Transform replay system** for reproducibility testing
 - **Partial JSON parsing** with automatic repair and error recovery
 - **Streaming progress indicators** with cancellation support
 - **去脸谱化 (De-stereotyping)** - AI prompts explicitly require avoiding stereotypical characters and plots
 - **Automatic content filtering** - Removes `<think>...</think>` tags and code block wrappers from LLM outputs
+
+### 💬 Chat Interface System
+- **Real-time chat interface** replacing traditional sidebar with ChatGPT-style conversation
+- **Resizable chat panel** (250px-600px width) with responsive mobile layout
+- **Event-driven messaging** - 6 event types: user_message, agent_thinking_start/end, agent_tool_call, agent_response, agent_error
+- **Message sanitization** - Two-layer system with raw backend messages and sanitized display messages
+- **Electric SQL integration** - Real-time message synchronization across all connected clients
+- **Project-scoped chat history** - One conversation per project with complete context preservation
+- **Security-first design** - No trade secrets or sensitive tool parameters exposed to frontend
+- **Chinese language interface** - Fully translated UI for Chinese users with bilingual keyword support
+- **Thinking states** - Visual feedback showing agent processing time and completion status
 
 ### 🔄 Schema-Driven Transform System
 - **Immutable artifacts** - All data modifications tracked through versioned transforms
@@ -46,13 +60,16 @@ A collaborative script writing application with AI assistance, real-time collabo
 - **Project phase tracking** - From ideation through episode generation to script completion
 
 ### 🎨 User Interface
-- **Modern dark theme** with Ant Design components
-- **Responsive design** for desktop and mobile
-- **Project-centric navigation** with unified layout
+- **Modern dark theme** with Ant Design components throughout
+- **Responsive design** for desktop and mobile with adaptive chat layout
+- **Project-centric navigation** with unified layout and chat integration
+- **ChatGPT-style interface** - Resizable chat sidebar (250px-600px) replacing traditional sidebars
 - **Dynamic streaming UI** - Controls render eagerly as JSON data arrives
 - **Schema-based artifact editor** with debounced auto-save
 - **Smooth typing experience** with local state management
 - **Subtle save indicators** - Non-intrusive feedback with checkmarks and spinners
+- **Chinese language interface** - Fully localized UI for Chinese users
+- **Real-time message updates** - Electric SQL powered chat synchronization
 - **User dropdown** with profile info and logout
 - **Modern state management** with TanStack Query for server state and Zustand for client state
 
@@ -142,9 +159,34 @@ npm run dev
 
 ## Architecture
 
-### Core Architecture: Schema-Driven Transforms
+### Core Architecture: Agent-Driven System with Schema-Driven Transforms
 
-The application is built around a **schema-driven transform system** that provides complete data traceability and type safety.
+The application is built around an **intelligent agent framework** that routes all major operations through context-aware agents, combined with a **schema-driven transform system** that provides complete data traceability and type safety.
+
+#### Agent Framework Architecture
+```
+User Chat Message → Agent Analysis → Tool Selection → Execution → Response
+                                   ↓
+                            [Brainstorm Tool]
+                            [Outline Tool] 
+                            [Script Tool]
+                            [Conversational Response]
+```
+
+**Key Agent Components:**
+- **AgentService** - Central orchestrator that analyzes user requests and selects appropriate tools
+- **Context Awareness** - Agent maintains project context and can reference previous work across stages
+- **Tool Selection** - Intelligent routing between brainstorming, outline generation, script writing, and conversation
+- **Chat Integration** - All agent interactions logged as chat messages for complete conversation history
+- **Bilingual Support** - Supports both English and Chinese keywords for tool routing
+
+**Current Agent Tools:**
+- ✅ **Brainstorm Tool** - Fully integrated with agent framework
+- ⚠️ **Outline Tool** - Legacy implementation, needs agent integration update
+- ⚠️ **Script Tool** - Legacy implementation, needs agent integration update
+- ✅ **Conversational Response** - General purpose chat responses
+
+> **Note**: Outline and script generation currently use legacy direct-call patterns and may not work properly. These will be updated to use the agent framework in upcoming releases.
 
 #### Artifacts & Transforms Flow
 ```
@@ -269,6 +311,41 @@ CREATE TABLE human_transforms (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT unique_human_transform_per_artifact_path UNIQUE (input_artifact_id, path)
 );
+
+-- Chat messages system (two-layer architecture)
+CREATE TABLE chat_messages_raw (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  role TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'tool', 'system')),
+  content TEXT NOT NULL,
+  tool_name TEXT,
+  tool_parameters JSONB,
+  tool_result JSONB,
+  metadata JSONB,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE chat_messages_display (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  role TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'tool')),
+  content TEXT NOT NULL,
+  display_type TEXT DEFAULT 'message' CHECK (display_type IN ('message', 'tool_summary', 'thinking')),
+  status TEXT DEFAULT 'completed' CHECK (status IN ('pending', 'streaming', 'completed', 'failed')),
+  raw_message_id TEXT REFERENCES chat_messages_raw(id) ON DELETE CASCADE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Chat events for event-driven messaging
+CREATE TABLE chat_events (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  event_type TEXT NOT NULL CHECK (event_type IN ('user_message', 'agent_thinking_start', 'agent_thinking_end', 'agent_tool_call', 'agent_response', 'agent_error')),
+  data JSONB NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
 ```
 
 #### Kysely Benefits
@@ -359,6 +436,12 @@ const editMutation = useMutation({
 - `GET /api/artifacts/:id` - Get specific artifact with metadata
 - `GET /api/transforms/human` - List human transforms with lineage
 
+### Agent & Chat System (All Require Authentication)
+- `POST /api/chat/:projectId/messages` - Send user message to agent (triggers tool selection and execution)
+- `GET /api/chat/:projectId/messages` - Get chat history (via Electric SQL subscription)
+- `DELETE /api/chat/:projectId/messages/:messageId` - Delete specific message
+- **Agent Tools**: Brainstorm, Outline, Script, Conversational Response
+
 ### Project Management (All Require Authentication)
 - `GET /api/projects` - List user's projects
 - `GET /api/projects/:id` - Get specific project details
@@ -366,9 +449,10 @@ const editMutation = useMutation({
 - `PUT /api/projects/:id` - Update project details
 - `DELETE /api/projects/:id` - Delete project
 
-
 ### Electric SQL Proxy (Authenticated)
 - `GET /api/electric/v1/shape` - Authenticated proxy to Electric SQL with automatic user scoping
+- **Synced Tables**: `artifacts`, `transforms`, `chat_messages_display`, `chat_events`
+- **Blocked Tables**: `chat_messages_raw` (backend only for security)
 
 ### Real-time Collaboration
 - `WebSocket /yjs?room={roomId}` - Join collaborative editing session (authenticated)
@@ -423,27 +507,40 @@ SELECT * FROM artifacts WHERE user_id = ? AND id = ?; -- ❌ This column doesn't
 src/
 ├── client/                 # React frontend
 │   ├── components/        # React components
+│   │   ├── chat/          # Chat interface components
+│   │   │   ├── ChatMessage.tsx           # Individual message with role-based styling
+│   │   │   ├── ChatMessageList.tsx       # Message list with auto-scroll
+│   │   │   ├── ChatInput.tsx             # Input with suggestions and shortcuts
+│   │   │   ├── ChatSidebar.tsx           # Resizable chat sidebar (250px-600px)
+│   │   │   └── ChatSidebarWrapper.tsx    # ChatProvider wrapper
 │   │   ├── shared/        # Shared components
 │   │   │   ├── ArtifactEditor.tsx        # Schema-based artifact editor
 │   │   │   ├── EditableField.tsx         # Auto-saving editable fields
 │   │   │   └── streaming/                # Dynamic streaming UI components
 │   │   ├── BrainstormingResults.tsx      # Brainstorm display with editing
-│   │   ├── OutlineResults.tsx            # Outline display with editing
-│   │   └── ProjectLayout.tsx             # Main project interface
+│   │   ├── OutlineResults.tsx            # Outline display with editing (legacy)
+│   │   └── ProjectLayout.tsx             # Main project interface with chat
+│   ├── contexts/          # React contexts
+│   │   ├── ChatContext.tsx               # Chat state management
+│   │   └── ProjectDataContext.tsx        # Project data management
 │   ├── hooks/             # Custom hooks
+│   │   ├── useChatMessages.ts            # Chat message operations
 │   │   ├── useProjectData.ts             # TanStack Query hooks
 │   │   ├── useStreamingLLM.ts            # Streaming LLM integration
 │   │   └── useDebounce.ts                # Debounced auto-save
 │   ├── services/          # API services
 │   │   └── apiService.ts  # Centralized API client
-│   └── stores/            # Zustand stores
-│       └── projectStore.ts # Global project state management
+│   ├── stores/            # Zustand stores
+│   │   └── projectStore.ts # Global project state management
+│   └── utils/             # Utility functions
+│       └── chatEventProcessor.ts         # Event-driven message processing
 ├── common/                # Shared frontend/backend types
 │   ├── config/            # Configuration
 │   │   └── electric.ts    # Electric SQL configuration
 │   ├── schemas/           # Zod schemas
 │   │   ├── artifacts.ts   # Artifact type definitions
-│   │   └── transforms.ts  # Transform definitions with path patterns
+│   │   ├── transforms.ts  # Transform definitions with path patterns
+│   │   └── chatMessages.ts # Chat message schemas
 │   ├── streaming/         # Streaming interfaces
 │   └── types.ts          # Common type definitions
 └── server/                # Express backend
@@ -453,18 +550,25 @@ src/
     │   └── migrations/    # Database migrations
     ├── routes/            # API routes
     │   ├── artifactRoutes.ts # Schema transform API
-    │   ├── brainstormRoutes.ts # Brainstorming endpoints
+    │   ├── brainstormRoutes.ts # Brainstorming endpoints (legacy)
+    │   ├── chatRoutes.ts  # Chat and agent endpoints
     │   ├── electricProxy.ts # Electric SQL authenticated proxy
     │   └── auth.ts        # Authentication routes
     ├── services/          # Business logic
-    │   ├── HumanTransformExecutor.ts # Core transform execution
+    │   ├── AgentService.ts                   # Central agent orchestrator
+    │   ├── ChatService.ts                    # Chat message routing and processing
+    │   ├── HumanTransformExecutor.ts         # Core transform execution
     │   ├── TransformInstantiationRegistry.ts # Transform registry
+    │   ├── StreamingAgentFramework.ts        # Agent framework foundation
     │   └── templates/     # LLM prompt templates
     ├── repositories/      # Data access layer
     │   ├── ArtifactRepository.ts # Artifact CRUD operations
-    │   └── TransformRepository.ts # Transform tracking
+    │   ├── TransformRepository.ts # Transform tracking
+    │   └── ChatMessageRepository.ts # Chat message operations
     └── scripts/           # Development and testing scripts
         ├── test-schema-system.ts # Schema system testing
+        ├── test-chat-system.ts # Chat system testing
+        ├── test-event-chat-system.ts # Event-driven chat testing
         └── debug-users.ts # User management utilities
 ```
 
@@ -582,6 +686,25 @@ const editMutation = useMutation({
 
 ## Recent Major Changes
 
+### Agent-Driven Chat Interface Implementation (Latest)
+- **Complete chat interface system** replacing traditional sidebars with ChatGPT-style conversation
+- **Agent framework integration** - All major operations (brainstorming, outline, script) routed through intelligent agent
+- **Tool-based decision making** - Agent analyzes user requests and selects appropriate tools automatically
+- **Event-driven messaging** - 6 event types track complete conversation flow: user messages, agent thinking, tool calls, responses, errors
+- **Two-layer message architecture** - Raw backend messages for complete context, sanitized display messages for frontend security
+- **Real-time synchronization** - Electric SQL integration provides instant message updates across all clients
+- **Resizable chat interface** - 250px-600px width range with responsive mobile layout using react-resizable
+- **Chinese language support** - Fully translated interface with bilingual keyword routing for Chinese users
+- **Context preservation** - Project-scoped chat history maintains complete conversation context
+- **Thinking states visualization** - Shows agent processing time and completion status
+
+### Agent Framework Architecture
+- **Central orchestration** - `AgentService` analyzes requests and routes to appropriate tools
+- **Brainstorm tool integration** - Fully functional with agent framework (✅ Complete)
+- **Legacy tool migration needed** - Outline and script tools require agent integration updates (⚠️ Pending)
+- **Context awareness** - Agent maintains project context across different workflow stages
+- **Extensible tool system** - Easy to add new agent tools following established patterns
+
 ### PostgreSQL + Electric SQL Migration
 - **Complete database migration** from SQLite to PostgreSQL with logical replication
 - **Electric SQL integration** for real-time synchronization with authenticated proxy pattern
@@ -599,49 +722,44 @@ const editMutation = useMutation({
 - **Comprehensive testing framework** - Full test suite validates all transform functionality
 
 ### User Experience Improvements
+- **ChatGPT-style interface** - Natural conversation flow with agent for all operations
 - **Smooth typing experience** - Local state management prevents React re-render issues
 - **Debounced auto-save** - Automatic saving with 500ms debounce to prevent excessive API calls
 - **Subtle visual feedback** - Non-intrusive save indicators with spinners and checkmarks
 - **Seamless content transition** - Proper artifact loading when switching between original and derived content
 - **Enhanced error handling** - Graceful handling of schema validation and transform errors
 - **Real-time collaboration** - Electric SQL enables instant updates across all connected clients
+- **Chinese localization** - Complete UI translation for Chinese user base
 
 ### Authentication & Security Enhancements
 - **Electric SQL proxy authentication** - All real-time data access authenticated and user-scoped
+- **Chat message sanitization** - Two-layer system prevents trade secrets exposure to frontend
 - **Debug token workflow** - Development authentication maintained with Electric integration
 - **Session-based security** - HTTP-only cookies with automatic session validation
 - **Project-based isolation** - Users can only access their own projects and data
 - **Concurrent editing safety** - Database constraints prevent data corruption from simultaneous edits
 
-### Database Architecture Updates
-- **Enhanced artifact metadata** - Comprehensive context and lineage information
-- **Streaming status tracking** - Real-time progress and status fields for all operations
-- **Optimized queries** - Efficient artifact and transform retrieval patterns with Kysely
-- **Electric-optimized views** - Database views designed for efficient real-time synchronization
-- **PostgreSQL triggers** - Automatic timestamp updates and data consistency
-
-### Frontend Architecture Improvements
-- **React hooks compliance** - Fixed critical hooks order violations that caused render errors
-- **Improved state management** - Better separation of server state, client state, and local UI state
-- **Enhanced TypeScript safety** - Strict typing throughout with proper prop validation
-- **Modern component patterns** - Consistent use of modern React patterns and best practices
-- **Electric SQL integration** - Real-time hooks for seamless data synchronization
-
 ## Testing
 
-### Schema System Testing
+### Testing Suite
 ```bash
-# Run comprehensive schema transform tests
+# Schema transform system testing
 npm run test:schema
-
-# Test specific scenarios
 ./run-ts src/server/scripts/test-schema-fix.ts
 
-# Test Electric SQL integration
+# Chat interface and agent system testing
+./run-ts src/server/scripts/test-chat-system.ts
+./run-ts src/server/scripts/test-event-chat-system.ts
+./run-ts src/server/scripts/test-brainstorm-chat-flow.ts
+
+# Electric SQL integration testing
 ./run-ts src/server/scripts/test-electric-auth.ts
 ```
 
 The test suite validates:
+- **Agent framework** - Tool selection, context awareness, and chat integration
+- **Event-driven messaging** - Complete event flow from user input to agent response
+- **Message sanitization** - Security layer preventing sensitive data exposure
 - **Transform path validation** - Ensures only valid paths are accepted
 - **Schema validation** - Verifies data integrity throughout transform process
 - **Artifact creation and updates** - Tests both new artifact creation and existing artifact updates
