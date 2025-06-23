@@ -43,12 +43,14 @@ const GenerateOutlineButton: React.FC<{
             onClick={handleGenerateOutline}
             style={{
                 marginTop: '8px',
-                background: 'linear-gradient(135deg, #1890ff, #40a9ff)',
+                background: 'linear-gradient(100deg, #40a9ff, rgb(22, 106, 184))',
                 border: 'none',
-                borderRadius: '4px'
+                borderRadius: '4px',
+                padding: "20px 20px",
+                fontSize: "18px"
             }}
         >
-            开始生成大纲
+            开始生成叙事大纲 &gt;&gt;
         </Button>
     );
 };
