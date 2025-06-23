@@ -45,31 +45,21 @@ export class ChatService {
                 { metadata: request.metadata }
             );
 
-            // 2. Create display user message
-            await this.chatRepo.createDisplayMessage(
-                projectId,
-                'user',
-                request.content,
-                { rawMessageId: rawUserMessage.id }
-            );
+            // 2. Create display user message using event-based system
+            await this.chatRepo.createUserMessage(projectId, request.content);
 
             // 3. Create thinking message to show agent is processing
-            const thinkingMessage = await this.chatRepo.createDisplayMessage(
+            const thinkingInfo = await this.chatRepo.createAgentThinkingMessage(
                 projectId,
-                'assistant',
-                'I\'m analyzing your request and determining the best approach...',
-                { displayType: 'thinking', status: 'streaming' }
+                'Analyzing your request and determining the best approach'
             );
 
             // 4. Trigger agent processing in background
-            this.processAgentResponse(projectId, userId, request.content, thinkingMessage.id)
+            this.processAgentResponse(projectId, userId, request.content, thinkingInfo.messageId, thinkingInfo.startTime)
                 .catch(error => {
                     console.error('Agent processing failed:', error);
-                    // Update thinking message to show error
-                    this.chatRepo.updateDisplayMessage(thinkingMessage.id, {
-                        content: 'I encountered an error while processing your request. Please try again.',
-                        status: 'failed'
-                    });
+                    // Add error to thinking message
+                    this.chatRepo.addAgentError(thinkingInfo.messageId, 'I encountered an error while processing your request. Please try again.');
                 });
 
         } catch (error) {
@@ -82,7 +72,8 @@ export class ChatService {
         projectId: string,
         userId: string,
         userMessage: string,
-        thinkingMessageId: string
+        thinkingMessageId: string,
+        thinkingStartTime: string
     ): Promise<void> {
         try {
             // Get recent chat history for context
@@ -91,24 +82,23 @@ export class ChatService {
             // Determine what kind of request this is and route to appropriate agent
             const agentResponse = await this.routeToAgent(projectId, userId, userMessage, recentMessages);
 
-            // Update thinking message to completed
-            await this.chatRepo.updateDisplayMessage(thinkingMessageId, {
-                status: 'completed'
-            });
+            // Finish thinking and add responses
+            await this.chatRepo.finishAgentThinking(
+                thinkingMessageId,
+                'Analyzing your request and determining the best approach',
+                thinkingStartTime
+            );
 
-            // Create display messages for agent responses
+            // Add agent responses to the same message
             for (const response of agentResponse) {
-                await this.createDisplayMessageFromAgentResponse(projectId, response);
+                await this.chatRepo.addAgentResponse(thinkingMessageId, response.content);
             }
 
         } catch (error) {
             console.error('Agent processing error:', error);
 
-            // Update thinking message to show error
-            await this.chatRepo.updateDisplayMessage(thinkingMessageId, {
-                content: 'I encountered an error while processing your request. Please try again.',
-                status: 'failed'
-            });
+            // Add error to thinking message
+            await this.chatRepo.addAgentError(thinkingMessageId, 'I encountered an error while processing your request. Please try again.');
         }
     }
 

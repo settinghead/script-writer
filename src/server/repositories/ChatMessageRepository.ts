@@ -1,7 +1,14 @@
 import { Kysely } from 'kysely';
 import { v4 as uuidv4 } from 'uuid';
 import type { DB } from '../database/types';
-import { ChatMessageRaw, ChatMessageDisplay } from '../../common/schemas/chatMessages';
+import {
+    ChatMessageRaw,
+    ChatMessageDisplay,
+    ChatEvent,
+    createEventMessage,
+    parseEventMessage,
+    ChatEventHelpers
+} from '../../common/schemas/chatMessages';
 
 export class ChatMessageRepository {
     constructor(private db: Kysely<DB>) { }
@@ -175,6 +182,95 @@ export class ChatMessageRepository {
             status: result.status || 'completed',
             raw_message_id: result.raw_message_id || undefined
         } as ChatMessageDisplay;
+    }
+
+    // Event-based message methods
+    async createEventMessage(
+        projectId: string,
+        role: 'user' | 'assistant' | 'tool',
+        events: ChatEvent[]
+    ): Promise<ChatMessageDisplay> {
+        const id = uuidv4();
+        const now = new Date().toISOString();
+        const content = createEventMessage(events);
+
+        const displayMessage = {
+            id,
+            project_id: projectId,
+            role,
+            content,
+            display_type: 'message' as const,
+            status: 'completed' as const,
+            raw_message_id: undefined,
+            created_at: now,
+            updated_at: now
+        };
+
+        await this.db
+            .insertInto('chat_messages_display')
+            .values(displayMessage)
+            .execute();
+
+        return displayMessage as ChatMessageDisplay;
+    }
+
+    async appendEventToMessage(
+        messageId: string,
+        event: ChatEvent
+    ): Promise<ChatMessageDisplay> {
+        // Get current message
+        const currentMessage = await this.getDisplayMessageById(messageId);
+        if (!currentMessage) {
+            throw new Error(`Message with id ${messageId} not found`);
+        }
+
+        // Parse existing events
+        const existingEvents = parseEventMessage(currentMessage.content);
+
+        // Add new event
+        const updatedEvents = [...existingEvents, event];
+        const updatedContent = createEventMessage(updatedEvents);
+
+        // Update message
+        await this.db
+            .updateTable('chat_messages_display')
+            .set({
+                content: updatedContent,
+                updated_at: new Date().toISOString()
+            })
+            .where('id', '=', messageId)
+            .execute();
+
+        // Return updated message
+        const updatedMessage = await this.getDisplayMessageById(messageId);
+        return updatedMessage!;
+    }
+
+    // Helper methods for common event patterns
+    async createUserMessage(projectId: string, content: string): Promise<ChatMessageDisplay> {
+        const event = ChatEventHelpers.userMessage(content);
+        return this.createEventMessage(projectId, 'user', [event]);
+    }
+
+    async createAgentThinkingMessage(projectId: string, task: string): Promise<{ messageId: string; startTime: string }> {
+        const startEvent = ChatEventHelpers.agentThinkingStart(task);
+        const message = await this.createEventMessage(projectId, 'assistant', [startEvent]);
+        return { messageId: message.id, startTime: startEvent.timestamp };
+    }
+
+    async finishAgentThinking(messageId: string, task: string, startTime: string): Promise<ChatMessageDisplay> {
+        const endEvent = ChatEventHelpers.agentThinkingEnd(task, startTime);
+        return this.appendEventToMessage(messageId, endEvent);
+    }
+
+    async addAgentResponse(messageId: string, content: string): Promise<ChatMessageDisplay> {
+        const responseEvent = ChatEventHelpers.agentResponse(content);
+        return this.appendEventToMessage(messageId, responseEvent);
+    }
+
+    async addAgentError(messageId: string, errorMessage: string): Promise<ChatMessageDisplay> {
+        const errorEvent = ChatEventHelpers.agentError(errorMessage);
+        return this.appendEventToMessage(messageId, errorEvent);
     }
 
     // Message sanitization helper

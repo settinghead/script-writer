@@ -24,29 +24,22 @@ export class AgentService {
         request: AgentBrainstormRequest
     ) {
         let agentTransformId: string | null = null;
-        try {
-            // Log user request as chat message
-            if (this.chatMessageRepo) {
-                await this.chatMessageRepo.createRawMessage(
-                    projectId,
-                    'user',
-                    request.userRequest,
-                    { userId, agentType: 'brainstorm' }
-                );
-                await this.chatMessageRepo.createDisplayMessage(
-                    projectId,
-                    'user',
-                    request.userRequest,
-                    { displayType: 'message', status: 'completed' }
-                );
+        let thinkingMessageId: string | undefined;
+        let thinkingStartTime: string | undefined;
 
-                // Log agent thinking message
-                await this.chatMessageRepo.createDisplayMessage(
+        try {
+            // Log user request and start thinking using event-based messaging
+            if (this.chatMessageRepo) {
+                // Create user message event
+                await this.chatMessageRepo.createUserMessage(projectId, request.userRequest);
+
+                // Start agent thinking
+                const thinkingInfo = await this.chatMessageRepo.createAgentThinkingMessage(
                     projectId,
-                    'assistant',
-                    'I\'m analyzing your brainstorm request and generating creative story ideas...',
-                    { displayType: 'thinking', status: 'streaming' }
+                    'Analyzing brainstorm request and generating creative story ideas'
                 );
+                thinkingMessageId = thinkingInfo.messageId;
+                thinkingStartTime = thinkingInfo.startTime;
             }
 
             // 1. Create a parent transform for the entire agent execution
@@ -106,12 +99,18 @@ export class AgentService {
             }
 
             // Log successful completion
-            if (this.chatMessageRepo) {
-                await this.chatMessageRepo.createDisplayMessage(
-                    projectId,
-                    'assistant',
-                    'I\'ve successfully generated creative story ideas for your project! You can find them in the brainstorm results.',
-                    { displayType: 'message', status: 'completed' }
+            if (this.chatMessageRepo && thinkingMessageId && thinkingStartTime) {
+                // Finish thinking
+                await this.chatMessageRepo.finishAgentThinking(
+                    thinkingMessageId,
+                    'Analyzing brainstorm request and generating creative story ideas',
+                    thinkingStartTime
+                );
+
+                // Add success response
+                await this.chatMessageRepo.addAgentResponse(
+                    thinkingMessageId,
+                    'I\'ve successfully generated creative story ideas for your project! You can find them in the brainstorm results.'
                 );
             }
 
@@ -121,12 +120,10 @@ export class AgentService {
             console.error(`[AgentService] Brainstorm agent failed for project ${projectId}:`, error);
 
             // Log error to chat
-            if (this.chatMessageRepo) {
-                await this.chatMessageRepo.createDisplayMessage(
-                    projectId,
-                    'assistant',
-                    'I encountered an error while generating story ideas. Please try again or contact support if the issue persists.',
-                    { displayType: 'message', status: 'failed' }
+            if (this.chatMessageRepo && thinkingMessageId) {
+                await this.chatMessageRepo.addAgentError(
+                    thinkingMessageId,
+                    'I encountered an error while generating story ideas. Please try again or contact support if the issue persists.'
                 );
             }
 

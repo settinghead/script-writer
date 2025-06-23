@@ -2,6 +2,7 @@ import React from 'react';
 import { Avatar, Card, Typography, Tag, Space, Spin } from 'antd';
 import { UserOutlined, RobotOutlined, ToolOutlined, ClockCircleOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { ChatMessageDisplay } from '../../../common/schemas/chatMessages';
+import { processChatMessage } from '../../utils/chatEventProcessor';
 
 const { Text, Paragraph } = Typography;
 
@@ -11,6 +12,14 @@ interface ChatMessageProps {
 }
 
 export const ChatMessage: React.FC<ChatMessageProps> = ({ message, isStreaming = false }) => {
+    // Process the message using event-based logic
+    const processedMessage = processChatMessage(
+        message.id,
+        message.role,
+        message.content,
+        message.created_at
+    );
+
     const getAvatarIcon = () => {
         switch (message.role) {
             case 'user':
@@ -38,16 +47,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, isStreaming =
     };
 
     const getDisplayContent = () => {
-        // Handle different display types
-        if (message.display_type === 'thinking' && isStreaming) {
-            return `${message.content}`;
-        }
-
-        if (message.display_type === 'tool_summary') {
-            return message.content;
-        }
-
-        return message.content;
+        return processedMessage.content;
     };
 
     const formatTimestamp = (timestamp: string) => {
@@ -59,8 +59,13 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, isStreaming =
         if (message.status === 'failed') {
             return <Tag color="error" icon={<ExclamationCircleOutlined />}>Failed</Tag>;
         }
-        if (isStreaming || message.status === 'streaming') {
+        if (processedMessage.showSpinner) {
             return <Tag color="processing" icon={<Spin size="small" />}>Thinking...</Tag>;
+        }
+        if (processedMessage.thinkingDuration) {
+            return <Tag color="success" icon={<ClockCircleOutlined />}>
+                Completed in {Math.round(processedMessage.thinkingDuration / 1000)}s
+            </Tag>;
         }
         return null;
     };
@@ -132,11 +137,12 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, isStreaming =
                             margin: 0,
                             color: 'inherit',
                             lineHeight: 1.5,
-                            fontStyle: message.display_type === 'tool_summary' ? 'italic' : 'normal'
+                            fontStyle: message.display_type === 'tool_summary' ? 'italic' : 'normal',
+                            whiteSpace: 'pre-wrap'
                         }}
                     >
                         {getDisplayContent()}
-                        {message.display_type === 'thinking' && isStreaming && (
+                        {processedMessage.showSpinner && (
                             <Spin size="small" style={{ marginLeft: 8 }} />
                         )}
                     </Paragraph>
