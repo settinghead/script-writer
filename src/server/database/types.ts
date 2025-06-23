@@ -9,6 +9,18 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
   ? ColumnType<S, I | undefined, U>
   : ColumnType<T, T | undefined, T>;
 
+export type Json = JsonValue;
+
+export type JsonArray = JsonValue[];
+
+export type JsonObject = {
+  [x: string]: JsonValue | undefined;
+};
+
+export type JsonPrimitive = boolean | number | string | null;
+
+export type JsonValue = JsonArray | JsonObject | JsonPrimitive;
+
 export type Numeric = ColumnType<string, number | string, number | string>;
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
@@ -31,6 +43,31 @@ export interface AuthProviders {
   provider_data: string | null;
   provider_id: string;
   user_id: string;
+}
+
+export interface ChatMessagesDisplay {
+  content: string;
+  created_at: Generated<Timestamp>;
+  display_type: Generated<string | null>;
+  id: string;
+  project_id: string;
+  raw_message_id: string | null;
+  role: string;
+  status: Generated<string | null>;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface ChatMessagesRaw {
+  content: string;
+  created_at: Generated<Timestamp>;
+  id: string;
+  metadata: Json | null;
+  project_id: string;
+  role: string;
+  tool_name: string | null;
+  tool_parameters: Json | null;
+  tool_result: Json | null;
+  updated_at: Generated<Timestamp>;
 }
 
 export interface HumanTransforms {
@@ -130,6 +167,8 @@ export interface UserSessions {
 export interface DB {
   artifacts: Artifacts;
   auth_providers: AuthProviders;
+  chat_messages_display: ChatMessagesDisplay;
+  chat_messages_raw: ChatMessagesRaw;
   human_transforms: HumanTransforms;
   llm_prompts: LlmPrompts;
   llm_transforms: LlmTransforms;

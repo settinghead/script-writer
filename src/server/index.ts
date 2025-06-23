@@ -40,6 +40,9 @@ import { AgentService } from './services/AgentService.js';
 import { BrainstormService } from './services/BrainstormService';
 import { LLMService } from './services/LLMService';
 import { createBrainstormRoutes } from './routes/brainstormRoutes';
+import { ChatMessageRepository } from './repositories/ChatMessageRepository';
+import { ChatService } from './services/ChatService';
+import { createChatRoutes } from './routes/chatRoutes';
 
 
 dotenv.config();
@@ -79,6 +82,10 @@ const templateService = new TemplateService();
 const llmService = new LLMService();
 const brainstormService = new BrainstormService(db, artifactRepo, transformRepo);
 
+// Initialize chat services
+const chatMessageRepo = new ChatMessageRepository(db);
+const chatService = new ChatService(chatMessageRepo, agentService, transformRepo, artifactRepo);
+
 // Make services available to routes via app.locals
 app.locals.transformRepo = transformRepo;
 const server = app.listen(PORT, "0.0.0.0", () =>
@@ -109,6 +116,9 @@ app.use('/api/ideations', createIdeationRoutes(authMiddleware, artifactRepo, tra
 // Mount artifact routes
 import { createArtifactRoutes } from './routes/artifactRoutes';
 app.use('/api/artifacts', createArtifactRoutes(authMiddleware, artifactRepo, transformRepo));
+
+// Mount chat routes
+app.use('/api/chat', createChatRoutes(authMiddleware, chatService));
 
 // Attach authDB to all requests
 app.use(authMiddleware.attachAuthDB);

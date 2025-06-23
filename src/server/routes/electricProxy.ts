@@ -59,11 +59,16 @@ export function createElectricProxyRoutes(authDB: AuthDatabase) {
                 case 'transform_inputs':
                 case 'transform_outputs':
                 case 'llm_prompts':
+                case 'chat_messages_display':
                     // All these tables/views are scoped by project_id.
                     finalWhereClause = existingWhere
                         ? `(${existingWhere}) AND (${userScopedWhere})`
                         : userScopedWhere;
                     break;
+                case 'chat_messages_raw':
+                    // Raw messages are never exposed via Electric SQL
+                    res.status(403).json({ error: 'Access denied to raw message data' });
+                    return;
                 default:
                     res.status(400).json({ error: `Table ${table} not authorized for Electric sync` });
                     return;
