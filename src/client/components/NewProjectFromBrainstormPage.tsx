@@ -7,19 +7,14 @@ const { Title, Paragraph, Text } = Typography;
 const { TextArea } = Input;
 
 interface BrainstormParams {
-    genre: string;
-    theme: string;
-    character_setting: string;
-    plot_device: string;
-    ending_type: string;
-    length: string;
     platform: string;
-    additional_requirements?: string;
+    genre: string;
+    other_requirements?: string;
 }
 
 interface CreateProjectResponse {
-    projectId: string;
-    message: string;
+    id: string;
+    name: string;
 }
 
 const NewProjectFromBrainstormPage: React.FC = () => {
@@ -27,29 +22,58 @@ const NewProjectFromBrainstormPage: React.FC = () => {
     const navigate = useNavigate();
     const { message } = App.useApp();
 
-    // TanStack Query mutation for creating projects with optimistic updates
+    // TanStack Query mutation for creating projects and starting brainstorm via chat
     const createProjectMutation = useMutation({
-        mutationKey: ['create-project'],
+        mutationKey: ['create-project-brainstorm'],
         mutationFn: async (params: BrainstormParams): Promise<CreateProjectResponse> => {
-            const response = await fetch('/api/brainstorm/create-project', {
+            // 1. Create a new project first
+            const projectResponse = await fetch('/api/projects', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ params })
+                body: JSON.stringify({
+                    name: `头脑风暴项目 - ${new Date().toLocaleString()}`,
+                    description: `${params.platform}平台的${params.genre}类型故事创意`,
+                    project_type: 'script'
+                })
             });
 
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.message || 'Failed to create project');
+            if (!projectResponse.ok) {
+                const errorData = await projectResponse.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to create project');
             }
 
-            return response.json();
+            const project = await projectResponse.json();
+
+            // 2. Send a brainstorm message via chat system
+            const brainstormMessage = `为${params.platform}平台生成创意故事想法。
+类型：${params.genre}
+${params.other_requirements ? `其他要求：${params.other_requirements}` : ''}
+
+请生成几个有创意的故事想法，要符合平台特点和类型要求。`;
+
+            const chatResponse = await fetch(`/api/chat/projects/${project.id}/messages`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    message: brainstormMessage
+                })
+            });
+
+            if (!chatResponse.ok) {
+                console.warn('Failed to send initial brainstorm message, but project was created');
+                // Don't throw error - project was created successfully
+            }
+
+            return project;
         },
-        onSuccess: (data) => {
+        onSuccess: (project) => {
             message.success('项目已创建！正在重定向到头脑风暴页面...');
-            // Navigate to the project brainstorm page where Electric will sync the results
-            navigate(`/projects/${data.projectId}/brainstorm`);
+            // Navigate to the project brainstorm page where the chat system will handle the brainstorming
+            navigate(`/projects/${project.id}/brainstorm`);
         },
         onError: (error) => {
             console.error('Error creating project:', error);
@@ -63,14 +87,9 @@ const NewProjectFromBrainstormPage: React.FC = () => {
 
             // Prepare brainstorm parameters
             const params: BrainstormParams = {
-                genre: values.genre || '任意类型',
-                theme: values.other_requirements || '通用故事',
-                character_setting: '现代主角',
-                plot_device: '穿越或现代知识',
-                ending_type: '美好结局',
-                length: '短视频系列',
-                platform: values.platform || '社交媒体',
-                additional_requirements: values.other_requirements
+                platform: values.platform || '抖音',
+                genre: values.genre || '穿越, 爽文',
+                other_requirements: values.other_requirements
             };
 
             // Use TanStack mutation with optimistic updates

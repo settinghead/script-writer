@@ -37,9 +37,7 @@ import { createProjectRoutes } from './routes/projectRoutes.js';
 import { ProjectService } from './services/ProjectService.js';
 import { ProjectRepository } from './repositories/ProjectRepository.js';
 import { AgentService } from './services/AgentService.js';
-import { BrainstormService } from './services/BrainstormService';
 import { LLMService } from './services/LLMService';
-import { createBrainstormRoutes } from './routes/brainstormRoutes';
 import { ChatMessageRepository } from './repositories/ChatMessageRepository';
 import { ChatService } from './services/ChatService';
 import { createChatRoutes } from './routes/chatRoutes';
@@ -80,7 +78,6 @@ const templateService = new TemplateService();
 
 // Initialize new Electric-compatible services
 const llmService = new LLMService();
-const brainstormService = new BrainstormService(db, artifactRepo, transformRepo);
 
 // Initialize chat services
 const chatMessageRepo = new ChatMessageRepository(db);
@@ -88,7 +85,6 @@ const chatService = new ChatService(chatMessageRepo, agentService, transformRepo
 
 // Inject dependencies to avoid circular dependency issues
 agentService.setChatMessageRepository(chatMessageRepo);
-brainstormService.setAgentService(agentService);
 
 // Make services available to routes via app.locals
 app.locals.transformRepo = transformRepo;
@@ -110,9 +106,6 @@ app.use('/api/electric', createElectricProxyRoutes(authDB));
 
 // Mount project routes
 app.use('/api/projects', createProjectRoutes(authMiddleware, projectService, agentService));
-
-// Mount new brainstorm routes (Electric-compatible)
-app.use('/api/brainstorm', createBrainstormRoutes(authMiddleware, brainstormService));
 
 // Mount ideation routes - now serving projects list
 app.use('/api/ideations', createIdeationRoutes(authMiddleware, artifactRepo, transformRepo));

@@ -1,7 +1,6 @@
 import express from 'express';
 import { ProjectService } from '../services/ProjectService';
 import { AgentService, GeneralAgentRequestSchema } from '../services/AgentService';
-import { AgentBrainstormRequestSchema } from '../../common/types';
 
 export function createProjectRoutes(
     authMiddleware: any,
@@ -106,25 +105,37 @@ export function createProjectRoutes(
                 return res.status(401).json({ error: "User not authenticated" });
             }
 
-            const validation = AgentBrainstormRequestSchema.safeParse(req.body);
-            if (!validation.success) {
+            // Expect the new format from the frontend: { platform, genre, other_requirements }
+            const { platform, genre, other_requirements } = req.body;
+
+            if (!platform || !genre) {
                 return res.status(400).json({
-                    error: "Invalid request body",
-                    details: validation.error.format(),
+                    error: "Missing required fields: platform and genre are required"
                 });
             }
-            const brainstormRequest = validation.data;
 
             // 1. Create the project
-            const projectName = `Brainstorming Project - ${new Date().toLocaleString()}`;
+            const projectName = `头脑风暴项目 - ${new Date().toLocaleString()}`;
             const project = await projectService.createProject(user.id, projectName);
 
-            // 2. Start the brainstorming agent (this is async and won't be awaited)
-            agentService.runBrainstormAgent(project.id, user.id, brainstormRequest);
+            // 2. Prepare the general agent request for brainstorming
+            const brainstormMessage = `为${platform}平台生成创意故事想法。
+类型：${genre}
+${other_requirements ? `其他要求：${other_requirements}` : ''}
 
-            // 3. Return project ID immediately
-            res.status(202).json({
+请生成几个有创意的故事想法，要符合平台特点和类型要求。`;
+
+            // 3. Start the general agent with brainstorm context (this is async and won't be awaited)
+            agentService.runGeneralAgent(project.id, user.id, {
+                userRequest: brainstormMessage,
                 projectId: project.id,
+                contextType: 'brainstorm'
+            });
+
+            // 4. Return project ID immediately
+            res.status(202).json({
+                id: project.id,
+                name: project.name,
                 message: "Project created and brainstorming started."
             });
 
