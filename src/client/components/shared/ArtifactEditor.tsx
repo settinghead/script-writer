@@ -22,6 +22,7 @@ export type EditorMode = 'readonly' | 'editable' | 'edit-button' | 'auto';
 
 interface ArtifactEditorProps {
     artifactId: string;
+    sourceArtifactId?: string;  // Original artifact ID for transform lookup (for lineage resolution)
     path?: string;           // JSON path for derivation (optional, defaults to root)
     transformName?: string;  // Transform name for schema-based editing
     className?: string;
@@ -47,6 +48,7 @@ interface CreateTransformResponse {
 
 const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
     artifactId,
+    sourceArtifactId,
     path = "",
     transformName,
     className = '',
@@ -61,7 +63,6 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
     const projectData = useProjectData();
 
     // State management
-    const [isEditing, setIsEditing] = useState(false);
     const [editingField, setEditingField] = useState<string | null>(null);
     const [pendingSaves, setPendingSaves] = useState<Set<string>>(new Set());
     const [typingFields, setTypingFields] = useState<Set<string>>(new Set());
@@ -69,9 +70,39 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
 
     // 1. Check for existing human transform for this path using the unified context
     const existingTransform = useMemo(() => {
-        const humanTransforms = projectData.getHumanTransformsForArtifact(artifactId, path);
-        return humanTransforms.length > 0 ? humanTransforms[0] : null;
-    }, [projectData, artifactId, path]);
+        if (!transformName || !sourceArtifactId) return null;
+
+        const lookupArtifactId = sourceArtifactId || artifactId;
+        const humanTransforms = projectData.getHumanTransformsForArtifact(lookupArtifactId, path);
+
+        // Debug logging
+        console.log(`🔍 [ArtifactEditor] Transform lookup for ${artifactId}:`, {
+            lookupArtifactId,
+            path,
+            transformName,
+            totalHumanTransforms: projectData.humanTransforms?.length || 0,
+            matchingTransforms: humanTransforms?.length || 0,
+            isDataLoading: projectData.isLoading,
+            humanTransforms: humanTransforms?.map(ht => ({
+                transform_id: ht.transform_id?.substring(0, 8) + '...',
+                source_artifact_id: ht.source_artifact_id?.substring(0, 8) + '...',
+                derived_artifact_id: ht.derived_artifact_id?.substring(0, 8) + '...',
+                derivation_path: ht.derivation_path,
+                transform_name: ht.transform_name
+            })),
+            allHumanTransforms: projectData.humanTransforms?.map(ht => ({
+                transform_id: ht.transform_id?.substring(0, 8) + '...',
+                source_artifact_id: ht.source_artifact_id?.substring(0, 8) + '...',
+                transform_name: ht.transform_name,
+                derivation_path: ht.derivation_path
+            }))
+        });
+
+        return humanTransforms.find(ht =>
+            ht.transform_name === transformName &&
+            ht.derivation_path === path
+        ) || null;
+    }, [projectData, sourceArtifactId, artifactId, path, transformName]);
 
     // 2. Get artifact from unified context
     const artifactToUse = useMemo(() => {
@@ -84,7 +115,7 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
         return originalArtifact;
     }, [projectData, existingTransform?.derived_artifact_id, artifactId]);
 
-    // 3. Determine display mode
+    // 3. Determine display mode and editing state
     const effectiveMode = useMemo(() => {
         if (mode !== 'auto') return mode;
 
@@ -93,6 +124,9 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
         if (transformName && fields.length > 0) return 'edit-button';
         return 'readonly';
     }, [mode, existingTransform, transformName, fields.length]);
+
+    // Determine if we're in editing mode (for artifacts with existing transforms)
+    const isEditing = !!existingTransform;
 
     // 4. Determine target artifact and labels
     const targetArtifactId = existingTransform?.derived_artifact_id || artifactId;
@@ -132,6 +166,24 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
     }, [artifactToUse, artifactId]);
 
     const { artifactData } = processedData || {};
+
+    // Debug logging for artifact editor
+    useEffect(() => {
+        console.log(`🔧 [ArtifactEditor] Debug info for artifact ${artifactId}:`, {
+            artifactId,
+            sourceArtifactId,
+            lookupArtifactId: sourceArtifactId || artifactId,
+            mode,
+            effectiveMode,
+            hasArtifactToUse: !!artifactToUse,
+            hasArtifactData: !!artifactData,
+            existingTransform: existingTransform?.transform_id,
+            transformName,
+            fieldsLength: fields.length,
+            isEditing,
+            artifactType: artifactToUse?.type
+        });
+    }, [artifactId, sourceArtifactId, mode, effectiveMode, artifactToUse, artifactData, existingTransform, transformName, fields.length, isEditing]);
 
     // 5. Create transform mutation using unified context
     const createTransformMutation = projectData.createHumanTransform;
@@ -193,13 +245,12 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
         setIsCreatingTransform(true);
         createTransformMutation.mutate({
             transformName,
-            sourceArtifactId: artifactId,
+            sourceArtifactId: sourceArtifactId || artifactId,
             derivationPath: path,
             fieldUpdates: {} // Empty - just creating the transform
         }, {
             onSuccess: (response) => {
                 setIsCreatingTransform(false);
-                setIsEditing(true);
 
                 // Notify parent component
                 onTransition?.(response.derivedArtifact.id);
@@ -242,7 +293,7 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
     }, []);
 
     // Loading state
-    if (isLoadingArtifact) {
+    if (isLoadingArtifact || (transformName && !projectData.humanTransforms)) {
         return (
             <div className={`artifact-editor loading ${className}`}>
                 <div className="animate-pulse bg-gray-700 h-20 rounded"></div>
@@ -262,7 +313,7 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
     }
 
     // Edit button mode - show clickable preview with edit button
-    if (effectiveMode === 'edit-button' && !isEditing) {
+    if (effectiveMode === 'edit-button' && !isEditing && artifactToUse) {
         return (
             <div
                 className={`artifact-editor ${className}`}
@@ -285,51 +336,60 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
                 {/* Read-only display of original data */}
                 <div className="mt-3 p-3 bg-gray-800 rounded">
                     {(() => {
-                        const fullData = JSON.parse(artifactToUse.data as string);
-                        const dataToShow = path ? extractDataAtPath(fullData, path) : fullData;
+                        try {
+                            const fullData = JSON.parse(artifactToUse.data as string);
+                            const dataToShow = path ? extractDataAtPath(fullData, path) : fullData;
 
-                        // If we have field configurations, use them to display structured data
-                        if (fields.length > 0 && dataToShow && typeof dataToShow === 'object') {
+                            // If we have field configurations, use them to display structured data
+                            if (fields.length > 0 && dataToShow && typeof dataToShow === 'object') {
+                                return (
+                                    <div className="space-y-3">
+                                        {fields.map(({ field }) => (
+                                            dataToShow[field] && (
+                                                <div key={field}>
+                                                    <div className="text-xs text-gray-500 mb-1 capitalize">
+                                                        {field === 'title' ? '标题' : field === 'body' ? '内容' : field}
+                                                    </div>
+                                                    <div className="text-sm text-gray-300 whitespace-pre-wrap">
+                                                        {dataToShow[field]}
+                                                    </div>
+                                                </div>
+                                            )
+                                        ))}
+                                    </div>
+                                );
+                            }
+
+                            // Special case for brainstorm ideas without field config
+                            if (dataToShow && typeof dataToShow === 'object' && dataToShow.title && dataToShow.body) {
+                                return (
+                                    <div className="space-y-3">
+                                        <div>
+                                            <div className="text-xs text-gray-500 mb-1">标题</div>
+                                            <div className="text-sm text-gray-300">{dataToShow.title}</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-xs text-gray-500 mb-1">内容</div>
+                                            <div className="text-sm text-gray-300 whitespace-pre-wrap">{dataToShow.body}</div>
+                                        </div>
+                                    </div>
+                                );
+                            }
+
+                            // Fallback to JSON display
                             return (
-                                <div className="space-y-3">
-                                    {fields.map(({ field }) => (
-                                        dataToShow[field] && (
-                                            <div key={field}>
-                                                <div className="text-xs text-gray-500 mb-1 capitalize">
-                                                    {field === 'title' ? '标题' : field === 'body' ? '内容' : field}
-                                                </div>
-                                                <div className="text-sm text-gray-300 whitespace-pre-wrap">
-                                                    {dataToShow[field]}
-                                                </div>
-                                            </div>
-                                        )
-                                    ))}
+                                <div className="text-sm text-gray-300">
+                                    {JSON.stringify(dataToShow, null, 2)}
+                                </div>
+                            );
+                        } catch (error) {
+                            console.error('[ArtifactEditor] Error parsing artifact data for edit-button mode:', error);
+                            return (
+                                <div className="text-sm text-red-400">
+                                    数据解析错误
                                 </div>
                             );
                         }
-
-                        // Special case for brainstorm ideas without field config
-                        if (dataToShow && typeof dataToShow === 'object' && dataToShow.title && dataToShow.body) {
-                            return (
-                                <div className="space-y-3">
-                                    <div>
-                                        <div className="text-xs text-gray-500 mb-1">标题</div>
-                                        <div className="text-sm text-gray-300">{dataToShow.title}</div>
-                                    </div>
-                                    <div>
-                                        <div className="text-xs text-gray-500 mb-1">内容</div>
-                                        <div className="text-sm text-gray-300 whitespace-pre-wrap">{dataToShow.body}</div>
-                                    </div>
-                                </div>
-                            );
-                        }
-
-                        // Fallback to JSON display
-                        return (
-                            <div className="text-sm text-gray-300">
-                                {JSON.stringify(dataToShow, null, 2)}
-                            </div>
-                        );
                     })()}
                 </div>
             </div>
@@ -432,11 +492,26 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
     }
 
     // Fallback for unsupported configurations
+    console.error(`🚨 [ArtifactEditor] Unsupported configuration for artifact ${artifactId}:`, {
+        effectiveMode,
+        fieldsLength: fields.length,
+        hasTransformName: !!transformName,
+        hasArtifactToUse: !!artifactToUse,
+        hasArtifactData: !!artifactData,
+        path,
+        artifactType: artifactToUse?.type,
+        existingTransformId: existingTransform?.transform_id,
+        humanTransformsLength: projectData.humanTransforms?.length || 0
+    });
+
     return (
         <div className={`artifact-editor unsupported ${className}`}>
             <div className="text-yellow-400 text-sm">
                 无效的编辑器配置: mode={effectiveMode}, fields={fields.length}
                 {path && ` (路径: ${path})`}
+            </div>
+            <div className="text-xs text-gray-500 mt-2">
+                Debug: transformName={transformName}, artifactToUse={!!artifactToUse}, artifactData={!!artifactData}, humanTransforms={projectData.humanTransforms?.length || 0}
             </div>
         </div>
     );

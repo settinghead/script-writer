@@ -4,6 +4,7 @@ import { DynamicBrainstormingResults } from './DynamicBrainstormingResults'
 import { IdeaWithTitle } from '../types/brainstorm'
 import { ReasoningIndicator } from './shared/ReasoningIndicator'
 import { useProjectData } from '../contexts/ProjectDataContext'
+import { buildLineageGraph, findLatestArtifact } from '../../common/utils/lineageResolution'
 
 export default function ProjectBrainstormPage() {
   const { projectId } = useParams<{ projectId: string }>()
@@ -17,7 +18,7 @@ export default function ProjectBrainstormPage() {
   // Use unified project data context
   const projectData = useProjectData()
 
-  // Extract brainstorm data from individual artifacts
+  // Extract brainstorm data with lineage resolution
   const { ideas, status, progress, error, isLoading, lastSyncedAt } = useMemo(() => {
     const brainstormArtifacts = projectData.getBrainstormArtifacts()
 
@@ -32,25 +33,97 @@ export default function ProjectBrainstormPage() {
       }
     }
 
-    // Convert individual brainstorm_idea artifacts to IdeaWithTitle format
+
+
+    // Convert individual brainstorm_idea artifacts to IdeaWithTitle format with lineage resolution
     let ideas: IdeaWithTitle[] = []
     let status: 'idle' | 'streaming' | 'completed' | 'failed' = 'completed'
     let progress = 100
     let lastSyncedAt: string | null = null
 
     try {
+      // Build lineage graph for resolution
+      const graph = buildLineageGraph(
+        projectData.artifacts,
+        projectData.transforms,
+        projectData.humanTransforms,
+        projectData.transformInputs,
+        projectData.transformOutputs
+      )
+
+      // Group artifacts by their original source (to avoid duplicates)
+      const processedArtifacts = new Set<string>()
+      const resolvedIdeas: Array<{ artifact: any, resolvedId: string, originalId: string }> = []
+
       // Sort artifacts by creation time to get consistent ordering
       const sortedArtifacts = brainstormArtifacts
         .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
 
+      // Helper function to find the root (original) artifact in a lineage chain
+      const findRootArtifact = (artifactId: string): string => {
+        console.log(`🔍 [findRootArtifact] Looking for root of ${artifactId.substring(0, 8)}..., totalTransforms=${projectData.humanTransforms?.length || 0}`)
+
+        // Look for human transforms that have this artifact as derived_artifact_id
+        const sourceTransform = projectData.humanTransforms?.find(
+          ht => ht.derived_artifact_id === artifactId
+        )
+
+        if (sourceTransform && sourceTransform.source_artifact_id) {
+          // Recursively find the root
+          const rootId = findRootArtifact(sourceTransform.source_artifact_id)
+          console.log(`🔍 [findRootArtifact] ${artifactId.substring(0, 8)}... → ${sourceTransform.source_artifact_id.substring(0, 8)}... → ${rootId.substring(0, 8)}...`)
+          return rootId
+        }
+
+        // This is the root artifact
+        console.log(`🔍 [findRootArtifact] ${artifactId.substring(0, 8)}... is root (no transforms found, totalTransforms=${projectData.humanTransforms?.length || 0})`)
+        return artifactId
+      }
+
+      for (const artifact of sortedArtifacts) {
+        // Skip if we've already processed this artifact lineage
+        if (processedArtifacts.has(artifact.id)) {
+          continue
+        }
+
+        // Find the latest version using lineage resolution
+        const resolution = findLatestArtifact(artifact.id, undefined, graph)
+        const resolvedId = resolution.artifactId || artifact.id
+
+        // Find the root (original) artifact in this lineage chain
+        const rootId = findRootArtifact(artifact.id)
+
+        // Check if we've already processed this lineage chain by checking all artifacts in the chain
+        const allArtifactsInChain = new Set([artifact.id, resolvedId, rootId])
+        const alreadyProcessed = Array.from(allArtifactsInChain).some(id => processedArtifacts.has(id))
+
+        if (alreadyProcessed) {
+          continue
+        }
+
+        // Mark all artifacts in this lineage chain as processed
+        allArtifactsInChain.forEach(id => processedArtifacts.add(id))
+
+        // Use the resolved (latest) version for display
+        const resolvedArtifact = resolvedId !== artifact.id
+          ? projectData.getArtifactById(resolvedId) || artifact
+          : artifact
+
+        resolvedIdeas.push({
+          artifact: resolvedArtifact,
+          resolvedId: resolvedId,
+          originalId: rootId  // Use the root artifact ID as the original
+        })
+      }
+
       // Find the latest update time for sync status
-      lastSyncedAt = sortedArtifacts.length > 0
-        ? (sortedArtifacts[sortedArtifacts.length - 1].updated_at || null)
+      lastSyncedAt = resolvedIdeas.length > 0
+        ? (resolvedIdeas[resolvedIdeas.length - 1].artifact.updated_at || null)
         : null
 
       // Check if any artifacts are still streaming
-      const hasStreamingArtifacts = sortedArtifacts.some(
-        artifact => artifact.streaming_status === 'streaming'
+      const hasStreamingArtifacts = resolvedIdeas.some(
+        ({ artifact }) => artifact.streaming_status === 'streaming'
       )
 
       if (hasStreamingArtifacts) {
@@ -58,29 +131,51 @@ export default function ProjectBrainstormPage() {
         progress = 50
       }
 
-      // Convert each artifact to IdeaWithTitle format
-      ideas = sortedArtifacts.map((artifact, index) => {
+      // Convert each resolved artifact to IdeaWithTitle format
+      ideas = resolvedIdeas.map(({ artifact, resolvedId, originalId }, index) => {
         try {
           const data = artifact.data ? JSON.parse(artifact.data) : {}
-          return {
+          const idea = {
             title: data.title || `想法 ${index + 1}`,
             body: data.body || '内容加载中...',
-            artifactId: artifact.id,
+            artifactId: resolvedId,
+            originalArtifactId: originalId,
             index
           }
+
+          // Debug logging for each idea
+          console.log(`💡 [ProjectBrainstormPage] Idea ${index}:`, {
+            artifactId: resolvedId?.substring(0, 8) + '...',
+            originalArtifactId: originalId?.substring(0, 8) + '...',
+            title: data.title,
+            isResolved: resolvedId !== artifact.id,
+            originalArtifactId_full: originalId,
+            artifactId_full: resolvedId
+          })
+
+          return idea
         } catch (parseErr) {
-          console.warn(`Failed to parse artifact ${artifact.id}:`, parseErr)
+          console.warn(`Failed to parse artifact ${resolvedId}:`, parseErr)
           return {
             title: `想法 ${index + 1}`,
             body: '内容解析失败',
-            artifactId: artifact.id,
+            artifactId: resolvedId,
+            originalArtifactId: originalId,
             index
           }
         }
       })
 
+      console.log(`🔍 [ProjectBrainstormPage] Lineage resolution complete:`, {
+        totalArtifacts: brainstormArtifacts.length,
+        resolvedIdeas: resolvedIdeas.length,
+        processedArtifacts: Array.from(processedArtifacts),
+        resolvedArtifactIds: resolvedIdeas.map(r => r.resolvedId),
+        originalArtifactIds: resolvedIdeas.map(r => r.originalId)
+      })
+
     } catch (err) {
-      console.error('Failed to process brainstorm artifacts:', err)
+      console.error('Failed to process brainstorm artifacts with lineage resolution:', err)
       return {
         ideas: [],
         status: 'failed' as const,

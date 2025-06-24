@@ -159,11 +159,12 @@ const IdeaOutlines: React.FC<{
 // Individual idea card component using ArtifactEditor
 const BrainstormIdeaCard: React.FC<{
     artifactId: string;
+    originalArtifactId?: string;
     index: number;
     isSelected: boolean;
     ideaOutlines: any[];
     onIdeaClick: (artifactId: string, index: number) => void;
-}> = ({ artifactId, index, isSelected, ideaOutlines, onIdeaClick }) => {
+}> = ({ artifactId, originalArtifactId, index, isSelected, ideaOutlines, onIdeaClick }) => {
     const [showSavedCheckmark, setShowSavedCheckmark] = useState(false);
 
     // Handle successful save - show checkmark briefly
@@ -225,8 +226,9 @@ const BrainstormIdeaCard: React.FC<{
             {/* Idea content using ArtifactEditor */}
             <ArtifactEditor
                 artifactId={artifactId}
+                sourceArtifactId={originalArtifactId || artifactId}
                 fields={BRAINSTORM_IDEA_FIELDS}
-                mode="edit-button"
+                mode="auto"
                 statusLabel="AI生成"
                 statusColor="#1890ff"
                 transformName="edit_brainstorm_idea"
@@ -421,6 +423,7 @@ export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsPr
                         <BrainstormIdeaCard
                             key={artifactId}
                             artifactId={artifactId}
+                            originalArtifactId={idea.originalArtifactId}
                             index={index}
                             isSelected={selectedIdea === index}
                             ideaOutlines={ideaOutlines[artifactId] || []}
