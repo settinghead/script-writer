@@ -88,11 +88,28 @@ export class AgentService {
 **当前项目背景信息：**
 ${contextString}
 
-**指令：**
-- 如果用户想要生成新的故事创意，使用 generate_brainstorm_ideas 工具
-- 如果用户想要修改、改进或编辑现有的故事创意，使用 edit_brainstorm_idea 工具
-- 仔细分析用户的具体需求，提供详细的编辑指导和要求
-- 确保理解用户的意图并选择合适的工具`;
+**可用工具与使用指南：**
+
+1. **generate_brainstorm_ideas** - 生成新的故事创意
+   - 适用场景：用户想要全新的故事想法、需要更多创意选择、或当前没有满意的故事创意时
+   - 例如："给我一些新的故事想法"、"再想几个不同的创意"
+
+2. **edit_brainstorm_idea** - 编辑和改进现有故事创意  
+   - 适用场景：用户对现有创意有具体的修改要求或改进建议
+   - **重要：必须使用上面显示的完整ID作为sourceArtifactId参数**
+   - 支持各种编辑类型：
+     * 内容扩展："每个再长一点"、"详细一些"、"展开描述"
+     * 风格调整："太老套，创新一点"、"更有趣一些"、"换个风格"
+     * 情节修改："改成现代背景"、"加入悬疑元素"、"让主角更强势"
+     * 结构调整："重新安排情节"、"调整人物关系"
+     * 其他改进："更符合年轻人口味"、"增加商业价值"等
+
+**分析指导：**
+- 仔细理解用户的真实意图和需求
+- 如果用户提到现有创意的具体问题或改进方向，优先使用edit工具
+- 如果用户想要全新的内容或对现有创意完全不满意，使用generate工具
+- 编辑时要准确理解用户的修改要求，并在editingInstructions中详细说明
+- 确保选择最符合用户需求的工具和参数`;
 
             // 4. Run the agent with both tools available
             const agentResult = await runStreamingAgent({
@@ -144,11 +161,8 @@ ${contextString}
      */
     private async prepareBrainstormContext(projectId: string): Promise<string> {
         try {
-            // Get all individual brainstorm_idea artifacts for this project
-            const brainstormIdeas = await this.artifactRepo.getProjectArtifactsByType(
-                projectId,
-                'brainstorm_idea'
-            );
+            // Get the latest brainstorm_idea artifacts for this project (resolves edited versions)
+            const brainstormIdeas = await this.artifactRepo.getLatestBrainstormIdeas(projectId);
 
             if (brainstormIdeas.length === 0) {
                 return '当前项目还没有故事创意。';
@@ -162,12 +176,14 @@ ${contextString}
             brainstormIdeas.forEach((idea, index) => {
                 try {
                     if (idea.data && idea.data.title && idea.data.body) {
-                        contextString += `${index + 1}. **${idea.data.title}**\n   ${idea.data.body}\n\n`;
+                        contextString += `${index + 1}. **${idea.data.title}** (ID: ${idea.id})\n   ${idea.data.body}\n\n`;
                     }
                 } catch (error) {
                     console.error('Error parsing brainstorm idea artifact:', error);
                 }
             });
+
+            contextString += '\n**编辑说明：** 如果需要编辑某个故事创意，请使用上面显示的ID作为sourceArtifactId参数。\n';
 
             return contextString;
 
