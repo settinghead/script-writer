@@ -270,7 +270,7 @@ export default function ProjectBrainstormPage() {
             onIdeaSelect={(ideaText) => {
               // For now, just log the selected idea
               // TODO: Implement proper idea selection logic
-              console.log('Selected idea:', ideaText)
+              // console.log('Selected idea:', ideaText)
             }}
           />
         ) : status === 'idle' ? (
