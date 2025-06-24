@@ -148,6 +148,7 @@ export function createBrainstormEditToolDefinition(
                 console.log(`[BrainstormEditTool] Original idea: ${originalIdea.title}`);
 
                 // 4. Create transform for this tool execution
+                const derivationPath = `[${params.ideaIndex}]`; // Store the path for lineage resolution
                 const transform = await transformRepo.createTransform(
                     projectId,
                     'llm',
@@ -157,6 +158,7 @@ export function createBrainstormEditToolDefinition(
                         transform_name: 'llm_edit_brainstorm_idea',
                         source_artifact_id: params.sourceArtifactId,
                         idea_index: params.ideaIndex,
+                        derivation_path: derivationPath, // Add path for lineage resolution
                         edit_requirements: params.editRequirements,
                         agent_instructions: params.agentInstructions || '',
                         original_idea: originalIdea

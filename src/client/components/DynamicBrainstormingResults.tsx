@@ -10,6 +10,7 @@ import { ReasoningEvent } from '../../common/streaming/types';
 // NEW: Import the new streamObject hook
 import { ArtifactEditor } from './shared/ArtifactEditor';
 import { useProjectData } from '../contexts/ProjectDataContext';
+import { useBrainstormLineageResolution } from '../hooks/useLineageResolution';
 
 const { Text } = Typography;
 
@@ -164,7 +165,9 @@ const EditableIdeaCardComponent: React.FC<{
     isSelected: boolean;
     ideaOutlines: any[];
     onIdeaClick: (idea: IdeaWithTitle, index: number) => void;
-}> = ({ idea, index, isSelected, ideaOutlines, onIdeaClick }) => {
+    resolvedArtifactId?: string | null; // NEW: Pass resolved artifact ID
+    hasLineage?: boolean; // NEW: Indicate if there's lineage history
+}> = ({ idea, index, isSelected, ideaOutlines, onIdeaClick, resolvedArtifactId, hasLineage }) => {
     const [showSavedCheckmark, setShowSavedCheckmark] = useState(false);
 
 
@@ -222,8 +225,23 @@ const EditableIdeaCardComponent: React.FC<{
                     )}
 
                     <div>
+                        {/* Show lineage indicator if there's edit history */}
+                        {hasLineage && (
+                            <div style={{
+                                fontSize: '11px',
+                                color: '#1890ff',
+                                marginBottom: '4px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                            }}>
+                                <span>📝</span>
+                                <span>已编辑版本</span>
+                            </div>
+                        )}
+
                         <ArtifactEditor
-                            artifactId={idea.artifactId}
+                            artifactId={resolvedArtifactId || idea.artifactId}
                             path={`[${index}]`}
                             transformName="edit_brainstorm_idea"
                             className="!border-none !p-0"
@@ -232,7 +250,7 @@ const EditableIdeaCardComponent: React.FC<{
 
                         {/* Generate outline button - only shows if user has edited the idea */}
                         <GenerateOutlineButton
-                            artifactId={idea.artifactId}
+                            artifactId={resolvedArtifactId || idea.artifactId}
                             path={`[${index}]`}
                         />
                     </div>
@@ -325,7 +343,7 @@ const EditableIdeaCardComponent: React.FC<{
                 {/* Generate outline button - only shows if user has edited the idea */}
                 {idea.artifactId && (
                     <GenerateOutlineButton
-                        artifactId={idea.artifactId}
+                        artifactId={resolvedArtifactId || idea.artifactId}
                         path={`[${index}]`}
                     />
                 )}
@@ -357,7 +375,9 @@ const EditableIdeaCard = React.memo(EditableIdeaCardComponent, (prevProps, nextP
         prevProps.idea.body === nextProps.idea.body &&
         prevProps.index === nextProps.index &&
         prevProps.isSelected === nextProps.isSelected &&
-        prevProps.ideaOutlines.length === nextProps.ideaOutlines.length
+        prevProps.ideaOutlines.length === nextProps.ideaOutlines.length &&
+        prevProps.resolvedArtifactId === nextProps.resolvedArtifactId &&
+        prevProps.hasLineage === nextProps.hasLineage
         // Note: We don't compare onIdeaClick as it's likely to be a new function each render
     );
 
@@ -384,6 +404,30 @@ export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsPr
     const [ideaOutlines, setIdeaOutlines] = React.useState<{ [ideaId: string]: any[] }>({});
     const [outlinesLoading, setOutlinesLoading] = React.useState(false);
     const navigate = useNavigate();
+
+    // NEW: Get the first idea's artifact ID to use as the collection source
+    const collectionArtifactId = ideas.length > 0 ? (ideas[0].artifactId || null) : null;
+
+    // NEW: Use lineage resolution for all brainstorm ideas
+    const lineageResolutions = useBrainstormLineageResolution(
+        collectionArtifactId,
+        ideas.length,
+        { enabled: !isStreaming && !isConnecting } // Only resolve when not streaming
+    );
+
+    // Debug logging for lineage resolution
+    React.useEffect(() => {
+        if (collectionArtifactId && Object.keys(lineageResolutions).length > 0) {
+            console.log('🔗 Lineage resolutions:', lineageResolutions);
+
+            // Log which ideas have been edited
+            Object.entries(lineageResolutions).forEach(([path, resolution]) => {
+                if (resolution.hasLineage) {
+                    console.log(`📝 Idea ${path} has lineage: ${resolution.originalArtifactId} → ${resolution.latestArtifactId}`);
+                }
+            });
+        }
+    }, [collectionArtifactId, lineageResolutions]);
 
     // Fetch associated outlines when ideationRunId is available
     React.useEffect(() => {
@@ -509,6 +553,12 @@ export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsPr
                         const isSelected = selectedIdeaIndex === index;
                         const ideaOutlinesForThis = ideaOutlines[idea.artifactId || ''] || [];
 
+                        // NEW: Get lineage resolution for this idea
+                        const pathKey = `[${index}]`;
+                        const lineageResolution = lineageResolutions[pathKey];
+                        const resolvedArtifactId = lineageResolution?.latestArtifactId;
+                        const hasLineage = lineageResolution?.hasLineage || false;
+
                         return (
                             <EditableIdeaCard
                                 key={`${idea.artifactId || 'idea'}-${index}`}
@@ -517,6 +567,8 @@ export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsPr
                                 isSelected={isSelected}
                                 ideaOutlines={ideaOutlinesForThis}
                                 onIdeaClick={handleIdeaClick}
+                                resolvedArtifactId={resolvedArtifactId}
+                                hasLineage={hasLineage}
                             />
                         );
                     })}
