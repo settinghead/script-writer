@@ -84,6 +84,7 @@ export function useLineageResolution(
         } catch (err) {
             setIsProcessing(false);
             const error = err instanceof Error ? err : new Error('Lineage resolution failed');
+            console.error('[useLineageResolution] Error resolving lineage:', error);
             setError(error);
 
             // Return fallback result

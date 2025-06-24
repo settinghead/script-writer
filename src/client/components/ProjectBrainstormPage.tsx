@@ -66,6 +66,8 @@ export default function ProjectBrainstormPage() {
         try {
           const artifactData = JSON.parse(latestBrainstorm.data)
 
+          // Debug logging removed - issue resolved
+
           if (Array.isArray(artifactData)) {
             // Data is directly an array of ideas
             ideas = artifactData.map((idea: any, index: number) => ({
@@ -73,6 +75,7 @@ export default function ProjectBrainstormPage() {
               artifactId: latestBrainstorm.id,
               index
             }))
+            // Debug logging removed - issue resolved
           } else if (artifactData.ideas && Array.isArray(artifactData.ideas)) {
             // Data has an 'ideas' property
             ideas = artifactData.ideas.map((idea: any, index: number) => ({
@@ -80,7 +83,21 @@ export default function ProjectBrainstormPage() {
               artifactId: latestBrainstorm.id,
               index
             }))
+            // Debug logging removed - issue resolved
+          } else if (typeof artifactData === 'object' && artifactData !== null) {
+            // Data is an object with numeric string keys (e.g., {'0': {...}, '1': {...}, '2': {...}})
+            const keys = Object.keys(artifactData).filter(key => !isNaN(Number(key))).sort((a, b) => Number(a) - Number(b))
+            if (keys.length > 0) {
+              ideas = keys.map((key, index) => ({
+                ...artifactData[key],
+                artifactId: latestBrainstorm.id,
+                index: Number(key)
+              }))
+              // Debug logging removed - issue resolved
+            }
           }
+
+          // Debug logging removed - issue resolved
         } catch (parseErr) {
           console.warn('Failed to parse brainstorm data:', parseErr)
         }

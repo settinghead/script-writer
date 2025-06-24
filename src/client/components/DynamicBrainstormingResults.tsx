@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Space, Button, Typography, Spin, Empty, Card, Tag, Alert } from 'antd';
 import { StopOutlined, ReloadOutlined, EyeOutlined, CheckOutlined, FileTextOutlined } from '@ant-design/icons';
 import { ThinkingIndicator } from './shared/ThinkingIndicator';
@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { ReasoningEvent } from '../../common/streaming/types';
 // NEW: Import the new streamObject hook
 import { ArtifactEditor } from './shared/ArtifactEditor';
+import { BRAINSTORM_IDEA_FIELDS } from './shared/fieldConfigs';
 import { useProjectData } from '../contexts/ProjectDataContext';
 import { useBrainstormLineageResolution } from '../hooks/useLineageResolution';
 
@@ -242,16 +243,20 @@ const EditableIdeaCardComponent: React.FC<{
 
                         <ArtifactEditor
                             artifactId={resolvedArtifactId || idea.artifactId}
-                            path={`[${index}]`}
+                            path={hasLineage ? "" : `[${index}]`}
                             transformName="edit_brainstorm_idea"
                             className="!border-none !p-0"
                             onSaveSuccess={handleSaveSuccess}
+                            fields={BRAINSTORM_IDEA_FIELDS}
+                            mode={hasLineage ? 'editable' : 'edit-button'}
+                            statusLabel={hasLineage ? '已编辑' : 'AI生成'}
+                            statusColor={hasLineage ? 'blue' : 'blue'}
                         />
 
                         {/* Generate outline button - only shows if user has edited the idea */}
                         <GenerateOutlineButton
                             artifactId={resolvedArtifactId || idea.artifactId}
-                            path={`[${index}]`}
+                            path={hasLineage ? "" : `[${index}]`}
                         />
                     </div>
 
@@ -344,7 +349,7 @@ const EditableIdeaCardComponent: React.FC<{
                 {idea.artifactId && (
                     <GenerateOutlineButton
                         artifactId={resolvedArtifactId || idea.artifactId}
-                        path={`[${index}]`}
+                        path={hasLineage ? "" : `[${index}]`}
                     />
                 )}
 
@@ -415,19 +420,7 @@ export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsPr
         { enabled: !isStreaming && !isConnecting } // Only resolve when not streaming
     );
 
-    // Debug logging for lineage resolution
-    React.useEffect(() => {
-        if (collectionArtifactId && Object.keys(lineageResolutions).length > 0) {
-            console.log('🔗 Lineage resolutions:', lineageResolutions);
-
-            // Log which ideas have been edited
-            Object.entries(lineageResolutions).forEach(([path, resolution]) => {
-                if (resolution.hasLineage) {
-                    console.log(`📝 Idea ${path} has lineage: ${resolution.originalArtifactId} → ${resolution.latestArtifactId}`);
-                }
-            });
-        }
-    }, [collectionArtifactId, lineageResolutions]);
+    // Debug logging removed - issue resolved
 
     // Fetch associated outlines when ideationRunId is available
     React.useEffect(() => {
@@ -556,7 +549,8 @@ export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsPr
                         // NEW: Get lineage resolution for this idea
                         const pathKey = `[${index}]`;
                         const lineageResolution = lineageResolutions[pathKey];
-                        const resolvedArtifactId = lineageResolution?.latestArtifactId;
+                        const originalArtifactId = collectionArtifactId;
+                        const resolvedArtifactId = lineageResolution?.latestArtifactId || originalArtifactId;
                         const hasLineage = lineageResolution?.hasLineage || false;
 
                         return (
