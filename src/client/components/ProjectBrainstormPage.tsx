@@ -61,7 +61,6 @@ export default function ProjectBrainstormPage() {
 
       // Helper function to find the root (original) artifact in a lineage chain
       const findRootArtifact = (artifactId: string): string => {
-        console.log(`🔍 [findRootArtifact] Looking for root of ${artifactId.substring(0, 8)}..., totalTransforms=${projectData.humanTransforms?.length || 0}`)
 
         // Look for human transforms that have this artifact as derived_artifact_id
         const sourceTransform = projectData.humanTransforms?.find(
@@ -71,12 +70,10 @@ export default function ProjectBrainstormPage() {
         if (sourceTransform && sourceTransform.source_artifact_id) {
           // Recursively find the root
           const rootId = findRootArtifact(sourceTransform.source_artifact_id)
-          console.log(`🔍 [findRootArtifact] ${artifactId.substring(0, 8)}... → ${sourceTransform.source_artifact_id.substring(0, 8)}... → ${rootId.substring(0, 8)}...`)
           return rootId
         }
 
         // This is the root artifact
-        console.log(`🔍 [findRootArtifact] ${artifactId.substring(0, 8)}... is root (no transforms found, totalTransforms=${projectData.humanTransforms?.length || 0})`)
         return artifactId
       }
 
@@ -143,15 +140,7 @@ export default function ProjectBrainstormPage() {
             index
           }
 
-          // Debug logging for each idea
-          console.log(`💡 [ProjectBrainstormPage] Idea ${index}:`, {
-            artifactId: resolvedId?.substring(0, 8) + '...',
-            originalArtifactId: originalId?.substring(0, 8) + '...',
-            title: data.title,
-            isResolved: resolvedId !== artifact.id,
-            originalArtifactId_full: originalId,
-            artifactId_full: resolvedId
-          })
+
 
           return idea
         } catch (parseErr) {
@@ -166,13 +155,7 @@ export default function ProjectBrainstormPage() {
         }
       })
 
-      console.log(`🔍 [ProjectBrainstormPage] Lineage resolution complete:`, {
-        totalArtifacts: brainstormArtifacts.length,
-        resolvedIdeas: resolvedIdeas.length,
-        processedArtifacts: Array.from(processedArtifacts),
-        resolvedArtifactIds: resolvedIdeas.map(r => r.resolvedId),
-        originalArtifactIds: resolvedIdeas.map(r => r.originalId)
-      })
+
 
     } catch (err) {
       console.error('Failed to process brainstorm artifacts with lineage resolution:', err)
