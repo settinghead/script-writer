@@ -2,6 +2,7 @@ import { tool, streamText } from 'ai';
 import { z } from 'zod';
 import { createOpenAI } from '@ai-sdk/openai';
 import { getLLMCredentials } from './LLMConfig';
+import type { ChatMessageRepository } from '../repositories/ChatMessageRepository';
 
 /**
  * Interface that encapsulates all information needed to define a streaming tool
@@ -63,6 +64,8 @@ export interface StreamingAgentConfig {
   userRequest: string;
   toolDefinitions: StreamingToolDefinition<any, any>[];
   maxSteps?: number;
+  projectId?: string;
+  chatMessageRepo?: ChatMessageRepository;
 }
 
 /**
@@ -92,6 +95,16 @@ export async function runStreamingAgent(config: StreamingAgentConfig): Promise<{
   // Create generic prompt
   const prompt = createGenericAgentPrompt(config.userRequest, config.toolDefinitions);
 
+  // Save user request as raw message if repository is provided
+  if (config.chatMessageRepo && config.projectId) {
+    await config.chatMessageRepo.createRawMessage(
+      config.projectId,
+      'user',
+      config.userRequest,
+      { metadata: { source: 'streaming_agent' } }
+    );
+  }
+
   try {
     const result = await streamText({
       model: model,
@@ -102,6 +115,8 @@ export async function runStreamingAgent(config: StreamingAgentConfig): Promise<{
 
     console.log('\n\n--- Agent Stream & Final Output ---');
     let finalResponse = '';
+    let currentToolCall: any = null;
+
     for await (const delta of result.fullStream) {
       switch (delta.type) {
         case 'text-delta':
@@ -110,13 +125,59 @@ export async function runStreamingAgent(config: StreamingAgentConfig): Promise<{
           break;
         case 'tool-call':
           console.log(`\n[Agent Action] Starting tool call to '${delta.toolName}' with ID '${delta.toolCallId}'`);
+          currentToolCall = delta;
+
+          // Save tool call as raw message
+          if (config.chatMessageRepo && config.projectId) {
+            await config.chatMessageRepo.createRawMessage(
+              config.projectId,
+              'tool',
+              `Tool call: ${delta.toolName}`,
+              {
+                toolName: delta.toolName,
+                toolParameters: delta.args,
+                metadata: {
+                  toolCallId: delta.toolCallId,
+                  source: 'streaming_agent'
+                }
+              }
+            );
+          }
           break;
         case 'tool-result':
           console.log(`\n[Agent Action] Received result for tool call '${delta.toolCallId}'`);
+
+          // Save tool result as raw message
+          if (config.chatMessageRepo && config.projectId && currentToolCall) {
+            await config.chatMessageRepo.createRawMessage(
+              config.projectId,
+              'tool',
+              `Tool result: ${currentToolCall.toolName}`,
+              {
+                toolName: currentToolCall.toolName,
+                toolParameters: currentToolCall.args,
+                toolResult: delta.result,
+                metadata: {
+                  toolCallId: delta.toolCallId,
+                  source: 'streaming_agent'
+                }
+              }
+            );
+          }
           break;
       }
     }
     console.log('\n-----------------------------------');
+
+    // Save final assistant response as raw message
+    if (config.chatMessageRepo && config.projectId && finalResponse.trim()) {
+      await config.chatMessageRepo.createRawMessage(
+        config.projectId,
+        'assistant',
+        finalResponse.trim(),
+        { metadata: { source: 'streaming_agent' } }
+      );
+    }
 
     const finishReason = await result.finishReason;
     const toolCalls = await result.toolCalls;
@@ -140,6 +201,17 @@ export async function runStreamingAgent(config: StreamingAgentConfig): Promise<{
   } catch (error) {
     console.error("\n--- Agent Flow Failed ---");
     console.error(error);
+
+    // Save error as raw message
+    if (config.chatMessageRepo && config.projectId) {
+      await config.chatMessageRepo.createRawMessage(
+        config.projectId,
+        'assistant',
+        `Error: ${error instanceof Error ? error.message : String(error)}`,
+        { metadata: { source: 'streaming_agent', error: true } }
+      );
+    }
+
     throw error;
   }
 } 

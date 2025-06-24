@@ -116,6 +116,8 @@ ${contextString}
                 userRequest: enhancedUserRequest,
                 toolDefinitions: [brainstormToolDef, brainstormEditToolDef],
                 maxSteps: 5, // Allow more steps for complex editing workflows
+                projectId: projectId,
+                chatMessageRepo: this.chatMessageRepo
             });
 
             // 5. Log successful completion
@@ -230,6 +232,8 @@ ${contextString}
                 userRequest: request.userRequest,
                 toolDefinitions: [brainstormToolDef],
                 maxSteps: 3,
+                projectId: projectId,
+                chatMessageRepo: this.chatMessageRepo
             });
 
             // 3. Log successful completion

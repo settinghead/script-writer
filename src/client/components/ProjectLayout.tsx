@@ -14,17 +14,7 @@ import { useLocalStorage } from '../hooks/useLocalStorage';
 const { Sider, Content } = Layout;
 const { Title, Text } = Typography;
 
-interface ProjectData {
-    id: string;
-    name: string;
-    description: string;
-    currentPhase: string;
-    status: string;
-    platform?: string;
-    genre?: string;
-    createdAt: string;
-    updatedAt: string;
-}
+
 
 const ProjectLayout: React.FC = () => {
     const { projectId } = useParams<{ projectId: string }>();
