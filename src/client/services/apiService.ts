@@ -285,22 +285,6 @@ class ApiService {
         return response.json();
     }
 
-    async createProjectFromBrainstorm(request: AgentBrainstormRequest): Promise<{ projectId: string }> {
-        const response = await fetch(`${this.baseUrl}/projects/create-from-brainstorm`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            credentials: 'include', // Send cookies along with the request
-            body: JSON.stringify(request),
-        });
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ error: 'Request failed with status ' + response.status }));
-            throw new Error(errorData.error || 'Failed to create project from brainstorm');
-        }
-        return response.json();
-    }
-
     async getProject(projectId: string): Promise<any> {
         const response = await fetch(`${this.baseUrl}/projects/${projectId}`);
         if (!response.ok) {
