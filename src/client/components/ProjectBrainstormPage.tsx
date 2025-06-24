@@ -51,8 +51,8 @@ export default function ProjectBrainstormPage() {
         projectData.transformOutputs
       )
 
-      // Group artifacts by their original source (to avoid duplicates)
-      const processedArtifacts = new Set<string>()
+      // Use a more robust approach to avoid duplicates by tracking final resolved artifacts
+      const processedResolvedIds = new Set<string>()
       const resolvedIdeas: Array<{ artifact: any, resolvedId: string, originalId: string }> = []
 
       // Sort artifacts by creation time to get consistent ordering
@@ -61,7 +61,6 @@ export default function ProjectBrainstormPage() {
 
       // Helper function to find the root (original) artifact in a lineage chain
       const findRootArtifact = (artifactId: string): string => {
-
         // Look for human transforms that have this artifact as derived_artifact_id
         const sourceTransform = projectData.humanTransforms?.find(
           ht => ht.derived_artifact_id === artifactId
@@ -78,28 +77,20 @@ export default function ProjectBrainstormPage() {
       }
 
       for (const artifact of sortedArtifacts) {
-        // Skip if we've already processed this artifact lineage
-        if (processedArtifacts.has(artifact.id)) {
-          continue
-        }
-
         // Find the latest version using lineage resolution
         const resolution = findLatestArtifact(artifact.id, undefined, graph)
         const resolvedId = resolution.artifactId || artifact.id
 
-        // Find the root (original) artifact in this lineage chain
-        const rootId = findRootArtifact(artifact.id)
-
-        // Check if we've already processed this lineage chain by checking all artifacts in the chain
-        const allArtifactsInChain = new Set([artifact.id, resolvedId, rootId])
-        const alreadyProcessed = Array.from(allArtifactsInChain).some(id => processedArtifacts.has(id))
-
-        if (alreadyProcessed) {
+        // Skip if we've already processed this resolved artifact
+        if (processedResolvedIds.has(resolvedId)) {
           continue
         }
 
-        // Mark all artifacts in this lineage chain as processed
-        allArtifactsInChain.forEach(id => processedArtifacts.add(id))
+        // Mark this resolved artifact as processed
+        processedResolvedIds.add(resolvedId)
+
+        // Find the root (original) artifact in this lineage chain
+        const rootId = findRootArtifact(artifact.id)
 
         // Use the resolved (latest) version for display
         const resolvedArtifact = resolvedId !== artifact.id

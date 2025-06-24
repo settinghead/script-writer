@@ -75,12 +75,15 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
         const lookupArtifactId = sourceArtifactId || artifactId;
         const humanTransforms = projectData.getHumanTransformsForArtifact(lookupArtifactId, path);
 
-
-
-        return humanTransforms.find(ht =>
+        const transform = humanTransforms.find(ht =>
             ht.transform_name === transformName &&
             ht.derivation_path === path
         ) || null;
+
+        // Debug logging
+        // console.log(`🔍 [ArtifactEditor ${artifactId}] Transform: ${!!transform} (${transformName})`);
+
+        return transform;
     }, [projectData, sourceArtifactId, artifactId, path, transformName]);
 
     // 2. Get artifact from unified context
@@ -106,6 +109,9 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
 
     // Determine if we're in editing mode (for artifacts with existing transforms)
     const isEditing = !!existingTransform;
+
+    // Debug logging for mode detection
+    // console.log(`🎨 [ArtifactEditor ${artifactId}] Mode: ${effectiveMode} (transform: ${!!existingTransform})`);
 
     // 4. Determine target artifact and labels
     const targetArtifactId = existingTransform?.derived_artifact_id || artifactId;
@@ -133,6 +139,9 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
             const artifactData = typeof artifactToUse.data === 'string'
                 ? JSON.parse(artifactToUse.data)
                 : artifactToUse.data;
+
+            // Debug logging for artifact data
+            // console.log(`📄 [ArtifactEditor ${artifactId}] Data: ${artifactData?.title || 'No title'}`);
 
             return {
                 isUserInput: artifactToUse.type === 'user_input',
@@ -275,6 +284,9 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
             </div>
         );
     }
+
+    // Debug logging for final rendering decision
+    // console.log(`🎭 [ArtifactEditor ${artifactId}] Rendering: ${effectiveMode}`);
 
     // Edit button mode - show clickable preview with edit button
     if (effectiveMode === 'edit-button' && !isEditing && artifactToUse) {

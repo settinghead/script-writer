@@ -124,10 +124,12 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, isStreaming =
                         maxWidth: '100%',
                         wordBreak: 'break-word'
                     }}
-                    bodyStyle={{
-                        padding: '10px 10px',
-                        color: isUserMessage ? 'white' :
-                            message.display_type === 'tool_summary' ? '#f59e0b' : '#e0e0e0'
+                    styles={{
+                        body: {
+                            padding: '10px 10px',
+                            color: isUserMessage ? 'white' :
+                                message.display_type === 'tool_summary' ? '#f59e0b' : '#e0e0e0'
+                        }
                     }}
                 >
                     <Paragraph

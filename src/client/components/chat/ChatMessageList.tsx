@@ -66,7 +66,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
             {messages.length === 0 && !isLoading ? (
                 <Empty
                     image={<MessageOutlined style={{ fontSize: 64, color: '#666' }} />}
-                    imageStyle={{ height: 80 }}
+                    styles={{ image: { height: 80 } }}
                     description={
                         <div style={{ textAlign: 'center' }}>
                             <Title level={4} style={{ color: '#ccc', marginBottom: 8 }}>

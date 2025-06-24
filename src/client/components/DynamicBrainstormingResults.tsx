@@ -10,6 +10,7 @@ import { ReasoningEvent } from '../../common/streaming/types';
 import { ArtifactEditor } from './shared/ArtifactEditor';
 import { BRAINSTORM_IDEA_FIELDS } from './shared/fieldConfigs';
 import { useProjectData } from '../contexts/ProjectDataContext';
+import { useLineageResolution } from '../hooks/useLineageResolution';
 
 const { Text } = Typography;
 
@@ -167,6 +168,13 @@ const BrainstormIdeaCard: React.FC<{
 }> = ({ artifactId, originalArtifactId, index, isSelected, ideaOutlines, onIdeaClick }) => {
     const [showSavedCheckmark, setShowSavedCheckmark] = useState(false);
 
+    // Use lineage resolution to get the latest version of this artifact
+    const { latestArtifactId, hasLineage } = useLineageResolution(artifactId);
+    const resolvedArtifactId = latestArtifactId || artifactId;
+
+    // Log lineage resolution for debugging
+    console.log(`🎯 [BrainstormIdeaCard ${index}] ${artifactId} → ${resolvedArtifactId} (lineage: ${hasLineage})`);
+
     // Handle successful save - show checkmark briefly
     const handleSaveSuccess = useCallback(() => {
         setShowSavedCheckmark(true);
@@ -177,7 +185,7 @@ const BrainstormIdeaCard: React.FC<{
 
     return (
         <Card
-            key={artifactId}
+            key={resolvedArtifactId}
             style={{
                 backgroundColor: isSelected ? '#2d3436' : '#262626',
                 border: isSelected ? '1px solid #1890ff' : '1px solid #434343',
@@ -199,7 +207,7 @@ const BrainstormIdeaCard: React.FC<{
                     e.currentTarget.style.backgroundColor = '#262626';
                 }
             }}
-            onClick={() => onIdeaClick(artifactId, index)}
+            onClick={() => onIdeaClick(resolvedArtifactId, index)}
         >
             {/* Saved checkmark overlay */}
             {showSavedCheckmark && (
@@ -225,22 +233,22 @@ const BrainstormIdeaCard: React.FC<{
 
             {/* Idea content using ArtifactEditor */}
             <ArtifactEditor
-                artifactId={artifactId}
+                artifactId={resolvedArtifactId}
                 sourceArtifactId={originalArtifactId || artifactId}
                 fields={BRAINSTORM_IDEA_FIELDS}
                 mode="auto"
-                statusLabel="AI生成"
-                statusColor="#1890ff"
+                statusLabel={hasLineage ? "📝 已编辑版本" : "AI生成"}
+                statusColor={hasLineage ? "#52c41a" : "#1890ff"}
                 transformName="edit_brainstorm_idea"
                 onSaveSuccess={handleSaveSuccess}
             />
 
             {/* Generate outline button */}
-            <GenerateOutlineButton artifactId={artifactId} />
+            <GenerateOutlineButton artifactId={resolvedArtifactId} />
 
             {/* Associated outlines */}
             <IdeaOutlines
-                ideaId={artifactId}
+                ideaId={resolvedArtifactId}
                 outlines={ideaOutlines}
                 isLoading={false}
             />
