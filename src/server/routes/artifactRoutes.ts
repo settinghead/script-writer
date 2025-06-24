@@ -195,7 +195,7 @@ export function createArtifactRoutes(
                 return;
             }
 
-            if (!transformName || !derivationPath) {
+            if (!transformName || (derivationPath === null || derivationPath === undefined)) {
                 res.status(400).json({ error: "transformName and derivationPath are required" });
                 return;
             }

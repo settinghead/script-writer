@@ -131,7 +131,7 @@ export interface BrainstormToolInputV1 {
 export interface BrainstormIdeaCollectionV1 extends Array<{
     title: string;
     body: string;
-}> {}
+}> { }
 
 // ========== WORKFLOW CASCADING PARAMETERS ==========
 
@@ -332,14 +332,14 @@ export interface WorkflowContextV1 {
 import { ARTIFACT_SCHEMAS } from '../../common/schemas/artifacts';
 
 export function validateArtifactData(type: string, typeVersion: string, data: any): boolean {
-  // Use Zod schemas for new artifact types
-  if (type in ARTIFACT_SCHEMAS) {
-    const schema = ARTIFACT_SCHEMAS[type as keyof typeof ARTIFACT_SCHEMAS];
-    const result = schema.safeParse(data);
-    return result.success;
-  }
-  
-  // Fallback to existing validation for legacy types
+    // Use Zod schemas for new artifact types
+    if (type in ARTIFACT_SCHEMAS) {
+        const schema = ARTIFACT_SCHEMAS[type as keyof typeof ARTIFACT_SCHEMAS];
+        const result = schema.safeParse(data);
+        return result.success;
+    }
+
+    // Fallback to existing validation for legacy types
     switch (`${type}:${typeVersion}`) {
         case 'ideation_session:v1':
             return isIdeationSessionV1(data);
@@ -456,7 +456,7 @@ function isBrainstormToolInputV1(data: any): data is BrainstormToolInputV1 {
 
 function isBrainstormIdeaCollectionV1(data: any): data is BrainstormIdeaCollectionV1 {
     return Array.isArray(data) &&
-        data.every((idea: any) => 
+        data.every((idea: any) =>
             typeof idea === 'object' &&
             typeof idea.title === 'string' &&
             typeof idea.body === 'string'

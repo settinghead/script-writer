@@ -224,7 +224,7 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
     // Memoized selectors
     const selectors = useMemo(() => ({
         getBrainstormArtifacts: () =>
-            artifacts?.filter(a => a.type === 'brainstorm_idea_collection') || [],
+            artifacts?.filter(a => a.type === 'brainstorm_idea') || [],
 
         getOutlineArtifacts: () =>
             artifacts?.filter(a => a.type === 'outline_input' || a.type === 'outline_response') || [],

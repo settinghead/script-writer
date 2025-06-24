@@ -1,10 +1,9 @@
 import React, { useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useProjectData } from '../contexts/ProjectDataContext'
 import { DynamicBrainstormingResults } from './DynamicBrainstormingResults'
+import { IdeaWithTitle } from '../types/brainstorm'
 import { ReasoningIndicator } from './shared/ReasoningIndicator'
-import { StreamingProgress } from './shared/StreamingProgress'
-import type { IdeaWithTitle } from '../types/brainstorm'
+import { useProjectData } from '../contexts/ProjectDataContext'
 
 export default function ProjectBrainstormPage() {
   const { projectId } = useParams<{ projectId: string }>()
@@ -18,16 +17,11 @@ export default function ProjectBrainstormPage() {
   // Use unified project data context
   const projectData = useProjectData()
 
-  // Extract brainstorm data from the unified context
+  // Extract brainstorm data from individual artifacts
   const { ideas, status, progress, error, isLoading, lastSyncedAt } = useMemo(() => {
     const brainstormArtifacts = projectData.getBrainstormArtifacts()
 
-
-    // Find the latest brainstorm artifact
-    const latestBrainstorm = brainstormArtifacts
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
-
-    if (!latestBrainstorm) {
+    if (brainstormArtifacts.length === 0) {
       return {
         ideas: [],
         status: 'idle' as const,
@@ -38,73 +32,63 @@ export default function ProjectBrainstormPage() {
       }
     }
 
-    // Parse the ideas from the artifact data
+    // Convert individual brainstorm_idea artifacts to IdeaWithTitle format
     let ideas: IdeaWithTitle[] = []
-    let status: 'idle' | 'streaming' | 'completed' | 'failed' = 'idle'
-    let progress = 0
+    let status: 'idle' | 'streaming' | 'completed' | 'failed' = 'completed'
+    let progress = 100
+    let lastSyncedAt: string | null = null
 
     try {
-      // Check streaming status directly from artifact
-      const streamingStatus = latestBrainstorm.streaming_status || 'completed'
+      // Sort artifacts by creation time to get consistent ordering
+      const sortedArtifacts = brainstormArtifacts
+        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
 
-      if (streamingStatus === 'streaming') {
+      // Find the latest update time for sync status
+      lastSyncedAt = sortedArtifacts.length > 0
+        ? (sortedArtifacts[sortedArtifacts.length - 1].updated_at || null)
+        : null
+
+      // Check if any artifacts are still streaming
+      const hasStreamingArtifacts = sortedArtifacts.some(
+        artifact => artifact.streaming_status === 'streaming'
+      )
+
+      if (hasStreamingArtifacts) {
         status = 'streaming'
-        progress = 50 // Generic progress for streaming state
-      } else if (streamingStatus === 'completed') {
-        status = 'completed'
-        progress = 100
-      } else if (streamingStatus === 'failed') {
-        status = 'failed'
-        progress = 0
-      } else {
-        status = 'completed'
-        progress = 100
+        progress = 50
       }
 
-      // Parse data (same for both streaming and completed states)
-      if (latestBrainstorm.data) {
+      // Convert each artifact to IdeaWithTitle format
+      ideas = sortedArtifacts.map((artifact, index) => {
         try {
-          const artifactData = JSON.parse(latestBrainstorm.data)
-
-          // Debug logging removed - issue resolved
-
-          if (Array.isArray(artifactData)) {
-            // Data is directly an array of ideas
-            ideas = artifactData.map((idea: any, index: number) => ({
-              ...idea,
-              artifactId: latestBrainstorm.id,
-              index
-            }))
-            // Debug logging removed - issue resolved
-          } else if (artifactData.ideas && Array.isArray(artifactData.ideas)) {
-            // Data has an 'ideas' property
-            ideas = artifactData.ideas.map((idea: any, index: number) => ({
-              ...idea,
-              artifactId: latestBrainstorm.id,
-              index
-            }))
-            // Debug logging removed - issue resolved
-          } else if (typeof artifactData === 'object' && artifactData !== null) {
-            // Data is an object with numeric string keys (e.g., {'0': {...}, '1': {...}, '2': {...}})
-            const keys = Object.keys(artifactData).filter(key => !isNaN(Number(key))).sort((a, b) => Number(a) - Number(b))
-            if (keys.length > 0) {
-              ideas = keys.map((key, index) => ({
-                ...artifactData[key],
-                artifactId: latestBrainstorm.id,
-                index: Number(key)
-              }))
-              // Debug logging removed - issue resolved
-            }
+          const data = artifact.data ? JSON.parse(artifact.data) : {}
+          return {
+            title: data.title || `想法 ${index + 1}`,
+            body: data.body || '内容加载中...',
+            artifactId: artifact.id,
+            index
           }
-
-          // Debug logging removed - issue resolved
         } catch (parseErr) {
-          console.warn('Failed to parse brainstorm data:', parseErr)
+          console.warn(`Failed to parse artifact ${artifact.id}:`, parseErr)
+          return {
+            title: `想法 ${index + 1}`,
+            body: '内容解析失败',
+            artifactId: artifact.id,
+            index
+          }
         }
-      }
+      })
 
     } catch (err) {
-      console.error('Failed to parse brainstorm data:', err)
+      console.error('Failed to process brainstorm artifacts:', err)
+      return {
+        ideas: [],
+        status: 'failed' as const,
+        progress: 0,
+        error: err instanceof Error ? err.message : '处理头脑风暴数据时出错',
+        isLoading: false,
+        lastSyncedAt: null
+      }
     }
 
     return {
@@ -113,7 +97,7 @@ export default function ProjectBrainstormPage() {
       progress,
       error: projectData.error?.message || null,
       isLoading: projectData.isLoading,
-      lastSyncedAt: latestBrainstorm.updated_at
+      lastSyncedAt
     }
   }, [projectData])
 

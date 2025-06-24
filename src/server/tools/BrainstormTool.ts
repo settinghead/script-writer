@@ -13,10 +13,38 @@ interface StreamingToolDefinition<TInput, TOutput> {
     execute: (params: TInput) => Promise<any>; // Changed to match actual framework
 }
 
-// Tool execution result type
+// Tool execution result type - now returns multiple artifact IDs
 interface BrainstormToolResult {
-    outputArtifactId: string;
+    outputArtifactIds: string[]; // Changed from single ID to array
     finishReason: string;
+}
+
+// Cache entry for tracking idea state
+interface IdeaCache {
+    title: string;
+    body: string;
+    lastUpdated: number;
+    updateCount: number;
+}
+
+// Helper function to check if idea content has meaningfully changed
+function hasSignificantChange(cached: IdeaCache | undefined, newIdea: any): boolean {
+    if (!cached) return true; // First time seeing this idea
+
+    // Check if title changed
+    if (cached.title !== newIdea.title) return true;
+
+    // Check if body length increased significantly (>10% or >20 characters)
+    const bodyLengthDiff = newIdea.body.length - cached.body.length;
+    const percentageIncrease = bodyLengthDiff / Math.max(cached.body.length, 1);
+
+    if (bodyLengthDiff > 20 || percentageIncrease > 0.1) return true;
+
+    // Check if it's been a while since last update (throttle to max 1 update per 2 seconds)
+    const timeSinceLastUpdate = Date.now() - cached.lastUpdated;
+    if (timeSinceLastUpdate > 2000) return true;
+
+    return false;
 }
 
 /**
@@ -60,93 +88,134 @@ export function createBrainstormToolDefinition(
                     { artifactId: inputArtifact.id, inputRole: 'tool_input' }
                 ], projectId);
 
-                // 2. Create initial output artifact that will be updated with streaming chunks
-                const outputArtifact = await artifactRepo.createArtifact(
-                    projectId,
-                    'brainstorm_idea_collection',
-                    [], // Start with empty array - matches BrainstormIdeaCollectionV1 validation
-                    'v1',
-                    {
-                        chunkCount: 0,
-                        startedAt: new Date().toISOString()
-                    },
-                    'streaming' // Start with streaming status
-                );
-
-                console.log(`[BrainstormTool] Created artifact ${outputArtifact.id} for project ${projectId}`);
-
-                await transformRepo.addTransformOutputs(toolTransformId, [
-                    { artifactId: outputArtifact.id, outputRole: 'streaming_result' }
-                ], projectId);
-
-                // 3. Execute the underlying transform which returns a stream
+                // 2. Execute the underlying transform which returns a stream
                 const stream = await executeStreamingIdeationTransform(params);
 
                 let finalResult: IdeationOutput = [];
                 let chunkCount = 0;
-                let lastUpdateTime = 0;
-                const UPDATE_THROTTLE_MS = 500; // Throttle updates to max once per 500ms to avoid Electric conflicts
+                const createdArtifacts: string[] = [];
 
-                // 4. Process the stream: throttle updates to avoid overwhelming Electric
+                // Smart caching system to reduce unnecessary updates
+                const ideaCache = new Map<number, IdeaCache>();
+                let totalUpdates = 0;
+                let skippedUpdates = 0;
+
+                console.log(`[BrainstormTool] Starting brainstorm generation with smart caching for project ${projectId}`);
+
+                // 3. Process the stream and create/update individual artifacts
                 for await (const partial of stream) {
                     chunkCount++;
-                    const currentTime = Date.now();
+                    finalResult = partial; // Keep track of the latest result
 
-                    // Throttle updates to prevent Electric 409 conflicts
-                    // Only update if enough time has passed or this is the final chunk
-                    const shouldUpdate = (currentTime - lastUpdateTime) >= UPDATE_THROTTLE_MS;
+                    // Create or update individual artifacts for each idea
+                    for (let i = 0; i < partial.length; i++) {
+                        const idea = partial[i];
 
-                    if (shouldUpdate) {
-                        try {
-                            // Update the artifact with the current partial result
-                            // This will trigger Electric to sync the update to the frontend
-                            await artifactRepo.updateArtifact(
-                                outputArtifact.id,
-                                partial, // Direct array - matches BrainstormIdeaCollectionV1 validation
+                        // Skip empty or incomplete objects - only create/update when there's substantial content
+                        if (!idea || !idea.title || !idea.body || idea.body.length < 10) {
+                            continue;
+                        }
+
+                        const cachedIdea = ideaCache.get(i);
+                        const shouldUpdate = hasSignificantChange(cachedIdea, idea);
+
+                        if (!shouldUpdate) {
+                            skippedUpdates++;
+                            continue; // Skip this update - no significant change
+                        }
+
+                        // Update cache
+                        ideaCache.set(i, {
+                            title: idea.title,
+                            body: idea.body,
+                            lastUpdated: Date.now(),
+                            updateCount: (cachedIdea?.updateCount || 0) + 1
+                        });
+
+                        if (i >= createdArtifacts.length) {
+                            // Create new artifact for this idea
+                            const ideaArtifact = await artifactRepo.createArtifact(
+                                projectId,
+                                'brainstorm_idea',
+                                idea, // Individual {title, body} object
+                                'v1',
                                 {
+                                    ideaIndex: i,
                                     chunkCount,
-                                    lastUpdated: new Date().toISOString()
+                                    startedAt: new Date().toISOString(),
+                                    platform: params.platform,
+                                    genre: params.genre
                                 },
-                                'streaming' // Set streaming status
+                                'streaming' // Start with streaming status
                             );
 
-                            console.log(`[BrainstormTool] Updated artifact ${outputArtifact.id} with chunk ${chunkCount} (throttled)`);
-                            lastUpdateTime = currentTime;
-                        } catch (updateError) {
-                            // Log but don't fail on update errors - Electric may be handling conflicts
-                            console.warn(`[BrainstormTool] Failed to update artifact ${outputArtifact.id} at chunk ${chunkCount}:`, updateError);
+                            createdArtifacts.push(ideaArtifact.id);
+                            totalUpdates++;
+
+                            console.log(`[BrainstormTool] Created artifact ${ideaArtifact.id} for idea ${i} in project ${projectId}`);
+                        } else {
+                            // Update existing artifact
+                            try {
+                                await artifactRepo.updateArtifact(
+                                    createdArtifacts[i],
+                                    idea, // Individual {title, body} object
+                                    {
+                                        ideaIndex: i,
+                                        chunkCount,
+                                        lastUpdated: new Date().toISOString(),
+                                        updateCount: ideaCache.get(i)?.updateCount || 0
+                                    },
+                                    'streaming'
+                                );
+
+                                totalUpdates++;
+                                console.log(`[BrainstormTool] Updated artifact ${createdArtifacts[i]} for idea ${i} (update #${ideaCache.get(i)?.updateCount})`);
+                            } catch (updateError) {
+                                console.warn(`[BrainstormTool] Failed to update artifact ${createdArtifacts[i]} at chunk ${chunkCount}:`, updateError);
+                            }
                         }
                     }
-
-                    finalResult = partial; // Keep track of the latest result
                 }
 
+                console.log(`[BrainstormTool] Streaming completed. Total updates: ${totalUpdates}, Skipped updates: ${skippedUpdates} (${Math.round(skippedUpdates / (totalUpdates + skippedUpdates) * 100)}% reduction)`);
 
-
-                // 5. Final update to mark as completed (always do this one)
-                try {
-                    await artifactRepo.updateArtifact(
-                        outputArtifact.id,
-                        finalResult, // Direct array - matches BrainstormIdeaCollectionV1 validation
-                        {
-                            chunkCount,
-                            completedAt: new Date().toISOString()
-                        },
-                        'completed' // Set streaming status to completed
-                    );
-                    console.log(`[BrainstormTool] Completed artifact ${outputArtifact.id} with ${chunkCount} total chunks`);
-                    console.log(`[BrainstormTool] Final data:`, JSON.stringify(finalResult).substring(0, 200) + '...');
-                } catch (finalUpdateError) {
-                    console.error(`[BrainstormTool] Failed to mark artifact ${outputArtifact.id} as completed:`, finalUpdateError);
-                    // Don't throw here - the data is still valid
+                // 4. Final update to mark all artifacts as completed
+                for (let i = 0; i < createdArtifacts.length; i++) {
+                    try {
+                        const finalIdea = finalResult[i];
+                        await artifactRepo.updateArtifact(
+                            createdArtifacts[i],
+                            finalIdea,
+                            {
+                                ideaIndex: i,
+                                chunkCount,
+                                completedAt: new Date().toISOString(),
+                                totalUpdates: ideaCache.get(i)?.updateCount || 0
+                            },
+                            'completed' // Set streaming status to completed
+                        );
+                        console.log(`[BrainstormTool] Completed artifact ${createdArtifacts[i]} for idea ${i}`);
+                    } catch (finalUpdateError) {
+                        console.error(`[BrainstormTool] Failed to mark artifact ${createdArtifacts[i]} as completed:`, finalUpdateError);
+                    }
                 }
+
+                // 5. Link all output artifacts to the transform
+                const outputArtifacts = createdArtifacts.map((artifactId, index) => ({
+                    artifactId,
+                    outputRole: `brainstorm_idea_${index}` // Use indexed roles
+                }));
+
+                await transformRepo.addTransformOutputs(toolTransformId, outputArtifacts, projectId);
 
                 // 6. Mark transform as completed
                 await transformRepo.updateTransformStatus(toolTransformId, 'completed');
 
-                // The agent framework expects a result object, which includes the ID of the artifact created
+                console.log(`[BrainstormTool] Completed brainstorm generation with ${createdArtifacts.length} individual artifacts`);
+
+                // Return multiple artifact IDs
                 return {
-                    outputArtifactId: outputArtifact.id,
+                    outputArtifactIds: createdArtifacts,
                     finishReason: 'stop'
                 };
 

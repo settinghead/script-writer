@@ -6,8 +6,6 @@ export const BrainstormIdeaSchema = z.object({
   body: z.string().min(10).max(2000)
 });
 
-export const BrainstormIdeaCollectionSchema = z.array(BrainstormIdeaSchema);
-
 // Schema for outline input (derived from brainstorm ideas)
 export const OutlineInputSchema = z.object({
   content: z.string().min(10).max(5000),
@@ -28,14 +26,12 @@ export const UserInputSchema = z.object({
 
 // Schema registry
 export const ARTIFACT_SCHEMAS = {
-  'brainstorm_idea_collection': BrainstormIdeaCollectionSchema,
   'brainstorm_idea': BrainstormIdeaSchema,
   'outline_input': OutlineInputSchema,
   'user_input': UserInputSchema
 } as const;
 
 export type BrainstormIdea = z.infer<typeof BrainstormIdeaSchema>;
-export type BrainstormIdeaCollection = z.infer<typeof BrainstormIdeaCollectionSchema>;
 export type OutlineInput = z.infer<typeof OutlineInputSchema>;
 export type UserInput = z.infer<typeof UserInputSchema>;
 export type ArtifactType = keyof typeof ARTIFACT_SCHEMAS; 

@@ -158,18 +158,28 @@ export class BrainstormService {
 
     // Get brainstorm result by project ID
     async getBrainstormResult(projectId: string): Promise<any> {
-        // Look for brainstorm_idea_collection artifacts (created by the tool)
-        const artifacts = await this.artifactRepo.getArtifactsByType(
+        // Look for individual brainstorm_idea artifacts (created by the tool)
+        const artifacts = await this.artifactRepo.getProjectArtifactsByType(
             projectId,
-            'brainstorm_idea_collection',
-            'v1'
+            'brainstorm_idea'
         );
 
         if (artifacts.length === 0) {
             return null;
         }
 
-        // Return the most recent result
-        return artifacts[0];
+        // Sort by creation time and return all ideas
+        artifacts.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+        return {
+            ideas: artifacts.map(artifact => ({
+                id: artifact.id,
+                title: artifact.data.title,
+                body: artifact.data.body,
+                createdAt: artifact.created_at,
+                metadata: artifact.metadata
+            })),
+            totalCount: artifacts.length
+        };
     }
 } 

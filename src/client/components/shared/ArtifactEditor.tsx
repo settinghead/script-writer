@@ -284,39 +284,53 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
 
                 {/* Read-only display of original data */}
                 <div className="mt-3 p-3 bg-gray-800 rounded">
-                    {path ? (
-                        // Show data at path in a more user-friendly format
-                        (() => {
-                            const dataAtPath = extractDataAtPath(JSON.parse(artifactToUse.data as string), path);
-                            if (dataAtPath && typeof dataAtPath === 'object' && dataAtPath.title && dataAtPath.body) {
-                                // Display brainstorm idea in a nice format
-                                return (
-                                    <div className="space-y-3">
-                                        <div>
-                                            <div className="text-xs text-gray-500 mb-1">标题</div>
-                                            <div className="text-sm text-gray-300">{dataAtPath.title}</div>
-                                        </div>
-                                        <div>
-                                            <div className="text-xs text-gray-500 mb-1">内容</div>
-                                            <div className="text-sm text-gray-300 whitespace-pre-wrap">{dataAtPath.body}</div>
-                                        </div>
+                    {(() => {
+                        const fullData = JSON.parse(artifactToUse.data as string);
+                        const dataToShow = path ? extractDataAtPath(fullData, path) : fullData;
+
+                        // If we have field configurations, use them to display structured data
+                        if (fields.length > 0 && dataToShow && typeof dataToShow === 'object') {
+                            return (
+                                <div className="space-y-3">
+                                    {fields.map(({ field }) => (
+                                        dataToShow[field] && (
+                                            <div key={field}>
+                                                <div className="text-xs text-gray-500 mb-1 capitalize">
+                                                    {field === 'title' ? '标题' : field === 'body' ? '内容' : field}
+                                                </div>
+                                                <div className="text-sm text-gray-300 whitespace-pre-wrap">
+                                                    {dataToShow[field]}
+                                                </div>
+                                            </div>
+                                        )
+                                    ))}
+                                </div>
+                            );
+                        }
+
+                        // Special case for brainstorm ideas without field config
+                        if (dataToShow && typeof dataToShow === 'object' && dataToShow.title && dataToShow.body) {
+                            return (
+                                <div className="space-y-3">
+                                    <div>
+                                        <div className="text-xs text-gray-500 mb-1">标题</div>
+                                        <div className="text-sm text-gray-300">{dataToShow.title}</div>
                                     </div>
-                                );
-                            } else {
-                                // Fallback to JSON display
-                                return (
-                                    <div className="text-sm text-gray-300">
-                                        {JSON.stringify(dataAtPath, null, 2)}
+                                    <div>
+                                        <div className="text-xs text-gray-500 mb-1">内容</div>
+                                        <div className="text-sm text-gray-300 whitespace-pre-wrap">{dataToShow.body}</div>
                                     </div>
-                                );
-                            }
-                        })()
-                    ) : (
-                        // Show full data
-                        <div className="text-sm text-gray-300">
-                            {JSON.stringify(JSON.parse(artifactToUse.data as string), null, 2)}
-                        </div>
-                    )}
+                                </div>
+                            );
+                        }
+
+                        // Fallback to JSON display
+                        return (
+                            <div className="text-sm text-gray-300">
+                                {JSON.stringify(dataToShow, null, 2)}
+                            </div>
+                        );
+                    })()}
                 </div>
             </div>
         );

@@ -1,9 +1,9 @@
 import { HUMAN_TRANSFORM_DEFINITIONS } from '../../common/schemas/transforms';
-import { 
+import {
   createOutlineInputFromBrainstormIdea,
   createUserInputFromBrainstormIdea,
   createBrainstormIdeaFromBrainstormIdea,
-  createUserInputFromBrainstormField 
+  createUserInputFromBrainstormField
 } from './transform-instantiations/brainstormTransforms';
 
 type InstantiationFunction = (
@@ -42,12 +42,12 @@ export class TransformInstantiationRegistry {
     }
 
     const result = instantiationFn(sourceArtifactData, derivationPath);
-    
+
     // Add source artifact ID to metadata if applicable
     if (result.source_metadata) {
       result.source_metadata.source_artifact_id = sourceArtifactId;
     }
-    
+
     return result;
   }
 } 

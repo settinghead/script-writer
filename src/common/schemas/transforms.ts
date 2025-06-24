@@ -49,25 +49,25 @@ export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinitio
   'brainstorm_to_outline': {
     name: 'brainstorm_to_outline',
     description: 'Convert a brainstorm idea to outline input',
-    sourceArtifactType: 'brainstorm_idea_collection',
+    sourceArtifactType: 'brainstorm_idea',
     targetArtifactType: 'outline_input',
-    pathPattern: '^\\[\\d+\\]$', // Matches [0], [1], etc.
+    pathPattern: '^$', // Empty path for entire artifact
     instantiationFunction: 'createOutlineInputFromBrainstormIdea'
   },
   'edit_brainstorm_idea': {
     name: 'edit_brainstorm_idea',
     description: 'Edit entire brainstorm idea object',
-    sourceArtifactType: 'brainstorm_idea_collection',
+    sourceArtifactType: 'brainstorm_idea',
     targetArtifactType: 'brainstorm_idea',
-    pathPattern: '^\\[\\d+\\]$', // Matches [0], [1], etc. - entire object
+    pathPattern: '^$', // Empty path for entire artifact
     instantiationFunction: 'createBrainstormIdeaFromBrainstormIdea'
   },
   'edit_brainstorm_idea_field': {
     name: 'edit_brainstorm_idea_field',
     description: 'Edit individual fields of brainstorm ideas',
-    sourceArtifactType: 'brainstorm_idea_collection',
+    sourceArtifactType: 'brainstorm_idea',
     targetArtifactType: 'user_input',
-    pathPattern: '^\\[\\d+\\]\\.(title|body)$', // Matches [0].title, [1].body, etc.
+    pathPattern: '^(title|body)$', // Matches title or body fields
     instantiationFunction: 'createUserInputFromBrainstormField'
   }
 };
@@ -77,7 +77,7 @@ export const LLM_TRANSFORM_DEFINITIONS: Record<string, LLMTransformDefinition> =
   'llm_edit_brainstorm_idea': {
     name: 'llm_edit_brainstorm_idea',
     description: 'AI-powered editing of brainstorm ideas based on user requirements',
-    inputTypes: ['brainstorm_idea_collection', 'brainstorm_idea', 'user_input'],
+    inputTypes: ['brainstorm_idea', 'user_input'],
     outputType: 'brainstorm_idea',
     templateName: 'brainstormEdit',
     inputSchema: BrainstormEditInputSchema,

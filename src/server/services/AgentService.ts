@@ -118,7 +118,9 @@ ${contextString}
 
             // 6. Agent execution is complete, update the parent transform
             const finalAgentTransform = await this.transformRepo.getTransform(agentTransformId);
-            const outputArtifactIds = agentResult.toolResults.map(r => r.result.outputArtifactId);
+            const outputArtifactIds = agentResult.toolResults.flatMap(r =>
+                r.result.outputArtifactIds || [r.result.outputArtifactId]
+            ).filter(Boolean);
 
             const newContext = {
                 ...(finalAgentTransform.execution_context || {}),
@@ -191,49 +193,30 @@ ${contextString}
      */
     private async prepareBrainstormContext(projectId: string): Promise<string> {
         try {
-            // Get all brainstorm-related artifacts for this project
-            const brainstormArtifacts = await this.artifactRepo.getProjectArtifactsByType(
+            // Get all individual brainstorm_idea artifacts for this project
+            const brainstormIdeas = await this.artifactRepo.getProjectArtifactsByType(
                 projectId,
-                'brainstorm_idea_collection'
+                'brainstorm_idea'
             );
 
-            if (brainstormArtifacts.length === 0) {
+            if (brainstormIdeas.length === 0) {
                 return '当前项目还没有故事创意。';
             }
 
             let contextString = '**当前项目的故事创意：**\n\n';
 
-            for (const artifact of brainstormArtifacts) {
+            // Sort by creation time to show them in order
+            brainstormIdeas.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+            brainstormIdeas.forEach((idea, index) => {
                 try {
-                    const ideas = artifact.data;
-                    if (Array.isArray(ideas)) {
-                        contextString += `创意集合 (${artifact.id}):\n`;
-                        ideas.forEach((idea, index) => {
-                            if (idea.title && idea.body) {
-                                contextString += `  ${index}. ${idea.title}: ${idea.body}\n`;
-                            }
-                        });
-                        contextString += '\n';
+                    if (idea.data && idea.data.title && idea.data.body) {
+                        contextString += `${index + 1}. **${idea.data.title}**\n   ${idea.data.body}\n\n`;
                     }
                 } catch (error) {
-                    console.error('Error parsing brainstorm artifact:', error);
+                    console.error('Error parsing brainstorm idea artifact:', error);
                 }
-            }
-
-            // Also get any individual brainstorm_idea artifacts (from edits)
-            const individualIdeas = await this.artifactRepo.getProjectArtifactsByType(
-                projectId,
-                'brainstorm_idea'
-            );
-
-            if (individualIdeas.length > 0) {
-                contextString += '**编辑后的故事创意：**\n\n';
-                for (const idea of individualIdeas) {
-                    if (idea.data.title && idea.data.body) {
-                        contextString += `- ${idea.data.title}: ${idea.data.body}\n`;
-                    }
-                }
-            }
+            });
 
             return contextString;
 
@@ -298,7 +281,9 @@ ${contextString}
 
             // 4. Agent execution is complete, update the parent transform
             const finalAgentTransform = await this.transformRepo.getTransform(agentTransformId);
-            const outputArtifactIds = agentResult.toolResults.map(r => r.result.outputArtifactId);
+            const outputArtifactIds = agentResult.toolResults.flatMap(r =>
+                r.result.outputArtifactIds || [r.result.outputArtifactId]
+            ).filter(Boolean);
 
             const newContext = {
                 ...(finalAgentTransform.execution_context || {}),
@@ -314,9 +299,9 @@ ${contextString}
             // Link output artifacts to the agent transform
             const outputArtifacts = outputArtifactIds
                 .filter(id => id) // Filter out null/undefined
-                .map(artifactId => ({
+                .map((artifactId, index) => ({
                     artifactId,
-                    outputRole: 'brainstorm_idea_collection'
+                    outputRole: `brainstorm_idea_${index}`
                 }));
 
             if (outputArtifacts.length > 0) {

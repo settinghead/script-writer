@@ -9,7 +9,7 @@ export function createOutlineInputFromBrainstormIdea(
   derivationPath: string
 ): OutlineInput {
   const ideaData = extractDataAtPath(sourceArtifactData, derivationPath) as BrainstormIdea;
-  
+
   if (!ideaData || typeof ideaData.title !== 'string' || typeof ideaData.body !== 'string') {
     throw new Error(`Invalid brainstorm idea data at path ${derivationPath}`);
   }
@@ -33,7 +33,7 @@ export function createUserInputFromBrainstormIdea(
   derivationPath: string
 ): UserInput {
   const ideaData = extractDataAtPath(sourceArtifactData, derivationPath) as BrainstormIdea;
-  
+
   if (!ideaData || typeof ideaData.title !== 'string' || typeof ideaData.body !== 'string') {
     throw new Error(`Invalid brainstorm idea data at path ${derivationPath}`);
   }
@@ -53,7 +53,7 @@ export function createBrainstormIdeaFromBrainstormIdea(
   derivationPath: string
 ): BrainstormIdea {
   const ideaData = extractDataAtPath(sourceArtifactData, derivationPath) as BrainstormIdea;
-  
+
   if (!ideaData || typeof ideaData.title !== 'string' || typeof ideaData.body !== 'string') {
     throw new Error(`Invalid brainstorm idea data at path ${derivationPath}`);
   }
@@ -73,7 +73,7 @@ export function createUserInputFromBrainstormField(
   derivationPath: string
 ): UserInput {
   const fieldValue = extractDataAtPath(sourceArtifactData, derivationPath);
-  
+
   if (typeof fieldValue !== 'string') {
     throw new Error(`Invalid field value at path ${derivationPath}`);
   }
