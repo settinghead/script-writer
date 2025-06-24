@@ -146,6 +146,57 @@ Original Collection (brainstorm_idea_collection)
 - **Advanced search** across all user data
 - **Data export** for AI training and analysis
 - **Comprehensive debugging tools** for development
+- **Raw Graph Visualization** - Interactive debugging tool for visualizing complete artifact and transform lineage graphs
+
+#### Raw Graph Debugging Feature
+
+**Purpose**: Provides developers and advanced users with a comprehensive visualization of the complete artifact and transform lineage system for debugging complex data relationships and workflow analysis.
+
+**Access**: Available on any project page by adding `?raw-graph=1` query parameter or clicking the "显示原始图谱"/"隐藏原始图谱" toggle button in the breadcrumb area.
+
+**Technical Implementation**:
+- **React Flow Integration** - Uses React Flow library for interactive graph visualization with pan, zoom, and selection capabilities
+- **Hierarchical Layout** - Dagre algorithm provides left-to-right hierarchical positioning of nodes and edges
+- **Real-time Data** - Integrates with Electric SQL for live updates as artifacts and transforms are created/modified
+- **Performance Optimized** - Efficient graph processing with memoized calculations and intelligent caching
+
+**Visual Features**:
+- **Custom Node Types**:
+  - **Artifact Nodes** (rectangles): Color-coded by type with connection handles and detailed tooltips showing complete JSON data
+  - **Transform Nodes** (diamonds): 45° rotated diamonds with human/LLM icons and execution context tooltips
+- **Connection System**:
+  - **Blue Arrows** (🔵): Input relationships (artifact → transform)
+  - **Green Arrows** (🟢): Output relationships (transform → artifact)  
+  - **Yellow Arrows** (🟡): Lineage relationships (fallback connections)
+- **Latest Artifact Highlighting** - Gold borders on leaf nodes in lineage chains
+- **Interactive Controls**:
+  - Filter toggles for artifacts, transforms, human transforms, and LLM transforms
+  - Pan, zoom, and fit-to-view controls
+  - Minimap for navigation in large graphs
+  - Node selection and hover tooltips with technical details
+
+**Fallback Edge Creation System**:
+1. **Primary**: Uses `transform_inputs` and `transform_outputs` tables for formal transform relationships
+2. **Secondary**: Uses `human_transforms` table relationships (`source_artifact_id` → `derived_artifact_id`)  
+3. **Tertiary**: Uses lineage graph edges built from all available relationship data
+
+**Use Cases**:
+- **Debugging Complex Lineages** - Visualize how content flows through multiple editing rounds
+- **Performance Analysis** - Identify bottlenecks in transform execution chains
+- **Data Relationship Validation** - Verify that artifact relationships are correctly established
+- **Workflow Understanding** - See complete picture of how user actions create data transformations
+- **Development Support** - Essential tool for developers working on the transform system
+
+**Example Visualization**:
+```
+[brainstorm_params] → [LLM Transform] → [brainstorm_idea_collection]
+                                              ↓
+                                      [Human Transform] → [user_input]
+                                              ↓
+                                      [LLM Transform] → [brainstorm_idea] (LATEST)
+```
+
+This feature provides unprecedented visibility into the application's sophisticated data transformation system, making it invaluable for both development and advanced user analysis.
 
 ## Core Design Principles
 
@@ -873,6 +924,45 @@ export const BRAINSTORM_EDIT_TEMPLATE = `
 ```
 
 ## Recent Major Changes
+
+### Raw Graph Debugging Feature Implementation ✅ COMPLETED (Latest)
+
+**Major Achievement**: Implemented a comprehensive debugging visualization system that provides unprecedented visibility into the application's sophisticated artifact and transform lineage system, enabling developers to debug complex data relationships and understand workflow execution patterns.
+
+#### Technical Implementation
+- **React Flow Integration**: Built custom visualization using React Flow library with interactive pan, zoom, and selection capabilities
+- **Custom Node Components**: 
+  - **ArtifactNode**: Rectangular nodes with type-based color coding, connection handles, and detailed JSON tooltips
+  - **TransformNode**: Diamond-shaped (45° rotated) nodes with human/LLM icons and execution context tooltips
+- **Hierarchical Layout**: Implemented Dagre algorithm for automatic left-to-right node positioning and edge routing
+- **Real-time Updates**: Electric SQL integration provides live graph updates as data changes
+- **Performance Optimization**: Memoized graph processing with efficient batch operations for large datasets
+
+#### Advanced Edge Creation System
+- **Triple Fallback Architecture**: Robust edge creation system with three fallback mechanisms
+  1. **Primary**: `transform_inputs`/`transform_outputs` tables for formal relationships
+  2. **Secondary**: `human_transforms` table for direct artifact relationships
+  3. **Tertiary**: Lineage graph edges from comprehensive relationship analysis
+- **Connection Handles**: Proper React Flow handles enable edge connections between nodes
+- **Visual Differentiation**: Color-coded arrows (blue for inputs, green for outputs, yellow for lineage)
+
+#### User Experience Features
+- **URL Parameter Access**: Toggle visualization with `?raw-graph=1` query parameter
+- **Breadcrumb Integration**: Toggle button "显示原始图谱"/"隐藏原始图谱" in project layout
+- **Interactive Controls**: Filter toggles for different node types, minimap, zoom controls
+- **Latest Artifact Highlighting**: Gold borders on leaf nodes in lineage chains
+- **Rich Tooltips**: Hover tooltips showing complete technical details and JSON data
+
+#### Development Impact
+- **Debugging Capability**: Essential tool for understanding complex lineage chains and transform execution
+- **Data Validation**: Visual verification of artifact relationships and transform correctness
+- **Performance Analysis**: Identify bottlenecks and optimization opportunities in data flows
+- **Educational Value**: Helps developers understand the sophisticated transform system architecture
+
+**Files Created/Modified**:
+- `src/client/components/RawGraphVisualization.tsx` - Complete visualization component
+- `src/client/components/ProjectLayout.tsx` - Toggle button integration
+- `package.json` - Added `dagre` and `@types/dagre` dependencies
 
 ### AI-Powered Brainstorm Editing System (Latest Implementation)
 
