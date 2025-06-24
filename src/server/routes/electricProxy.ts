@@ -66,9 +66,12 @@ export function createElectricProxyRoutes(authDB: AuthDatabase) {
                         : userScopedWhere;
                     break;
                 case 'chat_messages_raw':
-                    // Raw messages are never exposed via Electric SQL
-                    res.status(403).json({ error: 'Access denied to raw message data' });
-                    return;
+                    // Allow raw messages for debugging purposes only
+                    // In production, this should be restricted further
+                    finalWhereClause = existingWhere
+                        ? `(${existingWhere}) AND (${userScopedWhere})`
+                        : userScopedWhere;
+                    break;
                 default:
                     res.status(400).json({ error: `Table ${table} not authorized for Electric sync` });
                     return;

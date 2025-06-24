@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Outlet, useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Layout, Breadcrumb, Typography, Spin, Alert, Space, Button, Card, List } from 'antd';
-import { HomeOutlined, ProjectOutlined, ArrowLeftOutlined, EyeOutlined, EyeInvisibleOutlined, NodeIndexOutlined } from '@ant-design/icons';
+import { HomeOutlined, ProjectOutlined, ArrowLeftOutlined, EyeOutlined, EyeInvisibleOutlined, NodeIndexOutlined, MessageOutlined } from '@ant-design/icons';
 import { useProjectData } from '../hooks/useProjectData';
 import { useProjectStore } from '../stores/projectStore';
 import { ProjectDataProvider } from '../contexts/ProjectDataContext';
 import { ChatSidebarWrapper } from './chat/ChatSidebarWrapper';
 import WorkflowVisualization from './WorkflowVisualization';
 import RawGraphVisualization from './RawGraphVisualization';
+import RawChatMessages from './RawChatMessages';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 
 const { Sider, Content } = Layout;
@@ -33,8 +34,9 @@ const ProjectLayout: React.FC = () => {
     const [workflowHeight, setWorkflowHeight] = useLocalStorage('workflow-height', 200);
     const [isResizing, setIsResizing] = useState(false);
 
-    // Raw graph toggle state
+    // Debug toggles
     const showRawGraph = searchParams.get('raw-graph') === '1';
+    const showRawChat = searchParams.get('raw-chat') === '1';
 
     // Cache the selector to avoid infinite loop warning
     const emptyProject = useMemo(() => ({}), []);
@@ -44,16 +46,30 @@ const ProjectLayout: React.FC = () => {
     // Fetch project data using our main hook
     useProjectData(projectId!);
 
-    // Raw graph toggle handler
+    // Debug toggle handlers
     const toggleRawGraph = useCallback(() => {
         const newSearchParams = new URLSearchParams(searchParams);
         if (showRawGraph) {
             newSearchParams.delete('raw-graph');
         } else {
             newSearchParams.set('raw-graph', '1');
+            // Clear raw chat if both are enabled
+            newSearchParams.delete('raw-chat');
         }
         setSearchParams(newSearchParams);
     }, [showRawGraph, searchParams, setSearchParams]);
+
+    const toggleRawChat = useCallback(() => {
+        const newSearchParams = new URLSearchParams(searchParams);
+        if (showRawChat) {
+            newSearchParams.delete('raw-chat');
+        } else {
+            newSearchParams.set('raw-chat', '1');
+            // Clear raw graph if both are enabled
+            newSearchParams.delete('raw-graph');
+        }
+        setSearchParams(newSearchParams);
+    }, [showRawChat, searchParams, setSearchParams]);
 
     // Resize handlers
     const handleMouseDown = (e: React.MouseEvent) => {
@@ -96,8 +112,6 @@ const ProjectLayout: React.FC = () => {
             document.body.style.userSelect = '';
         };
     }, [isResizing, handleMouseMove, handleMouseUp]);
-
-    // Note: Removed useProjectStreaming - now using Electric SQL in individual pages
 
     const handleGoBack = () => {
         navigate('/');
@@ -160,6 +174,9 @@ const ProjectLayout: React.FC = () => {
         }
     ];
 
+    // Determine layout based on debug modes
+    const isDebugMode = showRawGraph || showRawChat;
+
     return (
         <ProjectDataProvider projectId={projectId!}>
             <Layout style={{ height: '100%', overflow: 'hidden' }}>
@@ -175,8 +192,9 @@ const ProjectLayout: React.FC = () => {
                 >
                     <ChatSidebarWrapper projectId={projectId!} />
                 </Sider>
-                <Content style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                    {/* Breadcrumb and Toggle Button Row */}
+
+                <Layout style={{ flex: 1 }}>
+                    {/* Breadcrumb and Toggle Buttons Row */}
                     <div style={{
                         padding: '12px 16px',
                         borderBottom: '1px solid #333',
@@ -186,107 +204,137 @@ const ProjectLayout: React.FC = () => {
                         alignItems: 'center'
                     }}>
                         <Breadcrumb items={breadcrumbItems} />
-                        <Button
-                            type="text"
-                            icon={<NodeIndexOutlined />}
-                            onClick={toggleRawGraph}
-                            style={{ color: showRawGraph ? '#52c41a' : '#1890ff' }}
-                        >
-                            {showRawGraph ? '隐藏原始图谱' : '显示原始图谱'}
-                        </Button>
+                        <Space>
+                            <Button
+                                type="text"
+                                icon={<NodeIndexOutlined />}
+                                onClick={toggleRawGraph}
+                                style={{ color: showRawGraph ? '#52c41a' : '#1890ff' }}
+                            >
+                                {showRawGraph ? '隐藏原始图谱' : '显示原始图谱'}
+                            </Button>
+                            <Button
+                                type="text"
+                                icon={<MessageOutlined />}
+                                onClick={toggleRawChat}
+                                style={{ color: showRawChat ? '#52c41a' : '#1890ff' }}
+                            >
+                                {showRawChat ? '隐藏原始消息' : '显示原始消息'}
+                            </Button>
+                        </Space>
                     </div>
 
-                    {/* Conditional Content */}
-                    {showRawGraph ? (
-                        <div style={{ flex: 1, overflow: 'hidden' }}>
-                            <RawGraphVisualization />
-                        </div>
-                    ) : (
-                        <>
-                            {/* Resizable Workflow Visualization Section at Top */}
-                            <div
-                                className="workflow-container"
-                                style={{
-                                    flexShrink: 0,
-                                    padding: '0px',
-                                    borderBottom: showWorkflow ? '1px solid #333' : 'none',
-                                    transition: showWorkflow ? 'none' : 'border-bottom 0.3s ease-in-out',
-                                    position: 'relative'
-                                }}
-                            >
-                                <div
-                                    style={{
-                                        height: showWorkflow ? `${workflowHeight}px` : '0px',
-                                        overflow: 'hidden',
-                                        transition: showWorkflow ? 'none' : 'height 0.3s ease-in-out, opacity 0.3s ease-in-out, transform 0.3s ease-in-out',
-                                        opacity: showWorkflow ? 1 : 0,
-                                        transform: showWorkflow ? 'translateY(0)' : 'translateY(-10px)',
-                                        marginBottom: showWorkflow ? '0px' : '0px',
-                                    }}
-                                >
-                                    <WorkflowVisualization height={workflowHeight} />
+                    {/* Main Content Layout */}
+                    <Layout style={{ flex: 1 }}>
+                        {/* Main Content Area */}
+                        <Content style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                            {/* Conditional Content */}
+                            {showRawGraph ? (
+                                <div style={{ flex: 1, overflow: 'hidden' }}>
+                                    <RawGraphVisualization />
                                 </div>
-
-                                {/* Resize Handle */}
-                                {showWorkflow && (
+                            ) : (
+                                <>
+                                    {/* Resizable Workflow Visualization Section at Top */}
                                     <div
-                                        onMouseDown={handleMouseDown}
+                                        className="workflow-container"
                                         style={{
-                                            height: '6px',
-                                            background: isResizing ? '#1890ff' : 'transparent',
-                                            cursor: 'ns-resize',
-                                            position: 'relative',
-                                            transition: 'background 0.2s ease-in-out',
-                                            borderTop: '1px solid #333',
+                                            flexShrink: 0,
+                                            padding: '0px',
+                                            borderBottom: showWorkflow ? '1px solid #333' : 'none',
+                                            transition: showWorkflow ? 'none' : 'border-bottom 0.3s ease-in-out',
+                                            position: 'relative'
                                         }}
                                     >
                                         <div
                                             style={{
-                                                position: 'absolute',
-                                                top: '50%',
-                                                left: '50%',
-                                                transform: 'translate(-50%, -50%)',
-                                                width: '40px',
-                                                height: '4px',
-                                                background: isResizing ? '#1890ff' : '#666',
-                                                borderRadius: '2px',
-                                                transition: 'background 0.2s ease-in-out',
+                                                height: showWorkflow ? `${workflowHeight}px` : '0px',
+                                                overflow: 'hidden',
+                                                transition: showWorkflow ? 'none' : 'height 0.3s ease-in-out, opacity 0.3s ease-in-out, transform 0.3s ease-in-out',
+                                                opacity: showWorkflow ? 1 : 0,
+                                                transform: showWorkflow ? 'translateY(0)' : 'translateY(-10px)',
+                                                marginBottom: showWorkflow ? '0px' : '0px',
                                             }}
-                                        />
+                                        >
+                                            <WorkflowVisualization height={workflowHeight} />
+                                        </div>
+
+                                        {/* Resize Handle */}
+                                        {showWorkflow && (
+                                            <div
+                                                onMouseDown={handleMouseDown}
+                                                style={{
+                                                    height: '6px',
+                                                    background: isResizing ? '#1890ff' : 'transparent',
+                                                    cursor: 'ns-resize',
+                                                    position: 'relative',
+                                                    transition: 'background 0.2s ease-in-out',
+                                                    borderTop: '1px solid #333',
+                                                }}
+                                            >
+                                                <div
+                                                    style={{
+                                                        position: 'absolute',
+                                                        top: '50%',
+                                                        left: '50%',
+                                                        transform: 'translate(-50%, -50%)',
+                                                        width: '40px',
+                                                        height: '4px',
+                                                        background: isResizing ? '#1890ff' : '#666',
+                                                        borderRadius: '2px',
+                                                        transition: 'background 0.2s ease-in-out',
+                                                    }}
+                                                />
+                                            </div>
+                                        )}
+
+                                        <div style={{
+                                            display: 'flex',
+                                            justifyContent: 'center',
+                                            padding: '8px 0',
+                                            background: '#1a1a1a'
+                                        }}>
+                                            <Button
+                                                type="text"
+                                                icon={showWorkflow ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+                                                onClick={() => setShowWorkflow(!showWorkflow)}
+                                                style={{ color: '#1890ff' }}
+                                                size="small"
+                                            >
+                                                {showWorkflow ? '隐藏工作流' : '显示工作流'}
+                                            </Button>
+                                        </div>
                                     </div>
-                                )}
 
-                                <div style={{
-                                    display: 'flex',
-                                    justifyContent: 'center',
-                                    padding: '8px 0',
-                                    background: '#1a1a1a'
-                                }}>
-                                    <Button
-                                        type="text"
-                                        icon={showWorkflow ? <EyeInvisibleOutlined /> : <EyeOutlined />}
-                                        onClick={() => setShowWorkflow(!showWorkflow)}
-                                        style={{ color: '#1890ff' }}
-                                        size="small"
-                                    >
-                                        {showWorkflow ? '隐藏工作流' : '显示工作流'}
-                                    </Button>
-                                </div>
-                            </div>
+                                    {/* Scrollable Content Area Below */}
+                                    <div style={{
+                                        flex: 1,
+                                        overflowY: 'auto',
+                                        padding: '12px'
+                                    }}>
+                                        <Outlet />
+                                    </div>
+                                </>
+                            )}
+                        </Content>
 
-                            {/* Scrollable Content Area Below */}
-                            <div style={{
-                                flex: 1,
-                                overflowY: 'auto',
-                                padding: '12px'
-                            }}>
-                                <Outlet />
-
-                                {/* Note: Streaming UI removed - now handled by individual pages with Electric SQL */}
-                            </div>
-                        </>
-                    )}
-                </Content>
+                        {/* Right Debug Sidebar for Raw Chat Messages */}
+                        {showRawChat && (
+                            <Sider
+                                width={400}
+                                style={{
+                                    background: '#1a1a1a',
+                                    borderLeft: '1px solid #333',
+                                    height: '100%',
+                                    overflow: 'hidden'
+                                }}
+                                theme="dark"
+                            >
+                                <RawChatMessages projectId={projectId!} />
+                            </Sider>
+                        )}
+                    </Layout>
+                </Layout>
             </Layout>
         </ProjectDataProvider>
     );

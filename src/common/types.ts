@@ -434,6 +434,20 @@ export interface ElectricChatMessage {
     [key: string]: unknown;
 }
 
+export interface ElectricRawChatMessage {
+    id: string;
+    project_id: string;
+    role: 'user' | 'assistant' | 'tool';
+    content: string;
+    metadata?: string;
+    tool_name?: string;
+    tool_parameters?: string;
+    tool_result?: string;
+    created_at: string;
+    updated_at: string;
+    [key: string]: unknown;
+}
+
 // Mutation request types
 export interface CreateTransformRequest {
     projectId: string;
