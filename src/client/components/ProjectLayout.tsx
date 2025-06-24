@@ -233,6 +233,10 @@ const ProjectLayout: React.FC = () => {
                                 <div style={{ flex: 1, overflow: 'hidden' }}>
                                     <RawGraphVisualization />
                                 </div>
+                            ) : showRawChat ? (
+                                <div style={{ flex: 1, overflow: 'hidden' }}>
+                                    <RawChatMessages projectId={projectId!} />
+                                </div>
                             ) : (
                                 <>
                                     {/* Resizable Workflow Visualization Section at Top */}
@@ -317,22 +321,6 @@ const ProjectLayout: React.FC = () => {
                                 </>
                             )}
                         </Content>
-
-                        {/* Right Debug Sidebar for Raw Chat Messages */}
-                        {showRawChat && (
-                            <Sider
-                                width={400}
-                                style={{
-                                    background: '#1a1a1a',
-                                    borderLeft: '1px solid #333',
-                                    height: '100%',
-                                    overflow: 'hidden'
-                                }}
-                                theme="dark"
-                            >
-                                <RawChatMessages projectId={projectId!} />
-                            </Sider>
-                        )}
                     </Layout>
                 </Layout>
             </Layout>

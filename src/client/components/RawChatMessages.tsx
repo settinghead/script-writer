@@ -30,15 +30,29 @@ const RawChatMessages: React.FC<RawChatMessagesProps> = ({ projectId }) => {
 
     const { data: rawChatMessages, isLoading } = useShape<ElectricRawChatMessage>(rawChatMessagesConfig);
 
+    // Safe JSON parsing function
+    const safeJsonParse = (value: any) => {
+        if (!value) return null;
+        if (typeof value === 'object') return value; // Already parsed
+        if (typeof value !== 'string') return value; // Not a string, return as-is
+
+        try {
+            return JSON.parse(value);
+        } catch (error) {
+            console.warn('Failed to parse JSON:', value, error);
+            return value; // Return original value if parsing fails
+        }
+    };
+
     // Get raw chat messages from Electric SQL and parse JSON fields
     const rawMessages = useMemo(() => {
         if (!rawChatMessages) return [];
 
         return rawChatMessages.map(msg => ({
             ...msg,
-            metadata: msg.metadata ? JSON.parse(msg.metadata) : null,
-            tool_parameters: msg.tool_parameters ? JSON.parse(msg.tool_parameters) : null,
-            tool_result: msg.tool_result ? JSON.parse(msg.tool_result) : null,
+            metadata: safeJsonParse(msg.metadata),
+            tool_parameters: safeJsonParse(msg.tool_parameters),
+            tool_result: safeJsonParse(msg.tool_result),
         })).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     }, [rawChatMessages]);
 
