@@ -35,16 +35,21 @@ export class AgentService {
     public async runGeneralAgent(
         projectId: string,
         userId: string,
-        request: GeneralAgentRequest
+        request: GeneralAgentRequest,
+        options: {
+            createChatMessages?: boolean;
+            existingThinkingMessageId?: string;
+            existingThinkingStartTime?: string;
+        } = {}
     ) {
         let agentTransformId: string | null = null;
         let thinkingMessageId: string | undefined;
         let thinkingStartTime: string | undefined;
 
         try {
-            // Log user request and start thinking using event-based messaging
-            if (this.chatMessageRepo) {
-                // Create user message event
+            // Handle chat messages based on options
+            if (options.createChatMessages && this.chatMessageRepo) {
+                // Create user message event (only if not called from ChatService)
                 await this.chatMessageRepo.createUserMessage(projectId, request.userRequest);
 
                 // Start agent thinking
@@ -54,6 +59,10 @@ export class AgentService {
                 );
                 thinkingMessageId = thinkingInfo.messageId;
                 thinkingStartTime = thinkingInfo.startTime;
+            } else if (options.existingThinkingMessageId && options.existingThinkingStartTime) {
+                // Use existing thinking message from ChatService
+                thinkingMessageId = options.existingThinkingMessageId;
+                thinkingStartTime = options.existingThinkingStartTime;
             }
 
             // 1. Create a parent transform for the entire agent execution

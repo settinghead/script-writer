@@ -37,24 +37,16 @@ export class ChatService {
         }
 
         try {
-            // 1. Create raw user message
-            const rawUserMessage = await this.chatRepo.createRawMessage(
-                projectId,
-                'user',
-                request.content,
-                { metadata: request.metadata }
-            );
-
-            // 2. Create display user message using event-based system
+            // 1. Create user message using event-based system (this handles both raw and display)
             await this.chatRepo.createUserMessage(projectId, request.content);
 
-            // 3. Create thinking message to show agent is processing
+            // 2. Create thinking message to show agent is processing
             const thinkingInfo = await this.chatRepo.createAgentThinkingMessage(
                 projectId,
                 '分析您的请求并确定最佳方法'
             );
 
-            // 4. Trigger agent processing in background
+            // 3. Trigger agent processing in background
             this.processAgentResponse(projectId, userId, request.content, thinkingInfo.messageId, thinkingInfo.startTime)
                 .catch(error => {
                     console.error('Agent processing failed:', error);
@@ -80,7 +72,7 @@ export class ChatService {
             const recentMessages = await this.getRecentChatHistory(projectId, 10);
 
             // Determine what kind of request this is and route to appropriate agent
-            const agentResponse = await this.routeToAgent(projectId, userId, userMessage, recentMessages);
+            const agentResponse = await this.routeToAgent(projectId, userId, userMessage, recentMessages, thinkingMessageId, thinkingStartTime);
 
             // Finish thinking and add responses
             await this.chatRepo.finishAgentThinking(
@@ -106,28 +98,37 @@ export class ChatService {
         projectId: string,
         userId: string,
         userMessage: string,
-        chatHistory: ChatMessageDisplay[]
+        chatHistory: ChatMessageDisplay[],
+        thinkingMessageId?: string,
+        thinkingStartTime?: string
     ): Promise<AgentResponse[]> {
         // Simple routing logic - can be enhanced with more sophisticated intent detection
         const lowerMessage = userMessage.toLowerCase();
 
         try {
             if (lowerMessage.includes('brainstorm') || lowerMessage.includes('idea') || lowerMessage.includes('story') ||
-                lowerMessage.includes('头脑风暴') || lowerMessage.includes('创意') || lowerMessage.includes('故事')) {
-                // Route to brainstorm agent
-                const result = await this.agentService.runBrainstormAgent(projectId, userId, {
+                lowerMessage.includes('头脑风暴') || lowerMessage.includes('创意') || lowerMessage.includes('故事') ||
+                lowerMessage.includes('编辑') || lowerMessage.includes('修改') || lowerMessage.includes('改进') ||
+                lowerMessage.includes('长一点') || lowerMessage.includes('短一点') || lowerMessage.includes('更新') ||
+                lowerMessage.includes('edit') || lowerMessage.includes('modify') || lowerMessage.includes('improve') ||
+                lowerMessage.includes('change') || lowerMessage.includes('update')) {
+                // Route to general agent (supports both generation and editing)
+                await this.agentService.runGeneralAgent(projectId, userId, {
                     userRequest: userMessage,
-                    platform: 'web',
-                    genre: 'general',
-                    other_requirements: this.formatChatHistoryForAgent(chatHistory)
+                    projectId: projectId,
+                    contextType: 'brainstorm'
+                }, {
+                    createChatMessages: false, // ChatService already handles chat messages
+                    existingThinkingMessageId: thinkingMessageId,
+                    existingThinkingStartTime: thinkingStartTime
                 });
 
                 return [{
                     type: 'tool_call',
-                    content: '我已根据您的请求生成了一些创意故事想法。',
-                    toolName: 'brainstorm',
-                    toolResult: result,
-                    metadata: { agentType: 'brainstorm' }
+                    content: '我已根据您的请求处理了故事创意。',
+                    toolName: 'general_agent',
+                    toolResult: null,
+                    metadata: { agentType: 'general_brainstorm' }
                 }];
 
             } else if (lowerMessage.includes('outline') || lowerMessage.includes('structure') || lowerMessage.includes('大纲') || lowerMessage.includes('结构')) {
