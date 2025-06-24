@@ -255,6 +255,18 @@ export function createArtifactRoutes(
                 return;
             }
 
+            // CRITICAL: Prevent direct updates to LLM-generated artifacts
+            // Check if this artifact was created by an LLM transform
+            const isLLMGenerated = await transformRepo.isArtifactLLMGenerated(artifactId);
+            if (isLLMGenerated) {
+                res.status(403).json({
+                    error: 'Cannot directly edit LLM-generated artifacts',
+                    details: 'LLM-generated artifacts are immutable. Use human transforms to create editable versions.',
+                    code: 'LLM_ARTIFACT_IMMUTABLE'
+                });
+                return;
+            }
+
             let updatedData;
 
             if (existingArtifact.type === 'user_input') {

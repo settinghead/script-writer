@@ -248,9 +248,9 @@ const EditableIdeaCardComponent: React.FC<{
                             className="!border-none !p-0"
                             onSaveSuccess={handleSaveSuccess}
                             fields={BRAINSTORM_IDEA_FIELDS}
-                            mode={hasLineage ? 'editable' : 'edit-button'}
-                            statusLabel={hasLineage ? '已编辑' : 'AI生成'}
-                            statusColor={hasLineage ? 'blue' : 'blue'}
+                            mode="edit-button"
+                            statusLabel={hasLineage ? 'AI已编辑' : 'AI生成'}
+                            statusColor="blue"
                         />
 
                         {/* Generate outline button - only shows if user has edited the idea */}
