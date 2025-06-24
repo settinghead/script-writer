@@ -26,49 +26,25 @@ const NewProjectFromBrainstormPage: React.FC = () => {
     const createProjectMutation = useMutation({
         mutationKey: ['create-project-brainstorm'],
         mutationFn: async (params: BrainstormParams): Promise<CreateProjectResponse> => {
-            // 1. Create a new project first
-            const projectResponse = await fetch('/api/projects', {
+            // Use the existing create-from-brainstorm endpoint that does both steps
+            const response = await fetch('/api/projects/create-from-brainstorm', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    name: `头脑风暴项目 - ${new Date().toLocaleString()}`,
-                    description: `${params.platform}平台的${params.genre}类型故事创意`,
-                    project_type: 'script'
+                    platform: params.platform,
+                    genre: params.genre,
+                    other_requirements: params.other_requirements
                 })
             });
 
-            if (!projectResponse.ok) {
-                const errorData = await projectResponse.json().catch(() => ({}));
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
                 throw new Error(errorData.error || 'Failed to create project');
             }
 
-            const project = await projectResponse.json();
-
-            // 2. Send a brainstorm message via chat system
-            const brainstormMessage = `为${params.platform}平台生成创意故事想法。
-类型：${params.genre}
-${params.other_requirements ? `其他要求：${params.other_requirements}` : ''}
-
-请生成几个有创意的故事想法，要符合平台特点和类型要求。`;
-
-            const chatResponse = await fetch(`/api/chat/projects/${project.id}/messages`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    message: brainstormMessage
-                })
-            });
-
-            if (!chatResponse.ok) {
-                console.warn('Failed to send initial brainstorm message, but project was created');
-                // Don't throw error - project was created successfully
-            }
-
-            return project;
+            return response.json();
         },
         onSuccess: (project) => {
             message.success('项目已创建！正在重定向到头脑风暴页面...');

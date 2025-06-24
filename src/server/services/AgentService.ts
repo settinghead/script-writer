@@ -40,7 +40,7 @@ export class AgentService {
             createChatMessages?: boolean;
             existingThinkingMessageId?: string;
             existingThinkingStartTime?: string;
-        } = {}
+        } = { createChatMessages: true }
     ) {
         let thinkingMessageId: string | undefined;
         let thinkingStartTime: string | undefined;
