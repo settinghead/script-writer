@@ -255,7 +255,9 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
                 // Notify parent component
                 onTransition?.(response.derivedArtifact.id);
 
-                message.success('选中灵感，开始编辑');
+                // Show appropriate message based on whether this was a new transform or existing one
+                const messageText = response.wasTransformed ? '选中灵感，开始编辑' : '继续编辑现有内容';
+                message.success(messageText);
             },
             onError: (error) => {
                 setIsCreatingTransform(false);
