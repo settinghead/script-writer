@@ -147,6 +147,101 @@ Original Collection (brainstorm_idea_collection)
 - **Data export** for AI training and analysis
 - **Comprehensive debugging tools** for development
 
+## Core Design Principles
+
+### 🔗 Lineage Resolution: "Always Edit the Leaf" Principle
+
+**Fundamental Rule**: The system ensures users always edit the most recent version of any content by automatically resolving lineage chains to their "leaf" (latest) artifacts.
+
+#### Why This Matters
+In collaborative editing environments with both human and AI modifications, content can evolve through multiple versions:
+```
+Original Story Idea → Human Edit → AI Enhancement → Human Refinement
+                                                         ↑
+                                                   (This is the "leaf")
+```
+
+Without lineage resolution, users might accidentally edit an outdated version, losing recent changes. Our system prevents this by:
+
+1. **Automatic Leaf Detection** - When a user clicks "edit" on any content, the system traces the lineage chain to find the most recent version
+2. **Transparent Resolution** - Users see visual indicators (📝 已编辑版本) when content has been modified from its original form
+3. **Consistent Behavior** - Whether editing through chat commands or direct UI interaction, users always work with the latest version
+
+#### Lineage Resolution Examples
+
+**Simple Chain**:
+```
+Artifact A → Human Transform → Artifact B (leaf)
+User clicks edit on A → System resolves to B → User edits B
+```
+
+**Complex Branching** (handled gracefully):
+```
+Artifact A → Human Transform → Artifact B → AI Transform → Artifact C (leaf)
+         → AI Transform → Artifact D (separate branch)
+User clicks edit on A → System resolves to C (most recent in main branch)
+```
+
+**Mixed Editing Workflows**:
+```
+Collection [Story1, Story2, Story3]
+├── Story1 → Human Edit → User Input → AI Edit → Enhanced Story1 (leaf)
+├── Story2 → AI Edit → Enhanced Story2 (leaf)  
+└── Story3 → (unchanged, references original collection)
+```
+
+### 🤖 Agent-Driven Editing Philosophy
+
+**Core Principle**: All content modifications flow through an intelligent agent system that maintains context awareness and quality consistency across all operations.
+
+#### Dual-Mode Intelligence
+The agent automatically detects user intent and routes requests appropriately:
+
+- **Generation Mode**: "创建一些古装剧本" → Uses BrainstormTool to create new content
+- **Editing Mode**: "让这些故事更现代" → Uses BrainstormEditTool to modify existing content with context enrichment
+
+#### Context Enrichment for Edits
+When editing existing content, the agent provides comprehensive context to the LLM:
+- **Current Content**: All existing story ideas with full details
+- **Project Background**: Platform requirements, genre specifications
+- **User Instructions**: Specific modification requests
+- **Quality Guidelines**: 去脸谱化 (de-stereotyping) principles and consistency rules
+
+This ensures that AI edits are contextually appropriate and maintain story coherence across all modifications.
+
+### 🔄 Immutable Artifacts with Flexible Editing
+
+**Design Philosophy**: Treat AI-generated content as immutable historical records while providing unlimited editing flexibility through derived artifacts.
+
+#### Key Principles
+
+1. **Original Artifacts Never Change** - AI-generated content is preserved exactly as created for audit trails and rollback capabilities
+
+2. **Derived Artifacts for Modifications** - All edits (human or AI) create new artifacts linked through transforms, maintaining complete history
+
+3. **Individual Breakdown Strategy** - Collections automatically decomposed into individual artifacts for granular editing without affecting other items
+
+4. **Path-Based Editing** - Support both field-level (`[0].title`) and object-level (`[0]`) modifications with proper lineage tracking
+
+#### Benefits
+- **Complete Audit Trail** - Every change tracked with timestamps, user attribution, and context
+- **Rollback Capability** - Can trace back to any previous version in the lineage chain  
+- **Concurrent Editing Protection** - Database constraints prevent race conditions and data loss
+- **Performance Optimization** - Only load and process relevant content portions for editing
+- **Collaboration Support** - Multiple users can edit different parts simultaneously without conflicts
+
+### 🎯 Schema-Driven Type Safety
+
+**Principle**: All data transformations validated against Zod schemas to prevent runtime errors and ensure data integrity.
+
+#### Implementation
+- **Artifact Schemas** - Every artifact type has a versioned Zod schema defining its structure
+- **Transform Validation** - All transform inputs and outputs validated before execution
+- **Frontend-Backend Consistency** - Shared schemas ensure UI and API always agree on data structure
+- **Migration Support** - Schema versioning allows for safe data structure evolution
+
+This eliminates the entire class of "data structure mismatch" errors that plague traditional systems.
+
 ## Architecture
 
 ### Core Architecture: Agent-Driven System with Advanced Transform Lineage
