@@ -75,28 +75,7 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
         const lookupArtifactId = sourceArtifactId || artifactId;
         const humanTransforms = projectData.getHumanTransformsForArtifact(lookupArtifactId, path);
 
-        // Debug logging
-        console.log(`🔍 [ArtifactEditor] Transform lookup for ${artifactId}:`, {
-            lookupArtifactId,
-            path,
-            transformName,
-            totalHumanTransforms: projectData.humanTransforms?.length || 0,
-            matchingTransforms: humanTransforms?.length || 0,
-            isDataLoading: projectData.isLoading,
-            humanTransforms: humanTransforms?.map(ht => ({
-                transform_id: ht.transform_id?.substring(0, 8) + '...',
-                source_artifact_id: ht.source_artifact_id?.substring(0, 8) + '...',
-                derived_artifact_id: ht.derived_artifact_id?.substring(0, 8) + '...',
-                derivation_path: ht.derivation_path,
-                transform_name: ht.transform_name
-            })),
-            allHumanTransforms: projectData.humanTransforms?.map(ht => ({
-                transform_id: ht.transform_id?.substring(0, 8) + '...',
-                source_artifact_id: ht.source_artifact_id?.substring(0, 8) + '...',
-                transform_name: ht.transform_name,
-                derivation_path: ht.derivation_path
-            }))
-        });
+
 
         return humanTransforms.find(ht =>
             ht.transform_name === transformName &&
@@ -167,23 +146,6 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
 
     const { artifactData } = processedData || {};
 
-    // Debug logging for artifact editor
-    useEffect(() => {
-        console.log(`🔧 [ArtifactEditor] Debug info for artifact ${artifactId}:`, {
-            artifactId,
-            sourceArtifactId,
-            lookupArtifactId: sourceArtifactId || artifactId,
-            mode,
-            effectiveMode,
-            hasArtifactToUse: !!artifactToUse,
-            hasArtifactData: !!artifactData,
-            existingTransform: existingTransform?.transform_id,
-            transformName,
-            fieldsLength: fields.length,
-            isEditing,
-            artifactType: artifactToUse?.type
-        });
-    }, [artifactId, sourceArtifactId, mode, effectiveMode, artifactToUse, artifactData, existingTransform, transformName, fields.length, isEditing]);
 
     // 5. Create transform mutation using unified context
     const createTransformMutation = projectData.createHumanTransform;

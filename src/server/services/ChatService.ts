@@ -1,8 +1,6 @@
 import { ChatMessageRepository } from '../repositories/ChatMessageRepository';
 import { AgentService } from './AgentService';
-import { TransformRepository } from '../repositories/TransformRepository';
-import { ArtifactRepository } from '../repositories/ArtifactRepository';
-import { ChatMessageRaw, ChatMessageDisplay } from '../../common/schemas/chatMessages';
+import { ChatMessageDisplay } from '../../common/schemas/chatMessages';
 
 export interface SendMessageRequest {
     content: string;
@@ -21,8 +19,6 @@ export class ChatService {
     constructor(
         private chatRepo: ChatMessageRepository,
         private agentService: AgentService,
-        private transformRepo: TransformRepository,
-        private artifactRepo: ArtifactRepository
     ) { }
 
     async sendUserMessage(
