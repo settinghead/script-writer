@@ -173,6 +173,7 @@ const BrainstormIdeaCard: React.FC<{
     const resolvedArtifactId = latestArtifactId || artifactId;
 
     // Log lineage resolution for debugging
+
     console.log(`🎯 [BrainstormIdeaCard ${index}] ${artifactId} → ${resolvedArtifactId} (lineage: ${hasLineage})`);
 
     // Handle successful save - show checkmark briefly
