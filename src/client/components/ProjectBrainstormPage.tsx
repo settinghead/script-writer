@@ -4,6 +4,7 @@ import { DynamicBrainstormingResults } from './DynamicBrainstormingResults'
 import { IdeaWithTitle } from '../types/brainstorm'
 import { ReasoningIndicator } from './shared/ReasoningIndicator'
 import { useProjectData } from '../contexts/ProjectDataContext'
+import { findLatestBrainstormIdeas } from '../../common/utils/lineageResolution'
 
 export default function ProjectBrainstormPage() {
   const { projectId } = useParams<{ projectId: string }>()
@@ -20,7 +21,8 @@ export default function ProjectBrainstormPage() {
   // Extract brainstorm data using the new lineage-resolved method
   const { ideas, status, progress, error, isLoading, lastSyncedAt } = useMemo(() => {
     // Get latest brainstorm ideas using lineage resolution from context
-    const latestBrainstormIdeas = projectData.getLatestBrainstormIdeas()
+    const lineageGraph = projectData.getLineageGraph();
+    const latestBrainstormIdeas = findLatestBrainstormIdeas(lineageGraph, projectData.artifacts);
 
     if (latestBrainstormIdeas.length === 0) {
       return {

@@ -10,6 +10,7 @@ import { ReasoningEvent } from '../../common/streaming/types';
 import { ArtifactEditor } from './shared/ArtifactEditor';
 import { BRAINSTORM_IDEA_FIELDS } from './shared/fieldConfigs';
 import { useProjectData } from '../contexts/ProjectDataContext';
+import { findLatestBrainstormIdeas } from '../../common/utils/lineageResolution';
 
 const { Text } = Typography;
 
@@ -259,11 +260,12 @@ const BrainstormIdeaCard: React.FC<{
  * Hook to get latest brainstorm ideas from the lineage graph
  * This replaces the complex per-card lineage resolution
  */
-function useLatestBrainstormIdeas() {
+function useLatestBrainstormIdeas(): IdeaWithTitle[] {
     const projectData = useProjectData();
 
     return useMemo(() => {
-        const latestIdeas = projectData.getLatestBrainstormIdeas();
+        const lineageGraph = projectData.getLineageGraph();
+        const latestIdeas = findLatestBrainstormIdeas(lineageGraph, projectData.artifacts);
 
         console.log(`🎯 [useLatestBrainstormIdeas] Found ${latestIdeas.length} latest brainstorm ideas`);
 

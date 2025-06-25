@@ -17,9 +17,6 @@ export interface FieldConfig {
     placeholder?: string;
 }
 
-// Display mode for the editor
-export type EditorMode = 'readonly' | 'editable' | 'edit-button' | 'auto';
-
 interface ArtifactEditorProps {
     artifactId: string;
     sourceArtifactId?: string;  // Original artifact ID for transform lookup (for lineage resolution)
@@ -29,9 +26,8 @@ interface ArtifactEditorProps {
     onTransition?: (newArtifactId: string) => void;
     onSaveSuccess?: () => void; // Callback when save is successful
 
-    // NEW: Generic field configuration
+    // Generic field configuration
     fields?: FieldConfig[];  // Field configurations to render
-    mode?: EditorMode;       // Display mode
     statusLabel?: string;    // Custom status label (e.g., "AI生成", "已编辑")
     statusColor?: string;    // Status indicator color (e.g., "blue", "green")
 }
@@ -55,7 +51,6 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
     onTransition,
     onSaveSuccess,
     fields = [],
-    mode = 'auto', // Auto-detect mode if not specified
     statusLabel,
     statusColor = 'blue'
 }) => {
@@ -99,13 +94,10 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
 
     // 3. Determine display mode and editing state
     const effectiveMode = useMemo(() => {
-        if (mode !== 'auto') return mode;
-
-        // Auto-detect mode based on context
-        if (existingTransform) return 'editable';
         if (transformName && fields.length > 0) return 'edit-button';
+        if (existingTransform) return 'editable';
         return 'readonly';
-    }, [mode, existingTransform, transformName, fields.length]);
+    }, [transformName, fields.length, existingTransform]);
 
     // Determine if we're in editing mode (for artifacts with existing transforms)
     const isEditing = !!existingTransform;
