@@ -517,6 +517,15 @@ export interface ProjectDataContextType {
     addLocalUpdate: (key: string, update: any) => void;
     removeLocalUpdate: (key: string) => void;
     hasLocalUpdate: (key: string) => boolean;
+
+    // Mutation state management - expose maps directly for easy access
+    mutationStates: {
+        artifacts: Map<string, { status: 'idle' | 'pending' | 'success' | 'error'; error?: string; timestamp?: number; }>;
+        transforms: Map<string, { status: 'idle' | 'pending' | 'success' | 'error'; error?: string; timestamp?: number; }>;
+        humanTransforms: Map<string, { status: 'idle' | 'pending' | 'success' | 'error'; error?: string; timestamp?: number; }>;
+    };
+    setEntityMutationState: (entityType: 'artifacts' | 'transforms' | 'humanTransforms', entityId: string, state: { status: 'idle' | 'pending' | 'success' | 'error'; error?: string; timestamp?: number; }) => void;
+    clearEntityMutationState: (entityType: 'artifacts' | 'transforms' | 'humanTransforms', entityId: string) => void;
 }
 
 // Existing types for backward compatibility...

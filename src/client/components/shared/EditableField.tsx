@@ -75,15 +75,7 @@ export const EditableField: React.FC<EditableFieldProps> = React.memo(({
         // Only update from external source if user is not actively editing
         // and the values are actually different
         if (!isUserActivelyEditing && value !== localValue && value !== '') {
-            console.log('EditableField: Updating from external source', {
-                value,
-                localValue,
-                isTyping,
-                isFocused: isFocusedRef.current,
-                timeSinceLastTyping,
-                hasUserInput,
-                isUserActivelyEditing
-            });
+
             setLocalValue(value);
             lastExternalUpdate.current = now;
             // Reset user input flag when we accept external updates

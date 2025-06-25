@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { useShape } from '@electric-sql/react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, UseMutationResult } from '@tanstack/react-query';
 import { createElectricConfig, isElectricDebugLoggingEnabled } from '../../common/config/electric';
 import { apiService } from '../services/apiService';
 import { buildLineageGraph, LineageGraph, addLineageToArtifacts } from '../../common/utils/lineageResolution';
@@ -18,6 +18,21 @@ import type {
     HumanTransformRequest
 } from '../../common/types';
 
+// Entity-specific mutation status tracking
+export type MutationStatus = 'idle' | 'pending' | 'success' | 'error';
+
+export interface EntityMutationState {
+    status: MutationStatus;
+    error?: string;
+    timestamp?: number;
+}
+
+export interface MutationStateMap {
+    artifacts: Map<string, EntityMutationState>;
+    transforms: Map<string, EntityMutationState>;
+    humanTransforms: Map<string, EntityMutationState>;
+}
+
 const ProjectDataContext = createContext<ProjectDataContextType | undefined>(undefined);
 
 interface ProjectDataProviderProps {
@@ -31,6 +46,13 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
 }) => {
     const queryClient = useQueryClient();
     const [localUpdates, setLocalUpdates] = useState<Map<string, any>>(new Map());
+
+    // Entity-specific mutation state tracking
+    const [mutationStates, setMutationStates] = useState<MutationStateMap>({
+        artifacts: new Map(),
+        transforms: new Map(),
+        humanTransforms: new Map()
+    });
 
     // Create AbortController for cleanup
     const abortControllerRef = useRef<AbortController | null>(null);
@@ -218,6 +240,70 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
         return localUpdates.has(key);
     }, [localUpdates]);
 
+    // Mutation state management functions
+    const setEntityMutationState = useCallback((
+        entityType: keyof MutationStateMap,
+        entityId: string,
+        state: EntityMutationState
+    ) => {
+        setMutationStates(prev => ({
+            ...prev,
+            [entityType]: new Map(prev[entityType]).set(entityId, {
+                ...state,
+                timestamp: Date.now()
+            })
+        }));
+    }, []);
+
+    const clearEntityMutationState = useCallback((
+        entityType: keyof MutationStateMap,
+        entityId: string
+    ) => {
+        setMutationStates(prev => {
+            const newMap = new Map(prev[entityType]);
+            newMap.delete(entityId);
+            return {
+                ...prev,
+                [entityType]: newMap
+            };
+        });
+    }, []);
+
+    // Auto-clear success states after a delay
+    useEffect(() => {
+        const clearSuccessStates = () => {
+            const now = Date.now();
+            const SUCCESS_CLEAR_DELAY = 2000; // 2 seconds
+
+            setMutationStates(prev => {
+                let hasChanges = false;
+                const newStates = { ...prev };
+
+                (['artifacts', 'transforms', 'humanTransforms'] as const).forEach(entityType => {
+                    const newMap = new Map(prev[entityType]);
+
+                    for (const [entityId, state] of newMap.entries()) {
+                        if (state.status === 'success' &&
+                            state.timestamp &&
+                            now - state.timestamp > SUCCESS_CLEAR_DELAY) {
+                            newMap.delete(entityId);
+                            hasChanges = true;
+                        }
+                    }
+
+                    if (hasChanges) {
+                        newStates[entityType] = newMap;
+                    }
+                });
+
+                return hasChanges ? newStates : prev;
+            });
+        };
+
+        const interval = setInterval(clearSuccessStates, 500);
+        return () => clearInterval(interval);
+    }, []);
+
     // Memoized lineage graph computation
     const lineageGraph = useMemo<LineageGraph>(() => {
         if (!artifacts || !transforms || !humanTransforms || !transformInputs || !transformOutputs) {
@@ -329,6 +415,9 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
     const updateArtifactMutation = useMutation({
         mutationKey: ['update-artifact', projectId],
         mutationFn: async (request: UpdateArtifactRequest) => {
+            // Set pending state for this specific artifact
+            setEntityMutationState('artifacts', request.artifactId, { status: 'pending' });
+
             const response = await apiService.updateArtifact(request);
             // await waitForElectricSync(request.artifactId, 'artifacts');
             return response;
@@ -344,10 +433,15 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
         },
         onSuccess: (data, variables, optimisticData) => {
             removeLocalUpdate(`artifact-${variables.artifactId}`);
+            setEntityMutationState('artifacts', variables.artifactId, { status: 'success' });
             queryClient.invalidateQueries({ queryKey: ['artifacts'] });
         },
         onError: (error, variables, optimisticData) => {
             removeLocalUpdate(`artifact-${variables.artifactId}`);
+            setEntityMutationState('artifacts', variables.artifactId, {
+                status: 'error',
+                error: error.message
+            });
             console.error('Failed to update artifact:', error);
         }
     });
@@ -355,6 +449,9 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
     const createHumanTransformMutation = useMutation({
         mutationKey: ['create-human-transform', projectId],
         mutationFn: async (request: HumanTransformRequest) => {
+            // Set pending state for the source artifact (the one being transformed)
+            setEntityMutationState('artifacts', request.sourceArtifactId, { status: 'pending' });
+
             const response = await fetch(`/api/artifacts/${request.sourceArtifactId}/human-transform`, {
                 method: 'POST',
                 headers: {
@@ -413,12 +510,14 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
             addLocalUpdate(`transform-${transformId}`, optimisticTransform);
             addLocalUpdate(`artifact-${artifactId}`, optimisticArtifact);
 
-            return { transformId, artifactId };
+            return { transformId, artifactId, sourceArtifactId: request.sourceArtifactId };
         },
         onSuccess: (data, variables, optimisticData) => {
             if (optimisticData) {
                 removeLocalUpdate(`transform-${optimisticData.transformId}`);
                 removeLocalUpdate(`artifact-${optimisticData.artifactId}`);
+                // Set success state for the source artifact
+                setEntityMutationState('artifacts', optimisticData.sourceArtifactId, { status: 'success' });
             }
             queryClient.invalidateQueries({ queryKey: ['transforms'] });
             queryClient.invalidateQueries({ queryKey: ['artifacts'] });
@@ -427,6 +526,11 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
             if (optimisticData) {
                 removeLocalUpdate(`transform-${optimisticData.transformId}`);
                 removeLocalUpdate(`artifact-${optimisticData.artifactId}`);
+                // Set error state for the source artifact
+                setEntityMutationState('artifacts', optimisticData.sourceArtifactId, {
+                    status: 'error',
+                    error: error.message
+                });
             }
             console.error('Failed to create schema transform:', error);
         }
@@ -460,7 +564,12 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
         localUpdates,
         addLocalUpdate,
         removeLocalUpdate,
-        hasLocalUpdate
+        hasLocalUpdate,
+
+        // Mutation state management - expose the maps directly
+        mutationStates,
+        setEntityMutationState,
+        clearEntityMutationState
     };
 
     return (

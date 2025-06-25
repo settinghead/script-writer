@@ -4,6 +4,7 @@ import { message, Button, Spin } from 'antd';
 import { useDebouncedCallback } from '../../hooks/useDebounce';
 import { EditableField } from './EditableField';
 import { useProjectData } from '../../contexts/ProjectDataContext';
+import { useIsPending, useIsSuccess } from '../../hooks/useMutationState';
 import type { ElectricArtifact } from '../../../common/types';
 import { extractDataAtPath, getPathDescription } from '../../../common/utils/pathExtraction';
 import { CheckOutlined, LoadingOutlined } from '@ant-design/icons';
@@ -161,6 +162,10 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
 
     // 6. Update mutation using unified context
     const updateMutation = projectData.updateArtifact;
+
+    // Get entity-specific mutation state for this artifact using hooks
+    const isArtifactPending = useIsPending('artifacts', targetArtifactId);
+    const isArtifactSuccess = useIsSuccess('artifacts', targetArtifactId);
 
     // 7. Debounced save function with ref to avoid stale closures
     const saveRef = useRef<(fieldUpdates: Record<string, any>, field: string) => void>(() => { });
@@ -397,10 +402,10 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
                             {path && ` • ${getPathDescription(path)}`}
                         </span>
 
-                        {updateMutation.isPending && (
-                            <span className={`w-4 h-4 border border-${colorClass}-400 border-t-transparent rounded-full animate-spin`}></span>
+                        {(pendingSaves.size > 0 || typingFields.size > 0 || isArtifactPending) && (
+                            <Spin size="small" style={{ color: `var(--ant-color-${colorClass})` }} />
                         )}
-                        {!updateMutation.isPending && updateMutation.isSuccess && pendingSaves.size === 0 && typingFields.size === 0 && (
+                        {isArtifactSuccess && (
                             <span className={`text-${colorClass}-400`}>
                                 <CheckOutlined />
                             </span>
