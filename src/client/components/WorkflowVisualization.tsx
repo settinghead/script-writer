@@ -296,9 +296,7 @@ const WorkflowVisualization: React.FC<WorkflowVisualizationProps> = ({
 
     const proOptions = useMemo(() => ({ hideAttribution: true }), []);
 
-    // Memoize nodeTypes and edgeTypes to prevent React Flow warnings
-    const nodeTypes = useMemo(() => ({}), []);
-    const edgeTypes = useMemo(() => ({}), []);
+
 
     return (
         <div style={{
@@ -325,8 +323,6 @@ const WorkflowVisualization: React.FC<WorkflowVisualizationProps> = ({
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
-                nodeTypes={nodeTypes}
-                edgeTypes={edgeTypes}
                 proOptions={proOptions}
                 fitView
                 fitViewOptions={{ padding: 0.2 }}
