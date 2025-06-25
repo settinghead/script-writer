@@ -4,7 +4,7 @@ import { DynamicBrainstormingResults } from './DynamicBrainstormingResults'
 import { IdeaWithTitle } from '../types/brainstorm'
 import { ReasoningIndicator } from './shared/ReasoningIndicator'
 import { useProjectData } from '../contexts/ProjectDataContext'
-import { findLatestBrainstormIdeas } from '../../common/utils/lineageResolution'
+import { findLatestBrainstormIdeasWithLineage } from '../../common/utils/lineageResolution'
 
 export default function ProjectBrainstormPage() {
   const { projectId } = useParams<{ projectId: string }>()
@@ -22,7 +22,7 @@ export default function ProjectBrainstormPage() {
   const { ideas, status, progress, error, isLoading, lastSyncedAt } = useMemo(() => {
     // Get latest brainstorm ideas using lineage resolution from context
     const lineageGraph = projectData.getLineageGraph();
-    const latestBrainstormIdeas = findLatestBrainstormIdeas(lineageGraph, projectData.artifacts);
+    const latestBrainstormIdeas = findLatestBrainstormIdeasWithLineage(lineageGraph, projectData.artifacts);
 
     if (latestBrainstormIdeas.length === 0) {
       return {
@@ -44,7 +44,7 @@ export default function ProjectBrainstormPage() {
     try {
       // Sort by creation time for consistent ordering
       const sortedArtifacts = latestBrainstormIdeas
-        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+        .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
 
       // Find the latest update time for sync status
       lastSyncedAt = sortedArtifacts.length > 0
@@ -53,7 +53,7 @@ export default function ProjectBrainstormPage() {
 
       // Check if any artifacts are still streaming
       const hasStreamingArtifacts = sortedArtifacts.some(
-        artifact => artifact.streaming_status === 'streaming'
+        (artifact: any) => artifact.streaming_status === 'streaming'
       )
 
       if (hasStreamingArtifacts) {
@@ -62,7 +62,7 @@ export default function ProjectBrainstormPage() {
       }
 
       // Convert each artifact to IdeaWithTitle format
-      ideas = sortedArtifacts.map((artifact, index) => {
+      ideas = sortedArtifacts.map((artifact: any, index: number) => {
         try {
           const data = artifact.data ? JSON.parse(artifact.data) : {}
           const idea = {

@@ -10,7 +10,7 @@ import { ReasoningEvent } from '../../common/streaming/types';
 import { ArtifactEditor } from './shared/ArtifactEditor';
 import { BRAINSTORM_IDEA_FIELDS } from './shared/fieldConfigs';
 import { useProjectData } from '../contexts/ProjectDataContext';
-import { findLatestBrainstormIdeas } from '../../common/utils/lineageResolution';
+import { findLatestBrainstormIdeasWithLineage } from '../../common/utils/lineageResolution';
 
 const { Text } = Typography;
 
@@ -20,11 +20,9 @@ const GenerateOutlineButton: React.FC<{
 }> = ({ artifactId }) => {
     const projectData = useProjectData();
 
-    // Check if there's a human transform for this artifact
-    const humanTransforms = projectData.getHumanTransformsForArtifact(artifactId, "");
-    const hasEditTransform = humanTransforms.some(
-        transform => transform.transform_name === 'edit_brainstorm_idea'
-    );
+    // Check if the artifact has been edited (has human source transform)
+    const artifact = projectData.getArtifactById(artifactId);
+    const hasEditTransform = artifact?.isEditable || false;
 
     const handleGenerateOutline = () => {
         alert('not implemented');
@@ -169,11 +167,9 @@ const BrainstormIdeaCard: React.FC<{
     const [showSavedCheckmark, setShowSavedCheckmark] = useState(false);
     const projectData = useProjectData();
 
-    // Check if this artifact has been edited (has human transforms)
-    const humanTransforms = projectData.getHumanTransformsForArtifact(artifactId, "");
-    const hasBeenEdited = humanTransforms.some(
-        transform => transform.transform_name === 'edit_brainstorm_idea'
-    );
+    // Get artifact with lineage information
+    const artifact = projectData.getArtifactById(artifactId);
+    const hasBeenEdited = artifact?.isEditable || false;
 
     // Handle successful save - show checkmark briefly
     const handleSaveSuccess = useCallback(() => {
@@ -264,10 +260,10 @@ function useLatestBrainstormIdeas(): IdeaWithTitle[] {
 
     return useMemo(() => {
         const lineageGraph = projectData.getLineageGraph();
-        const latestIdeas = findLatestBrainstormIdeas(lineageGraph, projectData.artifacts);
+        const latestIdeas = findLatestBrainstormIdeasWithLineage(lineageGraph, projectData.artifacts);
 
 
-        return latestIdeas.map((artifact, index) => {
+        return latestIdeas.map((artifact: any, index: number) => {
             try {
                 const data = artifact.data ? JSON.parse(artifact.data) : {};
                 return {

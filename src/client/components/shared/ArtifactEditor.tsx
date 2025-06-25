@@ -92,43 +92,37 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
         return originalArtifact;
     }, [projectData, existingTransform?.derived_artifact_id, artifactId]);
 
-    // 3. Determine display mode based on artifact type and transform state
+    // 3. Determine display mode based on source transform
     const effectiveMode = useMemo(() => {
-        // If artifact is user_input, it's always editable (if we have fields)
-        if (artifactToUse?.type === 'user_input' && fields.length > 0) {
+        // Simple criteria: If source transform is human, then editable. Otherwise readonly.
+        if (artifactToUse?.isEditable && fields.length > 0) {
             return 'editable';
         }
 
-        // If we have an existing transform (user has already clicked to edit), show editable
-        if (existingTransform && fields.length > 0) {
-            return 'editable';
-        }
-
-        // If it's an LLM output with transform capability, show clickable edit button
+        // If it's not editable but has transform capability, show clickable edit button
         if (transformName && fields.length > 0) {
             return 'edit-button';
         }
 
         // Default to readonly
         return 'readonly';
-    }, [artifactToUse?.type, existingTransform, transformName, fields.length]);
+    }, [artifactToUse?.isEditable, transformName, fields.length]);
 
-    // Determine if we're in editing mode (for artifacts with existing transforms)
-    const isEditing = !!existingTransform;
+    // Determine if we're in editing mode (based on artifact being editable)
+    const isEditing = !!artifactToUse?.isEditable;
 
     // Debug logging for mode detection
     // console.log(`🎨 [ArtifactEditor ${artifactId}] Mode: ${effectiveMode} (transform: ${!!existingTransform})`);
 
     // 4. Determine target artifact and labels
     const targetArtifactId = existingTransform?.derived_artifact_id || artifactId;
-    const isUserInput = artifactToUse?.type === 'user_input';
 
     const effectiveStatusLabel = statusLabel || (
-        existingTransform ? (isUserInput ? '用户修改' : '已编辑') : 'AI生成'
+        artifactToUse?.isEditable ? '📝 已编辑版本' : 'AI生成'
     );
 
     const effectiveStatusColor = statusColor || (
-        existingTransform ? (isUserInput ? 'green' : 'blue') : 'blue'
+        artifactToUse?.isEditable ? 'green' : 'blue'
     );
 
     // Loading and error states from unified context
@@ -181,7 +175,7 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
 
         // Prepare request based on artifact type
         let requestData;
-        if (isUserInput) {
+        if (artifactToUse?.type === 'user_input') {
             // For user_input artifacts, we need to send the data as 'text' field
             requestData = { text: JSON.stringify(fieldUpdates) };
         } else {

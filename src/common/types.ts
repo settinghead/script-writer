@@ -355,6 +355,16 @@ export interface ElectricArtifact {
     [key: string]: unknown;
 }
 
+// Extended artifact with lineage information
+export interface ElectricArtifactWithLineage extends ElectricArtifact {
+    sourceTransform?: {
+        id: string;
+        type: 'human' | 'llm';
+        transformType: 'human' | 'llm'; // Redundant but matches LineageNode structure
+    } | 'none';
+    isEditable?: boolean; // Computed based on source transform type
+}
+
 export interface ElectricTransform {
     id: string;
     project_id: string;
@@ -491,7 +501,7 @@ export interface ProjectDataContextType {
     getBrainstormArtifacts: () => ElectricArtifact[];
     getLineageGraph: () => LineageGraph;
     getOutlineArtifacts: () => ElectricArtifact[];
-    getArtifactById: (id: string) => ElectricArtifact | undefined;
+    getArtifactById: (id: string) => ElectricArtifactWithLineage | undefined;
     getTransformById: (id: string) => ElectricTransform | undefined;
     getHumanTransformsForArtifact: (artifactId: string, path?: string) => ElectricHumanTransform[];
     getTransformInputsForTransform: (transformId: string) => ElectricTransformInput[];

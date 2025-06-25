@@ -3,7 +3,7 @@ import { useShape } from '@electric-sql/react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createElectricConfig, isElectricDebugLoggingEnabled } from '../../common/config/electric';
 import { apiService } from '../services/apiService';
-import { buildLineageGraph, LineageGraph } from '../../common/utils/lineageResolution';
+import { buildLineageGraph, LineageGraph, addLineageToArtifacts } from '../../common/utils/lineageResolution';
 import type {
     ProjectDataContextType,
     ElectricArtifact,
@@ -254,10 +254,16 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
             // Check local updates first, then Electric data
             const localUpdate = localUpdates.get(`artifact-${id}`);
             const baseArtifact = artifacts?.find(a => a.id === id);
+            let artifact = baseArtifact;
             if (localUpdate && baseArtifact) {
-                return { ...baseArtifact, ...localUpdate };
+                artifact = { ...baseArtifact, ...localUpdate };
             }
-            return baseArtifact;
+
+            if (!artifact) return undefined;
+
+            // Add lineage information
+            const artifactsWithLineage = addLineageToArtifacts([artifact], lineageGraph);
+            return artifactsWithLineage[0];
         },
 
         getTransformById: (id: string) => {

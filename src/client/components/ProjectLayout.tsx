@@ -201,7 +201,7 @@ const ProjectLayout: React.FC = () => {
                                 onClick={toggleRawGraph}
                                 style={{ color: showRawGraph ? '#52c41a' : '#1890ff' }}
                             >
-                                {showRawGraph ? '隐藏原始图谱' : '显示原始图谱'}
+                                {showRawGraph ? '关闭图谱' : '打开图谱'}
                             </Button>
                             <Button
                                 type="text"
@@ -209,7 +209,7 @@ const ProjectLayout: React.FC = () => {
                                 onClick={toggleRawChat}
                                 style={{ color: showRawChat ? '#52c41a' : '#1890ff' }}
                             >
-                                {showRawChat ? '隐藏原始消息' : '显示原始消息'}
+                                {showRawChat ? '关闭内部对话' : '打开内部对话'}
                             </Button>
                         </Space>
                     </div>
