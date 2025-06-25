@@ -6,7 +6,6 @@ import {
     type LineageNode,
     type LineageResolutionResult
 } from '../../common/utils/lineageResolution';
-import type { ElectricArtifact, ElectricTransform, ElectricHumanTransform, ElectricTransformInput, ElectricTransformOutput } from '../../common/types';
 
 interface UseLineageResolutionOptions {
     enabled?: boolean; // Allow disabling the hook
@@ -33,10 +32,7 @@ interface UseLineageResolutionResult {
  * @returns Lineage resolution result with latest artifact ID
  */
 export function useLineageResolution(
-    sourceArtifactId: string | null,
-    path?: string,
-    options: UseLineageResolutionOptions = {}
-): UseLineageResolutionResult {
+    { sourceArtifactId, path, options = {} }: { sourceArtifactId: string | null; path?: string; options?: UseLineageResolutionOptions; }): UseLineageResolutionResult {
     const { enabled = true } = options;
     const projectData = useProjectData();
 
@@ -132,26 +128,8 @@ export function useMultipleLineageResolution(
 
     paths.forEach(path => {
         // eslint-disable-next-line react-hooks/rules-of-hooks
-        results[path] = useLineageResolution(sourceArtifactId, path, { enabled });
+        results[path] = useLineageResolution({ sourceArtifactId, path, options: { enabled } });
     });
 
     return results;
 }
-
-/**
- * Hook specifically for brainstorm idea collections
- * Automatically detects the number of ideas and resolves lineage for each
- */
-export function useBrainstormLineageResolution(
-    collectionArtifactId: string | null,
-    ideaCount: number,
-    options: UseLineageResolutionOptions = {}
-): Record<string, UseLineageResolutionResult> {
-    // Generate paths for each idea: [0], [1], [2], etc.
-    const paths = useMemo(() =>
-        Array.from({ length: ideaCount }, (_, i) => `[${i}]`),
-        [ideaCount]
-    );
-
-    return useMultipleLineageResolution(collectionArtifactId, paths, options);
-} 

@@ -509,6 +509,40 @@ function hasCircularReference(
 // ============================================================================
 
 /**
+ * Find all leaf nodes of a specific artifact type
+ */
+export function findLeafNodesByType(
+    graph: LineageGraph,
+    artifacts: ElectricArtifact[],
+    artifactType: string
+): ElectricArtifact[] {
+    const leafArtifacts: ElectricArtifact[] = [];
+    const artifactMap = new Map(artifacts.map(a => [a.id, a]));
+
+    // Find all leaf nodes in the graph
+    for (const [artifactId, node] of graph.nodes) {
+        if (node.isLeaf) {
+            const artifact = artifactMap.get(artifactId);
+            if (artifact && artifact.type === artifactType) {
+                leafArtifacts.push(artifact);
+            }
+        }
+    }
+
+    return leafArtifacts;
+}
+
+/**
+ * Find all leaf brainstorm idea artifacts from the lineage graph
+ */
+export function findLatestBrainstormIdeas(
+    graph: LineageGraph,
+    artifacts: ElectricArtifact[]
+): ElectricArtifact[] {
+    return findLeafNodesByType(graph, artifacts, 'brainstorm_idea');
+}
+
+/**
  * Extract all brainstorm-related artifacts from a lineage graph
  */
 export function extractBrainstormLineages(

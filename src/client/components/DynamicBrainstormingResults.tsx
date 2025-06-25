@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Space, Button, Typography, Spin, Empty, Card, Tag, Alert } from 'antd';
 import { StopOutlined, ReloadOutlined, EyeOutlined, CheckOutlined, FileTextOutlined } from '@ant-design/icons';
 import { ThinkingIndicator } from './shared/ThinkingIndicator';
@@ -10,7 +10,6 @@ import { ReasoningEvent } from '../../common/streaming/types';
 import { ArtifactEditor } from './shared/ArtifactEditor';
 import { BRAINSTORM_IDEA_FIELDS } from './shared/fieldConfigs';
 import { useProjectData } from '../contexts/ProjectDataContext';
-import { useLineageResolution } from '../hooks/useLineageResolution';
 
 const { Text } = Typography;
 
@@ -167,14 +166,13 @@ const BrainstormIdeaCard: React.FC<{
     onIdeaClick: (artifactId: string, index: number) => void;
 }> = ({ artifactId, originalArtifactId, index, isSelected, ideaOutlines, onIdeaClick }) => {
     const [showSavedCheckmark, setShowSavedCheckmark] = useState(false);
+    const projectData = useProjectData();
 
-    // Use lineage resolution to get the latest version of this artifact
-    const { latestArtifactId, hasLineage } = useLineageResolution(artifactId);
-    const resolvedArtifactId = latestArtifactId || artifactId;
-
-    // Log lineage resolution for debugging
-
-    console.log(`🎯 [BrainstormIdeaCard ${index}] ${artifactId} → ${resolvedArtifactId} (lineage: ${hasLineage})`);
+    // Check if this artifact has been edited (has human transforms)
+    const humanTransforms = projectData.getHumanTransformsForArtifact(artifactId, "");
+    const hasBeenEdited = humanTransforms.some(
+        transform => transform.transform_name === 'edit_brainstorm_idea'
+    );
 
     // Handle successful save - show checkmark briefly
     const handleSaveSuccess = useCallback(() => {
@@ -186,7 +184,7 @@ const BrainstormIdeaCard: React.FC<{
 
     return (
         <Card
-            key={resolvedArtifactId}
+            key={artifactId}
             style={{
                 backgroundColor: isSelected ? '#2d3436' : '#262626',
                 border: isSelected ? '1px solid #1890ff' : '1px solid #434343',
@@ -208,7 +206,7 @@ const BrainstormIdeaCard: React.FC<{
                     e.currentTarget.style.backgroundColor = '#262626';
                 }
             }}
-            onClick={() => onIdeaClick(resolvedArtifactId, index)}
+            onClick={() => onIdeaClick(artifactId, index)}
         >
             {/* Saved checkmark overlay */}
             {showSavedCheckmark && (
@@ -234,22 +232,22 @@ const BrainstormIdeaCard: React.FC<{
 
             {/* Idea content using ArtifactEditor */}
             <ArtifactEditor
-                artifactId={resolvedArtifactId}
+                artifactId={artifactId}
                 sourceArtifactId={originalArtifactId || artifactId}
                 fields={BRAINSTORM_IDEA_FIELDS}
                 mode="auto"
-                statusLabel={hasLineage ? "📝 已编辑版本" : "AI生成"}
-                statusColor={hasLineage ? "#52c41a" : "#1890ff"}
+                statusLabel={hasBeenEdited ? "📝 已编辑版本" : "AI生成"}
+                statusColor={hasBeenEdited ? "#52c41a" : "#1890ff"}
                 transformName="edit_brainstorm_idea"
                 onSaveSuccess={handleSaveSuccess}
             />
 
             {/* Generate outline button */}
-            <GenerateOutlineButton artifactId={resolvedArtifactId} />
+            <GenerateOutlineButton artifactId={artifactId} />
 
             {/* Associated outlines */}
             <IdeaOutlines
-                ideaId={resolvedArtifactId}
+                ideaId={artifactId}
                 outlines={ideaOutlines}
                 isLoading={false}
             />
@@ -257,8 +255,44 @@ const BrainstormIdeaCard: React.FC<{
     );
 };
 
+/**
+ * Hook to get latest brainstorm ideas from the lineage graph
+ * This replaces the complex per-card lineage resolution
+ */
+function useLatestBrainstormIdeas() {
+    const projectData = useProjectData();
+
+    return useMemo(() => {
+        const latestIdeas = projectData.getLatestBrainstormIdeas();
+
+        console.log(`🎯 [useLatestBrainstormIdeas] Found ${latestIdeas.length} latest brainstorm ideas`);
+
+        return latestIdeas.map((artifact, index) => {
+            try {
+                const data = artifact.data ? JSON.parse(artifact.data) : {};
+                return {
+                    artifactId: artifact.id,
+                    originalArtifactId: artifact.id, // Since these are already resolved to latest
+                    title: data.title || `想法 ${index + 1}`,
+                    body: data.body || '内容加载中...',
+                    index
+                };
+            } catch (parseErr) {
+                console.warn(`Failed to parse artifact ${artifact.id}:`, parseErr);
+                return {
+                    artifactId: artifact.id,
+                    originalArtifactId: artifact.id,
+                    title: `想法 ${index + 1}`,
+                    body: '内容解析失败',
+                    index
+                };
+            }
+        });
+    }, [projectData]);
+}
+
 export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsProps> = ({
-    ideas,
+    ideas: propIdeas, // Rename to avoid confusion
     onIdeaSelect,
     isStreaming = false,
     isConnecting = false,
@@ -274,6 +308,12 @@ export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsPr
     const [selectedIdea, setSelectedIdea] = useState<number | null>(selectedIdeaIndex);
     const [ideaOutlines, setIdeaOutlines] = useState<Record<string, any[]>>({});
     const [loadingOutlines, setLoadingOutlines] = useState<Record<string, boolean>>({});
+
+    // Get latest brainstorm ideas using the new hook
+    const latestIdeas = useLatestBrainstormIdeas();
+
+    // Use latest ideas if available, otherwise fall back to prop ideas
+    const ideas = latestIdeas.length > 0 ? latestIdeas : propIdeas;
 
     // Handle idea card click
     const handleIdeaClick = useCallback((artifactId: string, index: number) => {

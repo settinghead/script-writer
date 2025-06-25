@@ -3,6 +3,7 @@ import { useShape } from '@electric-sql/react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createElectricConfig, isElectricDebugLoggingEnabled } from '../../common/config/electric';
 import { apiService } from '../services/apiService';
+import { buildLineageGraph, findLatestBrainstormIdeas, LineageGraph } from '../../common/utils/lineageResolution';
 import type {
     ProjectDataContextType,
     ElectricArtifact,
@@ -217,10 +218,40 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
         return localUpdates.has(key);
     }, [localUpdates]);
 
+    // Memoized lineage graph computation
+    const lineageGraph = useMemo<LineageGraph>(() => {
+        if (!artifacts || !transforms || !humanTransforms || !transformInputs || !transformOutputs) {
+            return {
+                nodes: new Map(),
+                edges: new Map(),
+                paths: new Map(),
+                rootNodes: new Set()
+            };
+        }
+
+        return buildLineageGraph(
+            artifacts,
+            transforms,
+            humanTransforms,
+            transformInputs,
+            transformOutputs
+        );
+    }, [artifacts, transforms, humanTransforms, transformInputs, transformOutputs]);
+
+    // Memoized latest brainstorm ideas
+    const latestBrainstormIdeas = useMemo(() => {
+        if (!artifacts) return [];
+        return findLatestBrainstormIdeas(lineageGraph, artifacts);
+    }, [lineageGraph, artifacts]);
+
     // Memoized selectors
     const selectors = useMemo(() => ({
         getBrainstormArtifacts: () =>
             artifacts?.filter(a => a.type === 'brainstorm_idea') || [],
+
+        getLatestBrainstormIdeas: () => latestBrainstormIdeas,
+
+        getLineageGraph: () => lineageGraph,
 
         getOutlineArtifacts: () =>
             artifacts?.filter(a => a.type === 'outline_input' || a.type === 'outline_response') || [],
@@ -255,7 +286,7 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
 
         getTransformOutputsForTransform: (transformId: string) =>
             transformOutputs?.filter(to => to.transform_id === transformId) || []
-    }), [artifacts, transforms, humanTransforms, transformInputs, transformOutputs, localUpdates]);
+    }), [artifacts, transforms, humanTransforms, transformInputs, transformOutputs, localUpdates, lineageGraph, latestBrainstormIdeas]);
 
     // Mutations with optimistic updates
     const createTransformMutation = useMutation({

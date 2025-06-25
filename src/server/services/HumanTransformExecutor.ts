@@ -170,16 +170,9 @@ export class HumanTransformExecutor {
     // Validate against the correct schema based on target type
     let validationResult;
     if (transformDef.targetArtifactType === 'user_input') {
-      // For user_input, validate the derived data against the source element schema
-      if (transformDef.sourceArtifactType === 'brainstorm_idea_collection' &&
-        transformDef.name === 'edit_brainstorm_idea') {
-        // This is editing an entire brainstorm idea stored in user_input
-        validationResult = BrainstormIdeaSchema.safeParse(updatedData);
-      } else {
-        // For other user_input cases, validate as UserInput
-        const targetSchema = ARTIFACT_SCHEMAS[transformDef.targetArtifactType as keyof typeof ARTIFACT_SCHEMAS];
-        validationResult = targetSchema.safeParse(updatedData);
-      }
+
+      const targetSchema = ARTIFACT_SCHEMAS[transformDef.targetArtifactType as keyof typeof ARTIFACT_SCHEMAS];
+      validationResult = targetSchema.safeParse(updatedData);
     } else {
       // For direct artifact types (like brainstorm_idea), validate against target schema
       const targetSchema = ARTIFACT_SCHEMAS[transformDef.targetArtifactType as keyof typeof ARTIFACT_SCHEMAS];

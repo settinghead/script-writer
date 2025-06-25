@@ -15,8 +15,7 @@ import { TransformExecutor } from './services/TransformExecutor';
 import { OutlineService } from './services/OutlineService';
 import { ScriptService } from './services/ScriptService';
 import {
-  validateIdeationCreate,
-  validatePlotGeneration,
+
   validateScriptCreate,
   validateScriptUpdate
 } from './middleware/validation';
@@ -27,7 +26,6 @@ import { db } from './database/connection';
 import { TemplateService } from './services/templates/TemplateService';
 import { createIdeationRoutes } from './routes/ideations';
 import { BrainstormingJobParamsV1, OutlineJobParamsV1 } from './types/artifacts';
-import { OutlineGenerateRequest, OutlineGenerateResponse } from '../common/streaming/types';
 // Import and mount outline routes
 import { createOutlineRoutes } from './routes/outlineRoutes';
 // Import LLM configuration
@@ -73,15 +71,9 @@ const replayService = new ReplayService(artifactRepo, transformRepo, transformEx
 const projectService = new ProjectService(projectRepo, artifactRepo, transformRepo);
 const agentService = new AgentService(transformRepo, artifactRepo);
 
-// Initialize new streaming framework services
-const templateService = new TemplateService();
-
-// Initialize new Electric-compatible services
-const llmService = new LLMService();
-
 // Initialize chat services
 const chatMessageRepo = new ChatMessageRepository(db);
-const chatService = new ChatService(chatMessageRepo, agentService, transformRepo, artifactRepo);
+const chatService = new ChatService(chatMessageRepo, agentService);
 
 // Inject dependencies to avoid circular dependency issues
 agentService.setChatMessageRepository(chatMessageRepo);
@@ -94,8 +86,6 @@ const server = app.listen(PORT, "0.0.0.0", () =>
 
 ViteExpress.bind(app, server);
 
-// Set up YJS WebSocket server
-const yjs = setupYjsWebSocketServer(server, authDB);
 
 // Mount authentication routes
 app.use('/auth', createAuthRoutes(authDB, authMiddleware));

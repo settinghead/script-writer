@@ -9,6 +9,7 @@ import {
 } from './llm/outlineTypes.js';
 import { z } from 'zod';
 import { UseMutationResult } from '@tanstack/react-query';
+import type { LineageGraph } from './utils/lineageResolution';
 
 // ========== SHARED TYPES FOR CLIENT AND SERVER ==========
 
@@ -488,6 +489,8 @@ export interface ProjectDataContextType {
 
     // Selectors (memoized)
     getBrainstormArtifacts: () => ElectricArtifact[];
+    getLatestBrainstormIdeas: () => ElectricArtifact[];
+    getLineageGraph: () => LineageGraph;
     getOutlineArtifacts: () => ElectricArtifact[];
     getArtifactById: (id: string) => ElectricArtifact | undefined;
     getTransformById: (id: string) => ElectricTransform | undefined;

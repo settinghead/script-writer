@@ -861,16 +861,7 @@ export const LLM_TRANSFORM_DEFINITIONS = {
 The enhanced `ArtifactEditor` and `DynamicBrainstormingResults` components provide seamless editing with intelligent lineage resolution:
 
 ```typescript
-// Lineage resolution hook for brainstorm collections
-function useBrainstormLineageResolution(
-  collectionArtifactId: string | null,
-  ideas: BrainstormIdea[]
-): {
-  resolvedArtifactIds: (string | null)[];
-  lineageInfo: LineageInfo[];
-  isLoading: boolean;
-  error: Error | null;
-}
+
 
 // Enhanced artifact editor with lineage support
 <ArtifactEditor
