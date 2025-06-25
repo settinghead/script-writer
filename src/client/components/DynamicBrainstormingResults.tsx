@@ -236,7 +236,6 @@ const BrainstormIdeaCard: React.FC<{
                 artifactId={artifactId}
                 sourceArtifactId={originalArtifactId || artifactId}
                 fields={BRAINSTORM_IDEA_FIELDS}
-                mode="auto"
                 statusLabel={hasBeenEdited ? "📝 已编辑版本" : "AI生成"}
                 statusColor={hasBeenEdited ? "#52c41a" : "#1890ff"}
                 transformName="edit_brainstorm_idea"
@@ -267,7 +266,6 @@ function useLatestBrainstormIdeas(): IdeaWithTitle[] {
         const lineageGraph = projectData.getLineageGraph();
         const latestIdeas = findLatestBrainstormIdeas(lineageGraph, projectData.artifacts);
 
-        console.log(`🎯 [useLatestBrainstormIdeas] Found ${latestIdeas.length} latest brainstorm ideas`);
 
         return latestIdeas.map((artifact, index) => {
             try {

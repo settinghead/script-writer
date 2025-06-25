@@ -92,12 +92,26 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
         return originalArtifact;
     }, [projectData, existingTransform?.derived_artifact_id, artifactId]);
 
-    // 3. Determine display mode and editing state
+    // 3. Determine display mode based on artifact type and transform state
     const effectiveMode = useMemo(() => {
-        if (transformName && fields.length > 0) return 'edit-button';
-        if (existingTransform) return 'editable';
+        // If artifact is user_input, it's always editable (if we have fields)
+        if (artifactToUse?.type === 'user_input' && fields.length > 0) {
+            return 'editable';
+        }
+
+        // If we have an existing transform (user has already clicked to edit), show editable
+        if (existingTransform && fields.length > 0) {
+            return 'editable';
+        }
+
+        // If it's an LLM output with transform capability, show clickable edit button
+        if (transformName && fields.length > 0) {
+            return 'edit-button';
+        }
+
+        // Default to readonly
         return 'readonly';
-    }, [transformName, fields.length, existingTransform]);
+    }, [artifactToUse?.type, existingTransform, transformName, fields.length]);
 
     // Determine if we're in editing mode (for artifacts with existing transforms)
     const isEditing = !!existingTransform;
@@ -492,7 +506,6 @@ const arePropsEqual = (prevProps: ArtifactEditorProps, nextProps: ArtifactEditor
         prevProps.path === nextProps.path &&
         prevProps.transformName === nextProps.transformName &&
         prevProps.className === nextProps.className &&
-        prevProps.mode === nextProps.mode &&
         prevProps.statusLabel === nextProps.statusLabel &&
         prevProps.statusColor === nextProps.statusColor &&
         JSON.stringify(prevProps.fields) === JSON.stringify(nextProps.fields)
