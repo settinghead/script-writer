@@ -34,22 +34,27 @@ const GenerateOutlineButton: React.FC<{
     }
 
     return (
-        <Button
-            type="primary"
-            size="small"
-            icon={<FileTextOutlined />}
-            onClick={handleGenerateOutline}
-            style={{
-                marginTop: '8px',
-                background: 'linear-gradient(100deg, #40a9ff, rgb(22, 106, 184))',
-                border: 'none',
-                borderRadius: '4px',
-                padding: "20px 20px",
-                fontSize: "18px"
-            }}
-        >
-            开始生成叙事大纲 &gt;&gt;
-        </Button>
+        <>
+            <Button
+                type="primary"
+                size="small"
+                icon={<FileTextOutlined />}
+                onClick={handleGenerateOutline}
+                style={{
+                    marginTop: '12px',
+                    marginBottom: '12px',
+                    background: 'linear-gradient(100deg, #40a9ff, rgb(22, 106, 184))',
+                    border: 'none',
+                    borderRadius: '4px',
+                    padding: "20px 20px",
+                    fontSize: "18px"
+                }}
+            >
+                用这个灵感继续 &gt;&gt;
+            </Button>
+            （生成叙事大纲）
+        </>
+
     );
 };
 
