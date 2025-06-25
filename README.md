@@ -75,6 +75,73 @@ UI Update: Real-time display of edited content with edit indicators
 - **Path-based Editing** - Support for both field-level (`[0].title`) and object-level (`[0]`) modifications
 - **Mixed Editing Workflows** - Seamlessly handle chains like: Original → Human Edit → AI Edit → Human Edit
 
+#### Simplified ArtifactEditor with Automatic Mode Detection
+
+**Design Simplification**: Removed complex mode configuration in favor of intelligent automatic detection based on artifact type and transform state.
+
+**Automatic Mode Detection Logic**:
+- **User Input Artifacts** (`user_input`) - Always editable if fields are configured
+- **LLM Output Artifacts** - Show clickable preview; clicking creates human transform for editing
+- **Existing Transforms** - If user has already clicked to edit, show editable interface
+- **Fallback** - Default to readonly display
+
+**Benefits of Simplification**:
+- **Reduced Complexity** - No more manual mode configuration required
+- **Intuitive Behavior** - Editing state determined by content type and user actions
+- **Consistent UX** - Predictable editing workflow across all artifact types
+- **Maintainable Code** - Fewer configuration options reduce potential for errors
+
+#### Optimized Lineage Resolution Architecture
+
+**Shared Context Pattern**: Moved lineage graph computation to shared `ProjectDataContext` for optimal performance and consistency across components.
+
+**Architecture Benefits**:
+- **Single Source of Truth** - Lineage graph computed once in context, shared by all components
+- **Performance Optimization** - Graph construction (~10ms) performed once per project data change
+- **Component Simplification** - Components use simple `getLineageGraph()` method instead of complex local logic
+- **Domain-Specific Logic** - Brainstorm-specific functions (`findLatestBrainstormIdeas`) contained within brainstorm components
+- **Reusable Pattern** - Other domains (outline, episodes, scripts) can follow same pattern
+
+**Implementation Pattern**:
+```typescript
+// In shared context
+const lineageGraph = useMemo(() => buildLineageGraph(...), [projectData]);
+
+// In domain components  
+const latestIdeas = useMemo(() => {
+  const graph = projectData.getLineageGraph();
+  return findLatestBrainstormIdeas(graph, artifacts);
+}, [projectData]);
+```
+
+### 🔄 Advanced Schema-Driven Transform System with Lineage Resolution
+
+#### Immutable Artifact Architecture with Individual Breakdown
+
+**Design Philosophy**: The system treats AI-generated content as immutable while providing flexible editing capabilities through a sophisticated artifact breakdown and lineage tracking system.
+
+**Artifact Breakdown Strategy**:
+- **Collection-to-Individual Decomposition** - Original `brainstorm_idea_collection` artifacts are automatically broken down into individual `brainstorm_idea` artifacts for granular editing
+- **Lineage Resolution** - Complex algorithm resolves the "latest version" of any content piece across multiple editing rounds
+- **Path-based Editing** - Support for both field-level (`[0].title`) and object-level (`[0]`) modifications
+- **Mixed Editing Workflows** - Seamlessly handle chains like: Original → Human Edit → AI Edit → Human Edit
+
+#### Simplified ArtifactEditor with Automatic Mode Detection
+
+**Design Simplification**: Removed complex mode configuration in favor of intelligent automatic detection based on artifact type and transform state.
+
+**Automatic Mode Detection Logic**:
+- **User Input Artifacts** (`user_input`) - Always editable if fields are configured
+- **LLM Output Artifacts** - Show clickable preview; clicking creates human transform for editing
+- **Existing Transforms** - If user has already clicked to edit, show editable interface
+- **Fallback** - Default to readonly display
+
+**Benefits of Simplification**:
+- **Reduced Complexity** - No more manual mode configuration required
+- **Intuitive Behavior** - Editing state determined by content type and user actions
+- **Consistent UX** - Predictable editing workflow across all artifact types
+- **Maintainable Code** - Fewer configuration options reduce potential for errors
+
 #### Transform Types & Lineage Flow
 ```
 Original Collection (brainstorm_idea_collection)
