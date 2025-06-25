@@ -10,10 +10,12 @@ import {
     Alert,
     Empty,
     Space,
-    Modal
+    Modal,
+    Popconfirm,
+    message,
+    Tooltip
 } from 'antd';
 import {
-    EyeOutlined,
     PlusOutlined,
     ClockCircleOutlined,
     DeleteOutlined,
@@ -23,7 +25,8 @@ import {
     PlayCircleOutlined,
     FileDoneOutlined,
     ThunderboltOutlined,
-    FormOutlined
+    FormOutlined,
+    BulbOutlined
 } from '@ant-design/icons';
 import { formatDistanceToNow } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
@@ -88,6 +91,9 @@ const ProjectsList: React.FC = () => {
     const handleViewProject = (project: ProjectSummary) => {
         // Navigate based on current phase
         switch (project.currentPhase) {
+            case 'brainstorming':
+                navigate(`/projects/${project.id}/brainstorm`);
+                break;
             case 'outline':
                 navigate(`/projects/${project.id}/outline`);
                 break;
@@ -98,7 +104,7 @@ const ProjectsList: React.FC = () => {
                 navigate(`/projects/${project.id}/scripts`);
                 break;
             default:
-                throw new Error(`Unknown project phase: ${project.currentPhase}`);
+                navigate(`/projects/${project.id}/brainstorm`);
         }
     };
 
@@ -116,39 +122,23 @@ const ProjectsList: React.FC = () => {
         navigate('/projects/new/outline');
     };
 
-    const handleDeleteProject = async (project: ProjectSummary) => {
-        Modal.confirm({
-            title: '确认删除',
-            content: `确定要删除项目 "${project.name}" 吗？此操作无法撤销。`,
-            okText: '删除',
-            okType: 'danger',
-            cancelText: '取消',
-            onOk: async () => {
-                try {
-                    const response = await fetch(`/api/projects/${project.id}`, {
-                        method: 'DELETE'
-                    });
+    const handleDeleteProject = async (projectId: string) => {
+        try {
+            const response = await fetch(`/api/projects/${projectId}`, {
+                method: 'DELETE'
+            });
 
-                    if (!response.ok) {
-                        throw new Error(`Failed to delete project: ${response.status}`);
-                    }
-
-                    // Remove from local state
-                    setProjects(prev => prev.filter(p => p.id !== project.id));
-
-                    Modal.success({
-                        title: '删除成功',
-                        content: '项目已成功删除',
-                    });
-                } catch (err) {
-                    console.error('Error deleting project:', err);
-                    Modal.error({
-                        title: '删除失败',
-                        content: '删除失败，请重试。',
-                    });
-                }
+            if (!response.ok) {
+                throw new Error(`Failed to delete project: ${response.status}`);
             }
-        });
+
+            // Remove from local state
+            setProjects(prev => prev.filter(p => p.id !== projectId));
+            message.success('项目删除成功');
+        } catch (err) {
+            console.error('Error deleting project:', err);
+            message.error('删除失败，请重试');
+        }
     };
 
     const formatDate = (dateString: string) => {
@@ -166,7 +156,7 @@ const ProjectsList: React.FC = () => {
     const getPhaseIcon = (phase: string) => {
         switch (phase) {
             case 'brainstorming':
-                return <ProjectOutlined />;
+                return <BulbOutlined />;
             case 'outline':
                 return <FileTextOutlined />;
             case 'episodes':
@@ -174,7 +164,7 @@ const ProjectsList: React.FC = () => {
             case 'scripts':
                 return <FileDoneOutlined />;
             default:
-                return <ProjectOutlined />;
+                return <BulbOutlined />;
         }
     };
 
@@ -291,35 +281,6 @@ const ProjectsList: React.FC = () => {
                                     cursor: 'pointer'
                                 }}
                                 onClick={() => handleViewProject(project)}
-                                actions={[
-                                    <Button
-                                        key="view"
-                                        type="text"
-                                        icon={<EyeOutlined />}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleViewProject(project);
-                                        }}
-                                        style={{ color: '#1890ff' }}
-                                        size={isMobile ? 'small' : 'middle'}
-                                    >
-                                        {isMobile ? '查看' : '查看详情'}
-                                    </Button>,
-                                    <Button
-                                        key="delete"
-                                        type="text"
-                                        icon={<DeleteOutlined />}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleDeleteProject(project);
-                                        }}
-                                        style={{ color: '#ff4d4f' }}
-                                        size={isMobile ? 'small' : 'middle'}
-                                        danger
-                                    >
-                                        删除
-                                    </Button>
-                                ]}
                             >
                                 <div style={{
                                     flex: 1,
@@ -327,14 +288,41 @@ const ProjectsList: React.FC = () => {
                                     flexDirection: 'column',
                                     minHeight: 0
                                 }}>
-                                    <div style={{ marginBottom: '12px' }}>
+                                    <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                         <Text strong style={{
                                             fontSize: '16px',
                                             color: '#fff',
-                                            lineHeight: '1.4'
+                                            lineHeight: '1.4',
+                                            flex: 1
                                         }}>
                                             {project.name}
                                         </Text>
+                                        <Popconfirm
+                                            title="删除项目"
+                                            description="确定要删除这个项目吗？此操作不可撤销。"
+                                            onConfirm={(e) => {
+                                                e?.stopPropagation();
+                                                handleDeleteProject(project.id);
+                                            }}
+                                            onCancel={(e) => e?.stopPropagation()}
+                                            okText="删除"
+                                            cancelText="取消"
+                                            okType="danger"
+                                        >
+                                            <Button
+                                                type="text"
+                                                icon={<DeleteOutlined />}
+                                                size="small"
+                                                danger
+                                                onClick={(e) => e.stopPropagation()}
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    padding: '4px'
+                                                }}
+                                            />
+                                        </Popconfirm>
                                     </div>
 
                                     {project.description && (

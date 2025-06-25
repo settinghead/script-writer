@@ -10,8 +10,7 @@ import { MenuOutlined, UserOutlined, LogoutOutlined, LoginOutlined } from '@ant-
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './components/LoginPage';
-import ProjectsList from './components/IdeationsList';
-import HomePage from './components/HomePage';
+import ProjectsList from './components/ProjectList';
 import { OutlineTab } from './components/OutlineTab';
 import ChatTab from './components/ChatTab';
 import ScriptTab from './components/ScriptTab';

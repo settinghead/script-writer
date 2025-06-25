@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Card, List, Button, Tag, Empty, Spin, Alert, Typography, Space, Progress, Tooltip, Modal } from 'antd';
+import { Card, List, Button, Tag, Empty, Spin, Alert, Typography, Space, Progress, Tooltip, Modal, Popconfirm, message } from 'antd';
 import {
     BulbOutlined,
     FileTextOutlined,
     PlusOutlined,
-    EyeOutlined,
     PlayCircleOutlined,
     FileDoneOutlined,
     EditOutlined,
@@ -12,10 +11,11 @@ import {
     LoadingOutlined,
     ExclamationCircleOutlined,
     ThunderboltOutlined,
-    FormOutlined
+    FormOutlined,
+    DeleteOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -40,6 +40,7 @@ interface ProjectSummary {
 
 const HomePage: React.FC = () => {
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
     const [showCreateModal, setShowCreateModal] = useState(false);
 
@@ -70,6 +71,26 @@ const HomePage: React.FC = () => {
         staleTime: 5 * 60 * 1000, // 5 minutes
     });
 
+    // Delete project mutation
+    const deleteProjectMutation = useMutation({
+        mutationFn: async (projectId: string) => {
+            const response = await fetch(`/api/projects/${projectId}`, {
+                method: 'DELETE',
+            });
+            if (!response.ok) {
+                throw new Error('Failed to delete project');
+            }
+            return response.json();
+        },
+        onSuccess: () => {
+            message.success('项目删除成功');
+            queryClient.invalidateQueries({ queryKey: ['user-projects'] });
+        },
+        onError: (error: any) => {
+            message.error(`删除失败: ${error.message}`);
+        },
+    });
+
     const handleCreateNew = () => {
         setShowCreateModal(true);
     };
@@ -84,11 +105,15 @@ const HomePage: React.FC = () => {
         navigate('/projects/new/outline');
     };
 
+    const handleDeleteProject = (projectId: string) => {
+        deleteProjectMutation.mutate(projectId);
+    };
+
     const handleViewProject = (project: ProjectSummary) => {
         // Navigate based on current phase
         switch (project.currentPhase) {
             case 'brainstorming':
-                navigate('/ideation');
+                navigate(`/projects/${project.id}/brainstorm`);
                 break;
             case 'outline':
                 navigate(`/projects/${project.id}/outline`);
@@ -100,7 +125,7 @@ const HomePage: React.FC = () => {
                 navigate(`/projects/${project.id}/scripts`);
                 break;
             default:
-                navigate('/ideation');
+                navigate(`/projects/${project.id}/brainstorm`);
         }
     };
 
@@ -363,29 +388,43 @@ const HomePage: React.FC = () => {
                                     cursor: 'pointer'
                                 }}
                                 onClick={() => handleViewProject(project)}
-                                actions={[
-                                    <Button
-                                        key="view"
-                                        type="text"
-                                        icon={<EyeOutlined />}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleViewProject(project);
-                                        }}
-                                        style={{ color: '#1890ff' }}
-                                    >
-                                        查看详情
-                                    </Button>
-                                ]}
                             >
                                 <div style={{ marginBottom: '12px' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                                        <Title level={4} style={{ margin: 0, color: '#fff' }}>
+                                        <Title level={4} style={{ margin: 0, color: '#fff', flex: 1 }}>
                                             {project.name}
                                         </Title>
-                                        <Tooltip title={getStatusText(project.status)}>
-                                            {getStatusIcon(project.status)}
-                                        </Tooltip>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <Tooltip title={getStatusText(project.status)}>
+                                                {getStatusIcon(project.status)}
+                                            </Tooltip>
+                                            <Popconfirm
+                                                title="删除项目"
+                                                description="确定要删除这个项目吗？此操作不可撤销。"
+                                                onConfirm={(e) => {
+                                                    e?.stopPropagation();
+                                                    handleDeleteProject(project.id);
+                                                }}
+                                                onCancel={(e) => e?.stopPropagation()}
+                                                okText="删除"
+                                                cancelText="取消"
+                                                okType="danger"
+                                            >
+                                                <Button
+                                                    type="text"
+                                                    icon={<DeleteOutlined />}
+                                                    size="small"
+                                                    danger
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        padding: '4px'
+                                                    }}
+                                                />
+                                            </Popconfirm>
+                                        </div>
                                     </div>
 
                                     <div style={{ marginBottom: '12px' }}>

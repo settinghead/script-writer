@@ -65,6 +65,66 @@ UI Update: Real-time display of edited content with edit indicators
 
 
 
+### 🔄 Advanced Entity-Specific Mutation State Management
+
+#### Isolated Status Tracking System
+
+**Design Problem Solved**: Traditional mutation systems share status across all components, causing visual interference where saving one item shows spinners/checkmarks on all items. Our entity-specific system provides complete isolation.
+
+**Architecture**:
+```typescript
+// Entity-specific mutation state maps
+interface MutationStateMap {
+    artifacts: Map<string, EntityMutationState>;
+    transforms: Map<string, EntityMutationState>;
+    humanTransforms: Map<string, EntityMutationState>;
+}
+
+// Direct map access for performance
+const isArtifactPending = useIsPending('artifacts', artifactId);
+const isArtifactSuccess = useIsSuccess('artifacts', artifactId);
+```
+
+**Key Features**:
+- **Complete Isolation** - Each artifact's mutation state is completely independent
+- **Performance Optimized** - Direct map access instead of function calls for faster lookups
+- **Automatic Cleanup** - Success states auto-clear after 2 seconds to prevent stale UI
+- **Type Safety** - Full TypeScript support with proper entity type validation
+- **Real-time Updates** - Electric SQL integration provides instant state synchronization
+
+#### Advanced Debounced Save with Request Cancellation
+
+**Optimization Problem**: Rapid typing can trigger multiple overlapping save requests, causing race conditions and unnecessary server load.
+
+**Technical Solution**:
+```typescript
+// Multi-level cancellation system
+const abortControllerRef = useRef<AbortController | null>(null);
+const debouncedTimeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+
+// Cancel previous requests when user types
+const debouncedSave = useCallback((fieldUpdates, field) => {
+    // Cancel existing timeout for this field
+    const existingTimeout = debouncedTimeoutsRef.current.get(field);
+    if (existingTimeout) clearTimeout(existingTimeout);
+    
+    // Cancel any pending HTTP request
+    if (abortControllerRef.current) abortControllerRef.current.abort();
+    
+    // Create new save operation with fresh AbortController
+    const timeout = setTimeout(() => {
+        // Execute save with cancellation protection
+    }, 500);
+}, []);
+```
+
+**Benefits**:
+- **Race Condition Prevention** - AbortController cancels stale requests before new ones start
+- **Performance Optimization** - Eliminates unnecessary API calls during rapid typing
+- **Resource Management** - Proper cleanup of timeouts and controllers on component unmount
+- **User Experience** - Smooth typing without save request interference
+- **Field-Level Tracking** - Independent debouncing per form field for optimal responsiveness
+
 ### 🔄 Advanced Schema-Driven Transform System with Lineage Resolution
 
 #### Immutable Artifact Architecture with Individual Breakdown
@@ -148,9 +208,11 @@ Original Collection (brainstorm_idea_collection)
 - **Project-centric navigation** with unified layout and chat integration
 - **ChatGPT-style interface** - Resizable chat sidebar (250px-600px) replacing traditional sidebars
 - **Dynamic streaming UI** - Controls render eagerly as JSON data arrives
-- **Schema-based artifact editor** with debounced auto-save and lineage resolution
-- **Smooth typing experience** with local state management
-- **Subtle save indicators** - Non-intrusive feedback with checkmarks and spinners
+- **Advanced artifact editor** with intelligent mutation state management and optimized debounced auto-save
+- **Entity-specific status indicators** - Isolated save states prevent UI interference between different editors
+- **Optimized save cancellation** - AbortController integration cancels pending requests when users type rapidly
+- **Smooth typing experience** with local state management and intelligent debouncing
+- **Real-time visual feedback** - Per-artifact spinners and checkmarks with automatic cleanup
 - **Chinese language interface** - Fully localized UI for Chinese users
 - **Real-time message updates** - Electric SQL powered chat synchronization
 - **Edit history visualization** - Visual indicators (📝 已编辑版本) for modified content
@@ -738,6 +800,7 @@ src/
 │   │   ├── useChatMessages.ts            # Chat message operations
 │   │   ├── useProjectData.ts             # TanStack Query hooks
 │   │   ├── useStreamingLLM.ts            # Streaming LLM integration
+│   │   ├── useMutationState.ts           # Entity-specific mutation state hooks
 │   │   └── useDebounce.ts                # Debounced auto-save
 │   ├── services/          # API services
 │   │   └── apiService.ts  # Centralized API client
@@ -934,7 +997,37 @@ export const BRAINSTORM_EDIT_TEMPLATE = `
 
 ## Recent Major Changes
 
-### Raw Graph Debugging Feature Implementation ✅ COMPLETED (Latest)
+### Entity-Specific Mutation State System ✅ COMPLETED (Latest)
+
+**Major Achievement**: Implemented a sophisticated entity-specific mutation state management system that completely isolates save states between different artifact editors, eliminating visual interference and providing optimal user experience during concurrent editing operations.
+
+#### Technical Implementation
+- **Entity-Specific State Maps**: Created `MutationStateMap` with separate maps for artifacts, transforms, and human transforms
+- **Direct Map Access**: Exposed mutation states directly as maps instead of getter functions for better performance
+- **Utility Hooks**: Built `useMutationState.ts` with convenient hooks (`useIsPending`, `useIsSuccess`, `useIsError`)
+- **Automatic State Cleanup**: Success states auto-clear after 2 seconds with interval-based cleanup
+- **Type Safety**: Full TypeScript support with proper entity type validation
+
+#### Advanced Request Cancellation System
+- **AbortController Integration**: Cancels pending HTTP requests when users type rapidly to prevent race conditions
+- **Field-Level Debouncing**: Independent timeout tracking per form field for optimal responsiveness
+- **Multi-Level Cancellation**: Cancels both debounced timeouts and active HTTP requests
+- **Resource Management**: Proper cleanup on component unmount to prevent memory leaks
+- **Performance Optimization**: Eliminates unnecessary API calls during rapid typing sessions
+
+#### User Experience Improvements
+- **Isolated Status Indicators**: Spinners and checkmarks only appear for the specific artifact being edited
+- **Smooth Typing Experience**: No interference between different editors on the same page
+- **Real-time Visual Feedback**: Immediate spinner display with success checkmarks after save completion
+- **Consistent Behavior**: Uniform status indication across all artifact types and editing contexts
+
+**Files Modified**:
+- `src/client/contexts/ProjectDataContext.tsx` - Added entity-specific mutation state management
+- `src/client/components/shared/ArtifactEditor.tsx` - Integrated new state system with request cancellation
+- `src/client/hooks/useMutationState.ts` - Created utility hooks for easy state access
+- `src/common/types.ts` - Updated type definitions for mutation state interfaces
+
+### Raw Graph Debugging Feature Implementation ✅ COMPLETED
 
 **Major Achievement**: Implemented a comprehensive debugging visualization system that provides unprecedented visibility into the application's sophisticated artifact and transform lineage system, enabling developers to debug complex data relationships and understand workflow execution patterns.
 
@@ -1054,9 +1147,10 @@ export const BRAINSTORM_EDIT_TEMPLATE = `
 
 ### Enhanced User Experience & Security
 - **ChatGPT-style interface** - Natural conversation flow with agent for all operations
-- **Smooth typing experience** - Local state management prevents React re-render issues
-- **Debounced auto-save** - Automatic saving with 500ms debounce to prevent excessive API calls
-- **Subtle visual feedback** - Non-intrusive save indicators with spinners and checkmarks
+- **Entity-specific mutation states** - Isolated save indicators prevent visual interference between editors
+- **Advanced request cancellation** - AbortController integration prevents race conditions during rapid typing
+- **Optimized debounced auto-save** - Field-level debouncing with intelligent timeout management
+- **Real-time visual feedback** - Per-artifact status indicators with automatic cleanup
 - **Enhanced error handling** - Graceful handling of schema validation and transform errors
 - **Real-time collaboration** - Electric SQL enables instant updates across all connected clients
 - **Chinese localization** - Complete UI translation for Chinese user base

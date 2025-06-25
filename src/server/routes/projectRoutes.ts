@@ -148,5 +148,30 @@ ${other_requirements ? `其他要求：${other_requirements}` : ''}
         }
     });
 
+    // DELETE /api/projects/:id - Delete a project
+    router.delete('/:id', authMiddleware.authenticate, async (req: any, res: any) => {
+        try {
+            const user = authMiddleware.getCurrentUser(req);
+            if (!user) {
+                return res.status(401).json({ error: "User not authenticated" });
+            }
+
+            const projectId = req.params.id;
+            const success = await projectService.deleteProject(projectId, user.id);
+
+            if (success) {
+                res.json({ message: "Project deleted successfully" });
+            } else {
+                res.status(404).json({ error: "Project not found" });
+            }
+        } catch (error: any) {
+            console.error('Error deleting project:', error);
+            res.status(500).json({
+                error: 'Failed to delete project',
+                details: error.message
+            });
+        }
+    });
+
     return router;
 } 
