@@ -77,15 +77,34 @@ const ArtifactNode: React.FC<{ data: any }> = ({ data }) => {
             />
 
             <Tooltip
-                title={<div>
-                    <div style={{ marginBottom: '8px', fontWeight: 'bold', color: '#1890ff' }}>
-                        ID: {artifact.id}
+                title={<div style={{ fontSize: '11px' }}>
+                    <div style={{ marginBottom: '12px' }}>
+                        <div style={{ fontWeight: 'bold', color: '#1890ff', marginBottom: '4px' }}>
+                            Artifact Details
+                        </div>
+                        <div><strong>ID:</strong> {artifact.id}</div>
+                        <div><strong>Project ID:</strong> {artifact.project_id}</div>
+                        <div><strong>Type:</strong> {artifact.type}</div>
+                        <div><strong>Type Version:</strong> {artifact.type_version}</div>
+                        {artifact.metadata && (
+                            <div><strong>Metadata:</strong> {typeof artifact.metadata === 'string' ? artifact.metadata : JSON.stringify(artifact.metadata)}</div>
+                        )}
+                        {artifact.streaming_status && (
+                            <div><strong>Streaming Status:</strong> {artifact.streaming_status}</div>
+                        )}
+                        <div><strong>Created:</strong> {new Date(artifact.created_at).toLocaleString()}</div>
+                        <div><strong>Updated:</strong> {new Date(artifact.updated_at).toLocaleString()}</div>
                     </div>
-                    <pre style={{ maxHeight: '300px', overflow: 'auto', fontSize: '11px' }}>
-                        {JSON.stringify(parsedData, null, 2)}
-                    </pre>
+                    <div>
+                        <div style={{ fontWeight: 'bold', color: '#52c41a', marginBottom: '4px' }}>
+                            Data Content
+                        </div>
+                        <pre style={{ maxHeight: '250px', overflow: 'auto', fontSize: '10px', background: '#262626', padding: '8px', borderRadius: '4px' }}>
+                            {JSON.stringify(parsedData, null, 2)}
+                        </pre>
+                    </div>
                 </div>}
-                overlayStyle={{ maxWidth: '500px' }}
+                overlayStyle={{ maxWidth: '600px' }}
             >
                 <div>
                     <div style={{
