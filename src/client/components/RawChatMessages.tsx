@@ -45,6 +45,7 @@ const RawChatMessages: React.FC<RawChatMessagesProps> = ({ projectId }) => {
     };
 
     // Get raw chat messages from Electric SQL and parse JSON fields
+    // Sort in reverse chronological order (newest first)
     const rawMessages = useMemo(() => {
         if (!rawChatMessages) return [];
 
@@ -53,7 +54,12 @@ const RawChatMessages: React.FC<RawChatMessagesProps> = ({ projectId }) => {
             metadata: safeJsonParse(msg.metadata),
             tool_parameters: safeJsonParse(msg.tool_parameters),
             tool_result: safeJsonParse(msg.tool_result),
-        })).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        })).sort((a, b) => {
+            // Sort by created_at in descending order (newest first)
+            const dateA = new Date(a.created_at).getTime();
+            const dateB = new Date(b.created_at).getTime();
+            return dateB - dateA;
+        });
     }, [rawChatMessages]);
 
     const formatTimestamp = (timestamp: string) => {

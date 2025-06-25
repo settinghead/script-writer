@@ -77,9 +77,14 @@ const ArtifactNode: React.FC<{ data: any }> = ({ data }) => {
             />
 
             <Tooltip
-                title={<pre style={{ maxHeight: '300px', overflow: 'auto', fontSize: '11px' }}>
-                    {JSON.stringify(parsedData, null, 2)}
-                </pre>}
+                title={<div>
+                    <div style={{ marginBottom: '8px', fontWeight: 'bold', color: '#1890ff' }}>
+                        ID: {artifact.id}
+                    </div>
+                    <pre style={{ maxHeight: '300px', overflow: 'auto', fontSize: '11px' }}>
+                        {JSON.stringify(parsedData, null, 2)}
+                    </pre>
+                </div>}
                 overlayStyle={{ maxWidth: '500px' }}
             >
                 <div>
