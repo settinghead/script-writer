@@ -13,15 +13,30 @@ import { ElectricArtifact, ElectricTransform, ElectricHumanTransform, ElectricTr
 // Data Structures
 // ============================================================================
 
-export interface LineageNode {
-    artifactId: string;
-    transformId?: string;
+export type LineageNodeBase = {
     path?: string;
     depth: number;
     isLeaf: boolean;
-    artifactType?: string;
-    transformType?: 'human' | 'llm';
+    type: 'artifact' | 'transform';
 }
+
+export type LineageNodeArtifact = LineageNodeBase & {
+    type: 'artifact';
+    artifactId: string;
+    artifactType: string;
+    sourceTransform: LineageNodeTransform | "none";
+}
+
+export type LineageNodeTransform = LineageNodeBase & {
+    type: 'transform';
+    transformId: string;
+    transformType: 'human' | 'llm';
+    sourceArtifacts: LineageNodeArtifact[];
+}
+
+export type LineageNode = LineageNodeArtifact | LineageNodeTransform;
+
+
 
 export interface LineageGraph {
     nodes: Map<string, LineageNode>;
@@ -57,7 +72,18 @@ export function buildLineageGraph(
     transformInputs: ElectricTransformInput[],
     transformOutputs: ElectricTransformOutput[]
 ): LineageGraph {
-    const nodes = new Map<string, LineageNode>();
+    // Internal phase types for multi-pass algorithm
+    type PhaseOneArtifactNode = Omit<LineageNodeArtifact, 'sourceTransform'> & {
+        sourceTransformId: string | "none";
+    };
+
+    type PhaseOneTransformNode = Omit<LineageNodeTransform, 'sourceArtifacts'> & {
+        sourceArtifactIds: string[];
+    };
+
+    type PhaseOneNode = PhaseOneArtifactNode | PhaseOneTransformNode;
+
+    const phaseOneNodes = new Map<string, PhaseOneNode>();
     const edges = new Map<string, string[]>();
     const paths = new Map<string, LineageNode[]>();
     const rootNodes = new Set<string>();
@@ -73,22 +99,30 @@ export function buildLineageGraph(
         }
     }
 
-    // Initialize nodes and determine root nodes
+    // Initialize artifact nodes with sourceTransformId (Phase 1)
     for (const artifact of artifacts) {
         const isRoot = !artifactsWithIncomingTransforms.has(artifact.id);
         if (isRoot) {
             rootNodes.add(artifact.id);
         }
 
-        nodes.set(artifact.id, {
+        // Find the source transform for this artifact
+        const sourceTransformId = transformOutputs.find(output =>
+            output.artifact_id === artifact.id
+        )?.transform_id || "none";
+
+        phaseOneNodes.set(artifact.id, {
+            type: 'artifact',
             artifactId: artifact.id,
             depth: 0,
             isLeaf: true, // Will be updated if we find outgoing transforms
-            artifactType: artifact.type
-        });
+            artifactType: artifact.type,
+            path: undefined,
+            sourceTransformId
+        } as PhaseOneArtifactNode);
     }
 
-    // Step 2: Process all transforms in dependency order
+    // Step 2: Process all transforms in dependency order (Phase 1)
     // We need to process transforms in topological order to ensure depths are calculated correctly
     const processedTransforms = new Set<string>();
     const pendingTransforms = [...transforms];
@@ -103,7 +137,7 @@ export function buildLineageGraph(
             // Check if all input artifacts for this transform have been processed
             const inputs = transformInputs.filter(ti => ti.transform_id === transformId);
             const canProcess = inputs.every(input => {
-                const inputNode = nodes.get(input.artifact_id);
+                const inputNode = phaseOneNodes.get(input.artifact_id);
                 // Can process if the input node exists and either:
                 // 1. It's a root node (no incoming transforms), or
                 // 2. All transforms that produce this input have been processed
@@ -114,11 +148,11 @@ export function buildLineageGraph(
             });
 
             if (canProcess) {
-                // Process this transform
+                // Process this transform (Phase 1)
                 if (transform.type === 'human') {
-                    processHumanTransform(transform, humanTransforms, transformInputs, transformOutputs, nodes, edges, paths, rootNodes);
+                    processHumanTransformPhaseOne(transform, humanTransforms, transformInputs, transformOutputs, phaseOneNodes, edges, paths, rootNodes);
                 } else if (transform.type === 'llm') {
-                    processLLMTransform(transform, transformInputs, transformOutputs, nodes, edges, paths, rootNodes);
+                    processLLMTransformPhaseOne(transform, transformInputs, transformOutputs, phaseOneNodes, edges, paths, rootNodes);
                 }
 
                 processedTransforms.add(transformId);
@@ -134,10 +168,88 @@ export function buildLineageGraph(
         }
     }
 
+    // Step 3: Convert Phase 1 nodes to final nodes by resolving references (Phase 2)
+    const nodes = new Map<string, LineageNode>();
+
+    for (const [nodeId, phaseOneNode] of phaseOneNodes) {
+        if (phaseOneNode.type === 'artifact') {
+            const artifactNode = phaseOneNode as PhaseOneArtifactNode;
+
+            // Resolve sourceTransform reference
+            const sourceTransform = artifactNode.sourceTransformId === "none"
+                ? "none"
+                : phaseOneNodes.get(artifactNode.sourceTransformId) as PhaseOneTransformNode | undefined;
+
+            if (artifactNode.sourceTransformId !== "none" && !sourceTransform) {
+                console.warn(`Warning: Could not resolve sourceTransform ${artifactNode.sourceTransformId} for artifact ${nodeId}`);
+            }
+
+            // Type cast to final artifact node
+            const finalArtifactNode: LineageNodeArtifact = {
+                type: 'artifact' as const,
+                artifactId: artifactNode.artifactId,
+                artifactType: artifactNode.artifactType,
+                path: artifactNode.path,
+                depth: artifactNode.depth,
+                isLeaf: artifactNode.isLeaf,
+                sourceTransform: (sourceTransform && sourceTransform !== "none") ? {
+                    type: 'transform' as const,
+                    transformId: sourceTransform.transformId,
+                    transformType: sourceTransform.transformType,
+                    path: sourceTransform.path,
+                    depth: sourceTransform.depth,
+                    isLeaf: sourceTransform.isLeaf,
+                    sourceArtifacts: [] // Will be populated in transform processing
+                } as LineageNodeTransform : "none"
+            };
+
+            nodes.set(nodeId, finalArtifactNode);
+        } else {
+            const transformNode = phaseOneNode as PhaseOneTransformNode;
+
+            // Resolve sourceArtifacts references
+            const sourceArtifacts: LineageNodeArtifact[] = [];
+            for (const artifactId of transformNode.sourceArtifactIds) {
+                const artifactNode = nodes.get(artifactId) as LineageNodeArtifact | undefined;
+                if (artifactNode && artifactNode.type === 'artifact') {
+                    sourceArtifacts.push(artifactNode);
+                } else {
+                    console.warn(`Warning: Could not resolve sourceArtifact ${artifactId} for transform ${nodeId}`);
+                }
+            }
+
+            // Type cast to final transform node
+            const finalTransformNode: LineageNodeTransform = {
+                type: 'transform' as const,
+                transformId: transformNode.transformId,
+                transformType: transformNode.transformType,
+                path: transformNode.path,
+                depth: transformNode.depth,
+                isLeaf: transformNode.isLeaf,
+                sourceArtifacts
+            };
+
+            nodes.set(nodeId, finalTransformNode);
+        }
+    }
+
+    // Step 4: Update paths to use final nodes
+    const finalPaths = new Map<string, LineageNode[]>();
+    for (const [pathKey, phaseOnePath] of paths) {
+        const finalPath: LineageNode[] = [];
+        for (const phaseOneNode of phaseOnePath) {
+            const finalNode = nodes.get(phaseOneNode.type === 'artifact' ? phaseOneNode.artifactId : phaseOneNode.transformId);
+            if (finalNode) {
+                finalPath.push(finalNode);
+            }
+        }
+        finalPaths.set(pathKey, finalPath);
+    }
+
     return {
         nodes,
         edges,
-        paths,
+        paths: finalPaths,
         rootNodes
     };
 }
@@ -158,15 +270,15 @@ function hasUnprocessedIncomingTransforms(
     return producingTransforms.some(transformId => !processedTransforms.has(transformId));
 }
 
-// Helper function to process human transforms
-function processHumanTransform(
+// Helper function to process human transforms (Phase 1)
+function processHumanTransformPhaseOne(
     transform: ElectricTransform,
     humanTransforms: ElectricHumanTransform[],
     transformInputs: ElectricTransformInput[],
     transformOutputs: ElectricTransformOutput[],
-    nodes: Map<string, LineageNode>,
+    phaseOneNodes: Map<string, any>, // PhaseOneNode but we can't reference it here
     edges: Map<string, string[]>,
-    paths: Map<string, LineageNode[]>,
+    paths: Map<string, any[]>, // Will be converted to LineageNode[] later
     rootNodes: Set<string>
 ): void {
     const transformId = transform.id;
@@ -176,6 +288,20 @@ function processHumanTransform(
 
     const inputs = transformInputs.filter(ti => ti.transform_id === transformId);
     const outputs = transformOutputs.filter(to => to.transform_id === transformId);
+
+    // Collect source artifact IDs for this transform
+    const sourceArtifactIds = inputs.map(input => input.artifact_id);
+
+    // Create transform node (Phase 1)
+    phaseOneNodes.set(transformId, {
+        type: 'transform',
+        transformId: transformId,
+        transformType: 'human',
+        depth: 0, // Will be calculated based on sources
+        isLeaf: false,
+        path: humanTransform.derivation_path,
+        sourceArtifactIds
+    });
 
     for (const input of inputs) {
         for (const output of outputs) {
@@ -190,41 +316,52 @@ function processHumanTransform(
             edges.get(sourceId)!.push(targetId);
 
             // Update source node (no longer a leaf)
-            const sourceNode = nodes.get(sourceId);
+            const sourceNode = phaseOneNodes.get(sourceId);
             if (sourceNode) {
                 sourceNode.isLeaf = false;
             }
 
-            // Update target node
-            const targetNode = nodes.get(targetId);
+            // Update target node depth and path
+            const targetNode = phaseOneNodes.get(targetId);
             if (targetNode) {
-                targetNode.transformId = transformId;
                 targetNode.path = path;
-                targetNode.transformType = 'human';
                 targetNode.depth = (sourceNode?.depth ?? 0) + 1;
             }
 
             // Remove target from root nodes (it has an incoming transform)
             rootNodes.delete(targetId);
 
-            // Track path-based lineage
+            // Track path-based lineage (will be converted later)
             const pathKey = `${sourceId}:${path}`;
             if (!paths.has(pathKey)) {
                 paths.set(pathKey, []);
             }
-            paths.get(pathKey)!.push(targetNode!);
+            const transformNode = phaseOneNodes.get(transformId);
+            if (transformNode) {
+                paths.get(pathKey)!.push(transformNode);
+            }
         }
+    }
+
+    // Update transform node depth based on max input depth
+    const transformNode = phaseOneNodes.get(transformId);
+    if (transformNode) {
+        const maxInputDepth = inputs.reduce((max, input) => {
+            const inputNode = phaseOneNodes.get(input.artifact_id);
+            return Math.max(max, inputNode?.depth ?? 0);
+        }, 0);
+        transformNode.depth = maxInputDepth + 1;
     }
 }
 
-// Helper function to process LLM transforms
-function processLLMTransform(
+// Helper function to process LLM transforms (Phase 1)
+function processLLMTransformPhaseOne(
     transform: ElectricTransform,
     transformInputs: ElectricTransformInput[],
     transformOutputs: ElectricTransformOutput[],
-    nodes: Map<string, LineageNode>,
+    phaseOneNodes: Map<string, any>, // PhaseOneNode but we can't reference it here
     edges: Map<string, string[]>,
-    paths: Map<string, LineageNode[]>,
+    paths: Map<string, any[]>, // Will be converted to LineageNode[] later
     rootNodes: Set<string>
 ): void {
     const transformId = transform.id;
@@ -244,6 +381,20 @@ function processLLMTransform(
         // Ignore parsing errors
     }
 
+    // Collect source artifact IDs for this transform
+    const sourceArtifactIds = inputs.map(input => input.artifact_id);
+
+    // Create transform node (Phase 1)
+    phaseOneNodes.set(transformId, {
+        type: 'transform',
+        transformId: transformId,
+        transformType: 'llm',
+        depth: 0, // Will be calculated based on sources
+        isLeaf: false,
+        path: transformPath,
+        sourceArtifactIds
+    });
+
     for (const input of inputs) {
         for (const output of outputs) {
             const sourceId = input.artifact_id;
@@ -256,16 +407,14 @@ function processLLMTransform(
             edges.get(sourceId)!.push(targetId);
 
             // Update source node (no longer a leaf)
-            const sourceNode = nodes.get(sourceId);
+            const sourceNode = phaseOneNodes.get(sourceId);
             if (sourceNode) {
                 sourceNode.isLeaf = false;
             }
 
             // Update target node
-            const targetNode = nodes.get(targetId);
+            const targetNode = phaseOneNodes.get(targetId);
             if (targetNode) {
-                targetNode.transformId = transformId;
-                targetNode.transformType = 'llm';
                 targetNode.depth = (sourceNode?.depth ?? 0) + 1;
 
                 // Use path from transform execution context if available, otherwise inherit from source
@@ -279,18 +428,31 @@ function processLLMTransform(
             // Remove target from root nodes
             rootNodes.delete(targetId);
 
-            // Create path lineage using the determined path
+            // Create path lineage using the determined path (will be converted later)
             const activePath = transformPath || sourceNode?.path;
             if (activePath) {
                 const pathKey = `${sourceId}:${activePath}`;
                 const existingPath = paths.get(pathKey) || [];
-                paths.set(pathKey, [...existingPath, targetNode!]);
+                const transformNode = phaseOneNodes.get(transformId);
+                if (transformNode) {
+                    paths.set(pathKey, [...existingPath, transformNode]);
 
-                // Also create a path key for the target artifact to maintain lineage
-                const targetPathKey = `${targetId}:${activePath}`;
-                paths.set(targetPathKey, [targetNode!]);
+                    // Also create a path key for the target artifact to maintain lineage
+                    const targetPathKey = `${targetId}:${activePath}`;
+                    paths.set(targetPathKey, [transformNode]);
+                }
             }
         }
+    }
+
+    // Update transform node depth based on max input depth
+    const transformNode = phaseOneNodes.get(transformId);
+    if (transformNode) {
+        const maxInputDepth = inputs.reduce((max, input) => {
+            const inputNode = phaseOneNodes.get(input.artifact_id);
+            return Math.max(max, inputNode?.depth ?? 0);
+        }, 0);
+        transformNode.depth = maxInputDepth + 1;
     }
 }
 
@@ -326,6 +488,10 @@ export function findLatestArtifact(
             current.depth > deepest.depth ? current : deepest
         );
 
+        if (deepestNode.type !== "artifact") {
+            throw new Error("Deepest node is not an artifact");
+        }
+
         // Continue traversing from the deepest node to find the actual leaf
         const finalResult = traverseToLeaf(deepestNode.artifactId, graph);
 
@@ -334,6 +500,9 @@ export function findLatestArtifact(
 
         // Add path lineage nodes (excluding the deepest node to avoid duplication)
         for (const node of pathLineage) {
+            if (node.type !== "artifact") {
+                throw new Error("Node is not an artifact");
+            }
             if (node.artifactId !== deepestNode.artifactId) {
                 completePath.push(node);
             }
@@ -543,6 +712,17 @@ export function findLatestBrainstormIdeas(
 }
 
 /**
+ * Find all leaf brainstorm idea artifacts with lineage information
+ */
+export function findLatestBrainstormIdeasWithLineage(
+    graph: LineageGraph,
+    artifacts: import('../types').ElectricArtifact[]
+): import('../types').ElectricArtifactWithLineage[] {
+    const latestBrainstormIdeas = findLeafNodesByType(graph, artifacts, 'brainstorm_idea');
+    return addLineageToArtifacts(latestBrainstormIdeas, graph);
+}
+
+/**
  * Extract all brainstorm-related artifacts from a lineage graph
  */
 export function extractBrainstormLineages(
@@ -600,6 +780,9 @@ export function describeLineage(lineagePath: LineageNode[]): string {
 
     for (let i = 1; i < lineagePath.length; i++) {
         const node = lineagePath[i];
+        if (node.type !== "transform") {
+            throw new Error("Node is not a transform");
+        }
         if (node.transformType === 'human') {
             descriptions.push('User edited');
         } else if (node.transformType === 'llm') {
@@ -610,4 +793,44 @@ export function describeLineage(lineagePath: LineageNode[]): string {
     }
 
     return descriptions.join(' → ');
+}
+
+/**
+ * Add lineage information to artifacts based on the lineage graph
+ */
+export function addLineageToArtifacts(
+    artifacts: import('../types').ElectricArtifact[],
+    graph: LineageGraph
+): import('../types').ElectricArtifactWithLineage[] {
+    return artifacts.map(artifact => {
+        const node = graph.nodes.get(artifact.id);
+
+        if (!node || node.type !== 'artifact') {
+            return {
+                ...artifact,
+                sourceTransform: 'none',
+                isEditable: false
+            };
+        }
+
+        const sourceTransform = node.sourceTransform;
+
+        if (sourceTransform === 'none') {
+            return {
+                ...artifact,
+                sourceTransform: 'none',
+                isEditable: false
+            };
+        }
+
+        return {
+            ...artifact,
+            sourceTransform: {
+                id: sourceTransform.transformId,
+                type: sourceTransform.transformType,
+                transformType: sourceTransform.transformType
+            },
+            isEditable: sourceTransform.transformType === 'human'
+        };
+    });
 } 
