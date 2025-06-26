@@ -744,36 +744,6 @@ export function findLatestBrainstormIdeasWithLineage(
 }
 
 
-/**
- * Get a human-readable description of a lineage chain
- */
-export function describeLineage(lineagePath: LineageNode[]): string {
-    if (lineagePath.length === 0) {
-        return 'No lineage';
-    }
-
-    if (lineagePath.length === 1) {
-        return 'Original';
-    }
-
-    const descriptions: string[] = ['Original'];
-
-    for (let i = 1; i < lineagePath.length; i++) {
-        const node = lineagePath[i];
-        if (node.type !== "transform") {
-            throw new Error("Node is not a transform");
-        }
-        if (node.transformType === 'human') {
-            descriptions.push('User edited');
-        } else if (node.transformType === 'llm') {
-            descriptions.push('AI enhanced');
-        } else {
-            descriptions.push('Modified');
-        }
-    }
-
-    return descriptions.join(' → ');
-}
 
 /**
  * Add lineage information to artifacts based on the lineage graph
