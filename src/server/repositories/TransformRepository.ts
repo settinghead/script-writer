@@ -58,13 +58,18 @@ export class TransformRepository {
     // Add input artifacts to a transform
     async addTransformInputs(
         transformId: string,
-        artifacts: Array<{ artifactId: string; inputRole?: string }>,
+        artifacts: Array<{
+            artifactId: string;
+            inputRole?: string;
+            artifactPath?: string; // NEW: Support JSONPath parameter
+        }>,
         projectId: string
     ): Promise<void> {
-        const inputData = artifacts.map(({ artifactId, inputRole }) => ({
+        const inputData = artifacts.map(({ artifactId, inputRole, artifactPath }) => ({
             transform_id: transformId,
             artifact_id: artifactId,
             input_role: inputRole || null,
+            artifact_path: artifactPath || '$', // NEW: Store JSONPath, '$' = root object
             project_id: projectId
         }));
 

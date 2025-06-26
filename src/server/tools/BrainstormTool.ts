@@ -13,39 +13,13 @@ interface StreamingToolDefinition<TInput, TOutput> {
     execute: (params: TInput) => Promise<any>; // Changed to match actual framework
 }
 
-// Tool execution result type - now returns multiple artifact IDs
+// Tool execution result type - now returns single collection artifact ID
 interface BrainstormToolResult {
-    outputArtifactIds: string[]; // Changed from single ID to array
+    outputArtifactId: string; // Single collection artifact ID
     finishReason: string;
 }
 
-// Cache entry for tracking idea state
-interface IdeaCache {
-    title: string;
-    body: string;
-    lastUpdated: number;
-    updateCount: number;
-}
-
-// Helper function to check if idea content has meaningfully changed
-function hasSignificantChange(cached: IdeaCache | undefined, newIdea: any): boolean {
-    if (!cached) return true; // First time seeing this idea
-
-    // Check if title changed
-    if (cached.title !== newIdea.title) return true;
-
-    // Check if body length increased significantly (>10% or >20 characters)
-    const bodyLengthDiff = newIdea.body.length - cached.body.length;
-    const percentageIncrease = bodyLengthDiff / Math.max(cached.body.length, 1);
-
-    if (bodyLengthDiff > 20 || percentageIncrease > 0.1) return true;
-
-    // Check if it's been a while since last update (throttle to max 1 update per 2 seconds)
-    const timeSinceLastUpdate = Date.now() - cached.lastUpdated;
-    if (timeSinceLastUpdate > 2000) return true;
-
-    return false;
-}
+// Collection-based brainstorm tool - no longer needs individual idea caching
 
 /**
  * Factory function that creates a brainstorm tool definition
@@ -63,13 +37,14 @@ export function createBrainstormToolDefinition(
         outputSchema: IdeationOutputSchema,
         execute: async (params: IdeationInput): Promise<BrainstormToolResult> => {
             let toolTransformId: string | null = null;
+            let collectionArtifactId: string | null = null;
             try {
                 // 1. Create a transform for this specific tool execution
                 const transform = await transformRepo.createTransform(
                     projectId,
                     'llm', // The tool is an LLM operation
                     'running',
-                    JSON.stringify({ // Fix: Convert to string for execution_context
+                    JSON.stringify({
                         toolName: 'brainstorm',
                         params
                     })
@@ -88,134 +63,127 @@ export function createBrainstormToolDefinition(
                     { artifactId: inputArtifact.id, inputRole: 'tool_input' }
                 ], projectId);
 
-                // 2. Execute the underlying transform which returns a stream
+                // 2. Create single collection artifact instead of multiple individual artifacts
+                const initialCollectionData = {
+                    ideas: [],
+                    platform: params.platform,
+                    genre: params.genre,
+                    total_ideas: 0
+                };
+
+                const collectionArtifact = await artifactRepo.createArtifact(
+                    projectId,
+                    'brainstorm_idea_collection', // NEW: Single collection type
+                    initialCollectionData,
+                    'v1',
+                    {
+                        startedAt: new Date().toISOString(),
+                        platform: params.platform,
+                        genre: params.genre
+                    }
+                );
+                collectionArtifactId = collectionArtifact.id;
+
+                console.log(`[BrainstormTool] Created collection artifact ${collectionArtifactId} for project ${projectId}`);
+
+                // 3. Execute the underlying transform which returns a stream
                 const stream = await executeStreamingIdeationTransform(params);
 
                 let finalResult: IdeationOutput = [];
                 let chunkCount = 0;
-                const createdArtifacts: string[] = [];
-
-                // Smart caching system to reduce unnecessary updates
-                const ideaCache = new Map<number, IdeaCache>();
                 let totalUpdates = 0;
-                let skippedUpdates = 0;
 
-                console.log(`[BrainstormTool] Starting brainstorm generation with smart caching for project ${projectId}`);
+                console.log(`[BrainstormTool] Starting brainstorm generation with collection updates for project ${projectId}`);
 
-                // 3. Process the stream and create/update individual artifacts
+                // 4. Process the stream and update the single collection artifact
                 for await (const partial of stream) {
                     chunkCount++;
                     finalResult = partial; // Keep track of the latest result
 
-                    // Create or update individual artifacts for each idea
-                    for (let i = 0; i < partial.length; i++) {
-                        const idea = partial[i];
-
-                        // Skip empty or incomplete objects - only create/update when there's substantial content
-                        if (!idea || !idea.title || !idea.body || idea.body.length < 10) {
-                            continue;
-                        }
-
-                        const cachedIdea = ideaCache.get(i);
-                        const shouldUpdate = hasSignificantChange(cachedIdea, idea);
-
-                        if (!shouldUpdate) {
-                            skippedUpdates++;
-                            continue; // Skip this update - no significant change
-                        }
-
-                        // Update cache
-                        ideaCache.set(i, {
+                    // Convert individual ideas to collection format
+                    const collectionIdeas = partial
+                        .filter((idea: any) => idea && idea.title && idea.body && idea.body.length >= 10)
+                        .map((idea: any, index: number) => ({
                             title: idea.title,
                             body: idea.body,
-                            lastUpdated: Date.now(),
-                            updateCount: (cachedIdea?.updateCount || 0) + 1
-                        });
-
-                        if (i >= createdArtifacts.length) {
-                            // Create new artifact for this idea
-                            const ideaArtifact = await artifactRepo.createArtifact(
-                                projectId,
-                                'brainstorm_idea',
-                                idea, // Individual {title, body} object
-                                'v1',
-                                {
-                                    ideaIndex: i,
-                                    chunkCount,
-                                    startedAt: new Date().toISOString(),
-                                    platform: params.platform,
-                                    genre: params.genre
-                                },
-                                'streaming' // Start with streaming status
-                            );
-
-                            createdArtifacts.push(ideaArtifact.id);
-                            totalUpdates++;
-
-                            console.log(`[BrainstormTool] Created artifact ${ideaArtifact.id} for idea ${i} in project ${projectId}`);
-                        } else {
-                            // Update existing artifact
-                            try {
-                                await artifactRepo.updateArtifact(
-                                    createdArtifacts[i],
-                                    idea, // Individual {title, body} object
-                                    {
-                                        ideaIndex: i,
-                                        chunkCount,
-                                        lastUpdated: new Date().toISOString(),
-                                        updateCount: ideaCache.get(i)?.updateCount || 0
-                                    },
-                                    'streaming'
-                                );
-
-                                totalUpdates++;
-                                console.log(`[BrainstormTool] Updated artifact ${createdArtifacts[i]} for idea ${i} (update #${ideaCache.get(i)?.updateCount})`);
-                            } catch (updateError) {
-                                console.warn(`[BrainstormTool] Failed to update artifact ${createdArtifacts[i]} at chunk ${chunkCount}:`, updateError);
+                            metadata: {
+                                ideaIndex: index,
+                                confidence_score: 0.8 // Default confidence
                             }
-                        }
-                    }
-                }
+                        }));
 
-                console.log(`[BrainstormTool] Streaming completed. Total updates: ${totalUpdates}, Skipped updates: ${skippedUpdates} (${Math.round(skippedUpdates / (totalUpdates + skippedUpdates) * 100)}% reduction)`);
+                    // Update collection with current ideas
+                    const updatedCollection = {
+                        ideas: collectionIdeas,
+                        platform: params.platform,
+                        genre: params.genre,
+                        total_ideas: collectionIdeas.length
+                    };
 
-                // 4. Final update to mark all artifacts as completed
-                for (let i = 0; i < createdArtifacts.length; i++) {
                     try {
-                        const finalIdea = finalResult[i];
                         await artifactRepo.updateArtifact(
-                            createdArtifacts[i],
-                            finalIdea,
+                            collectionArtifactId,
+                            updatedCollection,
                             {
-                                ideaIndex: i,
                                 chunkCount,
-                                completedAt: new Date().toISOString(),
-                                totalUpdates: ideaCache.get(i)?.updateCount || 0
-                            },
-                            'completed' // Set streaming status to completed
+                                lastUpdated: new Date().toISOString(),
+                                updateCount: totalUpdates + 1
+                            }
                         );
-                        console.log(`[BrainstormTool] Completed artifact ${createdArtifacts[i]} for idea ${i}`);
-                    } catch (finalUpdateError) {
-                        console.error(`[BrainstormTool] Failed to mark artifact ${createdArtifacts[i]} as completed:`, finalUpdateError);
+
+                        totalUpdates++;
+                        console.log(`[BrainstormTool] Updated collection with ${collectionIdeas.length} ideas (update #${totalUpdates})`);
+                    } catch (updateError) {
+                        console.warn(`[BrainstormTool] Failed to update collection at chunk ${chunkCount}:`, updateError);
                     }
                 }
 
-                // 5. Link all output artifacts to the transform
-                const outputArtifacts = createdArtifacts.map((artifactId, index) => ({
-                    artifactId,
-                    outputRole: `brainstorm_idea_${index}` // Use indexed roles
-                }));
+                console.log(`[BrainstormTool] Streaming completed. Total collection updates: ${totalUpdates}`);
 
-                await transformRepo.addTransformOutputs(toolTransformId, outputArtifacts, projectId);
+                // 5. Final update to mark collection as completed
+                const finalCollectionIdeas = finalResult
+                    .filter((idea) => idea && idea.title && idea.body && idea.body.length >= 10)
+                    .map((idea, index: number) => ({
+                        title: idea.title,
+                        body: idea.body,
+                        metadata: {
+                            ideaIndex: index,
+                            confidence_score: 0.8
+                        }
+                    }));
 
-                // 6. Mark transform as completed
+                const finalCollection = {
+                    ideas: finalCollectionIdeas,
+                    platform: params.platform,
+                    genre: params.genre,
+                    total_ideas: finalCollectionIdeas.length
+                };
+
+                await artifactRepo.updateArtifact(
+                    collectionArtifactId,
+                    finalCollection,
+                    {
+                        chunkCount,
+                        completedAt: new Date().toISOString(),
+                        totalUpdates
+                    }
+                );
+
+                console.log(`[BrainstormTool] Completed collection artifact ${collectionArtifactId} with ${finalCollectionIdeas.length} ideas`);
+
+                // 6. Link collection artifact to the transform
+                await transformRepo.addTransformOutputs(toolTransformId, [
+                    { artifactId: collectionArtifactId, outputRole: 'brainstorm_collection' }
+                ], projectId);
+
+                // 7. Mark transform as completed
                 await transformRepo.updateTransformStatus(toolTransformId, 'completed');
 
-                console.log(`[BrainstormTool] Completed brainstorm generation with ${createdArtifacts.length} individual artifacts`);
+                console.log(`[BrainstormTool] Completed brainstorm generation with single collection artifact`);
 
-                // Return multiple artifact IDs
+                // Return single collection artifact ID
                 return {
-                    outputArtifactIds: createdArtifacts,
+                    outputArtifactId: collectionArtifactId,
                     finishReason: 'stop'
                 };
 

@@ -119,6 +119,7 @@ export interface ProjectsUsers {
 
 export interface TransformInputs {
   artifact_id: string;
+  artifact_path: string;
   id: Generated<number>;
   input_role: string | null;
   project_id: string;

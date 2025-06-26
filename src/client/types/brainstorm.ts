@@ -3,6 +3,7 @@ export interface IdeaWithTitle {
   body: string
   artifactId?: string
   originalArtifactId?: string  // For lineage resolution - the original artifact ID for transform lookup
+  artifactPath: string        // NEW: JSONPath within collection artifacts (e.g., '$.ideas[0]', '$' for root)
   index?: number  // For consistent ordering
 }
 

@@ -257,38 +257,83 @@ const BrainstormIdeaCard: React.FC<{
 };
 
 /**
- * Hook to get latest brainstorm ideas from the lineage graph
+ * Hook to get latest brainstorm ideas from collections and individual artifacts
  * This replaces the complex per-card lineage resolution
  */
 function useLatestBrainstormIdeas(): IdeaWithTitle[] {
     const projectData = useProjectData();
 
     return useMemo(() => {
+        const allIdeas: IdeaWithTitle[] = [];
+
+        // 1. Get all brainstorm collections
+        const collections = projectData.getBrainstormCollections();
+
+        // 2. Extract ideas from collections with lineage resolution
+        for (const collection of collections) {
+            try {
+                const collectionData = JSON.parse(collection.data);
+
+                for (let i = 0; i < collectionData.ideas.length; i++) {
+                    // 3. Resolve latest version for each idea
+                    const artifactPath = `$.ideas[${i}]`;
+                    const latestArtifactId = projectData.getLatestVersionForPath(collection.id, artifactPath);
+
+                    if (latestArtifactId) {
+                        // Use individual edited version
+                        const latestArtifact = projectData.getArtifactById(latestArtifactId);
+                        if (latestArtifact) {
+                            const ideaData = JSON.parse(latestArtifact.data);
+
+                            allIdeas.push({
+                                title: ideaData.title || `想法 ${i + 1}`,
+                                body: ideaData.body || '内容加载中...',
+                                artifactId: latestArtifactId,
+                                originalArtifactId: collection.id,
+                                artifactPath: `$.ideas[${i}]`,
+                                index: i
+                            });
+                        }
+                    } else {
+                        // Use original from collection
+                        const originalIdea = collectionData.ideas[i];
+
+                        allIdeas.push({
+                            title: originalIdea.title || `想法 ${i + 1}`,
+                            body: originalIdea.body || '内容加载中...',
+                            artifactId: collection.id, // Base artifact ID
+                            originalArtifactId: collection.id,
+                            artifactPath: `$.ideas[${i}]`, // JSONPath to specific item
+                            index: i
+                        });
+                    }
+                }
+            } catch (parseErr) {
+                console.warn(`Failed to parse collection ${collection.id}:`, parseErr);
+            }
+        }
+
+        // 4. LEGACY: Also get individual brainstorm ideas for backward compatibility
         const lineageGraph = projectData.getLineageGraph();
-        const latestIdeas = findLatestBrainstormIdeasWithLineage(lineageGraph, projectData.artifacts);
+        const latestIndividualIdeas = findLatestBrainstormIdeasWithLineage(lineageGraph, projectData.artifacts);
 
-
-        return latestIdeas.map((artifact: any, index: number) => {
+        latestIndividualIdeas.forEach((artifact: any, index: number) => {
             try {
                 const data = artifact.data ? JSON.parse(artifact.data) : {};
-                return {
-                    artifactId: artifact.id,
-                    originalArtifactId: artifact.id, // Since these are already resolved to latest
-                    title: data.title || `想法 ${index + 1}`,
-                    body: data.body || '内容加载中...',
-                    index
-                };
-            } catch (parseErr) {
-                console.warn(`Failed to parse artifact ${artifact.id}:`, parseErr);
-                return {
+                allIdeas.push({
                     artifactId: artifact.id,
                     originalArtifactId: artifact.id,
-                    title: `想法 ${index + 1}`,
-                    body: '内容解析失败',
-                    index
-                };
+                    title: data.title || `想法 ${allIdeas.length + index + 1}`,
+                    body: data.body || '内容加载中...',
+                    artifactPath: '$', // Root path for individual artifacts
+                    index: allIdeas.length + index
+                });
+            } catch (parseErr) {
+                console.warn(`Failed to parse individual artifact ${artifact.id}:`, parseErr);
             }
         });
+
+        return allIdeas;
     }, [projectData]);
 }
 

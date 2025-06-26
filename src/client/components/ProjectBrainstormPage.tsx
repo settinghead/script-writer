@@ -70,6 +70,7 @@ export default function ProjectBrainstormPage() {
             body: data.body || '内容加载中...',
             artifactId: artifact.id,
             originalArtifactId: artifact.id, // Since these are already resolved to latest
+            artifactPath: '$', // Root path for individual artifacts
             index
           }
 
@@ -81,6 +82,7 @@ export default function ProjectBrainstormPage() {
             body: '内容解析失败',
             artifactId: artifact.id,
             originalArtifactId: artifact.id,
+            artifactPath: '$', // Root path for individual artifacts
             index
           }
         }

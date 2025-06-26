@@ -122,6 +122,20 @@ export function buildLineageGraph(
         } as PhaseOneArtifactNode);
     }
 
+    // Step 1.5: Handle JSONPath-aware transform inputs
+    for (const input of transformInputs) {
+        const artifactPath = (input as any).artifact_path || '$'; // NEW: Get artifact_path field
+
+        if (artifactPath !== '$') {
+            // Create path-specific lineage tracking for any sub-artifact operations
+            const pathKey = `${input.artifact_id}:${artifactPath}`;
+            if (!paths.has(pathKey)) {
+                paths.set(pathKey, []);
+            }
+        }
+        // If artifactPath === '$', it's operating on the whole artifact (existing behavior)
+    }
+
     // Step 2: Process all transforms in dependency order (Phase 1)
     // We need to process transforms in topological order to ensure depths are calculated correctly
     const processedTransforms = new Set<string>();
@@ -792,4 +806,112 @@ export function addLineageToArtifacts(
             isEditable: sourceTransform.transformType === 'human'
         };
     });
+}
+
+// ============================================================================
+// NEW: JSONPath-Based Artifact Resolution
+// ============================================================================
+
+/**
+ * Find the latest artifact for a specific JSONPath within a source artifact
+ */
+export function findLatestArtifactForPath(
+    sourceArtifactId: string,
+    artifactPath: string,
+    graph: LineageGraph
+): LineageResolutionResult {
+    // 1. Find all transforms that used this artifact + path as input
+    const pathKey = `${sourceArtifactId}:${artifactPath}`;
+    const pathLineage = graph.paths.get(pathKey);
+
+    if (pathLineage && pathLineage.length > 0) {
+        // 2. Follow lineage to find latest derived artifact
+        const latestTransform = pathLineage[pathLineage.length - 1];
+        if (latestTransform.type === 'transform') {
+            // Find the output artifact of this transform
+            const transformNode = latestTransform as LineageNodeTransform;
+            // For now, assume single output - could be enhanced for multiple outputs
+            const outputArtifactId = graph.edges.get(transformNode.transformId)?.[0];
+            if (outputArtifactId) {
+                return {
+                    artifactId: outputArtifactId,
+                    path: '$', // Output is typically a complete artifact
+                    depth: latestTransform.depth + 1,
+                    lineagePath: pathLineage
+                };
+            }
+        }
+    }
+
+    // 3. If no edits found, return original artifact + path
+    return {
+        artifactId: sourceArtifactId,
+        path: artifactPath,
+        depth: 0,
+        lineagePath: []
+    };
+}
+
+/**
+ * Generic function to get artifact data at a specific JSONPath
+ */
+export function getArtifactAtPath(
+    artifact: ElectricArtifact,
+    artifactPath: string
+): any | null {
+    if (artifactPath === '$') {
+        return JSON.parse(artifact.data);
+    }
+
+    try {
+        const data = JSON.parse(artifact.data);
+
+        // Handle $.ideas[n] pattern for brainstorm collections
+        const ideaMatch = artifactPath.match(/^\$\.ideas\[(\d+)\]$/);
+        if (ideaMatch) {
+            const index = parseInt(ideaMatch[1]);
+            if (data.ideas && Array.isArray(data.ideas) && data.ideas[index]) {
+                return {
+                    title: data.ideas[index].title,
+                    body: data.ideas[index].body
+                };
+            }
+            return null;
+        }
+
+        // Handle nested field paths like $.ideas[n].title, $.ideas[n].body
+        const nestedFieldMatch = artifactPath.match(/^\$\.ideas\[(\d+)\]\.([a-zA-Z_][a-zA-Z0-9_]*)$/);
+        if (nestedFieldMatch) {
+            const index = parseInt(nestedFieldMatch[1]);
+            const field = nestedFieldMatch[2];
+            if (data.ideas && Array.isArray(data.ideas) && data.ideas[index]) {
+                return data.ideas[index][field] || null;
+            }
+            return null;
+        }
+
+        // Handle simple field paths like $.title, $.body
+        const fieldMatch = artifactPath.match(/^\$\.([a-zA-Z_][a-zA-Z0-9_]*)$/);
+        if (fieldMatch) {
+            const field = fieldMatch[1];
+            return data[field] || null;
+        }
+
+        return null;
+    } catch (error) {
+        console.error('Error parsing artifact data:', error);
+        return null;
+    }
+}
+
+/**
+ * Get the latest version for a specific path within an artifact
+ */
+export function getLatestVersionForPath(
+    artifactId: string,
+    artifactPath: string,
+    graph: LineageGraph
+): string | null {
+    const result = findLatestArtifactForPath(artifactId, artifactPath, graph);
+    return result.artifactId === artifactId ? null : result.artifactId;
 } 

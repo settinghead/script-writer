@@ -46,12 +46,30 @@ export type BrainstormEditOutput = z.infer<typeof BrainstormEditOutputSchema>;
 
 // Transform registry
 export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinition> = {
+  // NEW: Collection-specific transforms
+  'edit_brainstorm_collection_idea': {
+    name: 'edit_brainstorm_collection_idea',
+    description: 'Edit individual idea within brainstorm collection',
+    sourceArtifactType: 'brainstorm_idea_collection',
+    targetArtifactType: 'brainstorm_idea',
+    pathPattern: '^\\$.ideas\\[\\d+\\]$', // JSONPath for ideas[n]
+    instantiationFunction: 'createBrainstormIdeaFromPath'
+  },
+  'edit_artifact_field': {
+    name: 'edit_artifact_field',
+    description: 'Generic field editing using JSONPath',
+    sourceArtifactType: '*', // Any artifact type
+    targetArtifactType: '*', // Flexible output type
+    pathPattern: '^\\$\\.[a-zA-Z_][a-zA-Z0-9_]*.*$', // Any valid JSONPath
+    instantiationFunction: 'createFieldEditFromPath'
+  },
+  // LEGACY: Keep existing transforms for backward compatibility
   'brainstorm_to_outline': {
     name: 'brainstorm_to_outline',
     description: 'Convert a brainstorm idea to outline input',
     sourceArtifactType: 'brainstorm_idea',
     targetArtifactType: 'outline_input',
-    pathPattern: '^$', // Empty path for entire artifact
+    pathPattern: '^$', // Root path for entire artifact
     instantiationFunction: 'createOutlineInputFromBrainstormIdea'
   },
   'edit_brainstorm_idea': {
@@ -59,7 +77,7 @@ export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinitio
     description: 'Edit entire brainstorm idea object',
     sourceArtifactType: 'brainstorm_idea',
     targetArtifactType: 'brainstorm_idea',
-    pathPattern: '^$', // Empty path for entire artifact
+    pathPattern: '^$', // Root path for entire artifact
     instantiationFunction: 'createBrainstormIdeaFromBrainstormIdea'
   },
   'edit_brainstorm_idea_field': {
@@ -72,8 +90,43 @@ export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinitio
   }
 };
 
+// Generic edit input schema for path-based editing
+export const GenericEditInputSchema = z.object({
+  sourceArtifactId: z.string().min(1, '源内容ID不能为空'),
+  artifactPath: z.string().min(1, '路径不能为空'),
+  editRequirements: z.string().min(1, '编辑要求不能为空'),
+  agentInstructions: z.string().optional()
+});
+
+export type GenericEditInput = z.infer<typeof GenericEditInputSchema>;
+
+// Generic edit output schema
+export const GenericEditOutputSchema = z.any(); // Flexible output type
+
+export type GenericEditOutput = z.infer<typeof GenericEditOutputSchema>;
+
 // LLM Transform registry
 export const LLM_TRANSFORM_DEFINITIONS: Record<string, LLMTransformDefinition> = {
+  // NEW: Collection-specific LLM transforms
+  'llm_edit_brainstorm_collection_idea': {
+    name: 'llm_edit_brainstorm_collection_idea',
+    description: 'AI editing of ideas within brainstorm collections',
+    inputTypes: ['brainstorm_idea_collection'],
+    outputType: 'brainstorm_idea',
+    templateName: 'brainstormEdit',
+    inputSchema: BrainstormEditInputSchema,
+    outputSchema: BrainstormEditOutputSchema
+  },
+  'llm_edit_artifact_path': {
+    name: 'llm_edit_artifact_path',
+    description: 'Generic AI editing using JSONPath',
+    inputTypes: ['*'], // Any artifact type
+    outputType: '*', // Flexible output type
+    templateName: 'genericEdit',
+    inputSchema: GenericEditInputSchema,
+    outputSchema: GenericEditOutputSchema
+  },
+  // LEGACY: Keep existing transforms for backward compatibility
   'llm_edit_brainstorm_idea': {
     name: 'llm_edit_brainstorm_idea',
     description: 'AI-powered editing of brainstorm ideas based on user requirements',

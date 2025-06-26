@@ -19,28 +19,28 @@ This refactor changes the brainstorm generation system from creating multiple in
 - **JSONPath-aware transforms**: Transform inputs include `artifact_path` field for sub-item operations
 - **Root path notation**: Use `$` to specify operations on the entire artifact
 
-## Phase 1: Database Schema Changes
+## Phase 1: Database Schema Changes ✅ COMPLETED
 
-### 1.1 Add Path Field to Transform Inputs
+### 1.1 Add Path Field to Transform Inputs ✅ COMPLETED
 ```sql
 -- Migration: Add artifact_path field to transform_inputs table
 ALTER TABLE transform_inputs ADD COLUMN artifact_path TEXT NOT NULL DEFAULT '$';
 ```
 
-### 1.2 Update Kysely Types
+### 1.2 Update Kysely Types ✅ COMPLETED
 ```typescript
 // src/server/database/types.ts
 export interface TransformInputs {
   artifact_id: string;
+  artifact_path: string; // NEW: JSONPath for sub-item operations, '$' = root, '[0]' = first item, etc.
   id: Generated<number>;
   input_role: string | null;
-  artifact_path: string; // NEW: JSONPath for sub-item operations, '$' = root, '[0]' = first item, etc.
   project_id: string;
   transform_id: string;
 }
 ```
 
-### 1.3 Add New Artifact Type
+### 1.3 Add New Artifact Type ✅ COMPLETED
 ```typescript
 // src/common/types.ts
 export interface BrainstormIdeaCollectionV1 {
@@ -58,9 +58,9 @@ export interface BrainstormIdeaCollectionV1 {
 }
 ```
 
-## Phase 2: Backend Transform System Changes
+## Phase 2: Backend Transform System Changes ✅ COMPLETED
 
-### 2.0 Add BrainstormIdeaCollection Types
+### 2.0 Add BrainstormIdeaCollection Types ✅ COMPLETED
 ```typescript
 // src/common/types.ts - Add to TypedArtifact union
 export type TypedArtifact =
@@ -83,7 +83,7 @@ export const ARTIFACT_SCHEMAS = {
 } as const;
 ```
 
-### 2.1 Update TransformRepository
+### 2.1 Update TransformRepository ✅ COMPLETED
 ```typescript
 // src/server/repositories/TransformRepository.ts
 async addTransformInputs(
@@ -106,7 +106,7 @@ async addTransformInputs(
 }
 ```
 
-### 2.2 Refactor BrainstormTool
+### 2.2 Refactor BrainstormTool ✅ COMPLETED
 ```typescript
 // src/server/tools/BrainstormTool.ts
 export function createBrainstormToolDefinition(/*...*/) {
@@ -157,7 +157,7 @@ export function createBrainstormToolDefinition(/*...*/) {
 }
 ```
 
-### 2.3 Update BrainstormEditTool
+### 2.3 Update BrainstormEditTool ✅ COMPLETED
 ```typescript
 // src/server/tools/BrainstormEditTool.ts
 export function createBrainstormEditToolDefinition(/*...*/) {
@@ -201,9 +201,9 @@ export function createBrainstormEditToolDefinition(/*...*/) {
 }
 ```
 
-## Phase 3: Lineage Resolution Updates
+## Phase 3: Lineage Resolution Updates ✅ COMPLETED
 
-### 3.1 Update Lineage Graph Building
+### 3.1 Update Lineage Graph Building ✅ COMPLETED
 ```typescript
 // src/common/utils/lineageResolution.ts
 export function buildLineageGraph(/*...*/) {
@@ -226,7 +226,7 @@ export function buildLineageGraph(/*...*/) {
 }
 ```
 
-### 3.2 Path-Based Artifact Resolution
+### 3.2 Path-Based Artifact Resolution ✅ COMPLETED
 ```typescript
 // src/common/utils/lineageResolution.ts
 export function findLatestArtifactForPath(
@@ -339,9 +339,9 @@ export const LLM_TRANSFORM_DEFINITIONS = {
 };
 ```
 
-## Phase 4: Frontend Changes
+## Phase 4: Frontend Changes ✅ COMPLETED
 
-### 4.1 Update Project Data Context
+### 4.1 Update Project Data Context ✅ COMPLETED
 ```typescript
 // src/client/contexts/ProjectDataContext.tsx
 export interface ProjectDataContextType {
@@ -354,7 +354,7 @@ export interface ProjectDataContextType {
 }
 ```
 
-### 4.2 Update DynamicBrainstormingResults
+### 4.2 Update DynamicBrainstormingResults ✅ COMPLETED
 ```typescript
 // src/client/components/DynamicBrainstormingResults.tsx
 function useLatestBrainstormIdeas(): IdeaWithTitle[] {

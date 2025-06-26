@@ -5,6 +5,11 @@ import {
   createBrainstormIdeaFromBrainstormIdea,
   createUserInputFromBrainstormField
 } from './transform-instantiations/brainstormTransforms';
+import {
+  createBrainstormIdeaFromPath,
+  createFieldEditFromPath,
+  createOutlineInputFromPath
+} from './transform-instantiations/pathTransforms';
 
 type InstantiationFunction = (
   sourceArtifactData: any,
@@ -19,6 +24,12 @@ export class TransformInstantiationRegistry {
   }
 
   private registerFunctions() {
+    // NEW: Path-based transform functions
+    this.functions.set('createBrainstormIdeaFromPath', createBrainstormIdeaFromPath);
+    this.functions.set('createFieldEditFromPath', createFieldEditFromPath);
+    this.functions.set('createOutlineInputFromPath', createOutlineInputFromPath);
+
+    // LEGACY: Keep existing functions for backward compatibility
     this.functions.set('createOutlineInputFromBrainstormIdea', createOutlineInputFromBrainstormIdea);
     this.functions.set('createUserInputFromBrainstormIdea', createUserInputFromBrainstormIdea);
     this.functions.set('createBrainstormIdeaFromBrainstormIdea', createBrainstormIdeaFromBrainstormIdea);

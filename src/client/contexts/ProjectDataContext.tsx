@@ -3,7 +3,14 @@ import { useShape } from '@electric-sql/react';
 import { useMutation, useQueryClient, UseMutationResult } from '@tanstack/react-query';
 import { createElectricConfig, isElectricDebugLoggingEnabled } from '../../common/config/electric';
 import { apiService } from '../services/apiService';
-import { buildLineageGraph, LineageGraph, addLineageToArtifacts } from '../../common/utils/lineageResolution';
+import {
+    buildLineageGraph,
+    LineageGraph,
+    addLineageToArtifacts,
+    findLatestArtifactForPath,
+    getArtifactAtPath,
+    getLatestVersionForPath
+} from '../../common/utils/lineageResolution';
 import type {
     ProjectDataContextType,
     ElectricArtifact,
@@ -328,6 +335,21 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
 
     // Memoized selectors
     const selectors = useMemo(() => ({
+        // NEW: Collection-aware selectors
+        getBrainstormCollections: () =>
+            artifacts?.filter(a => a.type === 'brainstorm_idea_collection') || [],
+
+        getArtifactAtPath: (artifactId: string, artifactPath: string) => {
+            const artifact = artifacts?.find(a => a.id === artifactId);
+            if (!artifact) return null;
+            return getArtifactAtPath(artifact, artifactPath);
+        },
+
+        getLatestVersionForPath: (artifactId: string, artifactPath: string) => {
+            return getLatestVersionForPath(artifactId, artifactPath, lineageGraph);
+        },
+
+        // LEGACY: Keep existing selectors for backward compatibility
         getBrainstormArtifacts: () =>
             artifacts?.filter(a => a.type === 'brainstorm_idea') || [],
 

@@ -24,21 +24,15 @@ import { UnifiedStreamingService } from './services/UnifiedStreamingService';
 import { db } from './database/connection';
 // New streaming framework imports
 import { TemplateService } from './services/templates/TemplateService';
-import { createIdeationRoutes } from './routes/ideations';
 import { BrainstormingJobParamsV1, OutlineJobParamsV1 } from './types/artifacts';
-// Import and mount outline routes
-import { createOutlineRoutes } from './routes/outlineRoutes';
 // Import LLM configuration
 import { getLLMCredentials } from './services/LLMConfig';
-import { createScriptRoutes } from './routes/scriptRoutes.js';
-import { createProjectRoutes } from './routes/projectRoutes.js';
 import { ProjectService } from './services/ProjectService.js';
 import { ProjectRepository } from './repositories/ProjectRepository.js';
 import { AgentService } from './services/AgentService.js';
 import { LLMService } from './services/LLMService';
 import { ChatMessageRepository } from './repositories/ChatMessageRepository';
 import { ChatService } from './services/ChatService';
-import { createChatRoutes } from './routes/chatRoutes';
 
 
 dotenv.config();
@@ -90,22 +84,21 @@ ViteExpress.bind(app, server);
 // Mount authentication routes
 app.use('/auth', createAuthRoutes(authDB, authMiddleware));
 
-// Mount Electric proxy routes (BEFORE other routes to avoid conflicts)
-import { createElectricProxyRoutes } from './routes/electricProxy';
-app.use('/api/electric', createElectricProxyRoutes(authDB));
-
-// Mount project routes
-app.use('/api/projects', createProjectRoutes(authMiddleware, projectService, agentService));
-
-// Mount ideation routes - now serving projects list
-app.use('/api/ideations', createIdeationRoutes(authMiddleware, artifactRepo, transformRepo));
-
-// Mount artifact routes
-import { createArtifactRoutes } from './routes/artifactRoutes';
-app.use('/api/artifacts', createArtifactRoutes(authMiddleware, artifactRepo, transformRepo));
-
-// Mount chat routes
-app.use('/api/chat', createChatRoutes(authMiddleware, chatService));
+// Mount all API routes
+import { createAPIRoutes } from './routes/apiRoutes';
+createAPIRoutes(
+  app,
+  authDB,
+  authMiddleware,
+  artifactRepo,
+  transformRepo,
+  projectRepo,
+  chatMessageRepo,
+  unifiedStreamingService,
+  projectService,
+  agentService,
+  chatService
+);
 
 // Attach authDB to all requests
 app.use(authMiddleware.attachAuthDB);
@@ -597,14 +590,7 @@ app.post("/api/artifacts/user-input",
 
 // ========== OUTLINE ENDPOINTS ==========
 
-app.use('/api', createOutlineRoutes(authMiddleware, unifiedStreamingService, artifactRepo, transformRepo));
-
-// Mount episode routes
-import { createEpisodeRoutes } from './routes/episodes.js';
-app.use('/api/episodes', createEpisodeRoutes(artifactRepo, transformRepo, authMiddleware));
-
-// Mount script routes
-app.use('/api/scripts', createScriptRoutes(artifactRepo, transformRepo, authMiddleware));
+// API routes are now handled by the centralized createAPIRoutes function above
 
 // Legacy streaming ideation routes removed as part of Electric Sync migration
 
@@ -741,282 +727,8 @@ app.delete("/api/scripts/:id", authMiddleware.authenticate, async (req: any, res
   }
 });
 
-// ========== ENHANCED DEBUG/ADMIN ENDPOINTS ==========
-
-// Replay a specific transform
-app.post("/api/debug/replay/transform/:id", authMiddleware.authenticate, async (req: any, res: any) => {
-  const { id } = req.params;
-  const user = authMiddleware.getCurrentUser(req);
-  if (!user) {
-    return res.status(401).json({ error: "User not authenticated" });
-  }
-
-  try {
-    const replayResult = await replayService.replayTransform(user.id, id);
-    res.json(replayResult);
-
-  } catch (error: any) {
-    console.error('Error replaying transform:', error);
-    res.status(500).json({
-      error: "Failed to replay transform",
-      details: error.message
-    });
-  }
-});
-
-// Replay an entire workflow
-app.post("/api/debug/replay/workflow/:artifactId", authMiddleware.authenticate, async (req: any, res: any) => {
-  const { artifactId } = req.params;
-  const user = authMiddleware.getCurrentUser(req);
-  if (!user) {
-    return res.status(401).json({ error: "User not authenticated" });
-  }
-
-  try {
-    const workflowResult = await replayService.replayWorkflow(user.id, artifactId);
-    res.json(workflowResult);
-
-  } catch (error: any) {
-    console.error('Error replaying workflow:', error);
-    res.status(500).json({
-      error: "Failed to replay workflow",
-      details: error.message
-    });
-  }
-});
-
-// Get transform execution statistics
-app.get("/api/debug/stats/transforms", authMiddleware.authenticate, async (req: any, res: any) => {
-  const user = authMiddleware.getCurrentUser(req);
-  if (!user) {
-    return res.status(401).json({ error: "User not authenticated" });
-  }
-
-  try {
-    const stats = await replayService.getTransformStats(user.id);
-    res.json(stats);
-
-  } catch (error: any) {
-    console.error('Error fetching transform stats:', error);
-    res.status(500).json({
-      error: "Failed to fetch transform stats",
-      details: error.message
-    });
-  }
-});
-
-// Get streaming service status
-app.get("/api/debug/streaming/status", authMiddleware.authenticate, async (req: any, res: any) => {
-  try {
-    res.json({
-      status: 'active',
-      message: 'Using database-backed streaming (no cache layer)',
-      timestamp: new Date().toISOString()
-    });
-
-  } catch (error: any) {
-    console.error('Error fetching streaming status:', error);
-    res.status(500).json({
-      error: "Failed to fetch streaming status",
-      details: error.message
-    });
-  }
-});
-
-// Advanced artifact search
-app.get("/api/debug/search/artifacts", authMiddleware.authenticate, async (req: any, res: any) => {
-  const user = authMiddleware.getCurrentUser(req);
-  if (!user) {
-    return res.status(401).json({ error: "User not authenticated" });
-  }
-
-  try {
-    const {
-      type,
-      type_version,
-      content_search,
-      date_from,
-      date_to,
-      limit = 50
-    } = req.query;
-
-    let artifacts = await artifactRepo.getUserArtifacts(user.id);
-
-    // Apply filters
-    if (type) {
-      artifacts = artifacts.filter(a => a.type === type);
-    }
-
-    if (type_version) {
-      artifacts = artifacts.filter(a => a.type_version === type_version);
-    }
-
-    if (content_search) {
-      const searchTerm = (content_search as string).toLowerCase();
-      artifacts = artifacts.filter(a =>
-        JSON.stringify(a.data).toLowerCase().includes(searchTerm)
-      );
-    }
-
-    if (date_from) {
-      const fromDate = new Date(date_from as string);
-      artifacts = artifacts.filter(a => new Date(a.created_at) >= fromDate);
-    }
-
-    if (date_to) {
-      const toDate = new Date(date_to as string);
-      artifacts = artifacts.filter(a => new Date(a.created_at) <= toDate);
-    }
-
-    // Limit results
-    artifacts = artifacts.slice(0, parseInt(limit as string));
-
-    res.json({
-      search_params: { type, type_version, content_search, date_from, date_to, limit },
-      total_found: artifacts.length,
-      artifacts: artifacts.map(artifact => ({
-        ...artifact,
-        data_preview: typeof artifact.data === 'object'
-          ? JSON.stringify(artifact.data).substring(0, 200) + '...'
-          : String(artifact.data).substring(0, 200) + '...'
-      }))
-    });
-
-  } catch (error: any) {
-    console.error('Error searching artifacts:', error);
-    res.status(500).json({
-      error: "Failed to search artifacts",
-      details: error.message
-    });
-  }
-});
-
-// Database health check
-app.get("/api/debug/health", authMiddleware.authenticate, async (req: any, res: any) => {
-  const user = authMiddleware.getCurrentUser(req);
-  if (!user) {
-    return res.status(401).json({ error: "User not authenticated" });
-  }
-
-  try {
-    // Test database connectivity
-    const artifacts = await artifactRepo.getUserArtifacts(user.id);
-    const transforms = await transformRepo.getUserTransforms(user.id);
-
-    // Basic health checks
-    const health = {
-      status: 'healthy',
-      timestamp: new Date().toISOString(),
-      database: {
-        connectivity: 'ok',
-        artifacts_accessible: artifacts.length >= 0,
-        transforms_accessible: transforms.length >= 0
-      },
-      streaming: {
-        status: 'ok',
-        type: 'database-backed'
-      },
-      user: {
-        id: user.id,
-        username: user.username
-      }
-    };
-
-    res.json(health);
-
-  } catch (error: any) {
-    console.error('Health check failed:', error);
-    res.status(500).json({
-      status: 'unhealthy',
-      timestamp: new Date().toISOString(),
-      error: error.message
-    });
-  }
-});
-
-// Performance metrics
-app.get("/api/debug/performance", authMiddleware.authenticate, async (req: any, res: any) => {
-  const user = authMiddleware.getCurrentUser(req);
-  if (!user) {
-    return res.status(401).json({ error: "User not authenticated" });
-  }
-
-  try {
-    const startTime = Date.now();
-
-    // Test various operations
-    const artifactFetchTime = Date.now();
-    await artifactRepo.getUserArtifacts(user.id);
-    const artifactTime = Date.now() - artifactFetchTime;
-
-    const transformFetchTime = Date.now();
-    await transformRepo.getUserTransforms(user.id);
-    const transformTime = Date.now() - transformFetchTime;
-
-    const streamingTestTime = Date.now();
-    // Test streaming service (no operations needed - it's database-backed)
-    const streamingTime = Date.now() - streamingTestTime;
-
-    const totalTime = Date.now() - startTime;
-
-    res.json({
-      timestamp: new Date().toISOString(),
-      total_response_time_ms: totalTime,
-      breakdown: {
-        artifact_fetch_ms: artifactTime,
-        transform_fetch_ms: transformTime,
-        streaming_test_ms: streamingTime
-      },
-      memory_usage: process.memoryUsage()
-    });
-
-  } catch (error: any) {
-    console.error('Performance test failed:', error);
-    res.status(500).json({
-      error: "Failed to run performance test",
-      details: error.message
-    });
-  }
-});
 
 // ========== JOB-BASED ENDPOINTS ==========
-
-// Create brainstorming job
-app.post("/api/projects/create-brainstorming-job",
-  authMiddleware.authenticate,
-  async (req: any, res: any) => {
-    const { platform, genrePaths, requirements } = req.body;
-
-    const user = authMiddleware.getCurrentUser(req);
-    if (!user) {
-      return res.status(401).json({ error: "User not authenticated" });
-    }
-
-    try {
-      const jobParams: BrainstormingJobParamsV1 = {
-        platform: platform || '通用短视频平台',
-        genrePaths: genrePaths || [],
-        requirements: requirements || '',
-        requestedAt: new Date().toISOString()
-      };
-
-      // Legacy brainstorming endpoint removed - use /api/brainstorm/start instead
-      return res.status(410).json({
-        error: "This endpoint has been deprecated",
-        message: "Use /api/brainstorm/start instead",
-        timestamp: new Date().toISOString()
-      });
-
-    } catch (error: any) {
-      console.error('Error in deprecated brainstorming endpoint:', error);
-      res.status(500).json({
-        error: "Endpoint deprecated",
-        details: "Use /api/brainstorm/start instead",
-        timestamp: new Date().toISOString()
-      });
-    }
-  }
-);
 
 // Legacy outline job endpoint - deprecated
 app.post("/api/outlines/create-job",

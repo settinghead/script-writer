@@ -8,7 +8,7 @@ import {
     BrainstormEditOutputSchema,
     BrainstormEditOutput
 } from '../../common/schemas/transforms';
-import { extractDataAtPath } from '../../common/utils/pathExtraction';
+import { extractDataAtPath } from '../services/transform-instantiations/pathTransforms';
 import { cleanLLMContent, robustJSONParse } from '../../common/utils/textCleaning';
 
 // Temporary type definition for Electric Sync migration - matches actual StreamingAgentFramework
@@ -78,7 +78,28 @@ export function createBrainstormEditToolDefinition(
                 let targetPlatform = 'unknown';
                 let storyGenre = 'unknown';
 
-                if (sourceArtifact.type === 'brainstorm_idea') {
+                if (sourceArtifact.type === 'brainstorm_idea_collection') {
+                    // NEW: Collection artifact - extract specific idea using JSONPath
+                    const ideaPath = `$.ideas[${params.ideaIndex}]`;
+
+                    try {
+                        const extractedIdea = extractDataAtPath(sourceData, ideaPath);
+                        if (!extractedIdea || !extractedIdea.title || !extractedIdea.body) {
+                            throw new Error(`Invalid idea at index ${params.ideaIndex} in collection`);
+                        }
+
+                        originalIdea = {
+                            title: extractedIdea.title,
+                            body: extractedIdea.body
+                        };
+
+                        // Get platform/genre from collection metadata
+                        targetPlatform = sourceData.platform || 'unknown';
+                        storyGenre = sourceData.genre || 'unknown';
+                    } catch (extractError) {
+                        throw new Error(`Failed to extract idea at index ${params.ideaIndex}: ${extractError instanceof Error ? extractError.message : String(extractError)}`);
+                    }
+                } else if (sourceArtifact.type === 'brainstorm_idea') {
                     // Direct brainstorm idea artifact
                     if (!sourceData.title || !sourceData.body) {
                         throw new Error('Invalid brainstorm idea artifact');
@@ -128,17 +149,22 @@ export function createBrainstormEditToolDefinition(
                 console.log(`[BrainstormEditTool] Original idea: ${originalIdea.title}`);
 
                 // 4. Create transform for this tool execution
-                const derivationPath = ""; // No path needed for individual artifacts
+                const artifactPath = sourceArtifact.type === 'brainstorm_idea_collection'
+                    ? `$.ideas[${params.ideaIndex}]`  // JSONPath for collection items
+                    : '$';  // Root path for individual artifacts
+
                 const transform = await transformRepo.createTransform(
                     projectId,
                     'llm',
                     'v1',
                     'running',
                     {
-                        transform_name: 'llm_edit_brainstorm_idea',
+                        transform_name: sourceArtifact.type === 'brainstorm_idea_collection'
+                            ? 'llm_edit_brainstorm_collection_idea'
+                            : 'llm_edit_brainstorm_idea',
                         source_artifact_id: params.sourceArtifactId,
                         idea_index: params.ideaIndex,
-                        derivation_path: derivationPath, // Add path for lineage resolution
+                        artifact_path: artifactPath, // JSONPath for lineage resolution
                         edit_requirements: params.editRequirements,
                         agent_instructions: params.agentInstructions || '',
                         original_idea: originalIdea
@@ -146,9 +172,13 @@ export function createBrainstormEditToolDefinition(
                 );
                 toolTransformId = transform.id;
 
-                // 5. Link input artifact
+                // 5. Link input artifact with JSONPath
                 await transformRepo.addTransformInputs(toolTransformId, [
-                    { artifactId: params.sourceArtifactId, inputRole: 'source_idea' }
+                    {
+                        artifactId: params.sourceArtifactId,
+                        inputRole: 'source_collection',
+                        artifactPath: artifactPath // NEW: Specify which part of artifact using JSONPath
+                    }
                 ], projectId);
 
                 // 6. Prepare template variables

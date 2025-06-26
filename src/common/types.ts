@@ -54,6 +54,21 @@ export interface BrainstormIdeaV1 {
     confidence_score?: number;
 }
 
+// Brainstorm idea collection (NEW: single artifact containing multiple ideas)
+export interface BrainstormIdeaCollectionV1 {
+    ideas: Array<{
+        title: string;
+        body: string;
+        metadata?: {
+            ideaIndex: number;
+            confidence_score?: number;
+        };
+    }>;
+    platform: string;
+    genre: string;
+    total_ideas: number;
+}
+
 // Idea interface used throughout the application
 export interface IdeaWithTitle {
     title: string;
@@ -216,6 +231,7 @@ export interface OutlineCharactersV1 {
 
 // Discriminated union for strongly typed artifacts
 export type TypedArtifact =
+    | ArtifactWithData<'brainstorm_idea_collection', 'v1', BrainstormIdeaCollectionV1>
     | ArtifactWithData<'brainstorm_idea', 'v1', BrainstormIdeaV1>
     | ArtifactWithData<'user_input', 'v1', UserInputV1>
     | ArtifactWithData<'brainstorm_params', 'v1', BrainstormParamsV1>
@@ -498,6 +514,12 @@ export interface ProjectDataContextType {
     error: Error | null;
 
     // Selectors (memoized)
+    // NEW: Collection-aware selectors
+    getBrainstormCollections: () => ElectricArtifact[];
+    getArtifactAtPath: (artifactId: string, artifactPath: string) => any | null;
+    getLatestVersionForPath: (artifactId: string, artifactPath: string) => string | null;
+
+    // LEGACY: Keep existing selectors for backward compatibility
     getBrainstormArtifacts: () => ElectricArtifact[];
     getLineageGraph: () => LineageGraph;
     getOutlineArtifacts: () => ElectricArtifact[];
