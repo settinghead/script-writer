@@ -31,8 +31,8 @@ The application features a sophisticated **dual-mode agent system** that handles
 #### Agent Tools & Capabilities
 - ✅ **Brainstorm Generation Tool** - Creates new story ideas based on user requirements
 - ✅ **Brainstorm Edit Tool** - AI-powered editing of existing ideas through natural language instructions
-- ⚠️ **Outline Tool** - Legacy implementation, needs agent integration update
-- ⚠️ **Script Tool** - Legacy implementation, needs agent integration update
+- ⚠️ **Outline Tool** - Legacy SSE-based implementation, needs Electric SQL migration
+- ⚠️ **Episode Script Tool** - Legacy SSE-based implementation, needs Electric SQL migration
 - ✅ **Conversational Response** - General purpose chat responses with project context
 
 #### AI-Powered Content Editing System
@@ -195,9 +195,7 @@ Original Collection (brainstorm_idea[])
 ### 👥 Collaboration & Project Management
 - **Project-based workflow** - Organize work into projects with episodes and scripts
 - **Multi-user project collaboration** with role-based access control
-- **Real-time collaborative editing** using Yjs
-- **WebSocket-based synchronization**
-- **Multi-user cursor tracking**
+- **Real-time data synchronization** using Electric SQL
 - **Project phase tracking** - From ideation through episode generation to script completion
 
 ### 🎨 User Interface
@@ -651,8 +649,7 @@ Electric SQL provides real-time database synchronization with **authenticated pr
 - **Electric SQL** for real-time database synchronization with authenticated proxy
 - **Schema Transform Executor** for validated transform execution
 - **Transform Instantiation Registry** for extensible transform definitions
-- **Server-Sent Events** for real-time streaming updates
-- **Yjs WebSocket server** for real-time collaboration
+- **Legacy SSE endpoints** for outline and episode script generation (pending migration)
 
 ### Frontend State Management
 
@@ -709,8 +706,8 @@ const editMutation = useMutation({
 - **Agent Tools**: 
   - ✅ Brainstorm Generation (creates new story ideas)
   - ✅ Brainstorm Editing (AI-powered modification of existing ideas)
-  - ⚠️ Outline Generation (legacy, needs agent integration)
-  - ⚠️ Script Generation (legacy, needs agent integration)
+  - ⚠️ Outline Generation (legacy SSE-based, needs Electric SQL migration)
+  - ⚠️ Episode Script Generation (legacy SSE-based, needs Electric SQL migration)
   - ✅ Conversational Response (general chat with project context)
 
 ### Project Management (All Require Authentication)
@@ -725,8 +722,9 @@ const editMutation = useMutation({
 - **Synced Tables**: `artifacts`, `transforms`, `chat_messages_display`, `chat_events`
 - **Blocked Tables**: `chat_messages_raw` (backend only for security)
 
-### Real-time Collaboration
-- `WebSocket /yjs?room={roomId}` - Join collaborative editing session (authenticated)
+### Legacy SSE Endpoints (Pending Migration)
+- `GET /api/outlines/stream` - Server-sent events for outline generation (requires Electric SQL migration)
+- `GET /api/episodes/stream` - Server-sent events for episode script generation (requires Electric SQL migration)
 
 ## Security Features
 
@@ -822,16 +820,18 @@ src/
     │   └── migrations/    # Database migrations
     ├── routes/            # API routes
     │   ├── artifactRoutes.ts # Schema transform API
-    │   ├── brainstormRoutes.ts # Brainstorming endpoints (legacy)
     │   ├── chatRoutes.ts  # Chat and agent endpoints
     │   ├── electricProxy.ts # Electric SQL authenticated proxy
+    │   ├── outlineRoutes.ts # Legacy SSE-based outline generation
+    │   ├── episodes.ts    # Legacy SSE-based episode script generation
     │   └── auth.ts        # Authentication routes
     ├── services/          # Business logic
     │   ├── AgentService.ts                   # Central agent orchestrator
     │   ├── ChatService.ts                    # Chat message routing and processing
     │   ├── HumanTransformExecutor.ts         # Core transform execution
     │   ├── TransformInstantiationRegistry.ts # Transform registry
-    │   ├── StreamingAgentFramework.ts        # Agent framework foundation
+    │   ├── OutlineService.ts                 # Legacy SSE-based outline service
+    │   ├── EpisodeGenerationService.ts       # Legacy SSE-based episode service
     │   └── templates/     # LLM prompt templates
     ├── repositories/      # Data access layer
     │   ├── ArtifactRepository.ts # Artifact CRUD operations
@@ -845,7 +845,7 @@ src/
 ```
 
 ### Available Scripts
-- `npm run dev` - Start development server
+- `npm run dev` - Start development server (includes legacy SSE endpoints)
 - `npm run build` - Build for production
 - `npm run start` - Start production server
 - `npm run migrate` - Run database migrations
@@ -892,6 +892,10 @@ curl http://localhost:3000
 # Test authenticated Electric proxy
 curl -H "Authorization: Bearer debug-auth-token-script-writer-dev" \
   "http://localhost:4600/api/electric/v1/shape?table=artifacts&offset=-1"
+
+# Note: Legacy SSE endpoints still available during migration:
+# /api/outlines/stream - Outline generation
+# /api/episodes/stream - Episode script generation
 ```
 
 ## Schema Transform System Deep Dive
@@ -969,7 +973,18 @@ export const BRAINSTORM_EDIT_TEMPLATE = `
 
 ## Recent Major Changes
 
-### Entity-Specific Mutation State System ✅ COMPLETED (Latest)
+### Electric SQL Migration Status
+
+**✅ COMPLETED**: Brainstorm system fully migrated to Electric SQL with real-time synchronization
+**⚠️ PENDING**: Outline and Episode Script generation still use legacy SSE architecture
+
+**Migration Requirements for Remaining Systems**:
+- **Outline Generation** - Migrate from SSE streaming to Electric SQL real-time updates
+- **Episode Script Generation** - Migrate from SSE streaming to Electric SQL real-time updates  
+- **Agent Integration** - Integrate outline/episode tools with the agent framework
+- **UI Updates** - Update frontend components to use Electric SQL subscriptions instead of SSE
+
+### Entity-Specific Mutation State System ✅ COMPLETED
 
 **Major Achievement**: Implemented a sophisticated entity-specific mutation state management system that completely isolates save states between different artifact editors, eliminating visual interference and providing optimal user experience during concurrent editing operations.
 
@@ -1090,9 +1105,9 @@ export const BRAINSTORM_EDIT_TEMPLATE = `
 - **Quality Consistency** - Maintains 去脸谱化 principles and platform requirements across all operations
 
 **Current Implementation Status**:
-- ✅ **Brainstorm System** - Complete dual-mode implementation with generation and editing capabilities
-- ⚠️ **Outline System** - Legacy direct-call implementation, requires agent integration
-- ⚠️ **Script System** - Legacy direct-call implementation, requires agent integration
+- ✅ **Brainstorm System** - Complete dual-mode implementation with generation and editing capabilities using Electric SQL
+- ⚠️ **Outline System** - Legacy SSE-based implementation, requires Electric SQL migration and agent integration
+- ⚠️ **Episode Script System** - Legacy SSE-based implementation, requires Electric SQL migration and agent integration
 
 ### Individual Artifact Breakdown Architecture
 
@@ -1109,12 +1124,13 @@ export const BRAINSTORM_EDIT_TEMPLATE = `
 - **Collaboration Support** - Multiple users can edit different ideas simultaneously
 - **Version Management** - Independent versioning for each story idea
 
-### PostgreSQL + Electric SQL Migration ✅ COMPLETED
+### PostgreSQL + Electric SQL Migration ✅ PARTIALLY COMPLETED
 - **Complete database migration** from SQLite to PostgreSQL with logical replication
 - **Electric SQL integration** for real-time synchronization with authenticated proxy pattern
 - **Kysely adoption** for type-safe database operations with auto-generated types
-- **Streaming artifact support** with unified `data` field and `streaming_status` for real-time updates
+- **Brainstorm system migration** - Fully migrated to Electric SQL real-time updates
 - **User data isolation** enforced at proxy level with automatic WHERE clause injection
+- **⚠️ Pending migration**: Outline and Episode Script generation still use legacy SSE endpoints
 
 ### Enhanced User Experience & Security
 - **ChatGPT-style interface** - Natural conversation flow with agent for all operations
