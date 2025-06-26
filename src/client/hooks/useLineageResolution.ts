@@ -8,6 +8,7 @@ import {
     type LineageResolutionResult,
     type EffectiveBrainstormIdea
 } from '../../common/utils/lineageResolution';
+import { IdeaWithTitle } from '../types/brainstorm';
 
 interface UseLineageResolutionOptions {
     enabled: boolean; // Caller must explicitly specify if enabled
@@ -188,4 +189,54 @@ export function useEffectiveBrainstormIdeas(): {
         isLoading: projectData.isLoading,
         error: projectData.error || error
     };
+}/**
+ * Hook to get effective brainstorm ideas using principled lineage graph traversal
+ */
+export function useLatestBrainstormIdeas(): IdeaWithTitle[] {
+    const { ideas, isLoading, error } = useEffectiveBrainstormIdeas();
+    const projectData = useProjectData();
+
+    return useMemo(() => {
+        if (isLoading || error) {
+            return [];
+        }
+
+        // Convert EffectiveBrainstormIdea[] to IdeaWithTitle[]
+        return ideas.map((effectiveIdea): IdeaWithTitle => {
+            // Get the actual data for this idea
+            let title = '';
+            let body = '';
+
+            const artifact = projectData.getArtifactById(effectiveIdea.artifactId);
+            if (artifact) {
+                try {
+                    if (effectiveIdea.artifactPath === '$') {
+                        // Standalone artifact - use full data
+                        const data = JSON.parse(artifact.data);
+                        title = data.title || '';
+                        body = data.body || '';
+                    } else {
+                        // Collection artifact - extract specific idea
+                        const data = JSON.parse(artifact.data);
+                        if (data.ideas && Array.isArray(data.ideas) && data.ideas[effectiveIdea.index]) {
+                            title = data.ideas[effectiveIdea.index].title || '';
+                            body = data.ideas[effectiveIdea.index].body || '';
+                        }
+                    }
+                } catch (parseError) {
+                    console.error(`Error parsing artifact data for ${effectiveIdea.artifactId}:`, parseError);
+                }
+            }
+
+            return {
+                title,
+                body,
+                artifactId: effectiveIdea.artifactId,
+                originalArtifactId: effectiveIdea.originalArtifactId,
+                artifactPath: effectiveIdea.artifactPath,
+                index: effectiveIdea.index
+            };
+        });
+    }, [ideas, isLoading, error, projectData.getArtifactById]);
 }
+

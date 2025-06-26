@@ -1,15 +1,13 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react'
+import React, { useState, useCallback, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Space, Button, Typography, Spin, Empty, Card, Tag, Alert } from 'antd';
 import { StopOutlined, ReloadOutlined, EyeOutlined, CheckOutlined, FileTextOutlined } from '@ant-design/icons';
 import { IdeaWithTitle } from '../types/brainstorm'
 import { ReasoningIndicator } from './shared/ReasoningIndicator'
-import { ThinkingIndicator } from './shared/ThinkingIndicator';
 import { useProjectData } from '../contexts/ProjectDataContext'
-import { useEffectiveBrainstormIdeas } from '../hooks/useLineageResolution';
+import { useLatestBrainstormIdeas } from '../hooks/useLineageResolution';
 import { ArtifactEditor } from './shared/ArtifactEditor';
 import { BRAINSTORM_IDEA_FIELDS } from './shared/fieldConfigs';
-import { ReasoningEvent } from '../../common/streaming/types';
 
 const { Text } = Typography;
 
@@ -261,57 +259,6 @@ const BrainstormIdeaCard: React.FC<{
     </Card>
   );
 };
-
-/**
- * Hook to get effective brainstorm ideas using principled lineage graph traversal
- */
-function useLatestBrainstormIdeas(): IdeaWithTitle[] {
-  const { ideas, isLoading, error } = useEffectiveBrainstormIdeas();
-  const projectData = useProjectData();
-
-  return useMemo(() => {
-    if (isLoading || error) {
-      return [];
-    }
-
-    // Convert EffectiveBrainstormIdea[] to IdeaWithTitle[]
-    return ideas.map((effectiveIdea): IdeaWithTitle => {
-      // Get the actual data for this idea
-      let title = '';
-      let body = '';
-
-      const artifact = projectData.getArtifactById(effectiveIdea.artifactId);
-      if (artifact) {
-        try {
-          if (effectiveIdea.artifactPath === '$') {
-            // Standalone artifact - use full data
-            const data = JSON.parse(artifact.data);
-            title = data.title || '';
-            body = data.body || '';
-          } else {
-            // Collection artifact - extract specific idea
-            const data = JSON.parse(artifact.data);
-            if (data.ideas && Array.isArray(data.ideas) && data.ideas[effectiveIdea.index]) {
-              title = data.ideas[effectiveIdea.index].title || '';
-              body = data.ideas[effectiveIdea.index].body || '';
-            }
-          }
-        } catch (parseError) {
-          console.error(`Error parsing artifact data for ${effectiveIdea.artifactId}:`, parseError);
-        }
-      }
-
-      return {
-        title,
-        body,
-        artifactId: effectiveIdea.artifactId,
-        originalArtifactId: effectiveIdea.originalArtifactId,
-        artifactPath: effectiveIdea.artifactPath,
-        index: effectiveIdea.index
-      };
-    });
-  }, [ideas, isLoading, error, projectData.getArtifactById]);
-}
 
 export default function ProjectBrainstormPage() {
   const { projectId } = useParams<{ projectId: string }>()
