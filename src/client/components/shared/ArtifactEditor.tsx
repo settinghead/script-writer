@@ -30,8 +30,12 @@ interface ArtifactFragment {
     artifactId: string;
     data: any;
     isEditable: boolean;
-    type: string;
+    schema_type: string;
+    origin_type: 'ai_generated' | 'user_input';
     path?: string;
+
+    // DEPRECATED: Keep for backward compatibility during refactor
+    type: string;
 }
 
 // Sub-component for read-only display with click-to-edit
@@ -160,9 +164,9 @@ const EditableView: React.FC<EditableViewProps> = ({
 
         const updatedData = { ...fragment.data, [field]: value };
 
-        // Prepare request based on artifact type
+        // Prepare request based on origin type
         let requestData;
-        if (fragment.type === 'user_input') {
+        if (fragment.origin_type === 'user_input') {
             requestData = { text: JSON.stringify(updatedData) };
         } else {
             requestData = updatedData;
@@ -293,9 +297,13 @@ const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
         return {
             artifactId: targetArtifact.id,
             data: extractedData,
-            isEditable: targetArtifact.type === 'user_input',
-            type: targetArtifact.type,
-            path
+            isEditable: targetArtifact.origin_type === 'user_input',
+            schema_type: targetArtifact.schema_type,
+            origin_type: targetArtifact.origin_type,
+            path,
+
+            // DEPRECATED: Keep for backward compatibility during refactor  
+            type: (targetArtifact.type || targetArtifact.schema_type) as string
         };
     }, [artifactId, sourceArtifactId, path, projectData]);
 

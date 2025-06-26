@@ -366,7 +366,7 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
     const selectors = useMemo(() => ({
         // NEW: Collection-aware selectors
         getBrainstormCollections: () =>
-            artifacts?.filter(a => a.type === 'brainstorm_idea_collection') || [],
+            artifacts?.filter(a => a.schema_type === 'brainstorm_collection_schema' || a.type === 'brainstorm_idea_collection') || [],
 
         getArtifactAtPath: (artifactId: string, artifactPath: string) => {
             const artifact = artifacts?.find(a => a.id === artifactId);
@@ -380,12 +380,15 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
 
         // LEGACY: Keep existing selectors for backward compatibility
         getBrainstormArtifacts: () =>
-            artifacts?.filter(a => a.type === 'brainstorm_idea') || [],
+            artifacts?.filter(a => a.schema_type === 'brainstorm_idea_schema' || a.type === 'brainstorm_idea') || [],
 
         getLineageGraph: () => lineageGraph,
 
         getOutlineArtifacts: () =>
-            artifacts?.filter(a => a.type === 'outline_input' || a.type === 'outline_response') || [],
+            artifacts?.filter(a =>
+                a.schema_type === 'outline_input_schema' || a.schema_type === 'outline_response_schema' ||
+                a.type === 'outline_input' || a.type === 'outline_response'
+            ) || [],
 
         getArtifactById: (id: string) => {
             // Check local updates first, then Electric data

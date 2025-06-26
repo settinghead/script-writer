@@ -123,7 +123,7 @@ export class TransformExecutor {
             const outputArtifacts: Artifact[] = [];
 
             if (outputArtifactType === 'brainstorm_idea' && Array.isArray(parsedData)) {
-                // Create multiple idea artifacts
+                // Create multiple idea artifacts - these are AI generated
                 for (let i = 0; i < parsedData.length; i++) {
                     const ideaArtifact = await this.artifactRepo.createArtifact(
                         userId,
@@ -133,7 +133,10 @@ export class TransformExecutor {
                             order_index: i,
                             confidence_score: null
                         },
-                        outputArtifactTypeVersion
+                        outputArtifactTypeVersion,
+                        undefined, // metadata
+                        'completed', // streamingStatus
+                        'ai_generated' // originType - explicitly set for LLM outputs
                     );
                     outputArtifacts.push(ideaArtifact);
                 }
@@ -172,7 +175,10 @@ export class TransformExecutor {
                     userId,
                     'outline_title',
                     { title: safeTrim(parsedData.title) },
-                    'v1'
+                    'v1',
+                    undefined, // metadata
+                    'completed', // streamingStatus
+                    'ai_generated' // originType - LLM generated outline components
                 );
                 outputArtifacts.push(titleArtifact);
 
@@ -180,7 +186,10 @@ export class TransformExecutor {
                     userId,
                     'outline_genre',
                     { genre: safeTrim(parsedData.genre) },
-                    'v1'
+                    'v1',
+                    undefined, // metadata
+                    'completed', // streamingStatus
+                    'ai_generated' // originType - LLM generated outline components
                 );
                 outputArtifacts.push(genreArtifact);
 
@@ -190,7 +199,10 @@ export class TransformExecutor {
                     userId,
                     'outline_selling_points',
                     { selling_points: safeTrim(parsedData.selling_points) }, // safeTrim joins array elements
-                    'v1'
+                    'v1',
+                    undefined, // metadata
+                    'completed', // streamingStatus
+                    'ai_generated' // originType - LLM generated outline components
                 );
                 outputArtifacts.push(sellingPointsArtifact);
 
@@ -213,7 +225,10 @@ export class TransformExecutor {
                     userId,
                     'outline_setting',
                     { setting: settingString },
-                    'v1'
+                    'v1',
+                    undefined, // metadata
+                    'completed', // streamingStatus
+                    'ai_generated' // originType - LLM generated outline components
                 );
                 outputArtifacts.push(settingArtifact);
 
@@ -237,7 +252,10 @@ export class TransformExecutor {
                     userId,
                     'outline_synopsis',
                     { synopsis: synopsisString },
-                    'v1'
+                    'v1',
+                    undefined, // metadata
+                    'completed', // streamingStatus
+                    'ai_generated' // originType - LLM generated outline components
                 );
                 outputArtifacts.push(synopsisArtifact);
 
@@ -247,18 +265,24 @@ export class TransformExecutor {
                         userId,
                         'outline_characters', // New artifact type
                         { characters: parsedData.main_characters }, // Data conforms to OutlineCharactersV1
-                        'v1'
+                        'v1',
+                        undefined, // metadata
+                        'completed', // streamingStatus
+                        'ai_generated' // originType - LLM generated outline components
                     );
                     outputArtifacts.push(charactersArtifact);
                 }
 
             } else {
-                // Create single output artifact
+                // Create single output artifact - AI generated
                 const outputArtifact = await this.artifactRepo.createArtifact(
                     userId,
                     outputArtifactType,
                     parsedData,
-                    outputArtifactTypeVersion
+                    outputArtifactTypeVersion,
+                    undefined, // metadata
+                    'completed', // streamingStatus
+                    'ai_generated' // originType - LLM generated artifacts
                 );
                 outputArtifacts.push(outputArtifact);
             }
@@ -479,7 +503,10 @@ export class TransformExecutor {
                                     order_index: i,
                                     confidence_score: null
                                 },
-                                outputArtifactTypeVersion
+                                outputArtifactTypeVersion,
+                                undefined, // metadata
+                                'completed', // streamingStatus
+                                'ai_generated' // originType - streaming LLM generated
                             );
                             outputArtifacts.push(ideaArtifact);
                         }
@@ -488,7 +515,10 @@ export class TransformExecutor {
                             userId,
                             'plot_outline',
                             parsedData,
-                            outputArtifactTypeVersion
+                            outputArtifactTypeVersion,
+                            undefined, // metadata
+                            'completed', // streamingStatus
+                            'ai_generated' // originType - streaming LLM generated
                         );
                         outputArtifacts.push(plotArtifact);
                     } else if (outputArtifactType === 'outline_components') {
@@ -512,17 +542,20 @@ export class TransformExecutor {
 
                         // Create individual component artifacts
                         const titleArtifact = await this.artifactRepo.createArtifact(
-                            userId, 'outline_title', { title: safeTrim(parsedData.title) }, 'v1'
+                            userId, 'outline_title', { title: safeTrim(parsedData.title) }, 'v1',
+                            undefined, 'completed', 'ai_generated'
                         );
                         outputArtifacts.push(titleArtifact);
 
                         const genreArtifact = await this.artifactRepo.createArtifact(
-                            userId, 'outline_genre', { genre: safeTrim(parsedData.genre) }, 'v1'
+                            userId, 'outline_genre', { genre: safeTrim(parsedData.genre) }, 'v1',
+                            undefined, 'completed', 'ai_generated'
                         );
                         outputArtifacts.push(genreArtifact);
 
                         const sellingPointsArtifact = await this.artifactRepo.createArtifact(
-                            userId, 'outline_selling_points', { selling_points: safeTrim(parsedData.selling_points) }, 'v1'
+                            userId, 'outline_selling_points', { selling_points: safeTrim(parsedData.selling_points) }, 'v1',
+                            undefined, 'completed', 'ai_generated'
                         );
                         outputArtifacts.push(sellingPointsArtifact);
 
@@ -541,19 +574,22 @@ export class TransformExecutor {
                             settingString = safeTrim(parsedData.setting);
                         }
                         const settingArtifact = await this.artifactRepo.createArtifact(
-                            userId, 'outline_setting', { setting: settingString }, 'v1'
+                            userId, 'outline_setting', { setting: settingString }, 'v1',
+                            undefined, 'completed', 'ai_generated'
                         );
                         outputArtifacts.push(settingArtifact);
 
                         const synopsisArtifact = await this.artifactRepo.createArtifact(
-                            userId, 'outline_synopsis', { synopsis: safeTrim(parsedData.synopsis) }, 'v1'
+                            userId, 'outline_synopsis', { synopsis: safeTrim(parsedData.synopsis) }, 'v1',
+                            undefined, 'completed', 'ai_generated'
                         );
                         outputArtifacts.push(synopsisArtifact);
 
                         // Characters if available
                         if (parsedData.main_characters && Array.isArray(parsedData.main_characters)) {
                             const charactersArtifact = await this.artifactRepo.createArtifact(
-                                userId, 'outline_characters', { characters: parsedData.main_characters }, 'v1'
+                                userId, 'outline_characters', { characters: parsedData.main_characters }, 'v1',
+                                undefined, 'completed', 'ai_generated'
                             );
                             outputArtifacts.push(charactersArtifact);
                         }
@@ -563,7 +599,10 @@ export class TransformExecutor {
                             userId,
                             outputArtifactType,
                             parsedData,
-                            outputArtifactTypeVersion
+                            outputArtifactTypeVersion,
+                            undefined, // metadata
+                            'completed', // streamingStatus
+                            'ai_generated' // originType - streaming LLM generated
                         );
                         outputArtifacts.push(outputArtifact);
                     }
@@ -782,7 +821,7 @@ export class TransformExecutor {
             }
         );
 
-        // Create derived user_input artifact
+        // Create derived user_input artifact - human created/edited
         const derivedArtifact = await this.artifactRepo.createArtifact(
             projectId,
             'user_input',
@@ -793,7 +832,9 @@ export class TransformExecutor {
                 original_artifact_id: sourceArtifactId,
                 derivation_path: derivationPath,
                 derived_data: newData  // Store the actual derived data in metadata
-            }
+            },
+            'completed', // streamingStatus
+            'user_input' // originType - human edited/created artifacts
         );
 
         // Link transform

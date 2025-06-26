@@ -10,12 +10,12 @@ import {
 } from '../../common/utils/lineageResolution';
 
 interface UseLineageResolutionOptions {
-    enabled?: boolean; // Allow disabling the hook
+    enabled: boolean; // Caller must explicitly specify if enabled
 }
 
 interface UseLineageResolutionResult {
     latestArtifactId: string | null;
-    resolvedPath?: string;
+    resolvedPath: string;
     lineagePath: LineageNode[];
     depth: number;
     isLoading: boolean;
@@ -29,13 +29,13 @@ interface UseLineageResolutionResult {
  * Hook to resolve the latest artifact in a lineage chain
  * 
  * @param sourceArtifactId - The original artifact ID to start resolution from
- * @param path - Optional path for brainstorm ideas (e.g., "[0]", "[1]")
- * @param options - Configuration options
+ * @param path - Path for brainstorm ideas (e.g., "[0]", "[1]", "$")
+ * @param options - Configuration options (must be provided)
  * @returns Lineage resolution result with latest artifact ID
  */
 export function useLineageResolution(
-    { sourceArtifactId, path, options = {} }: { sourceArtifactId: string | null; path?: string; options?: UseLineageResolutionOptions; }): UseLineageResolutionResult {
-    const { enabled = true } = options;
+    { sourceArtifactId, path, options }: { sourceArtifactId: string | null; path: string; options: UseLineageResolutionOptions; }): UseLineageResolutionResult {
+    const { enabled } = options;
     const projectData = useProjectData();
 
     const [error, setError] = useState<Error | null>(null);
@@ -104,7 +104,7 @@ export function useLineageResolution(
 
     return {
         latestArtifactId,
-        resolvedPath: lineageResult.path,
+        resolvedPath: lineageResult.path || path,  // Use the resolved path or fallback to input path
         lineagePath: lineageResult.lineagePath,
         depth: lineageResult.depth,
         isLoading,
@@ -121,9 +121,9 @@ export function useLineageResolution(
 export function useMultipleLineageResolution(
     sourceArtifactId: string | null,
     paths: string[],
-    options: UseLineageResolutionOptions = {}
+    options: UseLineageResolutionOptions
 ): Record<string, UseLineageResolutionResult> {
-    const { enabled = true } = options;
+    const { enabled } = options;
 
     // Use individual hooks for each path
     const results: Record<string, UseLineageResolutionResult> = {};

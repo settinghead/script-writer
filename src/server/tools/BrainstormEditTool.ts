@@ -255,7 +255,9 @@ export function createBrainstormEditToolDefinition(
                         original_idea: originalIdea,
                         platform: targetPlatform,
                         genre: storyGenre
-                    }
+                    }, // metadata
+                    'completed', // streamingStatus
+                    'ai_generated' // originType - AI-generated edited brainstorm idea
                 );
 
                 // 13. Link output artifact

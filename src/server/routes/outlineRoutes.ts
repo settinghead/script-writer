@@ -145,7 +145,15 @@ export function createOutlineRoutes(
 
             // Create specific edit artifact type
             const artifactType = `${componentType}_edit`;
-            const newArtifact = await artifactRepo.createArtifact(userId, artifactType, artifactData);
+            const newArtifact = await artifactRepo.createArtifact(
+                userId,
+                artifactType,
+                artifactData,
+                'v1', // typeVersion
+                undefined, // metadata
+                'completed', // streamingStatus
+                'user_input' // originType - user edited content
+            );
 
             // Find the original component artifact for this session
             const outlineService = new OutlineService(artifactRepo, transformRepo, unifiedStreamingService);

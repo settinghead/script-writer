@@ -467,7 +467,11 @@ export class OutlineService {
             const jobParamsArtifact = await this.artifactRepo.createArtifact(
                 userId,
                 'outline_job_params',
-                jobParams
+                jobParams,
+                'v1', // typeVersion
+                undefined, // metadata
+                'completed', // streamingStatus
+                'ai_generated' // originType - system generated parameters
             );
 
             // Create transform for outline generation

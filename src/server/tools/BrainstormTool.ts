@@ -57,7 +57,9 @@ export function createBrainstormToolDefinition(
                     'brainstorm_tool_input',
                     params,
                     'v1',
-                    {}
+                    {}, // metadata
+                    'completed', // streamingStatus
+                    'user_input' // originType - tool input is user-provided data
                 );
                 await transformRepo.addTransformInputs(toolTransformId, [
                     { artifactId: inputArtifact.id, inputRole: 'tool_input' }
@@ -80,7 +82,9 @@ export function createBrainstormToolDefinition(
                         startedAt: new Date().toISOString(),
                         platform: params.platform,
                         genre: params.genre
-                    }
+                    }, // metadata
+                    'streaming', // streamingStatus - will be updated as ideas are generated
+                    'ai_generated' // originType - AI-generated brainstorm collection
                 );
                 collectionArtifactId = collectionArtifact.id;
 

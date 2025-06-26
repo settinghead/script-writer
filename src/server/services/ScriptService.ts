@@ -21,7 +21,11 @@ export class ScriptService {
             {
                 name,
                 room_id: roomId
-            } as ScriptDocumentV1
+            } as ScriptDocumentV1,
+            'v1', // typeVersion
+            undefined, // metadata
+            'completed', // streamingStatus
+            'user_input' // originType - user created script
         );
 
         // Create human transform for script creation
@@ -107,7 +111,11 @@ export class ScriptService {
             {
                 ...scriptArtifact.data,
                 name
-            } as ScriptDocumentV1
+            } as ScriptDocumentV1,
+            'v1', // typeVersion
+            undefined, // metadata
+            'completed', // streamingStatus
+            'user_input' // originType - user updated script
         );
 
         // Create human transform for script update

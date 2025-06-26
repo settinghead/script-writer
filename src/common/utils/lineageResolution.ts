@@ -964,14 +964,17 @@ export function findEffectiveBrainstormIdeas(
             if (node.type !== 'artifact') return false;
 
             const artifact = artifactMap.get((node as LineageNodeArtifact).artifactId);
-            const isBrainstormType = artifact && (artifact.type === 'brainstorm_idea' || artifact.type === 'brainstorm_idea_collection');
+            const isBrainstormType = artifact && (
+                artifact.schema_type === 'brainstorm_idea_schema' || artifact.schema_type === 'brainstorm_collection_schema' ||
+                artifact.type === 'brainstorm_idea' || artifact.type === 'brainstorm_idea_collection'
+            );
 
             // Include all brainstorm types regardless of leaf status
             // - brainstorm_idea: only if leaf (final versions)
             // - brainstorm_idea_collection: always (may have unconsumed ideas)
             const shouldInclude = isBrainstormType && (
-                (artifact.type === 'brainstorm_idea' && node.isLeaf) ||
-                (artifact.type === 'brainstorm_idea_collection')
+                ((artifact.schema_type === 'brainstorm_idea_schema' || artifact.type === 'brainstorm_idea') && node.isLeaf) ||
+                (artifact.schema_type === 'brainstorm_collection_schema' || artifact.type === 'brainstorm_idea_collection')
             );
 
             console.log(`🎯 Checking node ${(node as LineageNodeArtifact).artifactId}: isLeaf=${node.isLeaf}, isBrainstormType=${isBrainstormType}, artifactType=${artifact?.type}, shouldInclude=${shouldInclude}`);
@@ -986,7 +989,7 @@ export function findEffectiveBrainstormIdeas(
         const artifact = artifactMap.get(artifactId);
         if (!artifact) continue;
 
-        if (artifact.type === 'brainstorm_idea_collection') {
+        if (artifact.schema_type === 'brainstorm_collection_schema' || artifact.type === 'brainstorm_idea_collection') {
             // Step 2a: Collection leaf - check which ideas are still "available"
             console.log(`🎯 Processing collection leaf: ${artifactId}`);
             const consumedPaths = findConsumedCollectionPaths(artifactId, graph);
@@ -995,7 +998,7 @@ export function findEffectiveBrainstormIdeas(
             const collectionIdeas = extractCollectionIdeas(artifact, consumedPaths);
             results.push(...collectionIdeas);
 
-        } else if (artifact.type === 'brainstorm_idea') {
+        } else if (artifact.schema_type === 'brainstorm_idea_schema' || artifact.type === 'brainstorm_idea') {
             // Step 2b: Standalone idea leaf - check if it originated from a collection
             console.log(`🎯 Processing standalone idea leaf: ${artifactId}`);
 
@@ -1134,7 +1137,7 @@ function traceToCollectionOrigin(
 
             console.log(`🎯 TRACE: Checking source artifact ${sourceArtifact.artifactId} type=${sourceArtifactData?.type}`);
 
-            if (sourceArtifactData?.type === 'brainstorm_idea_collection') {
+            if (sourceArtifactData?.schema_type === 'brainstorm_collection_schema' || sourceArtifactData?.type === 'brainstorm_idea_collection') {
                 // Found a collection origin!
                 // Extract index from the path if available
                 let collectionIndex = 0;

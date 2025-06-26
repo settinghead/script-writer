@@ -120,7 +120,10 @@ export class EpisodeGenerationService {
                     customRequirements,
                     cascadedParams: completeCascadedParams // Use complete params
                 } as EpisodeGenerationParamsV1,
-                'v1'
+                'v1', // typeVersion
+                undefined, // metadata
+                'completed', // streamingStatus
+                'user_input' // originType - user provided parameters
             );
 
             // Link human transform to params artifact
@@ -145,7 +148,10 @@ export class EpisodeGenerationService {
                     customRequirements: undefined,
                     cascadedParams: completeCascadedParams // Always include complete cascaded params
                 } as EpisodeGenerationParamsV1,
-                'v1'
+                'v1', // typeVersion
+                undefined, // metadata
+                'completed', // streamingStatus
+                'ai_generated' // originType - system generated parameters
             );
 
             // Link system transform to params artifact
@@ -167,7 +173,10 @@ export class EpisodeGenerationService {
                 totalEpisodes: numberOfEpisodes || stageData.numberOfEpisodes,
                 episodeDuration: 45 // Default, can be parameterized
             } as EpisodeGenerationSessionV1,
-            'v1'
+            'v1', // typeVersion
+            undefined, // metadata
+            'completed', // streamingStatus
+            'ai_generated' // originType - system generated session
         );
 
         // 4. Create transform for streaming generation
@@ -190,8 +199,8 @@ export class EpisodeGenerationService {
 
         // 6. Start the streaming job in the background
         // Import and use TransformExecutor to start the job
-        const { TransformExecutor } = await import('./TransformExecutor');
-        const { TemplateService } = await import('./templates/TemplateService');
+        const { TransformExecutor } = await import('./TransformExecutor.js');
+        const { TemplateService } = await import('./templates/TemplateService.js');
 
         const templateService = new TemplateService();
         const executor = new TransformExecutor(

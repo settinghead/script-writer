@@ -17,6 +17,26 @@ export class HumanTransformExecutor {
     this.instantiationRegistry = new TransformInstantiationRegistry();
   }
 
+  // Map schema types back to legacy types for ArtifactRepository.createArtifact
+  private mapSchemaTypeToLegacyType(schemaType: string): string {
+    const schemaToLegacyMapping: Record<string, string> = {
+      'brainstorm_idea_schema': 'brainstorm_idea',
+      'brainstorm_collection_schema': 'brainstorm_idea_collection',
+      'user_input_schema': 'user_input',
+      'outline_input_schema': 'outline_input',
+      'outline_title_schema': 'outline_title',
+      'outline_genre_schema': 'outline_genre',
+      'outline_selling_points_schema': 'outline_selling_points',
+      'outline_setting_schema': 'outline_setting',
+      'outline_synopsis_schema': 'outline_synopsis',
+      'outline_characters_schema': 'outline_characters',
+      'brainstorm_params_schema': 'brainstorm_params',
+      'plot_outline_schema': 'plot_outline'
+    };
+
+    return schemaToLegacyMapping[schemaType] || schemaType.replace('_schema', '');
+  }
+
   /**
    * Execute a schema-validated human transform with race condition protection
    */
@@ -289,12 +309,17 @@ export class HumanTransformExecutor {
       };
     }
 
+    // Map schema type back to legacy type for createArtifact
+    const legacyType = this.mapSchemaTypeToLegacyType(transformDef.targetArtifactType);
+
     const derivedArtifact = await this.artifactRepo.createArtifact(
       projectId,
-      transformDef.targetArtifactType,
+      legacyType,
       artifactData,
-      'v1',
-      artifactMetadata
+      'v1', // typeVersion
+      artifactMetadata, // metadata
+      'completed', // streamingStatus
+      'user_input' // originType - human transform result
     );
 
     // 6. Link relationships

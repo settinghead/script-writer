@@ -41,14 +41,14 @@ export const UserInputSchema = z.object({
 
 // Schema registry
 export const ARTIFACT_SCHEMAS = {
-  'brainstorm_idea_collection': BrainstormIdeaCollectionSchema,
-  'brainstorm_idea': BrainstormIdeaSchema,
-  'outline_input': OutlineInputSchema,
-  'user_input': UserInputSchema
+  'brainstorm_collection_schema': BrainstormIdeaCollectionSchema,
+  'brainstorm_idea_schema': BrainstormIdeaSchema,
+  'outline_input_schema': OutlineInputSchema,
+  'user_input_schema': UserInputSchema
 } as const;
 
 export type BrainstormIdeaCollection = z.infer<typeof BrainstormIdeaCollectionSchema>;
 export type BrainstormIdea = z.infer<typeof BrainstormIdeaSchema>;
 export type OutlineInput = z.infer<typeof OutlineInputSchema>;
 export type UserInput = z.infer<typeof UserInputSchema>;
-export type ArtifactType = keyof typeof ARTIFACT_SCHEMAS; 
+export type ArtifactSchemaType = keyof typeof ARTIFACT_SCHEMAS; 

@@ -13,9 +13,10 @@ export class ArtifactRepository {
         projectId: string,
         type: string,
         data: any,
-        typeVersion: string = 'v1',
-        metadata?: any,
-        streamingStatus: string = 'completed'
+        typeVersion: string,
+        metadata: any | undefined,
+        streamingStatus: string,
+        originType: 'ai_generated' | 'user_input'
     ): Promise<Artifact> {
         // Validate artifact data
         if (!validateArtifactData(type, typeVersion, data)) {
@@ -25,11 +26,22 @@ export class ArtifactRepository {
         const id = uuidv4();
         const now = new Date();
 
+        // Map old type names to new schema types for backward compatibility
+        const schemaType = this.mapTypeToSchemaType(type);
+
         const artifactData = {
             id,
             project_id: projectId,
+
+            // NEW: Schema and origin types
+            schema_type: schemaType,
+            schema_version: typeVersion,
+            origin_type: originType,
+
+            // LEGACY: Keep old fields for backward compatibility
             type,
             type_version: typeVersion,
+
             data: JSON.stringify(data),
             metadata: metadata ? JSON.stringify(metadata) : null,
             streaming_status: streamingStatus,
@@ -372,9 +384,9 @@ export class ArtifactRepository {
                             id: latestArtifact.id,
                             project_id: latestArtifact.project_id,
                             type: latestArtifact.type,
-                            type_version: latestArtifact.type_version,
-                            data: JSON.parse(latestArtifact.data), // Parse the data for return
-                            metadata: latestArtifact.metadata ? JSON.parse(latestArtifact.metadata) : null,
+                            type_version: latestArtifact.type_version as string,
+                            data: JSON.parse(latestArtifact.data as string), // Parse the data for return
+                            metadata: latestArtifact.metadata ? JSON.parse(latestArtifact.metadata as string) : null,
                             created_at: latestArtifact.created_at
                         });
                     }
@@ -411,7 +423,11 @@ export class ArtifactRepository {
             data: row.data, // Keep as string for Electric format
             metadata: row.metadata || undefined,
             created_at: row.created_at?.toISOString() || new Date().toISOString(),
-            streaming_status: row.streaming_status as 'streaming' | 'completed' | 'failed' | 'cancelled' | undefined
+            streaming_status: row.streaming_status as 'streaming' | 'completed' | 'failed' | 'cancelled' | undefined,
+            // NEW: Include schema and origin type fields
+            schema_type: row.schema_type || this.mapTypeToSchemaType(row.type),
+            schema_version: row.schema_version || row.type_version,
+            origin_type: (row.origin_type as 'ai_generated' | 'user_input') || 'ai_generated'
         }));
     }
 
@@ -487,5 +503,24 @@ export class ArtifactRepository {
             artifact_id: row.artifact_id,
             project_id: row.project_id
         }));
+    }
+
+    // Map legacy type names to new schema types for backward compatibility
+    private mapTypeToSchemaType(type: string): string {
+        const typeMapping: Record<string, string> = {
+            'brainstorm_idea': 'brainstorm_idea_schema',
+            'brainstorm_idea_collection': 'brainstorm_collection_schema',
+            'user_input': 'user_input_schema',
+            'outline_title': 'outline_title_schema',
+            'outline_genre': 'outline_genre_schema',
+            'outline_selling_points': 'outline_selling_points_schema',
+            'outline_setting': 'outline_setting_schema',
+            'outline_synopsis': 'outline_synopsis_schema',
+            'outline_characters': 'outline_characters_schema',
+            'brainstorm_params': 'brainstorm_params_schema',
+            'plot_outline': 'plot_outline_schema'
+        };
+
+        return typeMapping[type] || `${type}_schema`;
     }
 } 

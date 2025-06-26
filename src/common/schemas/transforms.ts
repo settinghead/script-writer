@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ARTIFACT_SCHEMAS, ArtifactType } from './artifacts';
+import { ARTIFACT_SCHEMAS, ArtifactSchemaType } from './artifacts';
 
 // Transform definition schema
 export const HumanTransformDefinitionSchema = z.object({
@@ -46,12 +46,12 @@ export type BrainstormEditOutput = z.infer<typeof BrainstormEditOutputSchema>;
 
 // Transform registry
 export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinition> = {
-  // NEW: Collection-specific transforms
+  // Collection-specific transforms
   'edit_brainstorm_collection_idea': {
     name: 'edit_brainstorm_collection_idea',
     description: 'Edit individual idea within brainstorm collection',
-    sourceArtifactType: 'brainstorm_idea_collection',
-    targetArtifactType: 'brainstorm_idea',
+    sourceArtifactType: 'brainstorm_collection_schema',
+    targetArtifactType: 'brainstorm_idea_schema',
     pathPattern: '^\\$.ideas\\[\\d+\\]$', // JSONPath for ideas[n]
     instantiationFunction: 'createBrainstormIdeaFromPath'
   },
@@ -63,28 +63,27 @@ export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinitio
     pathPattern: '^\\$\\.[a-zA-Z_][a-zA-Z0-9_]*.*$', // Any valid JSONPath
     instantiationFunction: 'createFieldEditFromPath'
   },
-  // LEGACY: Keep existing transforms for backward compatibility
   'brainstorm_to_outline': {
     name: 'brainstorm_to_outline',
     description: 'Convert a brainstorm idea to outline input',
-    sourceArtifactType: 'brainstorm_idea',
-    targetArtifactType: 'outline_input',
+    sourceArtifactType: 'brainstorm_idea_schema',
+    targetArtifactType: 'outline_input_schema',
     pathPattern: '^$', // Root path for entire artifact
     instantiationFunction: 'createOutlineInputFromBrainstormIdea'
   },
   'edit_brainstorm_idea': {
     name: 'edit_brainstorm_idea',
     description: 'Edit entire brainstorm idea object',
-    sourceArtifactType: 'brainstorm_idea',
-    targetArtifactType: 'brainstorm_idea',
+    sourceArtifactType: 'brainstorm_idea_schema',
+    targetArtifactType: 'brainstorm_idea_schema',
     pathPattern: '^$', // Root path for entire artifact
     instantiationFunction: 'createBrainstormIdeaFromBrainstormIdea'
   },
   'edit_brainstorm_idea_field': {
     name: 'edit_brainstorm_idea_field',
     description: 'Edit individual fields of brainstorm ideas',
-    sourceArtifactType: 'brainstorm_idea',
-    targetArtifactType: 'user_input',
+    sourceArtifactType: 'brainstorm_idea_schema',
+    targetArtifactType: 'user_input_schema',
     pathPattern: '^(title|body)$', // Matches title or body fields
     instantiationFunction: 'createUserInputFromBrainstormField'
   }
@@ -107,12 +106,12 @@ export type GenericEditOutput = z.infer<typeof GenericEditOutputSchema>;
 
 // LLM Transform registry
 export const LLM_TRANSFORM_DEFINITIONS: Record<string, LLMTransformDefinition> = {
-  // NEW: Collection-specific LLM transforms
+  // Collection-specific LLM transforms
   'llm_edit_brainstorm_collection_idea': {
     name: 'llm_edit_brainstorm_collection_idea',
     description: 'AI editing of ideas within brainstorm collections',
-    inputTypes: ['brainstorm_idea_collection'],
-    outputType: 'brainstorm_idea',
+    inputTypes: ['brainstorm_collection_schema'],
+    outputType: 'brainstorm_idea_schema',
     templateName: 'brainstormEdit',
     inputSchema: BrainstormEditInputSchema,
     outputSchema: BrainstormEditOutputSchema
@@ -126,12 +125,11 @@ export const LLM_TRANSFORM_DEFINITIONS: Record<string, LLMTransformDefinition> =
     inputSchema: GenericEditInputSchema,
     outputSchema: GenericEditOutputSchema
   },
-  // LEGACY: Keep existing transforms for backward compatibility
   'llm_edit_brainstorm_idea': {
     name: 'llm_edit_brainstorm_idea',
     description: 'AI-powered editing of brainstorm ideas based on user requirements',
-    inputTypes: ['brainstorm_idea', 'user_input'],
-    outputType: 'brainstorm_idea',
+    inputTypes: ['brainstorm_idea_schema', 'user_input_schema'],
+    outputType: 'brainstorm_idea_schema',
     templateName: 'brainstormEdit',
     inputSchema: BrainstormEditInputSchema,
     outputSchema: BrainstormEditOutputSchema

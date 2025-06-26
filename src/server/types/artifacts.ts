@@ -331,10 +331,32 @@ export interface WorkflowContextV1 {
 // Add to existing validateArtifactData function
 import { ARTIFACT_SCHEMAS } from '../../common/schemas/artifacts';
 
+// Map legacy type names to new schema types for backward compatibility
+function mapTypeToSchemaType(type: string): string {
+    const typeMapping: Record<string, string> = {
+        'brainstorm_idea': 'brainstorm_idea_schema',
+        'brainstorm_idea_collection': 'brainstorm_collection_schema',
+        'user_input': 'user_input_schema',
+        'outline_title': 'outline_title_schema',
+        'outline_genre': 'outline_genre_schema',
+        'outline_selling_points': 'outline_selling_points_schema',
+        'outline_setting': 'outline_setting_schema',
+        'outline_synopsis': 'outline_synopsis_schema',
+        'outline_characters': 'outline_characters_schema',
+        'brainstorm_params': 'brainstorm_params_schema',
+        'plot_outline': 'plot_outline_schema'
+    };
+
+    return typeMapping[type] || `${type}_schema`;
+}
+
 export function validateArtifactData(type: string, typeVersion: string, data: any): boolean {
+    // Map type to schema type for new artifacts
+    const schemaType = mapTypeToSchemaType(type);
+
     // Use Zod schemas for new artifact types
-    if (type in ARTIFACT_SCHEMAS) {
-        const schema = ARTIFACT_SCHEMAS[type as keyof typeof ARTIFACT_SCHEMAS];
+    if (schemaType in ARTIFACT_SCHEMAS) {
+        const schema = ARTIFACT_SCHEMAS[schemaType as keyof typeof ARTIFACT_SCHEMAS];
         const result = schema.safeParse(data);
         return result.success;
     }

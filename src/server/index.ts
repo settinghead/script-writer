@@ -59,9 +59,7 @@ const unifiedStreamingService = new UnifiedStreamingService(artifactRepo, transf
 
 // Initialize services with unified streaming
 const transformExecutor = new TransformExecutor(artifactRepo, transformRepo, unifiedStreamingService);
-const outlineService = new OutlineService(artifactRepo, transformRepo, unifiedStreamingService);
 const scriptService = new ScriptService(artifactRepo, transformExecutor);
-const replayService = new ReplayService(artifactRepo, transformRepo, transformExecutor);
 const projectService = new ProjectService(projectRepo, artifactRepo, transformRepo);
 const agentService = new AgentService(transformRepo, artifactRepo);
 
@@ -570,7 +568,11 @@ app.post("/api/artifacts/user-input",
           title: title?.trim() || undefined,
           source: sourceArtifactId ? 'modified_brainstorm' : 'manual',
           source_artifact_id: sourceArtifactId
-        }
+        },
+        'v1', // typeVersion
+        undefined, // metadata
+        'completed', // streamingStatus
+        'user_input' // originType - this is user-created content
       );
 
       res.json(artifact);
