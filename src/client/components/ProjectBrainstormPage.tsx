@@ -51,39 +51,19 @@ export default function ProjectBrainstormPage() {
       for (const collection of collections) {
         try {
           const collectionData = JSON.parse(collection.data);
-          console.log('📦 Ideas content:', collectionData.ideas);
+          // Collection has ideas array
 
           if (collectionData.ideas && Array.isArray(collectionData.ideas)) {
             for (let i = 0; i < collectionData.ideas.length; i++) {
-              const artifactPath = `$.ideas[${i}]`;
-              const latestArtifactId = projectData.getLatestVersionForPath(collection.id, artifactPath);
-
-              if (latestArtifactId && latestArtifactId !== collection.id) {
-                // Use individual edited version
-                const latestArtifact = projectData.getArtifactById(latestArtifactId);
-                if (latestArtifact) {
-                  const ideaData = JSON.parse(latestArtifact.data);
-                  ideas.push({
-                    title: ideaData.title || `想法 ${ideas.length + 1}`,
-                    body: ideaData.body || '内容加载中...',
-                    artifactId: latestArtifactId,
-                    originalArtifactId: collection.id,
-                    artifactPath: `$.ideas[${i}]`,
-                    index: ideas.length
-                  });
-                }
-              } else {
-                // Use original from collection
-                const originalIdea = collectionData.ideas[i];
-                ideas.push({
-                  title: originalIdea.title || `想法 ${ideas.length + 1}`,
-                  body: originalIdea.body || '内容加载中...',
-                  artifactId: `${collection.id}-${i}`, // Create unique ID for each idea
-                  originalArtifactId: collection.id,
-                  artifactPath: `$.ideas[${i}]`,
-                  index: ideas.length
-                });
-              }
+              // Simply create a reference to each idea in the collection
+              ideas.push({
+                title: `想法 ${ideas.length + 1}`, // Simple placeholder title
+                body: '内容加载中...', // Placeholder - ArtifactEditor will handle actual content
+                artifactId: `${collection.id}-${i}`, // Unique display ID
+                originalArtifactId: collection.id, // Collection ID
+                artifactPath: `$.ideas[${i}]`, // JSON path to idea
+                index: ideas.length
+              });
             }
           }
 

@@ -162,19 +162,19 @@ const IdeaOutlines: React.FC<{
 
 // Individual idea card component using ArtifactEditor
 const BrainstormIdeaCard: React.FC<{
-    artifactId: string;
-    originalArtifactId?: string;
+    collectionId: string;
+    ideaPath: string;
     index: number;
     isSelected: boolean;
     ideaOutlines: any[];
-    onIdeaClick: (artifactId: string, index: number) => void;
-}> = ({ artifactId, originalArtifactId, index, isSelected, ideaOutlines, onIdeaClick }) => {
+    onIdeaClick: (collectionId: string, index: number) => void;
+}> = ({ collectionId, ideaPath, index, isSelected, ideaOutlines, onIdeaClick }) => {
     const [showSavedCheckmark, setShowSavedCheckmark] = useState(false);
     const projectData = useProjectData();
 
-    // Get artifact with lineage information
-    const artifact = projectData.getArtifactById(artifactId);
-    const hasBeenEdited = artifact?.isEditable || false;
+    // Check if this specific path has been edited (has lineage)
+    const latestArtifactId = projectData.getLatestVersionForPath(collectionId, ideaPath);
+    const hasBeenEdited = latestArtifactId && latestArtifactId !== collectionId;
 
     // Handle successful save - show checkmark briefly
     const handleSaveSuccess = useCallback(() => {
@@ -186,7 +186,7 @@ const BrainstormIdeaCard: React.FC<{
 
     return (
         <Card
-            key={artifactId}
+            key={`${collectionId}-${index}`}
             style={{
                 backgroundColor: isSelected ? '#2d3436' : '#262626',
                 border: isSelected ? '1px solid #1890ff' : '1px solid #434343',
@@ -208,7 +208,7 @@ const BrainstormIdeaCard: React.FC<{
                     e.currentTarget.style.backgroundColor = '#262626';
                 }
             }}
-            onClick={() => onIdeaClick(artifactId, index)}
+            onClick={() => onIdeaClick(collectionId, index)}
         >
             {/* Saved checkmark overlay */}
             {showSavedCheckmark && (
@@ -232,23 +232,23 @@ const BrainstormIdeaCard: React.FC<{
                 </div>
             )}
 
-            {/* Idea content using ArtifactEditor */}
+            {/* Idea content using ArtifactEditor with JSON path */}
             <ArtifactEditor
-                artifactId={artifactId}
-                sourceArtifactId={originalArtifactId || artifactId}
+                artifactId={collectionId}
+                path={ideaPath}
                 fields={BRAINSTORM_IDEA_FIELDS}
                 statusLabel={hasBeenEdited ? "📝 已编辑版本" : "AI生成"}
                 statusColor={hasBeenEdited ? "#52c41a" : "#1890ff"}
-                transformName="edit_brainstorm_idea"
+                transformName="edit_brainstorm_collection_idea"
                 onSaveSuccess={handleSaveSuccess}
             />
 
             {/* Generate outline button */}
-            <GenerateOutlineButton artifactId={artifactId} />
+            <GenerateOutlineButton artifactId={latestArtifactId || collectionId} />
 
             {/* Associated outlines */}
             <IdeaOutlines
-                ideaId={artifactId}
+                ideaId={latestArtifactId || collectionId}
                 outlines={ideaOutlines}
                 isLoading={false}
             />
@@ -368,7 +368,7 @@ export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsPr
     const ideas = latestIdeas.length > 0 ? latestIdeas : propIdeas;
 
     // Handle idea card click
-    const handleIdeaClick = useCallback((artifactId: string, index: number) => {
+    const handleIdeaClick = useCallback((collectionId: string, index: number) => {
         setSelectedIdea(prev => prev === index ? null : index);
         if (onIdeaSelect && ideas[index]) {
             onIdeaSelect(ideas[index].body);
@@ -517,17 +517,16 @@ export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsPr
             {/* Ideas grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {ideas.map((idea, index) => {
-                    const artifactId = idea.artifactId;
-                    if (!artifactId) return null;
+                    if (!idea.originalArtifactId || !idea.artifactPath) return null;
 
                     return (
                         <BrainstormIdeaCard
-                            key={artifactId}
-                            artifactId={artifactId}
-                            originalArtifactId={idea.originalArtifactId}
+                            key={`${idea.originalArtifactId}-${index}`}
+                            collectionId={idea.originalArtifactId}
+                            ideaPath={idea.artifactPath}
                             index={index}
                             isSelected={selectedIdea === index}
-                            ideaOutlines={ideaOutlines[artifactId] || []}
+                            ideaOutlines={ideaOutlines[idea.artifactId || ''] || []}
                             onIdeaClick={handleIdeaClick}
                         />
                     );

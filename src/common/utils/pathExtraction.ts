@@ -6,8 +6,12 @@
 export function extractDataAtPath(data: any, path: string): any {
   if (!path) return data;
 
+  // Handle JSONPath prefix: $.ideas[0] -> ideas[0]
+  let normalizedPath = path.startsWith('$.') ? path.slice(2) : path;
+  if (normalizedPath === '$') return data;
+
   // Handle array indices: [0].title -> 0.title, ideas[0].title -> ideas.0.title
-  const normalizedPath = path.replace(/\[(\d+)\]/g, '.$1');
+  normalizedPath = normalizedPath.replace(/\[(\d+)\]/g, '.$1');
 
   return normalizedPath.split('.').filter(key => key !== '').reduce((obj, key) => {
     return obj?.[key];
@@ -17,7 +21,11 @@ export function extractDataAtPath(data: any, path: string): any {
 export function setDataAtPath(data: any, path: string, value: any): any {
   if (!path) return value;
 
-  const normalizedPath = path.replace(/\[(\d+)\]/g, '.$1');
+  // Handle JSONPath prefix: $.ideas[0] -> ideas[0]
+  let normalizedPath = path.startsWith('$.') ? path.slice(2) : path;
+  if (normalizedPath === '$') return value;
+
+  normalizedPath = normalizedPath.replace(/\[(\d+)\]/g, '.$1');
   const keys = normalizedPath.split('.').filter(key => key !== '');
   const result = JSON.parse(JSON.stringify(data)); // Deep clone
 

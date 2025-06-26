@@ -1,15 +1,10 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { message, Button, Spin } from 'antd';
-import { useDebouncedCallback } from '../../hooks/useDebounce';
-import { EditableField } from './EditableField';
+import React, { useState, useCallback } from 'react';
+import { message } from 'antd';
+import { LoadingOutlined, CheckOutlined } from '@ant-design/icons';
 import { useProjectData } from '../../contexts/ProjectDataContext';
-import { useIsPending, useIsSuccess } from '../../hooks/useMutationState';
-import type { ElectricArtifact } from '../../../common/types';
-import { extractDataAtPath, getPathDescription } from '../../../common/utils/pathExtraction';
-import { CheckOutlined, LoadingOutlined } from '@ant-design/icons';
+import { extractDataAtPath } from '../../../common/utils/pathExtraction';
+import { EditableField } from './EditableField';
 
-// Field configuration interface
 export interface FieldConfig {
     field: string;
     component: 'input' | 'textarea';
@@ -20,30 +15,226 @@ export interface FieldConfig {
 
 interface ArtifactEditorProps {
     artifactId: string;
-    sourceArtifactId?: string;  // Original artifact ID for transform lookup (for lineage resolution)
-    path?: string;           // JSON path for derivation (optional, defaults to root)
-    transformName?: string;  // Transform name for schema-based editing
+    sourceArtifactId?: string;
+    path?: string;
+    transformName?: string;
     className?: string;
     onTransition?: (newArtifactId: string) => void;
-    onSaveSuccess?: () => void; // Callback when save is successful
-
-    // Generic field configuration
-    fields?: FieldConfig[];  // Field configurations to render
-    statusLabel?: string;    // Custom status label (e.g., "AI生成", "已编辑")
-    statusColor?: string;    // Status indicator color (e.g., "blue", "green")
+    onSaveSuccess?: () => void;
+    fields?: FieldConfig[];
+    statusLabel?: string;
+    statusColor?: string;
 }
 
-interface CreateTransformRequest {
-    transformName: string;
-    derivationPath: string;
+interface ArtifactFragment {
+    artifactId: string;
+    data: any;
+    isEditable: boolean;
+    type: string;
+    path?: string;
 }
 
-interface CreateTransformResponse {
-    transform: any;
-    derivedArtifact: any;
+// Sub-component for read-only display with click-to-edit
+interface ReadOnlyViewProps {
+    fragment: ArtifactFragment;
+    fields: FieldConfig[];
+    transformName?: string;
+    onTransition?: (newArtifactId: string) => void;
+    statusLabel?: string;
+    statusColor?: string;
+    className?: string;
 }
 
-const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
+const ReadOnlyView: React.FC<ReadOnlyViewProps> = ({
+    fragment,
+    fields,
+    transformName,
+    onTransition,
+    statusLabel = "AI生成",
+    statusColor = "blue",
+    className = ""
+}) => {
+    const [isCreatingTransform, setIsCreatingTransform] = useState(false);
+    const projectData = useProjectData();
+
+    const handleEditClick = useCallback(() => {
+        if (!transformName) {
+            message.error('未指定转换类型');
+            return;
+        }
+
+        setIsCreatingTransform(true);
+        projectData.createHumanTransform.mutate({
+            transformName,
+            sourceArtifactId: fragment.artifactId,
+            derivationPath: fragment.path || "",
+            fieldUpdates: {}
+        }, {
+            onSuccess: (response) => {
+                setIsCreatingTransform(false);
+                onTransition?.(response.derivedArtifact.id);
+                message.success('选中内容，开始编辑');
+            },
+            onError: (error) => {
+                setIsCreatingTransform(false);
+                message.error(`创建编辑失败: ${error.message}`);
+            }
+        });
+    }, [transformName, fragment, projectData.createHumanTransform, onTransition]);
+
+    return (
+        <div
+            className={`artifact-editor readonly ${className}`}
+            onClick={handleEditClick}
+            style={{ cursor: 'pointer' }}
+        >
+            <div className="flex items-center justify-between p-4 border-2 border-blue-500 rounded-lg hover:border-blue-400 transition-colors">
+                <div className="flex items-center gap-2">
+                    <div className="text-blue-400 text-xs font-bold">👁️ 点击编辑</div>
+                    <div className={`w-2 h-2 rounded-full bg-${statusColor}-400`} />
+                    <span className="text-xs text-gray-400">
+                        {statusLabel}
+                        {fragment.path && ` • ${fragment.path}`}
+                    </span>
+                </div>
+                {isCreatingTransform && (
+                    <LoadingOutlined style={{ color: '#1890ff' }} />
+                )}
+            </div>
+
+            <div className="mt-3 p-3 bg-gray-800 rounded">
+                {fields.length > 0 && fragment.data && typeof fragment.data === 'object' ? (
+                    <div className="space-y-3">
+                        {fields.map(({ field }) => (
+                            fragment.data[field] && (
+                                <div key={field}>
+                                    <div className="text-xs text-gray-500 mb-1 capitalize">
+                                        {field === 'title' ? '标题' : field === 'body' ? '内容' : field}
+                                    </div>
+                                    <div className="text-sm text-gray-300 whitespace-pre-wrap">
+                                        {fragment.data[field]}
+                                    </div>
+                                </div>
+                            )
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-sm text-gray-300">
+                        {JSON.stringify(fragment.data, null, 2)}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+// Sub-component for editable mode
+interface EditableViewProps {
+    fragment: ArtifactFragment;
+    fields: FieldConfig[];
+    onSaveSuccess?: () => void;
+    statusLabel?: string;
+    statusColor?: string;
+    className?: string;
+}
+
+const EditableView: React.FC<EditableViewProps> = ({
+    fragment,
+    fields,
+    onSaveSuccess,
+    statusLabel = "已编辑",
+    statusColor = "green",
+    className = ""
+}) => {
+    const [editingField, setEditingField] = useState<string | null>(null);
+    const [pendingSaves, setPendingSaves] = useState<Set<string>>(new Set());
+    const projectData = useProjectData();
+
+    // Get mutation state for this artifact
+    const mutationState = projectData.mutationStates.artifacts.get(fragment.artifactId);
+    const isPending = mutationState?.status === 'pending';
+    const isSuccess = mutationState?.status === 'success';
+
+    const handleFieldChange = useCallback((field: string, value: any) => {
+        setPendingSaves(prev => new Set(prev).add(field));
+
+        const updatedData = { ...fragment.data, [field]: value };
+
+        // Prepare request based on artifact type
+        let requestData;
+        if (fragment.type === 'user_input') {
+            requestData = { text: JSON.stringify(updatedData) };
+        } else {
+            requestData = updatedData;
+        }
+
+        projectData.updateArtifact.mutate({
+            artifactId: fragment.artifactId,
+            data: requestData
+        }, {
+            onSuccess: () => {
+                setPendingSaves(prev => {
+                    const newSet = new Set(prev);
+                    newSet.delete(field);
+                    return newSet;
+                });
+                onSaveSuccess?.();
+            },
+            onError: (error) => {
+                setPendingSaves(prev => {
+                    const newSet = new Set(prev);
+                    newSet.delete(field);
+                    return newSet;
+                });
+                message.error(`保存失败: ${error.message}`);
+            }
+        });
+    }, [fragment, projectData.updateArtifact, onSaveSuccess]);
+
+    return (
+        <div className={`artifact-editor editable border-2 border-green-500 rounded-lg p-4 ${className}`}>
+            <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                    <div className="text-green-400 text-xs font-bold">✏️ 编辑中</div>
+                    <div className={`w-2 h-2 rounded-full bg-${statusColor}-400`} />
+                    <span className="text-xs text-gray-400">
+                        {statusLabel}
+                        {fragment.path && ` • ${fragment.path}`}
+                    </span>
+
+                    {(pendingSaves.size > 0 || isPending) && (
+                        <LoadingOutlined style={{ color: '#52c41a' }} />
+                    )}
+                    {isSuccess && (
+                        <CheckOutlined style={{ color: '#52c41a' }} />
+                    )}
+                </div>
+            </div>
+
+            {fields.map(({ field, component, maxLength, rows, placeholder }) => (
+                <div key={field} className="mb-4 last:mb-0">
+                    <EditableField
+                        value={fragment.data?.[field] || ''}
+                        fieldType={component}
+                        maxLength={maxLength}
+                        rows={rows}
+                        placeholder={placeholder}
+                        isLLMGenerated={false}
+                        isTransitioning={false}
+                        isFocused={editingField === field}
+                        hasPendingSave={pendingSaves.has(field)}
+                        onChange={(value) => handleFieldChange(field, value)}
+                        onFocus={() => setEditingField(field)}
+                        onBlur={() => setEditingField(null)}
+                    />
+                </div>
+            ))}
+        </div>
+    );
+};
+
+// Main component that resolves the artifact fragment and decides which sub-component to render
+const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
     artifactId,
     sourceArtifactId,
     path = "",
@@ -55,223 +246,61 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
     statusLabel,
     statusColor = 'blue'
 }) => {
-    // Get unified project data context
     const projectData = useProjectData();
 
-    // State management
-    const [editingField, setEditingField] = useState<string | null>(null);
-    const [pendingSaves, setPendingSaves] = useState<Set<string>>(new Set());
-    const [typingFields, setTypingFields] = useState<Set<string>>(new Set());
-    const [isCreatingTransform, setIsCreatingTransform] = useState(false);
+    // Resolve the artifact fragment
+    const fragment: ArtifactFragment | null = React.useMemo(() => {
+        // First, try to find existing human transform for this path
+        const humanTransforms = projectData.getHumanTransformsForArtifact(
+            sourceArtifactId || artifactId,
+            path
+        );
 
-    // 1. Check for existing human transform for this path using the unified context
-    const existingTransform = useMemo(() => {
-        if (!transformName || !sourceArtifactId) return null;
-
-        const lookupArtifactId = sourceArtifactId || artifactId;
-        const humanTransforms = projectData.getHumanTransformsForArtifact(lookupArtifactId, path);
-
-        const transform = humanTransforms.find(ht =>
-            ht.transform_name === transformName &&
-            ht.derivation_path === path
-        ) || null;
-
-        // Debug logging
-        // console.log(`🔍 [ArtifactEditor ${artifactId}] Transform: ${!!transform} (${transformName})`);
-
-        return transform;
-    }, [projectData, sourceArtifactId, artifactId, path, transformName]);
-
-    // 2. Get artifact from unified context
-    const artifactToUse = useMemo(() => {
-        if (existingTransform?.derived_artifact_id) {
-            const derivedArtifact = projectData.getArtifactById(existingTransform.derived_artifact_id);
-            return derivedArtifact;
-        }
-
-        const originalArtifact = projectData.getArtifactById(artifactId);
-        return originalArtifact;
-    }, [projectData, existingTransform?.derived_artifact_id, artifactId]);
-
-    // 3. Determine display mode based on source transform
-    const effectiveMode = useMemo(() => {
-        // Simple criteria: If source transform is human, then editable. Otherwise readonly.
-        if (artifactToUse?.isEditable && fields.length > 0) {
-            return 'editable';
-        }
-
-        // If it's not editable but has transform capability, show clickable edit button
-        if (transformName && fields.length > 0) {
-            return 'edit-button';
-        }
-
-        // Default to readonly
-        return 'readonly';
-    }, [artifactToUse?.isEditable, transformName, fields.length]);
-
-    // Determine if we're in editing mode (based on artifact being editable)
-    const isEditing = !!artifactToUse?.isEditable;
-
-    // Debug logging for mode detection
-    // console.log(`🎨 [ArtifactEditor ${artifactId}] Mode: ${effectiveMode} (transform: ${!!existingTransform})`);
-
-    // 4. Determine target artifact and labels
-    const targetArtifactId = existingTransform?.derived_artifact_id || artifactId;
-
-    const effectiveStatusLabel = statusLabel || (
-        artifactToUse?.isEditable ? '📝 已编辑版本' : 'AI生成'
-    );
-
-    const effectiveStatusColor = statusColor || (
-        artifactToUse?.isEditable ? 'green' : 'blue'
-    );
-
-    // Loading and error states from unified context
-    const isLoadingArtifact = projectData.isLoading;
-    const error = projectData.error;
-
-    // Process artifact data
-    const processedData = useMemo(() => {
-        if (!artifactToUse) {
-            return null;
-        }
-
-        try {
-            const artifactData = typeof artifactToUse.data === 'string'
-                ? JSON.parse(artifactToUse.data)
-                : artifactToUse.data;
-
-            // Debug logging for artifact data
-            // console.log(`📄 [ArtifactEditor ${artifactId}] Data: ${artifactData?.title || 'No title'}`);
-
-            return {
-                isUserInput: artifactToUse.type === 'user_input',
-                artifactData
-            };
-        } catch (error) {
-            console.error('[ArtifactEditor] Error parsing artifact data:', error);
-            return null;
-        }
-    }, [artifactToUse, artifactId]);
-
-    const { artifactData } = processedData || {};
-
-
-    // 5. Create transform mutation using unified context
-    const createTransformMutation = projectData.createHumanTransform;
-
-    // 6. Update mutation using unified context
-    const updateMutation = projectData.updateArtifact;
-
-    // Get entity-specific mutation state for this artifact using hooks
-    const isArtifactPending = useIsPending('artifacts', targetArtifactId);
-    const isArtifactSuccess = useIsSuccess('artifacts', targetArtifactId);
-
-    // 7. Debounced save function with ref to avoid stale closures
-    const saveRef = useRef<(fieldUpdates: Record<string, any>, field: string) => void>(() => { });
-
-    saveRef.current = (fieldUpdates: Record<string, any>, field: string) => {
-        // Clear typing state when actually executing save
-        setTypingFields(prev => {
-            const newSet = new Set(prev);
-            newSet.delete(field);
-            return newSet;
-        });
-
-        // Prepare request based on artifact type
-        let requestData;
-        if (artifactToUse?.type === 'user_input') {
-            // For user_input artifacts, we need to send the data as 'text' field
-            requestData = { text: JSON.stringify(fieldUpdates) };
+        let targetArtifact;
+        if (humanTransforms.length > 0) {
+            // Use the derived artifact from the latest human transform
+            const latestTransform = humanTransforms[humanTransforms.length - 1];
+            if (latestTransform.derived_artifact_id) {
+                targetArtifact = projectData.getArtifactById(latestTransform.derived_artifact_id);
+            }
         } else {
-            // For other artifacts, send the data directly
-            requestData = fieldUpdates;
+            // Use the original artifact
+            targetArtifact = projectData.getArtifactById(artifactId);
         }
 
-        updateMutation.mutate({
-            artifactId: targetArtifactId,
-            data: requestData
-        }, {
-            onSuccess: () => {
-                // Clear pending saves and typing states
-                setPendingSaves(new Set());
-                setTypingFields(new Set());
-                onSaveSuccess?.();
-            },
-            onError: (error) => {
-                // Clear pending saves and typing states on error
-                setPendingSaves(new Set());
-                setTypingFields(new Set());
-                message.error(`保存失败: ${error.message}`);
-            }
-        });
-    };
-
-    const debouncedSave = useDebouncedCallback((fieldUpdates: Record<string, any>, field: string) => {
-        saveRef.current?.(fieldUpdates, field);
-    }, 500);
-
-    // 8. Event handlers
-    const handleEditClick = useCallback(() => {
-        if (!transformName) {
-            message.error('未指定转换类型');
-            return;
+        if (!targetArtifact) {
+            return null;
         }
 
-        setIsCreatingTransform(true);
-        createTransformMutation.mutate({
-            transformName,
-            sourceArtifactId: sourceArtifactId || artifactId,
-            derivationPath: path,
-            fieldUpdates: {} // Empty - just creating the transform
-        }, {
-            onSuccess: (response) => {
-                setIsCreatingTransform(false);
+        // Parse and extract data
+        if (!targetArtifact.data) {
+            return null;
+        }
 
-                // Notify parent component
-                onTransition?.(response.derivedArtifact.id);
+        let parsedData;
+        try {
+            parsedData = typeof targetArtifact.data === 'string'
+                ? JSON.parse(targetArtifact.data)
+                : targetArtifact.data;
+        } catch (error) {
+            console.error('Failed to parse artifact data:', error);
+            return null;
+        }
 
-                // Show appropriate message based on whether this was a new transform or existing one
-                const messageText = response.wasTransformed ? '选中灵感，开始编辑' : '继续编辑现有内容';
-                message.success(messageText);
-            },
-            onError: (error) => {
-                setIsCreatingTransform(false);
-                message.error(`创建编辑失败: ${error.message}`);
-            }
-        });
-    }, [transformName, path, createTransformMutation, artifactId, onTransition]);
+        // Extract data at path if specified
+        const extractedData = (path && path !== "") ? extractDataAtPath(parsedData, path) : parsedData;
 
-    const handleFieldChange = useCallback((field: string, value: any) => {
-        // Mark field as being typed in
-        setTypingFields(prev => new Set(prev).add(field));
-
-        // Clear any pending save state for this field
-        setPendingSaves(prev => {
-            const newSet = new Set(prev);
-            newSet.delete(field);
-            return newSet;
-        });
-
-        // Create the updated data object
-        const updatedData = { ...artifactData, [field]: value };
-
-        // Set pending save state
-        setPendingSaves(prev => new Set(prev).add(field));
-
-        debouncedSave(updatedData, field);
-    }, [artifactData, debouncedSave]);
-
-    const handleFieldFocus = useCallback((field: string) => {
-        setEditingField(field);
-    }, []);
-
-    const handleFieldBlur = useCallback(() => {
-        setEditingField(null);
-    }, []);
+        return {
+            artifactId: targetArtifact.id,
+            data: extractedData,
+            isEditable: targetArtifact.type === 'user_input',
+            type: targetArtifact.type,
+            path
+        };
+    }, [artifactId, sourceArtifactId, path, projectData]);
 
     // Loading state
-    if (isLoadingArtifact || (transformName && !projectData.humanTransforms)) {
+    if (projectData.isLoading) {
         return (
             <div className={`artifact-editor loading ${className}`}>
                 <div className="animate-pulse bg-gray-700 h-20 rounded"></div>
@@ -280,238 +309,41 @@ const ArtifactEditorComponent: React.FC<ArtifactEditorProps> = ({
     }
 
     // Error state
-    if (error || !artifactToUse) {
+    if (projectData.error || !fragment) {
         return (
             <div className={`artifact-editor error ${className}`}>
                 <div className="text-red-400 text-sm">
-                    {error ? `加载错误: ${error.message}` : '未找到指定的内容'}
+                    {projectData.error ? `加载错误: ${projectData.error.message}` : '未找到指定的内容'}
                 </div>
             </div>
         );
     }
 
-    // Debug logging for final rendering decision
-    // console.log(`🎭 [ArtifactEditor ${artifactId}] Rendering: ${effectiveMode}`);
-
-    // Edit button mode - show clickable preview with edit button
-    if (effectiveMode === 'edit-button' && !isEditing && artifactToUse) {
+    // Decide which sub-component to render
+    if (fragment.isEditable && fields.length > 0) {
         return (
-            <div
-                className={`artifact-editor ${className}`}
-                onClick={handleEditClick}
-                style={{ cursor: 'text' }}
-            >
-                <div className="flex items-center justify-between p-4 border-2 border-gray-600 rounded-lg">
-                    <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full bg-${effectiveStatusColor}-400`} />
-                        <span className="text-xs text-gray-400">
-                            {effectiveStatusLabel}
-                            {path && ` • ${getPathDescription(path)}`}
-                        </span>
-                    </div>
-                    {isCreatingTransform && (
-                        <LoadingOutlined style={{ color: '#1890ff' }} />
-                    )}
-                </div>
-
-                {/* Read-only display of original data */}
-                <div className="mt-3 p-3 bg-gray-800 rounded">
-                    {(() => {
-                        try {
-                            const fullData = JSON.parse(artifactToUse.data as string);
-                            const dataToShow = path ? extractDataAtPath(fullData, path) : fullData;
-
-                            // If we have field configurations, use them to display structured data
-                            if (fields.length > 0 && dataToShow && typeof dataToShow === 'object') {
-                                return (
-                                    <div className="space-y-3">
-                                        {fields.map(({ field }) => (
-                                            dataToShow[field] && (
-                                                <div key={field}>
-                                                    <div className="text-xs text-gray-500 mb-1 capitalize">
-                                                        {field === 'title' ? '标题' : field === 'body' ? '内容' : field}
-                                                    </div>
-                                                    <div className="text-sm text-gray-300 whitespace-pre-wrap">
-                                                        {dataToShow[field]}
-                                                    </div>
-                                                </div>
-                                            )
-                                        ))}
-                                    </div>
-                                );
-                            }
-
-                            // Special case for brainstorm ideas without field config
-                            if (dataToShow && typeof dataToShow === 'object' && dataToShow.title && dataToShow.body) {
-                                return (
-                                    <div className="space-y-3">
-                                        <div>
-                                            <div className="text-xs text-gray-500 mb-1">标题</div>
-                                            <div className="text-sm text-gray-300">{dataToShow.title}</div>
-                                        </div>
-                                        <div>
-                                            <div className="text-xs text-gray-500 mb-1">内容</div>
-                                            <div className="text-sm text-gray-300 whitespace-pre-wrap">{dataToShow.body}</div>
-                                        </div>
-                                    </div>
-                                );
-                            }
-
-                            // Fallback to JSON display
-                            return (
-                                <div className="text-sm text-gray-300">
-                                    {JSON.stringify(dataToShow, null, 2)}
-                                </div>
-                            );
-                        } catch (error) {
-                            console.error('[ArtifactEditor] Error parsing artifact data for edit-button mode:', error);
-                            return (
-                                <div className="text-sm text-red-400">
-                                    数据解析错误
-                                </div>
-                            );
-                        }
-                    })()}
-                </div>
-            </div>
+            <EditableView
+                fragment={fragment}
+                fields={fields}
+                onSaveSuccess={onSaveSuccess}
+                statusLabel={statusLabel}
+                statusColor={statusColor}
+                className={className}
+            />
         );
-    }
-
-    // Editable mode - show form fields
-    if (effectiveMode === 'editable' && fields.length > 0 && artifactData) {
-        const colorClass = effectiveStatusColor === 'green' ? 'green' : 'blue';
-
-        const editorClasses = [
-            'artifact-editor',
-            'transition-all duration-300 ease-in-out',
-            'border-2 rounded-lg p-4',
-            className,
-            `border-${colorClass}-300`,
-            editingField ? `border-${colorClass}-500` : '',
-            updateMutation.isPending ? 'opacity-70' : ''
-        ].filter(Boolean).join(' ');
-
+    } else {
         return (
-            <div className={editorClasses}>
-                {/* Status indicator */}
-                <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full bg-${colorClass}-400`} />
-                        <span className="text-xs text-gray-400">
-                            {effectiveStatusLabel}
-                            {path && ` • ${getPathDescription(path)}`}
-                        </span>
-
-                        {(pendingSaves.size > 0 || typingFields.size > 0 || isArtifactPending) && (
-                            <Spin size="small" style={{ color: `var(--ant-color-${colorClass})` }} />
-                        )}
-                        {isArtifactSuccess && (
-                            <span className={`text-${colorClass}-400`}>
-                                <CheckOutlined />
-                            </span>
-                        )}
-                    </div>
-                </div>
-
-                {/* Editable fields */}
-                {fields.map(({ field, component, maxLength, rows, placeholder }) => (
-                    <div key={field} className="mb-4 last:mb-0">
-                        <EditableField
-                            value={artifactData?.[field] || ''}
-                            fieldType={component}
-                            maxLength={maxLength}
-                            rows={rows}
-                            placeholder={placeholder}
-                            isLLMGenerated={false}
-                            isTransitioning={false}
-                            isFocused={editingField === field}
-                            hasPendingSave={pendingSaves.has(field)}
-                            onChange={(value) => handleFieldChange(field, value)}
-                            onFocus={() => handleFieldFocus(field)}
-                            onBlur={handleFieldBlur}
-                        />
-                    </div>
-                ))}
-            </div>
+            <ReadOnlyView
+                fragment={fragment}
+                fields={fields}
+                transformName={transformName}
+                onTransition={onTransition}
+                statusLabel={statusLabel}
+                statusColor={statusColor}
+                className={className}
+            />
         );
     }
-
-    // Readonly mode - just display the data
-    if (effectiveMode === 'readonly' && artifactData) {
-        return (
-            <div className={`artifact-editor readonly ${className}`}>
-                <div className="flex items-center gap-2 mb-3">
-                    <div className={`w-2 h-2 rounded-full bg-${effectiveStatusColor}-400`} />
-                    <span className="text-xs text-gray-400">
-                        {effectiveStatusLabel}
-                        {path && ` • ${getPathDescription(path)}`}
-                    </span>
-                </div>
-
-                {fields.length > 0 ? (
-                    // Display structured fields
-                    <div className="space-y-3">
-                        {fields.map(({ field }) => (
-                            artifactData[field] && (
-                                <div key={field}>
-                                    <div className="text-xs text-gray-500 mb-1 capitalize">{field}</div>
-                                    <div className="text-sm text-gray-300 whitespace-pre-wrap">
-                                        {artifactData[field]}
-                                    </div>
-                                </div>
-                            )
-                        ))}
-                    </div>
-                ) : (
-                    // Fallback to JSON display
-                    <div className="text-sm text-gray-300">
-                        {JSON.stringify(artifactData, null, 2)}
-                    </div>
-                )}
-            </div>
-        );
-    }
-
-    // Fallback for unsupported configurations
-    console.error(`🚨 [ArtifactEditor] Unsupported configuration for artifact ${artifactId}:`, {
-        effectiveMode,
-        fieldsLength: fields.length,
-        hasTransformName: !!transformName,
-        hasArtifactToUse: !!artifactToUse,
-        hasArtifactData: !!artifactData,
-        path,
-        artifactType: artifactToUse?.type,
-        existingTransformId: existingTransform?.transform_id,
-        humanTransformsLength: projectData.humanTransforms?.length || 0
-    });
-
-    return (
-        <div className={`artifact-editor unsupported ${className}`}>
-            <div className="text-yellow-400 text-sm">
-                无效的编辑器配置: mode={effectiveMode}, fields={fields.length}
-                {path && ` (路径: ${path})`}
-            </div>
-            <div className="text-xs text-gray-500 mt-2">
-                Debug: transformName={transformName}, artifactToUse={!!artifactToUse}, artifactData={!!artifactData}, humanTransforms={projectData.humanTransforms?.length || 0}
-            </div>
-        </div>
-    );
 };
 
-// Custom comparison function for React.memo to prevent unnecessary re-renders
-const arePropsEqual = (prevProps: ArtifactEditorProps, nextProps: ArtifactEditorProps) => {
-    const isEqual = (
-        prevProps.artifactId === nextProps.artifactId &&
-        prevProps.path === nextProps.path &&
-        prevProps.transformName === nextProps.transformName &&
-        prevProps.className === nextProps.className &&
-        prevProps.statusLabel === nextProps.statusLabel &&
-        prevProps.statusColor === nextProps.statusColor &&
-        JSON.stringify(prevProps.fields) === JSON.stringify(nextProps.fields)
-        // Note: We don't compare onTransition and onSaveSuccess as they're likely to be new functions each render
-    );
-
-    return isEqual;
-};
-
-export const ArtifactEditor = React.memo(ArtifactEditorComponent, arePropsEqual); 
+export { ArtifactEditor }; 
