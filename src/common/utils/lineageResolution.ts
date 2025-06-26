@@ -1037,6 +1037,21 @@ export function findEffectiveBrainstormIdeas(
     }
 
     console.log(`🎯 Final effective ideas: ${results.length}`, results.map(r => r.debugInfo));
+
+    // CRITICAL: Sort results to preserve original collection ordering
+    // This ensures that derived artifacts (human edits) appear in the same position
+    // as their original collection items, maintaining consistent UI ordering
+    results.sort((a, b) => {
+        // First sort by original collection ID (to group ideas from same collection)
+        if (a.originalArtifactId !== b.originalArtifactId) {
+            return a.originalArtifactId.localeCompare(b.originalArtifactId);
+        }
+
+        // Then sort by index within the collection (preserves original ordering)
+        return a.index - b.index;
+    });
+
+    console.log(`🎯 Sorted effective ideas:`, results.map(r => `${r.debugInfo} (order: ${r.originalArtifactId}[${r.index}])`));
     return results;
 }
 

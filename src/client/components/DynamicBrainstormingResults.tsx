@@ -179,7 +179,7 @@ const BrainstormIdeaCard: React.FC<{
     const transformName = artifactPath === '$' ? 'edit_brainstorm_idea' : 'edit_brainstorm_collection_idea';
 
     // Check if this is a derived artifact (has been edited)
-    const hasBeenEdited = artifact?.origin_type === 'user_input' || artifact?.isEditable || false;
+    const hasBeenEdited = artifact?.type === 'user_input' || artifact?.isEditable || false;
 
     // Handle successful save - show checkmark briefly
     const handleSaveSuccess = useCallback(() => {
