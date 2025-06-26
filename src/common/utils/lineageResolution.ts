@@ -185,20 +185,12 @@ export function buildLineageGraph(
     // Step 3: Convert Phase 1 nodes to final nodes by resolving references (Phase 2)
     const nodes = new Map<string, LineageNode>();
 
+    // First pass: Create all nodes with basic info
     for (const [nodeId, phaseOneNode] of phaseOneNodes) {
         if (phaseOneNode.type === 'artifact') {
             const artifactNode = phaseOneNode as PhaseOneArtifactNode;
 
-            // Resolve sourceTransform reference
-            const sourceTransform = artifactNode.sourceTransformId === "none"
-                ? "none"
-                : phaseOneNodes.get(artifactNode.sourceTransformId) as PhaseOneTransformNode | undefined;
-
-            if (artifactNode.sourceTransformId !== "none" && !sourceTransform) {
-                console.warn(`Warning: Could not resolve sourceTransform ${artifactNode.sourceTransformId} for artifact ${nodeId}`);
-            }
-
-            // Type cast to final artifact node
+            // Create artifact node (sourceTransform will be populated in second pass)
             const finalArtifactNode: LineageNodeArtifact = {
                 type: 'artifact' as const,
                 artifactId: artifactNode.artifactId,
@@ -206,20 +198,47 @@ export function buildLineageGraph(
                 path: artifactNode.path,
                 depth: artifactNode.depth,
                 isLeaf: artifactNode.isLeaf,
-                sourceTransform: (sourceTransform && sourceTransform !== "none") ? {
-                    type: 'transform' as const,
-                    transformId: sourceTransform.transformId,
-                    transformType: sourceTransform.transformType,
-                    path: sourceTransform.path,
-                    depth: sourceTransform.depth,
-                    isLeaf: sourceTransform.isLeaf,
-                    sourceArtifacts: [] // Will be populated in transform processing
-                } as LineageNodeTransform : "none"
+                sourceTransform: "none" // Will be populated in second pass
             };
 
             nodes.set(nodeId, finalArtifactNode);
         } else {
             const transformNode = phaseOneNode as PhaseOneTransformNode;
+
+            // Create transform node (sourceArtifacts will be populated in second pass)
+            const finalTransformNode: LineageNodeTransform = {
+                type: 'transform' as const,
+                transformId: transformNode.transformId,
+                transformType: transformNode.transformType,
+                path: transformNode.path,
+                depth: transformNode.depth,
+                isLeaf: transformNode.isLeaf,
+                sourceArtifacts: [] // Will be populated in second pass
+            };
+
+            nodes.set(nodeId, finalTransformNode);
+        }
+    }
+
+    // Second pass: Populate references now that all nodes exist
+    for (const [nodeId, phaseOneNode] of phaseOneNodes) {
+        if (phaseOneNode.type === 'artifact') {
+            const artifactNode = phaseOneNode as PhaseOneArtifactNode;
+            const finalArtifactNode = nodes.get(nodeId) as LineageNodeArtifact;
+
+            // Resolve sourceTransform reference
+            if (artifactNode.sourceTransformId !== "none") {
+                const sourceTransformNode = nodes.get(artifactNode.sourceTransformId) as LineageNodeTransform | undefined;
+                if (sourceTransformNode && sourceTransformNode.type === 'transform') {
+                    finalArtifactNode.sourceTransform = sourceTransformNode;
+                } else {
+                    console.warn(`Warning: Could not resolve sourceTransform ${artifactNode.sourceTransformId} for artifact ${nodeId}`);
+                    finalArtifactNode.sourceTransform = "none";
+                }
+            }
+        } else {
+            const transformNode = phaseOneNode as PhaseOneTransformNode;
+            const finalTransformNode = nodes.get(nodeId) as LineageNodeTransform;
 
             // Resolve sourceArtifacts references
             const sourceArtifacts: LineageNodeArtifact[] = [];
@@ -231,19 +250,7 @@ export function buildLineageGraph(
                     console.warn(`Warning: Could not resolve sourceArtifact ${artifactId} for transform ${nodeId}`);
                 }
             }
-
-            // Type cast to final transform node
-            const finalTransformNode: LineageNodeTransform = {
-                type: 'transform' as const,
-                transformId: transformNode.transformId,
-                transformType: transformNode.transformType,
-                path: transformNode.path,
-                depth: transformNode.depth,
-                isLeaf: transformNode.isLeaf,
-                sourceArtifacts
-            };
-
-            nodes.set(nodeId, finalTransformNode);
+            finalTransformNode.sourceArtifacts = sourceArtifacts;
         }
     }
 
@@ -914,4 +921,252 @@ export function getLatestVersionForPath(
 ): string | null {
     const result = findLatestArtifactForPath(artifactId, artifactPath, graph);
     return result.artifactId === artifactId ? null : result.artifactId;
+}
+
+// ============================================================================
+// NEW: Principled Brainstorm Idea Resolution
+// ============================================================================
+
+export interface EffectiveBrainstormIdea {
+    artifactId: string;
+    artifactPath: string; // Path within the artifact ($ for standalone, $.ideas[n] for collection items)
+    originalArtifactId: string; // The root collection or standalone idea this derives from
+    index: number; // Index within the original collection (or 0 for standalone)
+    isFromCollection: boolean;
+    debugInfo: string;
+}
+
+/**
+ * Find all effective brainstorm ideas using principled lineage graph traversal
+ * This replaces the patchy table lookup approach with a proper graph-based solution
+ */
+export function findEffectiveBrainstormIdeas(
+    graph: LineageGraph,
+    artifacts: ElectricArtifact[]
+): EffectiveBrainstormIdea[] {
+    const results: EffectiveBrainstormIdea[] = [];
+    const artifactMap = new Map(artifacts.map(a => [a.id, a]));
+
+    console.log('🎯 Starting principled brainstorm idea resolution...');
+
+    // DEBUG: Log all artifacts and their types
+    console.log('🎯 ALL ARTIFACTS:', artifacts.map(a => `${a.id}(${a.type})`));
+
+    // DEBUG: Log all nodes in the graph
+    console.log('🎯 ALL GRAPH NODES:', Array.from(graph.nodes.entries()).map(([id, node]) =>
+        `${id}(${node.type}:${node.type === 'artifact' ? (node as LineageNodeArtifact).artifactType : 'transform'}:leaf=${node.isLeaf})`
+    ));
+
+    // Step 1: Find all relevant brainstorm nodes (both leaf and non-leaf)
+    // Collections can be non-leaf but still need processing for unconsumed ideas
+    const relevantNodes = Array.from(graph.nodes.entries())
+        .filter(([_, node]) => {
+            if (node.type !== 'artifact') return false;
+
+            const artifact = artifactMap.get((node as LineageNodeArtifact).artifactId);
+            const isBrainstormType = artifact && (artifact.type === 'brainstorm_idea' || artifact.type === 'brainstorm_idea_collection');
+
+            // Include all brainstorm types regardless of leaf status
+            // - brainstorm_idea: only if leaf (final versions)
+            // - brainstorm_idea_collection: always (may have unconsumed ideas)
+            const shouldInclude = isBrainstormType && (
+                (artifact.type === 'brainstorm_idea' && node.isLeaf) ||
+                (artifact.type === 'brainstorm_idea_collection')
+            );
+
+            console.log(`🎯 Checking node ${(node as LineageNodeArtifact).artifactId}: isLeaf=${node.isLeaf}, isBrainstormType=${isBrainstormType}, artifactType=${artifact?.type}, shouldInclude=${shouldInclude}`);
+            return shouldInclude;
+        })
+        .map(([artifactId, node]) => ({ artifactId, node: node as LineageNodeArtifact }));
+
+    console.log(`🎯 Found ${relevantNodes.length} relevant nodes:`,
+        relevantNodes.map(n => `${n.artifactId}(${artifactMap.get(n.artifactId)?.type})`));
+
+    for (const { artifactId, node } of relevantNodes) {
+        const artifact = artifactMap.get(artifactId);
+        if (!artifact) continue;
+
+        if (artifact.type === 'brainstorm_idea_collection') {
+            // Step 2a: Collection leaf - check which ideas are still "available"
+            console.log(`🎯 Processing collection leaf: ${artifactId}`);
+            const consumedPaths = findConsumedCollectionPaths(artifactId, graph);
+            console.log(`🎯 Collection ${artifactId} consumed paths:`, consumedPaths);
+
+            const collectionIdeas = extractCollectionIdeas(artifact, consumedPaths);
+            results.push(...collectionIdeas);
+
+        } else if (artifact.type === 'brainstorm_idea') {
+            // Step 2b: Standalone idea leaf - check if it originated from a collection
+            console.log(`🎯 Processing standalone idea leaf: ${artifactId}`);
+
+            // DEBUG: Log the node details for this artifact
+            console.log(`🎯 Node details for ${artifactId}:`, {
+                hasSourceTransform: node.sourceTransform !== 'none',
+                path: node.path,
+                depth: node.depth,
+                sourceTransformType: node.sourceTransform !== 'none' ? node.sourceTransform.transformType : 'none'
+            });
+
+            const originInfo = traceToCollectionOrigin(artifactId, graph, artifactMap);
+
+            if (originInfo.isFromCollection) {
+                console.log(`🎯 Standalone idea ${artifactId} originated from collection ${originInfo.originalCollectionId} path ${originInfo.originalPath}`);
+                results.push({
+                    artifactId,
+                    artifactPath: '$', // Standalone artifact uses whole artifact
+                    originalArtifactId: originInfo.originalCollectionId!,
+                    index: originInfo.collectionIndex!,
+                    isFromCollection: true,
+                    debugInfo: `COLLECTION-DERIVED: ${artifactId} from ${originInfo.originalCollectionId}[${originInfo.collectionIndex}]`
+                });
+            } else {
+                console.log(`🎯 Standalone idea ${artifactId} is truly standalone`);
+                results.push({
+                    artifactId,
+                    artifactPath: '$',
+                    originalArtifactId: artifactId,
+                    index: 0,
+                    isFromCollection: false,
+                    debugInfo: `STANDALONE: ${artifactId}`
+                });
+            }
+        }
+    }
+
+    console.log(`🎯 Final effective ideas: ${results.length}`, results.map(r => r.debugInfo));
+    return results;
+}
+
+/**
+ * Find which collection paths have been "consumed" by transforms
+ */
+function findConsumedCollectionPaths(collectionId: string, graph: LineageGraph): Set<string> {
+    const consumedPaths = new Set<string>();
+
+    // Look through all path entries to find ones that start with this collection
+    for (const [pathKey, _] of graph.paths) {
+        if (pathKey.startsWith(`${collectionId}:`)) {
+            const path = pathKey.split(':')[1];
+            consumedPaths.add(path);
+        }
+    }
+
+    return consumedPaths;
+}
+
+/**
+ * Extract available ideas from a collection, excluding consumed ones
+ */
+function extractCollectionIdeas(
+    collectionArtifact: ElectricArtifact,
+    consumedPaths: Set<string>
+): EffectiveBrainstormIdea[] {
+    const results: EffectiveBrainstormIdea[] = [];
+
+    try {
+        const collectionData = JSON.parse(collectionArtifact.data);
+        if (!collectionData.ideas || !Array.isArray(collectionData.ideas)) {
+            return results;
+        }
+
+        for (let i = 0; i < collectionData.ideas.length; i++) {
+            const ideaPath = `$.ideas[${i}]`;
+
+            if (!consumedPaths.has(ideaPath)) {
+                // This idea hasn't been consumed, so it's still "available"
+                console.log(`🎯 Collection ${collectionArtifact.id} idea[${i}] is available (not consumed)`);
+                results.push({
+                    artifactId: collectionArtifact.id,
+                    artifactPath: ideaPath,
+                    originalArtifactId: collectionArtifact.id,
+                    index: i,
+                    isFromCollection: true,
+                    debugInfo: `COLLECTION-ORIGINAL: ${collectionArtifact.id}[${i}]`
+                });
+            } else {
+                console.log(`🎯 Collection ${collectionArtifact.id} idea[${i}] was consumed (has transforms)`);
+            }
+        }
+    } catch (error) {
+        console.error(`Error parsing collection data for ${collectionArtifact.id}:`, error);
+    }
+
+    return results;
+}
+
+/**
+ * Trace a standalone idea back to see if it originated from a collection
+ */
+function traceToCollectionOrigin(
+    ideaId: string,
+    graph: LineageGraph,
+    artifactMap: Map<string, ElectricArtifact>
+): {
+    isFromCollection: boolean;
+    originalCollectionId?: string;
+    originalPath?: string;
+    collectionIndex?: number;
+} {
+    console.log(`🎯 TRACE: Starting trace for ${ideaId}`);
+
+    const node = graph.nodes.get(ideaId);
+    if (!node || node.type !== 'artifact') {
+        console.log(`🎯 TRACE: No node found for ${ideaId}`);
+        return { isFromCollection: false };
+    }
+
+    console.log(`🎯 TRACE: Node found, hasSourceTransform=${node.sourceTransform !== 'none'}`);
+
+    // Trace back through the lineage
+    let currentNode: LineageNodeArtifact = node;
+    let traceDepth = 0;
+
+    while (currentNode.sourceTransform !== 'none' && traceDepth < 10) { // Prevent infinite loops
+        traceDepth++;
+        const sourceTransform = currentNode.sourceTransform;
+
+        console.log(`🎯 TRACE: Depth ${traceDepth}, transform type=${sourceTransform.transformType}, path=${sourceTransform.path}`);
+        console.log(`🎯 TRACE: Source artifacts:`, sourceTransform.sourceArtifacts.map(sa => `${sa.artifactId}(${artifactMap.get(sa.artifactId)?.type})`));
+
+        // Check all source artifacts of this transform
+        for (const sourceArtifact of sourceTransform.sourceArtifacts) {
+            const sourceArtifactData = artifactMap.get(sourceArtifact.artifactId);
+
+            console.log(`🎯 TRACE: Checking source artifact ${sourceArtifact.artifactId} type=${sourceArtifactData?.type}`);
+
+            if (sourceArtifactData?.type === 'brainstorm_idea_collection') {
+                // Found a collection origin!
+                // Extract index from the path if available
+                let collectionIndex = 0;
+                if (sourceTransform.path) {
+                    const match = sourceTransform.path.match(/\$\.ideas\[(\d+)\]/);
+                    if (match) {
+                        collectionIndex = parseInt(match[1]);
+                    }
+                }
+
+                console.log(`🎯 TRACE: ✅ Found collection origin! ${sourceArtifact.artifactId} index=${collectionIndex}`);
+
+                return {
+                    isFromCollection: true,
+                    originalCollectionId: sourceArtifact.artifactId,
+                    originalPath: sourceTransform.path,
+                    collectionIndex
+                };
+            }
+
+            // Continue tracing if this source artifact also has a source transform
+            if (sourceArtifact.sourceTransform !== 'none') {
+                console.log(`🎯 TRACE: Continuing trace through ${sourceArtifact.artifactId}`);
+                currentNode = sourceArtifact;
+                break; // Continue with this path
+            }
+        }
+
+        // If we get here, we've exhausted the lineage without finding a collection
+        break;
+    }
+
+    console.log(`🎯 TRACE: ❌ No collection origin found after ${traceDepth} steps`);
+    return { isFromCollection: false };
 } 

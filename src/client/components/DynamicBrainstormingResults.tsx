@@ -10,7 +10,7 @@ import { ReasoningEvent } from '../../common/streaming/types';
 import { ArtifactEditor } from './shared/ArtifactEditor';
 import { BRAINSTORM_IDEA_FIELDS } from './shared/fieldConfigs';
 import { useProjectData } from '../contexts/ProjectDataContext';
-import { findLatestBrainstormIdeasWithLineage } from '../../common/utils/lineageResolution';
+import { useEffectiveBrainstormIdeas } from '../hooks/useLineageResolution';
 
 const { Text } = Typography;
 
@@ -169,7 +169,8 @@ const BrainstormIdeaCard: React.FC<{
     isSelected: boolean;
     ideaOutlines: any[];
     onIdeaClick: (collectionId: string, index: number) => void;
-}> = ({ artifactId, artifactPath, originalCollectionId, index, isSelected, ideaOutlines, onIdeaClick }) => {
+    debugInfo?: string; // DEBUG: Add debug info
+}> = ({ artifactId, artifactPath, originalCollectionId, index, isSelected, ideaOutlines, onIdeaClick, debugInfo }) => {
     const [showSavedCheckmark, setShowSavedCheckmark] = useState(false);
     const projectData = useProjectData();
 
@@ -247,6 +248,21 @@ const BrainstormIdeaCard: React.FC<{
                 onSaveSuccess={handleSaveSuccess}
             />
 
+            {/* DEBUG: Show debug info if available */}
+            {debugInfo && (
+                <div style={{
+                    marginTop: '8px',
+                    padding: '4px 8px',
+                    background: '#3b3b3b',
+                    borderRadius: '4px',
+                    fontSize: '10px',
+                    color: '#888',
+                    fontFamily: 'monospace'
+                }}>
+                    🐛 {debugInfo}
+                </div>
+            )}
+
             {/* Generate outline button */}
             <GenerateOutlineButton artifactId={artifactId} />
 
@@ -261,107 +277,56 @@ const BrainstormIdeaCard: React.FC<{
 };
 
 /**
- * Hook to get latest brainstorm ideas using lineage resolution
- * This gets all leaf brainstorm_idea artifacts and brainstorm_idea_collection paths
+ * Hook to get effective brainstorm ideas using principled lineage graph traversal
+ * This replaces the patchy approach with proper graph-based resolution
  */
 function useLatestBrainstormIdeas(): IdeaWithTitle[] {
+    const { ideas, isLoading, error } = useEffectiveBrainstormIdeas();
     const projectData = useProjectData();
 
     return useMemo(() => {
-        const allIdeas: IdeaWithTitle[] = [];
-
-        // 1. Get all brainstorm collections and extract ideas with lineage resolution
-        const collections = projectData.getBrainstormCollections();
-
-        for (const collection of collections) {
-            try {
-                const collectionData = JSON.parse(collection.data);
-
-                if (!collectionData.ideas || !Array.isArray(collectionData.ideas)) {
-                    console.warn('⚠️ Collection missing ideas array:', collection.id);
-                    continue;
-                }
-
-                for (let i = 0; i < collectionData.ideas.length; i++) {
-                    const artifactPath = `$.ideas[${i}]`;
-                    const latestArtifactId = projectData.getLatestVersionForPath(collection.id, artifactPath);
-
-                    if (latestArtifactId && latestArtifactId !== collection.id) {
-                        // Use the derived leaf artifact (e.g., user_input or brainstorm_idea)
-                        const latestArtifact = projectData.getArtifactById(latestArtifactId);
-                        if (latestArtifact) {
-                            const ideaData = JSON.parse(latestArtifact.data);
-
-                            allIdeas.push({
-                                title: ideaData.title || `想法 ${i + 1}`,
-                                body: ideaData.body || '内容加载中...',
-                                artifactId: latestArtifactId, // Use the leaf artifact ID
-                                originalArtifactId: collection.id,
-                                artifactPath: '$', // Root path for leaf artifacts
-                                index: i
-                            });
-                        }
-                    } else {
-                        // Use original from collection with JSONPath
-                        const originalIdea = collectionData.ideas[i];
-
-                        allIdeas.push({
-                            title: originalIdea.title || `想法 ${i + 1}`,
-                            body: originalIdea.body || '内容加载中...',
-                            artifactId: collection.id, // Collection artifact ID
-                            originalArtifactId: collection.id,
-                            artifactPath: artifactPath, // JSONPath to specific item
-                            index: i
-                        });
-                    }
-                }
-            } catch (parseErr) {
-                console.warn(`❌ Failed to parse collection ${collection.id}:`, parseErr);
-            }
+        if (isLoading || error) {
+            return [];
         }
 
-        // 2. Get standalone brainstorm_idea artifacts (not derived from collections)
-        const lineageGraph = projectData.getLineageGraph();
-        const latestIndividualIdeas = findLatestBrainstormIdeasWithLineage(lineageGraph, projectData.artifacts);
+        // Convert EffectiveBrainstormIdea[] to IdeaWithTitle[]
+        return ideas.map((effectiveIdea): IdeaWithTitle => {
+            // Get the actual data for this idea
+            let title = '';
+            let body = '';
 
-        // Only include standalone ideas that don't have a collection source
-        const collectionIds = new Set(collections.map(c => c.id));
-
-        latestIndividualIdeas.forEach((artifact: any) => {
-            // Check if this artifact has a collection as source by looking at its lineage
-            const artifactNode = lineageGraph.nodes.get(artifact.id);
-            let hasCollectionSource = false;
-
-            if (artifactNode && artifactNode.type === 'artifact' && artifactNode.sourceTransform !== 'none') {
-                // Check if any source artifact is a collection
-                const sourceTransform = artifactNode.sourceTransform;
-                if (sourceTransform.sourceArtifacts) {
-                    hasCollectionSource = sourceTransform.sourceArtifacts.some(sourceArtifact =>
-                        collectionIds.has(sourceArtifact.artifactId)
-                    );
-                }
-            }
-
-            // Only include if it's NOT derived from a collection
-            if (!hasCollectionSource) {
+            const artifact = projectData.getArtifactById(effectiveIdea.artifactId);
+            if (artifact) {
                 try {
-                    const data = artifact.data ? JSON.parse(artifact.data) : {};
-                    allIdeas.push({
-                        artifactId: artifact.id,
-                        originalArtifactId: artifact.id,
-                        title: data.title || `想法 ${allIdeas.length + 1}`,
-                        body: data.body || '内容加载中...',
-                        artifactPath: '$', // Root path for standalone artifacts
-                        index: allIdeas.length
-                    });
-                } catch (parseErr) {
-                    console.warn(`Failed to parse individual artifact ${artifact.id}:`, parseErr);
+                    if (effectiveIdea.artifactPath === '$') {
+                        // Standalone artifact - use full data
+                        const data = JSON.parse(artifact.data);
+                        title = data.title || '';
+                        body = data.body || '';
+                    } else {
+                        // Collection artifact - extract specific idea
+                        const data = JSON.parse(artifact.data);
+                        if (data.ideas && Array.isArray(data.ideas) && data.ideas[effectiveIdea.index]) {
+                            title = data.ideas[effectiveIdea.index].title || '';
+                            body = data.ideas[effectiveIdea.index].body || '';
+                        }
+                    }
+                } catch (parseError) {
+                    console.error(`Error parsing artifact data for ${effectiveIdea.artifactId}:`, parseError);
                 }
             }
-        });
 
-        return allIdeas;
-    }, [projectData]);
+            return {
+                title,
+                body,
+                artifactId: effectiveIdea.artifactId,
+                originalArtifactId: effectiveIdea.originalArtifactId,
+                artifactPath: effectiveIdea.artifactPath,
+                index: effectiveIdea.index,
+                debugInfo: effectiveIdea.debugInfo
+            };
+        });
+    }, [ideas, isLoading, error, projectData.getArtifactById]);
 }
 
 export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsProps> = ({
@@ -381,6 +346,7 @@ export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsPr
     const [selectedIdea, setSelectedIdea] = useState<number | null>(selectedIdeaIndex);
     const [ideaOutlines, setIdeaOutlines] = useState<Record<string, any[]>>({});
     const [loadingOutlines, setLoadingOutlines] = useState<Record<string, boolean>>({});
+    const [showDebugInfo, setShowDebugInfo] = useState<boolean>(true); // DEBUG: Toggle for debug info
 
     // Get latest brainstorm ideas using the new hook
     const latestIdeas = useLatestBrainstormIdeas();
@@ -506,6 +472,16 @@ export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsPr
                 </div>
 
                 <div className="flex items-center gap-2">
+                    {/* DEBUG: Toggle button for debug info */}
+                    <Button
+                        type="dashed"
+                        size="small"
+                        onClick={() => setShowDebugInfo(!showDebugInfo)}
+                        style={{ fontSize: '10px' }}
+                    >
+                        🐛 {showDebugInfo ? '隐藏' : '显示'}调试
+                    </Button>
+
                     {isStreaming && onStop && (
                         <Button
                             type="primary"
@@ -550,6 +526,7 @@ export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsPr
                             isSelected={selectedIdea === index}
                             ideaOutlines={ideaOutlines[idea.artifactId || ''] || []}
                             onIdeaClick={handleIdeaClick}
+                            debugInfo={showDebugInfo ? idea.debugInfo : undefined} // DEBUG: Pass debug info to card
                         />
                     );
                 })}

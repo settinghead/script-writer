@@ -3,8 +3,10 @@ import { useProjectData } from '../contexts/ProjectDataContext';
 import {
     buildLineageGraph,
     findLatestArtifact,
+    findEffectiveBrainstormIdeas,
     type LineageNode,
-    type LineageResolutionResult
+    type LineageResolutionResult,
+    type EffectiveBrainstormIdea
 } from '../../common/utils/lineageResolution';
 
 interface UseLineageResolutionOptions {
@@ -132,4 +134,58 @@ export function useMultipleLineageResolution(
     });
 
     return results;
+}
+
+/**
+ * Hook to get all effective brainstorm ideas using principled lineage graph traversal
+ * This replaces the patchy approach with proper graph-based resolution
+ */
+export function useEffectiveBrainstormIdeas(): {
+    ideas: EffectiveBrainstormIdea[];
+    isLoading: boolean;
+    error: Error | null;
+} {
+    const projectData = useProjectData();
+    const [error, setError] = useState<Error | null>(null);
+
+    const ideas = useMemo((): EffectiveBrainstormIdea[] => {
+        if (projectData.isLoading) {
+            return [];
+        }
+
+        try {
+            setError(null);
+
+            // Get all project data needed for lineage resolution
+            const artifacts = projectData.artifacts;
+            const transforms = projectData.transforms;
+            const humanTransforms = projectData.humanTransforms;
+            const transformInputs = projectData.transformInputs;
+            const transformOutputs = projectData.transformOutputs;
+
+            // Build the lineage graph
+            const graph = buildLineageGraph(
+                artifacts,
+                transforms,
+                humanTransforms,
+                transformInputs,
+                transformOutputs
+            );
+
+            // Use principled resolution to find all effective brainstorm ideas
+            return findEffectiveBrainstormIdeas(graph, artifacts);
+
+        } catch (err) {
+            const error = err instanceof Error ? err : new Error('Effective brainstorm ideas resolution failed');
+            console.error('[useEffectiveBrainstormIdeas] Error:', error);
+            setError(error);
+            return [];
+        }
+    }, [projectData.isLoading, projectData.artifacts, projectData.transforms, projectData.humanTransforms, projectData.transformInputs, projectData.transformOutputs]);
+
+    return {
+        ideas,
+        isLoading: projectData.isLoading,
+        error: projectData.error || error
+    };
 }

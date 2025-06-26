@@ -34,6 +34,7 @@ export interface Artifacts {
   streaming_status: Generated<string | null>;
   type: string;
   type_version: Generated<string>;
+  updated_at: Generated<Timestamp>;
 }
 
 export interface AuthProviders {
@@ -119,7 +120,7 @@ export interface ProjectsUsers {
 
 export interface TransformInputs {
   artifact_id: string;
-  artifact_path: string;
+  artifact_path: Generated<string>;
   id: Generated<number>;
   input_role: string | null;
   project_id: string;
