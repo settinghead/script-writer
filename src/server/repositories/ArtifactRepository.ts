@@ -56,6 +56,9 @@ export class ArtifactRepository {
         return {
             id,
             project_id: projectId,
+            schema_type: schemaType,
+            schema_version: typeVersion,
+            origin_type: originType,
             type,
             type_version: typeVersion,
             data,
@@ -86,6 +89,9 @@ export class ArtifactRepository {
             project_id: row.project_id,
             type: row.type,
             type_version: row.type_version,
+            schema_type: row.schema_type,
+            schema_version: row.schema_version,
+            origin_type: row.origin_type as 'ai_generated' | 'user_input',
             data: JSON.parse(row.data),
             metadata: row.metadata ? JSON.parse(row.metadata) : null,
             created_at: row.created_at?.toISOString() || new Date().toISOString()
@@ -112,15 +118,7 @@ export class ArtifactRepository {
             .orderBy('created_at', 'desc')
             .execute();
 
-        return rows.map(row => ({
-            id: row.id,
-            project_id: row.project_id,
-            type: row.type,
-            type_version: row.type_version,
-            data: JSON.parse(row.data),
-            metadata: row.metadata ? JSON.parse(row.metadata) : null,
-            created_at: row.created_at?.toISOString() || new Date().toISOString()
-        }));
+        return rows.map(row => this.rowToArtifact(row));
     }
 
     // Get all artifacts for a project
@@ -137,15 +135,7 @@ export class ArtifactRepository {
 
         const rows = await query.execute();
 
-        return rows.map(row => ({
-            id: row.id,
-            project_id: row.project_id,
-            type: row.type,
-            type_version: row.type_version,
-            data: JSON.parse(row.data),
-            metadata: row.metadata ? JSON.parse(row.metadata) : null,
-            created_at: row.created_at?.toISOString() || new Date().toISOString()
-        }));
+        return rows.map(row => this.rowToArtifact(row));
     }
 
     // Get artifacts by IDs for a specific project
@@ -161,15 +151,7 @@ export class ArtifactRepository {
 
         const rows = await query.execute();
 
-        return rows.map(row => ({
-            id: row.id,
-            project_id: row.project_id,
-            type: row.type,
-            type_version: row.type_version,
-            data: JSON.parse(row.data),
-            metadata: row.metadata ? JSON.parse(row.metadata) : null,
-            created_at: row.created_at?.toISOString() || new Date().toISOString()
-        }));
+        return rows.map(row => this.rowToArtifact(row));
     }
 
     // Check if user has access to a project
@@ -195,15 +177,7 @@ export class ArtifactRepository {
             .limit(limit)
             .execute();
 
-        return rows.map(row => ({
-            id: row.id,
-            project_id: row.project_id,
-            type: row.type,
-            type_version: row.type_version,
-            data: JSON.parse(row.data),
-            metadata: row.metadata ? JSON.parse(row.metadata) : null,
-            created_at: row.created_at?.toISOString() || new Date().toISOString()
-        }));
+        return rows.map(row => this.rowToArtifact(row));
     }
 
     // Get artifacts by type for a specific session
@@ -234,15 +208,7 @@ export class ArtifactRepository {
             .orderBy('a.created_at', 'desc')
             .execute();
 
-        return rows.map(row => ({
-            id: row.id,
-            project_id: row.project_id,
-            type: row.type,
-            type_version: row.type_version,
-            data: JSON.parse(row.data),
-            metadata: row.metadata ? JSON.parse(row.metadata) : null,
-            created_at: row.created_at?.toISOString() || new Date().toISOString()
-        }));
+        return rows.map(row => this.rowToArtifact(row));
     }
 
     // Get latest user input for a session (ideation or outline)
@@ -272,15 +238,7 @@ export class ArtifactRepository {
             return null;
         }
 
-        return {
-            id: row.id,
-            project_id: row.project_id,
-            type: row.type,
-            type_version: row.type_version,
-            data: JSON.parse(row.data),
-            metadata: row.metadata ? JSON.parse(row.metadata) : null,
-            created_at: row.created_at?.toISOString() || new Date().toISOString()
-        };
+        return this.rowToArtifact(row);
     }
 
     // Delete artifact (should be rare since artifacts are immutable)
@@ -331,15 +289,7 @@ export class ArtifactRepository {
 
         const rows = await query.execute();
 
-        return rows.map(row => ({
-            id: row.id,
-            project_id: row.project_id,
-            type: row.type,
-            type_version: row.type_version,
-            data: JSON.parse(row.data),
-            metadata: row.metadata ? JSON.parse(row.metadata) : null,
-            created_at: row.created_at?.toISOString() || new Date().toISOString()
-        }));
+        return rows.map(row => this.rowToArtifact(row));
     }
 
     /**
@@ -380,15 +330,10 @@ export class ArtifactRepository {
                     // Find the actual artifact data
                     const latestArtifact = artifacts.find(a => a.id === result.artifactId);
                     if (latestArtifact && latestArtifact.type === 'brainstorm_idea') {
-                        resolvedArtifacts.push({
-                            id: latestArtifact.id,
-                            project_id: latestArtifact.project_id,
-                            type: latestArtifact.type,
-                            type_version: latestArtifact.type_version as string,
-                            data: JSON.parse(latestArtifact.data as string), // Parse the data for return
-                            metadata: latestArtifact.metadata ? JSON.parse(latestArtifact.metadata as string) : null,
-                            created_at: latestArtifact.created_at
-                        });
+                        resolvedArtifacts.push(this.rowToArtifact({
+                            ...latestArtifact,
+                            type_version: latestArtifact.type_version as string
+                        }));
                     }
                 }
             }
@@ -522,5 +467,21 @@ export class ArtifactRepository {
         };
 
         return typeMapping[type] || `${type}_schema`;
+    }
+
+    // Helper to convert database row to Artifact with all required fields
+    private rowToArtifact(row: any): Artifact {
+        return {
+            id: row.id,
+            project_id: row.project_id,
+            schema_type: row.schema_type || this.mapTypeToSchemaType(row.type),
+            schema_version: row.schema_version || row.type_version,
+            origin_type: (row.origin_type as 'ai_generated' | 'user_input') || 'ai_generated',
+            type: row.type,
+            type_version: row.type_version,
+            data: typeof row.data === 'string' ? JSON.parse(row.data) : row.data,
+            metadata: row.metadata ? (typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata) : null,
+            created_at: row.created_at?.toISOString() || new Date().toISOString()
+        };
     }
 } 

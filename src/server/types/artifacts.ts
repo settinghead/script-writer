@@ -29,8 +29,16 @@ export interface ProjectUser {
 export interface Artifact {
     id: string;
     project_id: string;
+
+    // NEW: Schema and origin types
+    schema_type: string;
+    schema_version: string;
+    origin_type: 'ai_generated' | 'user_input';
+
+    // LEGACY: Keep old fields for backward compatibility
     type: string;
     type_version: string;
+
     data: any;
     metadata?: any;
     created_at: string;

@@ -176,6 +176,9 @@ const BrainstormIdeaCard: React.FC<{
 
     // Determine the correct transform name based on artifact type and path
     const artifact = projectData.getArtifactById(artifactId);
+
+    // For standalone brainstorm ideas (path '$'), use edit_brainstorm_idea
+    // For collection ideas (path like '$.ideas[0]'), use edit_brainstorm_collection_idea
     const transformName = artifactPath === '$' ? 'edit_brainstorm_idea' : 'edit_brainstorm_collection_idea';
 
     // Check if this is a derived artifact (has been edited)
@@ -322,8 +325,7 @@ function useLatestBrainstormIdeas(): IdeaWithTitle[] {
                 artifactId: effectiveIdea.artifactId,
                 originalArtifactId: effectiveIdea.originalArtifactId,
                 artifactPath: effectiveIdea.artifactPath,
-                index: effectiveIdea.index,
-                debugInfo: effectiveIdea.debugInfo
+                index: effectiveIdea.index
             };
         });
     }, [ideas, isLoading, error, projectData.getArtifactById]);

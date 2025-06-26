@@ -68,7 +68,7 @@ export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinitio
     description: 'Convert a brainstorm idea to outline input',
     sourceArtifactType: 'brainstorm_idea_schema',
     targetArtifactType: 'outline_input_schema',
-    pathPattern: '^$', // Root path for entire artifact
+    pathPattern: '^\\$$', // Root path indicator ($)
     instantiationFunction: 'createOutlineInputFromBrainstormIdea'
   },
   'edit_brainstorm_idea': {
@@ -76,7 +76,7 @@ export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinitio
     description: 'Edit entire brainstorm idea object',
     sourceArtifactType: 'brainstorm_idea_schema',
     targetArtifactType: 'brainstorm_idea_schema',
-    pathPattern: '^$', // Root path for entire artifact
+    pathPattern: '^\\$$', // Root path indicator ($)
     instantiationFunction: 'createBrainstormIdeaFromBrainstormIdea'
   },
   'edit_brainstorm_idea_field': {

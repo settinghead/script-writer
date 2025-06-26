@@ -946,7 +946,7 @@ export function findEffectiveBrainstormIdeas(
     const results: EffectiveBrainstormIdea[] = [];
     const artifactMap = new Map(artifacts.map(a => [a.id, a]));
 
-    console.log('🎯 Starting principled brainstorm idea resolution...');
+
 
 
 
@@ -1111,8 +1111,6 @@ function traceToCollectionOrigin(
         for (const sourceArtifact of sourceTransform.sourceArtifacts) {
             const sourceArtifactData = artifactMap.get(sourceArtifact.artifactId);
 
-            console.log(`🎯 TRACE: Checking source artifact ${sourceArtifact.artifactId} type=${sourceArtifactData?.type}`);
-
             if (sourceArtifactData?.schema_type === 'brainstorm_collection_schema' || sourceArtifactData?.type === 'brainstorm_idea_collection') {
                 // Found a collection origin!
                 // Extract index from the path if available
@@ -1124,8 +1122,6 @@ function traceToCollectionOrigin(
                     }
                 }
 
-                console.log(`🎯 TRACE: ✅ Found collection origin! ${sourceArtifact.artifactId} index=${collectionIndex}`);
-
                 return {
                     isFromCollection: true,
                     originalCollectionId: sourceArtifact.artifactId,
@@ -1136,7 +1132,6 @@ function traceToCollectionOrigin(
 
             // Continue tracing if this source artifact also has a source transform
             if (sourceArtifact.sourceTransform !== 'none') {
-                console.log(`🎯 TRACE: Continuing trace through ${sourceArtifact.artifactId}`);
                 currentNode = sourceArtifact;
                 break; // Continue with this path
             }
@@ -1146,6 +1141,5 @@ function traceToCollectionOrigin(
         break;
     }
 
-    console.log(`🎯 TRACE: ❌ No collection origin found after ${traceDepth} steps`);
     return { isFromCollection: false };
 } 

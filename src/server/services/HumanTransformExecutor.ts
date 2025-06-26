@@ -37,6 +37,36 @@ export class HumanTransformExecutor {
     return schemaToLegacyMapping[schemaType] || schemaType.replace('_schema', '');
   }
 
+  private mapLegacyTypeToSchemaType(legacyType: string): string {
+    const legacyToSchemaMapping: Record<string, string> = {
+      'brainstorm_idea': 'brainstorm_idea_schema',
+      'brainstorm_idea_collection': 'brainstorm_collection_schema',
+      'user_input': 'user_input_schema',
+      'outline_input': 'outline_input_schema',
+      'outline_title': 'outline_title_schema',
+      'outline_genre': 'outline_genre_schema',
+      'outline_selling_points': 'outline_selling_points_schema',
+      'outline_setting': 'outline_setting_schema',
+      'outline_synopsis': 'outline_synopsis_schema',
+      'outline_characters': 'outline_characters_schema',
+      'brainstorm_params': 'brainstorm_params_schema',
+      'plot_outline': 'plot_outline_schema'
+    };
+
+    return legacyToSchemaMapping[legacyType] || legacyType + '_schema';
+  }
+
+  private isCompatibleArtifactType(artifactType: string, artifactSchemaType: string | undefined, expectedSchemaType: string): boolean {
+    // Check direct schema type match first
+    if (artifactSchemaType === expectedSchemaType) {
+      return true;
+    }
+
+    // Check if legacy type maps to expected schema type
+    const mappedSchemaType = this.mapLegacyTypeToSchemaType(artifactType);
+    return mappedSchemaType === expectedSchemaType;
+  }
+
   /**
    * Execute a schema-validated human transform with race condition protection
    */
@@ -255,6 +285,12 @@ export class HumanTransformExecutor {
       throw new Error('Source artifact not found');
     }
 
+    // 2. Check artifact type compatibility
+    if (!this.isCompatibleArtifactType(sourceArtifact.type, sourceArtifact.schema_type, transformDef.sourceArtifactType)) {
+      throw new Error(`Incompatible artifact type. Expected: ${transformDef.sourceArtifactType}, but artifact has type: ${sourceArtifact.type}${sourceArtifact.schema_type ? ` (schema_type: ${sourceArtifact.schema_type})` : ''}`);
+    }
+
+    // 3. Validate source artifact data against schema
     const sourceSchema = ARTIFACT_SCHEMAS[transformDef.sourceArtifactType as keyof typeof ARTIFACT_SCHEMAS];
     const sourceData = sourceArtifact.data; // Already parsed by ArtifactRepository
     const sourceValidation = sourceSchema.safeParse(sourceData);
