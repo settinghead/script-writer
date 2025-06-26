@@ -852,6 +852,7 @@ src/
 - `npm run migrate:down` - Roll back last migration
 - `npm run migrate:status` - Show migration status
 - `npm run seed` - Seed test users
+- `npm run nuke` - **⚠️ DESTROY database and re-seed** (stops containers, removes volumes, recreates everything)
 - `npm run test:schema` - Test schema transform system
 - `./run-ts <script>` - Run TypeScript scripts with proper configuration
 

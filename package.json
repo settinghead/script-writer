@@ -19,6 +19,7 @@
     "migrate:down": "./run-ts src/server/scripts/migrate.ts down",
     "migrate:status": "./run-ts src/server/scripts/migrate.ts status",
     "seed": "./run-ts src/server/scripts/seed.ts",
+    "nuke": "docker compose down -v && docker compose up -d && sleep 10 && npm run migrate && npm run seed && docker compose down",
     "test:schema": "./run-ts src/server/scripts/test-schema-system.ts",
     "test:brainstorm": "./run-ts src/server/scripts/test-brainstorm-frontend.ts"
   },
