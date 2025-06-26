@@ -1157,7 +1157,7 @@ user_input_schema           | user_input   | user_input
 
 #### Phase 3: UI Integration & Dynamic Lineage ✅ COMPLETED
 - **Enhanced DynamicBrainstormingResults**: Integrated lineage resolution for always editing latest versions
-- **React Hooks System**: `useLineageResolution`, `useMultipleLineageResolution`, and `useBrainstormLineageResolution`
+- **React Hooks System**: `useLineageResolution`,  and `useBrainstormLineageResolution`
 - **Visual Edit Indicators**: 📝 "已编辑版本" badges for ideas that have been modified
 - **Real-time Updates**: Electric SQL integration provides instant lineage updates across all clients
 

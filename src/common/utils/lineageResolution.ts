@@ -1170,4 +1170,35 @@ export function convertEffectiveIdeasToIdeaWithTitle(
             index: effectiveIdea.index
         };
     });
+}
+
+/**
+ * Extract effective brainstorm ideas from raw project data
+ * This is a pure function that handles the core lineage resolution logic
+ */
+export function extractEffectiveBrainstormIdeas(
+    artifacts: ElectricArtifact[],
+    transforms: ElectricTransform[],
+    humanTransforms: ElectricHumanTransform[],
+    transformInputs: ElectricTransformInput[],
+    transformOutputs: ElectricTransformOutput[]
+): EffectiveBrainstormIdea[] {
+    try {
+        // Build the lineage graph
+        const graph = buildLineageGraph(
+            artifacts,
+            transforms,
+            humanTransforms,
+            transformInputs,
+            transformOutputs
+        );
+
+        // Use principled resolution to find all effective brainstorm ideas
+        return findEffectiveBrainstormIdeas(graph, artifacts);
+
+    } catch (err) {
+        const error = err instanceof Error ? err : new Error('Effective brainstorm ideas extraction failed');
+        console.error('[extractEffectiveBrainstormIdeas] Error:', error);
+        throw error; // Re-throw so caller can handle
+    }
 } 

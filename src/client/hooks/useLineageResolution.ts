@@ -4,6 +4,7 @@ import {
     buildLineageGraph,
     findLatestArtifact,
     findEffectiveBrainstormIdeas,
+    extractEffectiveBrainstormIdeas,
     convertEffectiveIdeasToIdeaWithTitle,
     type LineageNode,
     type LineageResolutionResult,
@@ -116,27 +117,7 @@ export function useLineageResolution(
     };
 }
 
-/**
- * Hook to resolve lineage for multiple artifacts at once
- * Useful for brainstorm collections where you need to resolve multiple ideas
- */
-export function useMultipleLineageResolution(
-    sourceArtifactId: string | null,
-    paths: string[],
-    options: UseLineageResolutionOptions
-): Record<string, UseLineageResolutionResult> {
-    const { enabled } = options;
 
-    // Use individual hooks for each path
-    const results: Record<string, UseLineageResolutionResult> = {};
-
-    paths.forEach(path => {
-        // eslint-disable-next-line react-hooks/rules-of-hooks
-        results[path] = useLineageResolution({ sourceArtifactId, path, options: { enabled } });
-    });
-
-    return results;
-}
 
 /**
  * Hook to get all effective brainstorm ideas using principled lineage graph traversal
@@ -158,24 +139,14 @@ export function useEffectiveBrainstormIdeas(): {
         try {
             setError(null);
 
-            // Get all project data needed for lineage resolution
-            const artifacts = projectData.artifacts;
-            const transforms = projectData.transforms;
-            const humanTransforms = projectData.humanTransforms;
-            const transformInputs = projectData.transformInputs;
-            const transformOutputs = projectData.transformOutputs;
-
-            // Build the lineage graph
-            const graph = buildLineageGraph(
-                artifacts,
-                transforms,
-                humanTransforms,
-                transformInputs,
-                transformOutputs
+            // Use the pure function to extract effective brainstorm ideas
+            return extractEffectiveBrainstormIdeas(
+                projectData.artifacts,
+                projectData.transforms,
+                projectData.humanTransforms,
+                projectData.transformInputs,
+                projectData.transformOutputs
             );
-
-            // Use principled resolution to find all effective brainstorm ideas
-            return findEffectiveBrainstormIdeas(graph, artifacts);
 
         } catch (err) {
             const error = err instanceof Error ? err : new Error('Effective brainstorm ideas resolution failed');
