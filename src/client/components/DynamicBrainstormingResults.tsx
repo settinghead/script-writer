@@ -162,19 +162,23 @@ const IdeaOutlines: React.FC<{
 
 // Individual idea card component using ArtifactEditor
 const BrainstormIdeaCard: React.FC<{
-    collectionId: string;
-    ideaPath: string;
+    artifactId: string;
+    artifactPath: string;
+    originalCollectionId: string;
     index: number;
     isSelected: boolean;
     ideaOutlines: any[];
     onIdeaClick: (collectionId: string, index: number) => void;
-}> = ({ collectionId, ideaPath, index, isSelected, ideaOutlines, onIdeaClick }) => {
+}> = ({ artifactId, artifactPath, originalCollectionId, index, isSelected, ideaOutlines, onIdeaClick }) => {
     const [showSavedCheckmark, setShowSavedCheckmark] = useState(false);
     const projectData = useProjectData();
 
-    // Check if this specific path has been edited (has lineage)
-    const latestArtifactId = projectData.getLatestVersionForPath(collectionId, ideaPath);
-    const hasBeenEdited = latestArtifactId && latestArtifactId !== collectionId;
+    // Determine the correct transform name based on artifact type and path
+    const artifact = projectData.getArtifactById(artifactId);
+    const transformName = artifactPath === '$' ? 'edit_brainstorm_idea' : 'edit_brainstorm_collection_idea';
+
+    // Check if this is a derived artifact (has been edited)
+    const hasBeenEdited = artifact?.type === 'user_input' || artifact?.isEditable || false;
 
     // Handle successful save - show checkmark briefly
     const handleSaveSuccess = useCallback(() => {
@@ -186,7 +190,7 @@ const BrainstormIdeaCard: React.FC<{
 
     return (
         <Card
-            key={`${collectionId}-${index}`}
+            key={`${artifactId}-${index}`}
             style={{
                 backgroundColor: isSelected ? '#2d3436' : '#262626',
                 border: isSelected ? '1px solid #1890ff' : '1px solid #434343',
@@ -208,7 +212,7 @@ const BrainstormIdeaCard: React.FC<{
                     e.currentTarget.style.backgroundColor = '#262626';
                 }
             }}
-            onClick={() => onIdeaClick(collectionId, index)}
+            onClick={() => onIdeaClick(originalCollectionId, index)}
         >
             {/* Saved checkmark overlay */}
             {showSavedCheckmark && (
@@ -232,23 +236,23 @@ const BrainstormIdeaCard: React.FC<{
                 </div>
             )}
 
-            {/* Idea content using ArtifactEditor with JSON path */}
+            {/* Idea content using ArtifactEditor */}
             <ArtifactEditor
-                artifactId={collectionId}
-                path={ideaPath}
+                artifactId={artifactId}
+                path={artifactPath}
                 fields={BRAINSTORM_IDEA_FIELDS}
                 statusLabel={hasBeenEdited ? "📝 已编辑版本" : "AI生成"}
                 statusColor={hasBeenEdited ? "#52c41a" : "#1890ff"}
-                transformName="edit_brainstorm_collection_idea"
+                transformName={transformName}
                 onSaveSuccess={handleSaveSuccess}
             />
 
             {/* Generate outline button */}
-            <GenerateOutlineButton artifactId={latestArtifactId || collectionId} />
+            <GenerateOutlineButton artifactId={artifactId} />
 
             {/* Associated outlines */}
             <IdeaOutlines
-                ideaId={latestArtifactId || collectionId}
+                ideaId={artifactId}
                 outlines={ideaOutlines}
                 isLoading={false}
             />
@@ -257,8 +261,8 @@ const BrainstormIdeaCard: React.FC<{
 };
 
 /**
- * Hook to get latest brainstorm ideas from collections and individual artifacts
- * This replaces the complex per-card lineage resolution
+ * Hook to get latest brainstorm ideas using lineage resolution
+ * This gets all leaf brainstorm_idea artifacts and brainstorm_idea_collection paths
  */
 function useLatestBrainstormIdeas(): IdeaWithTitle[] {
     const projectData = useProjectData();
@@ -266,27 +270,24 @@ function useLatestBrainstormIdeas(): IdeaWithTitle[] {
     return useMemo(() => {
         const allIdeas: IdeaWithTitle[] = [];
 
-        // 1. Get all brainstorm collections
+        // 1. Get all brainstorm collections and extract ideas with lineage resolution
         const collections = projectData.getBrainstormCollections();
 
-        // 2. Extract ideas from collections with lineage resolution
         for (const collection of collections) {
             try {
                 const collectionData = JSON.parse(collection.data);
 
-                // Check if collectionData has ideas array
                 if (!collectionData.ideas || !Array.isArray(collectionData.ideas)) {
                     console.warn('⚠️ Collection missing ideas array:', collection.id);
                     continue;
                 }
 
                 for (let i = 0; i < collectionData.ideas.length; i++) {
-                    // 3. Resolve latest version for each idea
                     const artifactPath = `$.ideas[${i}]`;
                     const latestArtifactId = projectData.getLatestVersionForPath(collection.id, artifactPath);
 
                     if (latestArtifactId && latestArtifactId !== collection.id) {
-                        // Use individual edited version
+                        // Use the derived leaf artifact (e.g., user_input or brainstorm_idea)
                         const latestArtifact = projectData.getArtifactById(latestArtifactId);
                         if (latestArtifact) {
                             const ideaData = JSON.parse(latestArtifact.data);
@@ -294,23 +295,23 @@ function useLatestBrainstormIdeas(): IdeaWithTitle[] {
                             allIdeas.push({
                                 title: ideaData.title || `想法 ${i + 1}`,
                                 body: ideaData.body || '内容加载中...',
-                                artifactId: latestArtifactId,
+                                artifactId: latestArtifactId, // Use the leaf artifact ID
                                 originalArtifactId: collection.id,
-                                artifactPath: `$.ideas[${i}]`,
+                                artifactPath: '$', // Root path for leaf artifacts
                                 index: i
                             });
                         }
                     } else {
-                        // Use original from collection
+                        // Use original from collection with JSONPath
                         const originalIdea = collectionData.ideas[i];
 
                         allIdeas.push({
-                            title: originalIdea.title || `想法 ${allIdeas.length + 1}`,
+                            title: originalIdea.title || `想法 ${i + 1}`,
                             body: originalIdea.body || '内容加载中...',
-                            artifactId: collection.id, // Base artifact ID
+                            artifactId: collection.id, // Collection artifact ID
                             originalArtifactId: collection.id,
-                            artifactPath: `$.ideas[${i}]`, // JSONPath to specific item
-                            index: allIdeas.length
+                            artifactPath: artifactPath, // JSONPath to specific item
+                            index: i
                         });
                     }
                 }
@@ -319,23 +320,43 @@ function useLatestBrainstormIdeas(): IdeaWithTitle[] {
             }
         }
 
-        // 4. LEGACY: Also get individual brainstorm ideas for backward compatibility
+        // 2. Get standalone brainstorm_idea artifacts (not derived from collections)
         const lineageGraph = projectData.getLineageGraph();
         const latestIndividualIdeas = findLatestBrainstormIdeasWithLineage(lineageGraph, projectData.artifacts);
 
-        latestIndividualIdeas.forEach((artifact: any, index: number) => {
-            try {
-                const data = artifact.data ? JSON.parse(artifact.data) : {};
-                allIdeas.push({
-                    artifactId: artifact.id,
-                    originalArtifactId: artifact.id,
-                    title: data.title || `想法 ${allIdeas.length + index + 1}`,
-                    body: data.body || '内容加载中...',
-                    artifactPath: '$', // Root path for individual artifacts
-                    index: allIdeas.length + index
-                });
-            } catch (parseErr) {
-                console.warn(`Failed to parse individual artifact ${artifact.id}:`, parseErr);
+        // Only include standalone ideas that don't have a collection source
+        const collectionIds = new Set(collections.map(c => c.id));
+
+        latestIndividualIdeas.forEach((artifact: any) => {
+            // Check if this artifact has a collection as source by looking at its lineage
+            const artifactNode = lineageGraph.nodes.get(artifact.id);
+            let hasCollectionSource = false;
+
+            if (artifactNode && artifactNode.type === 'artifact' && artifactNode.sourceTransform !== 'none') {
+                // Check if any source artifact is a collection
+                const sourceTransform = artifactNode.sourceTransform;
+                if (sourceTransform.sourceArtifacts) {
+                    hasCollectionSource = sourceTransform.sourceArtifacts.some(sourceArtifact =>
+                        collectionIds.has(sourceArtifact.artifactId)
+                    );
+                }
+            }
+
+            // Only include if it's NOT derived from a collection
+            if (!hasCollectionSource) {
+                try {
+                    const data = artifact.data ? JSON.parse(artifact.data) : {};
+                    allIdeas.push({
+                        artifactId: artifact.id,
+                        originalArtifactId: artifact.id,
+                        title: data.title || `想法 ${allIdeas.length + 1}`,
+                        body: data.body || '内容加载中...',
+                        artifactPath: '$', // Root path for standalone artifacts
+                        index: allIdeas.length
+                    });
+                } catch (parseErr) {
+                    console.warn(`Failed to parse individual artifact ${artifact.id}:`, parseErr);
+                }
             }
         });
 
@@ -517,13 +538,14 @@ export const DynamicBrainstormingResults: React.FC<DynamicBrainstormingResultsPr
             {/* Ideas grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {ideas.map((idea, index) => {
-                    if (!idea.originalArtifactId || !idea.artifactPath) return null;
+                    if (!idea.artifactId || !idea.originalArtifactId || !idea.artifactPath) return null;
 
                     return (
                         <BrainstormIdeaCard
-                            key={`${idea.originalArtifactId}-${index}`}
-                            collectionId={idea.originalArtifactId}
-                            ideaPath={idea.artifactPath}
+                            key={`${idea.artifactId}-${index}`}
+                            artifactId={idea.artifactId}
+                            artifactPath={idea.artifactPath}
+                            originalCollectionId={idea.originalArtifactId}
                             index={index}
                             isSelected={selectedIdea === index}
                             ideaOutlines={ideaOutlines[idea.artifactId || ''] || []}
