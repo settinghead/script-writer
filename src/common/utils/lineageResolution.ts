@@ -983,29 +983,15 @@ export function findEffectiveBrainstormIdeas(
 
         if (artifact.schema_type === 'brainstorm_collection_schema' || artifact.type === 'brainstorm_idea_collection') {
             // Step 2a: Collection leaf - check which ideas are still "available"
-            console.log(`🎯 Processing collection leaf: ${artifactId}`);
             const consumedPaths = findConsumedCollectionPaths(artifactId, graph);
-            console.log(`🎯 Collection ${artifactId} consumed paths:`, consumedPaths);
-
             const collectionIdeas = extractCollectionIdeas(artifact, consumedPaths);
             results.push(...collectionIdeas);
 
         } else if (artifact.schema_type === 'brainstorm_idea_schema' || artifact.type === 'brainstorm_idea') {
             // Step 2b: Standalone idea leaf - check if it originated from a collection
-            console.log(`🎯 Processing standalone idea leaf: ${artifactId}`);
-
-            // DEBUG: Log the node details for this artifact
-            console.log(`🎯 Node details for ${artifactId}:`, {
-                hasSourceTransform: node.sourceTransform !== 'none',
-                path: node.path,
-                depth: node.depth,
-                sourceTransformType: node.sourceTransform !== 'none' ? node.sourceTransform.transformType : 'none'
-            });
-
             const originInfo = traceToCollectionOrigin(artifactId, graph, artifactMap);
 
             if (originInfo.isFromCollection) {
-                console.log(`🎯 Standalone idea ${artifactId} originated from collection ${originInfo.originalCollectionId} path ${originInfo.originalPath}`);
                 results.push({
                     artifactId,
                     artifactPath: '$', // Standalone artifact uses whole artifact
@@ -1014,7 +1000,6 @@ export function findEffectiveBrainstormIdeas(
                     isFromCollection: true
                 });
             } else {
-                console.log(`🎯 Standalone idea ${artifactId} is truly standalone`);
                 results.push({
                     artifactId,
                     artifactPath: '$',
@@ -1078,7 +1063,6 @@ function extractCollectionIdeas(
 
             if (!consumedPaths.has(ideaPath)) {
                 // This idea hasn't been consumed, so it's still "available"
-                console.log(`🎯 Collection ${collectionArtifact.id} idea[${i}] is available (not consumed)`);
                 results.push({
                     artifactId: collectionArtifact.id,
                     artifactPath: ideaPath,
@@ -1086,8 +1070,6 @@ function extractCollectionIdeas(
                     index: i,
                     isFromCollection: true
                 });
-            } else {
-                console.log(`🎯 Collection ${collectionArtifact.id} idea[${i}] was consumed (has transforms)`);
             }
         }
     } catch (error) {
@@ -1110,15 +1092,10 @@ function traceToCollectionOrigin(
     originalPath?: string;
     collectionIndex?: number;
 } {
-    console.log(`🎯 TRACE: Starting trace for ${ideaId}`);
-
     const node = graph.nodes.get(ideaId);
     if (!node || node.type !== 'artifact') {
-        console.log(`🎯 TRACE: No node found for ${ideaId}`);
         return { isFromCollection: false };
     }
-
-    console.log(`🎯 TRACE: Node found, hasSourceTransform=${node.sourceTransform !== 'none'}`);
 
     // Trace back through the lineage
     let currentNode: LineageNodeArtifact = node;
@@ -1128,8 +1105,7 @@ function traceToCollectionOrigin(
         traceDepth++;
         const sourceTransform = currentNode.sourceTransform;
 
-        console.log(`🎯 TRACE: Depth ${traceDepth}, transform type=${sourceTransform.transformType}, path=${sourceTransform.path}`);
-        console.log(`🎯 TRACE: Source artifacts:`, sourceTransform.sourceArtifacts.map(sa => `${sa.artifactId}(${artifactMap.get(sa.artifactId)?.type})`));
+
 
         // Check all source artifacts of this transform
         for (const sourceArtifact of sourceTransform.sourceArtifacts) {
