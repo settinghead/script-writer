@@ -722,47 +722,6 @@ export function findLatestBrainstormIdeasWithLineage(
     return addLineageToArtifacts(latestBrainstormIdeas, graph);
 }
 
-/**
- * Extract all brainstorm-related artifacts from a lineage graph
- */
-export function extractBrainstormLineages(
-    graph: LineageGraph,
-    artifacts: ElectricArtifact[]
-): Map<string, LineageResolutionResult[]> {
-    const brainstormLineages = new Map<string, LineageResolutionResult[]>();
-
-    // Find all brainstorm_idea_collection artifacts
-    for (const artifact of artifacts) {
-        if (artifact.type === 'brainstorm_idea_collection') {
-            const lineages: LineageResolutionResult[] = [];
-
-            try {
-                // Handle both string and object data formats
-                let data: any;
-                if (typeof artifact.data === 'string') {
-                    data = JSON.parse(artifact.data);
-                } else {
-                    data = artifact.data;
-                }
-
-                if (Array.isArray(data)) {
-                    // For each idea in the collection, resolve its lineage
-                    for (let i = 0; i < data.length; i++) {
-                        const path = `[${i}]`;
-                        const result = findLatestArtifact(artifact.id, path, graph);
-                        lineages.push(result);
-                    }
-                }
-            } catch (error) {
-                console.warn(`Failed to parse brainstorm collection ${artifact.id}:`, error);
-            }
-
-            brainstormLineages.set(artifact.id, lineages);
-        }
-    }
-
-    return brainstormLineages;
-}
 
 /**
  * Get a human-readable description of a lineage chain

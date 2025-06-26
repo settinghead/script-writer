@@ -131,8 +131,6 @@ const debouncedSave = useCallback((fieldUpdates, field) => {
 
 **Design Philosophy**: The system treats AI-generated content as immutable while providing flexible editing capabilities through a sophisticated artifact breakdown and lineage tracking system.
 
-**Artifact Breakdown Strategy**:
-- **Collection-to-Individual Decomposition** - Original `brainstorm_idea_collection` artifacts are automatically broken down into individual `brainstorm_idea` artifacts for granular editing
 - **Lineage Resolution** - Complex algorithm resolves the "latest version" of any content piece across multiple editing rounds
 - **Path-based Editing** - Support for both field-level (`[0].title`) and object-level (`[0]`) modifications
 - **Mixed Editing Workflows** - Seamlessly handle chains like: Original → Human Edit → AI Edit → Human Edit
@@ -155,7 +153,7 @@ const debouncedSave = useCallback((fieldUpdates, field) => {
 
 #### Transform Types & Lineage Flow
 ```
-Original Collection (brainstorm_idea_collection)
+Original Collection (brainstorm_idea[])
 ├── [0] → Human Transform → User Input → LLM Transform → Brainstorm Idea
 ├── [1] → LLM Transform → Brainstorm Idea → Human Transform → User Input  
 └── [2] → (unchanged, references original collection)
@@ -269,7 +267,7 @@ Original Collection (brainstorm_idea_collection)
 
 **Example Visualization**:
 ```
-[brainstorm_params] → [LLM Transform] → [brainstorm_idea_collection]
+[brainstorm_params] → [LLM Transform] → [brainstorm_idea[]]
                                               ↓
                                       [Human Transform] → [user_input]
                                               ↓
@@ -403,7 +401,7 @@ User Chat Message → Agent Analysis → Mode Detection → Tool Selection → E
 
 **Artifact Hierarchy**:
 ```
-brainstorm_idea_collection (original AI generation)
+brainstorm_idea[] (original AI generation)
 ├── Individual Breakdown
 │   ├── brainstorm_idea (extracted individual ideas)
 │   └── user_input (human-edited versions)
@@ -489,7 +487,7 @@ const BrainstormIdeaCollectionSchema = z.object({
 // LLM transform definitions
 const LLMTransformDefinitionSchema = z.object({
   name: z.literal('llm_edit_brainstorm_idea'),
-  inputType: z.enum(['brainstorm_idea_collection', 'brainstorm_idea', 'user_input']),
+  inputType: z.enum([ 'brainstorm_idea', 'user_input']),
   outputType: z.literal('brainstorm_idea'),
   pathPattern: z.string().regex(/^\[\d+\]$/),
   templateName: z.literal('brainstorm_edit')
@@ -898,32 +896,6 @@ curl -H "Authorization: Bearer debug-auth-token-script-writer-dev" \
 
 ## Schema Transform System Deep Dive
 
-### Advanced Transform Definitions with LLM Support
-
-The system supports both human and LLM transforms with sophisticated path-based editing:
-
-```typescript
-// Human transform definitions (manual editing)
-export const editBrainstormIdeaFieldTransform: TransformDefinition = {
-  name: 'edit_brainstorm_idea_field',
-  inputType: 'brainstorm_idea_collection',
-  targetType: 'user_input',
-  pathPattern: /^\[\d+\]\.(title|body)$/,
-  instantiationFunction: 'createUserInputFromBrainstormIdeaCollection'
-};
-
-// LLM transform definitions (AI-powered editing)
-export const LLM_TRANSFORM_DEFINITIONS = {
-  llm_edit_brainstorm_idea: {
-    name: 'llm_edit_brainstorm_idea' as const,
-    inputSchema: BrainstormEditInputSchema,
-    outputSchema: BrainstormEditOutputSchema,
-    templateName: 'brainstorm_edit' as const,
-    supportedInputTypes: ['brainstorm_idea_collection', 'brainstorm_idea', 'user_input'] as const,
-    outputType: 'brainstorm_idea' as const
-  }
-};
-```
 
 ### Enhanced Transform Execution Flow
 
@@ -1073,7 +1045,7 @@ export const BRAINSTORM_EDIT_TEMPLATE = `
 #### Phase 1: LLM Edit Tool & Agent Integration ✅ COMPLETED
 - **LLM Transform Definition**: Added `llm_edit_brainstorm_idea` transform with comprehensive Zod schema validation
 - **Advanced Edit Template**: Sophisticated Chinese prompt template with 去脸谱化 (de-stereotyping) principles and platform-specific requirements
-- **Multi-Input Brainstorm Edit Tool**: Handles `brainstorm_idea_collection`, `brainstorm_idea`, and `user_input` artifact types with intelligent path resolution
+- **Multi-Input Brainstorm Edit Tool**: Handles `brainstorm_idea`, and `user_input` artifact types with intelligent path resolution
 - **Enhanced Agent Service**: `runGeneralAgent` method with context enrichment, tool selection, and bilingual keyword detection
 - **API Integration**: `/api/projects/:id/agent` endpoint for general agent requests with project access validation
 
@@ -1127,7 +1099,6 @@ export const BRAINSTORM_EDIT_TEMPLATE = `
 **Design Rationale**: Traditional systems store collections as monolithic artifacts, making granular editing difficult. Our breakdown approach automatically decomposes collections into individual artifacts while maintaining relationships through lineage tracking.
 
 **Technical Implementation**:
-- **Automatic Decomposition** - `brainstorm_idea_collection` artifacts automatically broken down into individual `brainstorm_idea` artifacts
 - **Flexible Editing** - Users can edit individual ideas without affecting others in the collection
 - **Lineage Preservation** - Complete relationship tracking from original collection through all individual modifications
 - **UI Transparency** - Frontend seamlessly handles both collection and individual artifact displays

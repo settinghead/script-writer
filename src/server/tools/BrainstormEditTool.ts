@@ -78,27 +78,7 @@ export function createBrainstormEditToolDefinition(
                 let targetPlatform = 'unknown';
                 let storyGenre = 'unknown';
 
-                // Handle different source artifact types
-                if (sourceArtifact.type === 'brainstorm_idea_collection') {
-                    // Extract from collection using index
-                    const ideaPath = `[${params.ideaIndex}]`;
-                    const extractedIdea = extractDataAtPath(sourceData, ideaPath);
-
-                    if (!extractedIdea || !extractedIdea.title || !extractedIdea.body) {
-                        throw new Error(`Idea at index ${params.ideaIndex} not found or invalid`);
-                    }
-
-                    originalIdea = {
-                        title: extractedIdea.title,
-                        body: extractedIdea.body
-                    };
-
-                    // Try to extract platform/genre from metadata or related artifacts
-                    if (sourceArtifact.metadata) {
-                        targetPlatform = sourceArtifact.metadata.platform || 'unknown';
-                        storyGenre = sourceArtifact.metadata.genre || 'unknown';
-                    }
-                } else if (sourceArtifact.type === 'brainstorm_idea') {
+                if (sourceArtifact.type === 'brainstorm_idea') {
                     // Direct brainstorm idea artifact
                     if (!sourceData.title || !sourceData.body) {
                         throw new Error('Invalid brainstorm idea artifact');

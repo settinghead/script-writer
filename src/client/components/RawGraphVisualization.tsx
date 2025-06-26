@@ -10,21 +10,7 @@ import 'reactflow/dist/style.css';
 
 const { Text } = Typography;
 
-// Color schemes for different node types
-const ARTIFACT_COLORS = {
-    brainstorm_idea_collection: '#1890ff',
-    brainstorm_idea: '#52c41a',
-    user_input: '#fa8c16',
-    outline_input: '#722ed1',
-    outline_response: '#eb2f96',
-    script_content: '#13c2c2',
-    default: '#666'
-};
 
-const TRANSFORM_COLORS = {
-    human: '#13c2c2',
-    llm: '#f5222d'
-};
 
 // Custom node components
 const ArtifactNode: React.FC<{ data: any }> = ({ data }) => {

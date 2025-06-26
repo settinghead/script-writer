@@ -351,8 +351,6 @@ export function validateArtifactData(type: string, typeVersion: string, data: an
             return isBrainstormingJobParamsV1(data);
         case 'brainstorm_tool_input:v1':
             return isBrainstormToolInputV1(data);
-        case 'brainstorm_idea_collection:v1':
-            return isBrainstormIdeaCollectionV1(data);
         case 'outline_job_params:v1':
             return isOutlineJobParamsV1(data);
         case 'user_input:v1':
@@ -454,14 +452,7 @@ function isBrainstormToolInputV1(data: any): data is BrainstormToolInputV1 {
         (data.other_requirements === undefined || typeof data.other_requirements === 'string');
 }
 
-function isBrainstormIdeaCollectionV1(data: any): data is BrainstormIdeaCollectionV1 {
-    return Array.isArray(data) &&
-        data.every((idea: any) =>
-            typeof idea === 'object' &&
-            typeof idea.title === 'string' &&
-            typeof idea.body === 'string'
-        );
-}
+
 
 function isOutlineJobParamsV1(data: any): data is OutlineJobParamsV1 {
     return typeof data === 'object' &&
