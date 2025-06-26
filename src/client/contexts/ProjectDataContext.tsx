@@ -123,6 +123,8 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
     // Electric SQL subscriptions
     const { data: artifacts, isLoading: artifactsLoading, error: artifactsError } = useShape<ElectricArtifact>(artifactsConfig);
 
+    // Debug artifacts loading (removed for clarity)
+
 
     const transformsConfig = useMemo(() => ({
         ...electricConfig,

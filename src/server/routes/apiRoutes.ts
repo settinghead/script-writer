@@ -58,7 +58,7 @@ export function createAPIRoutes(
     app.use('/api/scripts', createScriptRoutes(artifactRepo, transformRepo, authMiddleware));
 
     // Catch-all for unmatched API routes - return 404 instead of falling through to ViteExpress
-    app.use('/api/*', (req, res) => {
+    app.use(/^\/api\/.*$/, (req, res) => {
         res.status(404).json({
             error: 'API endpoint not found',
             path: req.path,

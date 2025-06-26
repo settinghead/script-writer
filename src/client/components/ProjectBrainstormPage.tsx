@@ -18,13 +18,18 @@ export default function ProjectBrainstormPage() {
   // Use unified project data context
   const projectData = useProjectData()
 
-  // Extract brainstorm data using the new lineage-resolved method
+  // Extract brainstorm data using the new collection-based approach
   const { ideas, status, progress, error, isLoading, lastSyncedAt } = useMemo(() => {
-    // Get latest brainstorm ideas using lineage resolution from context
-    const lineageGraph = projectData.getLineageGraph();
-    const latestBrainstormIdeas = findLatestBrainstormIdeasWithLineage(lineageGraph, projectData.artifacts);
+    // NEW: Get brainstorm collections first
+    const collections = projectData.getBrainstormCollections();
 
-    if (latestBrainstormIdeas.length === 0) {
+    // LEGACY: Also check for individual brainstorm ideas for backward compatibility
+    const lineageGraph = projectData.getLineageGraph();
+    const legacyIdeas = findLatestBrainstormIdeasWithLineage(lineageGraph, projectData.artifacts);
+
+    const hasAnyBrainstormData = collections.length > 0 || legacyIdeas.length > 0;
+
+    if (!hasAnyBrainstormData) {
       return {
         ideas: [],
         status: 'idle' as const,
@@ -35,61 +40,100 @@ export default function ProjectBrainstormPage() {
       }
     }
 
-    // Convert latest artifacts to IdeaWithTitle format
+    // Convert brainstorm data to IdeaWithTitle format
     let ideas: IdeaWithTitle[] = []
     let status: 'idle' | 'streaming' | 'completed' | 'failed' = 'completed'
     let progress = 100
     let lastSyncedAt: string | null = null
 
     try {
-      // Sort by creation time for consistent ordering
-      const sortedArtifacts = latestBrainstormIdeas
-        .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+      // Process collections first (NEW format)
+      for (const collection of collections) {
+        try {
+          const collectionData = JSON.parse(collection.data);
+          console.log('📦 Ideas content:', collectionData.ideas);
 
-      // Find the latest update time for sync status
-      lastSyncedAt = sortedArtifacts.length > 0
-        ? (sortedArtifacts[sortedArtifacts.length - 1].updated_at || null)
-        : null
+          if (collectionData.ideas && Array.isArray(collectionData.ideas)) {
+            for (let i = 0; i < collectionData.ideas.length; i++) {
+              const artifactPath = `$.ideas[${i}]`;
+              const latestArtifactId = projectData.getLatestVersionForPath(collection.id, artifactPath);
 
-      // Check if any artifacts are still streaming
-      const hasStreamingArtifacts = sortedArtifacts.some(
-        (artifact: any) => artifact.streaming_status === 'streaming'
-      )
+              if (latestArtifactId && latestArtifactId !== collection.id) {
+                // Use individual edited version
+                const latestArtifact = projectData.getArtifactById(latestArtifactId);
+                if (latestArtifact) {
+                  const ideaData = JSON.parse(latestArtifact.data);
+                  ideas.push({
+                    title: ideaData.title || `想法 ${ideas.length + 1}`,
+                    body: ideaData.body || '内容加载中...',
+                    artifactId: latestArtifactId,
+                    originalArtifactId: collection.id,
+                    artifactPath: `$.ideas[${i}]`,
+                    index: ideas.length
+                  });
+                }
+              } else {
+                // Use original from collection
+                const originalIdea = collectionData.ideas[i];
+                ideas.push({
+                  title: originalIdea.title || `想法 ${ideas.length + 1}`,
+                  body: originalIdea.body || '内容加载中...',
+                  artifactId: `${collection.id}-${i}`, // Create unique ID for each idea
+                  originalArtifactId: collection.id,
+                  artifactPath: `$.ideas[${i}]`,
+                  index: ideas.length
+                });
+              }
+            }
+          }
 
-      if (hasStreamingArtifacts) {
-        status = 'streaming'
-        progress = 50
+          // Update last synced time
+          lastSyncedAt = collection.updated_at || collection.created_at;
+
+          // Check streaming status
+          if (collection.streaming_status === 'streaming') {
+            status = 'streaming';
+            progress = 50;
+          }
+
+        } catch (parseErr) {
+          console.warn(`Failed to parse collection ${collection.id}:`, parseErr);
+        }
       }
 
-      // Convert each artifact to IdeaWithTitle format
-      ideas = sortedArtifacts.map((artifact: any, index: number) => {
+      // Process legacy individual ideas (LEGACY format for backward compatibility)
+      const sortedLegacyArtifacts = legacyIdeas
+        .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+      for (const artifact of sortedLegacyArtifacts) {
         try {
-          const data = artifact.data ? JSON.parse(artifact.data) : {}
-          const idea = {
-            title: data.title || `想法 ${index + 1}`,
+          const data = artifact.data ? JSON.parse(artifact.data) : {};
+          ideas.push({
+            title: data.title || `想法 ${ideas.length + 1}`,
             body: data.body || '内容加载中...',
             artifactId: artifact.id,
-            originalArtifactId: artifact.id, // Since these are already resolved to latest
-            artifactPath: '$', // Root path for individual artifacts
-            index
+            originalArtifactId: artifact.id,
+            artifactPath: '$',
+            index: ideas.length
+          });
+
+          // Update last synced time if more recent
+          if (!lastSyncedAt || new Date(artifact.updated_at || artifact.created_at) > new Date(lastSyncedAt)) {
+            lastSyncedAt = artifact.updated_at || artifact.created_at;
           }
 
-          return idea
-        } catch (parseErr) {
-          console.warn(`Failed to parse artifact ${artifact.id}:`, parseErr)
-          return {
-            title: `想法 ${index + 1}`,
-            body: '内容解析失败',
-            artifactId: artifact.id,
-            originalArtifactId: artifact.id,
-            artifactPath: '$', // Root path for individual artifacts
-            index
+          // Check streaming status
+          if (artifact.streaming_status === 'streaming') {
+            status = 'streaming';
+            progress = 50;
           }
+        } catch (parseErr) {
+          console.warn(`Failed to parse legacy artifact ${artifact.id}:`, parseErr);
         }
-      })
+      }
 
     } catch (err) {
-      console.error('Failed to process latest brainstorm ideas:', err)
+      console.error('❌ Failed to process brainstorm data:', err);
       return {
         ideas: [],
         status: 'failed' as const,

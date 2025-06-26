@@ -274,12 +274,18 @@ function useLatestBrainstormIdeas(): IdeaWithTitle[] {
             try {
                 const collectionData = JSON.parse(collection.data);
 
+                // Check if collectionData has ideas array
+                if (!collectionData.ideas || !Array.isArray(collectionData.ideas)) {
+                    console.warn('⚠️ Collection missing ideas array:', collection.id);
+                    continue;
+                }
+
                 for (let i = 0; i < collectionData.ideas.length; i++) {
                     // 3. Resolve latest version for each idea
                     const artifactPath = `$.ideas[${i}]`;
                     const latestArtifactId = projectData.getLatestVersionForPath(collection.id, artifactPath);
 
-                    if (latestArtifactId) {
+                    if (latestArtifactId && latestArtifactId !== collection.id) {
                         // Use individual edited version
                         const latestArtifact = projectData.getArtifactById(latestArtifactId);
                         if (latestArtifact) {
@@ -299,17 +305,17 @@ function useLatestBrainstormIdeas(): IdeaWithTitle[] {
                         const originalIdea = collectionData.ideas[i];
 
                         allIdeas.push({
-                            title: originalIdea.title || `想法 ${i + 1}`,
+                            title: originalIdea.title || `想法 ${allIdeas.length + 1}`,
                             body: originalIdea.body || '内容加载中...',
                             artifactId: collection.id, // Base artifact ID
                             originalArtifactId: collection.id,
                             artifactPath: `$.ideas[${i}]`, // JSONPath to specific item
-                            index: i
+                            index: allIdeas.length
                         });
                     }
                 }
             } catch (parseErr) {
-                console.warn(`Failed to parse collection ${collection.id}:`, parseErr);
+                console.warn(`❌ Failed to parse collection ${collection.id}:`, parseErr);
             }
         }
 
