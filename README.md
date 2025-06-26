@@ -125,23 +125,39 @@ const debouncedSave = useCallback((fieldUpdates, field) => {
 - **User Experience** - Smooth typing without save request interference
 - **Field-Level Tracking** - Independent debouncing per form field for optimal responsiveness
 
-### 🔄 Advanced Schema-Driven Transform System with Lineage Resolution
+### 🔄 Advanced Schema-Driven Transform System with Artifact Type Architecture
 
-#### Immutable Artifact Architecture with Individual Breakdown
+#### Immutable Artifact Architecture with Clear Type Separation
 
-**Design Philosophy**: The system treats AI-generated content as immutable while providing flexible editing capabilities through a sophisticated artifact breakdown and lineage tracking system.
+**Design Philosophy**: The system treats AI-generated content as immutable while providing flexible editing capabilities through a sophisticated artifact type system that clearly separates data structure from creation source.
+
+**Core Type System Innovation**: Resolved fundamental confusion between two different "type" concepts:
+- **Schema Types** (`schema_type`): Describes WHAT the data structure is (e.g., `brainstorm_idea_schema`, `outline_schema`)
+- **Origin Types** (`origin_type`): Describes WHO created the data (`ai_generated` vs `user_input`)
+
+**Key Achievements**:
+- **Database Migration**: Added `schema_type`, `schema_version`, and `origin_type` columns with proper data migration
+- **Type System Refactor**: Complete separation of schema types from origin types throughout codebase
+- **Enhanced Schema Names**: Descriptive naming like `brainstorm_collection_schema` instead of ambiguous `brainstorm_idea_collection`
+- **Simplified Origin Types**: Clean `ai_generated` | `user_input` classification system
+- **Editability Logic Fix**: `ArtifactEditor` now correctly uses `origin_type` for determining editability
+- **No Default Values**: Removed dangerous default parameters that could hide bugs - all artifact creation requires explicit type specification
+
+#### Advanced Individual Breakdown with Lineage Resolution
 
 - **Lineage Resolution** - Complex algorithm resolves the "latest version" of any content piece across multiple editing rounds
-- **Path-based Editing** - Support for both field-level (`[0].title`) and object-level (`[0]`) modifications
+- **Path-based Editing** - Support for both field-level (`[0].title`) and object-level (`[0]`) modifications  
 - **Mixed Editing Workflows** - Seamlessly handle chains like: Original → Human Edit → AI Edit → Human Edit
+- **Type-Safe Validation** - All transforms validated against Zod schemas with proper type mapping
 
 #### Simplified ArtifactEditor with Automatic Mode Detection
 
 **Design Simplification**: Removed complex mode configuration in favor of intelligent automatic detection based on artifact type and transform state.
 
 **Automatic Mode Detection Logic**:
-- **User Input Artifacts** (`user_input`) - Always editable if fields are configured
-- **LLM Output Artifacts** - Show clickable preview; clicking creates human transform for editing
+- **User Input Artifacts** (`origin_type: 'user_input'`) - Always editable if fields are configured
+- **AI Generated Artifacts** (`origin_type: 'ai_generated'`) - Show clickable preview; clicking creates human transform for editing
+- **Schema Type Awareness** - Uses `schema_type` for determining data structure and field configuration
 - **Existing Transforms** - If user has already clicked to edit, show editable interface
 - **Fallback** - Default to readonly display
 
@@ -357,17 +373,24 @@ This ensures that AI edits are contextually appropriate and maintain story coher
 - **Performance Optimization** - Only load and process relevant content portions for editing
 - **Collaboration Support** - Multiple users can edit different parts simultaneously without conflicts
 
-### 🎯 Schema-Driven Type Safety
+### 🎯 Advanced Type System with Schema-Driven Validation
 
-**Principle**: All data transformations validated against Zod schemas to prevent runtime errors and ensure data integrity.
+**Principle**: Clear separation of data structure from creation source, with all transformations validated against Zod schemas to prevent runtime errors and ensure data integrity.
+
+#### Dual-Type Architecture
+- **Schema Types** (`schema_type`): Define WHAT the data structure is (e.g., `brainstorm_collection_schema`, `outline_schema`)
+- **Origin Types** (`origin_type`): Define WHO created the data (`ai_generated` vs `user_input`)
+- **No Type Confusion**: Eliminates the fundamental confusion that caused editability bugs in legacy systems
+- **Explicit Type Specification**: All artifact creation requires explicit declaration of both schema and origin types
 
 #### Implementation
 - **Artifact Schemas** - Every artifact type has a versioned Zod schema defining its structure
 - **Transform Validation** - All transform inputs and outputs validated before execution
 - **Frontend-Backend Consistency** - Shared schemas ensure UI and API always agree on data structure
 - **Migration Support** - Schema versioning allows for safe data structure evolution
+- **Backward Compatibility** - Legacy `type` field maintained for smooth migration
 
-This eliminates the entire class of "data structure mismatch" errors that plague traditional systems.
+This eliminates both "data structure mismatch" errors and "type confusion" bugs that plague traditional systems.
 
 ## Architecture
 
@@ -527,12 +550,20 @@ CREATE TABLE projects_users (
   UNIQUE(project_id, user_id)
 );
 
--- Core artifacts with streaming support
+-- Core artifacts with advanced type system and streaming support
 CREATE TABLE artifacts (
   id TEXT PRIMARY KEY,
   project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-  type TEXT NOT NULL,
+  
+  -- Advanced type system: separate schema types from origin types
+  schema_type TEXT NOT NULL,           -- WHAT: data structure (e.g., 'brainstorm_collection_schema')
+  schema_version TEXT NOT NULL DEFAULT 'v1',
+  origin_type TEXT NOT NULL,           -- WHO: creation source ('ai_generated' | 'user_input')
+  
+  -- Legacy compatibility
+  type TEXT NOT NULL,                  -- Backward compatibility field
   type_version TEXT NOT NULL DEFAULT 'v1',
+  
   data TEXT NOT NULL,
   metadata TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -858,10 +889,13 @@ src/
 
 ### Development Workflow
 
-#### Testing Schema Transforms
+#### Testing Schema Transforms & Artifact Type System
 ```bash
 # Test the complete schema transform system
 ./run-ts src/server/scripts/test-schema-system.ts
+
+# Test artifact type system functionality
+./run-ts src/server/scripts/test-artifact-type-system.ts
 
 # Test specific transform types
 ./run-ts src/server/scripts/test-artifact-editor.ts
@@ -973,6 +1007,44 @@ export const BRAINSTORM_EDIT_TEMPLATE = `
 ```
 
 ## Recent Major Changes
+
+### Advanced Artifact Type System Refactor ✅ COMPLETED
+
+**Major Achievement**: Successfully resolved fundamental type system confusion that was causing editability bugs and data structure inconsistencies throughout the application.
+
+**Core Problem Solved**: The system was mixing two different "type" concepts in a single field, causing critical editability issues:
+- **Schema types** (data structure) and **origin types** (creation source) were conflated
+- `ArtifactEditor` incorrectly determined editability based on data structure rather than creation source
+- Human-edited brainstorm ideas were not editable because they had `type='brainstorm_idea'` instead of `type='user_input'`
+
+**Technical Implementation**:
+- **Database Schema Evolution**: Added `schema_type`, `schema_version`, and `origin_type` columns with complete data migration
+- **Type System Refactor**: Separated schema types from origin types throughout the entire codebase
+- **Enhanced Naming Convention**: Descriptive schema names like `brainstorm_collection_schema` instead of ambiguous legacy names
+- **Simplified Origin Classification**: Clean `ai_generated` | `user_input` system for tracking creation source
+- **No-Default Policy**: Removed dangerous default parameters in `ArtifactRepository.createArtifact` to prevent hidden bugs
+- **Comprehensive Service Updates**: Updated all artifact creation points to explicitly specify both schema and origin types
+
+**Fixed Editability Logic**:
+- **Before**: `artifact.type === 'user_input'` (broken for human-edited brainstorm ideas)
+- **After**: `artifact.origin_type === 'user_input'` (works for all human-created/edited content)
+- **Schema Awareness**: Components use `schema_type` for data structure decisions, `origin_type` for editability
+
+**Key Components Updated**:
+- ✅ `ArtifactEditor` - Proper editability logic using `origin_type`
+- ✅ `DynamicBrainstormingResults` - Edit detection using `origin_type`
+- ✅ `ProjectDataContext` - Artifact filtering using `schema_type`
+- ✅ `TransformExecutor` - All artifact creation specifies both types
+- ✅ Lineage resolution - Supports both new and legacy field names for backward compatibility
+
+**Database State Verification**:
+```sql
+-- Current database state (verified working):
+schema_type                  | origin_type  | legacy_type (backward compatibility)
+brainstorm_collection_schema | ai_generated | brainstorm_idea_collection
+brainstorm_idea_schema       | ai_generated | brainstorm_idea  
+user_input_schema           | user_input   | user_input
+```
 
 ### Electric SQL Migration Status
 
@@ -1155,6 +1227,9 @@ The application includes extensive testing for all major systems:
 # Advanced transform and lineage system testing
 npm run test:schema
 ./run-ts src/server/scripts/test-schema-system.ts
+
+# Artifact type system testing
+./run-ts src/server/scripts/test-artifact-type-system.ts
 
 # Agent framework and chat system testing  
 ./run-ts src/server/scripts/test-chat-system.ts
