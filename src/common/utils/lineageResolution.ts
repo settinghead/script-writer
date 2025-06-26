@@ -1112,4 +1112,62 @@ function traceToCollectionOrigin(
     }
 
     return { isFromCollection: false };
+}
+
+// Define the IdeaWithTitle interface here to avoid import issues
+export interface IdeaWithTitle {
+    title: string;
+    body: string;
+    artifactId?: string;
+    originalArtifactId?: string;
+    artifactPath: string;
+    index?: number;
+    debugInfo?: string;
+}
+
+/**
+ * Convert effective brainstorm ideas to IdeaWithTitle format
+ * This is a pure function that handles the data conversion logic
+ */
+export function convertEffectiveIdeasToIdeaWithTitle(
+    effectiveIdeas: EffectiveBrainstormIdea[],
+    artifacts: ElectricArtifact[]
+): IdeaWithTitle[] {
+    const artifactMap = new Map(artifacts.map(a => [a.id, a]));
+
+    return effectiveIdeas.map((effectiveIdea): IdeaWithTitle => {
+        // Get the actual data for this idea
+        let title = '';
+        let body = '';
+
+        const artifact = artifactMap.get(effectiveIdea.artifactId);
+        if (artifact) {
+            try {
+                if (effectiveIdea.artifactPath === '$') {
+                    // Standalone artifact - use full data
+                    const data = JSON.parse(artifact.data);
+                    title = data.title || '';
+                    body = data.body || '';
+                } else {
+                    // Collection artifact - extract specific idea
+                    const data = JSON.parse(artifact.data);
+                    if (data.ideas && Array.isArray(data.ideas) && data.ideas[effectiveIdea.index]) {
+                        title = data.ideas[effectiveIdea.index].title || '';
+                        body = data.ideas[effectiveIdea.index].body || '';
+                    }
+                }
+            } catch (parseError) {
+                console.error(`Error parsing artifact data for ${effectiveIdea.artifactId}:`, parseError);
+            }
+        }
+
+        return {
+            title,
+            body,
+            artifactId: effectiveIdea.artifactId,
+            originalArtifactId: effectiveIdea.originalArtifactId,
+            artifactPath: effectiveIdea.artifactPath,
+            index: effectiveIdea.index
+        };
+    });
 } 

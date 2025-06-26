@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Space, Button, Typography, Spin, Empty, Card, Tag, Alert } from 'antd';
 import { StopOutlined, ReloadOutlined, EyeOutlined, CheckOutlined, FileTextOutlined } from '@ant-design/icons';
-import { IdeaWithTitle } from '../types/brainstorm'
+import { IdeaWithTitle } from '../../common/utils/lineageResolution'
 import { ReasoningIndicator } from './shared/ReasoningIndicator'
 import { useProjectData } from '../contexts/ProjectDataContext'
 import { useLatestBrainstormIdeas } from '../hooks/useLineageResolution';
