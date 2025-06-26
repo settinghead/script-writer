@@ -80,14 +80,14 @@ export class TransformExecutor {
             });
 
             // Clean the response - remove think tags, code wrappers, etc.
-            const { cleanLLMContent } = await import('../../common/utils/textCleaning');
+            const { cleanLLMContent } = await import('../../common/utils/textCleaning.js');
             const cleanedContent = cleanLLMContent(result.text);
 
             // Parse the response based on output type using robust JSON parsing
             let parsedData: any;
             try {
-                const { robustJSONParse } = await import('../../common/utils/textCleaning');
-                
+                const { robustJSONParse } = await import('../../common/utils/textCleaning.js');
+
                 if (outputArtifactType === 'plot_outline') {
                     parsedData = await robustJSONParse(result.text);
                 } else if (outputArtifactType === 'brainstorm_idea') {
@@ -388,7 +388,7 @@ export class TransformExecutor {
                     let tokenCount = 0;
 
                     // Import spinner and processing utilities
-                    const { processStreamingContent, ConsoleSpinner } = await import('../../common/utils/textCleaning');
+                    const { processStreamingContent, ConsoleSpinner } = await import('../../common/utils/textCleaning.js');
                     const spinner = ConsoleSpinner.getInstance();
 
                     // Stream the content as it arrives
@@ -398,7 +398,7 @@ export class TransformExecutor {
 
                         // Process content for think mode detection
                         const { isThinking, thinkingStarted, thinkingEnded } = processStreamingContent(
-                            accumulatedContent, 
+                            accumulatedContent,
                             previousContent
                         );
 
@@ -435,7 +435,7 @@ export class TransformExecutor {
                     const finalResult = await result;
 
                     // Clean the response - remove think tags, code wrappers, etc.
-                    const { cleanLLMContent } = await import('../../common/utils/textCleaning');
+                    const { cleanLLMContent } = await import('../../common/utils/textCleaning.js');
                     const cleanedContent = cleanLLMContent(accumulatedContent);
 
                     // Store LLM metadata
@@ -459,7 +459,7 @@ export class TransformExecutor {
                     // Parse the cleaned response
                     let parsedData: any;
                     try {
-                        const { robustJSONParse } = await import('../../common/utils/textCleaning');
+                        const { robustJSONParse } = await import('../../common/utils/textCleaning.js');
                         parsedData = await robustJSONParse(accumulatedContent);
                     } catch (parseError) {
                         // Fallback: treat as plain text
@@ -676,13 +676,13 @@ export class TransformExecutor {
         userId?: string
     ): Promise<{ transform: any; derivedArtifact: Artifact; wasTransformed: boolean }> {
         // Import path utilities
-        const { extractDataAtPath, setDataAtPath } = await import('../../common/utils/pathExtraction');
+        const { extractDataAtPath, setDataAtPath } = await import('../../common/utils/pathExtraction.js');
 
         // Check for existing human transform
         const existingTransform = await this.transformRepo.findHumanTransform(
             sourceArtifactId, derivationPath, projectId
         );
-        
+
         if (existingTransform && existingTransform.derived_artifact_id) {
             // Edit existing derived artifact
             const currentArtifact = await this.artifactRepo.getArtifact(existingTransform.derived_artifact_id);
@@ -691,17 +691,17 @@ export class TransformExecutor {
             }
 
             // Update the field in the derived artifact
-            const currentData = typeof currentArtifact.data === 'string' ? 
+            const currentData = typeof currentArtifact.data === 'string' ?
                 JSON.parse(currentArtifact.data) : currentArtifact.data;
-            
+
             // Extract the actual derived data from user_input format
-            const actualData = currentArtifact.metadata?.derived_data || 
+            const actualData = currentArtifact.metadata?.derived_data ||
                 (currentData.text ? JSON.parse(currentData.text) : currentData);
-            
+
             // For existing artifacts, we should just update the field directly since
             // the derived artifact already contains the extracted object
             const updatedData = { ...actualData, [field]: value };
-            
+
             // Update in user_input format
             const userInputData = {
                 text: JSON.stringify(updatedData),
@@ -710,27 +710,27 @@ export class TransformExecutor {
             };
 
             await this.artifactRepo.updateArtifact(
-                existingTransform.derived_artifact_id, 
+                existingTransform.derived_artifact_id,
                 userInputData,
-                { 
+                {
                     ...currentArtifact.metadata,
                     derived_data: updatedData  // Update the derived data in metadata
                 }
             );
-            
+
             // Get the updated artifact
             const updatedArtifact = await this.artifactRepo.getArtifact(existingTransform.derived_artifact_id);
             if (!updatedArtifact) {
                 throw new Error('Failed to retrieve updated artifact');
             }
-            
-            return { 
-                transform: existingTransform.transform, 
+
+            return {
+                transform: existingTransform.transform,
                 derivedArtifact: {
                     ...updatedArtifact,
                     data: updatedData  // Return the actual derived data, not the user_input format
-                }, 
-                wasTransformed: false 
+                },
+                wasTransformed: false
             };
         }
 
@@ -740,9 +740,9 @@ export class TransformExecutor {
             throw new Error('Source artifact not found');
         }
 
-        const sourceData = typeof sourceArtifact.data === 'string' ? 
+        const sourceData = typeof sourceArtifact.data === 'string' ?
             JSON.parse(sourceArtifact.data) : sourceArtifact.data;
-        
+
         // For path-based editing, we need to extract the parent object and update the field
         let newData;
         if (derivationPath && derivationPath.includes('.')) {
@@ -750,56 +750,56 @@ export class TransformExecutor {
             const lastDotIndex = derivationPath.lastIndexOf('.');
             const parentPath = derivationPath.substring(0, lastDotIndex);
             const fieldToUpdate = derivationPath.substring(lastDotIndex + 1);
-            
+
             const parentData = extractDataAtPath(sourceData, parentPath);
             newData = { ...parentData, [fieldToUpdate]: value };
         } else {
             // Root level or simple path
-            const pathData = derivationPath ? 
-                extractDataAtPath(sourceData, derivationPath) : 
+            const pathData = derivationPath ?
+                extractDataAtPath(sourceData, derivationPath) :
                 sourceData;
             newData = { ...pathData, [field]: value };
         }
-        
+
         // For user_input artifacts, we need a specific format
         const userInputData = {
             text: JSON.stringify(newData),
             source: 'modified_brainstorm' as const,
             source_artifact_id: sourceArtifactId
         };
-        
+
         // Create transform and derived artifact atomically
         const transform = await this.transformRepo.createTransform(
             projectId,
             'human',
             'v1',
             'completed',
-            { 
-                timestamp: new Date().toISOString(), 
+            {
+                timestamp: new Date().toISOString(),
                 action_type: 'edit',
                 derivation_path: derivationPath,
                 field_edited: field
             }
         );
-        
+
         // Create derived user_input artifact
         const derivedArtifact = await this.artifactRepo.createArtifact(
             projectId,
             'user_input',
             userInputData,
             'v1',
-            { 
-                source: 'human', 
+            {
+                source: 'human',
                 original_artifact_id: sourceArtifactId,
                 derivation_path: derivationPath,
                 derived_data: newData  // Store the actual derived data in metadata
             }
         );
-        
+
         // Link transform
         await this.transformRepo.addTransformInputs(transform.id, [{ artifactId: sourceArtifactId }], projectId);
         await this.transformRepo.addTransformOutputs(transform.id, [{ artifactId: derivedArtifact.id }], projectId);
-        
+
         // Store human transform metadata
         await this.transformRepo.addHumanTransform({
             transform_id: transform.id,
@@ -810,14 +810,14 @@ export class TransformExecutor {
             change_description: `Edited ${field} at path ${derivationPath || 'root'}`,
             project_id: projectId
         });
-        
-        return { 
-            transform, 
+
+        return {
+            transform,
             derivedArtifact: {
                 ...derivedArtifact,
                 data: newData  // Return the actual derived data, not the user_input format
-            }, 
-            wasTransformed: true 
+            },
+            wasTransformed: true
         };
     }
 
