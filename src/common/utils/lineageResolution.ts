@@ -933,7 +933,6 @@ export interface EffectiveBrainstormIdea {
     originalArtifactId: string; // The root collection or standalone idea this derives from
     index: number; // Index within the original collection (or 0 for standalone)
     isFromCollection: boolean;
-    debugInfo: string;
 }
 
 /**
@@ -949,13 +948,7 @@ export function findEffectiveBrainstormIdeas(
 
     console.log('🎯 Starting principled brainstorm idea resolution...');
 
-    // DEBUG: Log all artifacts and their types
-    console.log('🎯 ALL ARTIFACTS:', artifacts.map(a => `${a.id}(${a.type})`));
 
-    // DEBUG: Log all nodes in the graph
-    console.log('🎯 ALL GRAPH NODES:', Array.from(graph.nodes.entries()).map(([id, node]) =>
-        `${id}(${node.type}:${node.type === 'artifact' ? (node as LineageNodeArtifact).artifactType : 'transform'}:leaf=${node.isLeaf})`
-    ));
 
     // Step 1: Find all relevant brainstorm nodes (both leaf and non-leaf)
     // Collections can be non-leaf but still need processing for unconsumed ideas
@@ -977,13 +970,12 @@ export function findEffectiveBrainstormIdeas(
                 (artifact.schema_type === 'brainstorm_collection_schema' || artifact.type === 'brainstorm_idea_collection')
             );
 
-            console.log(`🎯 Checking node ${(node as LineageNodeArtifact).artifactId}: isLeaf=${node.isLeaf}, isBrainstormType=${isBrainstormType}, artifactType=${artifact?.type}, shouldInclude=${shouldInclude}`);
+
             return shouldInclude;
         })
         .map(([artifactId, node]) => ({ artifactId, node: node as LineageNodeArtifact }));
 
-    console.log(`🎯 Found ${relevantNodes.length} relevant nodes:`,
-        relevantNodes.map(n => `${n.artifactId}(${artifactMap.get(n.artifactId)?.type})`));
+
 
     for (const { artifactId, node } of relevantNodes) {
         const artifact = artifactMap.get(artifactId);
@@ -1019,8 +1011,7 @@ export function findEffectiveBrainstormIdeas(
                     artifactPath: '$', // Standalone artifact uses whole artifact
                     originalArtifactId: originInfo.originalCollectionId!,
                     index: originInfo.collectionIndex!,
-                    isFromCollection: true,
-                    debugInfo: `COLLECTION-DERIVED: ${artifactId} from ${originInfo.originalCollectionId}[${originInfo.collectionIndex}]`
+                    isFromCollection: true
                 });
             } else {
                 console.log(`🎯 Standalone idea ${artifactId} is truly standalone`);
@@ -1029,14 +1020,11 @@ export function findEffectiveBrainstormIdeas(
                     artifactPath: '$',
                     originalArtifactId: artifactId,
                     index: 0,
-                    isFromCollection: false,
-                    debugInfo: `STANDALONE: ${artifactId}`
+                    isFromCollection: false
                 });
             }
         }
     }
-
-    console.log(`🎯 Final effective ideas: ${results.length}`, results.map(r => r.debugInfo));
 
     // CRITICAL: Sort results to preserve original collection ordering
     // This ensures that derived artifacts (human edits) appear in the same position
@@ -1050,8 +1038,6 @@ export function findEffectiveBrainstormIdeas(
         // Then sort by index within the collection (preserves original ordering)
         return a.index - b.index;
     });
-
-    console.log(`🎯 Sorted effective ideas:`, results.map(r => `${r.debugInfo} (order: ${r.originalArtifactId}[${r.index}])`));
     return results;
 }
 
@@ -1098,8 +1084,7 @@ function extractCollectionIdeas(
                     artifactPath: ideaPath,
                     originalArtifactId: collectionArtifact.id,
                     index: i,
-                    isFromCollection: true,
-                    debugInfo: `COLLECTION-ORIGINAL: ${collectionArtifact.id}[${i}]`
+                    isFromCollection: true
                 });
             } else {
                 console.log(`🎯 Collection ${collectionArtifact.id} idea[${i}] was consumed (has transforms)`);

@@ -164,12 +164,13 @@ const EditableView: React.FC<EditableViewProps> = ({
 
         const updatedData = { ...fragment.data, [field]: value };
 
-        // Prepare request based on origin type
+        // Prepare request based on artifact type (not origin_type)
+        // This must match the backend logic in artifactRoutes.ts
         let requestData;
-        if (fragment.origin_type === 'user_input') {
+        if (fragment.type === 'user_input') {
             requestData = { text: JSON.stringify(updatedData) };
         } else {
-            requestData = updatedData;
+            requestData = { data: updatedData };
         }
 
         projectData.updateArtifact.mutate({
@@ -292,39 +293,9 @@ const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
         }
 
         // Extract data at path if specified
-        // IMPORTANT: Handle inconsistent data formats in user_input artifacts
-        let extractedData;
-        if (targetArtifact.origin_type === 'user_input') {
-            // Human transform artifacts may have different formats:
-            // Format 1: Direct structure: {title: "...", body: "..."}
-            // Format 2: Wrapped structure: {text: "{\"title\":\"...\",\"body\":\"...\"}"}
-            if (parsedData.text && typeof parsedData.text === 'string') {
-                // Format 2: Parse the nested JSON string
-                try {
-                    extractedData = JSON.parse(parsedData.text);
-                } catch (error) {
-                    console.error('Failed to parse nested JSON in text field:', error);
-                    extractedData = parsedData;
-                }
-            } else {
-                // Format 1: Use data directly
-                extractedData = parsedData;
-            }
-        } else {
-            // AI-generated artifacts may need path extraction
-            extractedData = (path && path !== "") ? extractDataAtPath(parsedData, path) : parsedData;
-        }
+        const extractedData = (path && path !== "") ? extractDataAtPath(parsedData, path) : parsedData;
 
-        // DEBUG: Log artifact resolution details
-        console.log(`[ArtifactEditor] Resolving artifact for ${artifactId}:`, {
-            targetArtifactId: targetArtifact.id,
-            originType: targetArtifact.origin_type,
-            path,
-            parsedData,
-            extractedData,
-            humanTransformsCount: humanTransforms.length,
-            dataExtractionMethod: targetArtifact.origin_type === 'user_input' ? 'direct' : 'path-based'
-        });
+
 
         return {
             artifactId: targetArtifact.id,
