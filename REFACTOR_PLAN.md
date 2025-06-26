@@ -60,6 +60,47 @@ export interface BrainstormIdeaCollectionV1 {
 
 ## Phase 2: Backend Transform System Changes ✅ COMPLETED
 
+### 2.0.1 Fix Transform Name Validation ✅ COMPLETED (Dec 2024)
+**Problem**: Backend was rejecting human transform requests with error:
+```
+Schema transform error: Error: Invalid path '$.ideas[0]' for transform 'edit_brainstorm_idea'
+```
+
+**Root Cause**: Frontend was using wrong transform name. The `edit_brainstorm_idea` transform expects:
+- **Source**: `brainstorm_idea` (individual idea)
+- **Path Pattern**: `^$` (root path only)
+- **Target**: `brainstorm_idea`
+
+But we were trying to use it with:
+- **Source**: `brainstorm_idea_collection` (collection)
+- **Path**: `$.ideas[0]` (JSONPath to specific idea)
+
+**Solution**: Updated frontend to use correct transform name `edit_brainstorm_collection_idea` which expects:
+- **Source**: `brainstorm_idea_collection` ✅
+- **Path Pattern**: `^\\$.ideas\\[\\d+\\]$` ✅ (matches `$.ideas[0]`, `$.ideas[1]`, etc.)
+- **Target**: `brainstorm_idea` ✅
+- **Instantiation**: `createBrainstormIdeaFromPath` ✅
+
+**Code Change**:
+```typescript
+// src/client/components/DynamicBrainstormingResults.tsx
+// Before: Wrong transform name
+<ArtifactEditor
+  transformName="edit_brainstorm_idea"  // ❌ Wrong for collections
+  artifactId={collectionId}
+  path="$.ideas[0]"
+/>
+
+// After: Correct transform name
+<ArtifactEditor
+  transformName="edit_brainstorm_collection_idea"  // ✅ Correct for collections
+  artifactId={collectionId}  
+  path="$.ideas[0]"
+/>
+```
+
+**Result**: Human transforms now work correctly, creating derived `brainstorm_idea` artifacts from collection paths.
+
 ### 2.0 Add BrainstormIdeaCollection Types ✅ COMPLETED
 ```typescript
 // src/common/types.ts - Add to TypedArtifact union
@@ -355,6 +396,49 @@ export interface ProjectDataContextType {
 ```
 
 ### 4.2 Update DynamicBrainstormingResults ✅ COMPLETED
+
+### 4.2.1 Fix Duplicate Ideas Issue ✅ COMPLETED (Dec 2024)
+**Problem**: After implementing human transforms for brainstorm collections, the frontend was displaying duplicate ideas:
+- Original collection ideas (e.g., 3 ideas from `brainstorm_idea_collection`) 
+- Plus derived individual artifacts (e.g., 1 additional `brainstorm_idea` from human transform)
+- Total: 4 ideas displayed instead of 3
+
+**Root Cause**: The `useLatestBrainstormIdeas` hook had two sections:
+1. **Collection processing**: Correctly used lineage resolution to show either original collection items or their derived versions
+2. **Legacy individual ideas**: Added ALL standalone `brainstorm_idea` artifacts, including those derived from collections
+
+**Solution Applied**:
+1. **Removed Legacy Duplicate Logic**: Updated the legacy section to properly filter out artifacts derived from collections using lineage graph analysis
+2. **Simplified Component Architecture**: Refactored `BrainstormIdeaCard` to accept direct artifact properties instead of collection references
+3. **Fixed Transform Name Logic**: Properly select transform names based on artifact type and path:
+   - `edit_brainstorm_idea`: For leaf artifacts (path = `$`)  
+   - `edit_brainstorm_collection_idea`: For collection paths (path = `$.ideas[n]`)
+4. **Corrected Artifact Display**: 
+   - **Derived artifacts**: Use leaf artifact ID with `$` path (root)
+   - **Collection items**: Use collection ID with JSONPath (e.g., `$.ideas[0]`)
+
+**Key Code Changes**:
+```typescript
+// Before: Broken duplicate detection
+const isDerivedFromCollection = lineageGraph.nodes.get(artifact.id)?.inputs?.some(input => 
+  collectionIds.has(input.artifactId)
+);
+
+// After: Proper lineage analysis
+const artifactNode = lineageGraph.nodes.get(artifact.id);
+let hasCollectionSource = false;
+
+if (artifactNode && artifactNode.type === 'artifact' && artifactNode.sourceTransform !== 'none') {
+  const sourceTransform = artifactNode.sourceTransform;
+  if (sourceTransform.sourceArtifacts) {
+    hasCollectionSource = sourceTransform.sourceArtifacts.some(sourceArtifact => 
+      collectionIds.has(sourceArtifact.artifactId)
+    );
+  }
+}
+```
+
+**Result**: Now correctly displays 3 ideas total, with edited ideas properly replacing their original versions instead of appearing as duplicates.
 ```typescript
 // src/client/components/DynamicBrainstormingResults.tsx
 function useLatestBrainstormIdeas(): IdeaWithTitle[] {
@@ -456,29 +540,90 @@ interface ProjectActions {
 }
 ```
 
-### 4.4 Update ArtifactEditor
+### 4.4 Update ArtifactEditor ✅ COMPLETED (Dec 2024)
+
+### 4.4.1 Clean Hierarchical Refactor ✅ COMPLETED (Dec 2024)
+**Problem**: The original `ArtifactEditor` component became a monolithic mess with complex logic crammed into one component, making it difficult to debug and maintain.
+
+**Solution**: Implemented a clean, hierarchical architecture with separate sub-components:
+
+**New Architecture**:
 ```typescript
 // src/client/components/shared/ArtifactEditor.tsx
-export const ArtifactEditor = ({
+
+// 1. ArtifactFragment interface - represents resolved data
+interface ArtifactFragment {
+  artifactId: string;
+  data: any;
+  isEditable: boolean;
+  hasHumanTransforms: boolean;
+}
+
+// 2. ReadOnlyView component - handles non-editable artifacts with click-to-edit
+const ReadOnlyView: React.FC<ReadOnlyViewProps> = ({ fragment, fields, onEdit }) => {
+  // Clean read-only display with click-to-edit functionality
+};
+
+// 3. EditableView component - handles editable artifacts with auto-save
+const EditableView: React.FC<EditableViewProps> = ({ fragment, fields, onSave }) => {
+  // Clean editable interface with debounced auto-save
+};
+
+// 4. Main ArtifactEditor - resolves fragment and routes to appropriate sub-component
+export const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
   artifactId,
-  artifactPath, // NEW: Optional JSONPath for sub-artifact operations (e.g., '$.ideas[0]', '$.characters[1].name')
+  path = "",
+  transformName,
+  fields = [],
   // ... other props
 }) => {
-  // Handle both individual artifacts and path-based sub-artifact editing
-  const isPathBasedEdit = artifactPath && artifactPath !== '$';
+  // Resolve artifact fragment with lineage
+  const fragment = useArtifactFragment(artifactId, path);
   
-  if (isPathBasedEdit) {
-    // Extract base artifact ID and JSONPath
-    const baseArtifactId = artifactId;
-    const targetPath = artifactPath;
-    
-    // Use path-aware editing logic for any nested structure
-    // ...
+  // Route to appropriate sub-component
+  if (fragment.isEditable) {
+    return <EditableView fragment={fragment} fields={fields} onSave={handleSave} />;
+  } else {
+    return <ReadOnlyView fragment={fragment} fields={fields} onEdit={handleEdit} />;
   }
-  
-  // ... rest of implementation
 };
 ```
+
+**Key Improvements**:
+1. **Separation of Concerns**: Each sub-component has a single responsibility
+2. **Fragment Resolution**: Clean artifact + path resolution at the top level
+3. **Proper Lineage Handling**: Checks for existing human transforms and uses derived artifacts
+4. **Type Safety**: Proper TypeScript interfaces and error handling
+5. **Debugging**: Clear component boundaries and logging
+
+**Fragment Resolution Logic**:
+```typescript
+const useArtifactFragment = (artifactId: string, path: string): ArtifactFragment => {
+  // 1. Check for existing human transforms for this path
+  const humanTransforms = projectData.getHumanTransformsForArtifactPath(artifactId, path);
+  
+  // 2. Use the derived artifact if human transform exists
+  let targetArtifact;
+  if (humanTransforms.length > 0) {
+    const latestTransform = humanTransforms[humanTransforms.length - 1];
+    targetArtifact = projectData.getArtifactById(latestTransform.derived_artifact_id);
+  } else {
+    targetArtifact = projectData.getArtifactById(artifactId);
+  }
+  
+  // 3. Extract data at path and return fragment
+  const extractedData = path ? extractDataAtPath(parsedData, path) : parsedData;
+  
+  return {
+    artifactId: targetArtifact.id,
+    data: extractedData,
+    isEditable: targetArtifact.type === 'user_input',
+    hasHumanTransforms: humanTransforms.length > 0
+  };
+};
+```
+
+**Result**: Clean, maintainable component architecture that properly handles both collection paths and individual artifacts without the previous complexity.
 
 ### 4.5 Update Field Configurations & Constants
 
@@ -721,4 +866,34 @@ Extensive validation system:
 5. **Integration Tests**: End-to-end brainstorm → edit → display workflows  
 6. **Migration Tests**: Verify existing data converts correctly
 7. **Performance Tests**: Compare single collection vs. multiple artifacts
-8. **Backward Compatibility**: Mixed collection/individual artifact handling 
+8. **Backward Compatibility**: Mixed collection/individual artifact handling
+
+## Recent Implementation Status (December 2024)
+
+### ✅ **Successfully Completed**
+1. **Collection Architecture**: Single `brainstorm_idea_collection` artifacts are generated and synced via Electric SQL
+2. **JSONPath Transforms**: Human transforms work correctly with `edit_brainstorm_collection_idea` and JSONPath patterns
+3. **Lineage Resolution**: Proper lineage tracking from collection paths to derived individual artifacts
+4. **UI Display**: Clean display of 3 ideas without duplicates, with proper edit state tracking
+5. **Component Architecture**: Clean hierarchical `ArtifactEditor` with separate read-only and editable sub-components
+
+### 🎯 **Current Working State**
+- **Brainstorm Generation**: Creates single collection with multiple ideas ✅
+- **Idea Editing**: Click-to-edit creates human transforms and derived artifacts ✅
+- **Lineage Tracking**: Properly tracks collection → individual idea derivations ✅
+- **UI Display**: Shows correct number of ideas with proper edit indicators ✅
+- **Transform Validation**: Backend properly validates collection-based transforms ✅
+
+### 🔄 **Key Architectural Decisions Validated**
+1. **Single Collection Approach**: Reduces database overhead and simplifies lineage
+2. **JSONPath-Based Editing**: Enables fine-grained editing within collections
+3. **Derived Artifact Pattern**: Human-edited ideas become standalone `brainstorm_idea` artifacts
+4. **Project-Based Security**: All operations properly respect project access control
+5. **Electric SQL Compatibility**: Collections sync properly in real-time
+
+### 📊 **Performance Impact**
+- **Before**: N individual artifacts + N transform outputs per brainstorm session
+- **After**: 1 collection artifact + individual artifacts only for edited ideas
+- **Result**: Significant reduction in database operations and improved UI performance
+
+The brainstorm collection architecture refactor is now **fully functional** and provides a solid foundation for future enhancements. 
