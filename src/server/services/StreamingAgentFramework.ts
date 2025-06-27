@@ -1,5 +1,5 @@
 import { tool, streamText } from 'ai';
-import { z } from 'zod';
+import { z } from 'zod/v4';
 import { createOpenAI } from '@ai-sdk/openai';
 import { getLLMCredentials } from './LLMConfig';
 import type { ChatMessageRepository } from '../repositories/ChatMessageRepository';

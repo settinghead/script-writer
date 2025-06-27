@@ -7,7 +7,7 @@ import {
     LegacyKeyMilestone,
     LegacyOutlineStage
 } from './llm/outlineTypes.js';
-import { z } from 'zod';
+import { z } from 'zod/v4';
 import { UseMutationResult } from '@tanstack/react-query';
 import type { LineageGraph } from './utils/lineageResolution';
 

@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from 'zod/v4';
 
 // ===============================
 // Character Schemas
@@ -22,7 +22,7 @@ export const CharacterSchema = z.object({
     occupation: z.string().optional(),
     personality_traits: z.array(z.string()).optional(),
     character_arc: z.string().optional(),
-    relationships: z.record(z.string()).optional(),
+    relationships: z.record(z.string(), z.string()).optional(),
     key_scenes: z.array(z.string()).optional()
 });
 

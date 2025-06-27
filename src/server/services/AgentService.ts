@@ -1,11 +1,9 @@
-import { z } from 'zod';
+import { z } from 'zod/v4';
 import { TransformRepository } from '../repositories/TransformRepository';
 import { ArtifactRepository } from '../repositories/ArtifactRepository';
 import { runStreamingAgent } from './StreamingAgentFramework';
-import { createBrainstormToolDefinition } from '../tools/BrainstormTool';
-import { createBrainstormEditToolDefinition } from '../tools/BrainstormEditTool';
 import { AgentBrainstormRequest } from '../../common/types';
-import { prepareAgentPromptContext } from '../../common/utils/agentContext';
+import { generateAgentPrompt, generateAgentTools } from './prompt-tools-gen';
 
 // Schema for general agent requests
 export const GeneralAgentRequestSchema = z.object({
@@ -65,60 +63,9 @@ export class AgentService {
                 thinkingStartTime = options.existingThinkingStartTime;
             }
 
-            const artifacts = await this.artifactRepo.getAllProjectArtifactsForLineage(projectId);
-            const transforms = await this.artifactRepo.getAllProjectTransformsForLineage(projectId);
-            const humanTransforms = await this.artifactRepo.getAllProjectHumanTransformsForLineage(projectId);
-            const transformInputs = await this.artifactRepo.getAllProjectTransformInputsForLineage(projectId);
-            const transformOutputs = await this.artifactRepo.getAllProjectTransformOutputsForLineage(projectId);
-
-            const contextString = await prepareAgentPromptContext({
-                artifacts,
-                transforms,
-                humanTransforms,
-                transformInputs,
-                transformOutputs
-            })
-
-            // 2. Create tool definitions - include both brainstorm generation and editing tools
-            const brainstormToolDef = createBrainstormToolDefinition(
-                this.transformRepo,
-                this.artifactRepo,
-                projectId,
-                userId
-            );
-
-            const brainstormEditToolDef = createBrainstormEditToolDefinition(
-                this.transformRepo,
-                this.artifactRepo,
-                projectId,
-                userId
-            );
-
-            // 3. Create complete prompt in Mandarin
-            const completePrompt = `你是一个专业的AI助手，拥有专门的工具来帮助用户处理故事创意相关的请求。
-
-**用户请求：** "${request.userRequest}"
-
-**当前项目背景信息：**
-${contextString}
-
-**你的任务：**
-1. 仔细分析用户请求
-2. 确定哪个工具最适合满足用户需求
-3. 根据工具的参数要求从用户请求中提取必要参数
-4. 使用适当的参数调用相应工具
-5. 工具将执行并存储结果，你需要确认任务完成
-6. 完成后在新行写上"任务完成"
-
-**分析指导：**
-- 仔细理解用户的真实意图和需求
-- 如果用户要求修改的对象不明确或涵盖多个对象，请将每个对象逐个编辑
-- 编辑时要准确理解用户的修改要求，并在editingInstructions中详细说明
-- 确保选择最符合用户需求的工具和参数
-
-**重要提示：** 工具会处理结果的存储和流式传输，请不要尝试显示结果内容。
-
-开始分析请求并调用最合适的工具。`;
+            // 1. Generate prompt and tools using pure functions
+            const completePrompt = await generateAgentPrompt(request, projectId, this.artifactRepo);
+            const toolDefinitions = generateAgentTools(this.transformRepo, this.artifactRepo, projectId, userId);
 
             // 4. Save user request as raw message
             if (this.chatMessageRepo) {
@@ -130,16 +77,16 @@ ${contextString}
                 );
             }
 
-            // 5. Run the agent with both tools available
+            // 2. Run the agent with both tools available
             const agentResult = await runStreamingAgent({
                 prompt: completePrompt,
-                toolDefinitions: [brainstormToolDef, brainstormEditToolDef],
+                toolDefinitions: toolDefinitions,
                 maxSteps: 5, // Allow more steps for complex editing workflows
                 projectId: projectId,
                 chatMessageRepo: this.chatMessageRepo
             });
 
-            // 6. Log successful completion
+            // 3. Log successful completion
             if (this.chatMessageRepo && thinkingMessageId && thinkingStartTime) {
                 // Finish thinking
                 await this.chatMessageRepo.finishAgentThinking(

@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from 'zod/v4';
 import { ARTIFACT_SCHEMAS, ArtifactSchemaType } from './artifacts';
 
 // Transform definition schema
@@ -28,18 +28,18 @@ export type LLMTransformDefinition = z.infer<typeof LLMTransformDefinitionSchema
 
 // Input schema for brainstorm editing
 export const BrainstormEditInputSchema = z.object({
-  sourceArtifactId: z.string().min(1, '源内容ID不能为空'),
-  ideaIndex: z.number().int().min(0, '想法索引必须为非负整数'),
-  editRequirements: z.string().min(1, '编辑要求不能为空'),
-  agentInstructions: z.string().optional() // Additional context from agent
+  sourceArtifactId: z.string().min(1, '源内容ID不能为空').describe('要编辑的故事创意所在的源文档ID，从项目背景信息中获取'),
+  ideaIndex: z.number().int().min(0, '想法索引必须为非负整数').describe('要编辑的故事创意在集合中的索引位置（从0开始）'),
+  editRequirements: z.string().min(1, '编辑要求不能为空').describe('具体的编辑要求，如：扩展内容、调整风格、修改情节、增加元素等'),
+  agentInstructions: z.string().optional().describe('来自智能代理的额外指导信息，用于更好地理解编辑意图')
 });
 
 export type BrainstormEditInput = z.infer<typeof BrainstormEditInputSchema>;
 
 // Output schema for brainstorm editing (single brainstorm idea)
 export const BrainstormEditOutputSchema = z.object({
-  title: z.string().min(1, '标题不能为空').max(50, '标题不能超过50个字符'),
-  body: z.string().min(1, '内容不能为空').max(500, '内容不能超过500个字符')
+  title: z.string().min(1, '标题不能为空').max(50, '标题不能超过50个字符').describe('编辑后的故事标题，简洁有吸引力'),
+  body: z.string().min(1, '内容不能为空').max(500, '内容不能超过500个字符').describe('编辑后的故事详细内容，包含完整的情节和人物设定')
 });
 
 export type BrainstormEditOutput = z.infer<typeof BrainstormEditOutputSchema>;

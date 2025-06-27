@@ -19,6 +19,7 @@ import { createChatRoutes } from './chatRoutes';
 import { createOutlineRoutes } from './outlineRoutes';
 import { createEpisodeRoutes } from './episodes';
 import { createScriptRoutes } from './scriptRoutes';
+import { createAdminRoutes } from './adminRoutes';
 
 export function createAPIRoutes(
     app: Express,
@@ -56,6 +57,9 @@ export function createAPIRoutes(
 
     // Mount script routes
     app.use('/api/scripts', createScriptRoutes(artifactRepo, transformRepo, authMiddleware));
+
+    // Mount admin routes (dev-only)
+    app.use('/api/admin', createAdminRoutes(transformRepo, artifactRepo));
 
     // Catch-all for unmatched API routes - return 404 instead of falling through to ViteExpress
     app.use(/^\/api\/.*$/, (req, res) => {

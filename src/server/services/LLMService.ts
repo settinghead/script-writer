@@ -1,7 +1,7 @@
 import { createOpenAI } from '@ai-sdk/openai';
 import { generateText, streamText, wrapLanguageModel, extractReasoningMiddleware, streamObject } from 'ai';
 import { getLLMCredentials } from './LLMConfig';
-import { z } from 'zod';
+import { z } from 'zod/v4';
 
 export interface LLMModelInfo {
     name: string;
@@ -43,7 +43,7 @@ export class LLMService {
     getModelInfo(modelName?: string): LLMModelInfo {
         const { modelName: defaultModelName } = getLLMCredentials();
         const actualModelName = modelName || defaultModelName;
-        
+
         return {
             name: actualModelName,
             supportsReasoning: this.isReasoningModel(actualModelName),
@@ -96,7 +96,7 @@ export class LLMService {
         modelName?: string
     ): Promise<ReasoningResult> {
         const modelInfo = this.getModelInfo(modelName);
-        
+
         if (modelInfo.supportsReasoning) {
             const reasoningModel = this.getReasoningModel(modelName);
             const result = await generateText({
@@ -141,13 +141,13 @@ export class LLMService {
         modelName?: string
     ) {
         const modelInfo = this.getModelInfo(modelName);
-        
+
         if (modelInfo.supportsReasoning) {
             const reasoningModel = this.getReasoningModel(modelName);
-            
+
             // Emit reasoning start event
             onReasoningStart?.('generation');
-            
+
             const stream = streamText({
                 model: reasoningModel,
                 messages: [{ role: 'user', content: prompt }]
@@ -156,7 +156,7 @@ export class LLMService {
             // Create a wrapper that emits reasoning end when first content arrives
             let hasEmittedReasoningEnd = false;
             const originalStream = stream.textStream;
-            
+
             return {
                 ...stream,
                 textStream: (async function* () {
@@ -220,7 +220,7 @@ export class LLMService {
             let hasEmittedReasoningEnd = false;
             const originalStream = stream.partialObjectStream;
 
-            return (async function*() {
+            return (async function* () {
                 for await (const partialObject of originalStream) {
                     if (!hasEmittedReasoningEnd) {
                         onReasoningEnd?.('generation');
