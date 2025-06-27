@@ -65,8 +65,19 @@ export class AgentService {
                 thinkingStartTime = options.existingThinkingStartTime;
             }
 
-            // 1. Prepare context for agent by gathering brainstorm artifacts
-            const contextString = await this.preparePromptContext(projectId);
+            const artifacts = await this.artifactRepo.getAllProjectArtifactsForLineage(projectId);
+            const transforms = await this.artifactRepo.getAllProjectTransformsForLineage(projectId);
+            const humanTransforms = await this.artifactRepo.getAllProjectHumanTransformsForLineage(projectId);
+            const transformInputs = await this.artifactRepo.getAllProjectTransformInputsForLineage(projectId);
+            const transformOutputs = await this.artifactRepo.getAllProjectTransformOutputsForLineage(projectId);
+
+            const contextString = await prepareAgentPromptContext({
+                artifacts,
+                transforms,
+                humanTransforms,
+                transformInputs,
+                transformOutputs
+            })
 
             // 2. Create tool definitions - include both brainstorm generation and editing tools
             const brainstormToolDef = createBrainstormToolDefinition(
@@ -166,31 +177,6 @@ ${contextString}
         }
     }
 
-    /**
-     * Prepare prompt context with effective brainstorm ideas using principled lineage resolution
-     */
-    private async preparePromptContext(projectId: string): Promise<string> {
-        try {
-            // Get all project data needed for lineage resolution
-            const artifacts = await this.artifactRepo.getAllProjectArtifactsForLineage(projectId);
-            const transforms = await this.artifactRepo.getAllProjectTransformsForLineage(projectId);
-            const humanTransforms = await this.artifactRepo.getAllProjectHumanTransformsForLineage(projectId);
-            const transformInputs = await this.artifactRepo.getAllProjectTransformInputsForLineage(projectId);
-            const transformOutputs = await this.artifactRepo.getAllProjectTransformOutputsForLineage(projectId);
 
-            // Use the common function to prepare context
-            return prepareAgentPromptContext({
-                artifacts,
-                transforms,
-                humanTransforms,
-                transformInputs,
-                transformOutputs
-            });
-
-        } catch (error) {
-            console.error('[AgentService] Error preparing prompt context:', error);
-            return '无法获取项目背景信息。';
-        }
-    }
 
 } 
