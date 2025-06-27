@@ -1,6 +1,5 @@
-import { createOpenAI } from '@ai-sdk/openai';
 import { generateText, streamText, wrapLanguageModel, extractReasoningMiddleware, streamObject } from 'ai';
-import { getLLMCredentials } from './LLMConfig';
+import { getLLMCredentials, getLLMModel } from './LLMConfig';
 import { z } from 'zod/v4';
 
 export interface LLMModelInfo {
@@ -51,33 +50,19 @@ export class LLMService {
         };
     }
 
-    /**
-     * Get or create a standard model instance
-     */
-    private getModel(modelName?: string) {
-        const { apiKey, baseUrl, modelName: defaultModelName } = getLLMCredentials();
-        const actualModelName = modelName || defaultModelName;
 
-        if (!this.modelCache.has(actualModelName)) {
-            const llmAI = createOpenAI({
-                apiKey,
-                baseURL: baseUrl,
-            });
-            this.modelCache.set(actualModelName, llmAI(actualModelName));
-        }
-
-        return this.modelCache.get(actualModelName);
-    }
 
     /**
      * Get or create a reasoning-enhanced model instance
      */
-    private getReasoningModel(modelName?: string) {
+    private async getReasoningModel(modelName?: string) {
         const { modelName: defaultModelName } = getLLMCredentials();
         const actualModelName = modelName || defaultModelName;
 
         if (!this.reasoningModelCache.has(actualModelName)) {
-            const baseModel = this.getModel(actualModelName);
+            const baseModel = await getLLMModel(
+                { modelName: actualModelName }
+            );
             const enhancedModel = wrapLanguageModel({
                 model: baseModel,
                 middleware: extractReasoningMiddleware({ tagName: 'think' }),
@@ -98,7 +83,7 @@ export class LLMService {
         const modelInfo = this.getModelInfo(modelName);
 
         if (modelInfo.supportsReasoning) {
-            const reasoningModel = this.getReasoningModel(modelName);
+            const reasoningModel = await this.getReasoningModel(modelName);
             const result = await generateText({
                 model: reasoningModel,
                 messages: [{ role: 'user', content: prompt }]
@@ -114,7 +99,7 @@ export class LLMService {
                 } : undefined
             };
         } else {
-            const standardModel = this.getModel(modelName);
+            const standardModel = await getLLMModel({ modelName: modelName });
             const result = await generateText({
                 model: standardModel,
                 messages: [{ role: 'user', content: prompt }]
@@ -143,7 +128,7 @@ export class LLMService {
         const modelInfo = this.getModelInfo(modelName);
 
         if (modelInfo.supportsReasoning) {
-            const reasoningModel = this.getReasoningModel(modelName);
+            const reasoningModel = await this.getReasoningModel(modelName);
 
             // Emit reasoning start event
             onReasoningStart?.('generation');
@@ -170,7 +155,7 @@ export class LLMService {
                 })()
             };
         } else {
-            const standardModel = this.getModel(modelName);
+            const standardModel = await getLLMModel({ modelName: modelName });
             return streamText({
                 model: standardModel,
                 messages: [{ role: 'user', content: prompt }]
@@ -202,14 +187,14 @@ export class LLMService {
         const modelInfo = this.getModelInfo(modelName);
 
         if (modelInfo.supportsReasoning) {
-            const reasoningModel = this.getReasoningModel(modelName);
+            const reasoningModel = await this.getReasoningModel(modelName);
 
             // Emit reasoning start event
             onReasoningStart?.('generation');
 
             const stream = await streamObject({
                 model: reasoningModel,
-                schema: schema,
+                schema: schema as any,
                 messages: [{
                     role: 'user',
                     content: prompt
@@ -231,10 +216,10 @@ export class LLMService {
             })();
 
         } else {
-            const standardModel = this.getModel(modelName);
+            const standardModel = await getLLMModel({ modelName: modelName });
             const stream = await streamObject({
                 model: standardModel,
-                schema: schema,
+                schema: schema as any,
                 messages: [{
                     role: 'user',
                     content: prompt

@@ -83,11 +83,7 @@ ${contextString}
  * Pure function to generate tool definitions for general agent
  */
 export function generateAgentTools(
-    transformRepo: TransformRepository,
-    artifactRepo: ArtifactRepository,
-    projectId: string,
-    userId: string
-): StreamingToolDefinition<any, any>[] {
+    { transformRepo, artifactRepo, projectId, userId }: { transformRepo: TransformRepository; artifactRepo: ArtifactRepository; projectId: string; userId: string; }): StreamingToolDefinition<any, any>[] {
     const brainstormToolDef = createBrainstormToolDefinition(
         transformRepo,
         artifactRepo,
@@ -134,31 +130,28 @@ export async function generateAgentDebugData(
     const prompt = await generateAgentPrompt(request, projectId, artifactRepo);
 
     // Generate tools
-    const toolDefinitions = generateAgentTools(transformRepo, artifactRepo, projectId, userId);
+    const toolDefinitions = generateAgentTools({ transformRepo, artifactRepo, projectId, userId });
 
     // Serialize tools for JSON with proper schema conversion
     const tools = toolDefinitions.map(tool => {
-        let inputJsonSchema: any;
-        let outputJsonSchema: any;
+        let inputJsonSchema: z.ZodTypeAny;
+        let outputJsonSchema: z.ZodTypeAny;
 
-        try {
-            // Convert Zod schemas to JSON Schema using Zod 4's toJSONSchema
-            if (tool.name === 'generate_brainstorm_ideas') {
-                inputJsonSchema = z.toJSONSchema(IdeationInputSchema);
-                outputJsonSchema = z.toJSONSchema(IdeationOutputSchema);
-            } else if (tool.name === 'edit_brainstorm_idea') {
-                inputJsonSchema = z.toJSONSchema(BrainstormEditInputSchema);
-                outputJsonSchema = z.toJSONSchema(BrainstormEditOutputSchema);
-            } else {
-                // Fallback for unknown tools
-                inputJsonSchema = { type: 'object', description: 'Unknown schema' };
-                outputJsonSchema = { type: 'object', description: 'Unknown schema' };
-            }
-        } catch (error) {
-            console.warn(`Failed to convert schema for tool ${tool.name}:`, error);
-            inputJsonSchema = { type: 'object', description: 'Schema conversion failed' };
-            outputJsonSchema = { type: 'object', description: 'Schema conversion failed' };
+        // Convert Zod schemas to JSON Schema using Zod 4's toJSONSchema
+        if (tool.name === 'generate_brainstorm_ideas') {
+            // inputJsonSchema = z.toJSONSchema(IdeationInputSchema);
+            // outputJsonSchema = z.toJSONSchema(IdeationOutputSchema);
+            inputJsonSchema = IdeationInputSchema;
+            outputJsonSchema = IdeationOutputSchema;
+        } else if (tool.name === 'edit_brainstorm_idea') {
+            // inputJsonSchema = z.toJSONSchema(BrainstormEditInputSchema);
+            // outputJsonSchema = z.toJSONSchema(BrainstormEditOutputSchema);
+            inputJsonSchema = BrainstormEditInputSchema;
+            outputJsonSchema = BrainstormEditOutputSchema;
+        } else {
+            throw new Error(`Unknown tool name: ${tool.name}`);
         }
+
 
         return {
             name: tool.name,

@@ -28,8 +28,7 @@ export type LLMTransformDefinition = z.infer<typeof LLMTransformDefinitionSchema
 
 // Input schema for brainstorm editing
 export const BrainstormEditInputSchema = z.object({
-  sourceArtifactId: z.string().min(1, '源内容ID不能为空').describe('要编辑的故事创意所在的源文档ID，从项目背景信息中获取'),
-  ideaIndex: z.number().int().min(0, '想法索引必须为非负整数').describe('要编辑的故事创意在集合中的索引位置（从0开始）'),
+  sourceArtifactId: z.string().min(1, 'Source artifact ID不能为空').describe('要编辑的故事创意所在的source artifact ID，从项目背景信息中获取'),
   editRequirements: z.string().min(1, '编辑要求不能为空').describe('具体的编辑要求，如：扩展内容、调整风格、修改情节、增加元素等'),
   agentInstructions: z.string().optional().describe('来自智能代理的额外指导信息，用于更好地理解编辑意图')
 });

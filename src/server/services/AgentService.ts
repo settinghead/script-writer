@@ -2,7 +2,6 @@ import { z } from 'zod/v4';
 import { TransformRepository } from '../repositories/TransformRepository';
 import { ArtifactRepository } from '../repositories/ArtifactRepository';
 import { runStreamingAgent } from './StreamingAgentFramework';
-import { AgentBrainstormRequest } from '../../common/types';
 import { generateAgentPrompt, generateAgentTools } from './prompt-tools-gen';
 
 // Schema for general agent requests
@@ -65,7 +64,7 @@ export class AgentService {
 
             // 1. Generate prompt and tools using pure functions
             const completePrompt = await generateAgentPrompt(request, projectId, this.artifactRepo);
-            const toolDefinitions = generateAgentTools(this.transformRepo, this.artifactRepo, projectId, userId);
+            const toolDefinitions = generateAgentTools({ transformRepo: this.transformRepo, artifactRepo: this.artifactRepo, projectId, userId });
 
             // 4. Save user request as raw message
             if (this.chatMessageRepo) {

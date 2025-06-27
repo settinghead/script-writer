@@ -45,7 +45,7 @@ export function prepareAgentPromptContext({
         // Convert to IdeaWithTitle format for easier handling
         const ideaList = convertEffectiveIdeasToIdeaWithTitle(effectiveIdeas, artifacts);
 
-        let contextString = '**当前项目的故事创意：**\n\n';
+        let contextString = '***当前项目的故事创意：***\n\n';
 
         // Format ideas for LLM consumption
         ideaList.forEach((idea, index) => {
@@ -53,7 +53,7 @@ export function prepareAgentPromptContext({
             const title = idea.title || `想法 ${index + 1}`;
             const body = idea.body || '内容加载中...';
 
-            contextString += `${index + 1}. **${title}**${statusIndicator} (ID: ${idea.artifactId})\n`;
+            contextString += `${index + 1}. **${title}**${statusIndicator} (Artifact ID: ${idea.artifactId})\n`;
             contextString += `   ${body}\n\n`;
         });
 

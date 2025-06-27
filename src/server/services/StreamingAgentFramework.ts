@@ -1,7 +1,6 @@
 import { tool, streamText } from 'ai';
 import { z } from 'zod/v4';
-import { createOpenAI } from '@ai-sdk/openai';
-import { getLLMCredentials } from './LLMConfig';
+import { getLLMModel } from './LLMConfig';
 import type { ChatMessageRepository } from '../repositories/ChatMessageRepository';
 
 /**
@@ -24,7 +23,7 @@ export function createAgentTool<TInput, TOutput>(
 ) {
   return tool({
     description: toolDef.description,
-    parameters: toolDef.inputSchema,
+    parameters: toolDef.inputSchema as any,
     execute: toolDef.execute,
   });
 }
@@ -59,12 +58,7 @@ export async function runStreamingAgent(config: StreamingAgentConfig): Promise<{
   }
 
   // Initialize model
-  const { apiKey, baseUrl, modelName } = getLLMCredentials();
-  const openai = createOpenAI({
-    apiKey,
-    baseURL: baseUrl,
-  });
-  const model = openai(modelName);
+  const model = await getLLMModel();
 
   // Use the complete prompt provided by the caller
   const prompt = config.prompt;

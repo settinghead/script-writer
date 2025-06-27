@@ -1,3 +1,5 @@
+import { LanguageModelV1 } from 'ai';
+
 export interface LLMCredentials {
     apiKey: string;
     baseUrl: string;
@@ -33,4 +35,42 @@ export function getLLMCredentials(): LLMCredentials {
         modelName,
         provider
     };
-} 
+}
+
+export async function getLLMModel({
+    modelName,
+    apiKey,
+    baseUrl,
+    provider,
+}: Partial<LLMCredentials> = {}): Promise<LanguageModelV1> {
+    const { apiKey: defaultApiKey, baseUrl: defaultBaseUrl, provider: defaultProvider, modelName: defaultModelName } = getLLMCredentials();
+    const actualModelName = modelName || defaultModelName;
+    const actualApiKey = apiKey || defaultApiKey;
+    const actualBaseUrl = baseUrl || defaultBaseUrl;
+    const actualProvider = provider || defaultProvider;
+
+    if (actualProvider === 'openai') {
+        const { createOpenAI } = await import('@ai-sdk/openai');
+        const openai = createOpenAI({
+            apiKey: actualApiKey,
+            baseURL: actualBaseUrl,
+        });
+        return openai(actualModelName);
+    } else if (actualProvider === 'qwen') {
+        const { createQwen } = await import('qwen-ai-provider');
+        const qwen = createQwen({
+            apiKey: actualApiKey,
+            baseURL: actualBaseUrl,
+        });
+        return qwen(actualModelName);
+    } else if (actualProvider === 'deepseek') {
+        const { createDeepSeek } = await import('@ai-sdk/deepseek');
+        const deepseek = createDeepSeek({
+            apiKey: actualApiKey,
+            baseURL: actualBaseUrl,
+        });
+        return deepseek(actualModelName);
+    } else {
+        throw new Error(`Unsupported provider: ${actualProvider}`);
+    }
+}
