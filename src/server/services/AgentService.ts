@@ -5,10 +5,7 @@ import { runStreamingAgent } from './StreamingAgentFramework';
 import { createBrainstormToolDefinition } from '../tools/BrainstormTool';
 import { createBrainstormEditToolDefinition } from '../tools/BrainstormEditTool';
 import { AgentBrainstormRequest } from '../../common/types';
-import {
-    extractEffectiveBrainstormIdeas,
-    convertEffectiveIdeasToIdeaWithTitle
-} from '../../common/utils/lineageResolution';
+import { prepareAgentPromptContext } from '../../common/utils/agentContext';
 
 // Schema for general agent requests
 export const GeneralAgentRequestSchema = z.object({
@@ -110,9 +107,11 @@ ${contextString}
 
 **分析指导：**
 - 仔细理解用户的真实意图和需求
+- 如果用户要求修改的对象不明确或者有可能涵盖多个对象，请将每个对象逐个编辑
 - 如果用户提到现有创意的具体问题或改进方向，优先使用edit工具
 - 如果用户想要全新的内容或对现有创意完全不满意，使用generate工具
 - 编辑时要准确理解用户的修改要求，并在editingInstructions中详细说明
+- 如果需要编辑某个故事创意，请使用上面显示的ID作为sourceArtifactId参数。已编辑的创意是用户修改后的最新版本
 - 确保选择最符合用户需求的工具和参数`;
 
             // 4. Run the agent with both tools available
@@ -174,37 +173,14 @@ ${contextString}
             const transformInputs = await this.artifactRepo.getAllProjectTransformInputsForLineage(projectId);
             const transformOutputs = await this.artifactRepo.getAllProjectTransformOutputsForLineage(projectId);
 
-            // Use principled lineage resolution to get effective brainstorm ideas
-            const effectiveIdeas = extractEffectiveBrainstormIdeas(
+            // Use the common function to prepare context
+            return prepareAgentPromptContext({
                 artifacts,
                 transforms,
                 humanTransforms,
                 transformInputs,
                 transformOutputs
-            );
-
-            if (effectiveIdeas.length === 0) {
-                return '当前项目还没有故事创意。';
-            }
-
-            // Convert to IdeaWithTitle format for easier handling
-            const ideaList = convertEffectiveIdeasToIdeaWithTitle(effectiveIdeas, artifacts);
-
-            let contextString = '**当前项目的故事创意：**\n\n';
-
-            // Format ideas for LLM consumption
-            ideaList.forEach((idea, index) => {
-                const statusIndicator = idea.artifactId !== idea.originalArtifactId ? ' [已编辑]' : ' [AI生成]';
-                const title = idea.title || `想法 ${index + 1}`;
-                const body = idea.body || '内容加载中...';
-
-                contextString += `${index + 1}. **${title}**${statusIndicator} (ID: ${idea.artifactId})\n`;
-                contextString += `   ${body}\n\n`;
             });
-
-            contextString += '\n**编辑说明：** 如果需要编辑某个故事创意，请使用上面显示的ID作为sourceArtifactId参数。已编辑的创意是用户修改后的最新版本。\n';
-
-            return contextString;
 
         } catch (error) {
             console.error('[AgentService] Error preparing prompt context:', error);

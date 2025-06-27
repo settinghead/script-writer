@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Outlet, useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Layout, Breadcrumb, Typography, Spin, Alert, Space, Button, Card, List } from 'antd';
-import { HomeOutlined, ProjectOutlined, ArrowLeftOutlined, EyeOutlined, EyeInvisibleOutlined, NodeIndexOutlined, MessageOutlined } from '@ant-design/icons';
+import { HomeOutlined, ProjectOutlined, ArrowLeftOutlined, EyeOutlined, EyeInvisibleOutlined, NodeIndexOutlined, MessageOutlined, FileTextOutlined } from '@ant-design/icons';
 import { useProjectData } from '../hooks/useProjectData';
 import { useProjectStore } from '../stores/projectStore';
 import { ProjectDataProvider } from '../contexts/ProjectDataContext';
@@ -9,6 +9,7 @@ import { ChatSidebarWrapper } from './chat/ChatSidebarWrapper';
 import WorkflowVisualization from './WorkflowVisualization';
 import RawGraphVisualization from './RawGraphVisualization';
 import RawChatMessages from './RawChatMessages';
+import RawAgentContext from './RawAgentContext';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 
 const { Sider, Content } = Layout;
@@ -27,6 +28,7 @@ const ProjectLayout: React.FC = () => {
     // Debug toggles
     const showRawGraph = searchParams.get('raw-graph') === '1';
     const showRawChat = searchParams.get('raw-chat') === '1';
+    const showRawContext = searchParams.get('raw-context') === '1';
 
     // Cache the selector to avoid infinite loop warning
     const emptyProject = useMemo(() => ({}), []);
@@ -43,8 +45,9 @@ const ProjectLayout: React.FC = () => {
             newSearchParams.delete('raw-graph');
         } else {
             newSearchParams.set('raw-graph', '1');
-            // Clear raw chat if both are enabled
+            // Clear other debug views
             newSearchParams.delete('raw-chat');
+            newSearchParams.delete('raw-context');
         }
         setSearchParams(newSearchParams);
     }, [showRawGraph, searchParams, setSearchParams]);
@@ -55,11 +58,25 @@ const ProjectLayout: React.FC = () => {
             newSearchParams.delete('raw-chat');
         } else {
             newSearchParams.set('raw-chat', '1');
-            // Clear raw graph if both are enabled
+            // Clear other debug views
             newSearchParams.delete('raw-graph');
+            newSearchParams.delete('raw-context');
         }
         setSearchParams(newSearchParams);
     }, [showRawChat, searchParams, setSearchParams]);
+
+    const toggleRawContext = useCallback(() => {
+        const newSearchParams = new URLSearchParams(searchParams);
+        if (showRawContext) {
+            newSearchParams.delete('raw-context');
+        } else {
+            newSearchParams.set('raw-context', '1');
+            // Clear other debug views
+            newSearchParams.delete('raw-graph');
+            newSearchParams.delete('raw-chat');
+        }
+        setSearchParams(newSearchParams);
+    }, [showRawContext, searchParams, setSearchParams]);
 
     // Resize handlers
     const handleMouseDown = (e: React.MouseEvent) => {
@@ -165,7 +182,7 @@ const ProjectLayout: React.FC = () => {
     ];
 
     // Determine layout based on debug modes
-    const isDebugMode = showRawGraph || showRawChat;
+    const isDebugMode = showRawGraph || showRawChat || showRawContext;
 
     return (
         <ProjectDataProvider projectId={projectId!}>
@@ -211,6 +228,14 @@ const ProjectLayout: React.FC = () => {
                             >
                                 {showRawChat ? '关闭内部对话' : '打开内部对话'}
                             </Button>
+                            <Button
+                                type="text"
+                                icon={<FileTextOutlined />}
+                                onClick={toggleRawContext}
+                                style={{ color: showRawContext ? '#52c41a' : '#1890ff' }}
+                            >
+                                {showRawContext ? '关闭上下文' : '打开上下文'}
+                            </Button>
                         </Space>
                     </div>
 
@@ -226,6 +251,10 @@ const ProjectLayout: React.FC = () => {
                             ) : showRawChat ? (
                                 <div style={{ flex: 1, overflow: 'hidden' }}>
                                     <RawChatMessages projectId={projectId!} />
+                                </div>
+                            ) : showRawContext ? (
+                                <div style={{ flex: 1, overflow: 'hidden' }}>
+                                    <RawAgentContext projectId={projectId!} />
                                 </div>
                             ) : (
                                 <>
