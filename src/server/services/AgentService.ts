@@ -91,22 +91,6 @@ export class AgentService {
 **当前项目背景信息：**
 ${contextString}
 
-**可用工具与使用指南：**
-
-1. **generate_brainstorm_ideas** - 生成新的故事创意
-   - 适用场景：用户想要全新的故事想法、需要更多创意选择、或当前没有满意的故事创意时
-   - 例如："给我一些新的故事想法"、"再想几个不同的创意"
-
-2. **edit_brainstorm_idea** - 编辑和改进现有故事创意  
-   - 适用场景：用户对现有创意有具体的修改要求或改进建议
-   - **重要：必须使用上面显示的完整ID作为sourceArtifactId参数**
-   - 支持各种编辑类型：
-     * 内容扩展："每个再长一点"、"详细一些"、"展开描述"
-     * 风格调整："太老套，创新一点"、"更有趣一些"、"换个风格"
-     * 情节修改："改成现代背景"、"加入悬疑元素"、"让主角更强势"
-     * 结构调整："重新安排情节"、"调整人物关系"
-     * 其他改进："更符合年轻人口味"、"增加商业价值"等
-
 **你的任务：**
 1. 仔细分析用户请求
 2. 确定哪个工具最适合满足用户需求
@@ -117,11 +101,8 @@ ${contextString}
 
 **分析指导：**
 - 仔细理解用户的真实意图和需求
-- 如果用户要求修改的对象不明确或者有可能涵盖多个对象，请将每个对象逐个编辑
-- 如果用户提到现有创意的具体问题或改进方向，优先使用edit工具
-- 如果用户想要全新的内容或对现有创意完全不满意，使用generate工具
+- 如果用户要求修改的对象不明确或涵盖多个对象，请将每个对象逐个编辑
 - 编辑时要准确理解用户的修改要求，并在editingInstructions中详细说明
-- 如果需要编辑某个故事创意，请使用上面显示的ID作为sourceArtifactId参数。已编辑的创意是用户修改后的最新版本
 - 确保选择最符合用户需求的工具和参数
 
 **重要提示：** 工具会处理结果的存储和流式传输，请不要尝试显示结果内容。
@@ -212,100 +193,4 @@ ${contextString}
         }
     }
 
-    public async runBrainstormAgent(
-        projectId: string,
-        userId: string,
-        request: AgentBrainstormRequest
-    ) {
-        let thinkingMessageId: string | undefined;
-        let thinkingStartTime: string | undefined;
-
-        try {
-            // Log user request and start thinking using event-based messaging
-            if (this.chatMessageRepo) {
-                // Create user message event
-                await this.chatMessageRepo.createUserMessage(projectId, request.userRequest);
-
-                // Start agent thinking
-                const thinkingInfo = await this.chatMessageRepo.createAgentThinkingMessage(
-                    projectId,
-                    '分析头脑风暴请求并生成创意故事想法'
-                );
-                thinkingMessageId = thinkingInfo.messageId;
-                thinkingStartTime = thinkingInfo.startTime;
-            }
-
-            // 1. Create the tool definition. The tool's execute function will
-            // be responsible for creating its own transform and artifacts.
-            const brainstormToolDef = createBrainstormToolDefinition(
-                this.transformRepo,
-                this.artifactRepo,
-                projectId,
-                userId
-            );
-
-            // 2. Create complete prompt in Mandarin
-            const completePrompt = `你是一个专业的AI助手，专门帮助用户生成创意故事想法。
-
-**用户请求：** "${request.userRequest}"
-
-**你的任务：**
-1. 仔细分析用户的故事创意需求
-2. 使用generate_brainstorm_ideas工具生成符合要求的故事创意
-3. 工具将执行并存储结果，你需要确认任务完成
-4. 完成后在新行写上"任务完成"
-
-**重要提示：** 工具会处理结果的存储和流式传输，请不要尝试显示结果内容。
-
-开始分析请求并生成故事创意。`;
-
-            // 3. Save user request as raw message
-            if (this.chatMessageRepo) {
-                await this.chatMessageRepo.createRawMessage(
-                    projectId,
-                    'user',
-                    request.userRequest,
-                    { metadata: { source: 'streaming_agent' } }
-                );
-            }
-
-            // 4. Run the agent
-            const agentResult = await runStreamingAgent({
-                prompt: completePrompt,
-                toolDefinitions: [brainstormToolDef],
-                maxSteps: 3,
-                projectId: projectId,
-                chatMessageRepo: this.chatMessageRepo
-            });
-
-            // 5. Log successful completion
-            if (this.chatMessageRepo && thinkingMessageId && thinkingStartTime) {
-                // Finish thinking
-                await this.chatMessageRepo.finishAgentThinking(
-                    thinkingMessageId,
-                    '分析头脑风暴请求并生成创意故事想法',
-                    thinkingStartTime
-                );
-
-                // Add success response
-                await this.chatMessageRepo.addAgentResponse(
-                    thinkingMessageId,
-                    '我已成功为您的项目生成了创意故事想法！您可以在头脑风暴结果中查看它们。'
-                );
-            }
-
-            console.log(`[AgentService] Brainstorm agent completed for project ${projectId}.`);
-
-        } catch (error) {
-            console.error(`[AgentService] Brainstorm agent failed for project ${projectId}:`, error);
-
-            // Log error to chat
-            if (this.chatMessageRepo && thinkingMessageId) {
-                await this.chatMessageRepo.addAgentError(
-                    thinkingMessageId,
-                    '生成故事想法时遇到错误。请重试，如果问题持续存在，请联系支持。'
-                );
-            }
-        }
-    }
 } 

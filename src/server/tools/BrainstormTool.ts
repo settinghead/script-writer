@@ -31,8 +31,8 @@ export function createBrainstormToolDefinition(
     userId: string,
 ): StreamingToolDefinition<IdeationInput, BrainstormToolResult> {
     return {
-        name: 'brainstorm',
-        description: 'Generates creative story ideas based on platform and genre. Use this tool when users want to brainstorm, generate, or create story concepts for short-form video content.',
+        name: 'generate_brainstorm_ideas',
+        description: '生成新的故事创意。适用场景：用户想要全新的故事想法、需要更多创意选择、或当前没有满意的故事创意时。例如："给我一些新的故事想法"、"再想几个不同的创意"。基于平台和类型生成适合短视频内容的创意故事概念。',
         inputSchema: IdeationInputSchema,
         outputSchema: IdeationOutputSchema,
         execute: async (params: IdeationInput): Promise<BrainstormToolResult> => {
@@ -45,7 +45,7 @@ export function createBrainstormToolDefinition(
                     'llm', // The tool is an LLM operation
                     'running',
                     JSON.stringify({
-                        toolName: 'brainstorm',
+                        toolName: 'generate_brainstorm_ideas',
                         params
                     })
                 );
