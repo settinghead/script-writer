@@ -2,18 +2,27 @@ import { BrainstormIdeaSchema } from '../../../common/schemas/artifacts.js';
 
 // Utility function to extract data at JSONPath (simplified implementation)
 export function extractDataAtPath(sourceData: any, path: string): any {
+    // DEFENSIVE: Handle cases where sourceData might be wrapped in an extra "data" field
+    // This can happen due to inconsistent data storage patterns
+    let normalizedSourceData = sourceData;
+    if (sourceData && typeof sourceData === 'object' && sourceData.data &&
+        typeof sourceData.data === 'object' && sourceData.data.title && sourceData.data.body) {
+        console.warn('[extractDataAtPath] Detected extra "data" wrapper, unwrapping...');
+        normalizedSourceData = sourceData.data;
+    }
+
     if (path === '$') {
-        return sourceData;
+        return normalizedSourceData;
     }
 
     // Handle $.ideas[n] pattern for brainstorm collections
     const ideaMatch = path.match(/^\$\.ideas\[(\d+)\]$/);
     if (ideaMatch) {
         const index = parseInt(ideaMatch[1]);
-        if (sourceData.ideas && Array.isArray(sourceData.ideas) && sourceData.ideas[index]) {
+        if (normalizedSourceData.ideas && Array.isArray(normalizedSourceData.ideas) && normalizedSourceData.ideas[index]) {
             return {
-                title: sourceData.ideas[index].title,
-                body: sourceData.ideas[index].body
+                title: normalizedSourceData.ideas[index].title,
+                body: normalizedSourceData.ideas[index].body
             };
         }
         throw new Error(`No idea found at index ${index} in collection`);
@@ -23,8 +32,8 @@ export function extractDataAtPath(sourceData: any, path: string): any {
     const fieldMatch = path.match(/^\$\.([a-zA-Z_][a-zA-Z0-9_]*)$/);
     if (fieldMatch) {
         const field = fieldMatch[1];
-        if (sourceData[field] !== undefined) {
-            return sourceData[field];
+        if (normalizedSourceData[field] !== undefined) {
+            return normalizedSourceData[field];
         }
         throw new Error(`Field ${field} not found in artifact`);
     }

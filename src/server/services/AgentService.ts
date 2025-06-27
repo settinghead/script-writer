@@ -5,6 +5,10 @@ import { runStreamingAgent } from './StreamingAgentFramework';
 import { createBrainstormToolDefinition } from '../tools/BrainstormTool';
 import { createBrainstormEditToolDefinition } from '../tools/BrainstormEditTool';
 import { AgentBrainstormRequest } from '../../common/types';
+import {
+    extractEffectiveBrainstormIdeas,
+    convertEffectiveIdeasToIdeaWithTitle
+} from '../../common/utils/lineageResolution';
 
 // Schema for general agent requests
 export const GeneralAgentRequestSchema = z.object({
@@ -65,7 +69,7 @@ export class AgentService {
             }
 
             // 1. Prepare context for agent by gathering brainstorm artifacts
-            const contextString = await this.prepareBrainstormContext(projectId);
+            const contextString = await this.preparePromptContext(projectId);
 
             // 2. Create tool definitions - include both brainstorm generation and editing tools
             const brainstormToolDef = createBrainstormToolDefinition(
@@ -159,38 +163,51 @@ ${contextString}
     }
 
     /**
-     * Prepare context string with brainstorm artifacts for the agent
+     * Prepare prompt context with effective brainstorm ideas using principled lineage resolution
      */
-    private async prepareBrainstormContext(projectId: string): Promise<string> {
+    private async preparePromptContext(projectId: string): Promise<string> {
         try {
-            // Get the latest brainstorm_idea artifacts for this project (resolves edited versions)
-            const brainstormIdeas = await this.artifactRepo.getLatestBrainstormIdeas(projectId);
+            // Get all project data needed for lineage resolution
+            const artifacts = await this.artifactRepo.getAllProjectArtifactsForLineage(projectId);
+            const transforms = await this.artifactRepo.getAllProjectTransformsForLineage(projectId);
+            const humanTransforms = await this.artifactRepo.getAllProjectHumanTransformsForLineage(projectId);
+            const transformInputs = await this.artifactRepo.getAllProjectTransformInputsForLineage(projectId);
+            const transformOutputs = await this.artifactRepo.getAllProjectTransformOutputsForLineage(projectId);
 
-            if (brainstormIdeas.length === 0) {
+            // Use principled lineage resolution to get effective brainstorm ideas
+            const effectiveIdeas = extractEffectiveBrainstormIdeas(
+                artifacts,
+                transforms,
+                humanTransforms,
+                transformInputs,
+                transformOutputs
+            );
+
+            if (effectiveIdeas.length === 0) {
                 return '当前项目还没有故事创意。';
             }
 
+            // Convert to IdeaWithTitle format for easier handling
+            const ideaList = convertEffectiveIdeasToIdeaWithTitle(effectiveIdeas, artifacts);
+
             let contextString = '**当前项目的故事创意：**\n\n';
 
-            // Sort by creation time to show them in order
-            brainstormIdeas.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+            // Format ideas for LLM consumption
+            ideaList.forEach((idea, index) => {
+                const statusIndicator = idea.artifactId !== idea.originalArtifactId ? ' [已编辑]' : ' [AI生成]';
+                const title = idea.title || `想法 ${index + 1}`;
+                const body = idea.body || '内容加载中...';
 
-            brainstormIdeas.forEach((idea, index) => {
-                try {
-                    if (idea.data && idea.data.title && idea.data.body) {
-                        contextString += `${index + 1}. **${idea.data.title}** (ID: ${idea.id})\n   ${idea.data.body}\n\n`;
-                    }
-                } catch (error) {
-                    console.error('Error parsing brainstorm idea artifact:', error);
-                }
+                contextString += `${index + 1}. **${title}**${statusIndicator} (ID: ${idea.artifactId})\n`;
+                contextString += `   ${body}\n\n`;
             });
 
-            contextString += '\n**编辑说明：** 如果需要编辑某个故事创意，请使用上面显示的ID作为sourceArtifactId参数。\n';
+            contextString += '\n**编辑说明：** 如果需要编辑某个故事创意，请使用上面显示的ID作为sourceArtifactId参数。已编辑的创意是用户修改后的最新版本。\n';
 
             return contextString;
 
         } catch (error) {
-            console.error('Error preparing brainstorm context:', error);
+            console.error('[AgentService] Error preparing prompt context:', error);
             return '无法获取项目背景信息。';
         }
     }

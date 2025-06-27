@@ -353,7 +353,7 @@ export class ArtifactRepository {
     /**
      * Helper methods to get all project data in Electric format for lineage resolution
      */
-    private async getAllProjectArtifactsForLineage(projectId: string): Promise<ElectricArtifact[]> {
+    public async getAllProjectArtifactsForLineage(projectId: string): Promise<ElectricArtifact[]> {
         const rows = await this.db
             .selectFrom('artifacts')
             .selectAll()
@@ -376,7 +376,7 @@ export class ArtifactRepository {
         }));
     }
 
-    private async getAllProjectTransformsForLineage(projectId: string): Promise<ElectricTransform[]> {
+    public async getAllProjectTransformsForLineage(projectId: string): Promise<ElectricTransform[]> {
         const rows = await this.db
             .selectFrom('transforms')
             .selectAll()
@@ -400,7 +400,7 @@ export class ArtifactRepository {
         }));
     }
 
-    private async getAllProjectHumanTransformsForLineage(projectId: string): Promise<ElectricHumanTransform[]> {
+    public async getAllProjectHumanTransformsForLineage(projectId: string): Promise<ElectricHumanTransform[]> {
         const rows = await this.db
             .selectFrom('human_transforms')
             .selectAll()
@@ -420,7 +420,7 @@ export class ArtifactRepository {
         }));
     }
 
-    private async getAllProjectTransformInputsForLineage(projectId: string): Promise<ElectricTransformInput[]> {
+    public async getAllProjectTransformInputsForLineage(projectId: string): Promise<ElectricTransformInput[]> {
         const rows = await this.db
             .selectFrom('transform_inputs')
             .selectAll()
@@ -435,7 +435,7 @@ export class ArtifactRepository {
         }));
     }
 
-    private async getAllProjectTransformOutputsForLineage(projectId: string): Promise<ElectricTransformOutput[]> {
+    public async getAllProjectTransformOutputsForLineage(projectId: string): Promise<ElectricTransformOutput[]> {
         const rows = await this.db
             .selectFrom('transform_outputs')
             .selectAll()

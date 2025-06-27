@@ -378,11 +378,7 @@ export default function ProjectBrainstormPage() {
     setSelectedIdea(prev => prev === index ? null : index);
   }, []);
 
-  // Handle regenerate
-  const handleRegenerate = useCallback(() => {
-    // TODO: Implement regeneration logic
-    console.log('Regenerate brainstorm ideas');
-  }, []);
+
 
   // Handle stop streaming
   const handleStop = useCallback(() => {
@@ -495,16 +491,7 @@ export default function ProjectBrainstormPage() {
                     停止生成
                   </Button>
                 )}
-                {!isStreaming && (
-                  <Button
-                    type="default"
-                    size="small"
-                    icon={<ReloadOutlined />}
-                    onClick={handleRegenerate}
-                  >
-                    重新生成
-                  </Button>
-                )}
+
               </div>
             </div>
 
