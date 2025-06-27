@@ -29,39 +29,13 @@ export function createAgentTool<TInput, TOutput>(
   });
 }
 
-/**
- * Creates a generic agent prompt that can work with multiple tools
- */
-export function createGenericAgentPrompt(userRequest: string, toolDefinitions: StreamingToolDefinition<any, any>[]): string {
-  const toolDescriptions = toolDefinitions.map(tool =>
-    `- ${tool.name}: ${tool.description}`
-  ).join('\n');
-
-  return `You are an AI assistant with access to specialized tools to help users with their requests.
-
-User Request: "${userRequest}"
-
-Available Tools:
-${toolDescriptions}
-
-Your task is to:
-1. Analyze the user request carefully
-2. Determine which tool would best fulfill the user's needs
-3. Extract the necessary parameters from the user request based on the tool's schema requirements
-4. Call the appropriate tool with the extracted parameters
-5. The tool will execute and store its results. Your job is to confirm that the task is complete.
-6. Write "TASK_COMPLETE" on a new line when done
-
-Important: The tool will handle storing and streaming the results. Do not attempt to display them.
-
-Begin by analyzing the request and calling the most appropriate tool.`;
-}
+// Removed createGenericAgentPrompt - prompts are now created in AgentService
 
 /**
  * Configuration for running a streaming agent
  */
 export interface StreamingAgentConfig {
-  userRequest: string;
+  prompt: string; // Complete prompt ready for execution
   toolDefinitions: StreamingToolDefinition<any, any>[];
   maxSteps?: number;
   projectId?: string;
@@ -92,18 +66,8 @@ export async function runStreamingAgent(config: StreamingAgentConfig): Promise<{
   });
   const model = openai(modelName);
 
-  // Create generic prompt
-  const prompt = createGenericAgentPrompt(config.userRequest, config.toolDefinitions);
-
-  // Save user request as raw message if repository is provided
-  if (config.chatMessageRepo && config.projectId) {
-    await config.chatMessageRepo.createRawMessage(
-      config.projectId,
-      'user',
-      config.userRequest,
-      { metadata: { source: 'streaming_agent' } }
-    );
-  }
+  // Use the complete prompt provided by the caller
+  const prompt = config.prompt;
 
   try {
     const result = await streamText({

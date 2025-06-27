@@ -83,8 +83,10 @@ export class AgentService {
                 userId
             );
 
-            // 3. Enhanced user request with context
-            const enhancedUserRequest = `${request.userRequest}
+            // 3. Create complete prompt in Mandarin
+            const completePrompt = `你是一个专业的AI助手，拥有专门的工具来帮助用户处理故事创意相关的请求。
+
+**用户请求：** "${request.userRequest}"
 
 **当前项目背景信息：**
 ${contextString}
@@ -105,6 +107,14 @@ ${contextString}
      * 结构调整："重新安排情节"、"调整人物关系"
      * 其他改进："更符合年轻人口味"、"增加商业价值"等
 
+**你的任务：**
+1. 仔细分析用户请求
+2. 确定哪个工具最适合满足用户需求
+3. 根据工具的参数要求从用户请求中提取必要参数
+4. 使用适当的参数调用相应工具
+5. 工具将执行并存储结果，你需要确认任务完成
+6. 完成后在新行写上"任务完成"
+
 **分析指导：**
 - 仔细理解用户的真实意图和需求
 - 如果用户要求修改的对象不明确或者有可能涵盖多个对象，请将每个对象逐个编辑
@@ -112,18 +122,32 @@ ${contextString}
 - 如果用户想要全新的内容或对现有创意完全不满意，使用generate工具
 - 编辑时要准确理解用户的修改要求，并在editingInstructions中详细说明
 - 如果需要编辑某个故事创意，请使用上面显示的ID作为sourceArtifactId参数。已编辑的创意是用户修改后的最新版本
-- 确保选择最符合用户需求的工具和参数`;
+- 确保选择最符合用户需求的工具和参数
 
-            // 4. Run the agent with both tools available
+**重要提示：** 工具会处理结果的存储和流式传输，请不要尝试显示结果内容。
+
+开始分析请求并调用最合适的工具。`;
+
+            // 4. Save user request as raw message
+            if (this.chatMessageRepo) {
+                await this.chatMessageRepo.createRawMessage(
+                    projectId,
+                    'user',
+                    request.userRequest,
+                    { metadata: { source: 'streaming_agent' } }
+                );
+            }
+
+            // 5. Run the agent with both tools available
             const agentResult = await runStreamingAgent({
-                userRequest: enhancedUserRequest,
+                prompt: completePrompt,
                 toolDefinitions: [brainstormToolDef, brainstormEditToolDef],
                 maxSteps: 5, // Allow more steps for complex editing workflows
                 projectId: projectId,
                 chatMessageRepo: this.chatMessageRepo
             });
 
-            // 5. Log successful completion
+            // 6. Log successful completion
             if (this.chatMessageRepo && thinkingMessageId && thinkingStartTime) {
                 // Finish thinking
                 await this.chatMessageRepo.finishAgentThinking(
@@ -220,16 +244,41 @@ ${contextString}
                 userId
             );
 
-            // 2. Run the agent
+            // 2. Create complete prompt in Mandarin
+            const completePrompt = `你是一个专业的AI助手，专门帮助用户生成创意故事想法。
+
+**用户请求：** "${request.userRequest}"
+
+**你的任务：**
+1. 仔细分析用户的故事创意需求
+2. 使用generate_brainstorm_ideas工具生成符合要求的故事创意
+3. 工具将执行并存储结果，你需要确认任务完成
+4. 完成后在新行写上"任务完成"
+
+**重要提示：** 工具会处理结果的存储和流式传输，请不要尝试显示结果内容。
+
+开始分析请求并生成故事创意。`;
+
+            // 3. Save user request as raw message
+            if (this.chatMessageRepo) {
+                await this.chatMessageRepo.createRawMessage(
+                    projectId,
+                    'user',
+                    request.userRequest,
+                    { metadata: { source: 'streaming_agent' } }
+                );
+            }
+
+            // 4. Run the agent
             const agentResult = await runStreamingAgent({
-                userRequest: request.userRequest,
+                prompt: completePrompt,
                 toolDefinitions: [brainstormToolDef],
                 maxSteps: 3,
                 projectId: projectId,
                 chatMessageRepo: this.chatMessageRepo
             });
 
-            // 3. Log successful completion
+            // 5. Log successful completion
             if (this.chatMessageRepo && thinkingMessageId && thinkingStartTime) {
                 // Finish thinking
                 await this.chatMessageRepo.finishAgentThinking(
