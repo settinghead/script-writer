@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import { prepareAgentPromptContext } from '../../common/utils/agentContext';
-import { createBrainstormToolDefinition } from '../tools/BrainstormTool';
-import { createBrainstormEditToolDefinition } from '../tools/BrainstormEditTool';
+import { createBrainstormToolDefinition, createBrainstormEditToolDefinition } from '../tools/BrainstormTool';
 import { IdeationInputSchema, IdeationOutputSchema } from '../../common/transform_schemas';
 import { BrainstormEditInputSchema, BrainstormEditOutputSchema } from '../../common/schemas/transforms';
 import type { TransformRepository } from '../repositories/TransformRepository';
