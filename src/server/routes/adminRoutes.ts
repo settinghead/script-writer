@@ -1,7 +1,7 @@
 import express from 'express';
 import { TransformRepository } from '../repositories/TransformRepository';
 import { ArtifactRepository } from '../repositories/ArtifactRepository';
-import { generateAgentDebugData } from '../services/prompt-tools-gen';
+import { buildAgentConfiguration } from '../services/AgentRequestBuilder';
 import { GeneralAgentRequestSchema } from '../services/AgentService';
 
 // Dev-only middleware - simple check for development environment
@@ -49,14 +49,32 @@ export function createAdminRoutes(
                 });
             }
 
-            // Generate debug data
-            const debugData = await generateAgentDebugData(
+            // Generate agent configuration using new abstraction
+            const agentConfig = await buildAgentConfiguration(
                 validation.data,
                 projectId as string,
-                userId as string,
                 transformRepo,
-                artifactRepo
+                artifactRepo,
+                userId as string
             );
+
+            // Convert tools to debug format for display
+            const tools = agentConfig.tools.map(tool => ({
+                name: tool.name,
+                description: tool.description,
+                inputSchema: tool.inputSchema,
+                outputSchema: tool.outputSchema
+            }));
+
+            // Structure debug data for client
+            const debugData = {
+                prompt: agentConfig.prompt,
+                tools,
+                contextData: {
+                    context: agentConfig.context,
+                    requestType: agentConfig.requestType
+                }
+            };
 
             // Return the raw data that would be passed to streamText
             res.json({
@@ -66,7 +84,8 @@ export function createAdminRoutes(
                     timestamp: new Date().toISOString(),
                     projectId,
                     userId,
-                    userRequest
+                    userRequest,
+                    requestType: agentConfig.requestType
                 }
             });
 

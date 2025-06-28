@@ -21,12 +21,14 @@ interface AgentDebugData {
         outputSchema: any;
     }>;
     contextData: {
-        artifacts: any[];
-        transforms: any[];
-        humanTransforms: any[];
-        transformInputs: any[];
-        transformOutputs: any[];
-        contextString: string;
+        context: string;
+        requestType: string;
+        artifacts?: any[];
+        transforms?: any[];
+        humanTransforms?: any[];
+        transformInputs?: any[];
+        transformOutputs?: any[];
+        contextString?: string;
     };
 }
 
@@ -45,7 +47,7 @@ const RawAgentContext: React.FC<RawAgentContextProps> = ({ projectId }) => {
     const [debugData, setDebugData] = useState<AgentDebugData | null>(null);
     const [loading, setLoading] = useState(false);
     const [debugError, setDebugError] = useState<string | null>(null);
-    const [userRequest, setUserRequest] = useState('给我一些新的故事想法');
+    const [userRequest, setUserRequest] = useState('给我生成一些故事想法');
     const [lastFetchedRequest, setLastFetchedRequest] = useState('');
 
     // Debounce the user request to avoid too many API calls
@@ -153,7 +155,24 @@ const RawAgentContext: React.FC<RawAgentContextProps> = ({ projectId }) => {
             label: '上下文',
             children: (
                 <div>
-                    {renderCodeBlock(agentContext || '正在生成上下文...')}
+                    {debugData ? (
+                        <div>
+                            <div style={{
+                                marginBottom: '16px',
+                                padding: '8px 12px',
+                                background: '#0f1419',
+                                borderRadius: '4px',
+                                border: '1px solid #1890ff',
+                                color: '#1890ff',
+                                fontSize: '14px'
+                            }}>
+                                请求类型: {debugData.contextData.requestType}
+                            </div>
+                            {renderCodeBlock(debugData.contextData.context)}
+                        </div>
+                    ) : (
+                        renderCodeBlock(agentContext || '正在生成上下文...')
+                    )}
                     <div style={{
                         marginTop: '16px',
                         padding: '12px',
@@ -167,8 +186,8 @@ const RawAgentContext: React.FC<RawAgentContextProps> = ({ projectId }) => {
                             color: '#888',
                             fontStyle: 'italic'
                         }}>
-                            💡 这是发送给LLM的完整上下文信息，包含当前项目的所有有效故事创意。
-                            代理会基于这些信息来理解项目状态并执行相应的操作。
+                            💡 这是发送给LLM的完整上下文信息。代理会根据请求类型提供不同的上下文内容：
+                            brainstorm_generation（头脑风暴生成）、outline_generation（大纲生成）、general（通用/编辑）。
                         </Paragraph>
                     </div>
                 </div>
@@ -253,13 +272,18 @@ const RawAgentContext: React.FC<RawAgentContextProps> = ({ projectId }) => {
                 }
                 extra={
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        <TextArea
-                            value={userRequest}
-                            onChange={(e) => setUserRequest(e.target.value)}
-                            placeholder="输入用户请求..."
-                            style={{ width: '300px', resize: 'none' }}
-                            rows={1}
-                        />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <TextArea
+                                value={userRequest}
+                                onChange={(e) => setUserRequest(e.target.value)}
+                                placeholder="输入用户请求..."
+                                style={{ width: '300px', resize: 'none' }}
+                                rows={1}
+                            />
+                            <div style={{ fontSize: '10px', color: '#666' }}>
+                                示例: "给我生成一些故事想法" | "创建大纲" | "让这些故事更现代一些"
+                            </div>
+                        </div>
                         <div style={{
                             width: '24px',
                             height: '24px',
@@ -273,6 +297,17 @@ const RawAgentContext: React.FC<RawAgentContextProps> = ({ projectId }) => {
                                 <CheckCircleOutlined style={{ color: '#52c41a' }} />
                             ) : null}
                         </div>
+                        {debugData && (
+                            <div style={{
+                                fontSize: '12px',
+                                color: '#1890ff',
+                                padding: '2px 8px',
+                                borderRadius: '4px',
+                                border: '1px solid #1890ff'
+                            }}>
+                                {debugData.contextData.requestType}
+                            </div>
+                        )}
                     </div>
                 }
                 style={{

@@ -11,7 +11,7 @@ export interface StreamingToolDefinition<TInput, TOutput> {
   description: string;
   inputSchema: z.ZodSchema<TInput>;
   outputSchema: z.ZodSchema<TOutput>; // This is now for documentation/validation, not direct streaming output
-  execute: (input: TInput) => Promise<any>;
+  execute: (input: TInput, options: { toolCallId: string }) => Promise<any>;
 }
 
 /**
@@ -24,7 +24,9 @@ export function createAgentTool<TInput, TOutput>(
   return tool({
     description: toolDef.description,
     parameters: toolDef.inputSchema as any,
-    execute: toolDef.execute,
+    execute: async (params: TInput, { toolCallId }) => {
+      return await toolDef.execute(params, { toolCallId });
+    },
   });
 }
 
