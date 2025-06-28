@@ -49,21 +49,23 @@ export async function getLLMModel({
     const actualBaseUrl = baseUrl || defaultBaseUrl;
     const actualProvider = provider || defaultProvider;
 
-    if (actualProvider === 'openai') {
+    if (actualProvider === 'openai' || actualProvider === 'qwen') {
         const { createOpenAI } = await import('@ai-sdk/openai');
         const openai = createOpenAI({
             apiKey: actualApiKey,
             baseURL: actualBaseUrl,
         });
         return openai(actualModelName);
-    } else if (actualProvider === 'qwen') {
-        const { createQwen } = await import('qwen-ai-provider');
-        const qwen = createQwen({
-            apiKey: actualApiKey,
-            baseURL: actualBaseUrl,
-        });
-        return qwen(actualModelName);
-    } else if (actualProvider === 'deepseek') {
+    }
+    //  else if (actualProvider === 'qwen') {
+    //     const { createQwen } = await import('qwen-ai-provider');
+    //     const qwen = createQwen({
+    //         apiKey: actualApiKey,
+    //         baseURL: actualBaseUrl,
+    //     });
+    //     return qwen(actualModelName);
+    // } 
+    else if (actualProvider === 'deepseek') {
         const { createDeepSeek } = await import('@ai-sdk/deepseek');
         const deepseek = createDeepSeek({
             apiKey: actualApiKey,
