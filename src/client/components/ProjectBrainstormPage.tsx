@@ -75,11 +75,7 @@ const IdeaOutlines: React.FC<{
 
   if (outlines.length === 0) {
     return (
-      <div style={{ padding: '8px' }}>
-        <Text type="secondary" style={{ fontSize: '12px' }}>
-          暂无关联大纲
-        </Text>
-      </div>
+      <></>
     );
   }
 
