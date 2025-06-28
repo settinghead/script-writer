@@ -1,6 +1,6 @@
 import { generateText, streamText, wrapLanguageModel, extractReasoningMiddleware, streamObject } from 'ai';
 import { getLLMCredentials, getLLMModel } from './LLMConfig';
-import { z } from 'zod/v4';
+import { z } from 'zod';
 
 export interface LLMModelInfo {
     name: string;

@@ -1,4 +1,4 @@
-import { z } from 'zod/v4';
+import { z } from 'zod';
 import { ARTIFACT_SCHEMAS, ArtifactSchemaType } from './artifacts';
 
 // Transform definition schema

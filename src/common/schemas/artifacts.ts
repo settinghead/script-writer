@@ -1,4 +1,4 @@
-import { z } from 'zod/v4';
+import { z } from 'zod';
 
 // Unified brainstorm idea schema - aligns frontend and backend
 export const BrainstormIdeaSchema = z.object({

@@ -1,4 +1,4 @@
-import { z } from 'zod/v4';
+import { z } from 'zod';
 
 // Chat Event Types - these are the structured events stored in the database
 export const ChatEventSchema = z.discriminatedUnion('type', [

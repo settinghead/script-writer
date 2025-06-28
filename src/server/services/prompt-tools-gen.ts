@@ -1,4 +1,4 @@
-import { z } from 'zod/v4';
+import { z } from 'zod';
 import { prepareAgentPromptContext } from '../../common/utils/agentContext';
 import { createBrainstormToolDefinition } from '../tools/BrainstormTool';
 import { createBrainstormEditToolDefinition } from '../tools/BrainstormEditTool';
@@ -139,13 +139,9 @@ export async function generateAgentDebugData(
 
         // Convert Zod schemas to JSON Schema using Zod 4's toJSONSchema
         if (tool.name === 'generate_brainstorm_ideas') {
-            // inputJsonSchema = z.toJSONSchema(IdeationInputSchema);
-            // outputJsonSchema = z.toJSONSchema(IdeationOutputSchema);
             inputJsonSchema = IdeationInputSchema;
             outputJsonSchema = IdeationOutputSchema;
         } else if (tool.name === 'edit_brainstorm_idea') {
-            // inputJsonSchema = z.toJSONSchema(BrainstormEditInputSchema);
-            // outputJsonSchema = z.toJSONSchema(BrainstormEditOutputSchema);
             inputJsonSchema = BrainstormEditInputSchema;
             outputJsonSchema = BrainstormEditOutputSchema;
         } else {

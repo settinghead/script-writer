@@ -1,5 +1,5 @@
 import { tool, streamText } from 'ai';
-import { z } from 'zod/v4';
+import { z } from 'zod';
 import { getLLMModel } from './LLMConfig';
 import type { ChatMessageRepository } from '../repositories/ChatMessageRepository';
 
