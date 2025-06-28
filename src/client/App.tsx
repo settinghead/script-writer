@@ -15,7 +15,7 @@ import { OutlineTab } from './components/OutlineTab';
 import ChatTab from './components/ChatTab';
 import ScriptTab from './components/ScriptTab';
 import ProjectLayout from './components/ProjectLayout';
-import ProjectBrainstormPage from './components/ProjectBrainstormPage';
+import ProjectBrainstormPage from './components/brainstorm/ProjectBrainstormPage';
 import Breadcrumb from './components/Breadcrumb';
 import StagewiseToolbar from './components/StagewiseToolbar';
 import { StageDetailView } from './components/StageDetailView';
