@@ -1,14 +1,14 @@
-import React from 'react';
-import { Button, Card, Typography, Spin, Flex, Form, Input, Space, Divider, App } from 'antd';
+import React, { useState } from 'react';
+import { Card, Typography, Spin, Flex, App } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
+import BrainstormingInputForm from './BrainstormingInputForm';
 
 const { Title, Paragraph, Text } = Typography;
-const { TextArea } = Input;
 
 interface BrainstormParams {
     platform: string;
-    genre: string;
+    genrePaths: string[][];
     other_requirements?: string;
 }
 
@@ -18,9 +18,13 @@ interface CreateProjectResponse {
 }
 
 const NewProjectFromBrainstormPage: React.FC = () => {
-    const [form] = Form.useForm();
     const navigate = useNavigate();
     const { message } = App.useApp();
+
+    // State for BrainstormingInputForm
+    const [selectedPlatform, setSelectedPlatform] = useState<string>('抖音');
+    const [selectedGenrePaths, setSelectedGenrePaths] = useState<string[][]>([]);
+    const [requirements, setRequirements] = useState<string>('');
 
     // TanStack Query mutation for creating projects and starting brainstorm via chat
     const createProjectMutation = useMutation({
@@ -34,7 +38,7 @@ const NewProjectFromBrainstormPage: React.FC = () => {
                 },
                 body: JSON.stringify({
                     platform: params.platform,
-                    genre: params.genre,
+                    genrePaths: params.genrePaths,
                     other_requirements: params.other_requirements
                 })
             });
@@ -57,32 +61,22 @@ const NewProjectFromBrainstormPage: React.FC = () => {
         }
     });
 
-    const handleStart = async () => {
-        try {
-            const values = await form.validateFields();
-
-            // Prepare brainstorm parameters
-            const params: BrainstormParams = {
-                platform: values.platform || '抖音',
-                genre: values.genre || '穿越, 爽文',
-                other_requirements: values.other_requirements
-            };
-
-            // Use TanStack mutation with optimistic updates
-            createProjectMutation.mutate(params);
-
-        } catch (error) {
-            console.error('Form validation error:', error);
+    const handleGenerate = () => {
+        // Validate that we have the required data
+        if (!selectedPlatform || selectedGenrePaths.length === 0) {
+            message.error('请选择平台和故事类型');
+            return;
         }
-    };
 
-    const handleReset = () => {
-        form.resetFields();
-        // Set some example values
-        form.setFieldsValue({
-            platform: "抖音",
-            genre: "穿越, 爽文",
-        });
+        // Prepare brainstorm parameters
+        const params: BrainstormParams = {
+            platform: selectedPlatform,
+            genrePaths: selectedGenrePaths,
+            other_requirements: requirements || undefined
+        };
+
+        // Use TanStack mutation
+        createProjectMutation.mutate(params);
     };
 
     return (
@@ -93,57 +87,16 @@ const NewProjectFromBrainstormPage: React.FC = () => {
                     通过提供一些初始头脑风暴参数来开始一个新项目。AI助手将根据您的输入生成创意故事想法。
                 </Paragraph>
 
-                <Divider />
-
-                <Form
-                    form={form}
-                    layout="vertical"
-                    initialValues={{
-                        platform: "抖音",
-                        genre: "穿越, 爽文",
-                    }}
-                >
-                    <Form.Item
-                        name="platform"
-                        label="目标平台"
-                        rules={[{ required: true, message: '请输入目标平台！' }]}
-                    >
-                        <Input placeholder="例如: 抖音, 快手, YouTube Shorts" />
-                    </Form.Item>
-
-                    <Form.Item
-                        name="genre"
-                        label="故事类型"
-                        rules={[{ required: true, message: '请输入故事类型！' }]}
-                    >
-                        <Input placeholder="例如: 穿越, 爽文, 甜宠, 悬疑" />
-                    </Form.Item>
-
-                    <Form.Item
-                        name="other_requirements"
-                        label="其他要求"
-                    >
-                        <TextArea
-                            rows={4}
-                            placeholder="可以描述您想要的故事核心、人物设定、情节走向等。例如：主角需要有特殊的金手指，情节反转要多。"
-                        />
-                    </Form.Item>
-
-                    <Form.Item>
-                        <Space>
-                            <Button
-                                type="primary"
-                                onClick={handleStart}
-                                loading={createProjectMutation.isPending}
-                            >
-                                {createProjectMutation.isPending ? '正在创建项目...' : '开始生成'}
-                            </Button>
-                            <Button onClick={handleReset} disabled={createProjectMutation.isPending}>
-                                重置
-                            </Button>
-                        </Space>
-                    </Form.Item>
-                </Form>
+                <BrainstormingInputForm
+                    selectedPlatform={selectedPlatform}
+                    selectedGenrePaths={selectedGenrePaths}
+                    requirements={requirements}
+                    onPlatformChange={setSelectedPlatform}
+                    onGenreSelectionChange={setSelectedGenrePaths}
+                    onRequirementsChange={setRequirements}
+                    onGenerate={handleGenerate}
+                    isGenerating={createProjectMutation.isPending}
+                />
 
                 {createProjectMutation.isPending && (
                     <Flex vertical align="center" gap="middle" style={{ marginTop: '2rem' }}>
