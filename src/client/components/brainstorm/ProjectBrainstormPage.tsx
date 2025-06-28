@@ -1,12 +1,14 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Button, Typography } from 'antd';
+import { Button, Typography, Divider } from 'antd';
 import { StopOutlined } from '@ant-design/icons';
 import { IdeaWithTitle } from '../../../common/utils/lineageResolution';
 import { ReasoningIndicator } from '../shared/ReasoningIndicator';
 import { useProjectData } from '../../contexts/ProjectDataContext';
 import { useLatestBrainstormIdeas } from '../../hooks/useLineageResolution';
 import { BrainstormIdeaEditor } from './BrainstormIdeaEditor';
+import { OutlineDisplay } from '../OutlineDisplay';
+import { OutlineGenerationOutput } from '../../../common/schemas/outlineSchemas';
 
 const { Text } = Typography;
 
@@ -120,6 +122,26 @@ export default function ProjectBrainstormPage() {
   const ideas = latestIdeas.length > 0 ? latestIdeas : fallbackIdeas;
   const isStreaming = status === 'streaming';
   const isConnecting = isLoading && ideas.length === 0;
+
+  // Get outline artifacts
+  const outlineArtifacts = useMemo(() => {
+    return projectData.artifacts.filter(artifact =>
+      artifact.schema_type === 'outline_schema' &&
+      artifact.data
+    );
+  }, [projectData.artifacts]);
+
+  // Parse outline data
+  const outlines = useMemo(() => {
+    return outlineArtifacts.map(artifact => {
+      try {
+        return JSON.parse(artifact.data) as OutlineGenerationOutput;
+      } catch (error) {
+        console.warn('Failed to parse outline data:', error);
+        return null;
+      }
+    }).filter(outline => outline !== null) as OutlineGenerationOutput[];
+  }, [outlineArtifacts]);
 
   // Handle idea card click
   const handleIdeaClick = useCallback((collectionId: string, index: number) => {
@@ -261,6 +283,25 @@ export default function ProjectBrainstormPage() {
                   正在生成更多创意想法...
                 </Text>
               </div>
+            )}
+
+            {/* Outline Display Section */}
+            {outlines.length > 0 && (
+              <>
+                <Divider style={{ borderColor: '#434343', margin: '40px 0' }} />
+                <div className="space-y-8">
+                  <Text className="text-lg font-semibold text-white">
+                    故事大纲 ({outlines.length})
+                  </Text>
+                  {outlines.map((outline, index) => (
+                    <OutlineDisplay
+                      key={`outline-${index}`}
+                      outline={outline}
+                      isGenerating={false}
+                    />
+                  ))}
+                </div>
+              </>
             )}
           </div>
         ) : status === 'idle' ? (

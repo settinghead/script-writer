@@ -3,6 +3,7 @@ import { TransformRepository } from '../repositories/TransformRepository';
 import { ArtifactRepository } from '../repositories/ArtifactRepository';
 import { prepareAgentPromptContext } from '../../common/utils/agentContext';
 import { createBrainstormToolDefinition, createBrainstormEditToolDefinition } from '../tools/BrainstormTool';
+import { createOutlineToolDefinition } from '../tools/OutlineTool';
 import type { GeneralAgentRequest } from './AgentService';
 import type { StreamingToolDefinition } from './StreamingAgentFramework';
 
@@ -29,11 +30,26 @@ export function analyzeRequestType(userRequest: string): RequestType {
     const generationKeywords = ['生成', '创建', '产生', 'generate', 'create'];
 
     // Outline generation keywords
-    const outlineKeywords = ['大纲', 'outline', '提纲', '结构'];
+    const outlineKeywords = ['大纲', 'outline', '提纲', '结构', '剧集结构', '分集大纲', '故事大纲', '叙事大纲'];
+    const outlineGenerationPatterns = [
+        '生成大纲', '创建大纲', '制作大纲', '大纲生成',
+        'generate outline', 'create outline',
+        '用这个灵感继续', '继续', '生成叙事大纲',
+        '为这个故事', '这个故事创意'
+    ];
+
+    // Check for outline generation first (more specific patterns)
+    const hasOutlinePattern = outlineGenerationPatterns.some(pattern => request.includes(pattern));
+    const hasOutlineKeyword = outlineKeywords.some(keyword => request.includes(keyword));
+    const hasGenerationKeyword = generationKeywords.some(keyword => request.includes(keyword));
+
+    if (hasOutlinePattern || (hasOutlineKeyword && hasGenerationKeyword)) {
+        console.log(`[RequestAnalysis] -> outline_generation (pattern: ${hasOutlinePattern}, keywords: ${hasOutlineKeyword && hasGenerationKeyword})`);
+        return 'outline_generation';
+    }
 
     // Check for brainstorm generation
     const hasBrainstormKeyword = brainstormKeywords.some(keyword => request.includes(keyword));
-    const hasGenerationKeyword = generationKeywords.some(keyword => request.includes(keyword));
 
     console.log(`[RequestAnalysis] User request: "${userRequest}"`);
     console.log(`[RequestAnalysis] Lowercase: "${request}"`);
@@ -43,13 +59,6 @@ export function analyzeRequestType(userRequest: string): RequestType {
     if (hasBrainstormKeyword && hasGenerationKeyword) {
         console.log(`[RequestAnalysis] -> brainstorm_generation`);
         return 'brainstorm_generation';
-    }
-
-    // Check for outline generation
-    const hasOutlineKeyword = outlineKeywords.some(keyword => request.includes(keyword));
-    if (hasOutlineKeyword && hasGenerationKeyword) {
-        console.log(`[RequestAnalysis] -> outline_generation`);
-        return 'outline_generation';
     }
 
     // Default to general for everything else (including edits)
@@ -194,10 +203,9 @@ export function buildToolsForRequestType(
             ];
 
         case 'outline_generation':
-            // TODO: Add outline generation tool when it's implemented
-            // For now, provide a mock or fallback to general tools
+            // Provide outline generation tool
             return [
-                createBrainstormToolDefinition(transformRepo, artifactRepo, projectId, userId),
+                createOutlineToolDefinition(transformRepo, artifactRepo, projectId, userId),
                 createBrainstormEditToolDefinition(transformRepo, artifactRepo, projectId, userId)
             ];
 
@@ -206,7 +214,8 @@ export function buildToolsForRequestType(
             // Provide all available tools for general requests
             return [
                 createBrainstormToolDefinition(transformRepo, artifactRepo, projectId, userId),
-                createBrainstormEditToolDefinition(transformRepo, artifactRepo, projectId, userId)
+                createBrainstormEditToolDefinition(transformRepo, artifactRepo, projectId, userId),
+                createOutlineToolDefinition(transformRepo, artifactRepo, projectId, userId)
             ];
     }
 }

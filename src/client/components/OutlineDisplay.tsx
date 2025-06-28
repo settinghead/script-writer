@@ -1,134 +1,20 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Row, Col, Alert, Button, Card, Typography, Space, Tag, Collapse, Divider } from 'antd';
-import { ReloadOutlined, CheckCircleOutlined, ExclamationCircleOutlined, ExportOutlined, UserOutlined, HeartOutlined, StarOutlined, EnvironmentOutlined, TeamOutlined } from '@ant-design/icons';
-import { EditableTextField } from './shared';
-import { TopProgressBar } from './shared/TopProgressBar';
-import { OutlineExportModal } from './shared/OutlineExportModal';
-import { apiService } from '../services/apiService';
-import { formatOutlineForExport, type OutlineExportData } from '../utils/outlineExporter';
+import React from 'react';
+import { Card, Typography, Tag, Space, Collapse, Row, Col } from 'antd';
+import { UserOutlined, HeartOutlined, StarOutlined, EnvironmentOutlined, TeamOutlined } from '@ant-design/icons';
 import { OutlineGenerationOutput } from '../../common/schemas/outlineSchemas';
 
 const { Title, Text, Paragraph } = Typography;
 const { Panel } = Collapse;
 
-interface OutlineCharacter {
-    name: string;
-    type?: string;
-    description: string;
-    age?: string;
-    gender?: string;
-    occupation?: string;
-    personality_traits?: string[];
-    character_arc?: string;
-    relationships?: { [key: string]: string };
-    key_scenes?: string[];
-}
-
-// Enhanced stage structure interface
-interface OutlineSynopsisStage {
-    stageSynopsis: string;
-    numberOfEpisodes: number;
-    // Option A: Temporal Constraints
-    timeframe?: string;
-    startingCondition?: string;
-    endingCondition?: string;
-    // Option B: Event-Based Stage Boundaries
-    stageStartEvent?: string;
-    stageEndEvent?: string;
-    keyMilestones?: { event: string; timeSpan: string; }[];
-    // Option C: Relationship Progression Levels
-    relationshipLevel?: string;
-    emotionalArc?: string;
-    externalPressure?: string;
-}
-
-interface OutlineResultsProps {
+interface OutlineDisplayProps {
     outline: OutlineGenerationOutput;
     isGenerating?: boolean;
 }
 
-export const OutlineResults: React.FC<OutlineResultsProps> = ({
+export const OutlineDisplay: React.FC<OutlineDisplayProps> = ({
     outline,
     isGenerating = false
 }) => {
-    const [isRegenerating, setIsRegenerating] = useState(false);
-    const [isExportModalVisible, setIsExportModalVisible] = useState(false);
-    const [exportText, setExportText] = useState('');
-
-    // Refs for each section to enable scrolling
-    const sectionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
-
-    // Scroll to active section when activeSection changes
-    useEffect(() => {
-        if (activeSection && sectionRefs.current[activeSection]) {
-            sectionRefs.current[activeSection]?.scrollIntoView({
-                behavior: 'smooth',
-                block: 'start'
-            });
-        }
-    }, [activeSection]);
-
-    const handleFieldEdit = async (fieldType: string, newValue: string, newArtifactId: string) => {
-        try {
-            // Create new user_input artifact and human transform
-            await apiService.updateOutlineComponent(sessionId, fieldType, newValue);
-
-            // Notify parent component
-            onComponentUpdate?.(fieldType, newValue, newArtifactId);
-
-        } catch (error) {
-            console.error('Error updating outline component:', error);
-            throw error; // Re-throw to be handled by EditableTextField
-        }
-    };
-
-    const handleRegenerate = async () => {
-        if (isStreaming || isRegenerating) return;
-
-        setIsRegenerating(true);
-        try {
-            await apiService.regenerateOutline(sessionId);
-            // The streaming should start automatically
-        } catch (error) {
-            console.error('Error regenerating outline:', error);
-            setIsRegenerating(false);
-        }
-    };
-
-    const handleExport = () => {
-        // Prepare export data
-        const exportData: OutlineExportData = {
-            sessionId,
-            sourceArtifact: sourceArtifact || {
-                text: '',
-                type: 'unknown'
-            },
-            totalEpisodes,
-            episodeDuration,
-            components,
-            createdAt: createdAt || new Date().toISOString()
-        };
-
-        // Generate formatted text
-        const formattedText = formatOutlineForExport(exportData);
-        setExportText(formattedText);
-        setIsExportModalVisible(true);
-    };
-
-    const getCompletedComponentsCount = () => {
-        let count = 0;
-        if (components.title) count++;
-        if (components.genre) count++;
-        if (components.target_audience) count++;
-        if (components.selling_points) count++;
-        if (components.satisfaction_points && components.satisfaction_points.length > 0) count++;
-        if (components.setting) count++;
-        if (components.synopsis) count++;
-        if (components.synopsis_stages && components.synopsis_stages.length > 0) count++;
-        if (components.characters && components.characters.length > 0) count++;
-        return count;
-    };
-
     return (
         <div style={{ marginTop: '24px' }}>
             <Card
@@ -247,7 +133,7 @@ export const OutlineResults: React.FC<OutlineResultsProps> = ({
                                         </Paragraph>
                                         <div>
                                             {character.personality_traits.slice(0, 3).map((trait, traitIndex) => (
-                                                <Tag key={traitIndex} size="small" style={{ fontSize: '10px' }}>
+                                                <Tag key={traitIndex} style={{ fontSize: '10px' }}>
                                                     {trait}
                                                 </Tag>
                                             ))}

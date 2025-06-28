@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ARTIFACT_SCHEMAS, ArtifactSchemaType } from './artifacts';
+import { OutlineGenerationInputSchema, OutlineGenerationOutputSchema } from './outlineSchemas';
 
 // Transform definition schema
 export const HumanTransformDefinitionSchema = z.object({
@@ -133,6 +134,15 @@ export const LLM_TRANSFORM_DEFINITIONS: Record<string, LLMTransformDefinition> =
     templateName: 'brainstormEdit',
     inputSchema: BrainstormEditInputSchema,
     outputSchema: BrainstormEditOutputSchema
+  },
+  'llm_generate_outline': {
+    name: 'llm_generate_outline',
+    description: 'AI generation of story outline from brainstorm idea',
+    inputTypes: ['brainstorm_idea_schema', 'user_input_schema'],
+    outputType: 'outline_schema',
+    templateName: 'outline',
+    inputSchema: OutlineGenerationInputSchema,
+    outputSchema: OutlineGenerationOutputSchema
   }
 };
 

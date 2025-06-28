@@ -20,6 +20,8 @@ export class ArtifactRepository {
     ): Promise<Artifact> {
         // Validate artifact data
         if (!validateArtifactData(type, typeVersion, data)) {
+            console.error(`Invalid data for artifact type ${type}:${typeVersion}`);
+            console.error("data:", data);
             throw new Error(`Invalid data for artifact type ${type}:${typeVersion}`);
         }
 

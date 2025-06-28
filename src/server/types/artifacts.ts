@@ -352,7 +352,8 @@ function mapTypeToSchemaType(type: string): string {
         'outline_synopsis': 'outline_synopsis_schema',
         'outline_characters': 'outline_characters_schema',
         'brainstorm_params': 'brainstorm_params_schema',
-        'plot_outline': 'plot_outline_schema'
+        'plot_outline': 'plot_outline_schema',
+        'outline': 'outline_schema' // New outline type mapping
     };
 
     return typeMapping[type] || `${type}_schema`;
