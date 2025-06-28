@@ -31,7 +31,7 @@ The application features a sophisticated **dual-mode agent system** that handles
 #### Agent Tools & Capabilities
 - ✅ **Brainstorm Generation Tool** - Creates new story ideas based on user requirements
 - ✅ **Brainstorm Edit Tool** - AI-powered editing of existing ideas through natural language instructions
-- ⚠️ **Outline Tool** - Legacy SSE-based implementation, needs Electric SQL migration
+- ✅ **Outline Generation Tool** - Generate detailed story outlines from brainstorm ideas with comprehensive schemas
 - ⚠️ **Episode Script Tool** - Legacy SSE-based implementation, needs Electric SQL migration
 - ✅ **Conversational Response** - General purpose chat responses with project context
 
@@ -61,6 +61,30 @@ LLM Transform: Generates improved versions with modern tech elements
 Artifact Creation: Creates new artifacts with proper lineage tracking
 ↓
 UI Update: Real-time display of edited content with edit indicators
+```
+
+#### Advanced Outline Generation System
+
+**Design Philosophy**: Transform brainstorm ideas into comprehensive story outlines through an intelligent agent-based workflow that maintains context awareness and produces publication-ready story structures.
+
+**Key Features**:
+- **Brainstorm Idea Integration** - Generate outlines directly from edited brainstorm ideas with "用这个灵感继续" workflow
+- **Comprehensive Story Structure** - Complete outline schemas with characters, stages, selling points, and detailed episode breakdowns
+- **Character System** - Structured character definitions with types (male_lead, female_lead, supporting roles), personality traits, and relationship maps
+- **Platform-Aware Generation** - Outlines optimized for specific platforms (抖音, 快手) with appropriate episode counts and duration
+- **Real-time Display** - Progressive outline display via Electric SQL as content is generated
+- **Modern UI Components** - Clean Ant Design interface with collapsible sections and character cards
+
+**Outline Generation Flow**:
+```
+User clicks "用这个灵感继续" on brainstorm idea →
+Modal form (episodes, duration, platform, genre, requirements) →
+Agent receives outline generation request →
+OutlineTool extracts brainstorm context and parameters →
+LLM generates comprehensive outline with character details →
+Creates outline artifact with proper schema validation →
+Electric SQL syncs to frontend in real-time →
+OutlineDisplay component renders complete outline structure
 ```
 
 
@@ -505,6 +529,31 @@ const BrainstormIdeaCollectionSchema = z.object({
   }))
 });
 
+// Comprehensive outline schemas
+const OutlineGenerationOutputSchema = z.object({
+  title: z.string(),
+  genre: z.string(),
+  target_audience: z.object({
+    demographic: z.string(),
+    core_themes: z.array(z.string())
+  }),
+  selling_points: z.array(z.string()),
+  satisfaction_points: z.array(z.string()),
+  characters: z.array(z.object({
+    name: z.string(),
+    type: z.enum(['male_lead', 'female_lead', 'male_second', 'female_second', 'male_supporting', 'female_supporting', 'antagonist', 'other']),
+    description: z.string(),
+    personality_traits: z.array(z.string()),
+    character_arc: z.string()
+  })),
+  synopsis_stages: z.array(z.string()),
+  stages: z.array(z.object({
+    title: z.string(),
+    stageSynopsis: z.string(),
+    numberOfEpisodes: z.number()
+  }))
+});
+
 // LLM transform definitions
 const LLMTransformDefinitionSchema = z.object({
   name: z.literal('llm_edit_brainstorm_idea'),
@@ -737,7 +786,7 @@ const editMutation = useMutation({
 - **Agent Tools**: 
   - ✅ Brainstorm Generation (creates new story ideas)
   - ✅ Brainstorm Editing (AI-powered modification of existing ideas)
-  - ⚠️ Outline Generation (legacy SSE-based, needs Electric SQL migration)
+  - ✅ Outline Generation (generates detailed story outlines from brainstorm ideas)
   - ⚠️ Episode Script Generation (legacy SSE-based, needs Electric SQL migration)
   - ✅ Conversational Response (general chat with project context)
 
@@ -754,7 +803,6 @@ const editMutation = useMutation({
 - **Blocked Tables**: `chat_messages_raw` (backend only for security)
 
 ### Legacy SSE Endpoints (Pending Migration)
-- `GET /api/outlines/stream` - Server-sent events for outline generation (requires Electric SQL migration)
 - `GET /api/episodes/stream` - Server-sent events for episode script generation (requires Electric SQL migration)
 
 ## Security Features
@@ -818,7 +866,7 @@ src/
 │   │   │   ├── EditableField.tsx         # Auto-saving editable fields
 │   │   │   └── streaming/                # Dynamic streaming UI components
 │   │   ├── BrainstormingResults.tsx      # Brainstorm display with editing
-│   │   ├── OutlineResults.tsx            # Outline display with editing (legacy)
+│   │   ├── OutlineDisplay.tsx            # Modern outline display with comprehensive sections
 │   │   └── ProjectLayout.tsx             # Main project interface with chat
 │   ├── contexts/          # React contexts
 │   │   ├── ChatContext.tsx               # Chat state management
@@ -861,9 +909,12 @@ src/
     │   ├── ChatService.ts                    # Chat message routing and processing
     │   ├── HumanTransformExecutor.ts         # Core transform execution
     │   ├── TransformInstantiationRegistry.ts # Transform registry
-    │   ├── OutlineService.ts                 # Legacy SSE-based outline service
     │   ├── EpisodeGenerationService.ts       # Legacy SSE-based episode service
     │   └── templates/     # LLM prompt templates
+    ├── tools/             # Agent tools
+    │   ├── BrainstormTool.ts    # Brainstorm generation tool
+    │   ├── BrainstormEditTool.ts # Brainstorm editing tool
+    │   └── OutlineTool.ts       # Outline generation tool
     ├── repositories/      # Data access layer
     │   ├── ArtifactRepository.ts # Artifact CRUD operations
     │   ├── TransformRepository.ts # Transform tracking
@@ -929,7 +980,6 @@ curl -H "Authorization: Bearer debug-auth-token-script-writer-dev" \
   "http://localhost:4600/api/electric/v1/shape?table=artifacts&offset=-1"
 
 # Note: Legacy SSE endpoints still available during migration:
-# /api/outlines/stream - Outline generation
 # /api/episodes/stream - Episode script generation
 ```
 
@@ -1048,14 +1098,35 @@ user_input_schema           | user_input   | user_input
 
 ### Electric SQL Migration Status
 
-**✅ COMPLETED**: Brainstorm system fully migrated to Electric SQL with real-time synchronization
-**⚠️ PENDING**: Outline and Episode Script generation still use legacy SSE architecture
+**✅ COMPLETED SYSTEMS**:
+- **Brainstorm system** - Fully migrated to Electric SQL with real-time synchronization
+- **Outline generation** - Migrated from legacy SSE to agent-based framework with Electric SQL
+
+**⚠️ PENDING SYSTEMS**:
+- **Episode Script generation** - Still uses legacy SSE architecture
 
 **Migration Requirements for Remaining Systems**:
-- **Outline Generation** - Migrate from SSE streaming to Electric SQL real-time updates
 - **Episode Script Generation** - Migrate from SSE streaming to Electric SQL real-time updates  
-- **Agent Integration** - Integrate outline/episode tools with the agent framework
+- **Agent Integration** - Integrate episode script tools with the agent framework
 - **UI Updates** - Update frontend components to use Electric SQL subscriptions instead of SSE
+
+### Agent-Based System Migration Pattern
+
+**Migration Approach Used for Outline Generation** (Reference for Future Systems):
+
+1. **Schema-First Design**: Create comprehensive Zod schemas for input/output validation
+2. **Agent Tool Creation**: Build tool following BrainstormTool pattern with context enrichment
+3. **Context Filtering**: Implement focused context preparation to reduce LLM confusion
+4. **UI Integration**: Modal forms within existing components for workflow continuity
+5. **Real-time Display**: Electric SQL reactive components for progressive content display
+6. **Legacy Cleanup**: Complete removal of SSE-based code to prevent confusion
+
+**Technical Migration Components**:
+- **Schemas**: `OutlineGenerationInputSchema` and `OutlineGenerationOutputSchema` with character definitions
+- **Transform Definitions**: `llm_generate_outline` with proper input/output type mapping
+- **Agent Tool**: `OutlineTool.ts` following established agent framework patterns
+- **UI Components**: Modal form in `BrainstormIdeaEditor.tsx` and `OutlineDisplay.tsx` for results
+- **Template Integration**: LLM prompt templates with 去脸谱化 principles and platform requirements
 
 ### Entity-Specific Mutation State System ✅ COMPLETED
 
@@ -1126,7 +1197,48 @@ user_input_schema           | user_input   | user_input
 - `src/client/components/ProjectLayout.tsx` - Toggle button integration
 - `package.json` - Added `dagre` and `@types/dagre` dependencies
 
-### AI-Powered Brainstorm Editing System (Latest Implementation)
+### Complete Outline Generation System Implementation ✅ COMPLETED
+
+**Major Achievement**: Successfully implemented a comprehensive outline generation system that transforms brainstorm ideas into detailed story outlines through an intelligent agent-based workflow, completing the second major content creation pipeline.
+
+#### System Migration: Legacy SSE → Agent-Based Electric SQL
+**Migration Strategy**: Complete replacement of legacy Server-Sent Events (SSE) system with modern agent-based framework using Electric SQL for real-time synchronization.
+
+**Before (Legacy SSE System)**:
+- Complex SSE-based outline streaming with separate routes (`/api/outlines/stream`)
+- Manual form components (`OutlineInputForm.tsx`) disconnected from brainstorm workflow
+- Static results display with limited interactivity
+- No integration with agent framework or chat system
+
+**After (Agent-Based System)**:
+- Unified agent workflow through `/api/projects/:id/agent` endpoint
+- Seamless brainstorm → outline progression with "用这个灵感继续" button
+- Real-time Electric SQL synchronization with progressive display
+- Complete integration with chat system and agent framework
+
+#### Technical Implementation Achievements
+**🏗️ Schema-Driven Architecture**:
+- `OutlineGenerationInputSchema` - Comprehensive input validation with platform/genre requirements
+- `OutlineGenerationOutputSchema` - Detailed output structure with character systems and story stages
+- Complete Zod schema validation preventing data structure mismatches
+
+**🤖 Agent Framework Integration**:
+- `OutlineTool.ts` following established agent patterns from BrainstormTool
+- Context enrichment with brainstorm idea data and platform requirements
+- Intelligent request type detection ("生成大纲", "创建故事大纲")
+
+**💻 Modern UI Implementation**:
+- Modal form in `BrainstormIdeaEditor.tsx` maintaining workflow continuity
+- `OutlineDisplay.tsx` with comprehensive sections (characters, stages, selling points)
+- Real-time progressive display as Electric SQL syncs outline data
+
+**🧹 Complete Legacy Cleanup**:
+- Removed 10 legacy files (SSE routes, services, components)
+- Cleaned code references and imports across codebase
+- Updated API routes and removed legacy endpoint registrations
+- Zero legacy outline code remaining for clean architecture
+
+### AI-Powered Brainstorm Editing System
 
 **Major Achievement**: Implemented a complete AI-powered editing system that allows users to modify existing story ideas through natural language chat interactions, representing a significant advancement in content creation workflow.
 
@@ -1179,7 +1291,7 @@ user_input_schema           | user_input   | user_input
 
 **Current Implementation Status**:
 - ✅ **Brainstorm System** - Complete dual-mode implementation with generation and editing capabilities using Electric SQL
-- ⚠️ **Outline System** - Legacy SSE-based implementation, requires Electric SQL migration and agent integration
+- ✅ **Outline System** - Complete agent-based implementation with Electric SQL real-time updates
 - ⚠️ **Episode Script System** - Legacy SSE-based implementation, requires Electric SQL migration and agent integration
 
 ### Individual Artifact Breakdown Architecture
@@ -1242,6 +1354,9 @@ npm run test:schema
 
 # Lineage resolution testing
 ./run-ts src/server/scripts/test-lineage-resolution.ts
+
+# Outline generation system testing
+./run-ts src/server/scripts/test-outline-tool.ts
 
 # Electric SQL integration testing
 ./run-ts src/server/scripts/test-electric-auth.ts
