@@ -16,8 +16,7 @@ export const BrainstormIdeaEditor: React.FC<{
     isSelected: boolean;
     ideaOutlines: any[];
     onIdeaClick: (collectionId: string, index: number) => void;
-    debugInfo?: string;
-}> = ({ artifactId, artifactPath, originalCollectionId, index, isSelected, ideaOutlines, onIdeaClick, debugInfo }) => {
+}> = ({ artifactId, artifactPath, originalCollectionId, index, isSelected, ideaOutlines, onIdeaClick, }) => {
     const [showSavedCheckmark, setShowSavedCheckmark] = useState(false);
     const projectData = useProjectData();
 
@@ -98,20 +97,6 @@ export const BrainstormIdeaEditor: React.FC<{
                 onSaveSuccess={handleSaveSuccess}
             />
 
-            {/* DEBUG: Show debug info if available */}
-            {debugInfo && (
-                <div style={{
-                    marginTop: '8px',
-                    padding: '4px 8px',
-                    background: '#3b3b3b',
-                    borderRadius: '4px',
-                    fontSize: '10px',
-                    color: '#888',
-                    fontFamily: 'monospace'
-                }}>
-                    🐛 {debugInfo}
-                </div>
-            )}
 
             {/* Generate outline button */}
             <GenerateOutlineButton artifactId={artifactId} />

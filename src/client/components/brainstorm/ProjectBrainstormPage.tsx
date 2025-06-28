@@ -15,7 +15,6 @@ export default function ProjectBrainstormPage() {
   const navigate = useNavigate()
   const [selectedIdea, setSelectedIdea] = useState<number | null>(null);
   const [ideaOutlines, setIdeaOutlines] = useState<Record<string, any[]>>({});
-  const [showDebugInfo, setShowDebugInfo] = useState<boolean>(true);
 
   if (!projectId) {
     navigate('/projects')
@@ -219,15 +218,6 @@ export default function ProjectBrainstormPage() {
               </div>
 
               <div className="flex items-center gap-2">
-                {/* DEBUG: Toggle button for debug info */}
-                <Button
-                  type="dashed"
-                  size="small"
-                  onClick={() => setShowDebugInfo(!showDebugInfo)}
-                  style={{ fontSize: '10px' }}
-                >
-                  🐛 {showDebugInfo ? '隐藏' : '显示'}调试
-                </Button>
 
                 {isStreaming && (
                   <Button
@@ -259,7 +249,6 @@ export default function ProjectBrainstormPage() {
                     isSelected={selectedIdea === index}
                     ideaOutlines={ideaOutlines[idea.artifactId || ''] || []}
                     onIdeaClick={handleIdeaClick}
-                    debugInfo={showDebugInfo ? idea.debugInfo : undefined}
                   />
                 );
               })}
