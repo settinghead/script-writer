@@ -8,7 +8,7 @@ import { BRAINSTORM_IDEA_FIELDS } from '../shared/fieldConfigs';
 
 const { Text } = Typography;
 
-export const BrainstormIdeaCard: React.FC<{
+export const BrainstormIdeaEditor: React.FC<{
     artifactId: string;
     artifactPath: string;
     originalCollectionId: string;

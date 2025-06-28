@@ -6,12 +6,9 @@ import { IdeaWithTitle } from '../../../common/utils/lineageResolution';
 import { ReasoningIndicator } from '../shared/ReasoningIndicator';
 import { useProjectData } from '../../contexts/ProjectDataContext';
 import { useLatestBrainstormIdeas } from '../../hooks/useLineageResolution';
-import { BrainstormIdeaCard } from './BrainstormIdeaEditor';
+import { BrainstormIdeaEditor } from './BrainstormIdeaEditor';
 
 const { Text } = Typography;
-
-
-
 
 export default function ProjectBrainstormPage() {
   const { projectId } = useParams<{ projectId: string }>()
@@ -253,7 +250,7 @@ export default function ProjectBrainstormPage() {
                 if (!idea.artifactId || !idea.originalArtifactId || !idea.artifactPath) return null;
 
                 return (
-                  <BrainstormIdeaCard
+                  <BrainstormIdeaEditor
                     key={`${idea.artifactId}-${index}`}
                     artifactId={idea.artifactId}
                     artifactPath={idea.artifactPath}

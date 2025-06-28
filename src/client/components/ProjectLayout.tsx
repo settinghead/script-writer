@@ -280,7 +280,7 @@ const ProjectLayout: React.FC = () => {
                             width={sidebarWidth}
                             style={{
                                 background: '#1a1a1a',
-                                height: '100vh',
+                                height: '100%',
                                 overflow: 'hidden',
                                 position: 'relative'
                             }}
@@ -322,7 +322,7 @@ const ProjectLayout: React.FC = () => {
 
                 <Layout style={{
                     flex: 1,
-                    height: '100vh',
+                    height: '100%',
                     // Use full width on mobile since there's no fixed sidebar
                     width: isMobile ? '100%' : 'auto'
                 }}>
