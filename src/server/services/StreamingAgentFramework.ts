@@ -64,10 +64,11 @@ export async function runStreamingAgent(config: StreamingAgentConfig): Promise<{
   const prompt = config.prompt;
 
   try {
+
     const result = await streamText({
       model: model,
       tools: tools,
-      maxSteps: config.maxSteps || 3,
+      maxSteps: config.maxSteps || 5,
       prompt: prompt,
     });
 
@@ -76,6 +77,7 @@ export async function runStreamingAgent(config: StreamingAgentConfig): Promise<{
     let currentToolCall: any = null;
 
     for await (const delta of result.fullStream) {
+
       switch (delta.type) {
         case 'text-delta':
           process.stdout.write(delta.textDelta);

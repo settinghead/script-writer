@@ -17,7 +17,7 @@ interface StreamingToolDefinition<TInput, TOutput> {
     description: string;
     inputSchema: any;
     outputSchema: any;
-    execute: (params: TInput) => Promise<any>;
+    execute: (params: TInput, options: { toolCallId: string }) => Promise<any>;
 }
 
 interface BrainstormEditToolResult {
@@ -47,12 +47,14 @@ export function createBrainstormEditToolDefinition(
         description: '编辑和改进现有故事创意。适用场景：用户对现有创意有具体的修改要求或改进建议。重要：必须使用项目背景信息中显示的完整ID作为sourceArtifactId参数。支持各种编辑类型：内容扩展（"每个再长一点"、"详细一些"）、风格调整（"太老套，创新一点"、"更有趣一些"）、情节修改（"改成现代背景"、"加入悬疑元素"）、结构调整（"重新安排情节"、"调整人物关系"）、其他改进（"更符合年轻人口味"、"增加商业价值"）等。',
         inputSchema: BrainstormEditInputSchema,
         outputSchema: BrainstormEditOutputSchema,
-        execute: async (params: BrainstormEditInput): Promise<BrainstormEditToolResult> => {
+        execute: async (params: BrainstormEditInput, {
+            toolCallId
+        }): Promise<BrainstormEditToolResult> => {
             let toolTransformId: string | null = null;
             const llmService = new LLMService();
 
             try {
-                console.log(`[BrainstormEditTool] Starting edit for artifact ${params.sourceArtifactId}, idea ${params.ideaIndex}`);
+                console.log(`[BrainstormEditTool] Starting edit for artifact ${params.sourceArtifactId}.`);
 
                 // 1. Validate input
                 const validationResult = BrainstormEditInputSchema.safeParse(params);
