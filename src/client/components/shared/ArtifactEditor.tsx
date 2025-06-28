@@ -164,13 +164,15 @@ const EditableView: React.FC<EditableViewProps> = ({
 
         const updatedData = { ...fragment.data, [field]: value };
 
-        // Prepare request based on artifact type (not origin_type)
-        // This must match the backend logic in artifactRoutes.ts
+        // Prepare request based on artifact type to match backend expectations
+        // Backend expects: { text: "..." } for user_input, { data: rawObject } for others
         let requestData;
         if (fragment.type === 'user_input') {
             requestData = { text: JSON.stringify(updatedData) };
         } else {
-            requestData = { data: updatedData };
+            // For non-user_input artifacts (like brainstorm_idea), send the raw data directly
+            // The apiService will wrap it in { data: ... }, so the backend gets { data: rawObject }
+            requestData = updatedData;
         }
 
         projectData.updateArtifact.mutate({
