@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Outlet, useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { Layout, Breadcrumb, Typography, Spin, Alert, Space, Button, Card, List } from 'antd';
-import { HomeOutlined, ProjectOutlined, ArrowLeftOutlined, EyeOutlined, EyeInvisibleOutlined, NodeIndexOutlined, MessageOutlined, FileTextOutlined } from '@ant-design/icons';
+import { Layout, Breadcrumb, Typography, Spin, Alert, Space, Button, Card, List, Drawer, Grid } from 'antd';
+import { HomeOutlined, ProjectOutlined, ArrowLeftOutlined, EyeOutlined, EyeInvisibleOutlined, NodeIndexOutlined, MessageOutlined, FileTextOutlined, MenuOutlined } from '@ant-design/icons';
 import { useProjectData } from '../hooks/useProjectData';
 import { useProjectStore } from '../stores/projectStore';
 import { ProjectDataProvider } from '../contexts/ProjectDataContext';
@@ -14,6 +14,7 @@ import { useLocalStorage } from '../hooks/useLocalStorage';
 
 const { Sider, Content } = Layout;
 const { Title, Text } = Typography;
+const { useBreakpoint } = Grid;
 
 
 
@@ -26,6 +27,11 @@ const ProjectLayout: React.FC = () => {
     const [sidebarWidth, setSidebarWidth] = useLocalStorage('sidebar-width', 350);
     const [isResizing, setIsResizing] = useState(false);
     const [isResizingSidebar, setIsResizingSidebar] = useState(false);
+    const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+
+    // Responsive breakpoints
+    const screens = useBreakpoint();
+    const isMobile = !screens.md; // Mobile when smaller than md breakpoint (768px)
 
     // Debug toggles
     const showRawGraph = searchParams.get('raw-graph') === '1';
@@ -172,6 +178,15 @@ const ProjectLayout: React.FC = () => {
         navigate('/');
     };
 
+    // Mobile drawer handlers
+    const showMobileDrawer = () => {
+        setMobileDrawerOpen(true);
+    };
+
+    const hideMobileDrawer = () => {
+        setMobileDrawerOpen(false);
+    };
+
     if (loading && !name) {
         return (
             <Layout style={{ minHeight: '100vh', background: '#0a0a0a' }}>
@@ -232,57 +247,88 @@ const ProjectLayout: React.FC = () => {
     // Determine layout based on debug modes
     const isDebugMode = showRawGraph || showRawChat || showRawContext;
 
+    // Chat sidebar content component for reuse
+    const ChatSidebarContent = () => (
+        <ChatSidebarWrapper projectId={projectId!} />
+    );
+
     return (
         <ProjectDataProvider projectId={projectId!}>
             <Layout style={{ height: '100%', overflow: 'hidden' }}>
-                <div style={{ position: 'relative', display: 'flex' }}>
-                    <Sider
-                        width={sidebarWidth}
-                        style={{
-                            background: '#1a1a1a',
-                            height: '100vh',
-                            overflow: 'hidden',
-                            position: 'relative'
+                {/* Mobile Drawer for Chat */}
+                {isMobile && (
+                    <Drawer
+                        title="聊天"
+                        placement="left"
+                        onClose={hideMobileDrawer}
+                        open={mobileDrawerOpen}
+                        width={Math.min(320, window.innerWidth * 0.85)}
+                        styles={{
+                            body: { padding: 0, background: '#1a1a1a' },
+                            header: { background: '#1a1a1a', borderBottom: '1px solid #333' }
                         }}
-                        theme="dark"
+                        closeIcon={<span style={{ color: '#fff' }}>×</span>}
                     >
-                        <ChatSidebarWrapper projectId={projectId!} />
-                    </Sider>
+                        <ChatSidebarContent />
+                    </Drawer>
+                )}
 
-                    {/* Sidebar Resize Handle */}
-                    <div
-                        onMouseDown={handleSidebarMouseDown}
-                        style={{
-                            width: '6px',
-                            background: isResizingSidebar ? '#1890ff' : 'transparent',
-                            cursor: 'ew-resize',
-                            position: 'relative',
-                            borderRight: '1px solid #333',
-                            transition: 'background 0.2s ease-in-out',
-                            height: '100vh',
-                            flexShrink: 0
-                        }}
-                    >
-                        <div
+                {/* Desktop Sidebar */}
+                {!isMobile && (
+                    <div style={{ position: 'relative', display: 'flex' }}>
+                        <Sider
+                            width={sidebarWidth}
                             style={{
-                                position: 'absolute',
-                                top: '50%',
-                                left: '50%',
-                                transform: 'translate(-50%, -50%)',
-                                width: '4px',
-                                height: '40px',
-                                background: isResizingSidebar ? '#1890ff' : '#666',
-                                borderRadius: '2px',
-                                transition: 'background 0.2s ease-in-out',
+                                background: '#1a1a1a',
+                                height: '100vh',
+                                overflow: 'hidden',
+                                position: 'relative'
                             }}
-                        />
-                    </div>
-                </div>
+                            theme="dark"
+                        >
+                            <ChatSidebarContent />
+                        </Sider>
 
-                <Layout style={{ flex: 1, height: '100vh' }}>
+                        {/* Sidebar Resize Handle - Desktop Only */}
+                        <div
+                            onMouseDown={handleSidebarMouseDown}
+                            style={{
+                                width: '6px',
+                                background: isResizingSidebar ? '#1890ff' : 'transparent',
+                                cursor: 'ew-resize',
+                                position: 'relative',
+                                borderRight: '1px solid #333',
+                                transition: 'background 0.2s ease-in-out',
+                                height: '100vh',
+                                flexShrink: 0
+                            }}
+                        >
+                            <div
+                                style={{
+                                    position: 'absolute',
+                                    top: '50%',
+                                    left: '50%',
+                                    transform: 'translate(-50%, -50%)',
+                                    width: '4px',
+                                    height: '40px',
+                                    background: isResizingSidebar ? '#1890ff' : '#666',
+                                    borderRadius: '2px',
+                                    transition: 'background 0.2s ease-in-out',
+                                }}
+                            />
+                        </div>
+                    </div>
+                )}
+
+                <Layout style={{
+                    flex: 1,
+                    height: '100vh',
+                    // Use full width on mobile since there's no fixed sidebar
+                    width: isMobile ? '100%' : 'auto'
+                }}>
                     {/* Breadcrumb and Toggle Buttons Row */}
                     <div style={{
-                        padding: '12px 16px',
+                        padding: isMobile ? '8px 12px' : '12px 16px',
                         borderBottom: '1px solid #333',
                         background: '#1a1a1a',
                         display: 'flex',
@@ -290,31 +336,47 @@ const ProjectLayout: React.FC = () => {
                         alignItems: 'center',
                         flexShrink: 0
                     }}>
-                        <Breadcrumb items={breadcrumbItems} />
-                        <Space>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            {/* Mobile Menu Button */}
+                            {isMobile && (
+                                <Button
+                                    type="text"
+                                    icon={<MenuOutlined />}
+                                    onClick={showMobileDrawer}
+                                    style={{ color: '#1890ff' }}
+                                    size="large"
+                                />
+                            )}
+                            <Breadcrumb items={breadcrumbItems} />
+                        </div>
+
+                        <Space size={isMobile ? 'small' : 'middle'}>
                             <Button
                                 type="text"
                                 icon={<NodeIndexOutlined />}
                                 onClick={toggleRawGraph}
                                 style={{ color: showRawGraph ? '#52c41a' : '#1890ff' }}
+                                size={isMobile ? 'small' : 'middle'}
                             >
-                                {showRawGraph ? '关闭图谱' : '打开图谱'}
+                                {isMobile ? '' : (showRawGraph ? '关闭图谱' : '打开图谱')}
                             </Button>
                             <Button
                                 type="text"
                                 icon={<MessageOutlined />}
                                 onClick={toggleRawChat}
                                 style={{ color: showRawChat ? '#52c41a' : '#1890ff' }}
+                                size={isMobile ? 'small' : 'middle'}
                             >
-                                {showRawChat ? '关闭内部对话' : '打开内部对话'}
+                                {isMobile ? '' : (showRawChat ? '关闭内部对话' : '打开内部对话')}
                             </Button>
                             <Button
                                 type="text"
                                 icon={<FileTextOutlined />}
                                 onClick={toggleRawContext}
                                 style={{ color: showRawContext ? '#52c41a' : '#1890ff' }}
+                                size={isMobile ? 'small' : 'middle'}
                             >
-                                {showRawContext ? '关闭上下文' : '打开上下文'}
+                                {isMobile ? '' : (showRawContext ? '关闭上下文' : '打开上下文')}
                             </Button>
                         </Space>
                     </div>
