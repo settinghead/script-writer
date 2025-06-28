@@ -16,7 +16,6 @@ import { createProjectRoutes } from './projectRoutes';
 import { createIdeationRoutes } from './ideations';
 import { createArtifactRoutes } from './artifactRoutes';
 import { createChatRoutes } from './chatRoutes';
-import { createOutlineRoutes } from './outlineRoutes';
 import { createEpisodeRoutes } from './episodes';
 import { createScriptRoutes } from './scriptRoutes';
 import { createAdminRoutes } from './adminRoutes';
@@ -48,9 +47,6 @@ export function createAPIRoutes(
 
     // Mount chat routes
     app.use('/api/chat', createChatRoutes(authMiddleware, chatService));
-
-    // Mount outline routes
-    app.use('/api', createOutlineRoutes(authMiddleware, unifiedStreamingService, artifactRepo, transformRepo));
 
     // Mount episode routes
     app.use('/api/episodes', createEpisodeRoutes(artifactRepo, transformRepo, authMiddleware));

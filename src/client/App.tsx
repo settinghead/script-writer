@@ -11,7 +11,6 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './components/LoginPage';
 import ProjectsList from './components/ProjectList';
-import { OutlineTab } from './components/OutlineTab';
 import ChatTab from './components/ChatTab';
 import ScriptTab from './components/ScriptTab';
 import ProjectLayout from './components/ProjectLayout';
@@ -55,16 +54,6 @@ const AppRoutes: React.FC = () => {
         <Route path="brainstorm" element={<ProjectBrainstormPage />} />
         <Route path="stage/:stageId" element={<StageDetailView />} />
       </Route>
-      <Route path="/new-outline" element={
-        <ProtectedRoute>
-          <OutlineTab />
-        </ProtectedRoute>
-      } />
-      <Route path="/outlines" element={
-        <ProtectedRoute>
-          <OutlineTab />
-        </ProtectedRoute>
-      } />
       <Route path="/chat" element={
         <ProtectedRoute>
           <ChatTab />

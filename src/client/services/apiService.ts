@@ -1,4 +1,17 @@
-import { OutlineSessionSummary, OutlineSessionData } from '../../server/services/OutlineService';
+// Legacy outline session types (simplified for backward compatibility)
+interface OutlineSessionSummary {
+    id: string;
+    title?: string;
+    created_at: string;
+    status: string;
+}
+
+interface OutlineSessionData {
+    components: any;
+    sourceArtifact: any;
+    totalEpisodes: number;
+    episodeDuration: number;
+}
 import { OutlineGenerateRequest, OutlineGenerateResponse } from '../../common/streaming/types';
 import {
 

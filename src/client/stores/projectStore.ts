@@ -1,6 +1,10 @@
 import { create } from 'zustand';
-import type { OutlineSessionData } from '../../server/services/OutlineService';
 import type { EpisodeSynopsisV1 } from '../../common/types';
+
+// Legacy outline session data type (simplified for backward compatibility)
+interface OutlineSessionData {
+  components: any;
+}
 
 // Types based on existing EpisodeContext
 export interface Stage {
@@ -40,7 +44,7 @@ interface ProjectData {
   selectedEpisodeId: string | null;
   loading: boolean;
   error: string | null;
-  
+
   // Streaming state
   activeStreamingStageId: string | null;
   streamingTransformId: string | null;
@@ -52,42 +56,42 @@ interface ProjectData {
 // Define the store's state and actions
 interface ProjectStoreState {
   projects: Record<string, Partial<ProjectData>>;
-  
+
   // Actions for outline data
   setOutline: (projectId: string, outline: OutlineSessionData) => void;
   updateStreamingOutline: (projectId: string, partialOutline: Partial<OutlineSessionData['components']>) => void;
-  
+
   // Actions for stages data
   setStages: (projectId: string, stages: Stage[]) => void;
   setStageEpisodes: (projectId: string, stageId: string, episodeState: StageEpisodeState) => void;
   updateStreamingEpisodes: (projectId: string, stageId: string, episodes: EpisodeData[]) => void;
-  
+
   // Actions for UI state
   setExpandedKeys: (projectId: string, keys: string[]) => void;
   setSelectedStage: (projectId: string, stageId: string | null) => void;
   setSelectedEpisode: (projectId: string, episodeId: string | null) => void;
   setLoading: (projectId: string, loading: boolean) => void;
   setError: (projectId: string, error: string | null) => void;
-  
+
   // Actions for streaming state
   startStreaming: (projectId: string, stageId: string, transformId: string) => void;
   stopStreaming: (projectId: string) => void;
-  
+
   // Action to update episode script status
   updateEpisodeScriptStatus: (projectId: string, stageId: string, episodeNumber: number, hasScript: boolean) => void;
-  
+
   // Helper action to ensure project exists
   ensureProject: (projectId: string) => void;
-  
+
   // New action to set project data
   setProject: (projectId: string, projectData: ProjectData) => void;
-  
+
   // New action to set brainstorm ideas
   setBrainstormIdeas: (projectId: string, ideas: any[]) => void;
-  
+
   // New action to set streaming error
   setStreamingError: (projectId: string, error: string | null) => void;
-  
+
   // New action to set streaming status
   setStreamingStatus: (projectId: string, status: 'idle' | 'connecting' | 'streaming' | 'completed' | 'error') => void;
 }
@@ -114,7 +118,7 @@ const createEmptyProject = (id: string): ProjectData => ({
 
 export const useProjectStore = create<ProjectStoreState>((set, get) => ({
   projects: {},
-  
+
   ensureProject: (projectId: string) => set(state => {
     if (!state.projects[projectId]) {
       return {
@@ -126,7 +130,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
     }
     return state;
   }),
-  
+
   setOutline: (projectId, outline) => set(state => {
     const project = state.projects[projectId] || createEmptyProject(projectId);
     return {
@@ -136,11 +140,11 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
       },
     };
   }),
-  
+
   updateStreamingOutline: (projectId, partialOutline) => set(state => {
     const project = state.projects[projectId] || createEmptyProject(projectId);
     const outline = project.outline || { components: {} } as OutlineSessionData;
-    
+
     return {
       projects: {
         ...state.projects,
@@ -157,7 +161,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
       },
     };
   }),
-  
+
   setStages: (projectId, stages) => set(state => {
     const project = state.projects[projectId] || createEmptyProject(projectId);
     return {
@@ -167,10 +171,10 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
       },
     };
   }),
-  
+
   setStageEpisodes: (projectId, stageId, episodeState) => set(state => {
     const project = state.projects[projectId] || createEmptyProject(projectId);
-    
+
     return {
       projects: {
         ...state.projects,
@@ -184,7 +188,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
       },
     };
   }),
-  
+
   updateStreamingEpisodes: (projectId, stageId, episodes) => set(state => {
     const project = state.projects[projectId] || createEmptyProject(projectId);
     const currentEpisodeState = project.episodes?.[stageId] || {
@@ -192,7 +196,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
       loading: false,
       isStreaming: false,
     };
-    
+
     return {
       projects: {
         ...state.projects,
@@ -210,7 +214,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
       },
     };
   }),
-  
+
   setExpandedKeys: (projectId, keys) => set(state => {
     const project = state.projects[projectId] || createEmptyProject(projectId);
     return {
@@ -220,7 +224,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
       },
     };
   }),
-  
+
   setSelectedStage: (projectId, stageId) => set(state => {
     const project = state.projects[projectId] || createEmptyProject(projectId);
     return {
@@ -230,7 +234,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
       },
     };
   }),
-  
+
   setSelectedEpisode: (projectId, episodeId) => set(state => {
     const project = state.projects[projectId] || createEmptyProject(projectId);
     return {
@@ -240,7 +244,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
       },
     };
   }),
-  
+
   setLoading: (projectId, loading) => set(state => {
     const project = state.projects[projectId] || createEmptyProject(projectId);
     return {
@@ -250,7 +254,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
       },
     };
   }),
-  
+
   setError: (projectId, error) => set(state => {
     const project = state.projects[projectId] || createEmptyProject(projectId);
     return {
@@ -260,7 +264,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
       },
     };
   }),
-  
+
   startStreaming: (projectId, stageId, transformId) => set(state => {
     const project = state.projects[projectId] || createEmptyProject(projectId);
     return {
@@ -274,10 +278,10 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
       },
     };
   }),
-  
+
   stopStreaming: (projectId) => set(state => {
     const project = state.projects[projectId] || createEmptyProject(projectId);
-    
+
     // Update the streaming stage's state
     const updatedEpisodes = { ...project.episodes };
     if (project.activeStreamingStageId && updatedEpisodes[project.activeStreamingStageId]) {
@@ -286,7 +290,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
         isStreaming: false,
       };
     }
-    
+
     return {
       projects: {
         ...state.projects,
@@ -299,19 +303,19 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
       },
     };
   }),
-  
+
   updateEpisodeScriptStatus: (projectId, stageId, episodeNumber, hasScript) => set(state => {
     const project = state.projects[projectId] || createEmptyProject(projectId);
     const currentStageData = project.episodes?.[stageId];
-    
+
     if (!currentStageData) return state;
-    
+
     const updatedEpisodes = currentStageData.episodes.map(episode =>
       episode.episodeNumber === episodeNumber
         ? { ...episode, hasScript }
         : episode
     );
-    
+
     return {
       projects: {
         ...state.projects,
@@ -328,7 +332,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
       },
     };
   }),
-  
+
   setProject: (projectId, projectData) =>
     set(state => {
       const project = state.projects[projectId] || createEmptyProject(projectId);
@@ -343,7 +347,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
         }
       }
     }),
-  
+
   setBrainstormIdeas: (projectId, ideas) =>
     set(state => {
       console.log('[Store] Setting brainstorm ideas for project', projectId, ':', ideas);
@@ -362,7 +366,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
       console.log('[Store] Project not found for brainstorm ideas:', projectId);
       return state;
     }),
-  
+
   setStreamingError: (projectId, error) =>
     set(state => {
       const project = state.projects[projectId];
@@ -379,7 +383,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
       }
       return state;
     }),
-  
+
   setStreamingStatus: (projectId, status) =>
     set(state => {
       const project = state.projects[projectId];

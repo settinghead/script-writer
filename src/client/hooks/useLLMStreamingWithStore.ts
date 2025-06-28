@@ -3,7 +3,10 @@ import { useObservableState } from './useObservableState';
 import { StreamingResponse, ReasoningEvent } from '../../common/streaming/types';
 import { LLMStreamingService } from '../services/streaming/LLMStreamingService';
 import { useProjectStore } from '../stores/projectStore';
-import type { OutlineSessionData } from '../../server/services/OutlineService';
+// Legacy outline session data type (simplified for backward compatibility)
+interface OutlineSessionData {
+    components: any;
+}
 
 /**
  * Enhanced LLM streaming hook that integrates with the Zustand project store.
@@ -20,7 +23,7 @@ export function useLLMStreamingWithStore<T>(
 ) {
     const { transformId, projectId, dataType, stageId } = config;
     const currentTransformIdRef = useRef<string | undefined>(undefined);
-    
+
     // Zustand store actions
     const updateStreamingOutline = useProjectStore(state => state.updateStreamingOutline);
     const updateStreamingEpisodes = useProjectStore(state => state.updateStreamingEpisodes);
@@ -191,20 +194,20 @@ function transformToOutlineComponents(item: any): Partial<OutlineSessionData['co
     if (item.genre) components.genre = item.genre;
     if (item.target_audience) components.target_audience = item.target_audience;
     if (item.setting) {
-        components.setting = typeof item.setting === 'string' 
-            ? item.setting 
+        components.setting = typeof item.setting === 'string'
+            ? item.setting
             : item.setting?.core_setting_summary;
     }
     if (item.synopsis) components.synopsis = item.synopsis;
     if (item.characters) components.characters = item.characters;
-    
+
     // Handle selling points
     if (item.selling_points) {
         components.selling_points = Array.isArray(item.selling_points)
             ? item.selling_points.join('\n')
             : item.selling_points;
     }
-    
+
     // Handle satisfaction points
     if (item.satisfaction_points) {
         components.satisfaction_points = item.satisfaction_points;

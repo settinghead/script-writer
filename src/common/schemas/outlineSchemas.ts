@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-// Input schema for outline generation (based on OutlineInputForm.tsx)
+// Input schema for outline generation (agent-based system)
 export const OutlineGenerationInputSchema = z.object({
     sourceArtifactId: z.string().describe('ID of the brainstorm idea to use'),
     totalEpisodes: z.number().min(6).max(200).describe('Total number of episodes'),

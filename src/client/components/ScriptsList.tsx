@@ -4,7 +4,19 @@ import { PlayCircleOutlined, EyeOutlined, FileTextOutlined, UserOutlined } from 
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiService } from '../services/apiService';
-import { OutlineSessionSummary } from '../../server/services/OutlineService';
+
+// Legacy outline session summary type (simplified for backward compatibility)
+interface OutlineSessionSummary {
+    id: string;
+    title?: string;
+    genre?: string;
+    status: string;
+    source_idea_title?: string;
+    total_episodes?: number;
+    episode_duration?: number;
+    created_at: string;
+    [key: string]: any; // Allow additional properties for flexibility
+}
 
 const { Text, Title } = Typography;
 
@@ -12,10 +24,10 @@ const ScriptsList: React.FC = () => {
     const navigate = useNavigate();
 
     // Use TanStack Query for data fetching (reuse the same query as OutlinesList)
-    const { 
-        data: scripts = [], 
-        isLoading: loading, 
-        error 
+    const {
+        data: scripts = [],
+        isLoading: loading,
+        error
     } = useQuery({
         queryKey: ['outline-sessions'],
         queryFn: () => apiService.getOutlineSessions(),
