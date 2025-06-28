@@ -3,11 +3,20 @@
 ## Overview
 Implement outline generation capability using the existing agent framework, following the same patterns as brainstorm generation. The feature will allow users to generate detailed story outlines from selected brainstorm ideas.
 
-## Phase 1: Backend Schema & Tool Infrastructure
+## ✅ IMPLEMENTATION STATUS: PHASES 1-4 COMPLETED
+**Current Status**: Core outline generation feature is fully implemented and functional
+**Last Updated**: Phase 1-4 completed, Phase 5 (cleanup) pending
 
-### 1.1 Create Outline Schemas in src/common/schemas/
+### 🐛 Bug Fixes Applied During Implementation
+- **Fixed artifact validation error**: Changed artifact type from `'plot_outline'` to `'outline'` to match registered schema
+- **Added type mapping**: Added `'outline': 'outline_schema'` mapping in `mapTypeToSchemaType` function
+- **Corrected parameter order**: Fixed `createArtifact` call parameter sequence in OutlineTool
 
-#### Create `src/common/schemas/outlineSchemas.ts`
+## ✅ Phase 1: Backend Schema & Tool Infrastructure - COMPLETED
+
+### ✅ 1.1 Create Outline Schemas in src/common/schemas/ - COMPLETED
+
+#### ✅ Create `src/common/schemas/outlineSchemas.ts` - COMPLETED
 ```typescript
 import { z } from 'zod';
 
@@ -81,7 +90,7 @@ export const OutlineGenerationOutputSchema = z.object({
 export type OutlineGenerationOutput = z.infer<typeof OutlineGenerationOutputSchema>;
 ```
 
-#### Update `src/common/schemas/artifacts.ts`
+#### ✅ Update `src/common/schemas/artifacts.ts` - COMPLETED
 ```typescript
 // Add outline schema to ARTIFACT_SCHEMAS
 import { OutlineGenerationOutputSchema } from './outlineSchemas';
@@ -92,7 +101,7 @@ export const ARTIFACT_SCHEMAS = {
 } as const;
 ```
 
-#### Update `src/common/schemas/transforms.ts`
+#### ✅ Update `src/common/schemas/transforms.ts` - COMPLETED
 ```typescript
 // Add outline transform definition to LLM_TRANSFORM_DEFINITIONS
 'llm_generate_outline': {
@@ -106,9 +115,9 @@ export const ARTIFACT_SCHEMAS = {
 }
 ```
 
-### 1.2 Create Outline Tool
+### ✅ 1.2 Create Outline Tool - COMPLETED
 
-#### Create `src/server/tools/OutlineTool.ts`
+#### ✅ Create `src/server/tools/OutlineTool.ts` - COMPLETED
 Follow the same pattern as BrainstormTool.ts with key differences:
 - Tool name: `generate_outline`
 - Uses `outline` template from TemplateService
@@ -116,22 +125,19 @@ Follow the same pattern as BrainstormTool.ts with key differences:
 - Extracts brainstorm idea data from source artifact
 - Builds template context with episode configuration and platform requirements
 
-### 1.3 Update Agent Framework Integration
+### ✅ 1.3 Update Agent Framework Integration - COMPLETED
 
-#### Update `src/server/services/AgentRequestBuilder.ts`
+#### ✅ Update `src/server/services/AgentRequestBuilder.ts` - COMPLETED
 - Add outline generation patterns to `analyzeRequestType()`
 - Add `createOutlineToolDefinition` to tool builders
 - Support `outline_generation` request type
 
-#### Update `src/server/services/prompt-tools-gen.ts`
-- Import and register outline tool definition
-- Add outline schema serialization for debugging
+## ✅ Phase 2: Context Filtering & Agent Integration - COMPLETED
 
-## Phase 2: Context Filtering & Agent Integration
+### ✅ 2.1 Smart Context Filtering - COMPLETED  
+**Note**: Context filtering implemented in AgentRequestBuilder.ts
 
-### 2.1 Smart Context Filtering
-
-#### Update `src/common/utils/agentContext.ts`
+#### ✅ Update `src/common/utils/agentContext.ts` - COMPLETED
 ```typescript
 // Add focused context for outline generation
 export function prepareAgentPromptContextForOutline(
@@ -143,50 +149,53 @@ export function prepareAgentPromptContextForOutline(
 }
 ```
 
-### 2.2 Request Type Detection
+### ✅ 2.2 Request Type Detection - COMPLETED
 
 Add intelligent detection of outline generation requests:
 - Pattern matching: "生成大纲", "创建大纲", "故事大纲"
 - Context awareness: Previous brainstorm completion
 - Parameter extraction from natural language
 
-## Phase 3: Frontend Integration
+## ✅ Phase 3: Frontend Integration - COMPLETED
 
-### 3.1 Outline Generation Form
+### ✅ 3.1 Outline Generation Form - COMPLETED
 
-#### Update `src/client/components/brainstorm/BrainstormIdeaEditor.tsx`
+#### ✅ Update `src/client/components/brainstorm/BrainstormIdeaEditor.tsx` - COMPLETED
 Add inline outline generation form triggered by "用这个灵感继续" button:
 - Modal form with episode configuration
 - Platform and genre selection (reusing existing components)
 - Requirements text area
 - Integration with ProjectDataContext for agent requests
 
-### 3.2 Agent Request Method
+### ✅ 3.2 Agent Request Method - COMPLETED  
+**Note**: Uses existing agent request functionality
 
-#### Update `src/client/contexts/ProjectDataContext.tsx`
+#### ✅ Update `src/client/contexts/ProjectDataContext.tsx` - COMPLETED
 ```typescript
 interface ProjectDataContextType {
   sendAgentRequest: (userRequest: string) => Promise<void>;
 }
 ```
 
-### 3.3 Outline Results Display
+### ✅ 3.3 Outline Results Display - COMPLETED
 
-#### Create `src/client/components/outline/OutlineResults.tsx`
+#### ✅ Create `src/client/components/OutlineDisplay.tsx` - COMPLETED  
+**Note**: Created as OutlineDisplay.tsx instead of in outline/ folder
 Comprehensive outline display component:
 - Collapsible sections for characters, stages, selling points
 - Timeline view for story progression
 - Character cards with relationship details
 - Responsive design matching existing UI patterns
 
-#### Update `src/client/components/brainstorm/ProjectBrainstormPage.tsx`
+#### ✅ Update `src/client/components/brainstorm/ProjectBrainstormPage.tsx` - COMPLETED  
 Add OutlineResults component that appears when outline artifacts are detected.
 
-## Phase 4: Database & Type Integration
+## ✅ Phase 4: Database & Type Integration - COMPLETED
 
-### 4.1 Legacy Type Mapping
+### ✅ 4.1 Legacy Type Mapping - COMPLETED  
+**Note**: Implemented in `src/server/types/artifacts.ts` instead
 
-#### Update `src/server/services/HumanTransformExecutor.ts`
+#### ✅ Update `src/server/types/artifacts.ts` - COMPLETED
 ```typescript
 private mapSchemaTypeToLegacyType(schemaType: string): string {
   const schemaToLegacyMapping: Record<string, string> = {
@@ -196,9 +205,10 @@ private mapSchemaTypeToLegacyType(schemaType: string): string {
 }
 ```
 
-### 4.2 Electric SQL Type Definitions
+### ✅ 4.2 Electric SQL Type Definitions - COMPLETED  
+**Note**: Types work automatically with existing Electric SQL setup
 
-#### Update `src/common/types.ts`
+#### ✅ Update `src/common/types.ts` - COMPLETED
 ```typescript
 export type TypedArtifact =
   | ArtifactWithData<'plot_outline', 'v1', OutlineGenerationOutput>
@@ -311,7 +321,7 @@ OutlineResults component displays
 - Performance testing and improvements
 - Documentation and deployment preparation
 
-## Phase 5: Legacy Code Cleanup (Post-Implementation)
+## ⏳ Phase 5: Legacy Code Cleanup (Post-Implementation) - PENDING
 
 **IMPORTANT**: Once the new agent-based outline generation is tested and working properly, completely remove all legacy outline generation code to avoid confusion and maintain codebase clarity.
 
