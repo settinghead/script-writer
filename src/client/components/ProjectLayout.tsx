@@ -23,7 +23,9 @@ const ProjectLayout: React.FC = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const [showWorkflow, setShowWorkflow] = useLocalStorage('workflow-visible', true);
     const [workflowHeight, setWorkflowHeight] = useLocalStorage('workflow-height', 200);
+    const [sidebarWidth, setSidebarWidth] = useLocalStorage('sidebar-width', 350);
     const [isResizing, setIsResizing] = useState(false);
+    const [isResizingSidebar, setIsResizingSidebar] = useState(false);
 
     // Debug toggles
     const showRawGraph = searchParams.get('raw-graph') === '1';
@@ -78,7 +80,7 @@ const ProjectLayout: React.FC = () => {
         setSearchParams(newSearchParams);
     }, [showRawContext, searchParams, setSearchParams]);
 
-    // Resize handlers
+    // Resize handlers for workflow
     const handleMouseDown = (e: React.MouseEvent) => {
         setIsResizing(true);
         e.preventDefault();
@@ -99,6 +101,23 @@ const ProjectLayout: React.FC = () => {
         setIsResizing(false);
     }, []);
 
+    // Resize handlers for sidebar
+    const handleSidebarMouseDown = (e: React.MouseEvent) => {
+        setIsResizingSidebar(true);
+        e.preventDefault();
+    };
+
+    const handleSidebarMouseMove = useCallback((e: MouseEvent) => {
+        if (!isResizingSidebar) return;
+
+        const newWidth = Math.max(250, Math.min(600, e.clientX));
+        setSidebarWidth(newWidth);
+    }, [isResizingSidebar]);
+
+    const handleSidebarMouseUp = useCallback(() => {
+        setIsResizingSidebar(false);
+    }, []);
+
     useEffect(() => {
         if (isResizing) {
             document.addEventListener('mousemove', handleMouseMove);
@@ -108,17 +127,46 @@ const ProjectLayout: React.FC = () => {
         } else {
             document.removeEventListener('mousemove', handleMouseMove);
             document.removeEventListener('mouseup', handleMouseUp);
-            document.body.style.cursor = '';
-            document.body.style.userSelect = '';
+            if (!isResizingSidebar) {
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+            }
         }
 
         return () => {
             document.removeEventListener('mousemove', handleMouseMove);
             document.removeEventListener('mouseup', handleMouseUp);
-            document.body.style.cursor = '';
-            document.body.style.userSelect = '';
+            if (!isResizingSidebar) {
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+            }
         };
-    }, [isResizing, handleMouseMove, handleMouseUp]);
+    }, [isResizing, handleMouseMove, handleMouseUp, isResizingSidebar]);
+
+    useEffect(() => {
+        if (isResizingSidebar) {
+            document.addEventListener('mousemove', handleSidebarMouseMove);
+            document.addEventListener('mouseup', handleSidebarMouseUp);
+            document.body.style.cursor = 'ew-resize';
+            document.body.style.userSelect = 'none';
+        } else {
+            document.removeEventListener('mousemove', handleSidebarMouseMove);
+            document.removeEventListener('mouseup', handleSidebarMouseUp);
+            if (!isResizing) {
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+            }
+        }
+
+        return () => {
+            document.removeEventListener('mousemove', handleSidebarMouseMove);
+            document.removeEventListener('mouseup', handleSidebarMouseUp);
+            if (!isResizing) {
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+            }
+        };
+    }, [isResizingSidebar, handleSidebarMouseMove, handleSidebarMouseUp, isResizing]);
 
     const handleGoBack = () => {
         navigate('/');
@@ -187,20 +235,51 @@ const ProjectLayout: React.FC = () => {
     return (
         <ProjectDataProvider projectId={projectId!}>
             <Layout style={{ height: '100%', overflow: 'hidden' }}>
-                <Sider
-                    width={350}
-                    style={{
-                        background: '#1a1a1a',
-                        borderRight: '1px solid #333',
-                        height: '100%',
-                        overflow: 'hidden'
-                    }}
-                    theme="dark"
-                >
-                    <ChatSidebarWrapper projectId={projectId!} />
-                </Sider>
+                <div style={{ position: 'relative', display: 'flex' }}>
+                    <Sider
+                        width={sidebarWidth}
+                        style={{
+                            background: '#1a1a1a',
+                            height: '100vh',
+                            overflow: 'hidden',
+                            position: 'relative'
+                        }}
+                        theme="dark"
+                    >
+                        <ChatSidebarWrapper projectId={projectId!} />
+                    </Sider>
 
-                <Layout style={{ flex: 1 }}>
+                    {/* Sidebar Resize Handle */}
+                    <div
+                        onMouseDown={handleSidebarMouseDown}
+                        style={{
+                            width: '6px',
+                            background: isResizingSidebar ? '#1890ff' : 'transparent',
+                            cursor: 'ew-resize',
+                            position: 'relative',
+                            borderRight: '1px solid #333',
+                            transition: 'background 0.2s ease-in-out',
+                            height: '100vh',
+                            flexShrink: 0
+                        }}
+                    >
+                        <div
+                            style={{
+                                position: 'absolute',
+                                top: '50%',
+                                left: '50%',
+                                transform: 'translate(-50%, -50%)',
+                                width: '4px',
+                                height: '40px',
+                                background: isResizingSidebar ? '#1890ff' : '#666',
+                                borderRadius: '2px',
+                                transition: 'background 0.2s ease-in-out',
+                            }}
+                        />
+                    </div>
+                </div>
+
+                <Layout style={{ flex: 1, height: '100vh' }}>
                     {/* Breadcrumb and Toggle Buttons Row */}
                     <div style={{
                         padding: '12px 16px',
@@ -208,7 +287,8 @@ const ProjectLayout: React.FC = () => {
                         background: '#1a1a1a',
                         display: 'flex',
                         justifyContent: 'space-between',
-                        alignItems: 'center'
+                        alignItems: 'center',
+                        flexShrink: 0
                     }}>
                         <Breadcrumb items={breadcrumbItems} />
                         <Space>
@@ -240,9 +320,9 @@ const ProjectLayout: React.FC = () => {
                     </div>
 
                     {/* Main Content Layout */}
-                    <Layout style={{ flex: 1 }}>
+                    <Layout style={{ flex: 1, overflow: 'hidden' }}>
                         {/* Main Content Area */}
-                        <Content style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                        <Content style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
                             {/* Conditional Content */}
                             {showRawGraph ? (
                                 <div style={{ flex: 1, overflow: 'hidden' }}>
