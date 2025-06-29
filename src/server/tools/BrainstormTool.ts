@@ -241,14 +241,18 @@ interface BrainstormToolResult {
  * Build requirements section for brainstorming template
  */
 function buildRequirementsSection(input: IdeationInput): string {
-    // Use hardcoded user request with dynamic genre and platform
-    const hardcodedUserRequest = `I need to create story ideas for ${input.platform} videos. The genre should be time travel and power fantasy (穿越, 爽文). The main story is about a modern CEO who accidentally travels back to ancient times, becomes a fallen noble family's young master, uses modern knowledge for business and court intrigue, eventually becomes incredibly wealthy and wins the heart of a beautiful woman. Keywords should include business warfare, political schemes, and face-slapping moments. The style should be fast-paced with many plot twists.`;
+    // Build requirements based on actual input parameters
+    const parts: string[] = [];
 
-    // Construct the 'requirementsSection' with hardcoded content and optional user requirements
-    return [
-        hardcodedUserRequest,
-        input.other_requirements ? `其他要求: ${input.other_requirements}` : ''
-    ].filter(Boolean).join('\n');
+    // Add platform and genre context
+    parts.push(`请为${input.platform}平台创作${input.genre}类型的故事创意。`);
+
+    // Add user requirements if provided
+    if (input.other_requirements) {
+        parts.push(`用户要求: ${input.other_requirements}`);
+    }
+
+    return parts.join('\n');
 }
 
 /**

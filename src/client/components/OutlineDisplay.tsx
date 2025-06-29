@@ -233,7 +233,7 @@ export const OutlineDisplay: React.FC<OutlineDisplayProps> = ({
                                                                     <Text type="secondary">情感变化: </Text>
                                                                     {point.emotionArcs.map((arc, arcIndex) => (
                                                                         <Text key={arcIndex} style={{ fontSize: '12px' }}>
-                                                                            {arc.characters.join(', ')}: {arc.content}
+                                                                            {(arc.characters && Array.isArray(arc.characters) ? arc.characters.join(', ') : '未知角色')}: {arc.content || ''}
                                                                         </Text>
                                                                     ))}
                                                                 </div>
@@ -243,7 +243,7 @@ export const OutlineDisplay: React.FC<OutlineDisplayProps> = ({
                                                                     <Text type="secondary">关系发展: </Text>
                                                                     {point.relationshipDevelopments.map((dev, devIndex) => (
                                                                         <Text key={devIndex} style={{ fontSize: '12px' }}>
-                                                                            {dev.characters.join(' & ')}: {dev.content}
+                                                                            {(dev.characters && Array.isArray(dev.characters) ? dev.characters.join(' & ') : '未知角色')}: {dev.content || ''}
                                                                         </Text>
                                                                     ))}
                                                                 </div>
