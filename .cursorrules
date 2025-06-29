@@ -125,3 +125,11 @@ src/
 ### Electric Doc
 
 For Electric specific implementations, refer to /electric-llms.txt
+
+
+## Document organizaiton
+When the user asks to merge an implementation plan with an existing document (say README), always:
+- Try merge new content with existing content, instead of blindly appending new items
+- try to understand the rationale of the new features and document it properly
+- Clean and remove any outdated content in the original documentation
+- Make sure all content is transferred over and properly documented, remove the plan document file
