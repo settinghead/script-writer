@@ -19,10 +19,16 @@ export function useCurrentSection(): CurrentSection {
 
         const observer = new IntersectionObserver(
             (entries) => {
+                console.log('[useCurrentSection] Intersection entries received:', entries.length);
                 console.log('[useCurrentSection] Intersection entries:', entries.map(e => ({
                     id: e.target.id,
                     isIntersecting: e.isIntersecting,
-                    intersectionRatio: e.intersectionRatio
+                    intersectionRatio: e.intersectionRatio,
+                    rect: {
+                        top: e.boundingClientRect.top,
+                        bottom: e.boundingClientRect.bottom,
+                        height: e.boundingClientRect.height
+                    }
                 })));
 
                 // Find the section whose center is closest to the viewport center
@@ -30,9 +36,9 @@ export function useCurrentSection(): CurrentSection {
                 let minDistanceToCenter = Infinity;
                 const viewportCenter = window.innerHeight / 2;
 
-                // First pass: try to find a section with good visibility (>5%)
+                // First pass: try to find a section with good visibility (>3%)
                 entries.forEach((entry) => {
-                    if (entry.isIntersecting && entry.intersectionRatio > 0.05) { // At least 5% visible
+                    if (entry.isIntersecting && entry.intersectionRatio > 0.03) { // At least 3% visible
                         const rect = entry.boundingClientRect;
                         const elementCenter = rect.top + (rect.height / 2);
                         const distanceToCenter = Math.abs(elementCenter - viewportCenter);
@@ -92,8 +98,8 @@ export function useCurrentSection(): CurrentSection {
             },
             {
                 root: null, // Use viewport as root
-                rootMargin: '-10% 0px -10% 0px', // Trigger when section is in middle 80% of viewport
-                threshold: [0, 0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 1] // More fine-grained thresholds
+                rootMargin: '0px 0px 0px 0px', // Use full viewport - no margin restrictions
+                threshold: [0, 0.01, 0.03, 0.05, 0.1, 0.25, 0.5, 0.75, 1] // More fine-grained thresholds
             }
         );
 
