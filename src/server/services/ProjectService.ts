@@ -3,13 +3,25 @@ import { ArtifactRepository } from '../repositories/ArtifactRepository';
 import { TransformRepository } from '../repositories/TransformRepository';
 import { Project } from '../types/artifacts';
 import { v4 as uuidv4 } from 'uuid';
+import { db } from '../database/connection';
+import type { Kysely } from 'kysely';
+import type { DB } from '../database/types';
+import { ChatMessageRepository } from '../repositories/ChatMessageRepository';
 
 export class ProjectService {
-    constructor(
-        private projectRepo: ProjectRepository,
-        private artifactRepo: ArtifactRepository,
-        private transformRepo: TransformRepository
-    ) {}
+    private db: Kysely<DB>;
+    private projectRepo: ProjectRepository;
+    private artifactRepo: ArtifactRepository;
+    private transformRepo: TransformRepository;
+    private chatMessageRepo: ChatMessageRepository;
+
+    constructor(database: Kysely<DB>) {
+        this.db = database;
+        this.projectRepo = new ProjectRepository(database);
+        this.artifactRepo = new ArtifactRepository(database);
+        this.transformRepo = new TransformRepository(database);
+        this.chatMessageRepo = new ChatMessageRepository(database);
+    }
 
     // Create a new project
     async createProject(
@@ -24,7 +36,7 @@ export class ProjectService {
     // Get projects for a user with summary information
     async listUserProjects(userId: string): Promise<any[]> {
         const projects = await this.projectRepo.getUserProjects(userId);
-        
+
         const projectsWithSummary = await Promise.all(
             projects.map(async (project) => {
                 try {
@@ -44,10 +56,10 @@ export class ProjectService {
                     const latestTransform = transforms[0]; // Most recent
                     let status = 'active';
                     let currentPhase = 'brainstorming';
-                    
+
                     if (latestTransform) {
                         status = latestTransform.status === 'failed' ? 'failed' : 'active';
-                        
+
                         // Determine phase based on latest artifacts
                         if (artifactCounts.scripts > 0) {
                             currentPhase = 'scripts';
@@ -64,7 +76,7 @@ export class ProjectService {
                     let previewContent = '';
                     let platform = '';
                     let genre = '';
-                    
+
                     // Try to get brainstorm params for metadata
                     const brainstormParams = artifacts.find(a => a.type === 'brainstorm_params');
                     if (brainstormParams) {
@@ -164,5 +176,141 @@ export class ProjectService {
 
         await this.projectRepo.deleteProject(projectId);
         return true;
+    }
+
+    /**
+     * Completely wipe a project and all associated data
+     * This includes: artifacts, transforms, chat messages, project membership, and the project itself
+     * 
+     * @param projectId - The project ID to wipe
+     * @returns Promise<void>
+     */
+    async wipeProject(projectId: string): Promise<void> {
+        console.log(`[ProjectService] Starting complete wipe of project ${projectId}`);
+
+        try {
+            // 1. Delete all transform inputs/outputs for this project
+            await this.db
+                .deleteFrom('transform_inputs')
+                .where('project_id', '=', projectId)
+                .execute();
+            console.log(`[ProjectService] Deleted transform inputs for project ${projectId}`);
+
+            await this.db
+                .deleteFrom('transform_outputs')
+                .where('project_id', '=', projectId)
+                .execute();
+            console.log(`[ProjectService] Deleted transform outputs for project ${projectId}`);
+
+            // 2. Delete all LLM transforms for this project
+            await this.db
+                .deleteFrom('llm_transforms')
+                .where('project_id', '=', projectId)
+                .execute();
+            console.log(`[ProjectService] Deleted LLM transforms for project ${projectId}`);
+
+            // 3. Delete all human transforms for this project
+            await this.db
+                .deleteFrom('human_transforms')
+                .where('project_id', '=', projectId)
+                .execute();
+            console.log(`[ProjectService] Deleted human transforms for project ${projectId}`);
+
+            // 4. Delete all LLM prompts for transforms in this project
+            const transformIds = await this.db
+                .selectFrom('transforms')
+                .select('id')
+                .where('project_id', '=', projectId)
+                .execute();
+
+            if (transformIds.length > 0) {
+                const transformIdList = transformIds.map((t: { id: string }) => t.id);
+                await this.db
+                    .deleteFrom('llm_prompts')
+                    .where('transform_id', 'in', transformIdList)
+                    .execute();
+                console.log(`[ProjectService] Deleted LLM prompts for ${transformIds.length} transforms`);
+            }
+
+            // 5. Delete all transforms for this project
+            await this.db
+                .deleteFrom('transforms')
+                .where('project_id', '=', projectId)
+                .execute();
+            console.log(`[ProjectService] Deleted transforms for project ${projectId}`);
+
+            // 6. Delete all artifacts for this project
+            await this.db
+                .deleteFrom('artifacts')
+                .where('project_id', '=', projectId)
+                .execute();
+            console.log(`[ProjectService] Deleted artifacts for project ${projectId}`);
+
+            // 7. Delete all chat messages for this project
+            await this.db
+                .deleteFrom('chat_messages_display')
+                .where('project_id', '=', projectId)
+                .execute();
+            await this.db
+                .deleteFrom('chat_messages_raw')
+                .where('project_id', '=', projectId)
+                .execute();
+            console.log(`[ProjectService] Deleted chat messages for project ${projectId}`);
+
+            // 8. Delete project membership
+            await this.db
+                .deleteFrom('projects_users')
+                .where('project_id', '=', projectId)
+                .execute();
+            console.log(`[ProjectService] Deleted project membership for project ${projectId}`);
+
+            // 9. Finally, delete the project itself
+            await this.db
+                .deleteFrom('projects')
+                .where('id', '=', projectId)
+                .execute();
+            console.log(`[ProjectService] Deleted project ${projectId}`);
+
+            console.log(`[ProjectService] ✅ Successfully wiped project ${projectId} and all associated data`);
+
+        } catch (error) {
+            console.error(`[ProjectService] ❌ Failed to wipe project ${projectId}:`, error);
+            throw error;
+        }
+    }
+
+    /**
+     * Create a test project with proper setup
+     */
+    async createTestProject(projectId: string, userId: string, title?: string): Promise<void> {
+        try {
+            // Create project
+            await this.db
+                .insertInto('projects')
+                .values({
+                    id: projectId,
+                    name: title || `Test Project ${Date.now()}`,
+                    description: 'Integration test project',
+                    created_at: new Date(),
+                    updated_at: new Date()
+                })
+                .execute();
+
+            // Add user membership
+            await this.db
+                .insertInto('projects_users')
+                .values({
+                    project_id: projectId,
+                    user_id: userId,
+                    role: 'owner'
+                })
+                .execute();
+
+            console.log(`[ProjectService] ✅ Created test project ${projectId} for user ${userId}`);
+
+        } catch (error) {
+            console.error(`[ProjectService] ❌ Failed to create test project ${projectId}:`, error);
+            throw error;
+        }
     }
 } 
