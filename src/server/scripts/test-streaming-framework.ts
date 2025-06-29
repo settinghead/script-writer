@@ -223,6 +223,12 @@ async function main() {
         console.error('\n💥 Streaming framework test failed:', error);
         process.exit(1);
     }
+
+    finally {
+        await db.destroy();
+        console.log('🔌 Database connection closed');
+        process.exit(0);
+    }
 }
 
 // Run the test
