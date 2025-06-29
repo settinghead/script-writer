@@ -217,7 +217,12 @@ async function runAgentFlowIntegrationTest() {
         };
 
         await agentService.runGeneralAgent(testProjectId, TEST_USER_ID, brainstormRequest, {
-            createChatMessages: true
+            createChatMessages: true,
+            enableCaching: true,
+            seed: TEST_SEED,
+            temperature: 0.7,
+            topP: 0.9,
+            maxTokens: 4000
         });
         console.log('✅ Brainstorm ideas generated successfully\n');
 
@@ -246,7 +251,12 @@ async function runAgentFlowIntegrationTest() {
         };
 
         await agentService.runGeneralAgent(testProjectId, TEST_USER_ID, editRequest, {
-            createChatMessages: true
+            createChatMessages: true,
+            enableCaching: true,
+            seed: TEST_SEED + 1, // Slightly different seed for different operation
+            temperature: 0.7,
+            topP: 0.9,
+            maxTokens: 4000
         });
         console.log('✅ Brainstorm idea edited successfully\n');
 
@@ -276,7 +286,12 @@ async function runAgentFlowIntegrationTest() {
         };
 
         await agentService.runGeneralAgent(testProjectId, TEST_USER_ID, outlineRequest, {
-            createChatMessages: true
+            createChatMessages: true,
+            enableCaching: true,
+            seed: TEST_SEED + 2, // Slightly different seed for outline operation
+            temperature: 0.7,
+            topP: 0.9,
+            maxTokens: 4000
         });
         console.log('✅ Outline generated successfully\n');
 

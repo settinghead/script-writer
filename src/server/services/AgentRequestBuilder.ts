@@ -193,7 +193,14 @@ export function buildToolsForRequestType(
     transformRepo: TransformRepository,
     artifactRepo: ArtifactRepository,
     projectId: string,
-    userId: string
+    userId: string,
+    cachingOptions?: {
+        enableCaching?: boolean;
+        seed?: number;
+        temperature?: number;
+        topP?: number;
+        maxTokens?: number;
+    }
 ): StreamingToolDefinition<any, any>[] {
     switch (requestType) {
         case 'brainstorm_generation':
@@ -228,7 +235,14 @@ export async function buildAgentConfiguration(
     projectId: string,
     transformRepo: TransformRepository,
     artifactRepo: ArtifactRepository,
-    userId: string
+    userId: string,
+    cachingOptions?: {
+        enableCaching?: boolean;
+        seed?: number;
+        temperature?: number;
+        topP?: number;
+        maxTokens?: number;
+    }
 ): Promise<AgentConfiguration> {
     console.log(`[AgentConfigBuilder] Starting configuration build for request: "${request.userRequest}"`);
 
@@ -245,7 +259,7 @@ export async function buildAgentConfiguration(
     console.log(`[AgentConfigBuilder] Built prompt (${prompt.length} chars)`);
 
     // 4. Build tools for this request type
-    const tools = buildToolsForRequestType(requestType, transformRepo, artifactRepo, projectId, userId);
+    const tools = buildToolsForRequestType(requestType, transformRepo, artifactRepo, projectId, userId, cachingOptions);
     console.log(`[AgentConfigBuilder] Built ${tools.length} tools for request type`);
 
     const config = {

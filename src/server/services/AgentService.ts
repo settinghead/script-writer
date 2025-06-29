@@ -38,6 +38,12 @@ export class AgentService {
             createChatMessages?: boolean;
             existingThinkingMessageId?: string;
             existingThinkingStartTime?: string;
+            // Caching options for reproducible testing
+            enableCaching?: boolean;
+            seed?: number;
+            temperature?: number;
+            topP?: number;
+            maxTokens?: number;
         } = { createChatMessages: true }
     ) {
         let thinkingMessageId: string | undefined;
@@ -68,7 +74,14 @@ export class AgentService {
                 projectId,
                 this.transformRepo,
                 this.artifactRepo,
-                userId
+                userId,
+                {
+                    enableCaching: options.enableCaching,
+                    seed: options.seed,
+                    temperature: options.temperature,
+                    topP: options.topP,
+                    maxTokens: options.maxTokens
+                }
             );
 
             console.log(`[AgentService] Request type detected: ${agentConfig.requestType}`);
@@ -92,7 +105,12 @@ export class AgentService {
                 toolDefinitions: toolDefinitions,
                 maxSteps: 5, // Allow more steps for complex editing workflows
                 projectId: projectId,
-                chatMessageRepo: this.chatMessageRepo
+                chatMessageRepo: this.chatMessageRepo,
+                enableCaching: options.enableCaching,
+                seed: options.seed,
+                temperature: options.temperature,
+                topP: options.topP,
+                maxTokens: options.maxTokens
             });
 
             // 3. Log successful completion
