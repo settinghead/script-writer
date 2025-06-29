@@ -188,7 +188,7 @@ export default function ProjectBrainstormPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <div id="brainstorm-ideas" className="min-h-screen bg-gray-900 text-white">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">

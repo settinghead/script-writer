@@ -1125,6 +1125,23 @@ export interface IdeaWithTitle {
     debugInfo?: string;
 }
 
+// ============================================================================
+// NEW: Workflow Map/ToC Data Structures
+// ============================================================================
+
+export interface WorkflowNode {
+    id: string;
+    type: 'brainstorm_collection' | 'brainstorm_idea' | 'outline' | 'episode' | 'script';
+    title: string;
+    artifactId: string;
+    position: { x: number; y: number };
+    isMain: boolean;
+    isActive: boolean;
+    navigationTarget: string; // anchor or route
+    createdAt: string;
+    status?: 'completed' | 'processing' | 'failed';
+}
+
 /**
  * Convert effective brainstorm ideas to IdeaWithTitle format
  * This is a pure function that handles the data conversion logic
@@ -1201,4 +1218,206 @@ export function extractEffectiveBrainstormIdeas(
         console.error('[extractEffectiveBrainstormIdeas] Error:', error);
         throw error; // Re-throw so caller can handle
     }
+}
+
+// ============================================================================
+// NEW: Main Workflow Path Algorithm
+// ============================================================================
+
+/**
+ * Find the main workflow path for the project
+ * GUIDING PRINCIPLE: Always capture the "main" thing - the primary workflow path
+ * that represents the user's chosen direction.
+ */
+export function findMainWorkflowPath(
+    artifacts: ElectricArtifact[],
+    graph: LineageGraph
+): WorkflowNode[] {
+    const workflowNodes: WorkflowNode[] = [];
+
+    try {
+        // Step 1: Find the main outline (only one allowed per project)
+        const outlineArtifacts = artifacts.filter(a =>
+            a.schema_type === 'outline_schema' ||
+            a.type === 'outline_response' ||
+            a.type === 'outline'
+        );
+
+        // Sort by creation date to get the latest/main outline
+        const mainOutline = outlineArtifacts
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+
+        if (!mainOutline) {
+            // No outline yet - show brainstorm collection(s) only
+            return createBrainstormOnlyWorkflow(artifacts);
+        }
+
+        // Step 2: Trace back from outline to find the main path
+        const mainPath = traceMainPathFromOutline(mainOutline, graph, artifacts);
+
+        // Step 3: Convert artifacts to workflow nodes
+        return createWorkflowNodes(mainPath);
+
+    } catch (error) {
+        console.error('[findMainWorkflowPath] Error:', error);
+        // Fallback: show brainstorm collections only
+        return createBrainstormOnlyWorkflow(artifacts);
+    }
+}
+
+/**
+ * Create workflow when only brainstorm data exists (no outline yet)
+ */
+function createBrainstormOnlyWorkflow(artifacts: ElectricArtifact[]): WorkflowNode[] {
+    const brainstormCollections = artifacts.filter(a =>
+        a.schema_type === 'brainstorm_collection_schema' ||
+        a.type === 'brainstorm_idea_collection'
+    );
+
+    if (brainstormCollections.length === 0) {
+        return [];
+    }
+
+    // Get the latest collection
+    const latestCollection = brainstormCollections
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+
+    return [{
+        id: `workflow-node-${latestCollection.id}`,
+        type: 'brainstorm_collection',
+        title: '创意构思',
+        artifactId: latestCollection.id,
+        position: { x: 90, y: 50 },
+        isMain: true,
+        isActive: true,
+        navigationTarget: '#brainstorm-ideas',
+        createdAt: latestCollection.created_at,
+        status: latestCollection.streaming_status === 'streaming' ? 'processing' : 'completed'
+    }];
+}
+
+/**
+ * Trace back from outline to find the main artifact path
+ */
+function traceMainPathFromOutline(
+    outlineArtifact: ElectricArtifact,
+    graph: LineageGraph,
+    artifacts: ElectricArtifact[]
+): ElectricArtifact[] {
+    const path: ElectricArtifact[] = [outlineArtifact];
+
+    // Get the lineage node for this outline
+    const outlineNode = graph.nodes.get(outlineArtifact.id);
+    if (!outlineNode || outlineNode.type !== 'artifact') {
+        return path;
+    }
+
+    // Trace back through source transforms
+    let currentNode = outlineNode as LineageNodeArtifact;
+    const visited = new Set<string>([outlineArtifact.id]);
+
+    while (currentNode.sourceTransform !== 'none' && currentNode.sourceTransform) {
+        const sourceTransform = currentNode.sourceTransform;
+
+        // Find the most relevant source artifact (usually the first one)
+        for (const sourceArtifact of sourceTransform.sourceArtifacts) {
+            if (visited.has(sourceArtifact.artifactId)) {
+                continue; // Avoid cycles
+            }
+
+            const artifact = artifacts.find(a => a.id === sourceArtifact.artifactId);
+            if (artifact) {
+                path.unshift(artifact); // Add to beginning to maintain order
+                visited.add(artifact.id);
+                currentNode = sourceArtifact;
+                break;
+            }
+        }
+
+        // Safety check to prevent infinite loops
+        if (path.length > 10) {
+            break;
+        }
+    }
+
+    return path;
+}
+
+/**
+ * Convert artifact path to workflow nodes
+ */
+function createWorkflowNodes(artifactPath: ElectricArtifact[]): WorkflowNode[] {
+    const workflowNodes: WorkflowNode[] = [];
+    let yPosition = 50;
+
+    for (let i = 0; i < artifactPath.length; i++) {
+        const artifact = artifactPath[i];
+        const node = createWorkflowNodeFromArtifact(artifact, yPosition, i === artifactPath.length - 1);
+        if (node) {
+            workflowNodes.push(node);
+            yPosition += 120; // Space between nodes
+        }
+    }
+
+    return workflowNodes;
+}
+
+/**
+ * Create a single workflow node from an artifact
+ */
+function createWorkflowNodeFromArtifact(
+    artifact: ElectricArtifact,
+    yPosition: number,
+    isLatest: boolean
+): WorkflowNode | null {
+    let nodeType: WorkflowNode['type'];
+    let title: string;
+    let navigationTarget: string;
+
+    // Determine node type and properties based on artifact
+    if (artifact.schema_type === 'brainstorm_collection_schema' || artifact.type === 'brainstorm_idea_collection') {
+        nodeType = 'brainstorm_collection';
+        title = '创意构思';
+        navigationTarget = '#brainstorm-ideas';
+    } else if (artifact.schema_type === 'brainstorm_idea_schema' || artifact.type === 'brainstorm_idea') {
+        nodeType = 'brainstorm_idea';
+
+        // Try to extract title from data
+        try {
+            const data = JSON.parse(artifact.data);
+            title = data.title || '选中创意';
+        } catch {
+            title = '选中创意';
+        }
+
+        navigationTarget = '#selected-idea';
+    } else if (artifact.schema_type === 'outline_schema' || artifact.type === 'outline_response' || artifact.type === 'outline') {
+        nodeType = 'outline';
+
+        // Try to extract title from outline data
+        try {
+            const data = JSON.parse(artifact.data);
+            title = data.title || '故事大纲';
+        } catch {
+            title = '故事大纲';
+        }
+
+        navigationTarget = '#story-outline';
+    } else {
+        // Unknown artifact type
+        return null;
+    }
+
+    return {
+        id: `workflow-node-${artifact.id}`,
+        type: nodeType,
+        title,
+        artifactId: artifact.id,
+        position: { x: 90, y: yPosition },
+        isMain: true,
+        isActive: isLatest, // Only the latest node is "active"
+        navigationTarget,
+        createdAt: artifact.created_at,
+        status: artifact.streaming_status === 'streaming' ? 'processing' : 'completed'
+    };
 } 

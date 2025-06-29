@@ -15,279 +15,236 @@ import {
     Position,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
+import { useWorkflowNodes } from '../hooks/useLineageResolution';
+import { useCurrentSection, type CurrentSection } from '../hooks/useCurrentSection';
+import type { WorkflowNode } from '../../common/utils/lineageResolution';
 
-const initialNodes: Node[] = [
-    {
-        id: '1',
-        type: 'default',
-        data: {
-            label: (
-                <div style={{
-                    padding: '12px 18px',
-                    background: 'linear-gradient(135deg, #1890ff 0%, #40a9ff 50%, #69c0ff 100%)',
-                    borderRadius: '12px',
-                    color: 'white',
-                    fontWeight: 600,
-                    fontSize: '18px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    boxShadow: '0 4px 12px rgba(24, 144, 255, 0.3), 0 2px 6px rgba(24, 144, 255, 0.2)',
-                    border: '1px solid rgba(255, 255, 255, 0.2)',
-                    backdropFilter: 'blur(10px)'
-                }}>
-                    💡 创意构思
-                </div>
-            )
-        },
-        position: { x: 50, y: 150 },
-        sourcePosition: Position.Right,
-        style: {
-            background: 'transparent',
-            border: 'none',
-            width: 180,
-        },
-    },
-    {
-        id: '2',
-        type: 'default',
-        data: {
-            label: (
-                <div style={{
-                    padding: '12px 18px',
-                    background: 'linear-gradient(135deg, #52c41a 0%, #73d13d 50%, #95de64 100%)',
-                    borderRadius: '12px',
-                    color: 'white',
-                    fontWeight: 600,
-                    fontSize: '18px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    boxShadow: '0 4px 12px rgba(82, 196, 26, 0.3), 0 2px 6px rgba(82, 196, 26, 0.2)',
-                    border: '1px solid rgba(255, 255, 255, 0.2)',
-                    backdropFilter: 'blur(10px)'
-                }}>
-                    📝 叙事大纲
-                </div>
-            )
-        },
-        position: { x: 280, y: 150 },
-        sourcePosition: Position.Right,
-        targetPosition: Position.Left,
-        style: {
-            background: 'transparent',
-            border: 'none',
-            width: 180,
-        },
-    },
-    {
-        id: '3',
-        type: 'default',
-        data: {
-            label: (
-                <div style={{
-                    padding: '10px 14px',
-                    background: 'linear-gradient(135deg, #722ed1 0%, #9254de 50%, #b37feb 100%)',
-                    borderRadius: '10px',
-                    color: 'white',
-                    fontWeight: 600,
-                    fontSize: '18px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    boxShadow: '0 3px 8px rgba(114, 46, 209, 0.3), 0 1px 4px rgba(114, 46, 209, 0.2)',
-                    border: '1px solid rgba(255, 255, 255, 0.2)',
-                    backdropFilter: 'blur(10px)'
-                }}>
-                    🎬 第一幕
-                </div>
-            )
-        },
-        position: { x: 510, y: 80 },
-        targetPosition: Position.Left,
-        style: {
-            background: 'transparent',
-            border: 'none',
-            width: 150,
-        },
-    },
-    {
-        id: '4',
-        type: 'default',
-        data: {
-            label: (
-                <div style={{
-                    padding: '10px 14px',
-                    background: 'linear-gradient(135deg, #fa541c 0%, #ff7a45 50%, #ffa39e 100%)',
-                    borderRadius: '10px',
-                    color: 'white',
-                    fontWeight: 600,
-                    fontSize: '18px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    boxShadow: '0 3px 8px rgba(250, 84, 28, 0.3), 0 1px 4px rgba(250, 84, 28, 0.2)',
-                    border: '1px solid rgba(255, 255, 255, 0.2)',
-                    backdropFilter: 'blur(10px)'
-                }}>
-                    🎭 第二幕
-                </div>
-            )
-        },
-        position: { x: 510, y: 130 },
-        targetPosition: Position.Left,
-        style: {
-            background: 'transparent',
-            border: 'none',
-            width: 150,
-        },
-    },
-    {
-        id: '5',
-        type: 'default',
-        data: {
-            label: (
-                <div style={{
-                    padding: '10px 14px',
-                    background: 'linear-gradient(135deg, #13c2c2 0%, #36cfc9 50%, #87e8de 100%)',
-                    borderRadius: '10px',
-                    color: 'white',
-                    fontWeight: 600,
-                    fontSize: '18px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    boxShadow: '0 3px 8px rgba(19, 194, 194, 0.3), 0 1px 4px rgba(19, 194, 194, 0.2)',
-                    border: '1px solid rgba(255, 255, 255, 0.2)',
-                    backdropFilter: 'blur(10px)'
-                }}>
-                    🎪 第三幕
-                </div>
-            )
-        },
-        position: { x: 510, y: 180 },
-        targetPosition: Position.Left,
-        style: {
-            background: 'transparent',
-            border: 'none',
-            width: 150,
-        },
-    },
-    {
-        id: '6',
-        type: 'default',
-        data: {
-            label: (
-                <div style={{
-                    padding: '10px 14px',
-                    background: 'linear-gradient(135deg, #eb2f96 0%, #f759ab 50%, #ffadd6 100%)',
-                    borderRadius: '10px',
-                    color: 'white',
-                    fontWeight: 600,
-                    fontSize: '18px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    boxShadow: '0 3px 8px rgba(235, 47, 150, 0.3), 0 1px 4px rgba(235, 47, 150, 0.2)',
-                    border: '1px solid rgba(255, 255, 255, 0.2)',
-                    backdropFilter: 'blur(10px)'
-                }}>
-                    🎯 尾声
-                </div>
-            )
-        },
-        position: { x: 510, y: 230 },
-        targetPosition: Position.Left,
-        style: {
-            background: 'transparent',
-            border: 'none',
-            width: 150,
-        },
-    },
-];
 
-const initialEdges: Edge[] = [
-    {
-        id: 'e1-2',
-        source: '1',
-        target: '2',
-        type: 'default',
-        style: {
-            stroke: '#666',
-            strokeWidth: 3,
-        },
-        markerEnd: {
-            type: MarkerType.ArrowClosed,
-            color: '#666',
-        },
-    },
-    {
-        id: 'e2-3',
-        source: '2',
-        target: '3',
-        type: 'default',
-        style: {
-            stroke: '#666',
-            strokeWidth: 2,
-        },
-        markerEnd: {
-            type: MarkerType.ArrowClosed,
-            color: '#666',
-        },
-    },
-    {
-        id: 'e2-4',
-        source: '2',
-        target: '4',
-        type: 'default',
-        style: {
-            stroke: '#666',
-            strokeWidth: 2,
-        },
-        markerEnd: {
-            type: MarkerType.ArrowClosed,
-            color: '#666',
-        },
-    },
-    {
-        id: 'e2-5',
-        source: '2',
-        target: '5',
-        type: 'default',
-        style: {
-            stroke: '#666',
-            strokeWidth: 2,
-        },
-        markerEnd: {
-            type: MarkerType.ArrowClosed,
-            color: '#666',
-        },
-    },
-    {
-        id: 'e2-6',
-        source: '2',
-        target: '6',
-        type: 'default',
-        style: {
-            stroke: '#666',
-            strokeWidth: 2,
-        },
-        markerEnd: {
-            type: MarkerType.ArrowClosed,
-            color: '#666',
-        },
-    },
-];
 
 interface WorkflowVisualizationProps {
-    height?: number;
+    width?: number;
 }
 
+// Convert WorkflowNode to ReactFlow Node
+const createReactFlowNode = (workflowNode: WorkflowNode, currentSection: CurrentSection): Node => {
+    const getNodeColor = (type: WorkflowNode['type'], isHighlighted: boolean) => {
+        // Define colorful scheme for when node is highlighted
+        const colorfulColors = {
+            brainstorm_collection: {
+                gradient: 'linear-gradient(135deg, #1890ff 0%, #40a9ff 50%, #69c0ff 100%)',
+                shadow: 'rgba(24, 144, 255, 0.3)'
+            },
+            brainstorm_idea: {
+                gradient: 'linear-gradient(135deg, #52c41a 0%, #73d13d 50%, #95de64 100%)',
+                shadow: 'rgba(82, 196, 26, 0.3)'
+            },
+            outline: {
+                gradient: 'linear-gradient(135deg, #722ed1 0%, #9254de 50%, #b37feb 100%)',
+                shadow: 'rgba(114, 46, 209, 0.3)'
+            },
+            episode: {
+                gradient: 'linear-gradient(135deg, #fa541c 0%, #ff7a45 50%, #ffa39e 100%)',
+                shadow: 'rgba(250, 84, 28, 0.3)'
+            },
+            script: {
+                gradient: 'linear-gradient(135deg, #13c2c2 0%, #36cfc9 50%, #87e8de 100%)',
+                shadow: 'rgba(19, 194, 194, 0.3)'
+            }
+        };
+
+        // Define monochrome scheme for default state
+        const monochromeColors = {
+            brainstorm_collection: {
+                gradient: 'linear-gradient(135deg, #404040 0%, #505050 50%, #606060 100%)',
+                shadow: 'rgba(64, 64, 64, 0.2)'
+            },
+            brainstorm_idea: {
+                gradient: 'linear-gradient(135deg, #454545 0%, #555555 50%, #656565 100%)',
+                shadow: 'rgba(69, 69, 69, 0.2)'
+            },
+            outline: {
+                gradient: 'linear-gradient(135deg, #484848 0%, #585858 50%, #686868 100%)',
+                shadow: 'rgba(72, 72, 72, 0.2)'
+            },
+            episode: {
+                gradient: 'linear-gradient(135deg, #424242 0%, #525252 50%, #626262 100%)',
+                shadow: 'rgba(66, 66, 66, 0.2)'
+            },
+            script: {
+                gradient: 'linear-gradient(135deg, #464646 0%, #565656 50%, #666666 100%)',
+                shadow: 'rgba(70, 70, 70, 0.2)'
+            }
+        };
+
+        return isHighlighted ? colorfulColors[type] : monochromeColors[type];
+    };
+
+    // Determine if this node should be highlighted based on current section
+    const shouldHighlight = (): boolean => {
+        if (!currentSection) {
+            console.log(`[shouldHighlight] No current section for ${workflowNode.title}`);
+            return false;
+        }
+
+        // Map navigation targets to sections
+        const navigationTargetToSection: Record<string, CurrentSection> = {
+            '#brainstorm-ideas': 'brainstorm-ideas',
+            '#selected-idea': 'brainstorm-ideas', // Selected idea is part of brainstorm section
+            '#story-outline': 'story-outline'
+        };
+
+        const nodeSection = navigationTargetToSection[workflowNode.navigationTarget];
+        const shouldHighlightResult = nodeSection === currentSection;
+
+        console.log(`[shouldHighlight] ${workflowNode.title}:`, {
+            navigationTarget: workflowNode.navigationTarget,
+            nodeSection,
+            currentSection,
+            shouldHighlight: shouldHighlightResult
+        });
+
+        return shouldHighlightResult;
+    };
+
+    const getNodeIcon = (type: WorkflowNode['type']) => {
+        const icons = {
+            brainstorm_collection: '💡',
+            brainstorm_idea: '📝',
+            outline: '📋',
+            episode: '🎬',
+            script: '📄'
+        };
+        return icons[type];
+    };
+
+    const isHighlighted = shouldHighlight();
+    const colorScheme = getNodeColor(workflowNode.type, isHighlighted);
+    const icon = getNodeIcon(workflowNode.type);
+
+    return {
+        id: workflowNode.id,
+        type: 'default',
+        data: {
+            label: (
+                <div style={{
+                    padding: '12px 18px',
+                    background: colorScheme.gradient,
+                    borderRadius: '12px',
+                    color: 'white',
+                    fontWeight: 600,
+                    fontSize: '16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    boxShadow: `0 4px 12px ${colorScheme.shadow}, 0 2px 6px ${colorScheme.shadow}`,
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    backdropFilter: 'blur(10px)',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease-in-out', // Smooth transition for color changes
+                    opacity: workflowNode.isMain ? 1 : 0.6,
+                    transform: isHighlighted ? 'scale(1.02)' : 'scale(1)' // Subtle scale effect for active nodes
+                }}>
+                    {icon} {workflowNode.title}
+                    {workflowNode.status === 'processing' && (
+                        <div style={{
+                            width: '8px',
+                            height: '8px',
+                            borderRadius: '50%',
+                            backgroundColor: '#fff',
+                            marginLeft: '4px',
+                            animation: 'pulse 1.5s ease-in-out infinite'
+                        }} />
+                    )}
+                </div>
+            )
+        },
+        position: workflowNode.position,
+        sourcePosition: Position.Bottom,
+        targetPosition: Position.Top,
+        style: {
+            background: 'transparent',
+            border: 'none',
+            width: 200,
+        },
+    };
+};
+
+// Create edges between workflow nodes
+const createWorkflowEdges = (workflowNodes: WorkflowNode[]): Edge[] => {
+    const edges: Edge[] = [];
+
+    for (let i = 0; i < workflowNodes.length - 1; i++) {
+        const sourceNode = workflowNodes[i];
+        const targetNode = workflowNodes[i + 1];
+
+        edges.push({
+            id: `edge-${sourceNode.id}-${targetNode.id}`,
+            source: sourceNode.id,
+            target: targetNode.id,
+            type: 'default',
+            style: {
+                stroke: '#666',
+                strokeWidth: 2,
+            },
+            markerEnd: {
+                type: MarkerType.ArrowClosed,
+                color: '#666',
+            },
+            sourceHandle: 'bottom',
+            targetHandle: 'top',
+        });
+    }
+
+    return edges;
+};
+
 const WorkflowVisualization: React.FC<WorkflowVisualizationProps> = ({
-    height = 200
+    width = 300
 }) => {
-    const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-    const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+    console.log('[WorkflowVisualization] Component rendering');
+
+    // Get real workflow data
+    const { workflowNodes, isLoading, error } = useWorkflowNodes();
+
+    // Get current section for highlighting
+    const currentSection = useCurrentSection();
+
+    // Debug current section
+    React.useEffect(() => {
+        console.log('[WorkflowVisualization] Current section changed:', currentSection);
+    }, [currentSection]);
+
+    // Convert workflow nodes to ReactFlow format
+    const reactFlowNodes = useMemo(() => {
+        console.log('[WorkflowVisualization] Creating nodes with currentSection:', currentSection);
+        return workflowNodes.map(workflowNode => {
+            const node = createReactFlowNode(workflowNode, currentSection);
+            console.log(`[WorkflowVisualization] Node ${workflowNode.title} (${workflowNode.navigationTarget}):`, {
+                shouldHighlight: workflowNode.navigationTarget && currentSection,
+                workflowNode,
+                currentSection
+            });
+            return node;
+        });
+    }, [workflowNodes, currentSection]);
+
+    const reactFlowEdges = useMemo(() => {
+        return createWorkflowEdges(workflowNodes);
+    }, [workflowNodes]);
+
+    // Use ReactFlow state management
+    const [nodes, setNodes, onNodesChange] = useNodesState(reactFlowNodes);
+    const [edges, setEdges, onEdgesChange] = useEdgesState(reactFlowEdges);
+
+    // Update nodes when workflow data changes
+    React.useEffect(() => {
+        setNodes(reactFlowNodes);
+    }, [reactFlowNodes, setNodes]);
+
+    // Update edges when workflow data changes
+    React.useEffect(() => {
+        setEdges(reactFlowEdges);
+    }, [reactFlowEdges, setEdges]);
 
     const onConnect = useCallback(
         (params: Connection) => setEdges((eds) => addEdge(params, eds)),
@@ -296,24 +253,120 @@ const WorkflowVisualization: React.FC<WorkflowVisualizationProps> = ({
 
     const proOptions = useMemo(() => ({ hideAttribution: true }), []);
 
+    // Handle node clicks for navigation
+    const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
+        const workflowNode = workflowNodes.find(wn => wn.id === node.id);
+        if (workflowNode?.navigationTarget) {
+            // First try to scroll to existing element on current page
+            const targetElement = document.querySelector(workflowNode.navigationTarget);
+            if (targetElement) {
+                // Element exists on current page - scroll to it
+                targetElement.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start',
+                    inline: 'nearest'
+                });
 
+                // Update URL hash for bookmarkable navigation
+                const hash = workflowNode.navigationTarget;
+                if (hash.startsWith('#')) {
+                    window.history.replaceState(null, '', hash);
+                }
+            } else {
+                // Element doesn't exist - might need to navigate to different route
+                // For now, just log - we can enhance this later when we have more routes
+                console.log(`Navigation target not found: ${workflowNode.navigationTarget}`);
+                console.log('Available elements:', document.querySelectorAll('[id]'));
+            }
+        }
+    }, [workflowNodes]);
+
+
+
+    // Show loading state
+    if (isLoading) {
+        return (
+            <div style={{
+                height: '100%',
+                width: `${width}px`,
+                border: '1px solid #333',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #2a2a2a 100%)'
+            }}>
+                <div style={{ textAlign: 'center', color: '#666' }}>
+                    <div style={{ fontSize: '24px', marginBottom: '8px' }}>⚡</div>
+                    <div style={{ fontSize: '12px' }}>加载工作流...</div>
+                </div>
+            </div>
+        );
+    }
+
+    // Show error state
+    if (error) {
+        return (
+            <div style={{
+                height: '100%',
+                width: `${width}px`,
+                border: '1px solid #333',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #2a2a2a 100%)'
+            }}>
+                <div style={{ textAlign: 'center', color: '#ff4d4f' }}>
+                    <div style={{ fontSize: '24px', marginBottom: '8px' }}>⚠️</div>
+                    <div style={{ fontSize: '12px' }}>工作流加载失败</div>
+                </div>
+            </div>
+        );
+    }
+
+    // Show empty state
+    if (workflowNodes.length === 0) {
+        return (
+            <div style={{
+                height: '100%',
+                width: `${width}px`,
+                border: '1px solid #333',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #2a2a2a 100%)'
+            }}>
+                <div style={{ textAlign: 'center', color: '#666' }}>
+                    <div style={{ fontSize: '24px', marginBottom: '8px' }}>🚀</div>
+                    <div style={{ fontSize: '12px' }}>开始创作流程</div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div style={{
-            height: `${height}px`,
+            height: '100%',
+            width: `${width}px`,
             border: '1px solid #333',
             borderRadius: '8px',
             overflow: 'hidden',
             background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #2a2a2a 100%)'
         }}>
             <style>{`
-        .react-flow__node-default .react-flow__handle-top,
-        .react-flow__node-default .react-flow__handle-bottom {
-          display: none;
-        }
         .react-flow__node-default .react-flow__handle-left,
         .react-flow__node-default .react-flow__handle-right {
+          display: none;
+        }
+        .react-flow__node-default .react-flow__handle-top,
+        .react-flow__node-default .react-flow__handle-bottom {
           opacity: 0;
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
         }
       `}</style>
 
@@ -323,12 +376,13 @@ const WorkflowVisualization: React.FC<WorkflowVisualizationProps> = ({
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
+                onNodeClick={onNodeClick}
                 proOptions={proOptions}
                 fitView
                 fitViewOptions={{ padding: 0.2 }}
                 nodesDraggable={false}
                 nodesConnectable={false}
-                elementsSelectable={false}
+                elementsSelectable={true}
                 panOnDrag={true}
                 zoomOnScroll={true}
                 zoomOnPinch={true}

@@ -6,10 +6,12 @@ import {
     findEffectiveBrainstormIdeas,
     extractEffectiveBrainstormIdeas,
     convertEffectiveIdeasToIdeaWithTitle,
+    findMainWorkflowPath,
     type LineageNode,
     type LineageResolutionResult,
     type EffectiveBrainstormIdea,
-    type IdeaWithTitle
+    type IdeaWithTitle,
+    type WorkflowNode
 } from '../../common/utils/lineageResolution';
 
 interface UseLineageResolutionOptions {
@@ -176,5 +178,59 @@ export function useLatestBrainstormIdeas(): IdeaWithTitle[] {
         // Use the pure function to convert EffectiveBrainstormIdea[] to IdeaWithTitle[]
         return convertEffectiveIdeasToIdeaWithTitle(ideas, projectData.artifacts);
     }, [ideas, isLoading, error, projectData.artifacts]);
+}
+
+/**
+ * Hook to get workflow nodes for the current project
+ * This represents the main workflow path from brainstorm to outline to episodes
+ */
+export function useWorkflowNodes(): {
+    workflowNodes: WorkflowNode[];
+    isLoading: boolean;
+    error: Error | null;
+} {
+    const projectData = useProjectData();
+    const [error, setError] = useState<Error | null>(null);
+
+    const workflowNodes = useMemo((): WorkflowNode[] => {
+        if (projectData.isLoading) {
+            return [];
+        }
+
+        try {
+            setError(null);
+
+            // Build the lineage graph
+            const graph = buildLineageGraph(
+                projectData.artifacts,
+                projectData.transforms,
+                projectData.humanTransforms,
+                projectData.transformInputs,
+                projectData.transformOutputs
+            );
+
+            // Use the main path algorithm to get workflow nodes
+            return findMainWorkflowPath(projectData.artifacts, graph);
+
+        } catch (err) {
+            const error = err instanceof Error ? err : new Error('Workflow nodes computation failed');
+            console.error('[useWorkflowNodes] Error:', error);
+            setError(error);
+            return [];
+        }
+    }, [
+        projectData.isLoading,
+        projectData.artifacts,
+        projectData.transforms,
+        projectData.humanTransforms,
+        projectData.transformInputs,
+        projectData.transformOutputs
+    ]);
+
+    return {
+        workflowNodes,
+        isLoading: projectData.isLoading,
+        error: projectData.error || error
+    };
 }
 

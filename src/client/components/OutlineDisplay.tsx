@@ -16,7 +16,7 @@ export const OutlineDisplay: React.FC<OutlineDisplayProps> = ({
     isGenerating = false
 }) => {
     return (
-        <div style={{ marginTop: '24px' }}>
+        <div id="story-outline" style={{ marginTop: '24px' }}>
             <Card
                 style={{
                     backgroundColor: '#1f1f1f',

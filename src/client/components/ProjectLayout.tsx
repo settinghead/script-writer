@@ -22,12 +22,13 @@ const ProjectLayout: React.FC = () => {
     const { projectId } = useParams<{ projectId: string }>();
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
-    const [showWorkflow, setShowWorkflow] = useLocalStorage('workflow-visible', true);
-    const [workflowHeight, setWorkflowHeight] = useLocalStorage('workflow-height', 200);
+    const [rightSidebarVisible, setRightSidebarVisible] = useLocalStorage('right-sidebar-visible', true);
+    const [rightSidebarWidth, setRightSidebarWidth] = useLocalStorage('right-sidebar-width', 350);
     const [sidebarWidth, setSidebarWidth] = useLocalStorage('sidebar-width', 350);
-    const [isResizing, setIsResizing] = useState(false);
     const [isResizingSidebar, setIsResizingSidebar] = useState(false);
+    const [isResizingRightSidebar, setIsResizingRightSidebar] = useState(false);
     const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+    const [mobileRightDrawerOpen, setMobileRightDrawerOpen] = useState(false);
 
     // Responsive breakpoints
     const screens = useBreakpoint();
@@ -86,25 +87,21 @@ const ProjectLayout: React.FC = () => {
         setSearchParams(newSearchParams);
     }, [showRawContext, searchParams, setSearchParams]);
 
-    // Resize handlers for workflow
-    const handleMouseDown = (e: React.MouseEvent) => {
-        setIsResizing(true);
+    // Resize handlers for right sidebar
+    const handleRightSidebarMouseDown = (e: React.MouseEvent) => {
+        setIsResizingRightSidebar(true);
         e.preventDefault();
     };
 
-    const handleMouseMove = useCallback((e: MouseEvent) => {
-        if (!isResizing) return;
+    const handleRightSidebarMouseMove = useCallback((e: MouseEvent) => {
+        if (!isResizingRightSidebar) return;
 
-        const container = document.querySelector('.workflow-container');
-        if (!container) return;
+        const newWidth = Math.max(250, Math.min(600, window.innerWidth - e.clientX));
+        setRightSidebarWidth(newWidth);
+    }, [isResizingRightSidebar]);
 
-        const rect = container.getBoundingClientRect();
-        const newHeight = Math.max(150, Math.min(400, e.clientY - rect.top));
-        setWorkflowHeight(newHeight);
-    }, [isResizing]);
-
-    const handleMouseUp = useCallback(() => {
-        setIsResizing(false);
+    const handleRightSidebarMouseUp = useCallback(() => {
+        setIsResizingRightSidebar(false);
     }, []);
 
     // Resize handlers for sidebar
@@ -125,14 +122,14 @@ const ProjectLayout: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        if (isResizing) {
-            document.addEventListener('mousemove', handleMouseMove);
-            document.addEventListener('mouseup', handleMouseUp);
-            document.body.style.cursor = 'ns-resize';
+        if (isResizingRightSidebar) {
+            document.addEventListener('mousemove', handleRightSidebarMouseMove);
+            document.addEventListener('mouseup', handleRightSidebarMouseUp);
+            document.body.style.cursor = 'ew-resize';
             document.body.style.userSelect = 'none';
         } else {
-            document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('mouseup', handleMouseUp);
+            document.removeEventListener('mousemove', handleRightSidebarMouseMove);
+            document.removeEventListener('mouseup', handleRightSidebarMouseUp);
             if (!isResizingSidebar) {
                 document.body.style.cursor = '';
                 document.body.style.userSelect = '';
@@ -140,14 +137,14 @@ const ProjectLayout: React.FC = () => {
         }
 
         return () => {
-            document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('mouseup', handleMouseUp);
+            document.removeEventListener('mousemove', handleRightSidebarMouseMove);
+            document.removeEventListener('mouseup', handleRightSidebarMouseUp);
             if (!isResizingSidebar) {
                 document.body.style.cursor = '';
                 document.body.style.userSelect = '';
             }
         };
-    }, [isResizing, handleMouseMove, handleMouseUp, isResizingSidebar]);
+    }, [isResizingRightSidebar, handleRightSidebarMouseMove, handleRightSidebarMouseUp, isResizingSidebar]);
 
     useEffect(() => {
         if (isResizingSidebar) {
@@ -158,7 +155,7 @@ const ProjectLayout: React.FC = () => {
         } else {
             document.removeEventListener('mousemove', handleSidebarMouseMove);
             document.removeEventListener('mouseup', handleSidebarMouseUp);
-            if (!isResizing) {
+            if (!isResizingRightSidebar) {
                 document.body.style.cursor = '';
                 document.body.style.userSelect = '';
             }
@@ -167,12 +164,12 @@ const ProjectLayout: React.FC = () => {
         return () => {
             document.removeEventListener('mousemove', handleSidebarMouseMove);
             document.removeEventListener('mouseup', handleSidebarMouseUp);
-            if (!isResizing) {
+            if (!isResizingRightSidebar) {
                 document.body.style.cursor = '';
                 document.body.style.userSelect = '';
             }
         };
-    }, [isResizingSidebar, handleSidebarMouseMove, handleSidebarMouseUp, isResizing]);
+    }, [isResizingSidebar, handleSidebarMouseMove, handleSidebarMouseUp, isResizingRightSidebar]);
 
     const handleGoBack = () => {
         navigate('/');
@@ -185,6 +182,14 @@ const ProjectLayout: React.FC = () => {
 
     const hideMobileDrawer = () => {
         setMobileDrawerOpen(false);
+    };
+
+    const showMobileRightDrawer = () => {
+        setMobileRightDrawerOpen(true);
+    };
+
+    const hideMobileRightDrawer = () => {
+        setMobileRightDrawerOpen(false);
     };
 
     if (loading && !name) {
@@ -320,21 +325,44 @@ const ProjectLayout: React.FC = () => {
                     </div>
                 )}
 
+                {/* Mobile Right Drawer for Workflow */}
+                {isMobile && (
+                    <Drawer
+                        title="目录/地图"
+                        placement="right"
+                        onClose={hideMobileRightDrawer}
+                        open={mobileRightDrawerOpen}
+                        width={Math.min(320, window.innerWidth * 0.85)}
+                        styles={{
+                            body: { padding: '12px', background: '#1a1a1a' },
+                            header: { background: '#1a1a1a', borderBottom: '1px solid #333' }
+                        }}
+                        closeIcon={<span style={{ color: '#fff' }}>×</span>}
+                    >
+                        <WorkflowVisualization width={280} />
+                    </Drawer>
+                )}
+
                 <Layout style={{
                     flex: 1,
                     height: '100%',
-                    // Use full width on mobile since there's no fixed sidebar
-                    width: isMobile ? '100%' : 'auto'
+                    display: 'flex',
+                    flexDirection: 'row'
                 }}>
                     {/* Breadcrumb and Toggle Buttons Row */}
                     <div style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: isMobile ? 0 : sidebarWidth + 6,
+                        right: !isMobile && rightSidebarVisible ? rightSidebarWidth + 6 : 0,
+                        zIndex: 100,
                         padding: isMobile ? '8px 12px' : '12px 16px',
                         borderBottom: '1px solid #333',
                         background: '#1a1a1a',
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
-                        flexShrink: 0
+                        height: '60px'
                     }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                             {/* Mobile Menu Button */}
@@ -351,6 +379,15 @@ const ProjectLayout: React.FC = () => {
                         </div>
 
                         <Space size={isMobile ? 'small' : 'middle'}>
+                            {isMobile && (
+                                <Button
+                                    type="text"
+                                    icon={<NodeIndexOutlined />}
+                                    onClick={showMobileRightDrawer}
+                                    style={{ color: '#1890ff' }}
+                                    size="small"
+                                />
+                            )}
                             <Button
                                 type="text"
                                 icon={<NodeIndexOutlined />}
@@ -382,9 +419,18 @@ const ProjectLayout: React.FC = () => {
                     </div>
 
                     {/* Main Content Layout */}
-                    <Layout style={{ flex: 1, overflow: 'hidden' }}>
+                    <Layout style={{
+                        flex: 1,
+                        overflow: 'hidden',
+                        paddingTop: '60px' // Account for fixed header
+                    }}>
                         {/* Main Content Area */}
-                        <Content style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+                        <Content style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            height: '100%',
+                            overflow: 'hidden'
+                        }}>
                             {/* Conditional Content */}
                             {showRawGraph ? (
                                 <div style={{ flex: 1, overflow: 'hidden' }}>
@@ -399,90 +445,118 @@ const ProjectLayout: React.FC = () => {
                                     <RawAgentContext projectId={projectId!} />
                                 </div>
                             ) : (
-                                <>
-                                    {/* Resizable Workflow Visualization Section at Top */}
-                                    <div
-                                        className="workflow-container"
-                                        style={{
-                                            flexShrink: 0,
-                                            padding: '0px',
-                                            borderBottom: showWorkflow ? '1px solid #333' : 'none',
-                                            transition: showWorkflow ? 'none' : 'border-bottom 0.3s ease-in-out',
-                                            position: 'relative'
-                                        }}
-                                    >
-                                        <div
-                                            style={{
-                                                height: showWorkflow ? `${workflowHeight}px` : '0px',
-                                                overflow: 'hidden',
-                                                transition: showWorkflow ? 'none' : 'height 0.3s ease-in-out, opacity 0.3s ease-in-out, transform 0.3s ease-in-out',
-                                                opacity: showWorkflow ? 1 : 0,
-                                                transform: showWorkflow ? 'translateY(0)' : 'translateY(-10px)',
-                                                marginBottom: showWorkflow ? '0px' : '0px',
-                                            }}
-                                        >
-                                            <WorkflowVisualization height={workflowHeight} />
-                                        </div>
-
-                                        {/* Resize Handle */}
-                                        {showWorkflow && (
-                                            <div
-                                                onMouseDown={handleMouseDown}
-                                                style={{
-                                                    height: '6px',
-                                                    background: isResizing ? '#1890ff' : 'transparent',
-                                                    cursor: 'ns-resize',
-                                                    position: 'relative',
-                                                    transition: 'background 0.2s ease-in-out',
-                                                    borderTop: '1px solid #333',
-                                                }}
-                                            >
-                                                <div
-                                                    style={{
-                                                        position: 'absolute',
-                                                        top: '50%',
-                                                        left: '50%',
-                                                        transform: 'translate(-50%, -50%)',
-                                                        width: '40px',
-                                                        height: '4px',
-                                                        background: isResizing ? '#1890ff' : '#666',
-                                                        borderRadius: '2px',
-                                                        transition: 'background 0.2s ease-in-out',
-                                                    }}
-                                                />
-                                            </div>
-                                        )}
-
-                                        <div style={{
-                                            display: 'flex',
-                                            justifyContent: 'center',
-                                            padding: '8px 0',
-                                            background: '#1a1a1a'
-                                        }}>
-                                            <Button
-                                                type="text"
-                                                icon={showWorkflow ? <EyeInvisibleOutlined /> : <EyeOutlined />}
-                                                onClick={() => setShowWorkflow(!showWorkflow)}
-                                                style={{ color: '#1890ff' }}
-                                                size="small"
-                                            >
-                                                {showWorkflow ? '隐藏工作流' : '显示工作流'}
-                                            </Button>
-                                        </div>
-                                    </div>
-
-                                    {/* Scrollable Content Area Below */}
-                                    <div style={{
-                                        flex: 1,
-                                        overflowY: 'auto',
-                                        padding: '12px'
-                                    }}>
-                                        <Outlet />
-                                    </div>
-                                </>
+                                <div style={{
+                                    flex: 1,
+                                    overflowY: 'auto',
+                                    padding: '12px'
+                                }}>
+                                    <Outlet />
+                                </div>
                             )}
                         </Content>
                     </Layout>
+
+                    {/* Right Sidebar - Desktop Only */}
+                    {!isMobile && (
+                        <div style={{ position: 'relative', display: 'flex' }}>
+                            {/* Right Sidebar Resize Handle */}
+                            <div
+                                onMouseDown={handleRightSidebarMouseDown}
+                                style={{
+                                    width: '6px',
+                                    background: isResizingRightSidebar ? '#1890ff' : 'transparent',
+                                    cursor: 'ew-resize',
+                                    position: 'relative',
+                                    borderLeft: '1px solid #333',
+                                    transition: 'background 0.2s ease-in-out',
+                                    height: '100vh',
+                                    flexShrink: 0
+                                }}
+                            >
+                                <div
+                                    style={{
+                                        position: 'absolute',
+                                        top: '50%',
+                                        left: '50%',
+                                        transform: 'translate(-50%, -50%)',
+                                        width: '4px',
+                                        height: '40px',
+                                        background: isResizingRightSidebar ? '#1890ff' : '#666',
+                                        borderRadius: '2px',
+                                        transition: 'background 0.2s ease-in-out',
+                                    }}
+                                />
+                            </div>
+
+                            {/* Right Sidebar Content */}
+                            {rightSidebarVisible ? (
+                                <Sider
+                                    width={rightSidebarWidth}
+                                    style={{
+                                        background: '#1a1a1a',
+                                        height: '100vh',
+                                        overflow: 'hidden',
+                                        position: 'relative'
+                                    }}
+                                    theme="dark"
+                                >
+                                    <div style={{
+                                        height: '100%',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        padding: '12px'
+                                    }}>
+                                        <div style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            marginBottom: '12px',
+                                            paddingBottom: '8px',
+                                            borderBottom: '1px solid #333'
+                                        }}>
+                                            <Title level={5} style={{ margin: 0, color: '#fff' }}>
+                                                目录/地图
+                                            </Title>
+                                            <Button
+                                                type="text"
+                                                icon={<EyeInvisibleOutlined />}
+                                                onClick={() => setRightSidebarVisible(false)}
+                                                style={{ color: '#1890ff' }}
+                                                size="small"
+                                            />
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <WorkflowVisualization width={rightSidebarWidth - 24} />
+                                        </div>
+                                    </div>
+                                </Sider>
+                            ) : (
+                                /* Collapsed Right Sidebar Button */
+                                <div style={{
+                                    width: '24px',
+                                    height: '100vh',
+                                    background: '#1a1a1a',
+                                    borderLeft: '1px solid #333',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.3s ease-in-out'
+                                }} onClick={() => setRightSidebarVisible(true)}>
+                                    <div style={{
+                                        writingMode: 'vertical-rl',
+                                        textOrientation: 'mixed',
+                                        color: '#1890ff',
+                                        fontSize: '12px',
+                                        fontWeight: 500,
+                                        userSelect: 'none'
+                                    }}>
+                                        ﹤ 目录
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </Layout>
             </Layout>
         </ProjectDataProvider>
