@@ -49,7 +49,7 @@ const unifiedStreamingService = new UnifiedStreamingService(artifactRepo, transf
 // Initialize services with unified streaming
 const transformExecutor = new TransformExecutor(artifactRepo, transformRepo, unifiedStreamingService);
 const scriptService = new ScriptService(artifactRepo, transformExecutor);
-const projectService = new ProjectService(projectRepo, artifactRepo, transformRepo);
+const projectService = new ProjectService(db);
 const agentService = new AgentService(transformRepo, artifactRepo);
 
 // Initialize chat services

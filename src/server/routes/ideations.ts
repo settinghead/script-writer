@@ -13,15 +13,13 @@ export function createIdeationRoutes(
     transformRepo: TransformRepository
 ) {
     const router = express.Router();
-    
+
     // Initialize project service - use the same db connection as other repos
     const db = (artifactRepo as any).db || (transformRepo as any).db;
-    const projectRepo = new ProjectRepository(db);
-    const projectService = new ProjectService(projectRepo, artifactRepo, transformRepo);
+    const projectService = new ProjectService(db);
 
     // Initialize ideation service for backward compatibility
     const unifiedStreamingService = new UnifiedStreamingService(artifactRepo, transformRepo);
-    const transformExecutor = new TransformExecutor(artifactRepo, transformRepo, unifiedStreamingService);
 
     // ========== NEW PROJECT ENDPOINTS ==========
 
