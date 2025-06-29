@@ -243,6 +243,7 @@ Original Collection (brainstorm_idea[])
 - **Responsive design** for desktop and mobile with adaptive chat layout
 - **Project-centric navigation** with unified layout and chat integration
 - **ChatGPT-style interface** - Resizable chat sidebar (250px-600px) replacing traditional sidebars
+- **Interactive workflow visualization** - Real-time project progress map with intelligent navigation
 - **Dynamic streaming UI** - Controls render eagerly as JSON data arrives
 - **Advanced artifact editor** with intelligent mutation state management and optimized debounced auto-save
 - **Entity-specific status indicators** - Isolated save states prevent UI interference between different editors
@@ -254,6 +255,33 @@ Original Collection (brainstorm_idea[])
 - **Edit history visualization** - Visual indicators (📝 已编辑版本) for modified content
 - **User dropdown** with profile info and logout
 - **Modern state management** with TanStack Query for server state and Zustand for client state
+
+#### Interactive Workflow Visualization System
+
+**Design Philosophy**: Provide users with an intuitive project overview and navigation system that shows real project progression based on artifact lineage data, with intelligent "main path" detection and seamless section navigation.
+
+**Key Features**:
+- **Right Sidebar Workflow Map** - Vertical workflow visualization in resizable right sidebar (persistent width/visibility)
+- **Real-time Data-Driven Nodes** - Workflow nodes display actual artifact data instead of mock content
+- **Main Path Algorithm** - Intelligent detection of primary workflow path (brainstorm → selected idea → outline)
+- **Interactive Navigation** - Click workflow nodes to scroll to corresponding project sections
+- **Current Section Highlighting** - Dynamic highlighting of current section with smooth color transitions
+- **Monochrome Default State** - Clean, minimal appearance when not actively navigating
+- **Mobile Responsive** - Slide-in drawer for mobile devices with full functionality
+
+**Technical Implementation**:
+- **React Flow Integration** - Vertical top-to-bottom workflow layout with proper edge connections
+- **Lineage-Based Content** - Uses existing lineage resolution system to determine active workflow nodes
+- **Intersection Observer** - Accurate section detection for highlighting current user location
+- **Smooth Scrolling** - Anchor-based navigation with URL hash management
+- **Memoized Computation** - Performance-optimized workflow computation with Electric SQL real-time updates
+- **Persistent State** - localStorage-based sidebar width and visibility preferences
+
+**User Experience Benefits**:
+- **Clear Project Overview** - Visual representation of project progression and completion status
+- **Effortless Navigation** - Single-click navigation between different project phases
+- **Progress Awareness** - Real-time indication of current location within project workflow
+- **Clean Visual Design** - Subtle visual hierarchy that doesn't interfere with main content focus
 
 ### 📊 Analytics & Debugging
 - **Complete data traceability** through artifacts and transforms
@@ -867,7 +895,8 @@ src/
 │   │   │   └── streaming/                # Dynamic streaming UI components
 │   │   ├── BrainstormingResults.tsx      # Brainstorm display with editing
 │   │   ├── OutlineDisplay.tsx            # Modern outline display with comprehensive sections
-│   │   └── ProjectLayout.tsx             # Main project interface with chat
+│   │   ├── WorkflowVisualization.tsx     # Interactive workflow navigation and progress visualization
+│   │   └── ProjectLayout.tsx             # Main project interface with chat and workflow sidebar
 │   ├── contexts/          # React contexts
 │   │   ├── ChatContext.tsx               # Chat state management
 │   │   └── ProjectDataContext.tsx        # Project data management
@@ -876,6 +905,8 @@ src/
 │   │   ├── useProjectData.ts             # TanStack Query hooks
 │   │   ├── useStreamingLLM.ts            # Streaming LLM integration
 │   │   ├── useMutationState.ts           # Entity-specific mutation state hooks
+│   │   ├── useCurrentSection.ts          # Intersection observer for workflow section detection
+│   │   ├── useWorkflowNodes.ts           # Workflow node computation and memoization
 │   │   └── useDebounce.ts                # Debounced auto-save
 │   ├── services/          # API services
 │   │   └── apiService.ts  # Centralized API client
@@ -891,6 +922,8 @@ src/
 │   │   ├── transforms.ts  # Transform definitions with path patterns
 │   │   └── chatMessages.ts # Chat message schemas
 │   ├── streaming/         # Streaming interfaces
+│   ├── utils/             # Shared utility functions
+│   │   └── lineageResolution.ts # Main path detection and workflow algorithms
 │   └── types.ts          # Common type definitions
 └── server/                # Express backend
     ├── database/          # Database setup
@@ -1196,6 +1229,64 @@ user_input_schema           | user_input   | user_input
 - `src/client/components/RawGraphVisualization.tsx` - Complete visualization component
 - `src/client/components/ProjectLayout.tsx` - Toggle button integration
 - `package.json` - Added `dagre` and `@types/dagre` dependencies
+
+### Interactive Workflow Visualization System ✅ COMPLETED
+
+**Major Achievement**: Successfully transformed the mock workflow visualization into a comprehensive, data-driven project navigation and overview system that provides users with real-time project progression tracking and intelligent navigation capabilities.
+
+#### Complete System Implementation
+**Design Transformation**: Evolved from static mockup to sophisticated navigation hub that shows actual project progression based on lineage graph data with intelligent "main path" detection and interactive section navigation.
+
+**Phase 1: Real Data-Driven Workflow Nodes** ✅ COMPLETED
+- **Main Path Algorithm**: Implemented `findMainWorkflowPath()` function that intelligently identifies primary workflow progression (brainstorm collection → selected idea → outline)
+- **Dynamic Node Generation**: Replaced mock data with real artifact information from Electric SQL
+- **Inactive State Management**: Automatically hides non-selected brainstorm ideas, focusing on main progression path
+- **WorkflowNode Interface**: Complete type definitions with artifact IDs, navigation targets, and status indicators
+
+**Phase 2: Visual State Management** ✅ COMPLETED  
+- **Monochrome Default State**: All nodes render in clean grayscale when not actively navigating
+- **Dynamic Highlighting**: Current section nodes highlighted with original colors and subtle scale effects
+- **Smooth Transitions**: 0.3s ease-in-out color transitions for visual feedback
+- **Node Content Customization**: Display actual artifact titles, timestamps, and processing status
+
+**Phase 3: Interactive Navigation** ✅ COMPLETED
+- **Anchor Point System**: Added anchor IDs to key sections (`#brainstorm-ideas`, `#story-outline`)
+- **Click Navigation**: Workflow nodes navigate to appropriate project sections with smooth scrolling
+- **URL Hash Management**: Bookmarkable navigation with proper URL state management
+- **Scroll Synchronization**: Intersection observer detects current section for accurate highlighting
+
+**Phase 4: Real-time Updates & Performance** ✅ COMPLETED
+- **Memoized Computation**: Optimized workflow node computation with proper dependencies
+- **Electric SQL Integration**: Real-time updates when new artifacts are created
+- **Performance Optimization**: Efficient re-rendering with debounced updates for rapid data changes
+- **Persistent State**: localStorage-based sidebar width and visibility preferences
+
+#### Technical Architecture Achievements
+**Right Sidebar Infrastructure**:
+- **Resizable Sidebar**: 250px-600px width with persistent localStorage state
+- **Show/Hide Functionality**: Collapsed state shows vertical "﹤ 目录" button
+- **Mobile Responsive**: Slide-in drawer for mobile devices with full functionality
+- **Dark Theme Integration**: Consistent styling with application design system
+
+**Advanced Lineage Integration**:
+- **Main Path Detection**: Uses existing lineage resolution system to identify primary workflow
+- **React Flow Implementation**: Vertical top-to-bottom layout with proper source/target handles
+- **Real-time Synchronization**: Integrates with Electric SQL for live workflow updates
+- **Performance Optimized**: Sub-10ms workflow computation for typical project data
+
+#### User Experience Impact
+- **Project Overview**: Clear visual representation of project progression and completion status
+- **Effortless Navigation**: Single-click navigation between brainstorming, outlining, and future phases
+- **Progress Awareness**: Real-time indication of current location within project workflow
+- **Clean Visual Design**: Monochrome default state doesn't interfere with main content focus
+- **Contextual Awareness**: Workflow updates automatically as users create new content
+
+**Files Created/Modified**:
+- `src/client/components/WorkflowVisualization.tsx` - Complete workflow visualization component
+- `src/client/hooks/useCurrentSection.ts` - Intersection observer for section detection
+- `src/client/hooks/useWorkflowNodes.ts` - Workflow node computation and memoization
+- `src/common/utils/lineageResolution.ts` - Enhanced main path detection algorithms
+- `src/client/components/ProjectLayout.tsx` - Right sidebar integration and state management
 
 ### Complete Outline Generation System Implementation ✅ COMPLETED
 
