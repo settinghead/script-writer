@@ -324,26 +324,9 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
             };
         }
 
-        console.log('🔧 Building lineage graph with data:', {
-            artifacts: artifacts.length,
-            transforms: transforms.length,
-            humanTransforms: humanTransforms.length,
-            transformInputs: transformInputs.length,
-            transformOutputs: transformOutputs.length
-        });
 
-        // DEBUG: Log transform data for the problematic artifact
-        const problematicArtifactId = '9a9ded3a-dad3-46a9-9ad9-e17133cbb1c8';
-        const relatedOutputs = transformOutputs.filter(to => to.artifact_id === problematicArtifactId);
-        console.log(`🔧 Transform outputs for ${problematicArtifactId}:`, relatedOutputs);
 
-        if (relatedOutputs.length > 0) {
-            const transformId = relatedOutputs[0].transform_id;
-            const relatedInputs = transformInputs.filter(ti => ti.transform_id === transformId);
-            console.log(`🔧 Transform inputs for transform ${transformId}:`, relatedInputs);
-            const relatedTransform = transforms.find(t => t.id === transformId);
-            console.log(`🔧 Transform details for ${transformId}:`, relatedTransform);
-        }
+
 
         const graph = buildLineageGraph(
             artifacts,
@@ -353,9 +336,6 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
             transformOutputs
         );
 
-        // DEBUG: Log the lineage node for the problematic artifact
-        const problematicNode = graph.nodes.get(problematicArtifactId);
-        console.log(`🔧 Lineage node for ${problematicArtifactId}:`, problematicNode);
 
         return graph;
     }, [artifacts, transforms, humanTransforms, transformInputs, transformOutputs]);

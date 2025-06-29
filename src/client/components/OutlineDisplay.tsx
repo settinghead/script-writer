@@ -15,6 +15,11 @@ export const OutlineDisplay: React.FC<OutlineDisplayProps> = ({
     outline,
     isGenerating = false
 }) => {
+    // Add defensive checks for undefined properties
+    if (!outline) {
+        return <div>No outline data available</div>;
+    }
+
     return (
         <div id="story-outline" style={{ marginTop: '24px' }}>
             <Card
@@ -28,10 +33,10 @@ export const OutlineDisplay: React.FC<OutlineDisplayProps> = ({
                 {/* Header Section */}
                 <div style={{ marginBottom: '24px', textAlign: 'center' }}>
                     <Title level={2} style={{ color: '#fff', marginBottom: '8px' }}>
-                        {outline.title}
+                        {outline.title || '未命名大纲'}
                     </Title>
                     <Tag color="purple" style={{ fontSize: '14px', padding: '4px 12px' }}>
-                        {outline.genre}
+                        {outline.genre || '未分类'}
                     </Tag>
                 </div>
 
@@ -43,14 +48,14 @@ export const OutlineDisplay: React.FC<OutlineDisplayProps> = ({
                 >
                     <Space direction="vertical" size="small" style={{ width: '100%' }}>
                         <Text strong>主要群体：</Text>
-                        <Text>{outline.target_audience.demographic}</Text>
+                        <Text>{outline.target_audience?.demographic || '未指定'}</Text>
                         <Text strong>核心主题：</Text>
                         <div>
-                            {outline.target_audience.core_themes.map((theme, index) => (
+                            {outline.target_audience?.core_themes?.map((theme, index) => (
                                 <Tag key={index} color="blue" style={{ marginBottom: '4px' }}>
                                     {theme}
                                 </Tag>
-                            ))}
+                            )) || <Text>暂无核心主题</Text>}
                         </div>
                     </Space>
                 </Card>
@@ -64,9 +69,9 @@ export const OutlineDisplay: React.FC<OutlineDisplayProps> = ({
                             style={{ backgroundColor: '#262626', border: '1px solid #434343', height: '100%' }}
                         >
                             <Space direction="vertical" size="small">
-                                {outline.selling_points.map((point, index) => (
+                                {outline.selling_points?.map((point, index) => (
                                     <Text key={index}>• {point}</Text>
-                                ))}
+                                )) || <Text>暂无卖点</Text>}
                             </Space>
                         </Card>
                     </Col>
@@ -77,9 +82,9 @@ export const OutlineDisplay: React.FC<OutlineDisplayProps> = ({
                             style={{ backgroundColor: '#262626', border: '1px solid #434343', height: '100%' }}
                         >
                             <Space direction="vertical" size="small">
-                                {outline.satisfaction_points.map((point, index) => (
+                                {outline.satisfaction_points?.map((point, index) => (
                                     <Text key={index}>• {point}</Text>
-                                ))}
+                                )) || <Text>暂无爽点</Text>}
                             </Space>
                         </Card>
                     </Col>
@@ -94,16 +99,16 @@ export const OutlineDisplay: React.FC<OutlineDisplayProps> = ({
                     <Space direction="vertical" size="small" style={{ width: '100%' }}>
                         <div>
                             <Text strong>核心设定：</Text>
-                            <Paragraph style={{ margin: '8px 0' }}>{outline.setting.core_setting_summary}</Paragraph>
+                            <Paragraph style={{ margin: '8px 0' }}>{outline.setting?.core_setting_summary || '暂无设定描述'}</Paragraph>
                         </div>
                         <div>
                             <Text strong>关键场景：</Text>
                             <div style={{ marginTop: '8px' }}>
-                                {outline.setting.key_scenes.map((scene, index) => (
+                                {outline.setting?.key_scenes?.map((scene, index) => (
                                     <Tag key={index} color="green" style={{ marginBottom: '4px', display: 'block', marginRight: 0 }}>
                                         {scene}
                                     </Tag>
-                                ))}
+                                )) || <Text>暂无关键场景</Text>}
                             </div>
                         </div>
                     </Space>
@@ -115,34 +120,40 @@ export const OutlineDisplay: React.FC<OutlineDisplayProps> = ({
                     title={<span><TeamOutlined /> 人物角色</span>}
                     style={{ marginBottom: '16px', backgroundColor: '#262626', border: '1px solid #434343' }}
                 >
-                    <Row gutter={[16, 16]}>
-                        {outline.characters.map((character, index) => (
-                            <Col span={12} key={index}>
-                                <Card
-                                    size="small"
-                                    style={{ backgroundColor: '#1f1f1f', border: '1px solid #434343' }}
-                                >
-                                    <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                            <Text strong style={{ fontSize: '16px' }}>{character.name}</Text>
-                                            <Tag color={getCharacterTypeColor(character.type)}>{getCharacterTypeLabel(character.type)}</Tag>
-                                        </div>
-                                        <Text type="secondary">{character.age} • {character.gender} • {character.occupation}</Text>
-                                        <Paragraph ellipsis={{ rows: 2 }} style={{ margin: 0, fontSize: '12px' }}>
-                                            {character.description}
-                                        </Paragraph>
-                                        <div>
-                                            {character.personality_traits.slice(0, 3).map((trait, traitIndex) => (
-                                                <Tag key={traitIndex} style={{ fontSize: '10px' }}>
-                                                    {trait}
-                                                </Tag>
-                                            ))}
-                                        </div>
-                                    </Space>
-                                </Card>
-                            </Col>
-                        ))}
-                    </Row>
+                    {outline.characters && outline.characters.length > 0 ? (
+                        <Row gutter={[16, 16]}>
+                            {outline.characters.map((character, index) => (
+                                <Col span={12} key={index}>
+                                    <Card
+                                        size="small"
+                                        style={{ backgroundColor: '#1f1f1f', border: '1px solid #434343' }}
+                                    >
+                                        <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                <Text strong style={{ fontSize: '16px' }}>{character.name}</Text>
+                                                <Tag color={getCharacterTypeColor(character.type)}>{getCharacterTypeLabel(character.type)}</Tag>
+                                            </div>
+                                            <Text type="secondary">{character.age} • {character.gender} • {character.occupation}</Text>
+                                            <Paragraph ellipsis={{ rows: 2 }} style={{ margin: 0, fontSize: '12px' }}>
+                                                {character.description}
+                                            </Paragraph>
+                                            <div>
+                                                {character.personality_traits?.slice(0, 3).map((trait, traitIndex) => (
+                                                    <Tag key={traitIndex} style={{ fontSize: '10px' }}>
+                                                        {trait}
+                                                    </Tag>
+                                                )) || <Text style={{ fontSize: '10px' }}>暂无性格特征</Text>}
+                                            </div>
+                                        </Space>
+                                    </Card>
+                                </Col>
+                            ))}
+                        </Row>
+                    ) : (
+                        <div style={{ padding: '16px', textAlign: 'center' }}>
+                            <Text>暂无角色信息</Text>
+                        </div>
+                    )}
                 </Card>
 
                 {/* Story Stages */}
@@ -152,7 +163,7 @@ export const OutlineDisplay: React.FC<OutlineDisplayProps> = ({
                     style={{ backgroundColor: '#262626', border: '1px solid #434343' }}
                 >
                     <Collapse ghost>
-                        {outline.synopsis_stages.map((stage, index) => (
+                        {outline.synopsis_stages?.map((stage, index) => (
                             <Panel
                                 header={`第${index + 1}阶段`}
                                 key={index}
@@ -162,7 +173,11 @@ export const OutlineDisplay: React.FC<OutlineDisplayProps> = ({
                                     {stage}
                                 </Paragraph>
                             </Panel>
-                        ))}
+                        )) || (
+                                <div style={{ padding: '16px', textAlign: 'center' }}>
+                                    <Text>暂无故事发展阶段</Text>
+                                </div>
+                            )}
                     </Collapse>
                 </Card>
             </Card>

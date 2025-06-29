@@ -32,7 +32,6 @@ async function validateCompleteLineage(
     artifactRepo: ArtifactRepository,
     transformRepo: TransformRepository
 ): Promise<void> {
-    console.log('🔍 Building lineage graph from project data...');
 
     // Get all project data needed for lineage resolution
     const artifactsRaw = await artifactRepo.getProjectArtifacts(projectId, 200);
