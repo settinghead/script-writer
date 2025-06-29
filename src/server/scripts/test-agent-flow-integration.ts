@@ -10,10 +10,177 @@ import { ArtifactRepository } from '../repositories/ArtifactRepository';
 import { ChatMessageRepository } from '../repositories/ChatMessageRepository';
 import { ProjectService } from '../services/ProjectService';
 import { v4 as uuidv4 } from 'uuid';
+import {
+    buildLineageGraph,
+    findLatestArtifact,
+    validateLineageIntegrity,
+    findEffectiveBrainstormIdeas,
+    findMainWorkflowPath,
+    type LineageGraph
+} from '../../common/utils/lineageResolution';
 
 // Test configuration
 const TEST_USER_ID = 'test-user-1';
 const TEST_SEED = 12345; // Fixed seed for reproducible results
+
+/**
+ * Comprehensive lineage validation function
+ * Validates the complete lineage graph and ensures proper relationships
+ */
+async function validateCompleteLineage(
+    projectId: string,
+    artifactRepo: ArtifactRepository,
+    transformRepo: TransformRepository
+): Promise<void> {
+    console.log('🔍 Building lineage graph from project data...');
+
+    // Get all project data needed for lineage resolution
+    const artifactsRaw = await artifactRepo.getProjectArtifacts(projectId, 200);
+    const transformsRaw = await transformRepo.getProjectTransforms(projectId, 200);
+
+    // Get human transforms, transform inputs, and outputs via SQL
+    const humanTransformsRaw = await db
+        .selectFrom('human_transforms')
+        .selectAll()
+        .where('project_id', '=', projectId)
+        .execute();
+
+    const transformInputsRaw = await db
+        .selectFrom('transform_inputs')
+        .selectAll()
+        .where('project_id', '=', projectId)
+        .execute();
+
+    const transformOutputsRaw = await db
+        .selectFrom('transform_outputs')
+        .selectAll()
+        .where('project_id', '=', projectId)
+        .execute();
+
+    // Convert to Electric types (cast for compatibility with lineage functions)
+    const artifacts = artifactsRaw as any[];
+    const transforms = transformsRaw as any[];
+    const humanTransforms = humanTransformsRaw as any[];
+    const transformInputs = transformInputsRaw as any[];
+    const transformOutputs = transformOutputsRaw as any[];
+
+    console.log(`📊 Found: ${artifacts.length} artifacts, ${transforms.length} transforms, ${humanTransforms.length} human transforms`);
+    console.log(`🔗 Found: ${transformInputs.length} transform inputs, ${transformOutputs.length} transform outputs`);
+
+    // Step 1: Build and validate lineage graph
+    console.log('\n📐 Step 1: Building lineage graph...');
+    const lineageGraph = buildLineageGraph(
+        artifacts,
+        transforms,
+        humanTransforms,
+        transformInputs,
+        transformOutputs
+    );
+
+    console.log(`✅ Lineage graph built: ${lineageGraph.nodes.size} nodes, ${lineageGraph.edges.size} edges`);
+    console.log(`🌳 Root nodes: ${lineageGraph.rootNodes.size}`);
+
+    // Step 2: Validate lineage integrity
+    console.log('\n🔍 Step 2: Validating lineage integrity...');
+    const validationResult = validateLineageIntegrity(lineageGraph);
+
+    if (!validationResult.isValid) {
+        console.error('❌ Lineage integrity validation failed:');
+        validationResult.errors.forEach(error => console.error(`  - ${error}`));
+        throw new Error('Lineage integrity validation failed');
+    }
+
+    if (validationResult.warnings.length > 0) {
+        console.warn('⚠️  Lineage validation warnings:');
+        validationResult.warnings.forEach(warning => console.warn(`  - ${warning}`));
+    }
+
+    console.log('✅ Lineage integrity validated successfully');
+
+    // Step 3: Test effective brainstorm ideas resolution
+    console.log('\n💡 Step 3: Testing effective brainstorm ideas resolution...');
+    try {
+        const effectiveIdeas = findEffectiveBrainstormIdeas(lineageGraph, artifacts);
+        console.log(`✅ Found ${effectiveIdeas.length} effective brainstorm ideas`);
+
+        effectiveIdeas.forEach((idea, index) => {
+            console.log(`  ${index + 1}. Artifact ${idea.artifactId} (path: ${idea.artifactPath})`);
+            console.log(`     - From collection: ${idea.isFromCollection}`);
+            console.log(`     - Index: ${idea.index}`);
+        });
+    } catch (error) {
+        console.error('❌ Effective brainstorm ideas resolution failed:', error);
+        throw error;
+    }
+
+    // Step 4: Test main workflow path
+    console.log('\n🗺️  Step 4: Testing main workflow path detection...');
+    try {
+        const workflowNodes = findMainWorkflowPath(artifacts, lineageGraph);
+        console.log(`✅ Found workflow path with ${workflowNodes.length} nodes`);
+
+        workflowNodes.forEach((node, index) => {
+            console.log(`  ${index + 1}. ${node.type}: "${node.title}" (${node.artifactId})`);
+        });
+    } catch (error) {
+        console.error('❌ Main workflow path detection failed:', error);
+        throw error;
+    }
+
+    // Step 5: Test latest artifact resolution for any edits
+    console.log('\n🔄 Step 5: Testing latest artifact resolution...');
+    const brainstormCollections = artifacts.filter(a =>
+        a.type === 'brainstorm_idea_collection' || a.schema_type === 'brainstorm_collection_schema'
+    );
+
+    for (const collection of brainstormCollections) {
+        console.log(`🔍 Testing resolution for collection ${collection.id}...`);
+
+        // Test first idea resolution
+        const resolutionResult = findLatestArtifact(collection.id, '$.ideas[0]', lineageGraph);
+
+        if (resolutionResult.artifactId !== collection.id) {
+            console.log(`  ✅ Idea [0] resolved to different artifact: ${resolutionResult.artifactId}`);
+            console.log(`     - Lineage depth: ${resolutionResult.depth}`);
+            console.log(`     - Lineage path length: ${resolutionResult.lineagePath.length}`);
+        } else {
+            console.log(`  📝 Idea [0] no edits found (resolution: same artifact)`);
+        }
+    }
+
+    // Step 6: Validate proper source artifact linking
+    console.log('\n🔗 Step 6: Validating transform input relationships...');
+    let editTransformsFound = 0;
+    let sourceLinksValidated = 0;
+
+    for (const transform of transforms) {
+        if (transform.type === 'llm') {
+            const inputs = transformInputs.filter((ti: any) => ti.transform_id === transform.id);
+            const outputs = transformOutputs.filter((to: any) => to.transform_id === transform.id);
+
+            // Check if this transform has both tool_input and source inputs (indicating it's an edit)
+            const hasToolInput = inputs.some((input: any) => input.input_role === 'tool_input');
+            const hasSourceInput = inputs.some((input: any) => input.input_role === 'source');
+
+            if (hasToolInput && hasSourceInput) {
+                editTransformsFound++;
+                const sourceInput = inputs.find((input: any) => input.input_role === 'source');
+                if (sourceInput) {
+                    console.log(`  ✅ Edit transform ${transform.id} links to source artifact ${sourceInput.artifact_id}`);
+                    sourceLinksValidated++;
+                }
+            }
+        }
+    }
+
+    if (editTransformsFound === 0) {
+        console.log('  📝 No edit transforms found (only generation transforms)');
+    } else {
+        console.log(`  ✅ Validated ${sourceLinksValidated}/${editTransformsFound} edit transform source links`);
+    }
+
+    console.log('\n🎉 All lineage validation tests passed!');
+}
 
 async function runAgentFlowIntegrationTest() {
     console.log('\n🚀 Starting Agent Flow Integration Test');
@@ -131,8 +298,13 @@ async function runAgentFlowIntegrationTest() {
             console.log(`📝 Synopsis stages: ${outlineData.synopsis_stages?.length || 0}\n`);
         }
 
-        // Step 7: Display final statistics
-        console.log('📊 STEP 7: Final Test Statistics');
+        // Step 7: Comprehensive Lineage Validation
+        console.log('🔍 STEP 7: Comprehensive Lineage Validation');
+        console.log('=============================================');
+        await validateCompleteLineage(testProjectId, artifactRepo, transformRepo);
+
+        // Step 8: Display final statistics
+        console.log('\n📊 STEP 8: Final Test Statistics');
         console.log('================================');
 
         const finalArtifacts = await artifactRepo.getProjectArtifacts(testProjectId, 100);
@@ -180,8 +352,8 @@ async function runAgentFlowIntegrationTest() {
         throw error;
 
     } finally {
-        // Step 8: Cleanup - wipe the test project
-        console.log('\n🧹 STEP 8: Cleaning up test project...');
+        // Step 9: Cleanup - wipe the test project
+        console.log('\n🧹 STEP 9: Cleaning up test project...');
         try {
             await projectService.wipeProject(testProjectId);
             console.log('✅ Test project wiped successfully');

@@ -14,6 +14,13 @@ export interface StreamingTransformConfig<TInput, TOutput> {
     outputSchema: z.ZodSchema<TOutput>;
     prepareTemplateVariables: (input: TInput, context?: any) => Record<string, string>;
     transformLLMOutput?: (llmOutput: TOutput, input: TInput) => any;  // Optional: transform LLM output to final artifact format
+
+    // NEW: Optional function to extract source artifact IDs from tool input
+    // Return array of {artifactId, inputRole} for linking existing artifacts as transform inputs
+    extractSourceArtifacts?: (input: TInput) => Array<{
+        artifactId: string;
+        inputRole: string;  // e.g., 'source', 'reference', 'context'
+    }>;
 }
 
 /**
@@ -103,7 +110,17 @@ export class StreamingTransformExecutor {
             );
             transformId = transform.id;
 
-            // 3. Create and link input artifact
+            // 3. Handle input artifacts: both source artifacts and tool input
+            const transformInputs: Array<{ artifactId: string; inputRole: string }> = [];
+
+            // 3a. Link source artifacts if specified by the tool
+            if (config.extractSourceArtifacts) {
+                const sourceArtifacts = config.extractSourceArtifacts(validatedInput);
+                console.log(`[StreamingTransformExecutor] Linking ${sourceArtifacts.length} source artifacts for ${config.templateName}`);
+                transformInputs.push(...sourceArtifacts);
+            }
+
+            // 3b. Create tool input artifact from tool parameters
             const inputArtifactType = this.getInputArtifactType(config.templateName);
             const inputArtifact = await artifactRepo.createArtifact(
                 projectId,
@@ -114,9 +131,10 @@ export class StreamingTransformExecutor {
                 'completed',
                 'user_input'
             );
-            await transformRepo.addTransformInputs(transformId, [
-                { artifactId: inputArtifact.id, inputRole: 'tool_input' }
-            ], projectId);
+            transformInputs.push({ artifactId: inputArtifact.id, inputRole: 'tool_input' });
+
+            // 3c. Add all transform inputs at once
+            await transformRepo.addTransformInputs(transformId, transformInputs, projectId);
 
             // 4. Create initial output artifact in streaming state
             const initialData = this.createInitialArtifactData(outputArtifactType, transformMetadata);

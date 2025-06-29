@@ -175,7 +175,12 @@ export function createBrainstormEditToolDefinition(
                     storyGenre: storyGenre,
                     editRequirements: input.editRequirements,
                     agentInstructions: input.agentInstructions || '请根据用户要求进行适当的改进和优化。'
-                })
+                }),
+                // NEW: Extract source artifact for proper lineage
+                extractSourceArtifacts: (input) => [{
+                    artifactId: input.sourceArtifactId,
+                    inputRole: 'source'
+                }]
             };
 
             const result = await executeStreamingTransform({

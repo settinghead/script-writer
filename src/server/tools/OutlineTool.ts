@@ -101,7 +101,12 @@ export function createOutlineToolDefinition(
                         genre: genreString,
                         requirements: input.requirements || '无特殊要求'
                     });
-                }
+                },
+                // NEW: Extract source artifact for proper lineage
+                extractSourceArtifacts: (input) => [{
+                    artifactId: input.sourceArtifactId,
+                    inputRole: 'source'
+                }]
             };
 
             const result = await executeStreamingTransform({
