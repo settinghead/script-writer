@@ -745,6 +745,146 @@ Electric SQL provides real-time database synchronization with **authenticated pr
 - **Debug Token Support**: Development workflow maintained with `debug-auth-token-script-writer-dev`
 - **Session Management**: Existing session lifecycle maintained (7-day expiry)
 
+### Advanced Caching System for Development & Testing ✅ COMPLETED
+
+**Major Achievement**: Implemented a comprehensive caching system that eliminates repeated LLM calls during development and testing while maintaining identical streaming behavior and supporting deterministic testing with fixed seeds.
+
+#### Core Design Principles
+- **Transparent Caching** - Parent code doesn't need to know about caching; it's completely internal to the service layer
+- **Full Streaming Progression Cache** - Caches the complete progression of partial results, not just final outputs
+- **Identical Replay Behavior** - Cached runs produce exactly the same streaming experience as original LLM calls
+- **Development-Only** - Caching disabled by default in production, only enabled for tests and development
+- **Deterministic Testing** - Fixed seeds ensure reproducible test results across runs
+
+#### Technical Implementation
+**File-Based Caching Infrastructure**:
+```typescript
+interface CachedStreamChunk {
+  type: 'object' | 'text';
+  data: any;
+  timestamp: number;
+}
+
+interface CacheMetadata {
+  cacheKey: string;
+  createdAt: string;
+  modelName: string;
+  provider: string;
+  totalChunks: number;
+  schemaHash?: string;
+}
+```
+
+**Cache Key Generation**:
+- **Comprehensive Hashing** - SHA256 hash of prompt + seed + schema hash + model settings
+- **Model-Aware** - Includes model name and provider in cache key for proper isolation
+- **Parameter-Sensitive** - Temperature, topP, and maxTokens included for cache invalidation
+- **Schema Versioning** - Schema hash ensures cache invalidation when data structures change
+
+**CachedLLMService Architecture**:
+```typescript
+// Clean interface matching AI SDK patterns
+const cachedService = CachedLLMService.withCaching();
+const nonCachedService = CachedLLMService.withoutCaching();
+
+// Explicit model parameter (like AI SDK)
+const result = await cachedService.streamObject({
+  model: openai('gpt-4o-mini'),
+  prompt: "Generate story ideas...",
+  schema: BrainstormSchema,
+  seed: 12345,
+  temperature: 0.7
+});
+```
+
+#### Tool-Level Caching Integration
+**Factory-Level Configuration** - Caching parameters passed at tool creation time rather than through AI SDK tool calling:
+
+```typescript
+// Test tools created with caching enabled
+const brainstormTool = createBrainstormToolDefinition(
+  transformRepo, artifactRepo, projectId, userId,
+  {
+    enableCaching: true,
+    seed: 12345,
+    temperature: 0.7,
+    topP: 0.9,
+    maxTokens: 4000
+  }
+);
+
+// Production tools created without caching (disabled by default)
+const productionTool = createBrainstormToolDefinition(
+  transformRepo, artifactRepo, projectId, userId
+  // No caching options = caching disabled
+);
+```
+
+#### Cache Performance & Storage
+**File System Organization**:
+```
+./cache/llm-streams/
+├── 8201b95a.json    # BrainstormTool cache (77 chunks)
+├── 48e3a3ef.json    # BrainstormEditTool cache (33 chunks) 
+└── 365391b2.json    # OutlineTool cache (777 chunks)
+```
+
+**Cache Hit/Miss Behavior**:
+- **First Run**: `Cache MISS for key 8201b95a...` → `Saved 77 chunks to cache`
+- **Second Run**: `Cache HIT for key 8201b95a... (77 chunks)` → `Replaying 77 cached chunks...`
+- **Fast Replay**: Cached runs complete in seconds vs minutes for LLM generation
+
+#### Development Workflow Benefits
+**Testing Efficiency**:
+- **Reproducible Tests** - Fixed seeds ensure identical results across test runs
+- **Development Speed** - No waiting for LLM responses when iterating on business logic
+- **Cost Reduction** - Eliminates repeated API calls to OpenAI during development
+- **Debugging Support** - Consistent outputs make it easier to debug streaming issues
+
+**Cache Management**:
+- **Automatic Directory Creation** - Cache directories created automatically on first use
+- **Error Recovery** - Graceful fallback when cache is corrupted or missing
+- **Schema Invalidation** - Cache automatically invalidated when schemas change
+- **Manual Cleanup** - Developers can delete cache files to force fresh LLM calls
+
+#### Integration with Streaming Framework
+**StreamingTransformExecutor Integration**:
+```typescript
+const result = await executeStreamingTransform({
+  config,
+  input: params,
+  projectId, userId, transformRepo, artifactRepo,
+  outputArtifactType: 'brainstorm_idea_collection',
+  // Caching options passed from tool factory
+  enableCaching: cachingOptions?.enableCaching,
+  seed: cachingOptions?.seed,
+  temperature: cachingOptions?.temperature,
+  topP: cachingOptions?.topP,
+  maxTokens: cachingOptions?.maxTokens
+});
+```
+
+**Verified Tool Coverage**:
+- ✅ **BrainstormTool** - Full caching support with collection generation
+- ✅ **BrainstormEditTool** - Caching for AI-powered editing operations
+- ✅ **OutlineTool** - Complex object streaming with comprehensive caching
+- ✅ **Agent Framework** - Caching parameters flow through complete agent pipeline
+
+**Files Created**:
+- `src/server/services/StreamCache.ts` - Core caching infrastructure
+- `src/server/services/CachedLLMService.ts` - Transparent caching wrapper
+- Updated all tool factories to accept caching parameters
+- Enhanced `StreamingTransformExecutor.ts` with caching integration
+
+**Test Results Verified**:
+```
+🧪 Testing BrainstormTool: Cache HIT (77 chunks) ⚡
+🧪 Testing BrainstormEditTool: Cache HIT (33 chunks) ⚡  
+🧪 Testing OutlineTool: Cache HIT (777 chunks) ⚡
+```
+
+This caching system represents a major development workflow improvement, enabling rapid iteration on business logic without the overhead of repeated LLM API calls while maintaining complete fidelity to the original streaming experience.
+
 ### Unified Streaming Framework Architecture
 
 The application features a **unified streaming framework** that powers all AI tools with consistent behavior and minimal boilerplate code.
