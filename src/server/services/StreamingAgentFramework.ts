@@ -1,6 +1,7 @@
 import { tool, streamText } from 'ai';
 import { z } from 'zod';
 import { getLLMModel } from './LLMConfig';
+import { CachedLLMService, getCachedLLMService } from './CachedLLMService';
 import type { ChatMessageRepository } from '../repositories/ChatMessageRepository';
 
 /**
@@ -41,6 +42,12 @@ export interface StreamingAgentConfig {
   maxSteps?: number;
   projectId?: string;
   chatMessageRepo?: ChatMessageRepository;
+  // Caching options
+  enableCaching?: boolean;  // Enable LLM response caching (default: false)
+  seed?: number;  // Seed for deterministic outputs
+  temperature?: number;  // LLM temperature
+  topP?: number;  // LLM top-p sampling
+  maxTokens?: number;  // LLM max tokens
 }
 
 /**
@@ -59,20 +66,54 @@ export async function runStreamingAgent(config: StreamingAgentConfig): Promise<{
     tools[toolDef.name] = createAgentTool(toolDef);
   }
 
-  // Initialize model
-  const model = await getLLMModel();
-
   // Use the complete prompt provided by the caller
   const prompt = config.prompt;
 
-  try {
+  // Extract caching options
+  const {
+    enableCaching = false,
+    seed,
+    temperature,
+    topP,
+    maxTokens
+  } = config;
 
-    const result = await streamText({
-      model: model,
-      tools: tools,
-      maxSteps: config.maxSteps || 5,
-      prompt: prompt,
-    });
+  try {
+    let result;
+
+    if (enableCaching) {
+      // Use cached LLM service for streamText
+      const cachedLLMService = getCachedLLMService();
+      result = await cachedLLMService.streamText(prompt, {
+        enableCaching,
+        seed,
+        temperature,
+        topP,
+        maxTokens
+      });
+
+      // For cached service, we need to simulate the full stream structure
+      // This is a simplified implementation - the cached service returns different structure
+      console.warn('[StreamingAgentFramework] Cached streamText for agent framework not fully implemented yet');
+
+      // Fall back to regular streamText for now
+      const model = await getLLMModel();
+      result = await streamText({
+        model: model,
+        tools: tools,
+        maxSteps: config.maxSteps || 5,
+        prompt: prompt,
+      });
+    } else {
+      // Use regular LLM service
+      const model = await getLLMModel();
+      result = await streamText({
+        model: model,
+        tools: tools,
+        maxSteps: config.maxSteps || 5,
+        prompt: prompt,
+      });
+    }
 
     console.log('\n\n--- Agent Stream & Final Output ---');
     let finalResponse = '';

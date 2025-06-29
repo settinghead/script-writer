@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { TemplateService } from './templates/TemplateService';
 import { LLMService } from './LLMService';
+import { CachedLLMService, getCachedLLMService } from './CachedLLMService';
 import { TransformRepository } from '../repositories/TransformRepository';
 import { ArtifactRepository } from '../repositories/ArtifactRepository';
 
@@ -28,6 +29,12 @@ export interface StreamingTransformParams<TInput, TOutput> {
     outputArtifactType: string;  // e.g., 'brainstorm_idea_collection', 'outline'
     transformMetadata?: Record<string, any>;  // tool-specific metadata
     updateIntervalChunks?: number;  // How often to update artifact (default: 3)
+    // Caching options
+    enableCaching?: boolean;  // Enable LLM response caching (default: false)
+    seed?: number;  // Seed for deterministic outputs
+    temperature?: number;  // LLM temperature
+    topP?: number;  // LLM top-p sampling
+    maxTokens?: number;  // LLM max tokens
 }
 
 /**
@@ -44,10 +51,12 @@ export interface StreamingTransformResult {
 export class StreamingTransformExecutor {
     private templateService: TemplateService;
     private llmService: LLMService;
+    private cachedLLMService: CachedLLMService;
 
     constructor() {
         this.templateService = new TemplateService();
         this.llmService = new LLMService();
+        this.cachedLLMService = getCachedLLMService();
     }
 
     /**
@@ -65,7 +74,12 @@ export class StreamingTransformExecutor {
             artifactRepo,
             outputArtifactType,
             transformMetadata = {},
-            updateIntervalChunks = 3
+            updateIntervalChunks = 3,
+            enableCaching = false,
+            seed,
+            temperature,
+            topP,
+            maxTokens
         } = params;
 
         let transformId: string | null = null;
@@ -145,7 +159,12 @@ export class StreamingTransformExecutor {
             const stream = await this.executeStreamingWithRetry({
                 prompt: finalPrompt,
                 schema: config.outputSchema,
-                templateName: config.templateName
+                templateName: config.templateName,
+                enableCaching,
+                seed,
+                temperature,
+                topP,
+                maxTokens
             });
 
             // 8. Process stream and update artifact periodically
@@ -266,23 +285,56 @@ export class StreamingTransformExecutor {
         prompt: string;
         schema: z.ZodSchema<TOutput>;
         templateName: string;
+        enableCaching?: boolean;
+        seed?: number;
+        temperature?: number;
+        topP?: number;
+        maxTokens?: number;
     }) {
-        const { prompt, schema, templateName } = options;
+        const {
+            prompt,
+            schema,
+            templateName,
+            enableCaching = false,
+            seed,
+            temperature,
+            topP,
+            maxTokens
+        } = options;
+
+        const streamOptions = {
+            prompt,
+            schema: schema as any,
+            // Pass caching options
+            enableCaching,
+            seed,
+            temperature,
+            topP,
+            maxTokens
+        };
 
         try {
-            return await this.llmService.streamObject({
-                prompt,
-                schema: schema as any
-            });
+            if (enableCaching) {
+                return await this.cachedLLMService.streamObject(streamOptions);
+            } else {
+                return await this.llmService.streamObject({
+                    prompt,
+                    schema: schema as any
+                });
+            }
         } catch (error) {
             console.warn(`[StreamingTransformExecutor] First attempt failed for ${templateName}, retrying...`, error);
 
             // Single retry
             try {
-                return await this.llmService.streamObject({
-                    prompt,
-                    schema: schema as any
-                });
+                if (enableCaching) {
+                    return await this.cachedLLMService.streamObject(streamOptions);
+                } else {
+                    return await this.llmService.streamObject({
+                        prompt,
+                        schema: schema as any
+                    });
+                }
             } catch (retryError) {
                 console.error(`[StreamingTransformExecutor] Retry failed for ${templateName}:`, retryError);
                 throw retryError;

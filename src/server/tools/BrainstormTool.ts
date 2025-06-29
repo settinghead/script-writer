@@ -151,7 +151,13 @@ export function createBrainstormEditToolDefinition(
         description: '编辑和改进现有故事创意。适用场景：用户对现有创意有具体的修改要求或改进建议。重要：必须使用项目背景信息中显示的完整ID作为sourceArtifactId参数。支持各种编辑类型：内容扩展（"每个再长一点"、"详细一些"）、风格调整（"太老套，创新一点"、"更有趣一些"）、情节修改（"改成现代背景"、"加入悬疑元素"）、结构调整（"重新安排情节"、"调整人物关系"）、其他改进（"更符合年轻人口味"、"增加商业价值"）等。',
         inputSchema: BrainstormEditInputSchema,
         outputSchema: BrainstormEditOutputSchema,
-        execute: async (params: BrainstormEditInput, { toolCallId }): Promise<BrainstormEditToolResult> => {
+        execute: async (params: BrainstormEditInput & {
+            enableCaching?: boolean;
+            seed?: number;
+            temperature?: number;
+            topP?: number;
+            maxTokens?: number;
+        }, { toolCallId }): Promise<BrainstormEditToolResult> => {
             console.log(`[BrainstormEditTool] Starting streaming edit for artifact ${params.sourceArtifactId}`);
 
             // Extract source idea data for context - this must be done first
@@ -188,7 +194,13 @@ export function createBrainstormEditToolDefinition(
                     original_idea: originalIdea,
                     platform: targetPlatform,
                     genre: storyGenre
-                }
+                },
+                // Pass caching options
+                enableCaching: params.enableCaching,
+                seed: params.seed,
+                temperature: params.temperature,
+                topP: params.topP,
+                maxTokens: params.maxTokens
             });
 
             console.log(`[BrainstormEditTool] Successfully completed streaming edit with artifact ${result.outputArtifactId}`);
@@ -282,7 +294,13 @@ export function createBrainstormToolDefinition(
         description: '生成新的故事创意。适用场景：用户想要全新的故事想法、需要更多创意选择、或当前没有满意的故事创意时。例如："给我一些新的故事想法"、"再想几个不同的创意"。基于平台和类型生成适合短视频内容的创意故事概念。',
         inputSchema: IdeationInputSchema,
         outputSchema: IdeationOutputSchema,
-        execute: async (params: IdeationInput): Promise<BrainstormToolResult> => {
+        execute: async (params: IdeationInput & {
+            enableCaching?: boolean;
+            seed?: number;
+            temperature?: number;
+            topP?: number;
+            maxTokens?: number;
+        }): Promise<BrainstormToolResult> => {
             const result = await executeStreamingTransform({
                 config,
                 input: params,
@@ -301,7 +319,13 @@ export function createBrainstormToolDefinition(
                         genre: params.genre,
                         total_ideas: 0
                     }
-                }
+                },
+                // Pass caching options
+                enableCaching: params.enableCaching,
+                seed: params.seed,
+                temperature: params.temperature,
+                topP: params.topP,
+                maxTokens: params.maxTokens
             });
 
             return {
