@@ -26,16 +26,11 @@ const CharacterSchema = z.object({
     key_scenes: z.array(z.string())
 });
 
-// Stage schema (from outline.ts template)
+// Simplified Stage schema - focused on chronological story development
 const StageSchema = z.object({
     title: z.string(),
     stageSynopsis: z.string(),
-    numberOfEpisodes: z.number(),
     timeframe: z.string(),
-    startingCondition: z.string(),
-    endingCondition: z.string(),
-    stageStartEvent: z.string(),
-    stageEndEvent: z.string(),
     keyPoints: z.array(z.object({
         event: z.string(),
         timeSpan: z.string(),
@@ -47,11 +42,10 @@ const StageSchema = z.object({
             characters: z.array(z.string()),
             content: z.string()
         }))
-    })),
-    externalPressure: z.string()
+    }))
 });
 
-// Complete outline output schema (from outline.ts template)
+// Complete outline output schema - simplified and focused on chronological development
 export const OutlineGenerationOutputSchema = z.object({
     title: z.string(),
     genre: z.string(),
@@ -66,7 +60,6 @@ export const OutlineGenerationOutputSchema = z.object({
         key_scenes: z.array(z.string())
     }),
     characters: z.array(CharacterSchema),
-    synopsis_stages: z.array(z.string()),
     stages: z.array(StageSchema)
 });
 

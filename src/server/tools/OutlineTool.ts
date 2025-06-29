@@ -94,13 +94,18 @@ export function createOutlineToolDefinition(
                         .join(', ');
                     const episodeInfo = `总共${input.totalEpisodes}集，每集${input.episodeDuration}分钟`;
 
+                    // Calculate recommended number of stages based on episode count
+                    const recommendedStages = Math.ceil(input.totalEpisodes / 6) + 2; // Roughly 1 stage per 6 episodes, minimum 3
+                    const stageGuidance = `请创建${recommendedStages}个左右的故事阶段（${input.totalEpisodes}集适合${recommendedStages}个阶段）`;
+
                     return ({
                         userInput: `${sourceIdeaData.title}\n\n${sourceIdeaData.body}`,
                         totalEpisodes: input.totalEpisodes.toString(),
                         episodeInfo: episodeInfo,
                         platform: input.selectedPlatform,
                         genre: genreString,
-                        requirements: input.requirements || '无特殊要求'
+                        requirements: input.requirements || '无特殊要求',
+                        stageGuidance: stageGuidance
                     });
                 },
                 // NEW: Extract source artifact for proper lineage

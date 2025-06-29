@@ -1,8 +1,8 @@
 
 export const outlineTemplate = {
-    id: 'outline',
-    name: 'Story Outline Generation',
-    promptTemplate: `你是一位深耕短剧创作的资深编剧，尤其擅长创作引人入胜、节奏明快、反转强烈的爆款短剧。
+  id: 'outline',
+  name: 'Story Outline Generation',
+  promptTemplate: `你是一位深耕短剧创作的资深编剧，尤其擅长创作引人入胜、节奏明快、反转强烈的爆款短剧。
 根据用户提供的故事灵感，请创作一个**单集完结**的短剧大纲。%%params.episodeInfo%%
 
 **📺 制作规格**：
@@ -84,62 +84,28 @@ export const outlineTemplate = {
     *   **缺陷人性化**: 正面角色要有明显缺点，反面角色要有可理解的立场
     *   **成长轨迹**: 主要角色都应该有明确的心理变化和成长过程
     *   **关系复杂化**: 人物关系不应该是简单的敌友二分，要有层次感
-8.  **分段故事梗概 (synopsis_stages)**: **总计约2000字符的详细故事发展，分为5个阶段，每段必须达到约400字符**：
+8.  **故事阶段 (stages)**: **分年代故事发展，创建按时间顺序排列的故事阶段**：
     
-    **每个阶段必须详细描述，不可过于简化（参见例子）。**
-    **每个阶段必须包含该阶段覆盖的集数(numberOfEpisodes)，所有阶段的集数总和必须等于%%params.totalEpisodes%%集。请根据剧情复杂度和重要性合理分配集数。**
-    **给的灵感往往不够完整，需要你根据灵感进行扩展，确保每个阶段都有足够的情节发展**
-
-    **时间规划与事件密度平衡要求**：
+    **阶段数量要求**：%%params.stageGuidance%%
+    - **每个阶段专注于一个核心故事线**：角色发展、关系变化、或重大事件
+    - **时间顺序清晰**：按故事发生的时间顺序排列，不按剧集拍摄顺序
     
-    **阶段结构增强要求 - 为防止时间线崩塌和确保清晰的阶段边界，每个阶段必须包含以下详细信息：**
+    **每个阶段必须包含以下信息：**
     
-    *   **故事开端**: 背景设定、人物介绍，冲突开端
-        - **numberOfEpisodes**: 该阶段通常为1集
-        - **stageSynopsis**: 详细描述故事发生的具体时间、地点、社会背景和环境氛围；逐一介绍主要角色的完整身份、详细性格特征、具体目标和当前生活状态；建立故事的整体基调、情感色彩和叙事风格；巧妙埋下多个后续冲突的重要伏笔和线索；展现主角的初始状态和面临的潜在问题。在这个阶段冲突已经开始浮现**
-        - **timeframe**: 具体到天的时间跨度（如"第1-3天"），根据事件密度合理安排
-        - **startingCondition**: 阶段开始时的具体状况
-        - **endingCondition**: 阶段结束时必须达到的状态
-        - **stageStartEvent**: 触发该阶段的关键事件
-        - **stageEndEvent**: 结束该阶段的标志性事件
-        - **keyPoints**: 该阶段的3-4个重要事件节点，每个包含事件描述、时间跨度、情感发展和关系变化（如[{"event":"首次请求帮助","timeSpan":"第1天","emotionArcs":[{"characters":["男主","女主"],"content":"从尴尬紧张转为初步信任"}],"relationshipDevelopments":[{"characters":["男主","女主"],"content":"从陌生邻居升级为合作伙伴"}]}]）
-        - **relationshipLevel**: 人物关系的变化
-        - **emotionalArc**: 情感变化轨迹
-        - **externalPressure**: 外部压力状况
+    *   **title**: 阶段标题，简洁概括该阶段的核心内容
+    *   **stageSynopsis**: 详细描述该阶段的故事发展、角色行为和情感变化（约200-300字符）
+    *   **timeframe**: 具体时间跨度（如"第1-3天"、"第一周"等），确保时间连贯性
+    *   **keyPoints**: 该阶段的2-3个重要事件节点，每个包含：
+        - **event**: 关键事件内容
+        - **timeSpan**: 事件发生的时间跨度
+        - **emotionArcs**: 情感变化轨迹，包含角色和具体情感发展
+        - **relationshipDevelopments**: 人物关系的发展变化
     
-    *   **第二阶段**: 冲突升级与矛盾爆发
-        - **stageSynopsis**: 详细描述引发核心矛盾的具体事件和冲突爆发过程；深入展现主角面临的第一个重大挑战的具体内容和影响；清晰呈现各方势力、利益关系和立场分歧的初步显现；描述推动故事向前发展的多个关键事件及其连锁反应；展现角色在冲突中的具体反应和应对策略。**重要：故事内容中不要提及具体天数，专注于事件描述**
-        - **timeframe**: 根据冲突强度安排（如"第4-8天"，冲突期可适当压缩）
-        - **startingCondition**: 承接上一阶段的结束状态
-        - **endingCondition**: 该阶段必须达到的新状态（不能超前到后续阶段）
-        - **stageStartEvent**: 从上一阶段自然过渡的事件
-        - **stageEndEvent**: 为下一阶段做铺垫的事件
-        - **keyPoints**: 该阶段的重要进展节点，每个包含事件、时间跨度、情感发展和关系变化
-        - **relationshipLevel**: 关系的进一步发展
-        - **emotionalArc**: 情感的复杂化过程
-        - **externalPressure**: 外部压力的升级
-    
-    *   **第三阶段**: 情节发展与关系复杂化 
-        - **stageSynopsis**: **重要：故事内容专注于情节发展，不提及具体天数**
-        - **timeframe**: 发展期可适当延长（如"第9-20天"）
-        - **其他增强结构字段同上...**
-    
-    *   **第四阶段**: 高潮对决与重大反转
-        - **stageSynopsis**: **重要：故事内容专注于高潮情节，不提及具体天数**
-        - **timeframe**: 高潮期节奏加快（如"第21-25天"）
-        - **其他增强结构字段同上...**
-    
-    *   **第五阶段**: 结局收尾与情感升华
-        - **stageSynopsis**: **重要：故事内容专注于结局发展，不提及具体天数**
-        - **timeframe**: 收尾期合理安排（如"第26-30天"）
-        - **其他增强结构字段同上...**
-
-    **时间连贯性检查清单（每个阶段都必须满足）**：
-    - ✅ 时间跨度是否与事件数量匹配？（避免3天发生10件大事）
-    - ✅ 事件发展是否需要合理的执行时间？（调查、恢复、准备等）
-    - ✅ 集数分配是否与时间跨度成比例？（避免2天拍10集）
-    - ✅ 阶段之间的时间是否连续？（避免时间跳跃或重叠）
-    - ✅ 关键事件的时间间隔是否合理？（避免过于密集或稀疏）
+    **时间连贯性要求**：
+    - 时间跨度与事件数量匹配
+    - 事件发展符合现实逻辑
+    - 阶段间时间连续，无跳跃或重叠
+    - 关键事件时间间隔合理
 
 **短剧创作核心要求 (非常重要！):**
 -   **题材新颖**: 题材要新颖有创意，不要老旧、老套
@@ -153,7 +119,7 @@ export const outlineTemplate = {
 -   **结局爽快**: 结局要干脆利落，给观众明确的情感释放。
 -   **紧扣灵感**: 所有设计必须围绕原始故事灵感展开，并将其特点放大。
 -   **避免"电影感"**: 不要追求复杂的叙事结构、过多的角色内心戏或宏大的世界观。专注于简单直接、冲击力强的单集故事。
--   **字数达标要求**: 每个synopsis_stages条目都必须包含足够的情节细节、角色行动、环境描述、情感变化等。参见例子
+-   **阶段内容要求**: 每个stages条目都必须包含足够的情节细节、角色行动、环境描述、情感变化等
 -   **时间线连贯性**: 每个阶段的时间跨度和事件边界必须清晰，防止阶段间的时间重叠或跳跃。
 -   **时间规划合理性**: 必须确保时间框架与事件密度相匹配，避免不合理的时间安排。
 -   **逻辑合
@@ -292,17 +258,11 @@ export const outlineTemplate = {
       "key_scenes": ["[string] 重要场景1", "[string] 重要场景2"]
     }
   ],
-  "synopsis_stages": ["[string] 第一阶段梗概（约400字符）", "[string] 第二阶段梗概（约400字符）", "[string] 第三阶段梗概（约400字符）", "[string] 第四阶段梗概（约400字符）", "[string] 第五阶段梗概（约400字符）"],
   "stages": [
     {
-      "title": "[string] 第一阶段标题",
-      "stageSynopsis": "[string] 第一阶段梗概（约400字符）",
-      "numberOfEpisodes": "[number] 该阶段覆盖的集数",
+      "title": "[string] 阶段标题",
+      "stageSynopsis": "[string] 阶段梗概（约200-300字符）",
       "timeframe": "[string] 具体时间跨度（如'第1-5天'）",
-      "startingCondition": "[string] 阶段开始条件",
-      "endingCondition": "[string] 阶段结束条件",
-      "stageStartEvent": "[string] 触发该阶段的关键事件",
-      "stageEndEvent": "[string] 结束该阶段的标志性事件",
       "keyPoints": [
         {
           "event": "[string] 关键事件内容",
@@ -319,33 +279,15 @@ export const outlineTemplate = {
               "content": "[string] 该事件导致的关系发展描述"
             }
           ]
-        },
-        {
-          "event": "[string] 关键事件2内容",
-          "timeSpan": "[string] 事件时间跨度",
-          "emotionArcs": [
-            {
-              "characters": ["[string] 角色名"],
-              "content": "[string] 该事件引发的情感变化描述"
-            }
-          ],
-          "relationshipDevelopments": [
-            {
-              "characters": ["[string] 角色名1", "[string] 角色名2"],
-              "content": "[string] 该事件导致的关系发展描述"
-            }
-          ]
         }
-      ],
-      "externalPressure": "[string] 外部压力状况"
-    },
-    // ...接下来第二-第五阶段
+      ]
+    }
   ]
 }
 
 **CRITICAL: 只输出纯JSON格式，绝对不要在JSON后添加任何解释、设计说明、补充内容或其他文本。JSON结构必须完整且正确。**`,
-    outputFormat: 'json',
-    responseWrapper: '```json',
-    variables: ['params.episodeInfo', 'params.userInput', 'params.totalEpisodes', 'params.platform', 'params.genre', 'params.requirements']
+  outputFormat: 'json',
+  responseWrapper: '```json',
+  variables: ['params.episodeInfo', 'params.userInput', 'params.totalEpisodes', 'params.platform', 'params.genre', 'params.requirements', 'params.stageGuidance']
 };
 

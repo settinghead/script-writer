@@ -193,22 +193,67 @@ export const OutlineDisplay: React.FC<OutlineDisplayProps> = ({
                 )}
 
                 {/* Story Stages - only show if available */}
-                {outline.synopsis_stages && outline.synopsis_stages.length > 0 && (
+                {outline.stages && outline.stages.length > 0 && (
                     <Card
                         size="small"
-                        title="分段故事发展"
+                        title="故事发展阶段"
                         style={{ backgroundColor: '#262626', border: '1px solid #434343' }}
                     >
                         <Collapse ghost>
-                            {outline.synopsis_stages.map((stage, index) => (
+                            {outline.stages.map((stage, index) => (
                                 <Panel
-                                    header={`第${index + 1}阶段`}
+                                    header={stage.title || `第${index + 1}阶段`}
                                     key={index}
                                     style={{ backgroundColor: '#1f1f1f', border: '1px solid #434343', marginBottom: '8px' }}
                                 >
-                                    <Paragraph style={{ margin: 0, lineHeight: 1.6 }}>
-                                        {stage}
-                                    </Paragraph>
+                                    <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                                        {stage.timeframe && (
+                                            <div>
+                                                <Text strong>时间跨度：</Text>
+                                                <Tag color="blue">{stage.timeframe}</Tag>
+                                            </div>
+                                        )}
+                                        {stage.stageSynopsis && (
+                                            <Paragraph style={{ margin: 0, lineHeight: 1.6 }}>
+                                                {stage.stageSynopsis}
+                                            </Paragraph>
+                                        )}
+                                        {stage.keyPoints && stage.keyPoints.length > 0 && (
+                                            <div>
+                                                <Text strong>关键事件：</Text>
+                                                <div style={{ marginTop: '8px' }}>
+                                                    {stage.keyPoints.map((point, pointIndex) => (
+                                                        <div key={pointIndex} style={{ marginBottom: '8px', padding: '8px', backgroundColor: '#262626', borderRadius: '4px' }}>
+                                                            <Text strong>{point.event}</Text>
+                                                            {point.timeSpan && (
+                                                                <div><Text type="secondary">时间: {point.timeSpan}</Text></div>
+                                                            )}
+                                                            {point.emotionArcs && point.emotionArcs.length > 0 && (
+                                                                <div style={{ marginTop: '4px' }}>
+                                                                    <Text type="secondary">情感变化: </Text>
+                                                                    {point.emotionArcs.map((arc, arcIndex) => (
+                                                                        <Text key={arcIndex} style={{ fontSize: '12px' }}>
+                                                                            {arc.characters.join(', ')}: {arc.content}
+                                                                        </Text>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                            {point.relationshipDevelopments && point.relationshipDevelopments.length > 0 && (
+                                                                <div style={{ marginTop: '4px' }}>
+                                                                    <Text type="secondary">关系发展: </Text>
+                                                                    {point.relationshipDevelopments.map((dev, devIndex) => (
+                                                                        <Text key={devIndex} style={{ fontSize: '12px' }}>
+                                                                            {dev.characters.join(' & ')}: {dev.content}
+                                                                        </Text>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </Space>
                                 </Panel>
                             ))}
                         </Collapse>
