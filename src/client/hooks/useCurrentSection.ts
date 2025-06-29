@@ -25,29 +25,75 @@ export function useCurrentSection(): CurrentSection {
                     intersectionRatio: e.intersectionRatio
                 })));
 
-                // Find the section with the highest intersection ratio
-                let maxRatio = 0;
+                // Find the section whose center is closest to the viewport center
                 let activeSection: CurrentSection = null;
+                let minDistanceToCenter = Infinity;
+                const viewportCenter = window.innerHeight / 2;
 
+                // First pass: try to find a section with good visibility (>5%)
                 entries.forEach((entry) => {
-                    if (entry.isIntersecting && entry.intersectionRatio > maxRatio) {
-                        maxRatio = entry.intersectionRatio;
+                    if (entry.isIntersecting && entry.intersectionRatio > 0.05) { // At least 5% visible
+                        const rect = entry.boundingClientRect;
+                        const elementCenter = rect.top + (rect.height / 2);
+                        const distanceToCenter = Math.abs(elementCenter - viewportCenter);
 
-                        // Extract section name from element ID
-                        const sectionId = entry.target.id;
-                        if (sectionId === 'brainstorm-ideas' || sectionId === 'story-outline') {
-                            activeSection = sectionId;
+                        console.log(`[useCurrentSection] ${entry.target.id}:`, {
+                            intersectionRatio: entry.intersectionRatio,
+                            elementCenter,
+                            viewportCenter,
+                            distanceToCenter,
+                            rect: { top: rect.top, bottom: rect.bottom, height: rect.height }
+                        });
+
+                        if (distanceToCenter < minDistanceToCenter) {
+                            minDistanceToCenter = distanceToCenter;
+
+                            // Extract section name from element ID
+                            const sectionId = entry.target.id;
+                            if (sectionId === 'brainstorm-ideas' || sectionId === 'story-outline') {
+                                activeSection = sectionId;
+                            }
                         }
                     }
                 });
 
-                console.log('[useCurrentSection] Setting active section:', activeSection);
+                // Second pass: if no section was found with good visibility, take any intersecting section
+                if (!activeSection) {
+                    minDistanceToCenter = Infinity;
+                    entries.forEach((entry) => {
+                        if (entry.isIntersecting && entry.intersectionRatio > 0) { // Any visibility
+                            const rect = entry.boundingClientRect;
+                            const elementCenter = rect.top + (rect.height / 2);
+                            const distanceToCenter = Math.abs(elementCenter - viewportCenter);
+
+                            console.log(`[useCurrentSection] ${entry.target.id} (fallback):`, {
+                                intersectionRatio: entry.intersectionRatio,
+                                elementCenter,
+                                viewportCenter,
+                                distanceToCenter,
+                                rect: { top: rect.top, bottom: rect.bottom, height: rect.height }
+                            });
+
+                            if (distanceToCenter < minDistanceToCenter) {
+                                minDistanceToCenter = distanceToCenter;
+
+                                // Extract section name from element ID
+                                const sectionId = entry.target.id;
+                                if (sectionId === 'brainstorm-ideas' || sectionId === 'story-outline') {
+                                    activeSection = sectionId;
+                                }
+                            }
+                        }
+                    });
+                }
+
+                console.log('[useCurrentSection] Setting active section:', activeSection, 'minDistance:', minDistanceToCenter);
                 setCurrentSection(activeSection);
             },
             {
                 root: null, // Use viewport as root
-                rootMargin: '-20% 0px -20% 0px', // Trigger when section is in middle 60% of viewport
-                threshold: [0, 0.1, 0.25, 0.5, 0.75, 1] // Multiple thresholds for better detection
+                rootMargin: '-10% 0px -10% 0px', // Trigger when section is in middle 80% of viewport
+                threshold: [0, 0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 1] // More fine-grained thresholds
             }
         );
 

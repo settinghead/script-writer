@@ -47,6 +47,15 @@ const ProjectLayout: React.FC = () => {
     // Fetch project data using our main hook
     useProjectData(projectId!);
 
+    // Debug: Log when right sidebar is rendered
+    useEffect(() => {
+        if (!isMobile && rightSidebarVisible) {
+            console.log('[ProjectLayout] Right sidebar is visible, WorkflowVisualization should render');
+        } else {
+            console.log('[ProjectLayout] Right sidebar hidden:', { isMobile, rightSidebarVisible });
+        }
+    }, [isMobile, rightSidebarVisible]);
+
     // Debug toggle handlers
     const toggleRawGraph = useCallback(() => {
         const newSearchParams = new URLSearchParams(searchParams);
