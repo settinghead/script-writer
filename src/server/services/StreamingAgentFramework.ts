@@ -79,41 +79,20 @@ export async function runStreamingAgent(config: StreamingAgentConfig): Promise<{
   } = config;
 
   try {
-    let result;
-
-    if (enableCaching) {
-      // Use cached LLM service for streamText
-      const cachedLLMService = getCachedLLMService();
-      result = await cachedLLMService.streamText(prompt, {
-        enableCaching,
-        seed,
-        temperature,
-        topP,
-        maxTokens
-      });
-
-      // For cached service, we need to simulate the full stream structure
-      // This is a simplified implementation - the cached service returns different structure
-      console.warn('[StreamingAgentFramework] Cached streamText for agent framework not fully implemented yet');
-
-      // Fall back to regular streamText for now
-      const model = await getLLMModel();
-      result = await streamText({
-        model: model,
-        tools: tools,
-        maxSteps: config.maxSteps || 5,
-        prompt: prompt,
-      });
-    } else {
-      // Use regular LLM service
-      const model = await getLLMModel();
-      result = await streamText({
-        model: model,
-        tools: tools,
-        maxSteps: config.maxSteps || 5,
-        prompt: prompt,
-      });
-    }
+    // Note: For now, streamText caching in agent framework is not implemented
+    // because AI SDK's streamText with tools has complex structure that's hard to cache
+    const model = await getLLMModel();
+    const result = await streamText({
+      model: model,
+      tools: tools,
+      maxSteps: config.maxSteps || 5,
+      prompt: prompt,
+      // Pass AI SDK options directly
+      ...(seed && { seed }),
+      ...(temperature && { temperature }),
+      ...(topP && { topP }),
+      ...(maxTokens && { maxTokens })
+    });
 
     console.log('\n\n--- Agent Stream & Final Output ---');
     let finalResponse = '';
