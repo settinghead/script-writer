@@ -21,16 +21,16 @@ export const brainstormEditTemplate: LLMTemplate = {
 5. 保持故事梗概在200字左右，具有清晰的叙事结构
 
 **当前故事信息：**
-原标题：%%originalTitle%%
-原内容：%%originalBody%%
-目标平台：%%targetPlatform%%
-故事类型：%%storyGenre%%
+原标题：%%params.originalTitle%%
+原内容：%%params.originalBody%%
+目标平台：%%params.targetPlatform%%
+故事类型：%%params.storyGenre%%
 
 **用户修改要求：**
-%%editRequirements%%
+%%params.editRequirements%%
 
 **代理增强指导：**
-%%agentInstructions%%
+%%params.agentInstructions%%
 
 **任务要求：**
 基于用户的修改要求和代理的增强指导，对现有故事进行改进。你需要：
@@ -67,11 +67,11 @@ export const brainstormEditTemplate: LLMTemplate = {
     outputFormat: 'json',
     responseWrapper: '```json',
     variables: [
-        'originalTitle',
-        'originalBody',
-        'targetPlatform',
-        'storyGenre',
-        'editRequirements',
-        'agentInstructions'
+        'params.originalTitle',
+        'params.originalBody',
+        'params.targetPlatform',
+        'params.storyGenre',
+        'params.editRequirements',
+        'params.agentInstructions'
     ]
 }; 

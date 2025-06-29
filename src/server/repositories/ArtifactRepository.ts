@@ -18,8 +18,8 @@ export class ArtifactRepository {
         streamingStatus: string,
         originType: 'ai_generated' | 'user_input'
     ): Promise<Artifact> {
-        // Validate artifact data
-        if (!validateArtifactData(type, typeVersion, data)) {
+        // Only validate completed artifacts, skip validation during streaming
+        if (streamingStatus === 'completed' && !validateArtifactData(type, typeVersion, data)) {
             console.error(`Invalid data for artifact type ${type}:${typeVersion}`);
             console.error("data:", data);
             throw new Error(`Invalid data for artifact type ${type}:${typeVersion}`);

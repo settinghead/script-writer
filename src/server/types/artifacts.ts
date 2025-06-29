@@ -135,6 +135,24 @@ export interface BrainstormToolInputV1 {
     other_requirements?: string;
 }
 
+// Input parameters for brainstorm edit tool execution
+export interface BrainstormEditInputV1 {
+    ideaIndex?: number;
+    sourceArtifactId: string;
+    editRequirements: string;
+    agentInstructions?: string;
+}
+
+// Input parameters for outline generation tool execution
+export interface OutlineGenerationInputV1 {
+    sourceArtifactId: string;
+    totalEpisodes?: number;
+    episodeDuration?: number;
+    selectedPlatform?: string;
+    selectedGenrePaths?: string[][];
+    requirements?: string;
+}
+
 // Collection of brainstorm ideas (output from brainstorm tool)
 export interface BrainstormIdeaCollectionV1 extends Array<{
     title: string;
@@ -382,6 +400,10 @@ export function validateArtifactData(type: string, typeVersion: string, data: an
             return isBrainstormingJobParamsV1(data);
         case 'brainstorm_tool_input:v1':
             return isBrainstormToolInputV1(data);
+        case 'brainstorm_edit_input:v1':
+            return isBrainstormEditInputV1(data);
+        case 'outline_generation_input:v1':
+            return isOutlineGenerationInputV1(data);
         case 'outline_job_params:v1':
             return isOutlineJobParamsV1(data);
         case 'user_input:v1':
@@ -481,6 +503,24 @@ function isBrainstormToolInputV1(data: any): data is BrainstormToolInputV1 {
         typeof data.platform === 'string' &&
         typeof data.genre === 'string' &&
         (data.other_requirements === undefined || typeof data.other_requirements === 'string');
+}
+
+function isBrainstormEditInputV1(data: any): data is BrainstormEditInputV1 {
+    return typeof data === 'object' &&
+        typeof data.sourceArtifactId === 'string' &&
+        typeof data.editRequirements === 'string' &&
+        (data.ideaIndex === undefined || typeof data.ideaIndex === 'number') &&
+        (data.agentInstructions === undefined || typeof data.agentInstructions === 'string');
+}
+
+function isOutlineGenerationInputV1(data: any): data is OutlineGenerationInputV1 {
+    return typeof data === 'object' &&
+        typeof data.sourceArtifactId === 'string' &&
+        (data.totalEpisodes === undefined || typeof data.totalEpisodes === 'number') &&
+        (data.episodeDuration === undefined || typeof data.episodeDuration === 'number') &&
+        (data.selectedPlatform === undefined || typeof data.selectedPlatform === 'string') &&
+        (data.selectedGenrePaths === undefined || Array.isArray(data.selectedGenrePaths)) &&
+        (data.requirements === undefined || typeof data.requirements === 'string');
 }
 
 

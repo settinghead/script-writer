@@ -1,4 +1,5 @@
 import { brainstormingTemplate } from './brainstorming.js';
+import { brainstormEditTemplate } from './brainstormEdit.js';
 import { outlineTemplate } from './outline.js';
 import { generateEpisodeSpecificInstructions, episodeSynopsisGenerationTemplate } from './episodeSynopsisGeneration.js';
 import { scriptGenerationTemplate, generateScriptEpisodeSpecificInstructions } from './scriptGeneration.js';
@@ -28,6 +29,9 @@ export class TemplateService {
   private initializeTemplates() {
     // Register brainstorming template
     this.templates.set('brainstorming', brainstormingTemplate);
+
+    // Register brainstorm edit template
+    this.templates.set('brainstorm_edit', brainstormEditTemplate);
 
     // Register outline template
     this.templates.set('outline', outlineTemplate);
