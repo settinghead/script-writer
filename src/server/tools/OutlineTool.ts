@@ -33,19 +33,20 @@ export function createOutlineToolDefinition(
     artifactRepo: ArtifactRepository,
     projectId: string,
     userId: string,
+    cachingOptions?: {
+        enableCaching?: boolean;
+        seed?: number;
+        temperature?: number;
+        topP?: number;
+        maxTokens?: number;
+    }
 ): StreamingToolDefinition<OutlineGenerationInput, OutlineToolResult> {
     return {
         name: 'generate_outline',
         description: '基于选定的故事创意生成详细的剧集大纲。适用场景：用户已有满意的故事创意，需要生成可执行的剧集结构和角色发展。要求用户提供集数配置、平台要求等参数。必须使用项目背景信息中显示的完整artifact ID作为sourceArtifactId参数。',
         inputSchema: OutlineGenerationInputSchema,
         outputSchema: OutlineGenerationOutputSchema,
-        execute: async (params: OutlineGenerationInput & {
-            enableCaching?: boolean;
-            seed?: number;
-            temperature?: number;
-            topP?: number;
-            maxTokens?: number;
-        }, { toolCallId }): Promise<OutlineToolResult> => {
+        execute: async (params: OutlineGenerationInput, { toolCallId }): Promise<OutlineToolResult> => {
             console.log(`[OutlineTool] Starting streaming outline generation for artifact ${params.sourceArtifactId}`);
 
             // Extract source idea data first
@@ -127,12 +128,12 @@ export function createOutlineToolDefinition(
                     genre_paths: params.selectedGenrePaths,
                     requirements: params.requirements
                 },
-                // Pass caching options
-                enableCaching: params.enableCaching,
-                seed: params.seed,
-                temperature: params.temperature,
-                topP: params.topP,
-                maxTokens: params.maxTokens
+                // Pass caching options from factory
+                enableCaching: cachingOptions?.enableCaching,
+                seed: cachingOptions?.seed,
+                temperature: cachingOptions?.temperature,
+                topP: cachingOptions?.topP,
+                maxTokens: cachingOptions?.maxTokens
             });
 
             console.log(`[OutlineTool] Successfully completed streaming outline generation with artifact ${result.outputArtifactId}`);

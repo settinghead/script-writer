@@ -69,16 +69,20 @@ async function testBrainstormTool() {
             transformRepo,
             artifactRepo,
             TEST_PROJECT_ID,
-            TEST_USER_ID
+            TEST_USER_ID,
+            {
+                enableCaching: true,
+                seed: 12345,  // Fixed seed for reproducible results
+                temperature: 0.7,
+                topP: 0.9,
+                maxTokens: 4000
+            }
         );
 
         const testInput = {
             platform: '抖音',
             genre: '现代甜宠',
-            other_requirements: '快节奏，高颜值主角',
-            // Enable caching for testing to avoid repeated LLM calls
-            enableCaching: true,
-            seed: 12345  // Fixed seed for reproducible results
+            other_requirements: '快节奏，高颜值主角'
         };
 
         console.log('📤 Executing brainstorm tool...');
@@ -116,17 +120,21 @@ async function testBrainstormEditTool(sourceArtifactId: string) {
             transformRepo,
             artifactRepo,
             TEST_PROJECT_ID,
-            TEST_USER_ID
+            TEST_USER_ID,
+            {
+                enableCaching: true,
+                seed: 23456,  // Different seed for different operations
+                temperature: 0.7,
+                topP: 0.9,
+                maxTokens: 2000
+            }
         );
 
         const testInput = {
             sourceArtifactId: sourceArtifactId,
             editRequirements: '让故事更加现代化，增加科技元素',
             ideaIndex: 0,
-            agentInstructions: '保持原有的情感核心，但加入现代科技背景',
-            // Enable caching for testing to avoid repeated LLM calls
-            enableCaching: true,
-            seed: 23456  // Different seed for different operations
+            agentInstructions: '保持原有的情感核心，但加入现代科技背景'
         };
 
         console.log('📤 Executing brainstorm edit tool...');
@@ -160,7 +168,14 @@ async function testOutlineTool(sourceArtifactId: string) {
             transformRepo,
             artifactRepo,
             TEST_PROJECT_ID,
-            TEST_USER_ID
+            TEST_USER_ID,
+            {
+                enableCaching: true,
+                seed: 34567,  // Different seed for different operations
+                temperature: 0.7,
+                topP: 0.9,
+                maxTokens: 6000
+            }
         );
 
         const testInput = {
@@ -169,10 +184,7 @@ async function testOutlineTool(sourceArtifactId: string) {
             episodeDuration: 3,
             selectedPlatform: '抖音',
             selectedGenrePaths: [['现代', '甜宠', '都市']],
-            requirements: '高颜值演员，快节奏剧情',
-            // Enable caching for testing to avoid repeated LLM calls  
-            enableCaching: true,
-            seed: 34567  // Different seed for different operations
+            requirements: '高颜值演员，快节奏剧情'
         };
 
         console.log('📤 Executing outline tool...');

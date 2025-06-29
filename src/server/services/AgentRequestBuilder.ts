@@ -206,23 +206,23 @@ export function buildToolsForRequestType(
         case 'brainstorm_generation':
             // Only provide brainstorm generation tool
             return [
-                createBrainstormToolDefinition(transformRepo, artifactRepo, projectId, userId)
+                createBrainstormToolDefinition(transformRepo, artifactRepo, projectId, userId, cachingOptions)
             ];
 
         case 'outline_generation':
             // Provide outline generation tool
             return [
-                createOutlineToolDefinition(transformRepo, artifactRepo, projectId, userId),
-                createBrainstormEditToolDefinition(transformRepo, artifactRepo, projectId, userId)
+                createOutlineToolDefinition(transformRepo, artifactRepo, projectId, userId, cachingOptions),
+                createBrainstormEditToolDefinition(transformRepo, artifactRepo, projectId, userId, cachingOptions)
             ];
 
         case 'general':
         default:
             // Provide all available tools for general requests
             return [
-                createBrainstormToolDefinition(transformRepo, artifactRepo, projectId, userId),
-                createBrainstormEditToolDefinition(transformRepo, artifactRepo, projectId, userId),
-                createOutlineToolDefinition(transformRepo, artifactRepo, projectId, userId)
+                createBrainstormToolDefinition(transformRepo, artifactRepo, projectId, userId, cachingOptions),
+                createBrainstormEditToolDefinition(transformRepo, artifactRepo, projectId, userId, cachingOptions),
+                createOutlineToolDefinition(transformRepo, artifactRepo, projectId, userId, cachingOptions)
             ];
     }
 }

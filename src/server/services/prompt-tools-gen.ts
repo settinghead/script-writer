@@ -82,19 +82,33 @@ ${contextString}
  * Pure function to generate tool definitions for general agent
  */
 export function generateAgentTools(
-    { transformRepo, artifactRepo, projectId, userId }: { transformRepo: TransformRepository; artifactRepo: ArtifactRepository; projectId: string; userId: string; }): StreamingToolDefinition<any, any>[] {
+    { transformRepo, artifactRepo, projectId, userId, cachingOptions }: {
+        transformRepo: TransformRepository;
+        artifactRepo: ArtifactRepository;
+        projectId: string;
+        userId: string;
+        cachingOptions?: {
+            enableCaching?: boolean;
+            seed?: number;
+            temperature?: number;
+            topP?: number;
+            maxTokens?: number;
+        };
+    }): StreamingToolDefinition<any, any>[] {
     const brainstormToolDef = createBrainstormToolDefinition(
         transformRepo,
         artifactRepo,
         projectId,
-        userId
+        userId,
+        cachingOptions
     );
 
     const brainstormEditToolDef = createBrainstormEditToolDefinition(
         transformRepo,
         artifactRepo,
         projectId,
-        userId
+        userId,
+        cachingOptions
     );
 
     return [brainstormToolDef, brainstormEditToolDef];
