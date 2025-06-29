@@ -11,6 +11,7 @@ export interface CacheKeyParams {
     seed?: number;
     schemaHash?: string;
     modelName: string;
+    provider?: string; // Model provider (openai, anthropic, etc.)
     temperature?: number;
     topP?: number;
     maxTokens?: number;

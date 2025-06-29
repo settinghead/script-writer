@@ -302,11 +302,19 @@ export class StreamingTransformExecutor {
             maxTokens
         } = options;
 
+        // Get model instance for explicit parameter passing
+        const { getLLMModel } = await import('./LLMConfig.js');
+        const model = await getLLMModel();
+
+        // Choose service based on caching preference
+        const service = enableCaching
+            ? CachedLLMService.withCaching()
+            : CachedLLMService.withoutCaching();
+
         const streamOptions = {
+            model: model,
             prompt,
             schema: schema as any,
-            // Pass caching options
-            enableCaching,
             seed,
             temperature,
             topP,
@@ -314,27 +322,13 @@ export class StreamingTransformExecutor {
         };
 
         try {
-            if (enableCaching) {
-                return await this.cachedLLMService.streamObject(streamOptions);
-            } else {
-                return await this.llmService.streamObject({
-                    prompt,
-                    schema: schema as any
-                });
-            }
+            return await service.streamObject(streamOptions);
         } catch (error) {
             console.warn(`[StreamingTransformExecutor] First attempt failed for ${templateName}, retrying...`, error);
 
-            // Single retry
+            // Single retry with the same service
             try {
-                if (enableCaching) {
-                    return await this.cachedLLMService.streamObject(streamOptions);
-                } else {
-                    return await this.llmService.streamObject({
-                        prompt,
-                        schema: schema as any
-                    });
-                }
+                return await service.streamObject(streamOptions);
             } catch (retryError) {
                 console.error(`[StreamingTransformExecutor] Retry failed for ${templateName}:`, retryError);
                 throw retryError;

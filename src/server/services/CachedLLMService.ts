@@ -1,72 +1,119 @@
 import { z } from 'zod';
 import { LLMService, LLMModelInfo, ReasoningResult } from './LLMService';
 import { StreamCache, getStreamCache, CacheKeyParams, CachedStreamChunk } from './StreamCache';
-import { getLLMCredentials } from './LLMConfig';
+import { getLLMCredentials, getLLMModel } from './LLMConfig';
 
 /**
- * Options for cached streaming operations
+ * Options for streamObject with caching support
  */
-export interface CachedStreamingOptions {
-    enableCaching?: boolean;
+export interface CachedStreamObjectOptions<T extends z.ZodSchema> {
+    model: any; // AI SDK model instance
+    prompt: string;
+    schema: T;
     seed?: number;
     temperature?: number;
     topP?: number;
     maxTokens?: number;
+    onReasoningStart?: (phase: string) => void;
+    onReasoningEnd?: (phase: string) => void;
 }
 
 /**
- * Cached wrapper around LLMService that provides caching for streaming operations
+ * Options for streamText with caching support  
+ */
+export interface CachedStreamTextOptions {
+    model: any; // AI SDK model instance
+    prompt: string;
+    seed?: number;
+    temperature?: number;
+    topP?: number;
+    maxTokens?: number;
+    onReasoningStart?: (phase: string) => void;
+    onReasoningEnd?: (phase: string) => void;
+}
+
+/**
+ * Cached LLM service that provides transparent caching with explicit model parameters
+ * Uses the same interface as AI SDK but with built-in caching
  */
 export class CachedLLMService {
     private llmService: LLMService;
     private streamCache: StreamCache;
+    private enableCaching: boolean;
 
-    constructor() {
+    constructor(enableCaching: boolean = true) {
         this.llmService = new LLMService();
         this.streamCache = getStreamCache();
+        this.enableCaching = enableCaching;
     }
 
     /**
-     * Get model information (passthrough to underlying service)
+     * Extract model information from AI SDK model instance
      */
-    getModelInfo(modelName?: string): LLMModelInfo {
-        return this.llmService.getModelInfo(modelName);
+    private extractModelInfo(model: any): LLMModelInfo {
+        // Extract model info from AI SDK model instance
+        const modelId = model.modelId || model.id || 'unknown';
+        const provider = model.provider?.providerId || model.provider || 'unknown';
+
+        return {
+            name: modelId,
+            provider: provider,
+            supportsReasoning: this.llmService.isReasoningModel(modelId)
+        };
     }
 
     /**
-     * Generate text (passthrough to underlying service)
+     * Generate cache key from model and parameters
      */
-    async generateText(prompt: string, modelName?: string): Promise<ReasoningResult> {
-        return this.llmService.generateText(prompt, modelName);
+    private generateCacheKey(
+        model: any,
+        prompt: string,
+        schema?: z.ZodSchema,
+        options: {
+            seed?: number;
+            temperature?: number;
+            topP?: number;
+            maxTokens?: number;
+            mode: 'object' | 'text';
+        } = { mode: 'text' }
+    ): string {
+        const modelInfo = this.extractModelInfo(model);
+
+        const cacheKeyParams: CacheKeyParams = {
+            prompt,
+            seed: options.seed,
+            schemaHash: schema ? this.streamCache.generateSchemaHash(schema) : undefined,
+            modelName: modelInfo.name,
+            provider: modelInfo.provider,
+            temperature: options.temperature,
+            topP: options.topP,
+            maxTokens: options.maxTokens,
+            mode: options.mode
+        };
+
+        return this.streamCache.generateCacheKey(cacheKeyParams);
     }
 
     /**
      * Clear caches (both LLM service and stream cache)
      */
-    clearCache(): void {
+    async clearCache(): Promise<void> {
         this.llmService.clearCache();
-        // Note: StreamCache doesn't have sync clearCache, but we could add it if needed
+        await this.streamCache.clearCache();
     }
 
     /**
-     * Stream a structured object with caching support
+     * Stream a structured object with transparent caching
      */
     async streamObject<T extends z.ZodSchema<any>>(
-        options: {
-            prompt: string;
-            schema: T;
-            modelName?: string;
-            onReasoningStart?: (phase: string) => void;
-            onReasoningEnd?: (phase: string) => void;
-        } & CachedStreamingOptions
+        options: CachedStreamObjectOptions<T>
     ): Promise<AsyncIterable<any>> {
         const {
+            model,
             prompt,
             schema,
-            modelName,
             onReasoningStart,
             onReasoningEnd,
-            enableCaching = false,
             seed,
             temperature,
             topP,
@@ -74,32 +121,23 @@ export class CachedLLMService {
         } = options;
 
         // If caching is disabled, use original service directly
-        if (!enableCaching) {
+        if (!this.enableCaching) {
             return this.llmService.streamObject({
                 prompt,
                 schema,
-                modelName,
                 onReasoningStart,
                 onReasoningEnd
             });
         }
 
-        // Generate cache key
-        const modelInfo = this.getModelInfo(modelName);
-        const schemaHash = this.streamCache.generateSchemaHash(schema);
-
-        const cacheKeyParams: CacheKeyParams = {
-            prompt,
+        // Generate cache key including model information
+        const cacheKey = this.generateCacheKey(model, prompt, schema, {
             seed,
-            schemaHash,
-            modelName: modelInfo.name,
             temperature,
             topP,
             maxTokens,
             mode: 'object'
-        };
-
-        const cacheKey = this.streamCache.generateCacheKey(cacheKeyParams);
+        });
 
         // Use cached stream wrapper
         return this.streamCache.createCachedStream(
@@ -109,7 +147,6 @@ export class CachedLLMService {
                 return await this.llmService.streamObject({
                     prompt,
                     schema,
-                    modelName,
                     onReasoningStart,
                     onReasoningEnd
                 });
@@ -124,46 +161,33 @@ export class CachedLLMService {
     }
 
     /**
-     * Stream text with caching support
-     */
-    async streamText(
-        prompt: string,
-        options?: {
-            onReasoningStart?: (phase: string) => void;
-            onReasoningEnd?: (phase: string) => void;
-            modelName?: string;
-        } & CachedStreamingOptions
-    ) {
+ * Stream text with transparent caching
+ */
+    async streamText(options: CachedStreamTextOptions) {
         const {
+            model,
+            prompt,
             onReasoningStart,
             onReasoningEnd,
-            modelName,
-            enableCaching = false,
             seed,
             temperature,
             topP,
             maxTokens
-        } = options || {};
+        } = options;
 
         // If caching is disabled, use original service directly
-        if (!enableCaching) {
-            return this.llmService.streamText(prompt, onReasoningStart, onReasoningEnd, modelName);
+        if (!this.enableCaching) {
+            return this.llmService.streamText(prompt, onReasoningStart, onReasoningEnd);
         }
 
-        // Generate cache key
-        const modelInfo = this.getModelInfo(modelName);
-
-        const cacheKeyParams: CacheKeyParams = {
-            prompt,
+        // Generate cache key including model information
+        const cacheKey = this.generateCacheKey(model, prompt, undefined, {
             seed,
-            modelName: modelInfo.name,
             temperature,
             topP,
             maxTokens,
             mode: 'text'
-        };
-
-        const cacheKey = this.streamCache.generateCacheKey(cacheKeyParams);
+        });
 
         // For streamText, we need to handle the more complex return structure
         const cachedChunks = await this.streamCache.getCachedStream(cacheKey);
@@ -186,7 +210,7 @@ export class CachedLLMService {
         // Not in cache - generate new stream and cache it
         console.log(`[CachedLLMService] Cache miss for streamText, calling LLM...`);
 
-        const originalResult = await this.llmService.streamText(prompt, onReasoningStart, onReasoningEnd, modelName);
+        const originalResult = await this.llmService.streamText(prompt, onReasoningStart, onReasoningEnd);
         const chunks: CachedStreamChunk[] = [];
 
         // Wrap the original textStream to cache chunks
@@ -219,25 +243,17 @@ export class CachedLLMService {
     }
 
     /**
-     * Cached version of streamObject specifically for AI SDK compatibility
-     * This version adds seed parameter support and caching
+     * Create a cached service instance with caching enabled
      */
-    async createCachedStreamObject<T extends z.ZodSchema<any>>(
-        options: {
-            prompt: string;
-            schema: T;
-            modelName?: string;
-            onReasoningStart?: (phase: string) => void;
-            onReasoningEnd?: (phase: string) => void;
-        } & CachedStreamingOptions
-    ): Promise<AsyncIterable<any>> {
-        // If seed is provided but caching is disabled, we still want to pass the seed to the underlying call
-        if (options.seed && !options.enableCaching) {
-            // TODO: When we integrate seed support into the base LLMService, pass it through here
-            console.warn('[CachedLLMService] Seed parameter provided but caching disabled - seed will be ignored');
-        }
+    static withCaching(enableCaching: boolean = true): CachedLLMService {
+        return new CachedLLMService(enableCaching);
+    }
 
-        return this.streamObject(options);
+    /**
+     * Create a cached service instance with caching disabled (passthrough mode)
+     */
+    static withoutCaching(): CachedLLMService {
+        return new CachedLLMService(false);
     }
 }
 
