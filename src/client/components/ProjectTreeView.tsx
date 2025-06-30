@@ -80,46 +80,43 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
             const brainstormNode: ProjectTreeNode = {
                 key: 'brainstorm-section',
                 title: (
-                    <div style={{
-                        padding: '6px 12px',
-                        borderRadius: '8px',
+                    <Space style={{
+                        padding: isHighlighted ? '4px 8px' : '0',
+                        borderRadius: '6px',
                         background: isHighlighted ?
                             'linear-gradient(135deg, rgba(24, 144, 255, 0.25) 0%, rgba(64, 169, 255, 0.15) 100%)' :
-                            'transparent',
-                        border: isHighlighted ? '1px solid rgba(24, 144, 255, 0.4)' : '1px solid transparent',
+                            'none',
+                        border: isHighlighted ? '1px solid rgba(24, 144, 255, 0.4)' : 'none',
                         boxShadow: isHighlighted ?
                             '0 0 20px rgba(24, 144, 255, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)' :
                             'none',
                         transition: 'all 0.3s ease-in-out',
-                        margin: '-2px -4px'
+                        display: 'inline-flex',
+                        alignItems: 'center'
                     }}>
-                        <Space>
-                            <BulbOutlined style={{
-                                color: isHighlighted ? '#40a9ff' : '#666',
-                                fontSize: '16px',
-                                filter: isHighlighted ? 'drop-shadow(0 0 4px rgba(24, 144, 255, 0.6))' : 'none'
-                            }} />
-                            <Text style={{
-                                color: isHighlighted ? '#ffffff' : '#fff',
-                                fontWeight: isHighlighted ? 700 : 500,
-                                textShadow: isHighlighted ? '0 0 8px rgba(24, 144, 255, 0.8)' : 'none',
-                                fontSize: '14px'
-                            }}>
-                                创意构思
-                            </Text>
-                            <Tag
-                                color={isHighlighted ? "blue" : "default"}
-                                style={{
-                                    boxShadow: isHighlighted ? '0 0 8px rgba(24, 144, 255, 0.4)' : 'none',
-                                    border: isHighlighted ? '1px solid rgba(24, 144, 255, 0.6)' : undefined
-                                }}
-                            >
-                                {ideas.length}
-                            </Tag>
-                        </Space>
-                    </div>
+                        <Text style={{
+                            color: isHighlighted ? '#ffffff' : '#fff',
+                            fontWeight: isHighlighted ? 700 : 500,
+                            textShadow: isHighlighted ? '0 0 8px rgba(24, 144, 255, 0.8)' : 'none'
+                        }}>
+                            创意构思
+                        </Text>
+                        <Tag
+                            color={isHighlighted ? "blue" : "default"}
+                            style={{
+                                boxShadow: isHighlighted ? '0 0 8px rgba(24, 144, 255, 0.4)' : 'none',
+                                border: isHighlighted ? '1px solid rgba(24, 144, 255, 0.6)' : undefined,
+                                marginLeft: '8px'
+                            }}
+                        >
+                            {ideas.length}
+                        </Tag>
+                    </Space>
                 ),
-                icon: <BulbOutlined style={{ color: isHighlighted ? '#40a9ff' : '#666' }} />,
+                icon: <BulbOutlined style={{
+                    color: isHighlighted ? '#40a9ff' : '#666',
+                    filter: isHighlighted ? 'drop-shadow(0 0 4px rgba(24, 144, 255, 0.6))' : 'none'
+                }} />,
                 selectable: true,
                 navigationTarget: '#brainstorm-ideas',
                 children: []
@@ -212,7 +209,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                                     ),
                                     icon: <FileTextOutlined style={{
                                         fontSize: '14px',
-                                        color: nodeHighlighted ? '#722ed1' : undefined
+                                        color: nodeHighlighted ? '#722ed1' : '#888'
                                     }} />,
                                     selectable: true,
                                     navigationTarget: '#story-outline'
@@ -236,7 +233,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                                     ),
                                     icon: <FileTextOutlined style={{
                                         fontSize: '14px',
-                                        color: nodeHighlighted ? '#722ed1' : undefined
+                                        color: nodeHighlighted ? '#722ed1' : '#888'
                                     }} />,
                                     selectable: true,
                                     navigationTarget: '#story-outline'
@@ -260,7 +257,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                                     ),
                                     icon: <FileTextOutlined style={{
                                         fontSize: '14px',
-                                        color: nodeHighlighted ? '#722ed1' : undefined
+                                        color: nodeHighlighted ? '#722ed1' : '#888'
                                     }} />,
                                     selectable: true,
                                     navigationTarget: '#story-outline'
@@ -339,31 +336,29 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
             const treeNode: ProjectTreeNode = {
                 key: `workflow-${node.id}`,
                 title: (
-                    <div style={{
-                        padding: '6px 12px',
-                        borderRadius: '8px',
+                    <Space style={{
+                        padding: nodeHighlighted ? '4px 8px' : '0',
+                        borderRadius: '6px',
                         background: nodeHighlighted ?
                             `linear-gradient(135deg, ${colors.bgGlow} 0%, ${colors.bgLight} 100%)` :
-                            'transparent',
-                        border: nodeHighlighted ? `1px solid ${colors.glow.replace('0.3', '0.4')}` : '1px solid transparent',
+                            'none',
+                        border: nodeHighlighted ? `1px solid ${colors.glow.replace('0.3', '0.4')}` : 'none',
                         boxShadow: nodeHighlighted ?
                             `0 0 20px ${colors.glow}, inset 0 1px 0 rgba(255, 255, 255, 0.1)` :
                             'none',
                         transition: 'all 0.3s ease-in-out',
-                        margin: '-2px -4px'
+                        display: 'inline-flex',
+                        alignItems: 'center'
                     }}>
-                        <Space>
-                            <Text style={{
-                                color: nodeHighlighted ? '#ffffff' : '#fff',
-                                fontWeight: nodeHighlighted ? 700 : 500,
-                                textShadow: nodeHighlighted ? `0 0 8px ${colors.glow}` : 'none',
-                                fontSize: '14px'
-                            }}>
-                                {title}
-                            </Text>
-                            {statusIcon}
-                        </Space>
-                    </div>
+                        <Text style={{
+                            color: nodeHighlighted ? '#ffffff' : '#fff',
+                            fontWeight: nodeHighlighted ? 700 : 500,
+                            textShadow: nodeHighlighted ? `0 0 8px ${colors.glow}` : 'none'
+                        }}>
+                            {title}
+                        </Text>
+                        {statusIcon}
+                    </Space>
                 ),
                 icon,
                 selectable: true,
