@@ -148,40 +148,22 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                 brainstormNode.children!.push({
                     key: `brainstorm-idea-${idea.artifactId}`,
                     title: (
-                        <div style={{
-                            padding: '4px 8px',
-                            borderRadius: '6px',
-                            background: ideaHighlighted ?
-                                'linear-gradient(135deg, rgba(24, 144, 255, 0.15) 0%, rgba(64, 169, 255, 0.08) 100%)' :
-                                'transparent',
-                            border: ideaHighlighted ? '1px solid rgba(24, 144, 255, 0.25)' : '1px solid transparent',
-                            boxShadow: ideaHighlighted ?
-                                '0 0 12px rgba(24, 144, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)' :
-                                'none',
-                            transition: 'all 0.3s ease-in-out',
-                            margin: '-1px -2px'
-                        }}>
-                            <Space>
-                                <Text style={{
-                                    color: ideaHighlighted ? '#ffffff' : '#ccc',
-                                    fontWeight: ideaHighlighted ? 600 : 400,
-                                    textShadow: ideaHighlighted ? '0 0 6px rgba(24, 144, 255, 0.6)' : 'none',
-                                    fontSize: '13px'
-                                }}>
-                                    {ideaTitle}
-                                </Text>
-                                {isEdited && <EditOutlined style={{
-                                    color: ideaHighlighted ? '#40a9ff' : '#1890ff',
-                                    fontSize: '12px',
-                                    filter: ideaHighlighted ? 'drop-shadow(0 0 3px rgba(24, 144, 255, 0.5))' : 'none'
-                                }} />}
-                            </Space>
-                        </div>
+                        <Space>
+                            <Text style={{
+                                color: ideaHighlighted ? '#1890ff' : '#fff',
+                                fontWeight: ideaHighlighted ? 500 : 400
+                            }}>
+                                {ideaTitle}
+                            </Text>
+                            {isEdited && <EditOutlined style={{
+                                color: ideaHighlighted ? '#40a9ff' : '#1890ff',
+                                fontSize: '12px'
+                            }} />}
+                        </Space>
                     ),
                     icon: <BulbOutlined style={{
                         fontSize: '14px',
-                        color: ideaHighlighted ? '#40a9ff' : '#888',
-                        filter: ideaHighlighted ? 'drop-shadow(0 0 3px rgba(24, 144, 255, 0.4))' : 'none'
+                        color: ideaHighlighted ? '#1890ff' : undefined
                     }} />,
                     selectable: true,
                     navigationTarget: '#brainstorm-ideas'
@@ -314,22 +296,74 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                 <CheckCircleOutlined style={{ color: '#52c41a', fontSize: '12px' }} />
             );
 
+            // Get theme colors for different node types
+            const getThemeColors = (nodeType: string) => {
+                switch (nodeType) {
+                    case 'outline':
+                        return {
+                            primary: '#722ed1',
+                            light: '#9254de',
+                            glow: 'rgba(114, 46, 209, 0.3)',
+                            bgGlow: 'rgba(114, 46, 209, 0.25)',
+                            bgLight: 'rgba(146, 84, 222, 0.15)'
+                        };
+                    case 'episode':
+                        return {
+                            primary: '#fa541c',
+                            light: '#ff7a45',
+                            glow: 'rgba(250, 84, 28, 0.3)',
+                            bgGlow: 'rgba(250, 84, 28, 0.25)',
+                            bgLight: 'rgba(255, 122, 69, 0.15)'
+                        };
+                    case 'script':
+                        return {
+                            primary: '#13c2c2',
+                            light: '#36cfc9',
+                            glow: 'rgba(19, 194, 194, 0.3)',
+                            bgGlow: 'rgba(19, 194, 194, 0.25)',
+                            bgLight: 'rgba(54, 207, 201, 0.15)'
+                        };
+                    default:
+                        return {
+                            primary: '#1890ff',
+                            light: '#40a9ff',
+                            glow: 'rgba(24, 144, 255, 0.3)',
+                            bgGlow: 'rgba(24, 144, 255, 0.25)',
+                            bgLight: 'rgba(64, 169, 255, 0.15)'
+                        };
+                }
+            };
+
+            const colors = getThemeColors(node.type);
+
             const treeNode: ProjectTreeNode = {
                 key: `workflow-${node.id}`,
                 title: (
-                    <Space>
-                        <Text style={{
-                            color: nodeHighlighted ? (
-                                node.type === 'outline' ? '#722ed1' :
-                                    node.type === 'episode' ? '#fa541c' :
-                                        node.type === 'script' ? '#13c2c2' : '#1890ff'
-                            ) : '#fff',
-                            fontWeight: nodeHighlighted ? 600 : 400
-                        }}>
-                            {title}
-                        </Text>
-                        {statusIcon}
-                    </Space>
+                    <div style={{
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        background: nodeHighlighted ?
+                            `linear-gradient(135deg, ${colors.bgGlow} 0%, ${colors.bgLight} 100%)` :
+                            'transparent',
+                        border: nodeHighlighted ? `1px solid ${colors.glow.replace('0.3', '0.4')}` : '1px solid transparent',
+                        boxShadow: nodeHighlighted ?
+                            `0 0 20px ${colors.glow}, inset 0 1px 0 rgba(255, 255, 255, 0.1)` :
+                            'none',
+                        transition: 'all 0.3s ease-in-out',
+                        margin: '-2px -4px'
+                    }}>
+                        <Space>
+                            <Text style={{
+                                color: nodeHighlighted ? '#ffffff' : '#fff',
+                                fontWeight: nodeHighlighted ? 700 : 500,
+                                textShadow: nodeHighlighted ? `0 0 8px ${colors.glow}` : 'none',
+                                fontSize: '14px'
+                            }}>
+                                {title}
+                            </Text>
+                            {statusIcon}
+                        </Space>
+                    </div>
                 ),
                 icon,
                 selectable: true,
