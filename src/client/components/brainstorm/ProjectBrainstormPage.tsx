@@ -6,6 +6,7 @@ import { IdeaWithTitle } from '../../../common/utils/lineageResolution';
 import { ReasoningIndicator } from '../shared/ReasoningIndicator';
 import { useProjectData } from '../../contexts/ProjectDataContext';
 import { useLatestBrainstormIdeas } from '../../hooks/useLineageResolution';
+import { useChosenBrainstormIdea } from '../../hooks/useChosenBrainstormIdea';
 import { BrainstormIdeaEditor } from './BrainstormIdeaEditor';
 import { OutlineDisplay } from '../OutlineDisplay';
 import { OutlineGenerationOutput } from '../../../common/schemas/outlineSchemas';
@@ -28,6 +29,9 @@ export default function ProjectBrainstormPage() {
 
   // Get latest brainstorm ideas using the new hook
   const latestIdeas = useLatestBrainstormIdeas();
+
+  // Check for chosen brainstorm idea
+  const { chosenIdea, isLoading: chosenIdeaLoading } = useChosenBrainstormIdea();
 
   // Extract brainstorm data using the new collection-based approach as fallback
   const { ideas: fallbackIdeas, status, progress, error, isLoading, lastSyncedAt } = useMemo(() => {
@@ -123,6 +127,9 @@ export default function ProjectBrainstormPage() {
   const isStreaming = status === 'streaming';
   const isConnecting = isLoading && ideas.length === 0;
 
+  // Determine if we should show collapsed view
+  const isCollapsedView = chosenIdea && !chosenIdeaLoading;
+
   // Get outline artifacts
   const outlineArtifacts = useMemo(() => {
     return projectData.artifacts.filter(artifact =>
@@ -143,10 +150,41 @@ export default function ProjectBrainstormPage() {
     }).filter(outline => outline !== null) as OutlineGenerationOutput[];
   }, [outlineArtifacts]);
 
-  // Handle idea card click
+  // Handle idea card click - create human transform to start editing
   const handleIdeaClick = useCallback((collectionId: string, index: number) => {
-    setSelectedIdea(prev => prev === index ? null : index);
-  }, []);
+    // Don't handle clicks if we already have a chosen idea
+    if (chosenIdea) {
+      return;
+    }
+
+    // Find the idea that was clicked
+    const clickedIdea = ideas[index];
+    if (!clickedIdea || !clickedIdea.artifactId || !clickedIdea.artifactPath) {
+      console.warn('Invalid idea clicked:', clickedIdea);
+      return;
+    }
+
+    // Determine the correct transform name based on artifact path
+    const transformName = clickedIdea.artifactPath === '$' ? 'edit_brainstorm_idea' : 'edit_brainstorm_collection_idea';
+
+    // Create human transform to start editing
+    projectData.createHumanTransform.mutate({
+      transformName,
+      sourceArtifactId: clickedIdea.artifactId,
+      derivationPath: clickedIdea.artifactPath,
+      fieldUpdates: {} // Start with empty updates
+    }, {
+      onSuccess: (response) => {
+        console.log('Human transform created successfully, editing will begin automatically');
+      },
+      onError: (error) => {
+        console.error('Failed to create human transform:', error);
+      }
+    });
+
+    // Set selected idea for visual feedback during transition
+    setSelectedIdea(index);
+  }, [chosenIdea, ideas, projectData.createHumanTransform]);
 
 
 
@@ -188,8 +226,8 @@ export default function ProjectBrainstormPage() {
   }
 
   return (
-    <div id="brainstorm-ideas" className="min-h-screen bg-gray-900 text-white">
-      <div className="container mx-auto px-4 py-8">
+    <div id="brainstorm-ideas" className={`${isCollapsedView ? 'bg-gray-900' : 'min-h-screen bg-gray-900'} text-white`}>
+      <div className={`container mx-auto px-4 ${isCollapsedView ? 'py-4' : 'py-8'}`}>
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
@@ -226,8 +264,8 @@ export default function ProjectBrainstormPage() {
             {/* Header with controls */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <Text className="text-lg font-semibold text-white">
-                  创意想法 ({ideas.length})
+                <Text className={`${isCollapsedView ? 'text-base' : 'text-lg'} font-semibold text-white`}>
+                  {isCollapsedView ? '所有创意想法' : '创意想法'} ({ideas.length})
                 </Text>
                 {isStreaming && (
                   <div className="flex items-center gap-2">
@@ -240,7 +278,6 @@ export default function ProjectBrainstormPage() {
               </div>
 
               <div className="flex items-center gap-2">
-
                 {isStreaming && (
                   <Button
                     type="primary"
@@ -252,14 +289,21 @@ export default function ProjectBrainstormPage() {
                     停止生成
                   </Button>
                 )}
-
               </div>
             </div>
 
-            {/* Ideas grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Ideas grid - responsive layout based on collapsed state */}
+            <div className={isCollapsedView
+              ? "grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3"
+              : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+            }>
               {ideas.map((idea, index) => {
                 if (!idea.artifactId || !idea.originalArtifactId || !idea.artifactPath) return null;
+
+                // Check if this idea is the chosen one
+                const isChosenIdea = chosenIdea &&
+                  chosenIdea.originalArtifactId === idea.originalArtifactId &&
+                  chosenIdea.originalArtifactPath === idea.artifactPath;
 
                 return (
                   <BrainstormIdeaEditor
@@ -269,6 +313,7 @@ export default function ProjectBrainstormPage() {
                     originalCollectionId={idea.originalArtifactId}
                     index={index}
                     isSelected={selectedIdea === index}
+                    isChosen={!!isChosenIdea}
                     ideaOutlines={ideaOutlines[idea.artifactId || ''] || []}
                     onIdeaClick={handleIdeaClick}
                   />
@@ -285,8 +330,8 @@ export default function ProjectBrainstormPage() {
               </div>
             )}
 
-            {/* Outline Display Section */}
-            {outlines.length > 0 && (
+            {/* Outline Display Section - hide in collapsed view as it will be shown after SingleBrainstormIdeaEditor */}
+            {!isCollapsedView && outlines.length > 0 && (
               <>
                 <Divider style={{ borderColor: '#434343', margin: '40px 0' }} />
                 <div className="space-y-8">

@@ -11,6 +11,9 @@ import RawGraphVisualization from './RawGraphVisualization';
 import RawChatMessages from './RawChatMessages';
 import RawAgentContext from './RawAgentContext';
 import { useLocalStorage } from '../hooks/useLocalStorage';
+import { useChosenBrainstormIdea } from '../hooks/useChosenBrainstormIdea';
+import { SingleBrainstormIdeaEditor } from './brainstorm/SingleBrainstormIdeaEditor';
+import ProjectBrainstormPage from '../components/brainstorm/ProjectBrainstormPage';
 
 const { Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -33,6 +36,12 @@ const ProjectLayout: React.FC = () => {
     // Responsive breakpoints
     const screens = useBreakpoint();
     const isMobile = !screens.md; // Mobile when smaller than md breakpoint (768px)
+
+    // Check for chosen brainstorm idea
+    const { chosenIdea, isLoading: chosenIdeaLoading } = useChosenBrainstormIdea();
+
+    // Debug logging
+    console.log('[ProjectLayout] Chosen idea state:', { chosenIdea, chosenIdeaLoading });
 
     // Debug toggles
     const showRawGraph = searchParams.get('raw-graph') === '1';
@@ -459,6 +468,25 @@ const ProjectLayout: React.FC = () => {
                                     overflowY: 'auto',
                                     padding: '12px'
                                 }}>
+                                    <ProjectBrainstormPage />
+                                    {/* Conditionally render SingleBrainstormIdeaEditor if there's a chosen idea */}
+                                    {chosenIdea && !chosenIdeaLoading && (
+                                        <SingleBrainstormIdeaEditor
+                                            originalArtifactId={chosenIdea.originalArtifactId}
+                                            originalArtifactPath={chosenIdea.originalArtifactPath}
+                                            editableArtifactId={chosenIdea.editableArtifactId}
+                                            index={chosenIdea.index}
+                                            isFromCollection={chosenIdea.isFromCollection}
+                                            onViewOriginalIdeas={() => {
+                                                // Scroll to the brainstorm ideas section
+                                                const brainstormSection = document.getElementById('brainstorm-ideas');
+                                                if (brainstormSection) {
+                                                    brainstormSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                                }
+                                            }}
+                                        />
+                                    )}
+
                                     <Outlet />
                                 </div>
                             )}

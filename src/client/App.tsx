@@ -2,19 +2,19 @@ import React, { useState, useEffect } from 'react';
 import '@ant-design/v5-patch-for-react-19';
 
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Layout, Typography, ConfigProvider, theme, Button, Drawer, Menu, Dropdown, Avatar, App as AntdApp } from 'antd';
 import { MenuOutlined, UserOutlined, LogoutOutlined, LoginOutlined } from '@ant-design/icons';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ProjectDataProvider } from './contexts/ProjectDataContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './components/LoginPage';
 import ProjectsList from './components/ProjectList';
 import ChatTab from './components/ChatTab';
 import ScriptTab from './components/ScriptTab';
 import ProjectLayout from './components/ProjectLayout';
-import ProjectBrainstormPage from './components/brainstorm/ProjectBrainstormPage';
 import Breadcrumb from './components/Breadcrumb';
 import StagewiseToolbar from './components/StagewiseToolbar';
 import { StageDetailView } from './components/StageDetailView';
@@ -37,6 +37,21 @@ const queryClient = new QueryClient({
   },
 });
 
+// Wrapper component to provide ProjectDataProvider with projectId from route params
+const ProjectLayoutWrapper: React.FC = () => {
+  const { projectId } = useParams<{ projectId: string }>();
+
+  if (!projectId) {
+    return <Navigate to="/projects" replace />;
+  }
+
+  return (
+    <ProjectDataProvider projectId={projectId}>
+      <ProjectLayout />
+    </ProjectDataProvider>
+  );
+};
+
 // Extracted common routes component to eliminate duplication
 const AppRoutes: React.FC = () => {
   return (
@@ -48,10 +63,9 @@ const AppRoutes: React.FC = () => {
       } />
       <Route path="/projects/:projectId/*" element={
         <ProtectedRoute>
-          <ProjectLayout />
+          <ProjectLayoutWrapper />
         </ProtectedRoute>
       }>
-        <Route path="brainstorm" element={<ProjectBrainstormPage />} />
         <Route path="stage/:stageId" element={<StageDetailView />} />
       </Route>
       <Route path="/chat" element={
