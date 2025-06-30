@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Outlet, useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { Layout, Breadcrumb, Typography, Spin, Alert, Space, Button, Card, List, Drawer, Grid } from 'antd';
-import { HomeOutlined, ProjectOutlined, ArrowLeftOutlined, EyeOutlined, EyeInvisibleOutlined, NodeIndexOutlined, MessageOutlined, FileTextOutlined, MenuOutlined } from '@ant-design/icons';
+import { Layout, Breadcrumb, Typography, Spin, Alert, Space, Button, Card, List, Drawer, Grid, Tabs } from 'antd';
+import { HomeOutlined, ProjectOutlined, ArrowLeftOutlined, EyeOutlined, EyeInvisibleOutlined, NodeIndexOutlined, MessageOutlined, FileTextOutlined, MenuOutlined, ApartmentOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import { useProjectData } from '../hooks/useProjectData';
 import { useProjectStore } from '../stores/projectStore';
 import { ProjectDataProvider } from '../contexts/ProjectDataContext';
 import { ChatSidebarWrapper } from './chat/ChatSidebarWrapper';
 import WorkflowVisualization from './WorkflowVisualization';
+import ProjectTreeView from './ProjectTreeView';
 import RawGraphVisualization from './RawGraphVisualization';
 import RawChatMessages from './RawChatMessages';
 import RawAgentContext from './RawAgentContext';
@@ -33,6 +34,7 @@ const ProjectLayout: React.FC = () => {
     const [isResizingRightSidebar, setIsResizingRightSidebar] = useState(false);
     const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
     const [mobileRightDrawerOpen, setMobileRightDrawerOpen] = useState(false);
+    const [activeRightTab, setActiveRightTab] = useLocalStorage('right-sidebar-tab', 'workflow');
 
     // Responsive breakpoints
     const screens = useBreakpoint();
@@ -344,7 +346,7 @@ const ProjectLayout: React.FC = () => {
                     </div>
                 )}
 
-                {/* Mobile Right Drawer for Workflow */}
+                {/* Mobile Right Drawer with Tabs */}
                 {isMobile && (
                     <Drawer
                         title="目录/地图"
@@ -353,12 +355,52 @@ const ProjectLayout: React.FC = () => {
                         open={mobileRightDrawerOpen}
                         width={Math.min(320, window.innerWidth * 0.85)}
                         styles={{
-                            body: { padding: '12px', background: '#1a1a1a' },
+                            body: { padding: 0, background: '#1a1a1a' },
                             header: { background: '#1a1a1a', borderBottom: '1px solid #333' }
                         }}
                         closeIcon={<span style={{ color: '#fff' }}>×</span>}
                     >
-                        <WorkflowVisualization width={280} />
+                        <Tabs
+                            activeKey={activeRightTab}
+                            onChange={setActiveRightTab}
+                            size="small"
+                            style={{ height: '100%' }}
+                            tabBarStyle={{
+                                background: '#1a1a1a',
+                                margin: 0,
+                                padding: '0 12px'
+                            }}
+                            items={[
+                                {
+                                    key: 'workflow',
+                                    label: (
+                                        <Space>
+                                            <ApartmentOutlined />
+                                            <span>流程图</span>
+                                        </Space>
+                                    ),
+                                    children: (
+                                        <div style={{ padding: '12px' }}>
+                                            <WorkflowVisualization width={280} />
+                                        </div>
+                                    )
+                                },
+                                {
+                                    key: 'tree',
+                                    label: (
+                                        <Space>
+                                            <UnorderedListOutlined />
+                                            <span>目录树</span>
+                                        </Space>
+                                    ),
+                                    children: (
+                                        <div style={{ padding: '12px' }}>
+                                            <ProjectTreeView width={280} />
+                                        </div>
+                                    )
+                                }
+                            ]}
+                        />
                     </Drawer>
                 )}
 
@@ -544,16 +586,13 @@ const ProjectLayout: React.FC = () => {
                                     <div style={{
                                         height: '100%',
                                         display: 'flex',
-                                        flexDirection: 'column',
-                                        padding: '12px'
+                                        flexDirection: 'column'
                                     }}>
                                         <div style={{
                                             display: 'flex',
                                             justifyContent: 'space-between',
                                             alignItems: 'center',
-                                            marginBottom: '12px',
-                                            paddingBottom: '8px',
-                                            borderBottom: '1px solid #333'
+                                            padding: '12px 12px 0 12px'
                                         }}>
                                             <Title level={5} style={{ margin: 0, color: '#fff' }}>
                                                 目录/地图
@@ -566,8 +605,48 @@ const ProjectLayout: React.FC = () => {
                                                 size="small"
                                             />
                                         </div>
-                                        <div style={{ flex: 1 }}>
-                                            <WorkflowVisualization width={rightSidebarWidth - 24} />
+                                        <div style={{ flex: 1, paddingTop: '8px' }}>
+                                            <Tabs
+                                                activeKey={activeRightTab}
+                                                onChange={setActiveRightTab}
+                                                size="small"
+                                                style={{ height: '100%' }}
+                                                tabBarStyle={{
+                                                    background: '#1a1a1a',
+                                                    margin: 0,
+                                                    padding: '0 12px'
+                                                }}
+                                                items={[
+                                                    {
+                                                        key: 'workflow',
+                                                        label: (
+                                                            <Space>
+                                                                <ApartmentOutlined />
+                                                                <span>流程图</span>
+                                                            </Space>
+                                                        ),
+                                                        children: (
+                                                            <div style={{ padding: '12px' }}>
+                                                                <WorkflowVisualization width={rightSidebarWidth - 48} />
+                                                            </div>
+                                                        )
+                                                    },
+                                                    {
+                                                        key: 'tree',
+                                                        label: (
+                                                            <Space>
+                                                                <UnorderedListOutlined />
+                                                                <span>目录树</span>
+                                                            </Space>
+                                                        ),
+                                                        children: (
+                                                            <div style={{ padding: '12px' }}>
+                                                                <ProjectTreeView width={rightSidebarWidth - 48} />
+                                                            </div>
+                                                        )
+                                                    }
+                                                ]}
+                                            />
                                         </div>
                                     </div>
                                 </Sider>
