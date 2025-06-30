@@ -34,17 +34,20 @@ export const OutlineDisplay: React.FC<OutlineDisplayProps> = ({
         }).filter(outline => outline !== null) as OutlineGenerationOutput[];
     }, [outlineArtifacts]);
 
-    if (outlines.length === 0) {
-        return null;
-    }
+    const outline = useMemo(() => {
+        if (outlines?.length > 1) {
+            return "multiple-outline-error" as const;
+        }
+        return outlines?.[0] ?? null;
+    }, [outlines]);
 
-    if (outlines.length > 1) {
+    if (outline === "multiple-outline-error") {
         return <div>Error: multiple outlines found</div>
     }
 
-    const outline = useMemo(() => {
-        return outlines[0];
-    }, [outlines]);
+    if (!outline) {
+        return null;
+    }
 
     return (
         <div id="story-outline" style={{ marginTop: '24px' }}>
