@@ -80,18 +80,46 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
             const brainstormNode: ProjectTreeNode = {
                 key: 'brainstorm-section',
                 title: (
-                    <Space>
-                        <BulbOutlined style={{ color: isHighlighted ? '#1890ff' : undefined }} />
-                        <Text style={{
-                            color: isHighlighted ? '#1890ff' : '#fff',
-                            fontWeight: isHighlighted ? 600 : 400
-                        }}>
-                            创意构思
-                        </Text>
-                        <Tag color={isHighlighted ? "blue" : "default"}>{ideas.length}</Tag>
-                    </Space>
+                    <div style={{
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        background: isHighlighted ?
+                            'linear-gradient(135deg, rgba(24, 144, 255, 0.25) 0%, rgba(64, 169, 255, 0.15) 100%)' :
+                            'transparent',
+                        border: isHighlighted ? '1px solid rgba(24, 144, 255, 0.4)' : '1px solid transparent',
+                        boxShadow: isHighlighted ?
+                            '0 0 20px rgba(24, 144, 255, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)' :
+                            'none',
+                        transition: 'all 0.3s ease-in-out',
+                        margin: '-2px -4px'
+                    }}>
+                        <Space>
+                            <BulbOutlined style={{
+                                color: isHighlighted ? '#40a9ff' : '#666',
+                                fontSize: '16px',
+                                filter: isHighlighted ? 'drop-shadow(0 0 4px rgba(24, 144, 255, 0.6))' : 'none'
+                            }} />
+                            <Text style={{
+                                color: isHighlighted ? '#ffffff' : '#fff',
+                                fontWeight: isHighlighted ? 700 : 500,
+                                textShadow: isHighlighted ? '0 0 8px rgba(24, 144, 255, 0.8)' : 'none',
+                                fontSize: '14px'
+                            }}>
+                                创意构思
+                            </Text>
+                            <Tag
+                                color={isHighlighted ? "blue" : "default"}
+                                style={{
+                                    boxShadow: isHighlighted ? '0 0 8px rgba(24, 144, 255, 0.4)' : 'none',
+                                    border: isHighlighted ? '1px solid rgba(24, 144, 255, 0.6)' : undefined
+                                }}
+                            >
+                                {ideas.length}
+                            </Tag>
+                        </Space>
+                    </div>
                 ),
-                icon: <BulbOutlined style={{ color: isHighlighted ? '#1890ff' : undefined }} />,
+                icon: <BulbOutlined style={{ color: isHighlighted ? '#40a9ff' : '#666' }} />,
                 selectable: true,
                 navigationTarget: '#brainstorm-ideas',
                 children: []
@@ -120,22 +148,40 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                 brainstormNode.children!.push({
                     key: `brainstorm-idea-${idea.artifactId}`,
                     title: (
-                        <Space>
-                            <Text style={{
-                                color: ideaHighlighted ? '#1890ff' : '#fff',
-                                fontWeight: ideaHighlighted ? 500 : 400
-                            }}>
-                                {ideaTitle}
-                            </Text>
-                            {isEdited && <EditOutlined style={{
-                                color: ideaHighlighted ? '#40a9ff' : '#1890ff',
-                                fontSize: '12px'
-                            }} />}
-                        </Space>
+                        <div style={{
+                            padding: '4px 8px',
+                            borderRadius: '6px',
+                            background: ideaHighlighted ?
+                                'linear-gradient(135deg, rgba(24, 144, 255, 0.15) 0%, rgba(64, 169, 255, 0.08) 100%)' :
+                                'transparent',
+                            border: ideaHighlighted ? '1px solid rgba(24, 144, 255, 0.25)' : '1px solid transparent',
+                            boxShadow: ideaHighlighted ?
+                                '0 0 12px rgba(24, 144, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)' :
+                                'none',
+                            transition: 'all 0.3s ease-in-out',
+                            margin: '-1px -2px'
+                        }}>
+                            <Space>
+                                <Text style={{
+                                    color: ideaHighlighted ? '#ffffff' : '#ccc',
+                                    fontWeight: ideaHighlighted ? 600 : 400,
+                                    textShadow: ideaHighlighted ? '0 0 6px rgba(24, 144, 255, 0.6)' : 'none',
+                                    fontSize: '13px'
+                                }}>
+                                    {ideaTitle}
+                                </Text>
+                                {isEdited && <EditOutlined style={{
+                                    color: ideaHighlighted ? '#40a9ff' : '#1890ff',
+                                    fontSize: '12px',
+                                    filter: ideaHighlighted ? 'drop-shadow(0 0 3px rgba(24, 144, 255, 0.5))' : 'none'
+                                }} />}
+                            </Space>
+                        </div>
                     ),
                     icon: <BulbOutlined style={{
                         fontSize: '14px',
-                        color: ideaHighlighted ? '#1890ff' : undefined
+                        color: ideaHighlighted ? '#40a9ff' : '#888',
+                        filter: ideaHighlighted ? 'drop-shadow(0 0 3px rgba(24, 144, 255, 0.4))' : 'none'
                     }} />,
                     selectable: true,
                     navigationTarget: '#brainstorm-ideas'
