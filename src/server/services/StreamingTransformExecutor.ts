@@ -91,6 +91,7 @@ export class StreamingTransformExecutor {
 
         let transformId: string | null = null;
         let outputArtifactId: string | null = null;
+        let outputLinked = false; // Track if we've linked the output artifact to transform
 
         try {
             // 1. Input validation against schema
@@ -212,6 +213,20 @@ export class StreamingTransformExecutor {
                             }
                         );
                         console.log(`[StreamingTransformExecutor] Updated artifact (update #${updateCount})`);
+
+                        // Link output artifact to transform eagerly on first update
+                        if (!outputLinked) {
+                            try {
+                                await transformRepo.addTransformOutputs(transformId, [
+                                    { artifactId: outputArtifactId, outputRole: 'generated_output' }
+                                ], projectId);
+                                outputLinked = true;
+                                console.log(`[StreamingTransformExecutor] Eagerly linked output artifact ${outputArtifactId} to transform`);
+                            } catch (linkError) {
+                                console.warn(`[StreamingTransformExecutor] Failed to link output artifact during streaming:`, linkError);
+                                // Don't throw - we'll retry at completion
+                            }
+                        }
                     } catch (updateError) {
                         console.warn(`[StreamingTransformExecutor] Failed to update artifact at chunk ${chunkCount}:`, updateError);
                     }
@@ -241,10 +256,13 @@ export class StreamingTransformExecutor {
                 'completed'  // Mark as completed to trigger validation
             );
 
-            // 10. Link output artifact to transform
-            await transformRepo.addTransformOutputs(transformId, [
-                { artifactId: outputArtifactId, outputRole: 'generated_output' }
-            ], projectId);
+            // 10. Link output artifact to transform (if not already linked during streaming)
+            if (!outputLinked) {
+                await transformRepo.addTransformOutputs(transformId, [
+                    { artifactId: outputArtifactId, outputRole: 'generated_output' }
+                ], projectId);
+                console.log(`[StreamingTransformExecutor] Linked output artifact ${outputArtifactId} to transform at completion`);
+            }
 
             // 11. Store LLM metadata (simplified - we don't have detailed usage from streaming)
             await transformRepo.addLLMTransform({
