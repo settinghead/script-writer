@@ -8,7 +8,6 @@ import { useProjectData } from '../../contexts/ProjectDataContext';
 import { useLatestBrainstormIdeas } from '../../hooks/useLineageResolution';
 import { useChosenBrainstormIdea } from '../../hooks/useChosenBrainstormIdea';
 import { BrainstormIdeaEditor } from './BrainstormIdeaEditor';
-import { OutlineDisplay } from '../OutlineDisplay';
 import { OutlineGenerationOutput } from '../../../common/schemas/outlineSchemas';
 
 const { Text } = Typography;
@@ -130,25 +129,7 @@ export default function ProjectBrainstormPage() {
   // Determine if we should show collapsed view
   const isCollapsedView = chosenIdea && !chosenIdeaLoading;
 
-  // Get outline artifacts
-  const outlineArtifacts = useMemo(() => {
-    return projectData.artifacts.filter(artifact =>
-      artifact.schema_type === 'outline_schema' &&
-      artifact.data
-    );
-  }, [projectData.artifacts]);
 
-  // Parse outline data
-  const outlines = useMemo(() => {
-    return outlineArtifacts.map(artifact => {
-      try {
-        return JSON.parse(artifact.data) as OutlineGenerationOutput;
-      } catch (error) {
-        console.warn('Failed to parse outline data:', error);
-        return null;
-      }
-    }).filter(outline => outline !== null) as OutlineGenerationOutput[];
-  }, [outlineArtifacts]);
 
   // Handle idea card click - create human transform to start editing
   const handleIdeaClick = useCallback((collectionId: string, index: number) => {
@@ -330,24 +311,7 @@ export default function ProjectBrainstormPage() {
               </div>
             )}
 
-            {/* Outline Display Section - hide in collapsed view as it will be shown after SingleBrainstormIdeaEditor */}
-            {!isCollapsedView && outlines.length > 0 && (
-              <>
-                <Divider style={{ borderColor: '#434343', margin: '40px 0' }} />
-                <div className="space-y-8">
-                  <Text className="text-lg font-semibold text-white">
-                    故事大纲 ({outlines.length})
-                  </Text>
-                  {outlines.map((outline, index) => (
-                    <OutlineDisplay
-                      key={`outline-${index}`}
-                      outline={outline}
-                      isGenerating={false}
-                    />
-                  ))}
-                </div>
-              </>
-            )}
+
           </div>
         ) : status === 'idle' ? (
           <div className="text-center py-12">

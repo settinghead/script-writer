@@ -14,6 +14,7 @@ import { useLocalStorage } from '../hooks/useLocalStorage';
 import { useChosenBrainstormIdea } from '../hooks/useChosenBrainstormIdea';
 import { SingleBrainstormIdeaEditor } from './brainstorm/SingleBrainstormIdeaEditor';
 import ProjectBrainstormPage from '../components/brainstorm/ProjectBrainstormPage';
+import { OutlineDisplay } from './OutlineDisplay';
 
 const { Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -486,6 +487,9 @@ const ProjectLayout: React.FC = () => {
                                             }}
                                         />
                                     )}
+
+                                    <OutlineDisplay
+                                    />
 
                                     <Outlet />
                                 </div>

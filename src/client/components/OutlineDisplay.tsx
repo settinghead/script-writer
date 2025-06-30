@@ -1,24 +1,50 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Card, Typography, Tag, Space, Collapse, Row, Col } from 'antd';
 import { UserOutlined, HeartOutlined, StarOutlined, EnvironmentOutlined, TeamOutlined } from '@ant-design/icons';
 import { OutlineGenerationOutput } from '../../common/schemas/outlineSchemas';
+import { useProjectData } from '../contexts/ProjectDataContext';
 
 const { Title, Text, Paragraph } = Typography;
 const { Panel } = Collapse;
 
 interface OutlineDisplayProps {
-    outline: OutlineGenerationOutput;
-    isGenerating?: boolean;
 }
 
 export const OutlineDisplay: React.FC<OutlineDisplayProps> = ({
-    outline,
-    isGenerating = false
 }) => {
-    // Progressive rendering - only show what's available
-    if (!outline) {
-        return null; // Don't show anything if no outline data
+    const projectData = useProjectData()
+
+    // Get outline artifacts
+    const outlineArtifacts = useMemo(() => {
+        return projectData.artifacts.filter(artifact =>
+            artifact.schema_type === 'outline_schema' &&
+            artifact.data
+        );
+    }, [projectData.artifacts]);
+
+    // Parse outline data
+    const outlines = useMemo(() => {
+        return outlineArtifacts.map(artifact => {
+            try {
+                return JSON.parse(artifact.data) as OutlineGenerationOutput;
+            } catch (error) {
+                console.warn('Failed to parse outline data:', error);
+                return null;
+            }
+        }).filter(outline => outline !== null) as OutlineGenerationOutput[];
+    }, [outlineArtifacts]);
+
+    if (outlines.length === 0) {
+        return null;
     }
+
+    if (outlines.length > 1) {
+        return <div>Error: multiple outlines found</div>
+    }
+
+    const outline = useMemo(() => {
+        return outlines[0];
+    }, [outlines]);
 
     return (
         <div id="story-outline" style={{ marginTop: '24px' }}>
