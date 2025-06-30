@@ -2,22 +2,9 @@ import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
 import { z } from 'zod';
+import { generateCacheKey, generateSchemaHash, CacheKeyParams } from '../../common/utils/cacheKeyGenerator';
 
-/**
- * Parameters for generating cache keys
- */
-export interface CacheKeyParams {
-    prompt: string;
-    seed?: number;
-    schemaHash?: string;
-    modelName: string;
-    provider?: string; // Model provider (openai, anthropic, etc.)
-    temperature?: number;
-    topP?: number;
-    maxTokens?: number;
-    mode?: string; // 'object', 'text', etc.
-    [key: string]: any; // Allow additional parameters
-}
+
 
 /**
  * Unified stream chunk format that works for both streamObject and streamText
@@ -52,35 +39,14 @@ export class StreamCache {
      * Generate a deterministic cache key from parameters
      */
     generateCacheKey(params: CacheKeyParams): string {
-        // Create a deterministic hash of all parameters
-        const keyData = {
-            prompt: params.prompt,
-            seed: params.seed,
-            schemaHash: params.schemaHash,
-            modelName: params.modelName,
-            temperature: params.temperature,
-            topP: params.topP,
-            maxTokens: params.maxTokens,
-            mode: params.mode,
-            // Include other relevant parameters
-            ...Object.fromEntries(
-                Object.entries(params).filter(([key]) =>
-                    !['prompt', 'seed', 'schemaHash', 'modelName', 'temperature', 'topP', 'maxTokens', 'mode'].includes(key)
-                )
-            )
-        };
-
-        const keyString = JSON.stringify(keyData, Object.keys(keyData).sort());
-        return crypto.createHash('sha256').update(keyString).digest('hex');
+        return generateCacheKey(params);
     }
 
     /**
      * Generate hash for Zod schema for cache invalidation
      */
     generateSchemaHash(schema: z.ZodSchema): string {
-        // Use schema description or structure for hashing
-        const schemaString = JSON.stringify(schema._def);
-        return crypto.createHash('md5').update(schemaString).digest('hex');
+        return generateSchemaHash(schema);
     }
 
     /**

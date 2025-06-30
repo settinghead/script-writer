@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { LLMService, LLMModelInfo, ReasoningResult } from './LLMService';
-import { StreamCache, getStreamCache, CacheKeyParams, CachedStreamChunk } from './StreamCache';
+import { StreamCache, getStreamCache, CachedStreamChunk } from './StreamCache';
 import { getLLMCredentials, getLLMModel } from './LLMConfig';
+import { generateCacheKey, generateSchemaHash, extractModelInfo, CacheKeyParams } from '../../common/utils/cacheKeyGenerator';
 
 /**
  * Options for streamObject with caching support
@@ -51,14 +52,12 @@ export class CachedLLMService {
      * Extract model information from AI SDK model instance
      */
     private extractModelInfo(model: any): LLMModelInfo {
-        // Extract model info from AI SDK model instance
-        const modelId = model.modelId || model.id || 'unknown';
-        const provider = model.provider?.providerId || model.provider || 'unknown';
+        const modelInfo = extractModelInfo(model);
 
         return {
-            name: modelId,
-            provider: provider,
-            supportsReasoning: this.llmService.isReasoningModel(modelId)
+            name: modelInfo.name,
+            provider: modelInfo.provider,
+            supportsReasoning: this.llmService.isReasoningModel(modelInfo.name)
         };
     }
 
@@ -82,7 +81,7 @@ export class CachedLLMService {
         const cacheKeyParams: CacheKeyParams = {
             prompt,
             seed: options.seed,
-            schemaHash: schema ? this.streamCache.generateSchemaHash(schema) : undefined,
+            schemaHash: schema ? generateSchemaHash(schema) : undefined,
             modelName: modelInfo.name,
             provider: modelInfo.provider,
             temperature: options.temperature,
@@ -91,7 +90,7 @@ export class CachedLLMService {
             mode: options.mode
         };
 
-        return this.streamCache.generateCacheKey(cacheKeyParams);
+        return generateCacheKey(cacheKeyParams);
     }
 
     /**

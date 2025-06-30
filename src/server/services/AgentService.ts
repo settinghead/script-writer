@@ -58,7 +58,7 @@ export class AgentService {
                 // Start agent thinking
                 const thinkingInfo = await this.chatMessageRepo.createAgentThinkingMessage(
                     projectId,
-                    '分析用户请求并选择合适的工具执行'
+                    '分析您的请求并开始创作'
                 );
                 thinkingMessageId = thinkingInfo.messageId;
                 thinkingStartTime = thinkingInfo.startTime;
@@ -118,7 +118,7 @@ export class AgentService {
                 // Finish thinking
                 await this.chatMessageRepo.finishAgentThinking(
                     thinkingMessageId,
-                    '分析用户请求并选择合适的工具执行',
+                    '分析您的请求并开始创作',
                     thinkingStartTime
                 );
 
