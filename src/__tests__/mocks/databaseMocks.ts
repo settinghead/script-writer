@@ -26,8 +26,16 @@ export function createMockArtifactRepository() {
         createArtifact: vi.fn(),
         updateArtifact: vi.fn(),
         getLatestBrainstormIdeas: vi.fn(),
+        getProjectArtifacts: vi.fn(),
         getProjectArtifactsByType: vi.fn(),
+        getArtifactsByType: vi.fn(),
+        getAllProjectArtifactsForLineage: vi.fn().mockResolvedValue([]),
+        getAllProjectTransformsForLineage: vi.fn().mockResolvedValue([]),
+        getAllProjectHumanTransformsForLineage: vi.fn().mockResolvedValue([]),
+        getAllProjectTransformInputsForLineage: vi.fn().mockResolvedValue([]),
+        getAllProjectTransformOutputsForLineage: vi.fn().mockResolvedValue([]),
         userHasProjectAccess: vi.fn().mockResolvedValue(true),
+        rowToArtifact: vi.fn()
     };
 }
 

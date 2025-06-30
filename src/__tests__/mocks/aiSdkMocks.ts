@@ -19,7 +19,7 @@ export function createCachedStreamObjectMock() {
         maxTokens?: number;
     }) => {
         // Generate cache key from parameters
-        const prompt = options.messages.map(m => m.content).join('\n');
+        const prompt = options.messages?.map(m => m.content).join('\n') || 'default-prompt';
         const cacheKey = generateCacheKey({
             prompt,
             seed: options.seed,
@@ -41,9 +41,11 @@ export function createCachedStreamObjectMock() {
         } else {
             // Fallback to mock data based on schema
             console.warn(`No cached response found for key: ${cacheKey.substring(0, 8)}...`);
-            const prompt = options.messages.map(m => m.content).join('\n');
+            const prompt = options.messages?.map(m => m.content).join('\n') || 'default-prompt';
             if (prompt.includes('outline') || prompt.includes('Outline') || prompt.includes('大纲')) {
                 return createFallbackOutlineObject();
+            } else if (prompt.includes('edit') || prompt.includes('改进') || prompt.includes('修改')) {
+                return createFallbackBrainstormEditObject();
             } else {
                 return createFallbackStreamObject();
             }
@@ -54,7 +56,7 @@ export function createCachedStreamObjectMock() {
 /**
  * Create mock for streamText that uses cached responses
  */
-export function createCachedStreamTextMock() {
+export function createCachedStreamTextMock(mockOptions?: { onToolCall?: (toolName: string, args: any) => void }) {
     return vi.fn().mockImplementation(async (options: {
         model: any;
         messages: Array<{ role: string; content: string }>;
@@ -64,7 +66,7 @@ export function createCachedStreamTextMock() {
         maxTokens?: number;
     }) => {
         // Generate cache key from parameters
-        const prompt = options.messages.map(m => m.content).join('\n');
+        const prompt = options.messages?.map(m => m.content).join('\n') || 'default-prompt';
         const cacheKey = generateCacheKey({
             prompt,
             modelName: options.model.modelId || 'test-model',
@@ -83,7 +85,7 @@ export function createCachedStreamTextMock() {
             return createStreamTextFromCache(cachedResponse);
         } else {
             console.warn(`No cached response found for key: ${cacheKey.substring(0, 8)}...`);
-            return createFallbackStreamText();
+            return createFallbackStreamText(mockOptions);
         }
     });
 }
@@ -105,11 +107,26 @@ function createStreamObjectFromCache(cachedResponse: CachedResponse) {
  */
 function createStreamTextFromCache(cachedResponse: CachedResponse) {
     const chunks = cachedResponse.chunks.filter(c => c.type === 'text-delta');
+    // Convert chunks to the format expected by AI SDK fullStream
+    const streamEvents = [
+        { type: 'tool-call', toolName: 'brainstorm', toolCallId: 'tool-call-1', args: { platform: 'tv', requirements: '现代都市甜宠剧' } },
+        { type: 'tool-result', toolCallId: 'tool-call-1', result: { outputArtifactId: 'test-brainstorm-output' } },
+        ...chunks.map(chunk => ({
+            type: 'text-delta',
+            textDelta: chunk.data
+        }))
+    ];
 
     return {
-        textStream: createAsyncIteratorFromChunks(chunks),
+        fullStream: createAsyncIterator(streamEvents),
         finishReason: Promise.resolve('stop'),
-        usage: Promise.resolve({ promptTokens: 100, completionTokens: 50, totalTokens: 150 })
+        usage: Promise.resolve({ promptTokens: 100, completionTokens: 50, totalTokens: 150 }),
+        toolCalls: Promise.resolve([
+            { toolName: 'brainstorm', args: { platform: 'tv', requirements: '现代都市甜宠剧' } }
+        ]),
+        toolResults: Promise.resolve([
+            { toolCallId: 'tool-call-1', result: { outputArtifactId: 'test-brainstorm-output' } }
+        ])
     };
 }
 
@@ -147,11 +164,49 @@ function createFallbackStreamObject() {
     };
 }
 
-function createFallbackStreamText() {
+function createFallbackStreamText(options?: { onToolCall?: (toolName: string, args: any) => void }) {
+    // For agent tests, simulate tool calls based on the prompt
+    const toolName = 'brainstorm';
+    const args = { platform: 'tv', requirements: '现代都市甜宠剧' };
+
+    // Trigger repository calls if callback is provided
+    if (options?.onToolCall) {
+        // Execute the callback asynchronously to simulate tool execution
+        setTimeout(() => options.onToolCall!(toolName, args), 0);
+    }
+
     return {
-        textStream: createAsyncIterator(["Hello", " World", "!"]),
+        fullStream: createAsyncIterator([
+            { type: 'tool-call', toolName, toolCallId: 'tool-call-1', args },
+            { type: 'tool-result', toolCallId: 'tool-call-1', result: { outputArtifactId: 'test-brainstorm-output' } },
+            { type: 'text-delta', textDelta: 'I have generated some brainstorm ideas for you.' }
+        ]),
         finishReason: Promise.resolve('stop'),
-        usage: Promise.resolve({ promptTokens: 10, completionTokens: 5, totalTokens: 15 })
+        usage: Promise.resolve({ promptTokens: 10, completionTokens: 5, totalTokens: 15 }),
+        toolCalls: Promise.resolve([
+            { toolName, args }
+        ]),
+        toolResults: Promise.resolve([
+            { toolCallId: 'tool-call-1', result: { outputArtifactId: 'test-brainstorm-output' } }
+        ])
+    };
+}
+
+/**
+ * Fallback mock for brainstorm edit (returns single idea object)
+ */
+function createFallbackBrainstormEditObject() {
+    const mockEditedIdea = {
+        title: "误爱成宠（升级版）",
+        body: "现代都市背景下，林氏科技集团总裁林慕琛利用先进的AI系统误将普通程序员夏栀识别为富家千金。这个技术错误引发了一段充满现代科技色彩的爱恋故事，保持原有的情感核心，但融入了现代科技背景。"
+    };
+
+    return {
+        partialObjectStream: createAsyncIterator([
+            { title: "误爱成宠（升级版）" },
+            mockEditedIdea
+        ]),
+        object: Promise.resolve(mockEditedIdea)
     };
 }
 

@@ -45,6 +45,55 @@ vi.mock('../server/services/LLMConfig', () => ({
     getMaxTokens: vi.fn().mockReturnValue(2000)
 }));
 
+// Mock lineage resolution utilities
+// Note: Mock multiple possible import paths since different files import it differently
+vi.mock('../common/utils/lineageResolution', () => ({
+    buildLineageGraph: vi.fn().mockReturnValue({}),
+    findLatestArtifact: vi.fn().mockReturnValue({ artifactId: 'test-brainstorm-1' }),
+    extractEffectiveBrainstormIdeas: vi.fn().mockReturnValue([
+        {
+            title: '误爱成宠',
+            body: '霸道总裁与普通员工的甜宠故事...',
+            metadata: { ideaIndex: 0 }
+        }
+    ]),
+    extractEffectiveOutlines: vi.fn().mockReturnValue([]),
+    findEffectiveBrainstormIdeas: vi.fn().mockReturnValue([]),
+    findMainWorkflowPath: vi.fn().mockReturnValue([]),
+    convertEffectiveIdeasToIdeaWithTitle: vi.fn().mockReturnValue([
+        {
+            title: '误爱成宠',
+            body: '霸道总裁与普通员工的甜宠故事...',
+            artifactId: 'test-brainstorm-1',
+            originalArtifactId: 'test-brainstorm-1'
+        }
+    ])
+}));
+
+// Also mock for the relative import path used by agentContext.ts
+vi.mock('../../common/utils/lineageResolution', () => ({
+    buildLineageGraph: vi.fn().mockReturnValue({}),
+    findLatestArtifact: vi.fn().mockReturnValue({ artifactId: 'test-brainstorm-1' }),
+    extractEffectiveBrainstormIdeas: vi.fn().mockReturnValue([
+        {
+            title: '误爱成宠',
+            body: '霸道总裁与普通员工的甜宠故事...',
+            metadata: { ideaIndex: 0 }
+        }
+    ]),
+    extractEffectiveOutlines: vi.fn().mockReturnValue([]),
+    findEffectiveBrainstormIdeas: vi.fn().mockReturnValue([]),
+    findMainWorkflowPath: vi.fn().mockReturnValue([]),
+    convertEffectiveIdeasToIdeaWithTitle: vi.fn().mockReturnValue([
+        {
+            title: '误爱成宠',
+            body: '霸道总裁与普通员工的甜宠故事...',
+            artifactId: 'test-brainstorm-1',
+            originalArtifactId: 'test-brainstorm-1'
+        }
+    ])
+}));
+
 // Mock environment variables
 process.env.NODE_ENV = 'test';
 process.env.LLM_API_KEY = 'test-api-key'; 

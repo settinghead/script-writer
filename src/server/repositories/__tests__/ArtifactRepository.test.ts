@@ -14,8 +14,54 @@ describe('ArtifactRepository', () => {
 
     describe('getLatestBrainstormIdeas', () => {
         it('should resolve latest brainstorm ideas for project', async () => {
-            // Arrange
-            mockDb.execute.mockResolvedValue([mockArtifacts.brainstormIdea]);
+            // Arrange - First ensure the lineage data is set up properly (ElectricArtifact format)
+            const artifactData = {
+                id: mockArtifacts.brainstormIdea.id,
+                project_id: mockArtifacts.brainstormIdea.project_id,
+                type: mockArtifacts.brainstormIdea.type,
+                type_version: mockArtifacts.brainstormIdea.type_version,
+                data: mockArtifacts.brainstormIdea.data, // Already stringified in fixtures
+                metadata: mockArtifacts.brainstormIdea.metadata || undefined,
+                created_at: mockArtifacts.brainstormIdea.created_at.toISOString(), // ElectricArtifact uses string
+                streaming_status: undefined,
+                schema_type: mockArtifacts.brainstormIdea.schema_type,
+                schema_version: mockArtifacts.brainstormIdea.schema_version,
+                origin_type: mockArtifacts.brainstormIdea.origin_type as 'ai_generated' | 'user_input'
+            };
+
+            // Mock the rowToArtifact call to handle the data format conversion
+            const originalRowToArtifact = repository['rowToArtifact'].bind(repository);
+            vi.spyOn(repository as any, 'rowToArtifact').mockImplementation((row: any) => {
+                // Convert the ElectricArtifact format back to what rowToArtifact expects
+                const rowWithDateObject = {
+                    ...row,
+                    created_at: new Date(row.created_at) // Convert string back to Date for rowToArtifact
+                };
+                return originalRowToArtifact(rowWithDateObject);
+            });
+
+            // Mock the lineage methods called by getLatestBrainstormIdeas
+            vi.spyOn(repository, 'getAllProjectArtifactsForLineage').mockResolvedValue([artifactData]);
+            vi.spyOn(repository, 'getAllProjectTransformInputsForLineage').mockResolvedValue([]);
+            vi.spyOn(repository, 'getAllProjectTransformOutputsForLineage').mockResolvedValue([]);
+            vi.spyOn(repository, 'getAllProjectTransformsForLineage').mockResolvedValue([]);
+            vi.spyOn(repository, 'getAllProjectHumanTransformsForLineage').mockResolvedValue([]);
+
+            // Mock the fallback method in case lineage resolution fails
+            vi.spyOn(repository, 'getProjectArtifactsByType').mockResolvedValue([
+                {
+                    id: mockArtifacts.brainstormIdea.id,
+                    type: mockArtifacts.brainstormIdea.type,
+                    project_id: mockArtifacts.brainstormIdea.project_id,
+                    data: JSON.parse(mockArtifacts.brainstormIdea.data), // Parsed data
+                    metadata: mockArtifacts.brainstormIdea.metadata,
+                    created_at: mockArtifacts.brainstormIdea.created_at.toISOString(),
+                    schema_type: mockArtifacts.brainstormIdea.schema_type,
+                    schema_version: mockArtifacts.brainstormIdea.schema_version,
+                    type_version: mockArtifacts.brainstormIdea.type_version,
+                    origin_type: mockArtifacts.brainstormIdea.origin_type as 'ai_generated' | 'user_input'
+                }
+            ]);
 
             // Act
             const result = await repository.getLatestBrainstormIdeas('test-project-1');
@@ -23,7 +69,10 @@ describe('ArtifactRepository', () => {
             // Assert
             expect(result).toHaveLength(1);
             expect(result[0].type).toBe('brainstorm_idea');
-            expect(mockDb.selectFrom).toHaveBeenCalledWith('artifacts');
+            expect(result[0].data).toEqual({
+                title: '误爱成宠',
+                body: '林氏集团总裁林慕琛因一场误会将普通职员夏栀认作富家千金...'
+            });
         });
 
         it('should return empty array when no ideas exist', async () => {
