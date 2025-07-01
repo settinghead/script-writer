@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button, Typography, Divider } from 'antd';
 import { StopOutlined } from '@ant-design/icons';
@@ -12,6 +12,43 @@ import { BrainstormIdeaEditor } from './BrainstormIdeaEditor';
 import { OutlineGenerationOutput } from '../../../common/schemas/outlineSchemas';
 
 const { Text } = Typography;
+
+// Wrapper component to handle editable descendants detection
+const IdeaCardWrapper: React.FC<{
+  idea: IdeaWithTitle;
+  index: number;
+  isSelected: boolean;
+  chosenIdea: any;
+  ideaOutlines: any[];
+  onIdeaClick: (collectionId: string, index: number) => void;
+}> = ({ idea, index, isSelected, chosenIdea, ideaOutlines, onIdeaClick }) => {
+  // Ensure we have the required fields
+  if (!idea.artifactId || !idea.originalArtifactId || !idea.artifactPath) {
+    return null;
+  }
+
+  // Check if this idea has editable descendants
+  const { hasEditableDescendants } = useEditableDescendants(idea.artifactId);
+
+  // Check if this idea is the chosen one
+  const isChosenIdea = chosenIdea &&
+    chosenIdea.originalArtifactId === idea.originalArtifactId &&
+    chosenIdea.originalArtifactPath === idea.artifactPath;
+
+  return (
+    <BrainstormIdeaEditor
+      artifactId={idea.artifactId}
+      artifactPath={idea.artifactPath}
+      originalCollectionId={idea.originalArtifactId}
+      index={index}
+      isSelected={isSelected}
+      isChosen={!!isChosenIdea}
+      hasEditableDescendants={hasEditableDescendants}
+      ideaOutlines={ideaOutlines}
+      onIdeaClick={onIdeaClick}
+    />
+  );
+};
 
 export default function ProjectBrainstormPage() {
   const { projectId } = useParams<{ projectId: string }>()
@@ -277,21 +314,17 @@ export default function ProjectBrainstormPage() {
               ? "grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3"
               : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
             }>
-              {ideas.map((idea, index) => {
-                if (!idea.artifactId || !idea.originalArtifactId || !idea.artifactPath) return null;
-
-                return (
-                  <IdeaCardWrapper
-                    key={`${idea.artifactId}-${index}`}
-                    idea={idea}
-                    index={index}
-                    isSelected={selectedIdea === index}
-                    chosenIdea={chosenIdea}
-                    ideaOutlines={ideaOutlines[idea.artifactId || ''] || []}
-                    onIdeaClick={handleIdeaClick}
-                  />
-                );
-              })}
+              {ideas.map((idea, index) => (
+                <IdeaCardWrapper
+                  key={`${idea.artifactId}-${index}`}
+                  idea={idea}
+                  index={index}
+                  isSelected={selectedIdea === index}
+                  chosenIdea={chosenIdea}
+                  ideaOutlines={ideaOutlines[idea.artifactId || ''] || []}
+                  onIdeaClick={handleIdeaClick}
+                />
+              ))}
             </div>
 
             {/* Streaming indicator */}

@@ -106,7 +106,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                 totalEpisodes: values.totalEpisodes,
                 episodeDuration: values.episodeDuration,
                 selectedPlatform: values.platform,
-                selectedGenrePaths: values.genrePaths || [['都市', '爽文']],
+                selectedGenrePaths: values.genrePaths,
                 requirements: values.requirements
             });
         }).catch((error) => {
