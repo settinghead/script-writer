@@ -74,13 +74,13 @@ ${context}
 → 使用 generate_brainstorm_ideas 工具
 → 参数：platform="抖音", genre="现代甜宠", numberOfIdeas=3
 
-**示例2：基于现有创意生成剧本设定**
-用户请求："基于artifact ID abc123 的故事创意，生成详细的剧本设定"
+**示例2：基于现有创意生成剧本框架**
+用户请求："基于artifact ID abc123 的故事创意，生成详细的剧本框架"
 → 使用 generate_outline_settings 工具
 → 参数：sourceArtifactId="abc123"
 
 **示例3：生成时序大纲**
-用户请求："基于剧本设定创建60集的时序大纲"
+用户请求："基于剧本框架创建60集的时序大纲"
 → 使用 generate_chronicles 工具
 → 参数：sourceArtifactId="设定artifact的ID", totalEpisodes=60
 

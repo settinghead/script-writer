@@ -99,7 +99,7 @@ describe('Streaming Workflow Tests', () => {
 
         const outlineSettingsResult = await outlineSettingsTool.execute({
             sourceArtifactId: mockBrainstormArtifact.id,
-            title: '都市甜宠剧本设定',
+            title: '都市甜宠剧本框架',
             requirements: '创建详细的角色设定和商业定位'
         }, { toolCallId: 'test-outline-settings' });
 

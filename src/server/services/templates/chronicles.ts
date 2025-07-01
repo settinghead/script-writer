@@ -1,8 +1,8 @@
 export const chroniclesTemplate = {
-    id: 'chronicles',
-    name: 'Chronological Story Development Generation',
-    promptTemplate: `你是一位深耕短剧创作的资深编剧，尤其擅长创作引人入胜、节奏明快、反转强烈的爆款短剧。
-基于已确定的剧本设定，请创作一个**时序大纲（Chronological Outline）**。%%params.episodeInfo%%
+  id: 'chronicles',
+  name: 'Chronological Story Development Generation',
+  promptTemplate: `你是一位深耕短剧创作的资深编剧，尤其擅长创作引人入胜、节奏明快、反转强烈的爆款短剧。
+基于已确定的剧本框架，请创作一个**时序大纲（Chronological Outline）**。%%params.episodeInfo%%
 
 **⏰ 时序大纲说明**：
 这不是直接的剧集拍摄顺序，而是按照**时间顺序**梳理整个故事世界中发生的所有事件，包括：
@@ -20,7 +20,7 @@ export const chroniclesTemplate = {
 - 为flashback场景和角色动机提供详实背景
 - 避免剧情漏洞和时间线事件
 
-**📺 剧本设定基础**：
+**📺 剧本框架基础**：
 基于已设定的故事元素：
 - **剧名**: %%params.title%%
 - **类型**: %%params.genre%%
@@ -150,7 +150,7 @@ export const chroniclesTemplate = {
 }
 
 **CRITICAL: 只输出纯JSON格式，绝对不要在JSON后添加任何解释、设计说明、补充内容或其他文本。JSON结构必须完整且正确。**`,
-    outputFormat: 'json',
-    responseWrapper: '```json',
-    variables: ['params.episodeInfo', 'params.totalEpisodes', 'params.requirements', 'params.stageGuidance', 'params.title', 'params.genre', 'params.setting', 'params.characters']
+  outputFormat: 'json',
+  responseWrapper: '```json',
+  variables: ['params.episodeInfo', 'params.totalEpisodes', 'params.requirements', 'params.stageGuidance', 'params.title', 'params.genre', 'params.setting', 'params.characters']
 }; 

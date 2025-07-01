@@ -41,7 +41,7 @@ export function createOutlineSettingsToolDefinition(
 ): StreamingToolDefinition<OutlineSettingsInput, OutlineSettingsToolResult> {
     return {
         name: 'generate_outline_settings',
-        description: '基于选定的故事创意生成剧本设定（人物角色、故事背景、商业定位等），为后续时序大纲奠定基础。适用场景：用户已有满意的故事创意，需要先确定基础设定再进行时序发展。必须使用项目背景信息中显示的完整artifact ID作为sourceArtifactId参数。',
+        description: '基于选定的故事创意生成剧本框架（人物角色、故事背景、商业定位等），为后续时序大纲奠定基础。适用场景：用户已有满意的故事创意，需要先确定基础设定再进行时序发展。必须使用项目背景信息中显示的完整artifact ID作为sourceArtifactId参数。',
         inputSchema: OutlineSettingsInputSchema,
         outputSchema: OutlineSettingsToolResultSchema,
         execute: async (params: OutlineSettingsInput, { toolCallId }): Promise<OutlineSettingsToolResult> => {

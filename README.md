@@ -11,13 +11,13 @@ Script Writer combines AI-powered content generation with sophisticated editing 
 - **Chinese Short Drama Focus** - Specialized for 抖音, 快手, and other Chinese platforms
 - **去脸谱化 Content** - Emphasizes modern, non-stereotypical characters and plots
 - **Real-time Collaboration** - Multiple creators can work simultaneously
-- **Complete Project Workflow** - 灵感 → 剧本设定 → 时序大纲 → 分集 → 剧本 pipeline
+- **Complete Project Workflow** - 灵感 → 剧本框架 → 时序大纲 → 分集 → 剧本 pipeline
 
 ## Application-Specific Features
 
 ### 🎭 Script Creation Pipeline
 
-**Complete Workflow**: 灵感生成 → 剧本设定 → 时序大纲 → 分集规划 → 剧本创作
+**Complete Workflow**: 灵感生成 → 剧本框架 → 时序大纲 → 分集规划 → 剧本创作
 
 **Brainstorming (灵感生成)**:
 - **Platform-Specific Generation** - Optimized for 抖音, 快手, 小红书, etc.
@@ -26,7 +26,7 @@ Script Writer combines AI-powered content generation with sophisticated editing 
 - **AI-Powered Editing** - "让这些故事更现代一些，加入一些科技元素"
 - **Real-time Streaming** - Ideas appear as they're generated
 
-**Outline Settings (剧本设定)**:
+**Outline Settings (剧本框架)**:
 - **Character Development** - Normalized character types (male_lead, female_lead, etc.) with detailed backgrounds
 - **Story Foundation** - Genre, target audience, platform settings, and commercial positioning
 - **Setting & Context** - Time period, location, and social background for the story

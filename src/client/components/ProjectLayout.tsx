@@ -523,7 +523,7 @@ const ProjectLayout: React.FC = () => {
                                             }
                                         }}
                                     />
-                                    <TextDivider title="剧本设定" id="outline-settings" />
+                                    <TextDivider title="剧本框架" id="outline-settings" />
                                     <OutlineSettingsDisplay />
 
                                     <TextDivider title="时序大纲" id="chronicles" />

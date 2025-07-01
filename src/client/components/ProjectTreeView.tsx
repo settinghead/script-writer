@@ -262,7 +262,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                         fontWeight: outlineSettingsHighlighted ? 700 : 500,
                         textShadow: outlineSettingsHighlighted ? '0 0 8px rgba(250, 173, 20, 0.8)' : 'none'
                     }}>
-                        剧本设定
+                        剧本框架
                     </Text>
                     {hasOutlineSettings && (
                         <CheckCircleOutlined style={{
