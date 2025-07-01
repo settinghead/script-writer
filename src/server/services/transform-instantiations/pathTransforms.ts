@@ -1,4 +1,10 @@
-import { BrainstormIdeaSchema } from '../../../common/schemas/artifacts.js';
+import { ArtifactSchemaRegistry } from '../../../common/schemas/artifacts';
+
+// Get the schema from the registry
+const BrainstormIdeaSchema = ArtifactSchemaRegistry.brainstorm_item_schema;
+
+// Export the schema for use by other modules
+export { BrainstormIdeaSchema };
 
 // Utility function to extract data at JSONPath (simplified implementation)
 export function extractDataAtPath(sourceData: any, path: string): any {

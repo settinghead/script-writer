@@ -3,14 +3,13 @@ import { TransformRepository } from '../transform-artifact-framework/TransformRe
 import { ArtifactRepository } from '../transform-artifact-framework/ArtifactRepository';
 import { prepareAgentPromptContext } from '../../common/utils/agentContext';
 import { createBrainstormToolDefinition, createBrainstormEditToolDefinition } from '../tools/BrainstormTools';
-import { createOutlineToolDefinition } from '../tools/OutlineTool';
 import { createOutlineSettingsToolDefinition } from '../tools/OutlineSettingsTool';
 import { createChroniclesToolDefinition } from '../tools/ChroniclesTool';
 import type { GeneralAgentRequest } from '../transform-artifact-framework/AgentService';
 import type { StreamingToolDefinition } from '../transform-artifact-framework/StreamingAgentFramework';
 
-// Request type enumeration
-export type RequestType = 'brainstorm_generation' | 'outline_settings_generation' | 'chronicles_generation' | 'outline_generation' | 'general';
+// Updated request types - removed outline_generation
+export type RequestType = 'brainstorm_generation' | 'outline_settings_generation' | 'chronicles_generation' | 'general';
 
 // Interface for the complete agent configuration
 export interface AgentConfiguration {
@@ -47,15 +46,6 @@ export function analyzeRequestType(userRequest: string): RequestType {
         'generate chronicles', 'create chronicles'
     ];
 
-    // Outline generation keywords (legacy/general)
-    const outlineKeywords = ['大纲', 'outline', '提纲', '结构', '剧集结构', '分集大纲', '叙事大纲'];
-    const outlineGenerationPatterns = [
-        '生成大纲', '创建大纲', '制作大纲', '大纲生成',
-        'generate outline', 'create outline',
-        '用这个灵感继续', '继续', '生成叙事大纲',
-        '为这个故事', '这个故事创意'
-    ];
-
     // Check for outline settings generation first (most specific)
     const hasOutlineSettingsPattern = outlineSettingsPatterns.some(pattern => request.includes(pattern));
     const hasOutlineSettingsKeyword = outlineSettingsKeywords.some(keyword => request.includes(keyword));
@@ -74,18 +64,11 @@ export function analyzeRequestType(userRequest: string): RequestType {
         return 'chronicles_generation';
     }
 
-    // Check for general outline generation (legacy support)
-    const hasOutlinePattern = outlineGenerationPatterns.some(pattern => request.includes(pattern));
-    const hasOutlineKeyword = outlineKeywords.some(keyword => request.includes(keyword));
-    const hasGenerationKeyword = generationKeywords.some(keyword => request.includes(keyword));
-
-    if (hasOutlinePattern || (hasOutlineKeyword && hasGenerationKeyword)) {
-        console.log(`[RequestAnalysis] -> outline_generation (pattern: ${hasOutlinePattern}, keywords: ${hasOutlineKeyword && hasGenerationKeyword})`);
-        return 'outline_generation';
-    }
+    // Removed old outline generation logic
 
     // Check for brainstorm generation
     const hasBrainstormKeyword = brainstormKeywords.some(keyword => request.includes(keyword));
+    const hasGenerationKeyword = generationKeywords.some(keyword => request.includes(keyword));
 
     console.log(`[RequestAnalysis] User request: "${userRequest}"`);
     console.log(`[RequestAnalysis] Lowercase: "${request}"`);
@@ -152,18 +135,7 @@ export async function buildContextForRequestType(
             console.log(`[ContextBuilder] Returning chronicles context: ${chroniclesContext.substring(0, 100)}...`);
             return chroniclesContext;
 
-        case 'outline_generation':
-            // For legacy outline generation, provide brainstorm context but focus on outline needs
-            const brainstormContext = prepareAgentPromptContext({
-                artifacts,
-                transforms,
-                humanTransforms,
-                transformInputs,
-                transformOutputs
-            });
-            const outlineContext = `${brainstormContext}\n\n***准备进行大纲创建阶段***\n请基于现有故事创意来创建详细的大纲结构。`;
-            console.log(`[ContextBuilder] Returning outline context: ${outlineContext.substring(0, 100)}...`);
-            return outlineContext;
+        // Removed outline_generation case
 
         case 'general':
         default:
@@ -244,19 +216,7 @@ ${context}`;
 
 开始分析现有设定并创建时序大纲。`;
 
-        case 'outline_generation':
-            return `${basePrompt}
-
-**你的任务：**
-1. 基于现有的故事创意，创建详细的剧集大纲
-2. 分析故事结构、角色发展和情节安排
-3. 使用outline工具生成完整的大纲结构
-4. 确保大纲符合短剧制作的要求
-5. 完成后确认任务完成
-
-**重要提示：** 当前是大纲创建阶段，需要将故事创意转化为可执行的剧集结构。
-
-开始分析现有创意并创建大纲。`;
+        // Removed outline_generation case
 
         case 'general':
         default:
@@ -320,12 +280,7 @@ export function buildToolsForRequestType(
                 createChroniclesToolDefinition(transformRepo, artifactRepo, projectId, userId, cachingOptions)
             ];
 
-        case 'outline_generation':
-            // Provide legacy outline generation tool
-            return [
-                createOutlineToolDefinition(transformRepo, artifactRepo, projectId, userId, cachingOptions),
-                createBrainstormEditToolDefinition(transformRepo, artifactRepo, projectId, userId, cachingOptions)
-            ];
+        // Removed outline_generation case
 
         case 'general':
         default:
@@ -333,7 +288,7 @@ export function buildToolsForRequestType(
             return [
                 createBrainstormToolDefinition(transformRepo, artifactRepo, projectId, userId, cachingOptions),
                 createBrainstormEditToolDefinition(transformRepo, artifactRepo, projectId, userId, cachingOptions),
-                createOutlineToolDefinition(transformRepo, artifactRepo, projectId, userId, cachingOptions),
+                // Removed createOutlineToolDefinition
                 createOutlineSettingsToolDefinition(transformRepo, artifactRepo, projectId, userId, cachingOptions),
                 createChroniclesToolDefinition(transformRepo, artifactRepo, projectId, userId, cachingOptions)
             ];

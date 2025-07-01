@@ -1,9 +1,4 @@
-import {
-    EnhancedOutlineStage,
-    CharacterEmotionArc,
-    RelationshipDevelopment,
-    OutlineCharacterV2,
-} from './llm/outlineTypes.js';
+// Legacy outline types removed - now using outline settings + chronicles system
 import { z } from 'zod';
 import { UseMutationResult } from '@tanstack/react-query';
 import type { LineageGraph } from './transform-artifact-framework/lineageResolution.js';
@@ -294,18 +289,12 @@ export interface WorkflowContextV1 {
     [key: string]: any;
 }
 
-// Enhanced stage structure interface with flattened structure
-export interface StageStructure extends EnhancedOutlineStage {
-    // This now extends the enhanced structure from LLM types with flattened keyPoints
+// Legacy stage structure interface - now replaced by chronicles system
+export interface StageStructure {
+    // Legacy interface - replaced by chronicles system
+    stageSynopsis: string;
+    numberOfEpisodes: number;
 }
-
-// Re-export enhanced types for convenience
-export type {
-    EnhancedOutlineStage,
-    CharacterEmotionArc,
-    RelationshipDevelopment,
-    OutlineCharacterV2,
-};
 
 // ========== FLOW TYPES ==========
 

@@ -1,10 +1,9 @@
 import React, { useMemo } from 'react';
-import { Card, Typography, Tag, Space, Collapse } from 'antd';
+import { Card, Typography, Space } from 'antd';
 import { ChroniclesOutput } from '../../common/schemas/outlineSchemas';
 import { useProjectData } from '../contexts/ProjectDataContext';
 
 const { Text, Paragraph } = Typography;
-const { Panel } = Collapse;
 
 interface ChroniclesDisplayProps {
 }
@@ -59,86 +58,31 @@ export const ChroniclesDisplay: React.FC<ChroniclesDisplayProps> = ({
                 styles={{ body: { padding: '24px' } }}
             >
                 {/* Chronological Timeline Stages - only show if available */}
-                {chronicles.stages && chronicles.stages.length > 0 && (
+                {chronicles.synopsis_stages && chronicles.synopsis_stages.length > 0 && (
                     <Card
                         size="small"
                         title="时序发展阶段（按时间顺序）"
                         style={{ backgroundColor: '#262626', border: '1px solid #434343' }}
                     >
-                        <Collapse ghost activeKey={chronicles.stages.map((stage: any, index: number) => index.toString())}>
-                            {chronicles.stages.map((stage: any, index: number) => (
-                                <Panel
-                                    header={stage.title || `第${index + 1}阶段`}
-                                    key={index}
-                                    style={{ backgroundColor: '#1f1f1f', border: '1px solid #434343', marginBottom: '8px' }}
-                                >
-                                    <Space direction="vertical" size="small" style={{ width: '100%' }}>
-
-                                        {stage.stageSynopsis && (
-                                            <Paragraph style={{ margin: 0, lineHeight: 1.6 }}>
-                                                {stage.stageSynopsis}
-                                            </Paragraph>
-                                        )}
-
-                                        {stage.event && (
-                                            <div style={{ marginTop: '12px', padding: '8px', backgroundColor: '#262626', borderRadius: '4px' }}>
-                                                <Text strong>核心事件：</Text>
-                                                <div style={{ marginTop: '4px' }}>
-                                                    <Text>{stage.event}</Text>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {stage.emotionArcs && stage.emotionArcs.length > 0 && (
-                                            <div style={{ marginTop: '8px' }}>
-                                                <Text strong>情感变化：</Text>
-                                                <div style={{ marginTop: '4px' }}>
-                                                    {stage.emotionArcs.map((arc: any, arcIndex: number) => (
-                                                        <div key={arcIndex} style={{ marginBottom: '4px', fontSize: '12px' }}>
-                                                            <Text type="secondary">
-                                                                {(arc.characters && Array.isArray(arc.characters) ? arc.characters.join(', ') : '未知角色')}:
-                                                            </Text>
-                                                            <Text style={{ marginLeft: '4px' }}>{arc.content || ''}</Text>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {stage.relationshipDevelopments && stage.relationshipDevelopments.length > 0 && (
-                                            <div style={{ marginTop: '8px' }}>
-                                                <Text strong>关系发展：</Text>
-                                                <div style={{ marginTop: '4px' }}>
-                                                    {stage.relationshipDevelopments.map((dev: any, devIndex: number) => (
-                                                        <div key={devIndex} style={{ marginBottom: '4px', fontSize: '12px' }}>
-                                                            <Text type="secondary">
-                                                                {(dev.characters && Array.isArray(dev.characters) ? dev.characters.join(' & ') : '未知角色')}:
-                                                            </Text>
-                                                            <Text style={{ marginLeft: '4px' }}>{dev.content || ''}</Text>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {stage.insights && stage.insights.length > 0 && (
-                                            <div style={{ marginTop: '8px' }}>
-                                                <Text strong>观众洞察：</Text>
-                                                <div style={{ marginTop: '4px' }}>
-                                                    {stage.insights.map((insight: string, insightIndex: number) => (
-                                                        <div key={insightIndex} style={{ marginBottom: '4px' }}>
-                                                            <Tag color="cyan" style={{ fontSize: '11px' }}>
-                                                                {insight}
-                                                            </Tag>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-                                    </Space>
-                                </Panel>
+                        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                            {chronicles.synopsis_stages.map((stage: string, index: number) => (
+                                <div key={index} style={{
+                                    padding: '16px',
+                                    backgroundColor: '#1f1f1f',
+                                    border: '1px solid #434343',
+                                    borderRadius: '8px'
+                                }}>
+                                    <div style={{ marginBottom: '8px' }}>
+                                        <Text strong style={{ color: '#1890ff', fontSize: '16px' }}>
+                                            第 {index + 1} 阶段
+                                        </Text>
+                                    </div>
+                                    <Paragraph style={{ margin: 0, lineHeight: 1.6, color: '#fff' }}>
+                                        {stage}
+                                    </Paragraph>
+                                </div>
                             ))}
-                        </Collapse>
+                        </Space>
                     </Card>
                 )}
             </Card>

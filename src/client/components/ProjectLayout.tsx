@@ -15,7 +15,6 @@ import { useLocalStorage } from '../hooks/useLocalStorage';
 import { useChosenBrainstormIdea } from '../hooks/useChosenBrainstormIdea';
 import { SingleBrainstormIdeaEditor } from './brainstorm/SingleBrainstormIdeaEditor';
 import ProjectBrainstormPage from '../components/brainstorm/ProjectBrainstormPage';
-import { OutlineDisplay } from './OutlineDisplay';
 import { OutlineSettingsDisplay } from './OutlineSettingsDisplay';
 import { ChroniclesDisplay } from './ChroniclesDisplay';
 
@@ -533,8 +532,7 @@ const ProjectLayout: React.FC = () => {
                                     <ChroniclesDisplay />
 
                                     {/* Legacy Support - Show old outline display for backward compatibility */}
-                                    <TextDivider title="完整大纲（向后兼容）" id="story-outline" />
-                                    <OutlineDisplay />
+                                    {/* Legacy outline display removed - replaced by outline settings + chronicles */}
 
                                     <Outlet />
                                 </div>

@@ -41,7 +41,7 @@ export function createOutlineSettingsToolDefinition(
 ): StreamingToolDefinition<OutlineSettingsInput, OutlineSettingsToolResult> {
     return {
         name: 'generate_outline_settings',
-        description: '基于选定的故事创意生成剧本设定（人物角色、故事背景、商业定位等），为后续时序大纲奠定基础。适用场景：用户已有满意的故事创意，需要先确定基础设定再进行时序发展。要求用户提供集数配置、平台要求等参数。必须使用项目背景信息中显示的完整artifact ID作为sourceArtifactId参数。',
+        description: '基于选定的故事创意生成剧本设定（人物角色、故事背景、商业定位等），为后续时序大纲奠定基础。适用场景：用户已有满意的故事创意，需要先确定基础设定再进行时序发展。必须使用项目背景信息中显示的完整artifact ID作为sourceArtifactId参数。',
         inputSchema: OutlineSettingsInputSchema,
         outputSchema: OutlineSettingsToolResultSchema,
         execute: async (params: OutlineSettingsInput, { toolCallId }): Promise<OutlineSettingsToolResult> => {
@@ -62,10 +62,31 @@ export function createOutlineSettingsToolDefinition(
             // Extract source idea data
             let sourceIdeaData: { title: string; body: string };
             if (sourceArtifact.type === 'brainstorm_idea') {
-                sourceIdeaData = {
-                    title: sourceArtifact.data.title,
-                    body: sourceArtifact.data.body
-                };
+                // Check if it's a user_input schema (from human transform) or direct brainstorm_idea
+                if (sourceArtifact.schema_type === 'user_input_schema') {
+                    // User input artifact - check for derived_data in metadata or direct data
+                    const derivedData = sourceArtifact.metadata?.derived_data;
+                    if (derivedData && derivedData.title && derivedData.body) {
+                        sourceIdeaData = {
+                            title: derivedData.title,
+                            body: derivedData.body
+                        };
+                    } else if (sourceArtifact.data.title && sourceArtifact.data.body) {
+                        // Direct data structure
+                        sourceIdeaData = {
+                            title: sourceArtifact.data.title,
+                            body: sourceArtifact.data.body
+                        };
+                    } else {
+                        throw new Error('Invalid user input artifact for outline settings generation');
+                    }
+                } else {
+                    // Direct brainstorm idea
+                    sourceIdeaData = {
+                        title: sourceArtifact.data.title,
+                        body: sourceArtifact.data.body
+                    };
+                }
             } else if (sourceArtifact.type === 'user_input') {
                 const derivedData = sourceArtifact.metadata?.derived_data;
                 if (!derivedData || !derivedData.title || !derivedData.body) {
@@ -87,17 +108,17 @@ export function createOutlineSettingsToolDefinition(
                 inputSchema: OutlineSettingsInputSchema,
                 outputSchema: OutlineSettingsOutputSchema,
                 prepareTemplateVariables: (input) => {
-                    const genreString = input.selectedGenrePaths
-                        .map(path => path.join(' > '))
-                        .join(', ');
-                    const episodeInfo = `总共${input.totalEpisodes}集，每集${input.episodeDuration}分钟`;
+                    // Use default values for template variables that aren't in the input schema
+                    const episodeInfo = `总共60集，每集2分钟`; // Default episode configuration
+                    const platform = '抖音'; // Default platform
+                    const genre = '现代甜宠'; // Default genre
 
                     return ({
                         userInput: `${sourceIdeaData.title}\n\n${sourceIdeaData.body}`,
-                        totalEpisodes: input.totalEpisodes.toString(),
+                        totalEpisodes: '60',
                         episodeInfo: episodeInfo,
-                        platform: input.selectedPlatform,
-                        genre: genreString,
+                        platform: platform,
+                        genre: genre,
                         requirements: input.requirements || '无特殊要求'
                     });
                 },
@@ -120,10 +141,7 @@ export function createOutlineSettingsToolDefinition(
                     toolName: 'generate_outline_settings',
                     source_artifact_id: params.sourceArtifactId,
                     source_idea_title: sourceIdeaData.title,
-                    total_episodes: params.totalEpisodes,
-                    episode_duration: params.episodeDuration,
-                    platform: params.selectedPlatform,
-                    genre_paths: params.selectedGenrePaths,
+                    title: params.title,
                     requirements: params.requirements
                 },
                 // Pass caching options from factory

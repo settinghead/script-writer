@@ -82,24 +82,8 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                         style={{ marginBottom: '16px', backgroundColor: '#262626', border: '1px solid #434343' }}
                     >
                         <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                            {outlineSettings.target_audience.demographic && (
-                                <>
-                                    <Text strong>主要群体：</Text>
-                                    <Text>{outlineSettings.target_audience.demographic}</Text>
-                                </>
-                            )}
-                            {outlineSettings.target_audience.core_themes && outlineSettings.target_audience.core_themes.length > 0 && (
-                                <>
-                                    <Text strong>核心主题：</Text>
-                                    <div>
-                                        {outlineSettings.target_audience.core_themes.map((theme: string, index: number) => (
-                                            <Tag key={index} color="blue" style={{ marginBottom: '4px' }}>
-                                                {theme}
-                                            </Tag>
-                                        ))}
-                                    </div>
-                                </>
-                            )}
+                            <Text strong>主要群体：</Text>
+                            <Text>{outlineSettings.target_audience}</Text>
                         </Space>
                     </Card>
                 )}
@@ -148,22 +132,22 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                         style={{ marginBottom: '16px', backgroundColor: '#262626', border: '1px solid #434343' }}
                     >
                         <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                            {outlineSettings.setting.core_setting_summary && (
+                            {outlineSettings.setting.time_period && (
                                 <div>
-                                    <Text strong>核心设定：</Text>
-                                    <Paragraph style={{ margin: '8px 0' }}>{outlineSettings.setting.core_setting_summary}</Paragraph>
+                                    <Text strong>时间背景：</Text>
+                                    <Paragraph style={{ margin: '8px 0' }}>{outlineSettings.setting.time_period}</Paragraph>
                                 </div>
                             )}
-                            {outlineSettings.setting.key_scenes && outlineSettings.setting.key_scenes.length > 0 && (
+                            {outlineSettings.setting.location && (
                                 <div>
-                                    <Text strong>关键场景：</Text>
-                                    <div style={{ marginTop: '8px' }}>
-                                        {outlineSettings.setting.key_scenes.map((scene: string, index: number) => (
-                                            <Tag key={index} color="green" style={{ marginBottom: '4px', display: 'block', marginRight: 0 }}>
-                                                {scene}
-                                            </Tag>
-                                        ))}
-                                    </div>
+                                    <Text strong>地点设定：</Text>
+                                    <Paragraph style={{ margin: '8px 0' }}>{outlineSettings.setting.location}</Paragraph>
+                                </div>
+                            )}
+                            {outlineSettings.setting.social_context && (
+                                <div>
+                                    <Text strong>社会背景：</Text>
+                                    <Paragraph style={{ margin: '8px 0' }}>{outlineSettings.setting.social_context}</Paragraph>
                                 </div>
                             )}
                         </Space>
@@ -193,24 +177,25 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                                                     <Tag color={getCharacterTypeColor(character.type)}>{getCharacterTypeLabel(character.type)}</Tag>
                                                 )}
                                             </div>
-                                            {(character.age || character.gender || character.occupation) && (
+                                            {(character.age || character.occupation) && (
                                                 <Text type="secondary">
-                                                    {[character.age, character.gender, character.occupation].filter(Boolean).join(' • ')}
+                                                    {[character.age, character.occupation].filter(Boolean).join(' • ')}
                                                 </Text>
                                             )}
-                                            {character.description && (
+                                            {character.personality && (
                                                 <Paragraph ellipsis={{ rows: 2 }} style={{ margin: 0, fontSize: '12px' }}>
-                                                    {character.description}
+                                                    {character.personality}
                                                 </Paragraph>
                                             )}
-                                            {character.personality_traits && character.personality_traits.length > 0 && (
-                                                <div>
-                                                    {character.personality_traits.slice(0, 3).map((trait: string, traitIndex: number) => (
-                                                        <Tag key={traitIndex} style={{ fontSize: '10px' }}>
-                                                            {trait}
-                                                        </Tag>
-                                                    ))}
-                                                </div>
+                                            {character.appearance && (
+                                                <Paragraph ellipsis={{ rows: 2 }} style={{ margin: 0, fontSize: '12px' }}>
+                                                    外貌：{character.appearance}
+                                                </Paragraph>
+                                            )}
+                                            {character.background && (
+                                                <Paragraph ellipsis={{ rows: 2 }} style={{ margin: 0, fontSize: '12px' }}>
+                                                    背景：{character.background}
+                                                </Paragraph>
                                             )}
                                         </Space>
                                     </Card>

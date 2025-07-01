@@ -87,13 +87,13 @@ const createReactFlowNode = (workflowNode: WorkflowNode, currentSection: Current
         }
 
         // Map navigation targets to sections
-        const navigationTargetToSection: Record<string, CurrentSection> = {
+        const sectionMap: Record<string, CurrentSection> = {
             '#brainstorm-ideas': 'brainstorm-ideas',
-            '#selected-idea': 'brainstorm-ideas', // Selected idea is part of brainstorm section
-            '#story-outline': 'story-outline'
+            '#outline-settings': 'outline-settings',
+            '#chronicles': 'chronicles'
         };
 
-        const nodeSection = navigationTargetToSection[workflowNode.navigationTarget];
+        const nodeSection = sectionMap[workflowNode.navigationTarget];
         const shouldHighlightResult = nodeSection === currentSection;
 
         console.log(`[shouldHighlight] ${workflowNode.title}:`, {

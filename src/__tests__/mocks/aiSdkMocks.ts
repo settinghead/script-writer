@@ -44,6 +44,8 @@ export function createCachedStreamObjectMock() {
             const prompt = options.messages?.map(m => m.content).join('\n') || 'default-prompt';
             if (prompt.includes('outline') || prompt.includes('Outline') || prompt.includes('大纲')) {
                 return createFallbackOutlineObject();
+            } else if (prompt.includes('chronicles') || prompt.includes('时序') || prompt.includes('timeline') || prompt.includes('Chronological') || prompt.includes('时间顺序') || prompt.includes('stages')) {
+                return createFallbackChroniclesObject();
             } else if (prompt.includes('edit') || prompt.includes('改进') || prompt.includes('修改')) {
                 return createFallbackBrainstormEditObject();
             } else {
@@ -211,84 +213,65 @@ function createFallbackBrainstormEditObject() {
 }
 
 /**
- * Fallback mock for outline generation
+ * Fallback mock for chronicles generation (matches ChroniclesOutputSchema)
+ */
+function createFallbackChroniclesObject() {
+    const mockChroniclesData = {
+        synopsis_stages: [
+            "第1-8集：初遇与误会 - 女主入职遇到男主，因误会开始特殊关系",
+            "第9-16集：感情升温 - 在误会中两人感情逐渐升温，互相关注",
+            "第17-24集：矛盾冲突 - 真相逐渐浮现，两人产生误解和冲突",
+            "第25-32集：真相大白 - 误会解除，两人重新认识彼此",
+            "第33-40集：甜蜜恋爱 - 正式确立关系，享受甜蜜恋爱时光",
+            "第41-48集：外界阻力 - 面对家庭和事业的挑战和阻力",
+            "第49-56集：共同成长 - 携手克服困难，彼此成长和支持",
+            "第57-60集：圆满结局 - 最终走向幸福，事业爱情双丰收"
+        ]
+    };
+
+    return {
+        partialObjectStream: createAsyncIterator([
+            { synopsis_stages: mockChroniclesData.synopsis_stages.slice(0, 2) },
+            mockChroniclesData
+        ]),
+        object: Promise.resolve(mockChroniclesData)
+    };
+}
+
+/**
+ * Fallback mock for outline settings generation (matches OutlineSettingsOutputSchema)
  */
 function createFallbackOutlineObject() {
-    const mockOutlineData = {
+    const mockOutlineSettingsData = {
         title: "误爱成宠",
         genre: "现代甜宠",
-        target_audience: {
-            demographic: "18-35岁都市女性",
-            core_themes: ["甜宠", "霸总", "误会"]
-        },
+        target_audience: "18-35岁都市女性",  // String, not object
+        platform: "抖音",  // Required field
         selling_points: ["霸总甜宠", "误会重重", "高颜值演员"],
         satisfaction_points: ["甜蜜互动", "霸道总裁", "逆袭成长"],
         setting: {
-            core_setting_summary: "现代都市商业环境，主要场景为高端写字楼和豪华住宅",
-            key_scenes: ["总裁办公室", "员工餐厅", "豪华酒店", "家庭聚会"]
+            time_period: "现代",  // Required field
+            location: "上海",     // Required field
+            social_context: "都市职场"  // Required field
         },
         characters: [
             {
                 name: "林慕琛",
                 type: "male_lead",
-                description: "集团总裁，霸道深情",
                 age: "30岁",
-                gender: "男",
                 occupation: "集团总裁",
-                personality_traits: ["霸道", "深情", "专业"],
-                character_arc: "从误解到理解，从冷漠到深情",
-                relationships: { "夏栀": "恋人关系" },
-                key_scenes: ["初次见面", "误会产生", "真相大白", "表白场景"]
+                personality: "霸道深情",  // Required field
+                appearance: "高大英俊",   // Required field
+                background: "商业世家出身"  // Required field
             },
             {
                 name: "夏栀",
                 type: "female_lead",
-                description: "普通职员，坚强善良",
                 age: "25岁",
-                gender: "女",
                 occupation: "公司职员",
-                personality_traits: ["善良", "坚强", "聪明"],
-                character_arc: "从被误解到证明自己，获得真爱",
-                relationships: { "林慕琛": "恋人关系" },
-                key_scenes: ["入职场景", "被误解", "澄清真相", "接受告白"]
-            }
-        ],
-        stages: [
-            {
-                title: "误会相遇",
-                stageSynopsis: "女主入职遇到男主，因误会开始特殊关系",
-                event: "初次相遇",
-                emotionArcs: [
-                    {
-                        characters: ["林慕琛", "夏栀"],
-                        content: "第一印象的形成和误会的开始"
-                    }
-                ],
-                relationshipDevelopments: [
-                    {
-                        characters: ["林慕琛", "夏栀"],
-                        content: "从陌生到产生特殊关注"
-                    }
-                ],
-                insights: ["观众了解到女主的身份误会", "男主的第一印象形成过程"]
-            },
-            {
-                title: "情感升温",
-                stageSynopsis: "在误会中两人感情逐渐升温",
-                event: "感情发展",
-                emotionArcs: [
-                    {
-                        characters: ["林慕琛", "夏栀"],
-                        content: "感情在误会中悄然生长"
-                    }
-                ],
-                relationshipDevelopments: [
-                    {
-                        characters: ["林慕琛", "夏栀"],
-                        content: "从关注到产生爱意"
-                    }
-                ],
-                insights: ["感情在误会中发展的复杂性", "两人内心世界的变化"]
+                personality: "善良坚强",  // Required field
+                appearance: "清纯可爱",   // Required field
+                background: "普通家庭出身"  // Required field
             }
         ]
     };
@@ -296,9 +279,9 @@ function createFallbackOutlineObject() {
     return {
         partialObjectStream: createAsyncIterator([
             { title: "误爱成宠" },
-            mockOutlineData
+            mockOutlineSettingsData
         ]),
-        object: Promise.resolve(mockOutlineData)
+        object: Promise.resolve(mockOutlineSettingsData)
     };
 }
 

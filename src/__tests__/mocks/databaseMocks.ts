@@ -20,11 +20,43 @@ export function createMockKyselyDatabase() {
     };
 }
 
+let mockIdCounter = 1;
+
 export function createMockArtifactRepository() {
     return {
         getArtifact: vi.fn(),
-        createArtifact: vi.fn(),
-        updateArtifact: vi.fn(),
+        createArtifact: vi.fn().mockImplementation(async (projectIdOrData: any, type?: string, data?: any, version?: string, metadata?: any, streamingStatus?: string, originType?: string) => {
+            const artifactId = `mock-artifact-${mockIdCounter++}`;
+
+            // Handle both call signatures: old style (object) and new style (parameters)
+            if (typeof projectIdOrData === 'object' && !type) {
+                // Old style: createArtifact(data)
+                const artifactData = projectIdOrData;
+                return {
+                    id: artifactId,
+                    project_id: artifactData.projectId,
+                    schema_type: artifactData.schemaType,
+                    origin_type: artifactData.originType,
+                    data: JSON.stringify(artifactData.data),
+                    streaming_status: 'completed',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                };
+            } else {
+                // New style: createArtifact(projectId, type, data, ...)
+                return {
+                    id: artifactId,
+                    project_id: projectIdOrData,
+                    schema_type: type,
+                    origin_type: originType || 'ai_generated',
+                    data: JSON.stringify(data),
+                    streaming_status: streamingStatus || 'completed',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                };
+            }
+        }),
+        updateArtifact: vi.fn().mockResolvedValue({}),
         getLatestBrainstormIdeas: vi.fn(),
         getProjectArtifacts: vi.fn(),
         getProjectArtifactsByType: vi.fn(),
@@ -39,16 +71,30 @@ export function createMockArtifactRepository() {
     };
 }
 
+let mockTransformIdCounter = 1;
+
 export function createMockTransformRepository() {
     return {
-        createTransform: vi.fn(),
+        createTransform: vi.fn().mockImplementation(async (projectId: string, type: string, version?: string, status?: string, executionContext?: any) => {
+            const transformId = `mock-transform-${mockTransformIdCounter++}`;
+            return {
+                id: transformId,
+                project_id: projectId,
+                type: type,
+                status: status || 'running',
+                streaming_status: 'pending',
+                execution_context: executionContext || {},
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            };
+        }),
         getTransform: vi.fn(),
         getProjectTransforms: vi.fn(),
-        updateTransformStatus: vi.fn(),
-        addTransformInputs: vi.fn(),
-        updateTransform: vi.fn(),
-        addTransformOutputs: vi.fn(),
-        addLLMPrompts: vi.fn(),
-        addLLMTransform: vi.fn(),
+        updateTransformStatus: vi.fn().mockResolvedValue({}),
+        addTransformInputs: vi.fn().mockResolvedValue({}),
+        updateTransform: vi.fn().mockResolvedValue({}),
+        addTransformOutputs: vi.fn().mockResolvedValue({}),
+        addLLMPrompts: vi.fn().mockResolvedValue({}),
+        addLLMTransform: vi.fn().mockResolvedValue({}),
     };
 } 

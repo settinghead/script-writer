@@ -1,6 +1,5 @@
 import { brainstormingTemplate } from './brainstorming.js';
 import { brainstormEditTemplate } from './brainstormEdit.js';
-import { outlineTemplate } from './outline.js';
 import { outlineSettingsTemplate } from './outlineSettings.js';
 import { chroniclesTemplate } from './chronicles.js';
 import { generateEpisodeSpecificInstructions, episodeSynopsisGenerationTemplate } from './episodeSynopsisGeneration.js';
@@ -35,8 +34,7 @@ export class TemplateService {
     // Register brainstorm edit template
     this.templates.set('brainstorm_edit', brainstormEditTemplate);
 
-    // Register outline template with its correct ID (legacy support)
-    this.templates.set('chronological_outline', outlineTemplate);
+    // Legacy outline template removed - now using split outline settings + chronicles
 
     // NEW: Register split outline templates
     this.templates.set('outline_settings', outlineSettingsTemplate);

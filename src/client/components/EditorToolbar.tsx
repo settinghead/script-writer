@@ -3,13 +3,17 @@ import { Button, Tooltip } from 'antd';
 import { BoldOutlined, ItalicOutlined, UnderlineOutlined } from '@ant-design/icons';
 import { Editor, Text, Transforms } from 'slate';
 
-const EditorToolbar = ({ editor }) => {
-    const isMarkActive = (format) => {
+interface EditorToolbarProps {
+    editor: any; // TODO: Add proper Slate editor type
+}
+
+const EditorToolbar: React.FC<EditorToolbarProps> = ({ editor }) => {
+    const isMarkActive = (format: string) => {
         const marks = Editor.marks(editor);
-        return marks ? marks[format] === true : false;
+        return marks ? (marks as any)[format] === true : false;
     };
 
-    const toggleMark = (format) => {
+    const toggleMark = (format: string) => {
         const isActive = isMarkActive(format);
 
         if (isActive) {

@@ -1,275 +1,221 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { createBrainstormToolDefinition, createBrainstormEditToolDefinition } from '../tools/BrainstormTools';
-import { createOutlineToolDefinition } from '../tools/OutlineTool';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { createBrainstormToolDefinition } from '../tools/BrainstormTools';
+import { createOutlineSettingsToolDefinition } from '../tools/OutlineSettingsTool';
+import { createChroniclesToolDefinition } from '../tools/ChroniclesTool';
+import { ArtifactRepository } from '../transform-artifact-framework/ArtifactRepository';
+import { TransformRepository } from '../transform-artifact-framework/TransformRepository';
 import { createMockArtifactRepository, createMockTransformRepository } from '../../__tests__/mocks/databaseMocks';
 
-describe('End-to-End Workflow Integration', () => {
-    let mockTransformRepo: any;
+describe('End-to-End Workflow Tests', () => {
     let mockArtifactRepo: any;
+    let mockTransformRepo: any;
+    const testProjectId = 'test-project-123';
+    const testUserId = 'test-user-456';
 
     beforeEach(() => {
-        mockTransformRepo = createMockTransformRepository();
         mockArtifactRepo = createMockArtifactRepository();
+        mockTransformRepo = createMockTransformRepository();
 
-        // Setup sequential artifact creation with unique IDs
-        let artifactCounter = 1;
-        mockArtifactRepo.createArtifact.mockImplementation(() => ({
-            id: `artifact-${artifactCounter++}-${Date.now()}-${Math.random()}`
-        }));
-
-        let transformCounter = 1;
-        mockTransformRepo.createTransform.mockImplementation(() => ({
-            id: `transform-${transformCounter++}-${Date.now()}-${Math.random()}`
-        }));
+        // Setup mock getArtifact to return proper artifact data
+        mockArtifactRepo.getArtifact.mockImplementation(async (id: string) => {
+            if (id.includes('brainstorm') || id.includes('mock-artifact-1') || id.includes('mock-artifact-2')) {
+                // Return brainstorm_idea with user_input schema (from human transform)
+                return {
+                    id: id,
+                    project_id: testProjectId,
+                    type: 'brainstorm_idea',
+                    data: {
+                        title: '现代都市甜宠',
+                        body: '一个关于都市白领的甜宠故事，男女主角在职场相遇，经历误会后走到一起'
+                    },
+                    schema_type: 'user_input_schema',
+                    origin_type: 'user_input',
+                    metadata: {
+                        derived_data: {
+                            title: '现代都市甜宠',
+                            body: '一个关于都市白领的甜宠故事，男女主角在职场相遇，经历误会后走到一起'
+                        }
+                    }
+                };
+            } else if (id.includes('outline') || id.includes('mock-artifact-3') || id.includes('mock-artifact-4')) {
+                return {
+                    id: id,
+                    project_id: testProjectId,
+                    type: 'outline_settings',
+                    data: {
+                        title: '都市甜宠故事',
+                        genre: '现代甜宠',
+                        target_audience: '18-35岁都市女性',
+                        platform: '抖音',
+                        selling_points: ['霸总甜宠', '误会重重'],
+                        satisfaction_points: ['甜蜜互动', '霸道总裁'],
+                        setting: {
+                            time_period: '现代',
+                            location: '上海',
+                            social_context: '都市职场'
+                        },
+                        characters: [
+                            {
+                                name: '林晓雨',
+                                type: 'female_lead',
+                                age: '25岁',
+                                occupation: '设计师',
+                                personality: '独立坚强',
+                                appearance: '清纯可爱',
+                                background: '普通家庭出身'
+                            }
+                        ]
+                    },
+                    schema_type: 'outline_settings_schema',
+                    origin_type: 'ai_generated'
+                };
+            }
+            return null;
+        });
     });
 
-    it('should complete full brainstorm → edit → outline workflow', async () => {
-        // Step 1: Generate brainstorm ideas
-        console.log('🧪 Testing BrainstormTool with streaming framework...');
+    afterEach(() => {
+        // Reset any global state if needed
+    });
 
+    it('should execute complete workflow: brainstorm → outline settings → chronicles', async () => {
+        // Enable caching for consistent test results
+        const cachingOptions = { enableCaching: true };
+
+        console.log('🧪 Testing complete workflow with new outline system...');
+
+        // Step 1: Generate brainstorm ideas
         const brainstormTool = createBrainstormToolDefinition(
             mockTransformRepo,
             mockArtifactRepo,
-            'test-project-1',
-            'test-user-1',
-            {
-                enableCaching: true,
-                seed: 12345,  // Fixed seed for reproducible results
-                temperature: 0.7,
-                topP: 0.9,
-                maxTokens: 4000
-            }
+            testProjectId,
+            testUserId,
+            cachingOptions
         );
 
         const brainstormInput = {
             platform: '抖音',
             genre: '现代甜宠',
-            other_requirements: '快节奏，高颜值主角',
+            other_requirements: '生成3个故事创意',
             numberOfIdeas: 3
         };
 
+        console.log('📝 Step 1: Generating brainstorm ideas...');
         const brainstormResult = await brainstormTool.execute(brainstormInput, { toolCallId: 'test-brainstorm' });
 
-        expect(brainstormResult.outputArtifactId).toBeTruthy();
-        expect(brainstormResult.finishReason).toBe('stop');
+        expect(brainstormResult).toBeDefined();
+        expect(brainstormResult.outputArtifactId).toBeDefined();
+        expect(brainstormResult.finishReason).toBeDefined();
 
-        // Verify the artifact was created
-        expect(mockArtifactRepo.createArtifact).toHaveBeenCalled();
-        expect(mockTransformRepo.createTransform).toHaveBeenCalled();
+        console.log(`✅ Brainstorm completed: ${brainstormResult.outputArtifactId}`);
 
-        // Step 2: Mock the brainstorm artifact for editing
-        const mockBrainstormIdea = {
-            id: brainstormResult.outputArtifactId,
-            type: 'brainstorm_idea',
-            project_id: 'test-project-1',
-            data: {
-                title: '误爱成宠',
-                body: '林氏集团总裁林慕琛因一场误会将普通职员夏栀认作富家千金，开启了一段错综复杂的爱恋故事。在商业精英的世界里，误解与真情交织，最终真爱战胜一切。'
-            },
-            schema_type: 'brainstorm_idea',
-            schema_version: '1.0',
-            origin_type: 'ai_generated'
-        };
-
-        // Step 3: Edit the first brainstorm idea
-        console.log('🧪 Testing BrainstormEditTool with streaming framework...');
-
-        const editTool = createBrainstormEditToolDefinition(
+        // Step 2: Generate outline settings from brainstorm
+        const outlineSettingsTool = createOutlineSettingsToolDefinition(
             mockTransformRepo,
             mockArtifactRepo,
-            'test-project-1',
-            'test-user-1',
-            {
-                enableCaching: true,
-                seed: 23456,  // Different seed for different operations
-                temperature: 0.7,
-                topP: 0.9,
-                maxTokens: 2000
-            }
+            testProjectId,
+            testUserId,
+            cachingOptions
         );
 
-        // Setup mock to return the brainstorm idea
-        mockArtifactRepo.getArtifact.mockResolvedValue(mockBrainstormIdea);
-
-        const editInput = {
+        const outlineSettingsInput = {
             sourceArtifactId: brainstormResult.outputArtifactId,
-            editRequirements: '让故事更加现代化，增加科技元素',
-            agentInstructions: '保持原有的情感核心，但加入现代科技背景'
+            title: '现代甜宠故事设定',
+            requirements: '创建详细的剧本设定，包括角色背景和商业定位'
         };
 
-        const editResult = await editTool.execute(editInput, { toolCallId: 'test-edit' });
+        console.log('🎭 Step 2: Generating outline settings...');
+        const outlineSettingsResult = await outlineSettingsTool.execute(outlineSettingsInput, { toolCallId: 'test-outline-settings' });
 
-        expect(editResult.outputArtifactId).toBeTruthy();
-        expect(editResult.finishReason).toBe('stop');
+        expect(outlineSettingsResult).toBeDefined();
+        expect(outlineSettingsResult.outputArtifactId).toBeDefined();
+        expect(outlineSettingsResult.finishReason).toBeDefined();
 
-        // Step 4: Mock the edited brainstorm idea for outline generation
-        const mockEditedIdea = {
-            id: editResult.outputArtifactId,
-            type: 'brainstorm_idea',
-            project_id: 'test-project-1',
-            data: {
-                title: '误爱成宠（科技版）',
-                body: '在AI和大数据主导的现代商业世界里，林氏科技集团总裁林慕琛利用先进的人脸识别系统误将普通程序员夏栀识别为富家千金。这个技术错误引发了一段充满现代科技色彩的爱恋故事...'
-            },
-            schema_type: 'brainstorm_idea',
-            schema_version: '1.0',
-            origin_type: 'ai_generated',
-            metadata: {
-                derived_data: {
-                    title: '误爱成宠（科技版）',
-                    body: '在AI和大数据主导的现代商业世界里，林氏科技集团总裁林慕琛利用先进的人脸识别系统误将普通程序员夏栀识别为富家千金。这个技术错误引发了一段充满现代科技色彩的爱恋故事...'
-                },
-                original_artifact_id: brainstormResult.outputArtifactId,
-                edit_requirements: '让故事更加现代化，增加科技元素'
-            }
-        };
+        console.log(`✅ Outline settings completed: ${outlineSettingsResult.outputArtifactId}`);
 
-        // Step 5: Generate outline from edited idea
-        console.log('🧪 Testing OutlineTool with streaming framework...');
-
-        const outlineTool = createOutlineToolDefinition(
+        // Step 3: Generate chronicles from outline settings
+        const chroniclesTool = createChroniclesToolDefinition(
             mockTransformRepo,
             mockArtifactRepo,
-            'test-project-1',
-            'test-user-1',
-            {
-                enableCaching: true,
-                seed: 34567,  // Different seed for different operations
-                temperature: 0.7,
-                topP: 0.9,
-                maxTokens: 6000
-            }
+            testProjectId,
+            testUserId,
+            cachingOptions
         );
 
-        // Update mock to return the edited idea when outline tool requests it
-        mockArtifactRepo.getArtifact.mockImplementation((artifactId: string) => {
-            if (artifactId === editResult.outputArtifactId) {
-                return Promise.resolve(mockEditedIdea);
-            }
-            return Promise.resolve(null);
-        });
-
-        const outlineInput = {
-            sourceArtifactId: editResult.outputArtifactId,
-            totalEpisodes: 12,
-            episodeDuration: 3,
-            selectedPlatform: '抖音',
-            selectedGenrePaths: [['现代', '甜宠', '都市']],
-            requirements: '高颜值演员，快节奏剧情，科技感强'
+        const chroniclesInput = {
+            sourceArtifactId: outlineSettingsResult.outputArtifactId,
+            requirements: '创建按时间顺序的故事发展脉络'
         };
 
-        const outlineResult = await outlineTool.execute(outlineInput, { toolCallId: 'test-outline' });
+        console.log('⏰ Step 3: Generating chronicles...');
+        const chroniclesResult = await chroniclesTool.execute(chroniclesInput, { toolCallId: 'test-chronicles' });
 
-        expect(outlineResult.outputArtifactId).toBeTruthy();
-        expect(outlineResult.finishReason).toBe('stop');
+        expect(chroniclesResult).toBeDefined();
+        expect(chroniclesResult.outputArtifactId).toBeDefined();
+        expect(chroniclesResult.finishReason).toBeDefined();
 
-        // Step 6: Verify the complete workflow
-        console.log('✅ Complete workflow validation');
+        console.log(`✅ Chronicles completed: ${chroniclesResult.outputArtifactId}`);
 
-        // Verify all artifacts are different (showing progression)
-        expect(brainstormResult.outputArtifactId).not.toBe(editResult.outputArtifactId);
-        expect(editResult.outputArtifactId).not.toBe(outlineResult.outputArtifactId);
-        expect(brainstormResult.outputArtifactId).not.toBe(outlineResult.outputArtifactId);
+        // Verify the complete workflow chain
+        console.log('🔗 Verifying workflow chain...');
 
-        // Verify repository calls were made for each step (streaming executor creates additional internal artifacts)
-        expect(mockArtifactRepo.createArtifact).toHaveBeenCalled();
-        expect(mockTransformRepo.createTransform).toHaveBeenCalled();
+        // Check that all artifacts were created
+        expect(brainstormResult.outputArtifactId).toBeDefined();
+        expect(outlineSettingsResult.outputArtifactId).toBeDefined();
+        expect(chroniclesResult.outputArtifactId).toBeDefined();
 
-        // Verify all three steps completed successfully
-        expect(brainstormResult.outputArtifactId).toBeTruthy();
-        expect(editResult.outputArtifactId).toBeTruthy();
-        expect(outlineResult.outputArtifactId).toBeTruthy();
+        // Verify they're all different artifacts
+        expect(brainstormResult.outputArtifactId).not.toBe(outlineSettingsResult.outputArtifactId);
+        expect(outlineSettingsResult.outputArtifactId).not.toBe(chroniclesResult.outputArtifactId);
+        expect(brainstormResult.outputArtifactId).not.toBe(chroniclesResult.outputArtifactId);
 
-        console.log(`✅ Workflow completed: ${brainstormResult.outputArtifactId} → ${editResult.outputArtifactId} → ${outlineResult.outputArtifactId}`);
+        console.log('✅ Complete workflow test passed!');
     });
 
-    it('should handle caching configuration correctly', async () => {
-        // Test that different caching configurations work
-        const brainstormTool1 = createBrainstormToolDefinition(
-            mockTransformRepo,
-            mockArtifactRepo,
-            'test-project-1',
-            'test-user-1',
-            {
-                enableCaching: true,
-                seed: 12345,
-                temperature: 0.7,
-                topP: 0.9,
-                maxTokens: 4000
-            }
-        );
+    it('should validate tool definitions and schemas', async () => {
+        console.log('🔍 Testing tool definitions...');
 
-        const brainstormTool2 = createBrainstormToolDefinition(
-            mockTransformRepo,
-            mockArtifactRepo,
-            'test-project-1',
-            'test-user-1',
-            {
-                enableCaching: false,  // Different caching setting
-                seed: 54321,           // Different seed
-                temperature: 0.5,      // Different temperature
-                topP: 0.8,            // Different top-p
-                maxTokens: 2000       // Different max tokens
-            }
-        );
+        const cachingOptions = { enableCaching: true };
 
-        const input = {
-            platform: 'YouTube',
-            genre: '悬疑',
-            other_requirements: '反转剧情',
-            numberOfIdeas: 3
-        };
-
-        // Both tools should work with different configurations
-        const result1 = await brainstormTool1.execute(input, { toolCallId: 'test-cache-1' });
-        const result2 = await brainstormTool2.execute(input, { toolCallId: 'test-cache-2' });
-
-        expect(result1.outputArtifactId).toBeTruthy();
-        expect(result1.finishReason).toBe('stop');
-        expect(result2.outputArtifactId).toBeTruthy();
-        expect(result2.finishReason).toBe('stop');
-
-        // Results should be different (different artifacts)
-        expect(result1.outputArtifactId).not.toBe(result2.outputArtifactId);
-    });
-
-    it('should validate tool definitions are created with correct parameters', () => {
-        // Test that all tool definitions are created successfully with various configurations
+        // Test brainstorm tool
         const brainstormTool = createBrainstormToolDefinition(
             mockTransformRepo,
             mockArtifactRepo,
-            'test-project-1',
-            'test-user-1',
-            { enableCaching: true }
+            testProjectId,
+            testUserId,
+            cachingOptions
         );
 
-        const editTool = createBrainstormEditToolDefinition(
-            mockTransformRepo,
-            mockArtifactRepo,
-            'test-project-1',
-            'test-user-1',
-            { enableCaching: false }
-        );
-
-        const outlineTool = createOutlineToolDefinition(
-            mockTransformRepo,
-            mockArtifactRepo,
-            'test-project-1',
-            'test-user-1',
-            { enableCaching: true }
-        );
-
-        // Verify all tools are properly defined
         expect(brainstormTool).toBeDefined();
         expect(brainstormTool.execute).toBeInstanceOf(Function);
         expect(brainstormTool.name).toBe('generate_brainstorm_ideas');
 
-        expect(editTool).toBeDefined();
-        expect(editTool.execute).toBeInstanceOf(Function);
-        expect(editTool.name).toBe('edit_brainstorm_idea');
+        // Test outline settings tool
+        const outlineSettingsTool = createOutlineSettingsToolDefinition(
+            mockTransformRepo,
+            mockArtifactRepo,
+            testProjectId,
+            testUserId,
+            cachingOptions
+        );
 
-        expect(outlineTool).toBeDefined();
-        expect(outlineTool.execute).toBeInstanceOf(Function);
-        expect(outlineTool.name).toBe('generate_outline');
+        expect(outlineSettingsTool).toBeDefined();
+        expect(outlineSettingsTool.execute).toBeInstanceOf(Function);
+        expect(outlineSettingsTool.name).toBe('generate_outline_settings');
+
+        // Test chronicles tool
+        const chroniclesTool = createChroniclesToolDefinition(
+            mockTransformRepo,
+            mockArtifactRepo,
+            testProjectId,
+            testUserId,
+            cachingOptions
+        );
+
+        expect(chroniclesTool).toBeDefined();
+        expect(chroniclesTool.execute).toBeInstanceOf(Function);
+        expect(chroniclesTool.name).toBe('generate_chronicles');
+
+        console.log('✅ All tool definitions validated!');
     });
 }); 

@@ -8,13 +8,14 @@ import {
     EditOutlined,
     CheckCircleOutlined,
     LoadingOutlined,
-    StarFilled
+    StarFilled,
+    SettingOutlined,
+    ClockCircleOutlined
 } from '@ant-design/icons';
 import { useEffectiveBrainstormIdeas } from '../transform-artifact-framework/useLineageResolution';
 import { useProjectData } from '../contexts/ProjectDataContext';
 import { useCurrentSection, type CurrentSection } from '../hooks/useCurrentSection';
 import { useChosenBrainstormIdea } from '../hooks/useChosenBrainstormIdea';
-import { useOutlineDescendants } from '../hooks/useOutlineDescendants';
 
 const { Text } = Typography;
 
@@ -71,14 +72,15 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
         // For other sections, use the standard mapping
         const navigationTargetToSection: Record<string, CurrentSection> = {
             '#brainstorm-ideas': 'brainstorm-ideas',
-            '#story-outline': 'story-outline'
+            '#outline-settings': 'outline-settings',
+            '#chronicles': 'chronicles'
         };
 
         const nodeSection = navigationTargetToSection[navigationTarget];
         return nodeSection === currentSection;
     }, [currentSection]);
 
-    // Build simplified tree data structure with 3 main sections
+    // Build simplified tree data structure with main sections
     const treeData: ProjectTreeNode[] = useMemo(() => {
         if (ideasLoading) {
             return [];
@@ -216,14 +218,8 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                             fontWeight: ideationHighlighted ? 700 : 500,
                             textShadow: ideationHighlighted ? '0 0 8px rgba(82, 196, 26, 0.8)' : 'none'
                         }}>
-                            灵感编辑
+                            创意编辑
                         </Text>
-                        <StarFilled style={{
-                            color: ideationHighlighted ? '#faad14' : '#faad14',
-                            fontSize: '12px',
-                            marginLeft: '8px',
-                            filter: ideationHighlighted ? 'drop-shadow(0 0 4px rgba(250, 173, 20, 0.6))' : 'none'
-                        }} />
                     </Space>
                 ),
                 icon: <EditOutlined style={{
@@ -237,105 +233,74 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
             sections.push(ideationSection);
         }
 
-        // 3. OUTLINE SECTION
-        const outlineHighlighted = shouldHighlightNode('#story-outline');
-        const outlineChildren: ProjectTreeNode[] = [];
+        // 3. OUTLINE SETTINGS SECTION
+        const outlineSettingsArtifacts = projectData.artifacts.filter(a =>
+            a.schema_type === 'outline_settings_schema'
+        );
+        const hasOutlineSettings = outlineSettingsArtifacts.length > 0;
+        const outlineSettingsHighlighted = shouldHighlightNode('#outline-settings');
 
-        // Check if we have outline data to show children
-        const outlineArtifacts = projectData.artifacts.filter(a => a.type === 'outline');
-        let hasOutlineContent = false;
-
-        if (outlineArtifacts.length > 0) {
-            try {
-                const latestOutline = outlineArtifacts[outlineArtifacts.length - 1];
-                const outlineData = JSON.parse(latestOutline.data);
-                hasOutlineContent = true;
-
-                // Add outline subsections
-                if (outlineData.characters && Array.isArray(outlineData.characters) && outlineData.characters.length > 0) {
-                    outlineChildren.push({
-                        key: 'outline-characters',
-                        title: (
-                            <Space>
-                                <Text style={{
-                                    color: outlineHighlighted ? '#722ed1' : '#fff',
-                                    fontWeight: outlineHighlighted ? 500 : 400
-                                }}>
-                                    角色设定
-                                </Text>
-                                <Tag color={outlineHighlighted ? "purple" : "default"}>{outlineData.characters.length}</Tag>
-                            </Space>
-                        ),
-                        icon: <FileTextOutlined style={{
-                            fontSize: '14px',
-                            color: outlineHighlighted ? '#722ed1' : '#888'
-                        }} />,
-                        selectable: true,
-                        navigationTarget: '#story-outline'
-                    });
-                }
-
-                if (outlineData.stages && Array.isArray(outlineData.stages) && outlineData.stages.length > 0) {
-                    outlineChildren.push({
-                        key: 'outline-stages',
-                        title: (
-                            <Space>
-                                <Text style={{
-                                    color: outlineHighlighted ? '#722ed1' : '#fff',
-                                    fontWeight: outlineHighlighted ? 500 : 400
-                                }}>
-                                    故事阶段
-                                </Text>
-                                <Tag color={outlineHighlighted ? "green" : "default"}>{outlineData.stages.length}</Tag>
-                            </Space>
-                        ),
-                        icon: <FileTextOutlined style={{
-                            fontSize: '14px',
-                            color: outlineHighlighted ? '#722ed1' : '#888'
-                        }} />,
-                        selectable: true,
-                        navigationTarget: '#story-outline'
-                    });
-                }
-
-                if (outlineData.selling_points && Array.isArray(outlineData.selling_points) && outlineData.selling_points.length > 0) {
-                    outlineChildren.push({
-                        key: 'outline-selling',
-                        title: (
-                            <Space>
-                                <Text style={{
-                                    color: outlineHighlighted ? '#722ed1' : '#fff',
-                                    fontWeight: outlineHighlighted ? 500 : 400
-                                }}>
-                                    卖点分析
-                                </Text>
-                                <Tag color={outlineHighlighted ? "orange" : "default"}>{outlineData.selling_points.length}</Tag>
-                            </Space>
-                        ),
-                        icon: <FileTextOutlined style={{
-                            fontSize: '14px',
-                            color: outlineHighlighted ? '#722ed1' : '#888'
-                        }} />,
-                        selectable: true,
-                        navigationTarget: '#story-outline'
-                    });
-                }
-            } catch (error) {
-                console.error('Error parsing outline data:', error);
-            }
-        }
-
-        const outlineSection: ProjectTreeNode = {
-            key: 'outline-section',
+        const outlineSettingsSection: ProjectTreeNode = {
+            key: 'outline-settings-section',
             title: (
                 <Space style={{
-                    padding: outlineHighlighted ? '4px 8px' : '0',
+                    padding: outlineSettingsHighlighted ? '4px 8px' : '0',
                     borderRadius: '6px',
-                    background: outlineHighlighted ?
-                        'linear-gradient(135deg, rgba(114, 46, 209, 0.25) 0%, rgba(146, 84, 222, 0.15) 100%)' :
+                    background: outlineSettingsHighlighted ?
+                        'linear-gradient(135deg, rgba(250, 173, 20, 0.25) 0%, rgba(255, 197, 61, 0.15) 100%)' :
                         'none',
-                    border: outlineHighlighted ? '1px solid rgba(114, 46, 209, 0.4)' : 'none',
-                    boxShadow: outlineHighlighted ?
+                    border: outlineSettingsHighlighted ? '1px solid rgba(250, 173, 20, 0.4)' : 'none',
+                    boxShadow: outlineSettingsHighlighted ?
+                        '0 0 20px rgba(250, 173, 20, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)' :
+                        'none',
+                    transition: 'all 0.2s ease-in-out',
+                    display: 'inline-flex',
+                    alignItems: 'center'
+                }}>
+                    <Text style={{
+                        color: outlineSettingsHighlighted ? '#ffffff' : '#fff',
+                        fontWeight: outlineSettingsHighlighted ? 700 : 500,
+                        textShadow: outlineSettingsHighlighted ? '0 0 8px rgba(250, 173, 20, 0.8)' : 'none'
+                    }}>
+                        剧本设定
+                    </Text>
+                    {hasOutlineSettings && (
+                        <CheckCircleOutlined style={{
+                            color: outlineSettingsHighlighted ? '#52c41a' : '#52c41a',
+                            fontSize: '12px',
+                            marginLeft: '4px'
+                        }} />
+                    )}
+                </Space>
+            ),
+            icon: <SettingOutlined style={{
+                color: outlineSettingsHighlighted ? '#faad14' : '#666',
+                filter: outlineSettingsHighlighted ? 'drop-shadow(0 0 4px rgba(250, 173, 20, 0.6))' : 'none'
+            }} />,
+            selectable: true,
+            navigationTarget: '#outline-settings'
+        };
+
+        sections.push(outlineSettingsSection);
+
+        // 4. CHRONICLES SECTION
+        const chroniclesArtifacts = projectData.artifacts.filter(a =>
+            a.schema_type === 'chronicles_schema'
+        );
+        const hasChronicles = chroniclesArtifacts.length > 0;
+        const chroniclesHighlighted = shouldHighlightNode('#chronicles');
+
+        const chroniclesSection: ProjectTreeNode = {
+            key: 'chronicles-section',
+            title: (
+                <Space style={{
+                    padding: chroniclesHighlighted ? '4px 8px' : '0',
+                    borderRadius: '6px',
+                    background: chroniclesHighlighted ?
+                        'linear-gradient(135deg, rgba(114, 46, 209, 0.25) 0%, rgba(165, 55, 253, 0.15) 100%)' :
+                        'none',
+                    border: chroniclesHighlighted ? '1px solid rgba(114, 46, 209, 0.4)' : 'none',
+                    boxShadow: chroniclesHighlighted ?
                         '0 0 20px rgba(114, 46, 209, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)' :
                         'none',
                     transition: 'all 0.2s ease-in-out',
@@ -343,207 +308,74 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                     alignItems: 'center'
                 }}>
                     <Text style={{
-                        color: outlineHighlighted ? '#ffffff' : '#fff',
-                        fontWeight: outlineHighlighted ? 700 : 500,
-                        textShadow: outlineHighlighted ? '0 0 8px rgba(114, 46, 209, 0.8)' : 'none'
+                        color: chroniclesHighlighted ? '#ffffff' : '#fff',
+                        fontWeight: chroniclesHighlighted ? 700 : 500,
+                        textShadow: chroniclesHighlighted ? '0 0 8px rgba(114, 46, 209, 0.8)' : 'none'
                     }}>
                         时序大纲
                     </Text>
-                    {hasOutlineContent ? (
+                    {hasChronicles && (
                         <CheckCircleOutlined style={{
-                            color: outlineHighlighted ? '#52c41a' : '#52c41a',
+                            color: chroniclesHighlighted ? '#52c41a' : '#52c41a',
                             fontSize: '12px',
-                            marginLeft: '8px',
-                            filter: outlineHighlighted ? 'drop-shadow(0 0 4px rgba(82, 196, 26, 0.6))' : 'none'
+                            marginLeft: '4px'
                         }} />
-                    ) : (
-                        <Tag
-                            color={outlineHighlighted ? "purple" : "default"}
-                            style={{
-                                boxShadow: outlineHighlighted ? '0 0 8px rgba(114, 46, 209, 0.4)' : 'none',
-                                border: outlineHighlighted ? '1px solid rgba(114, 46, 209, 0.6)' : undefined,
-                                marginLeft: '8px'
-                            }}
-                        >
-                            待生成
-                        </Tag>
                     )}
                 </Space>
             ),
-            icon: <BookOutlined style={{
-                color: outlineHighlighted ? '#722ed1' : '#666',
-                filter: outlineHighlighted ? 'drop-shadow(0 0 4px rgba(114, 46, 209, 0.6))' : 'none'
+            icon: <ClockCircleOutlined style={{
+                color: chroniclesHighlighted ? '#722ed1' : '#666',
+                filter: chroniclesHighlighted ? 'drop-shadow(0 0 4px rgba(114, 46, 209, 0.6))' : 'none'
             }} />,
             selectable: true,
-            navigationTarget: '#story-outline',
-            children: outlineChildren.length > 0 ? outlineChildren : undefined
+            navigationTarget: '#chronicles'
         };
 
-        sections.push(outlineSection);
+        sections.push(chroniclesSection);
 
         return sections;
-    }, [ideas, ideasLoading, projectData.artifacts, currentSection, shouldHighlightNode, chosenIdea]);
+    }, [ideas, ideasLoading, chosenIdea, projectData.artifacts, shouldHighlightNode]);
 
-    // Debug current section changes
-    useEffect(() => {
-        console.log('[ProjectTreeView] Current section changed:', currentSection);
-    }, [currentSection]);
-
-    // Handle tree node selection with improved navigation
+    // Handle tree node selection - scroll to corresponding section
     const handleSelect = useCallback((selectedKeys: React.Key[], info: any) => {
+        if (selectedKeys.length === 0) return;
+
         const node = info.node as ProjectTreeNode;
         if (node.navigationTarget) {
-            const targetHash = node.navigationTarget;
-
-            // Enhanced navigation logic
-            let targetElement: Element | null = null;
-
-            // Try to find target by ID first
-            if (targetHash.startsWith('#')) {
-                const elementId = targetHash.substring(1);
-                targetElement = document.getElementById(elementId);
-            }
-
-            // If direct ID lookup fails, try other methods
-            if (!targetElement) {
-                // Try querySelector with the hash
-                targetElement = document.querySelector(targetHash);
-            }
-
-            // If still not found, try to find sections by text content or other attributes
-            if (!targetElement) {
-                if (targetHash === '#brainstorm-ideas') {
-                    // Look for brainstorm section by finding elements with brainstorm-related content
-                    const textDividers = document.querySelectorAll('div');
-                    for (const div of Array.from(textDividers)) {
-                        if (div.textContent?.includes('头脑风暴')) {
-                            targetElement = div;
-                            break;
-                        }
-                    }
-                } else if (targetHash === '#ideation-edit') {
-                    // Look for ideation section
-                    const textDividers = document.querySelectorAll('div');
-                    for (const div of Array.from(textDividers)) {
-                        if (div.textContent?.includes('灵感编辑')) {
-                            targetElement = div;
-                            break;
-                        }
-                    }
-                } else if (targetHash === '#story-outline') {
-                    // Look for outline section
-                    const textDividers = document.querySelectorAll('div');
-                    for (const div of Array.from(textDividers)) {
-                        if (div.textContent?.includes('时序大纲')) {
-                            targetElement = div;
-                            break;
-                        }
-                    }
-                }
-            }
-
+            const targetElement = document.querySelector(node.navigationTarget);
             if (targetElement) {
                 targetElement.scrollIntoView({
                     behavior: 'smooth',
-                    block: 'start',
-                    inline: 'nearest'
+                    block: 'start'
                 });
-
-                // Update URL hash for bookmarkable navigation
-                if (targetHash.startsWith('#')) {
-                    window.history.replaceState(null, '', targetHash);
-                }
-
-                console.log(`[ProjectTreeView] Navigated to: ${targetHash}`);
-            } else {
-                console.warn(`[ProjectTreeView] Navigation target not found: ${targetHash}`);
             }
         }
     }, []);
 
-    // Handle tree node expansion
-    const handleExpand = useCallback((expandedKeys: React.Key[]) => {
-        console.log('Expanded keys:', expandedKeys);
-    }, []);
-
-    // Show loading state
-    if (ideasLoading) {
-        return (
-            <div style={{
-                height: '100%',
-                width: `${width}px`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#666'
-            }}>
-                <Space direction="vertical" align="center">
-                    <LoadingOutlined style={{ fontSize: '24px' }} />
-                    <Text type="secondary" style={{ fontSize: '12px' }}>加载项目结构...</Text>
-                </Space>
-            </div>
-        );
-    }
-
-    // Show empty state
-    if (treeData.length === 0) {
-        return (
-            <div style={{
-                height: '100%',
-                width: `${width}px`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#666'
-            }}>
-                <Space direction="vertical" align="center">
-                    <FileTextOutlined style={{ fontSize: '24px' }} />
-                    <Text type="secondary" style={{ fontSize: '12px' }}>暂无项目内容</Text>
-                </Space>
-            </div>
-        );
-    }
-
     return (
-        <div style={{
-            height: '100%',
-            width: `${width}px`,
-            overflowY: 'auto',
-            overflowX: 'hidden'
-        }}>
+        <div
+            style={{
+                width,
+                height: '100%',
+                background: 'rgba(0, 0, 0, 0.6)',
+                backdropFilter: 'blur(8px)',
+                borderRight: '1px solid rgba(255, 255, 255, 0.1)',
+                padding: '16px 8px',
+                overflow: 'auto'
+            }}
+        >
             <Tree
                 treeData={treeData}
+                showIcon={true}
+                selectable={true}
                 onSelect={handleSelect}
-                onExpand={handleExpand}
-                defaultExpandAll
-                showIcon
-                className="project-tree-dark"
                 style={{
                     background: 'transparent',
                     color: '#fff'
                 }}
-                titleRender={(node) => node.title}
+                expandedKeys={treeData.map(node => node.key)}
+                defaultExpandAll={true}
             />
-
-            <style>{`
-                .project-tree-dark .ant-tree {
-                    background: transparent !important;
-                    color: #fff !important;
-                }
-                .project-tree-dark .ant-tree-node-content-wrapper {
-                    color: #fff !important;
-                }
-                .project-tree-dark .ant-tree-node-content-wrapper:hover {
-                    background-color: rgba(255, 255, 255, 0.1) !important;
-                }
-                
-                .project-tree-dark .ant-tree-switcher {
-                    color: #666 !important;
-                }
-                .project-tree-dark .ant-tree-switcher:hover {
-                    color: #1890ff !important;
-                }
-            `}</style>
         </div>
     );
 };

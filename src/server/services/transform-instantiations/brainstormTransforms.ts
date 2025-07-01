@@ -1,29 +1,47 @@
-import { BrainstormIdea, OutlineInput, UserInput } from '../../../common/schemas/artifacts';
-import { extractDataAtPath } from '../../../common/utils/pathExtraction';
+import { z } from 'zod';
+import { ArtifactSchemaRegistry } from '../../../common/schemas/artifacts';
+import {
+  OutlineSettingsInputSchema,
+  OutlineSettingsOutputSchema,
+  ChroniclesInputSchema,
+  ChroniclesOutputSchema
+} from '../../../common/schemas/outlineSchemas';
+
+// Get the schemas from the registry
+const BrainstormIdeaSchema = ArtifactSchemaRegistry.brainstorm_item_schema;
+const UserInputSchema = ArtifactSchemaRegistry.user_input_schema;
+
+// Type definitions based on schemas
+type BrainstormIdea = z.infer<typeof BrainstormIdeaSchema>;
+type UserInput = z.infer<typeof UserInputSchema>;
 
 /**
- * Create outline input from entire brainstorm idea
+ * Extract data at a given path from source data
  */
-export function createOutlineInputFromBrainstormIdea(
-  sourceArtifactData: any,
-  derivationPath: string
-): OutlineInput {
-  const ideaData = extractDataAtPath(sourceArtifactData, derivationPath) as BrainstormIdea;
-
-  if (!ideaData || typeof ideaData.title !== 'string' || typeof ideaData.body !== 'string') {
-    throw new Error(`Invalid brainstorm idea data at path ${derivationPath}`);
+function extractDataAtPath(sourceData: any, path: string): any {
+  // Simple path extraction - for complex paths, use a proper JSONPath library
+  if (path === '$') {
+    return sourceData;
   }
 
-  return {
-    content: ideaData.body,
-    source_metadata: {
-      original_idea_title: ideaData.title,
-      original_idea_body: ideaData.body,
-      derivation_path: derivationPath,
-      source_artifact_id: '' // Will be filled by executor
-    }
-  };
+  // Handle array index paths like $.ideas[0]
+  const arrayMatch = path.match(/^\$\.(\w+)\[(\d+)\]$/);
+  if (arrayMatch) {
+    const [, fieldName, index] = arrayMatch;
+    return sourceData[fieldName]?.[parseInt(index)];
+  }
+
+  // Handle simple field paths like $.title
+  const fieldMatch = path.match(/^\$\.(\w+)$/);
+  if (fieldMatch) {
+    const [, fieldName] = fieldMatch;
+    return sourceData[fieldName];
+  }
+
+  return sourceData;
 }
+
+// Legacy function removed - OutlineInput type no longer exists in new system
 
 /**
  * Create user input from entire brainstorm idea
@@ -40,8 +58,8 @@ export function createUserInputFromBrainstormIdea(
 
   // For entire object editing, we store the full idea in the text field as JSON
   return {
-    text: JSON.stringify(ideaData),
-    source: 'modified_brainstorm'
+    title: ideaData.title,
+    body: ideaData.body
   };
 }
 
@@ -79,7 +97,38 @@ export function createUserInputFromBrainstormField(
   }
 
   return {
-    text: fieldValue,
-    source: 'modified_brainstorm'
+    title: 'Field Edit',
+    body: fieldValue
   };
-} 
+}
+
+// Define transform functions
+export const createBrainstormIdeaTransform = (sourceArtifactId: string, targetPath: string) => {
+  return {
+    sourceArtifactId,
+    targetPath,
+    inputSchema: BrainstormIdeaSchema,
+    outputSchema: UserInputSchema,
+    transformType: 'human' as const
+  };
+};
+
+export const createOutlineSettingsTransform = (sourceArtifactId: string) => {
+  return {
+    sourceArtifactId,
+    targetPath: '$[outline_settings]',
+    inputSchema: OutlineSettingsInputSchema,
+    outputSchema: OutlineSettingsOutputSchema,
+    transformType: 'llm' as const
+  };
+};
+
+export const createChroniclesTransform = (sourceArtifactId: string) => {
+  return {
+    sourceArtifactId,
+    targetPath: '$[chronicles]',
+    inputSchema: ChroniclesInputSchema,
+    outputSchema: ChroniclesOutputSchema,
+    transformType: 'llm' as const
+  };
+}; 

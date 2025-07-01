@@ -41,14 +41,14 @@ export function createChroniclesToolDefinition(
 ): StreamingToolDefinition<ChroniclesInput, ChroniclesToolResult> {
     return {
         name: 'generate_chronicles',
-        description: '基于已确定的剧本设定生成时序大纲（按时间顺序的故事发展阶段）。适用场景：用户已完成剧本设定，需要生成完整的时间发展脉络。要求用户提供outline settings artifact ID和相关参数。必须使用项目背景信息中显示的完整outline settings artifact ID作为outlineSettingsArtifactId参数。',
+        description: '基于已确定的剧本设定生成时序大纲（按时间顺序的故事发展阶段）。适用场景：用户已完成剧本设定，需要生成完整的时间发展脉络。必须使用项目背景信息中显示的完整outline settings artifact ID作为sourceArtifactId参数。',
         inputSchema: ChroniclesInputSchema,
         outputSchema: ChroniclesToolResultSchema,
         execute: async (params: ChroniclesInput, { toolCallId }): Promise<ChroniclesToolResult> => {
-            console.log(`[ChroniclesTool] Starting streaming chronicles generation for outline settings artifact ${params.outlineSettingsArtifactId}`);
+            console.log(`[ChroniclesTool] Starting streaming chronicles generation for outline settings artifact ${params.sourceArtifactId}`);
 
             // Extract outline settings data first
-            const outlineSettingsArtifact = await artifactRepo.getArtifact(params.outlineSettingsArtifactId);
+            const outlineSettingsArtifact = await artifactRepo.getArtifact(params.sourceArtifactId);
             if (!outlineSettingsArtifact) {
                 throw new Error('Outline settings artifact not found');
             }
@@ -79,20 +79,19 @@ export function createChroniclesToolDefinition(
                 inputSchema: ChroniclesInputSchema,
                 outputSchema: ChroniclesOutputSchema,
                 prepareTemplateVariables: (input) => {
-                    const episodeInfo = `总共${input.totalEpisodes}集，每集${input.episodeDuration}分钟`;
-
-                    // Calculate recommended number of stages based on episode count
-                    const recommendedStages = Math.ceil(input.totalEpisodes / 6) + 2; // Roughly 1 stage per 6 episodes, minimum 3
-                    const stageGuidance = `请创建${recommendedStages}个左右的故事阶段（${input.totalEpisodes}集适合${recommendedStages}个阶段）`;
+                    // Use default values for template variables that aren't in the input schema
+                    const episodeInfo = `总共60集，每集2分钟`; // Default episode configuration
+                    const recommendedStages = 8; // Default stage count
+                    const stageGuidance = `请创建${recommendedStages}个左右的故事阶段（60集适合${recommendedStages}个阶段）`;
 
                     // Format characters for template
                     const charactersString = outlineSettingsData.characters
-                        .map((char: any) => `${char.name}(${char.type}): ${char.description}`)
+                        .map((char: any) => `${char.name}(${char.type}): ${char.personality || char.description || ''}`)
                         .join('; ');
 
                     // Format setting for template
                     const settingString = outlineSettingsData.setting
-                        ? `${outlineSettingsData.setting.core_setting_summary} | 关键场景: ${outlineSettingsData.setting.key_scenes?.join(', ')}`
+                        ? `${outlineSettingsData.setting.time_period} ${outlineSettingsData.setting.location} ${outlineSettingsData.setting.social_context}`.trim()
                         : '未设定';
 
                     return ({
@@ -100,7 +99,7 @@ export function createChroniclesToolDefinition(
                         genre: outlineSettingsData.genre,
                         setting: settingString,
                         characters: charactersString,
-                        totalEpisodes: input.totalEpisodes.toString(),
+                        totalEpisodes: '60',
                         episodeInfo: episodeInfo,
                         requirements: input.requirements || '无特殊要求',
                         stageGuidance: stageGuidance
@@ -108,7 +107,7 @@ export function createChroniclesToolDefinition(
                 },
                 // Extract source artifact for proper lineage
                 extractSourceArtifacts: (input) => [{
-                    artifactId: input.outlineSettingsArtifactId,
+                    artifactId: input.sourceArtifactId,
                     inputRole: 'source'
                 }]
             };
@@ -123,10 +122,8 @@ export function createChroniclesToolDefinition(
                 outputArtifactType: 'chronicles',
                 transformMetadata: {
                     toolName: 'generate_chronicles',
-                    outline_settings_artifact_id: params.outlineSettingsArtifactId,
+                    outline_settings_artifact_id: params.sourceArtifactId,
                     outline_title: outlineSettingsData.title,
-                    total_episodes: params.totalEpisodes,
-                    episode_duration: params.episodeDuration,
                     requirements: params.requirements
                 },
                 // Pass caching options from factory

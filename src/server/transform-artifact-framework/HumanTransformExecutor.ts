@@ -2,7 +2,7 @@ import { ArtifactRepository } from './ArtifactRepository';
 import { TransformRepository } from './TransformRepository';
 import { TransformInstantiationRegistry } from '../services/TransformInstantiationRegistry';
 import {
-  ARTIFACT_SCHEMAS,
+  ArtifactSchemaRegistry,
 } from '../../common/schemas/artifacts';
 import { HUMAN_TRANSFORM_DEFINITIONS, validateTransformPath } from '../../common/schemas/transforms';
 
@@ -15,6 +15,34 @@ export class HumanTransformExecutor {
   ) {
     this.instantiationRegistry = new TransformInstantiationRegistry();
   }
+
+  // Schema to type mappings for artifact creation
+  private SCHEMA_TO_TYPE_MAP = {
+    'brainstorm_collection_schema': 'brainstorm_collection',
+    'brainstorm_item_schema': 'brainstorm_idea',
+    'user_input_schema': 'user_input',
+
+    // New outline system
+    'outline_settings_schema': 'outline_settings',
+    'chronicles_schema': 'chronicles',
+
+    // Script types
+    'script_schema': 'script'
+  } as const;
+
+  // Type to schema mappings for validation
+  private TYPE_TO_SCHEMA_MAP = {
+    'brainstorm_collection': 'brainstorm_collection_schema',
+    'brainstorm_idea': 'brainstorm_item_schema',
+    'user_input': 'user_input_schema',
+
+    // New outline system
+    'outline_settings': 'outline_settings_schema',
+    'chronicles': 'chronicles_schema',
+
+    // Script types
+    'script': 'script_schema'
+  } as const;
 
   // Map schema types back to legacy types for ArtifactRepository.createArtifact
   private mapSchemaTypeToLegacyType(schemaType: string): string {
@@ -204,23 +232,7 @@ export class HumanTransformExecutor {
     // Get current data and apply updates
     let currentData = currentArtifact.data; // Already parsed by ArtifactRepository
 
-    // Handle user_input artifacts with derived data
-    if (currentArtifact.type === 'user_input') {
-      // First try to get derived_data from metadata
-      if (currentArtifact.metadata && currentArtifact.metadata.derived_data) {
-        currentData = currentArtifact.metadata.derived_data;
-      } else if (currentArtifact.data && currentArtifact.data.text) {
-        // Fallback: try to parse JSON from text field
-        try {
-          currentData = JSON.parse(currentArtifact.data.text);
-        } catch (e) {
-          // If not JSON, treat as plain text
-          currentData = { text: currentArtifact.data.text };
-        }
-      }
-    }
-    // For brainstorm_idea artifacts, use data directly
-    // (currentData is already set above)
+    // Use artifact data directly (no special handling needed)
 
     const updatedData = { ...currentData, ...fieldUpdates };
 
@@ -228,11 +240,11 @@ export class HumanTransformExecutor {
     let validationResult;
     if (transformDef.targetArtifactType === 'user_input') {
 
-      const targetSchema = ARTIFACT_SCHEMAS[transformDef.targetArtifactType as keyof typeof ARTIFACT_SCHEMAS];
+      const targetSchema = ArtifactSchemaRegistry[transformDef.targetArtifactType as keyof typeof ArtifactSchemaRegistry];
       validationResult = targetSchema.safeParse(updatedData);
     } else {
       // For direct artifact types (like brainstorm_idea), validate against target schema
-      const targetSchema = ARTIFACT_SCHEMAS[transformDef.targetArtifactType as keyof typeof ARTIFACT_SCHEMAS];
+      const targetSchema = ArtifactSchemaRegistry[transformDef.targetArtifactType as keyof typeof ArtifactSchemaRegistry];
       validationResult = targetSchema.safeParse(updatedData);
     }
 
@@ -244,23 +256,8 @@ export class HumanTransformExecutor {
     let finalData;
     let finalMetadata = currentArtifact.metadata || {};
 
-    // Special handling for user_input artifacts
-    if (transformDef.targetArtifactType === 'user_input') {
-      // Store the actual validated data in metadata
-      finalMetadata = {
-        ...finalMetadata,
-        derived_data: validationResult.data
-      };
-
-      // Store as JSON string in the text field for user_input format
-      finalData = {
-        text: JSON.stringify(validationResult.data),
-        source: 'modified_brainstorm'
-      };
-    } else {
-      // For direct artifact types, store the validated data directly
-      finalData = validationResult.data;
-    }
+    // Store the validated data directly (no special handling needed)
+    finalData = validationResult.data;
 
     await this.artifactRepo.updateArtifact(
       existingTransform.derived_artifact_id,
@@ -298,7 +295,7 @@ export class HumanTransformExecutor {
     }
 
     // 3. Validate source artifact data against schema
-    const sourceSchema = ARTIFACT_SCHEMAS[transformDef.sourceArtifactType as keyof typeof ARTIFACT_SCHEMAS];
+    const sourceSchema = ArtifactSchemaRegistry[transformDef.sourceArtifactType as keyof typeof ArtifactSchemaRegistry];
     const sourceData = sourceArtifact.data; // Already parsed by ArtifactRepository
     const sourceValidation = sourceSchema.safeParse(sourceData);
 
@@ -315,7 +312,7 @@ export class HumanTransformExecutor {
     );
 
     // 3. Validate instantiated data
-    const targetSchema = ARTIFACT_SCHEMAS[transformDef.targetArtifactType as keyof typeof ARTIFACT_SCHEMAS];
+    const targetSchema = ArtifactSchemaRegistry[transformDef.targetArtifactType as keyof typeof ArtifactSchemaRegistry];
     const targetValidation = targetSchema.safeParse(initialData);
 
     if (!targetValidation.success) {
@@ -343,14 +340,8 @@ export class HumanTransformExecutor {
       derivation_path: derivationPath
     };
 
-    // Special handling for user_input artifacts
-    if (transformDef.targetArtifactType === 'user_input') {
-      artifactMetadata.derived_data = targetValidation.data;
-      artifactData = {
-        text: JSON.stringify(targetValidation.data),
-        source: 'modified_brainstorm'
-      };
-    }
+    // Store the validated data directly
+    artifactData = targetValidation.data;
 
     // Map schema type back to legacy type for createArtifact
     const legacyType = this.mapSchemaTypeToLegacyType(transformDef.targetArtifactType);

@@ -1,5 +1,59 @@
 import { z } from 'zod';
-import { OutlineGenerationInputSchema, OutlineGenerationOutputSchema } from './outlineSchemas';
+import { OutlineSettingsInputSchema, OutlineSettingsOutputSchema, ChroniclesInputSchema, ChroniclesOutputSchema } from './outlineSchemas';
+
+// Base transform definition
+export const BaseTransformDefinition = z.object({
+  pathPattern: z.string(),
+  inputSchema: z.any(),
+  outputSchema: z.any(),
+  outputType: z.string()
+});
+
+// Transform registry
+export const TransformRegistry = {
+  // Outline Settings Transform
+  'outline_settings_generation': {
+    pathPattern: '^\\$\\[outline_settings\\]$',
+    inputSchema: OutlineSettingsInputSchema,
+    outputSchema: OutlineSettingsOutputSchema,
+    outputType: 'outline_settings_schema'
+  },
+
+  // Chronicles Transform
+  'chronicles_generation': {
+    pathPattern: '^\\$\\[chronicles\\]$',
+    inputSchema: ChroniclesInputSchema,
+    outputSchema: ChroniclesOutputSchema,
+    outputType: 'chronicles_schema'
+  },
+
+  // Brainstorm edit transforms
+  'brainstorm_idea_edit': {
+    pathPattern: '^\\$\\.ideas\\[\\d+\\]$',
+    inputSchema: z.object({
+      title: z.string(),
+      body: z.string()
+    }),
+    outputSchema: z.object({
+      title: z.string(),
+      body: z.string()
+    }),
+    outputType: 'user_input_schema'
+  }
+} as const;
+
+// Validate transform name
+export function validateTransformName(name: string): boolean {
+  return name in TransformRegistry;
+}
+
+// Get transform definition
+export function getTransformDefinition(name: string) {
+  if (!validateTransformName(name)) {
+    throw new Error(`Unknown transform: ${name}`);
+  }
+  return TransformRegistry[name as keyof typeof TransformRegistry];
+}
 
 // Transform definition schema
 export const HumanTransformDefinitionSchema = z.object({
@@ -134,14 +188,23 @@ export const LLM_TRANSFORM_DEFINITIONS: Record<string, LLMTransformDefinition> =
     inputSchema: BrainstormEditInputSchema,
     outputSchema: BrainstormEditOutputSchema
   },
-  'llm_generate_outline': {
-    name: 'llm_generate_outline',
-    description: 'AI generation of story outline from brainstorm idea',
+  'llm_generate_outline_settings': {
+    name: 'llm_generate_outline_settings',
+    description: 'AI generation of outline settings from brainstorm idea',
     inputTypes: ['brainstorm_idea_schema', 'user_input_schema'],
-    outputType: 'outline_schema',
-    templateName: 'chronological_outline',
-    inputSchema: OutlineGenerationInputSchema,
-    outputSchema: OutlineGenerationOutputSchema
+    outputType: 'outline_settings_schema',
+    templateName: 'outline_settings',
+    inputSchema: OutlineSettingsInputSchema,
+    outputSchema: OutlineSettingsOutputSchema
+  },
+  'llm_generate_chronicles': {
+    name: 'llm_generate_chronicles',
+    description: 'AI generation of chronicles from outline settings',
+    inputTypes: ['outline_settings_schema'],
+    outputType: 'chronicles_schema',
+    templateName: 'chronicles',
+    inputSchema: ChroniclesInputSchema,
+    outputSchema: ChroniclesOutputSchema
   }
 };
 

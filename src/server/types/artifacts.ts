@@ -353,9 +353,40 @@ export interface WorkflowContextV1 {
     [key: string]: any;
 }
 
-// Type guards for artifact data validation
-// Add to existing validateArtifactData function
-import { ARTIFACT_SCHEMAS } from '../../common/schemas/artifacts';
+// Type mappings for different artifact types
+export const ARTIFACT_TYPE_MAPPINGS = {
+    // Direct mappings
+    'brainstorm_collection': 'brainstorm_collection_schema',
+    'brainstorm_idea': 'brainstorm_item_schema',
+    'user_input': 'user_input_schema',
+
+    // New outline system
+    'outline_settings': 'outline_settings_schema',
+    'chronicles': 'chronicles_schema',
+
+    // Script types
+    'script': 'script_schema',
+
+    // Technical types
+    'debug': 'debug_schema'
+} as const;
+
+// Reverse mappings for schema to type
+export const SCHEMA_TO_TYPE_MAPPINGS = {
+    'brainstorm_collection_schema': 'brainstorm_collection',
+    'brainstorm_item_schema': 'brainstorm_idea',
+    'user_input_schema': 'user_input',
+
+    // New outline system
+    'outline_settings_schema': 'outline_settings',
+    'chronicles_schema': 'chronicles',
+
+    // Script types
+    'script_schema': 'script',
+
+    // Technical types
+    'debug_schema': 'debug'
+} as const;
 
 // Map legacy type names to new schema types for backward compatibility
 function mapTypeToSchemaType(type: string): string {
@@ -386,8 +417,9 @@ export function validateArtifactData(type: string, typeVersion: string, data: an
     const schemaType = mapTypeToSchemaType(type);
 
     // Use Zod schemas for new artifact types
-    if (schemaType in ARTIFACT_SCHEMAS) {
-        const schema = ARTIFACT_SCHEMAS[schemaType as keyof typeof ARTIFACT_SCHEMAS];
+    const { ArtifactSchemaRegistry } = require('../../common/schemas/artifacts');
+    if (schemaType in ArtifactSchemaRegistry) {
+        const schema = ArtifactSchemaRegistry[schemaType as keyof typeof ArtifactSchemaRegistry];
         const result = schema.safeParse(data);
         return result.success;
     }
@@ -526,8 +558,6 @@ function isOutlineGenerationInputV1(data: any): data is OutlineGenerationInputV1
         (data.selectedGenrePaths === undefined || Array.isArray(data.selectedGenrePaths)) &&
         (data.requirements === undefined || typeof data.requirements === 'string');
 }
-
-
 
 function isOutlineJobParamsV1(data: any): data is OutlineJobParamsV1 {
     return typeof data === 'object' &&

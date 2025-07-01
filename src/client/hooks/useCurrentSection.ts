@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-export type CurrentSection = 'brainstorm-ideas' | 'story-outline' | null;
+export type CurrentSection = 'brainstorm-ideas' | 'outline-settings' | 'chronicles' | null;
 
 /**
  * Hook to detect which section is currently visible in the viewport
@@ -12,7 +12,8 @@ export function useCurrentSection(): CurrentSection {
     useEffect(() => {
         const sectionSelectors = [
             '#brainstorm-ideas',
-            '#story-outline'
+            '#outline-settings',
+            '#chronicles'
         ];
 
         const observer = new IntersectionObserver(
@@ -20,7 +21,7 @@ export function useCurrentSection(): CurrentSection {
 
                 // SOLUTION: Don't rely on entries (which only show changes)
                 // Instead, manually check all target elements on every intersection event
-                const sectionSelectors = ['#brainstorm-ideas', '#story-outline'];
+                const sectionSelectors = ['#brainstorm-ideas', '#outline-settings', '#chronicles'];
                 const allSectionData: { id: string; rect: DOMRect; element: HTMLElement }[] = [];
 
                 sectionSelectors.forEach(selector => {
@@ -28,8 +29,6 @@ export function useCurrentSection(): CurrentSection {
                     if (element) {
                         const rect = element.getBoundingClientRect();
                         const isVisible = rect.top < window.innerHeight && rect.bottom > 0;
-
-
 
                         if (isVisible) {
                             allSectionData.push({
@@ -62,8 +61,7 @@ export function useCurrentSection(): CurrentSection {
                     // Calculate intersection ratio manually
                     const intersectionRatio = Math.max(0, Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0)) / rect.height;
 
-
-                    if (intersectionRatio > 0.03 && (id === 'brainstorm-ideas' || id === 'story-outline')) {
+                    if (intersectionRatio > 0.03 && (id === 'brainstorm-ideas' || id === 'outline-settings' || id === 'chronicles')) {
                         sectionsWithData.push({
                             id,
                             intersectionRatio,
@@ -91,7 +89,6 @@ export function useCurrentSection(): CurrentSection {
                     const winner = sectionsWithData[0];
                     activeSection = winner.id as CurrentSection;
                     minDistanceToCenter = winner.distanceToCenter;
-
                 }
 
                 // Fallback: if no section was found with good visibility (>3%), try any visible section
@@ -109,7 +106,7 @@ export function useCurrentSection(): CurrentSection {
                         const distanceToCenter = Math.abs(elementCenter - viewportCenter);
                         const intersectionRatio = Math.max(0, Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0)) / rect.height;
 
-                        if (intersectionRatio > 0 && (id === 'brainstorm-ideas' || id === 'story-outline')) {
+                        if (intersectionRatio > 0 && (id === 'brainstorm-ideas' || id === 'outline-settings' || id === 'chronicles')) {
                             fallbackSections.push({ id, intersectionRatio, distanceToCenter });
                         }
                     });
@@ -127,7 +124,6 @@ export function useCurrentSection(): CurrentSection {
                         const winner = fallbackSections[0];
                         activeSection = winner.id as CurrentSection;
                         minDistanceToCenter = winner.distanceToCenter;
-
                     }
                 }
 
@@ -153,7 +149,6 @@ export function useCurrentSection(): CurrentSection {
                     console.warn(`[useCurrentSection] Element not found: ${selector}`);
                 }
             });
-
         };
 
         // Setup immediately
