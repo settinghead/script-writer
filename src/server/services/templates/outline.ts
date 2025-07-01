@@ -1,4 +1,3 @@
-
 export const outlineTemplate = {
   id: 'outline',
   name: 'Story Outline Generation',
@@ -101,7 +100,7 @@ export const outlineTemplate = {
     *   **relationshipDevelopments**: 人物关系发展变化数组，每个包含：
         - **characters**: 涉及的角色名称数组  
         - **content**: 关系发展变化描述
-    *   **insights**: 观众洞察数组，观众需要了解和意识到的信息，以便充分理解整个剧集的关键要点
+    *   **insights**: 观众关键信息数组，观众需要了解的重要剧情事实和背景信息，这些信息对理解后续非时序剧集展开至关重要（如角色真实身份、隐藏关系、重要线索、秘密动机等）
     
     **时间连贯性要求**：
     - 事件发展符合现实逻辑
@@ -264,15 +263,15 @@ export const outlineTemplate = {
       "title": "[string] 阶段标题",
       "stageSynopsis": "[string] 阶段梗概（约200-300字符）",
       "event": "[string] 该阶段的核心关键事件内容",
-      "emotionArcs": [
-        {
-          "characters": ["[string] 角色名"],
+          "emotionArcs": [
+            {
+              "characters": ["[string] 角色名"],
           "content": "[string] 该阶段引发的情感变化描述"
-        }
-      ],
-      "relationshipDevelopments": [
-        {
-          "characters": ["[string] 角色名1", "[string] 角色名2"],
+            }
+          ],
+          "relationshipDevelopments": [
+            {
+              "characters": ["[string] 角色名1", "[string] 角色名2"],
           "content": "[string] 该阶段导致的关系发展描述"
         }
       ],

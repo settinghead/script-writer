@@ -44,10 +44,33 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
             return false;
         }
 
-        // Map navigation targets to sections matching ProjectLayout structure
+        // For ideation section, only highlight when we're specifically in the ideation area
+        if (navigationTarget === '#ideation-edit') {
+            // First check - if we're currently in brainstorm section, don't highlight ideation
+            if (currentSection === 'brainstorm-ideas') {
+                return false;
+            }
+
+            // Second check - ideation element must be prominently visible (>50% visibility)
+            const ideationElement = document.getElementById('ideation-edit');
+            if (!ideationElement) return false;
+
+            const rect = ideationElement.getBoundingClientRect();
+            const viewportHeight = window.innerHeight;
+            const isIdeationVisible = rect.top < viewportHeight && rect.bottom > 0;
+            const ideationIntersectionRatio = isIdeationVisible ?
+                Math.max(0, Math.min(rect.bottom, viewportHeight) - Math.max(rect.top, 0)) / rect.height : 0;
+
+            // Only highlight ideation if it has prominent visibility (>50%) and center is in upper half of viewport
+            const elementCenter = rect.top + (rect.height / 2);
+            const isInUpperHalf = elementCenter < (viewportHeight / 2);
+
+            return ideationIntersectionRatio > 0.5 && isInUpperHalf;
+        }
+
+        // For other sections, use the standard mapping
         const navigationTargetToSection: Record<string, CurrentSection> = {
             '#brainstorm-ideas': 'brainstorm-ideas',
-            '#ideation-edit': 'brainstorm-ideas', // Ideation is part of brainstorm workflow
             '#story-outline': 'story-outline'
         };
 
