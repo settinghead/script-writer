@@ -44,8 +44,6 @@ const ProjectLayout: React.FC = () => {
     // Check for chosen brainstorm idea
     const { chosenIdea, isLoading: chosenIdeaLoading } = useChosenBrainstormIdea();
 
-    // Debug logging
-    console.log('[ProjectLayout] Chosen idea state:', { chosenIdea, chosenIdeaLoading });
 
     // Debug toggles
     const showRawGraph = searchParams.get('raw-graph') === '1';

@@ -136,7 +136,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
         }
     });
 
-    const handleGenerateOutline = () => {
+    const handleGenerateOutlineSettings = () => {
         if (isCreatingHumanTransform || !editableArtifactId) return;
 
         form.validateFields().then((values) => {
@@ -145,7 +145,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                 totalEpisodes: values.totalEpisodes,
                 episodeDuration: values.episodeDuration,
                 selectedPlatform: values.platform,
-                selectedGenrePaths: values.genrePaths || [['都市', '爽文']],
+                selectedGenrePaths: values.genrePaths || [],
                 requirements: values.requirements
             });
         }).catch((error) => {
@@ -544,7 +544,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                         type="primary"
                         size="large"
                         icon={<FileTextOutlined />}
-                        onClick={handleGenerateOutline}
+                        onClick={handleGenerateOutlineSettings}
                         loading={outlineGenerationMutation.isPending}
                         disabled={isCreatingHumanTransform}
                         style={{
@@ -556,7 +556,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                             height: 'auto'
                         }}
                     >
-                        继续生成叙事大纲 &gt;&gt;
+                        生成剧本框架 &gt;&gt;
                     </Button>
                     <br />
 

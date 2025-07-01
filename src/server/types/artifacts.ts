@@ -391,7 +391,7 @@ export const SCHEMA_TO_TYPE_MAPPINGS = {
 // Map legacy type names to new schema types for backward compatibility
 function mapTypeToSchemaType(type: string): string {
     const typeMapping: Record<string, string> = {
-        'brainstorm_idea': 'brainstorm_idea_schema',
+        'brainstorm_idea': 'brainstorm_item_schema',
         'brainstorm_idea_collection': 'brainstorm_collection_schema',
         'user_input': 'user_input_schema',
         'chronological_outline_input': 'chronological_outline_input',
