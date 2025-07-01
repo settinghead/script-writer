@@ -1,5 +1,23 @@
 import { EpisodeSynopsisV1 } from '../../common/types';
-import { EpisodeSynopsis } from '../services/implementations/EpisodeStreamingService';
+// Interface for episode synopsis structure
+interface EpisodeSynopsis {
+    episodeNumber: number;
+    title: string;
+    synopsis?: string;
+    briefSummary?: string;
+    keyEvents: string[];
+    endHook?: string;
+    hooks?: string;
+    emotionDevelopments?: Array<{
+        characters: string[];
+        content: string;
+    }>;
+    relationshipDevelopments?: Array<{
+        characters: string[];
+        content: string;
+    }>;
+}
+
 
 interface EpisodeExportData {
     sessionId: string;
@@ -141,12 +159,12 @@ export function formatEpisodesForExport(data: EpisodeExportData): string {
     sections.push(`包含剧集钩子的剧集：${episodesWithHooks}集`);
 
     // 🔥 NEW: Statistics for emotion and relationship developments
-    const episodesWithEmotions = data.episodes.filter(ep => 
+    const episodesWithEmotions = data.episodes.filter(ep =>
         'emotionDevelopments' in ep && ep.emotionDevelopments && ep.emotionDevelopments.length > 0
     ).length;
     sections.push(`包含情感发展的剧集：${episodesWithEmotions}集`);
 
-    const episodesWithRelationships = data.episodes.filter(ep => 
+    const episodesWithRelationships = data.episodes.filter(ep =>
         'relationshipDevelopments' in ep && ep.relationshipDevelopments && ep.relationshipDevelopments.length > 0
     ).length;
     sections.push(`包含关系发展的剧集：${episodesWithRelationships}集`);
@@ -154,12 +172,12 @@ export function formatEpisodesForExport(data: EpisodeExportData): string {
     const totalEvents = data.episodes.reduce((sum, ep) => sum + (ep.keyEvents?.length || 0), 0);
     sections.push(`总关键事件数：${totalEvents}个`);
 
-    const totalEmotionDevelopments = data.episodes.reduce((sum, ep) => 
+    const totalEmotionDevelopments = data.episodes.reduce((sum, ep) =>
         sum + (('emotionDevelopments' in ep && ep.emotionDevelopments) ? ep.emotionDevelopments.length : 0), 0
     );
     sections.push(`总情感发展数：${totalEmotionDevelopments}个`);
 
-    const totalRelationshipDevelopments = data.episodes.reduce((sum, ep) => 
+    const totalRelationshipDevelopments = data.episodes.reduce((sum, ep) =>
         sum + (('relationshipDevelopments' in ep && ep.relationshipDevelopments) ? ep.relationshipDevelopments.length : 0), 0
     );
     sections.push(`总关系发展数：${totalRelationshipDevelopments}个`);
@@ -203,7 +221,7 @@ export function formatMultiStageEpisodesForExport(data: MultiStageEpisodeExportD
         const endEpisode = episodeOffset + stage.numberOfEpisodes - 1;
         const actualEpisodes = stage.episodes.length;
         episodeOffset += stage.numberOfEpisodes;
-        
+
         sections.push(`第${stage.stageNumber}阶段 (集${startEpisode}-${endEpisode}): ${stage.numberOfEpisodes}集计划, ${actualEpisodes}集已生成`);
     });
     sections.push("");
@@ -290,7 +308,7 @@ export function formatMultiStageEpisodesForExport(data: MultiStageEpisodeExportD
 
     // Overall Statistics
     const allEpisodes = data.stages.flatMap(stage => stage.episodes);
-    
+
     sections.push("");
     sections.push("📊 整体统计");
     sections.push(repeatChar("-", 30));
@@ -307,12 +325,12 @@ export function formatMultiStageEpisodesForExport(data: MultiStageEpisodeExportD
     }).length;
     sections.push(`包含剧集钩子的剧集：${episodesWithHooks}集`);
 
-    const episodesWithEmotions = allEpisodes.filter(ep => 
+    const episodesWithEmotions = allEpisodes.filter(ep =>
         'emotionDevelopments' in ep && ep.emotionDevelopments && ep.emotionDevelopments.length > 0
     ).length;
     sections.push(`包含情感发展的剧集：${episodesWithEmotions}集`);
 
-    const episodesWithRelationships = allEpisodes.filter(ep => 
+    const episodesWithRelationships = allEpisodes.filter(ep =>
         'relationshipDevelopments' in ep && ep.relationshipDevelopments && ep.relationshipDevelopments.length > 0
     ).length;
     sections.push(`包含关系发展的剧集：${episodesWithRelationships}集`);
@@ -320,12 +338,12 @@ export function formatMultiStageEpisodesForExport(data: MultiStageEpisodeExportD
     const totalEvents = allEpisodes.reduce((sum, ep) => sum + (ep.keyEvents?.length || 0), 0);
     sections.push(`总关键事件数：${totalEvents}个`);
 
-    const totalEmotionDevelopments = allEpisodes.reduce((sum, ep) => 
+    const totalEmotionDevelopments = allEpisodes.reduce((sum, ep) =>
         sum + (('emotionDevelopments' in ep && ep.emotionDevelopments) ? ep.emotionDevelopments.length : 0), 0
     );
     sections.push(`总情感发展数：${totalEmotionDevelopments}个`);
 
-    const totalRelationshipDevelopments = allEpisodes.reduce((sum, ep) => 
+    const totalRelationshipDevelopments = allEpisodes.reduce((sum, ep) =>
         sum + (('relationshipDevelopments' in ep && ep.relationshipDevelopments) ? ep.relationshipDevelopments.length : 0), 0
     );
     sections.push(`总关系发展数：${totalRelationshipDevelopments}个`);

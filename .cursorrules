@@ -12,7 +12,7 @@
 ### 2. API Design Philosophy
 - **DO NOT expose artifacts/transforms directly** in server routes - they are low-level constructs
 - **DO NOT make frontend interact with artifacts/transforms directly**
-- Create domain-specific endpoints (e.g., `/api/projects`, `/api/scripts`) that abstract the underlying artifacts system
+- Create domain-specific endpoints (e.g., `/api/projects`) that abstract the underlying artifacts system
 - Frontend should work with business domain objects (IdeationRun, ScriptDocument) not raw artifacts
 - Use repository pattern to encapsulate artifact/transform operations
 
@@ -83,7 +83,7 @@ src/
 ## API Endpoint Patterns
 
 ### 12. Route Organization
-- Group routes by domain: `/api/projects`, `/api/scripts`, `/api/brainstorm`
+- Group routes by domain: `/api/projects`
 - Use RESTful conventions where appropriate
 - Streaming endpoints use `/stream` suffix
 - Debug endpoints under `/debug/` (development only)

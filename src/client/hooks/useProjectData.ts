@@ -40,7 +40,7 @@ export const useProjectData = (projectId: string) => {
     queryFn: () => apiService.getStageArtifacts(projectId),
     enabled: false, // Disabled - we'll get stage data from project artifacts instead
   });
-  
+
   // Sync fetched data with Zustand store
   useEffect(() => {
     if (projectData && projectId) {
@@ -64,7 +64,7 @@ export const useProjectData = (projectId: string) => {
         numberOfEpisodes: stage.numberOfEpisodes,
         outlineSessionId: stage.outlineSessionId,
       }));
-      
+
       setStages(projectId, transformedStages);
     }
   }, [stagesData, projectId, setStages]);
@@ -102,7 +102,7 @@ export const useStageEpisodes = (projectId: string, stageId: string, enabled: bo
       const result = await fetch(`/api/episodes/stages/${stageId}/latest-generation`, {
         credentials: 'include'
       });
-      
+
       if (!result.ok) {
         if (result.status === 404) {
           // No episodes generated yet, return empty state
@@ -110,7 +110,7 @@ export const useStageEpisodes = (projectId: string, stageId: string, enabled: bo
         }
         throw new Error('Failed to fetch episodes');
       }
-      
+
       return result.json();
     },
     enabled: !!stageId && enabled,
@@ -119,7 +119,7 @@ export const useStageEpisodes = (projectId: string, stageId: string, enabled: bo
   useEffect(() => {
     if (episodesData !== undefined) {
       let episodeState: StageEpisodeState;
-      
+
       if (episodesData === null) {
         // No episodes generated yet
         episodeState = {
@@ -141,7 +141,7 @@ export const useStageEpisodes = (projectId: string, stageId: string, enabled: bo
           sessionData: episodesData,
         };
       }
-      
+
       setStageEpisodes(projectId, stageId, episodeState);
     }
   }, [episodesData, projectId, stageId, setStageEpisodes]);
@@ -153,33 +153,3 @@ export const useStageEpisodes = (projectId: string, stageId: string, enabled: bo
   };
 };
 
-// Hook for checking script existence for episodes in a stage
-export const useEpisodeScriptChecks = (projectId: string, stageId: string, episodes: EpisodeData[]) => {
-  const updateEpisodeScriptStatus = useProjectStore(state => state.updateEpisodeScriptStatus);
-
-  useEffect(() => {
-    if (!episodes.length) return;
-
-    // Check script existence for all episodes
-    const checkScripts = async () => {
-      const checks = episodes.map(async (episode) => {
-        try {
-          const response = await fetch(`/api/scripts/${episode.episodeNumber}/${stageId}/exists`, {
-            credentials: 'include'
-          });
-          
-          if (response.ok) {
-            const result = await response.json();
-            updateEpisodeScriptStatus(projectId, stageId, episode.episodeNumber, result.exists);
-          }
-        } catch (error) {
-          console.error(`Error checking script for episode ${episode.episodeNumber}:`, error);
-        }
-      });
-
-      await Promise.all(checks);
-    };
-
-    checkScripts();
-  }, [episodes, projectId, stageId, updateEpisodeScriptStatus]);
-}; 
