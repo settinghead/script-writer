@@ -148,22 +148,20 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                         style={{ marginBottom: '16px', backgroundColor: '#262626', border: '1px solid #434343' }}
                     >
                         <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                            {outlineSettings.setting.time_period && (
+                            {outlineSettings.setting.core_setting_summary && (
                                 <div>
-                                    <Text strong>时间背景：</Text>
-                                    <Paragraph style={{ margin: '8px 0' }}>{outlineSettings.setting.time_period}</Paragraph>
+                                    <Text strong>核心设定：</Text>
+                                    <Paragraph style={{ margin: '8px 0' }}>{outlineSettings.setting.core_setting_summary}</Paragraph>
                                 </div>
                             )}
-                            {outlineSettings.setting.location && (
+                            {outlineSettings.setting.key_scenes && outlineSettings.setting.key_scenes.length > 0 && (
                                 <div>
-                                    <Text strong>地点设定：</Text>
-                                    <Paragraph style={{ margin: '8px 0' }}>{outlineSettings.setting.location}</Paragraph>
-                                </div>
-                            )}
-                            {outlineSettings.setting.social_context && (
-                                <div>
-                                    <Text strong>社会背景：</Text>
-                                    <Paragraph style={{ margin: '8px 0' }}>{outlineSettings.setting.social_context}</Paragraph>
+                                    <Text strong>关键场景：</Text>
+                                    <div style={{ marginTop: '4px' }}>
+                                        {outlineSettings.setting.key_scenes.map((scene: string, index: number) => (
+                                            <Tag key={index} style={{ marginBottom: '4px' }}>{scene}</Tag>
+                                        ))}
+                                    </div>
                                 </div>
                             )}
                         </Space>
@@ -193,24 +191,29 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                                                     <Tag color={getCharacterTypeColor(character.type)}>{getCharacterTypeLabel(character.type)}</Tag>
                                                 )}
                                             </div>
-                                            {(character.age || character.occupation) && (
+                                            {(character.age || character.occupation || character.gender) && (
                                                 <Text type="secondary">
-                                                    {[character.age, character.occupation].filter(Boolean).join(' • ')}
+                                                    {[character.age, character.gender, character.occupation].filter(Boolean).join(' • ')}
                                                 </Text>
                                             )}
-                                            {character.personality && (
+                                            {character.description && (
                                                 <Paragraph ellipsis={{ rows: 2 }} style={{ margin: 0, fontSize: '12px' }}>
-                                                    {character.personality}
+                                                    {character.description}
                                                 </Paragraph>
                                             )}
-                                            {character.appearance && (
-                                                <Paragraph ellipsis={{ rows: 2 }} style={{ margin: 0, fontSize: '12px' }}>
-                                                    外貌：{character.appearance}
-                                                </Paragraph>
+                                            {character.personality_traits && character.personality_traits.length > 0 && (
+                                                <div>
+                                                    <Text strong style={{ fontSize: '11px' }}>性格特点：</Text>
+                                                    <div style={{ marginTop: '2px' }}>
+                                                        {character.personality_traits.map((trait: string, traitIndex: number) => (
+                                                            <Tag key={traitIndex} style={{ marginBottom: '2px', fontSize: '10px' }}>{trait}</Tag>
+                                                        ))}
+                                                    </div>
+                                                </div>
                                             )}
-                                            {character.background && (
+                                            {character.character_arc && (
                                                 <Paragraph ellipsis={{ rows: 2 }} style={{ margin: 0, fontSize: '12px' }}>
-                                                    背景：{character.background}
+                                                    <Text strong style={{ fontSize: '11px' }}>成长轨迹：</Text>{character.character_arc}
                                                 </Paragraph>
                                             )}
                                         </Space>

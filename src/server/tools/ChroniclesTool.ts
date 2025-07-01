@@ -86,12 +86,12 @@ export function createChroniclesToolDefinition(
 
                     // Format characters for template
                     const charactersString = outlineSettingsData.characters
-                        .map((char: any) => `${char.name}(${char.type}): ${char.personality || char.description || ''}`)
+                        .map((char: any) => `${char.name}(${char.type}): ${char.description || ''}`)
                         .join('; ');
 
                     // Format setting for template
                     const settingString = outlineSettingsData.setting
-                        ? `${outlineSettingsData.setting.time_period} ${outlineSettingsData.setting.location} ${outlineSettingsData.setting.social_context}`.trim()
+                        ? `${outlineSettingsData.setting.core_setting_summary || ''}${outlineSettingsData.setting.key_scenes ? ' 关键场景：' + outlineSettingsData.setting.key_scenes.join('、') : ''}`.trim()
                         : '未设定';
 
                     return ({

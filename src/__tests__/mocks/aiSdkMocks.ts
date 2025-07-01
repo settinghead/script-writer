@@ -261,33 +261,47 @@ function createFallbackOutlineObject() {
     const mockOutlineSettingsData = {
         title: "误爱成宠",
         genre: "现代甜宠",
-        target_audience: "18-35岁都市女性",  // String, not object
-        platform: "抖音",  // Required field
+        target_audience: {
+            demographic: "18-35岁都市女性",
+            core_themes: ["甜宠恋爱", "误会重重", "职场成长"]
+        },
+        platform: "抖音",
         selling_points: ["霸总甜宠", "误会重重", "高颜值演员"],
         satisfaction_points: ["甜蜜互动", "霸道总裁", "逆袭成长"],
         setting: {
-            time_period: "现代",  // Required field
-            location: "上海",     // Required field
-            social_context: "都市职场"  // Required field
+            core_setting_summary: "现代都市职场背景，上海繁华商业区",
+            key_scenes: ["总裁办公室", "高端餐厅", "公司大厅"]
         },
         characters: [
             {
                 name: "林慕琛",
                 type: "male_lead",
+                description: "霸道深情的集团总裁，外表冷酷内心温暖",
                 age: "30岁",
+                gender: "男",
                 occupation: "集团总裁",
-                personality: "霸道深情",  // Required field
-                appearance: "高大英俊",   // Required field
-                background: "商业世家出身"  // Required field
+                personality_traits: ["霸道", "深情", "责任感强"],
+                character_arc: "从冷酷总裁到暖心恋人的成长转变",
+                relationships: {
+                    "夏栀": "误会中产生的爱情关系",
+                    "母亲": "传统家庭压力来源"
+                },
+                key_scenes: ["总裁办公室初遇", "误会澄清", "深情告白"]
             },
             {
                 name: "夏栀",
                 type: "female_lead",
+                description: "善良坚强的普通职员，在误会中展现真实自我",
                 age: "25岁",
+                gender: "女",
                 occupation: "公司职员",
-                personality: "善良坚强",  // Required field
-                appearance: "清纯可爱",   // Required field
-                background: "普通家庭出身"  // Required field
+                personality_traits: ["善良", "坚强", "聪慧"],
+                character_arc: "从自卑职员到自信女性的成长历程",
+                relationships: {
+                    "林慕琛": "误会中发展的真挚感情",
+                    "同事": "职场友谊支撑"
+                },
+                key_scenes: ["职场挫折", "身份误会", "勇敢表白"]
             }
         ]
     };
