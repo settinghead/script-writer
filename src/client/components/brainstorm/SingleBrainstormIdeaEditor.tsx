@@ -434,12 +434,10 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                             height: 'auto'
                         }}
                     >
-                        用这个灵感继续 &gt;&gt;
+                        继续生成叙事大纲 &gt;&gt;
                     </Button>
                     <br />
-                    <Text type="secondary" style={{ fontSize: '14px', marginTop: '8px', display: 'block' }}>
-                        生成叙事大纲
-                    </Text>
+
                 </div>
             </Card>
         </div>
