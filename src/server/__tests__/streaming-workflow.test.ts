@@ -75,7 +75,7 @@ describe('Streaming Workflow Tests', () => {
     });
 
     it('should handle streaming outline settings generation', async () => {
-        const cachingOptions = { enableCaching: true };
+        const cachingOptions = { enableCaching: false };
 
         // Create a mock brainstorm idea artifact (from human transform)
         const mockBrainstormArtifact = await mockArtifactRepo.createArtifact({
@@ -109,7 +109,7 @@ describe('Streaming Workflow Tests', () => {
     });
 
     it('should handle streaming chronicles generation', async () => {
-        const cachingOptions = { enableCaching: true };
+        const cachingOptions = { enableCaching: false };
 
         // Create a mock outline settings artifact first
         const mockOutlineSettingsArtifact = await mockArtifactRepo.createArtifact({
@@ -162,7 +162,7 @@ describe('Streaming Workflow Tests', () => {
     });
 
     it('should validate tool definitions', async () => {
-        const cachingOptions = { enableCaching: true };
+        const cachingOptions = { enableCaching: false };
 
         const outlineSettingsTool = createOutlineSettingsToolDefinition(
             mockTransformRepo,

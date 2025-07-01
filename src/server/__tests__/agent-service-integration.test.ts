@@ -143,7 +143,7 @@ describe('AgentService Integration', () => {
             brainstormRequest,
             {
                 createChatMessages: true,
-                enableCaching: true,
+                enableCaching: false,
                 seed: TEST_SEED,
                 temperature: 0.7,
                 topP: 0.9,
@@ -203,7 +203,7 @@ describe('AgentService Integration', () => {
             editRequest,
             {
                 createChatMessages: true,
-                enableCaching: true,
+                enableCaching: false,
                 seed: TEST_SEED + 1,
                 temperature: 0.7,
                 topP: 0.9,
@@ -268,7 +268,7 @@ describe('AgentService Integration', () => {
             outlineRequest,
             {
                 createChatMessages: true,
-                enableCaching: true,
+                enableCaching: false,
                 seed: TEST_SEED + 2,
                 temperature: 0.7,
                 topP: 0.9,

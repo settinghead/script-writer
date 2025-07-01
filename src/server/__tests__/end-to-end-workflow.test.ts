@@ -79,8 +79,8 @@ describe('End-to-End Workflow Tests', () => {
     });
 
     it('should execute complete workflow: brainstorm → outline settings → chronicles', async () => {
-        // Enable caching for consistent test results
-        const cachingOptions = { enableCaching: true };
+        // Disable caching to use mock responses with new schema
+        const cachingOptions = { enableCaching: false };
 
         console.log('🧪 Testing complete workflow with new outline system...');
 
@@ -175,7 +175,7 @@ describe('End-to-End Workflow Tests', () => {
     it('should validate tool definitions and schemas', async () => {
         console.log('🔍 Testing tool definitions...');
 
-        const cachingOptions = { enableCaching: true };
+        const cachingOptions = { enableCaching: false };
 
         // Test brainstorm tool
         const brainstormTool = createBrainstormToolDefinition(
