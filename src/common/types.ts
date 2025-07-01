@@ -4,8 +4,6 @@ import {
     CharacterEmotionArc,
     RelationshipDevelopment,
     OutlineCharacterV2,
-    LegacyKeyMilestone,
-    LegacyOutlineStage
 } from './llm/outlineTypes.js';
 import { z } from 'zod';
 import { UseMutationResult } from '@tanstack/react-query';
@@ -308,8 +306,6 @@ export type {
     CharacterEmotionArc,
     RelationshipDevelopment,
     OutlineCharacterV2,
-    LegacyKeyMilestone,
-    LegacyOutlineStage
 };
 
 // ========== FLOW TYPES ==========

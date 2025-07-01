@@ -14,8 +14,61 @@ import {
     type WorkflowNode
 } from '../../common/utils/lineageResolution';
 
+interface UseLineageGraphResult {
+    graph: any; // The lineage graph
+    isLoading: boolean;
+    error: Error | null;
+}
+
 interface UseLineageResolutionOptions {
     enabled: boolean; // Caller must explicitly specify if enabled
+}
+
+/**
+ * Hook to get the memoized lineage graph for the current project
+ * This is the centralized way to access the lineage graph to avoid rebuilding it multiple times
+ */
+export function useLineageGraph(): UseLineageGraphResult {
+    const projectData = useProjectData();
+    const [error, setError] = useState<Error | null>(null);
+
+    const graph = useMemo(() => {
+        if (projectData.isLoading) {
+            return null;
+        }
+
+        try {
+            setError(null);
+
+            // Build the lineage graph from project data
+            return buildLineageGraph(
+                projectData.artifacts,
+                projectData.transforms,
+                projectData.humanTransforms,
+                projectData.transformInputs,
+                projectData.transformOutputs
+            );
+
+        } catch (err) {
+            const error = err instanceof Error ? err : new Error('Failed to build lineage graph');
+            console.error('[useLineageGraph] Error building graph:', error);
+            setError(error);
+            return null;
+        }
+    }, [
+        projectData.isLoading,
+        projectData.artifacts,
+        projectData.transforms,
+        projectData.humanTransforms,
+        projectData.transformInputs,
+        projectData.transformOutputs
+    ]);
+
+    return {
+        graph,
+        isLoading: projectData.isLoading,
+        error: projectData.error || error
+    };
 }
 
 interface UseLineageResolutionResult {
@@ -41,15 +94,15 @@ interface UseLineageResolutionResult {
 export function useLineageResolution(
     { sourceArtifactId, path, options }: { sourceArtifactId: string | null; path: string; options: UseLineageResolutionOptions; }): UseLineageResolutionResult {
     const { enabled } = options;
-    const projectData = useProjectData();
+    const { graph, isLoading: graphLoading, error: graphError } = useLineageGraph();
 
     const [error, setError] = useState<Error | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
 
-    // Build lineage graph from project data
+    // Use the shared lineage graph for resolution
     const lineageResult = useMemo((): LineageResolutionResult => {
-        // Return early if disabled or no source artifact
-        if (!enabled || !sourceArtifactId || projectData.isLoading) {
+        // Return early if disabled, no source artifact, or graph not ready
+        if (!enabled || !sourceArtifactId || !graph) {
             return {
                 artifactId: sourceArtifactId,
                 path: path,
@@ -62,23 +115,7 @@ export function useLineageResolution(
             setError(null);
             setIsProcessing(true);
 
-            // Get all project data needed for lineage resolution
-            const artifacts = projectData.artifacts;
-            const transforms = projectData.transforms;
-            const humanTransforms = projectData.humanTransforms;
-            const transformInputs = projectData.transformInputs;
-            const transformOutputs = projectData.transformOutputs;
-
-            // Build the lineage graph
-            const graph = buildLineageGraph(
-                artifacts,
-                transforms,
-                humanTransforms,
-                transformInputs,
-                transformOutputs
-            );
-
-            // Resolve the latest artifact for the given path
+            // Resolve the latest artifact for the given path using the shared graph
             const result = findLatestArtifact(sourceArtifactId, path, graph);
 
             setIsProcessing(false);
@@ -98,10 +135,10 @@ export function useLineageResolution(
                 lineagePath: []
             };
         }
-    }, [enabled, sourceArtifactId, path, projectData.isLoading, projectData.artifacts, projectData.transforms, projectData.humanTransforms, projectData.transformInputs, projectData.transformOutputs]);
+    }, [enabled, sourceArtifactId, path, graph]);
 
     // Determine loading state
-    const isLoading = projectData.isLoading || isProcessing;
+    const isLoading = graphLoading || isProcessing;
 
     // Extract results
     const latestArtifactId = lineageResult.artifactId;
@@ -113,7 +150,7 @@ export function useLineageResolution(
         lineagePath: lineageResult.lineagePath,
         depth: lineageResult.depth,
         isLoading,
-        error: projectData.error || error,
+        error: graphError || error,
         hasLineage,
         originalArtifactId: sourceArtifactId || ''
     };
@@ -190,26 +227,18 @@ export function useWorkflowNodes(): {
     error: Error | null;
 } {
     const projectData = useProjectData();
+    const { graph, isLoading: graphLoading, error: graphError } = useLineageGraph();
     const [error, setError] = useState<Error | null>(null);
 
     const workflowNodes = useMemo((): WorkflowNode[] => {
-        if (projectData.isLoading) {
+        if (!graph) {
             return [];
         }
 
         try {
             setError(null);
 
-            // Build the lineage graph
-            const graph = buildLineageGraph(
-                projectData.artifacts,
-                projectData.transforms,
-                projectData.humanTransforms,
-                projectData.transformInputs,
-                projectData.transformOutputs
-            );
-
-            // Use the main path algorithm to get workflow nodes
+            // Use the shared lineage graph to get workflow nodes
             return findMainWorkflowPath(projectData.artifacts, graph);
 
         } catch (err) {
@@ -218,19 +247,12 @@ export function useWorkflowNodes(): {
             setError(error);
             return [];
         }
-    }, [
-        projectData.isLoading,
-        projectData.artifacts,
-        projectData.transforms,
-        projectData.humanTransforms,
-        projectData.transformInputs,
-        projectData.transformOutputs
-    ]);
+    }, [graph, projectData.artifacts]);
 
     return {
         workflowNodes,
-        isLoading: projectData.isLoading,
-        error: projectData.error || error
+        isLoading: graphLoading,
+        error: graphError || error
     };
 }
 

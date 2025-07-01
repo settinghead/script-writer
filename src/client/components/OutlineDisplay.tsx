@@ -228,7 +228,7 @@ export const OutlineDisplay: React.FC<OutlineDisplayProps> = ({
                         title="故事发展阶段"
                         style={{ backgroundColor: '#262626', border: '1px solid #434343' }}
                     >
-                        <Collapse ghost>
+                        <Collapse ghost activeKey={outline.stages.map((stage, index) => index.toString())}>
                             {outline.stages.map((stage, index) => (
                                 <Panel
                                     header={stage.title || `第${index + 1}阶段`}

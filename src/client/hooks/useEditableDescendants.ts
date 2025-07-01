@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useProjectData } from '../contexts/ProjectDataContext';
-import { buildLineageGraph } from '../../common/utils/lineageResolution';
+import { useLineageGraph } from './useLineageResolution';
 import { ElectricArtifact } from '../../common/types';
 
 interface EditableDescendant {
@@ -25,9 +25,10 @@ interface UseEditableDescendantsResult {
  */
 export function useEditableDescendants(brainstormArtifactId: string): UseEditableDescendantsResult {
     const projectData = useProjectData();
+    const { graph, isLoading: graphLoading, error: graphError } = useLineageGraph();
 
     const result = useMemo((): UseEditableDescendantsResult => {
-        if (projectData.isLoading) {
+        if (graphLoading) {
             return {
                 hasEditableDescendants: false,
                 editableDescendants: [],
@@ -37,25 +38,28 @@ export function useEditableDescendants(brainstormArtifactId: string): UseEditabl
             };
         }
 
-        if (projectData.error) {
+        if (graphError) {
             return {
                 hasEditableDescendants: false,
                 editableDescendants: [],
                 latestEditable: null,
                 isLoading: false,
-                error: projectData.error
+                error: graphError
+            };
+        }
+
+        if (!graph) {
+            return {
+                hasEditableDescendants: false,
+                editableDescendants: [],
+                latestEditable: null,
+                isLoading: false,
+                error: null
             };
         }
 
         try {
-            // Build lineage graph
-            const graph = buildLineageGraph(
-                projectData.artifacts,
-                projectData.transforms,
-                projectData.humanTransforms,
-                projectData.transformInputs,
-                projectData.transformOutputs
-            );
+            // Use the shared lineage graph
 
             // Find all user-input artifacts that can be traced back to this brainstorm idea
             const editableDescendants: EditableDescendant[] = [];
@@ -112,12 +116,11 @@ export function useEditableDescendants(brainstormArtifactId: string): UseEditabl
         }
     }, [
         brainstormArtifactId,
-        projectData.isLoading,
-        projectData.error,
+        graph,
+        graphLoading,
+        graphError,
         projectData.artifacts,
-        projectData.transforms,
         projectData.humanTransforms,
-        projectData.transformInputs,
         projectData.transformOutputs
     ]);
 
