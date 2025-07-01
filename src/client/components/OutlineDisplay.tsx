@@ -242,34 +242,57 @@ export const OutlineDisplay: React.FC<OutlineDisplayProps> = ({
                                                 {stage.stageSynopsis}
                                             </Paragraph>
                                         )}
-                                        {stage.keyPoints && stage.keyPoints.length > 0 && (
-                                            <div>
-                                                <Text strong>关键事件：</Text>
-                                                <div style={{ marginTop: '8px' }}>
-                                                    {stage.keyPoints.map((point, pointIndex) => (
-                                                        <div key={pointIndex} style={{ marginBottom: '8px', padding: '8px', backgroundColor: '#262626', borderRadius: '4px' }}>
-                                                            <Text strong>{point.event}</Text>
 
-                                                            {point.emotionArcs && point.emotionArcs.length > 0 && (
-                                                                <div style={{ marginTop: '4px' }}>
-                                                                    <Text type="secondary">情感变化: </Text>
-                                                                    {point.emotionArcs.map((arc, arcIndex) => (
-                                                                        <Text key={arcIndex} style={{ fontSize: '12px' }}>
-                                                                            {(arc.characters && Array.isArray(arc.characters) ? arc.characters.join(', ') : '未知角色')}: {arc.content || ''}
-                                                                        </Text>
-                                                                    ))}
-                                                                </div>
-                                                            )}
-                                                            {point.relationshipDevelopments && point.relationshipDevelopments.length > 0 && (
-                                                                <div style={{ marginTop: '4px' }}>
-                                                                    <Text type="secondary">关系发展: </Text>
-                                                                    {point.relationshipDevelopments.map((dev, devIndex) => (
-                                                                        <Text key={devIndex} style={{ fontSize: '12px' }}>
-                                                                            {(dev.characters && Array.isArray(dev.characters) ? dev.characters.join(' & ') : '未知角色')}: {dev.content || ''}
-                                                                        </Text>
-                                                                    ))}
-                                                                </div>
-                                                            )}
+                                        {stage.event && (
+                                            <div style={{ marginTop: '12px', padding: '8px', backgroundColor: '#262626', borderRadius: '4px' }}>
+                                                <Text strong>核心事件：</Text>
+                                                <div style={{ marginTop: '4px' }}>
+                                                    <Text>{stage.event}</Text>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {stage.emotionArcs && stage.emotionArcs.length > 0 && (
+                                            <div style={{ marginTop: '8px' }}>
+                                                <Text strong>情感变化：</Text>
+                                                <div style={{ marginTop: '4px' }}>
+                                                    {stage.emotionArcs.map((arc, arcIndex) => (
+                                                        <div key={arcIndex} style={{ marginBottom: '4px', fontSize: '12px' }}>
+                                                            <Text type="secondary">
+                                                                {(arc.characters && Array.isArray(arc.characters) ? arc.characters.join(', ') : '未知角色')}:
+                                                            </Text>
+                                                            <Text style={{ marginLeft: '4px' }}>{arc.content || ''}</Text>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {stage.relationshipDevelopments && stage.relationshipDevelopments.length > 0 && (
+                                            <div style={{ marginTop: '8px' }}>
+                                                <Text strong>关系发展：</Text>
+                                                <div style={{ marginTop: '4px' }}>
+                                                    {stage.relationshipDevelopments.map((dev, devIndex) => (
+                                                        <div key={devIndex} style={{ marginBottom: '4px', fontSize: '12px' }}>
+                                                            <Text type="secondary">
+                                                                {(dev.characters && Array.isArray(dev.characters) ? dev.characters.join(' & ') : '未知角色')}:
+                                                            </Text>
+                                                            <Text style={{ marginLeft: '4px' }}>{dev.content || ''}</Text>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {stage.insights && stage.insights.length > 0 && (
+                                            <div style={{ marginTop: '8px' }}>
+                                                <Text strong>观众洞察：</Text>
+                                                <div style={{ marginTop: '4px' }}>
+                                                    {stage.insights.map((insight, insightIndex) => (
+                                                        <div key={insightIndex} style={{ marginBottom: '4px' }}>
+                                                            <Tag color="cyan" style={{ fontSize: '11px' }}>
+                                                                {insight}
+                                                            </Tag>
                                                         </div>
                                                     ))}
                                                 </div>

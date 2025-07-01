@@ -1,6 +1,5 @@
 import {
     EnhancedOutlineStage,
-    EnhancedKeyPoint,
     CharacterEmotionArc,
     RelationshipDevelopment,
     OutlineCharacterV2,
@@ -294,15 +293,14 @@ export interface WorkflowContextV1 {
     [key: string]: any;
 }
 
-// Enhanced stage structure interface with comprehensive constraints
+// Enhanced stage structure interface with flattened structure
 export interface StageStructure extends EnhancedOutlineStage {
-    // This now extends the enhanced structure from LLM types
+    // This now extends the enhanced structure from LLM types with flattened keyPoints
 }
 
 // Re-export enhanced types for convenience
 export type {
     EnhancedOutlineStage,
-    EnhancedKeyPoint,
     CharacterEmotionArc,
     RelationshipDevelopment,
     OutlineCharacterV2,

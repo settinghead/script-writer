@@ -94,10 +94,14 @@ export const outlineTemplate = {
     
     *   **title**: 阶段标题，简洁概括该阶段的核心内容
     *   **stageSynopsis**: 详细描述该阶段的故事发展、角色行为和情感变化（约200-300字符）
-    *   **keyPoints**: 该阶段的2-3个重要事件节点，每个包含：
-        - **event**: 关键事件内容
-        - **emotionArcs**: 情感变化轨迹，包含角色和具体情感发展
-        - **relationshipDevelopments**: 人物关系的发展变化
+    *   **event**: 该阶段的核心关键事件内容
+    *   **emotionArcs**: 情感变化轨迹数组，每个包含：
+        - **characters**: 涉及的角色名称数组
+        - **content**: 具体情感发展描述
+    *   **relationshipDevelopments**: 人物关系发展变化数组，每个包含：
+        - **characters**: 涉及的角色名称数组  
+        - **content**: 关系发展变化描述
+    *   **insights**: 观众洞察数组，观众需要了解和意识到的信息，以便充分理解整个剧集的关键要点
     
     **时间连贯性要求**：
     - 事件发展符合现实逻辑
@@ -259,23 +263,20 @@ export const outlineTemplate = {
     {
       "title": "[string] 阶段标题",
       "stageSynopsis": "[string] 阶段梗概（约200-300字符）",
-      "keyPoints": [
+      "event": "[string] 该阶段的核心关键事件内容",
+      "emotionArcs": [
         {
-          "event": "[string] 关键事件内容",
-          "emotionArcs": [
-            {
-              "characters": ["[string] 角色名"],
-              "content": "[string] 该事件引发的情感变化描述"
-            }
-          ],
-          "relationshipDevelopments": [
-            {
-              "characters": ["[string] 角色名1", "[string] 角色名2"],
-              "content": "[string] 该事件导致的关系发展描述"
-            }
-          ]
+          "characters": ["[string] 角色名"],
+          "content": "[string] 该阶段引发的情感变化描述"
         }
-      ]
+      ],
+      "relationshipDevelopments": [
+        {
+          "characters": ["[string] 角色名1", "[string] 角色名2"],
+          "content": "[string] 该阶段导致的关系发展描述"
+        }
+      ],
+      "insights": ["[string] 观众洞察1", "[string] 观众洞察2"]
     }
   ]
 }

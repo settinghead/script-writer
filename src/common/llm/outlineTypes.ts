@@ -23,21 +23,25 @@ export interface EmotionArcDevelopment {
     content: string; // Description of emotion arc development
 }
 
-export interface KeyPointObject {
-    event: string; // Event content description
-    emotionArcs: EmotionArcDevelopment[];
-    relationshipDevelopments: RelationshipDevelopment[];
-}
+// Deprecated: KeyPointObject removed in favor of flattened stage structure
+// export interface KeyPointObject {
+//     event: string;
+//     emotionArcs: EmotionArcDevelopment[];
+//     relationshipDevelopments: RelationshipDevelopment[];
+// }
 
 export interface EnhancedOutlineStage {
     title: string;
     stageSynopsis?: string;
+    event: string;
+    emotionArcs: EmotionArcDevelopment[];
+    relationshipDevelopments: RelationshipDevelopment[];
+    insights: string[];
     numberOfEpisodes?: number;
     startingCondition?: string;
     endingCondition?: string;
     stageStartEvent?: string;
     stageEndEvent?: string;
-    keyPoints: KeyPointObject[]; // Array of key point objects
     externalPressure?: string;
 }
 
@@ -62,11 +66,12 @@ export interface CharacterEmotionArc {
     content: string;
 }
 
-export interface EnhancedKeyPoint {
-    event: string;
-    emotionArcs: CharacterEmotionArc[];
-    relationshipDevelopments: RelationshipDevelopment[];
-}
+// Deprecated: EnhancedKeyPoint removed in favor of flattened stage structure
+// export interface EnhancedKeyPoint {
+//     event: string;
+//     emotionArcs: CharacterEmotionArc[];
+//     relationshipDevelopments: RelationshipDevelopment[];
+// }
 
 
 
