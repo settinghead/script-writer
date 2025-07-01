@@ -1319,7 +1319,7 @@ export const EditableCharacterCard: React.FC<ExtendedFieldProps & {
     }, [debouncedSave]);
 
     const updateField = (field: string, newValue: any) => {
-      setLocalCharacter(prev => ({
+      setLocalCharacter((prev: any) => ({
         ...prev,
         [field]: newValue
       }));
