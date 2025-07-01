@@ -4,8 +4,8 @@ import { ArtifactRepository } from '../transform-artifact-framework/ArtifactRepo
 import { prepareAgentPromptContext } from '../../common/utils/agentContext';
 import { createBrainstormToolDefinition, createBrainstormEditToolDefinition } from '../tools/BrainstormTools';
 import { createOutlineToolDefinition } from '../tools/OutlineTool';
-import type { GeneralAgentRequest } from './AgentService';
-import type { StreamingToolDefinition } from './StreamingAgentFramework';
+import type { GeneralAgentRequest } from '../transform-artifact-framework/AgentService';
+import type { StreamingToolDefinition } from '../transform-artifact-framework/StreamingAgentFramework';
 
 // Request type enumeration
 export type RequestType = 'brainstorm_generation' | 'outline_generation' | 'general';

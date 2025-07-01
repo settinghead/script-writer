@@ -1,11 +1,10 @@
 import { z } from 'zod';
-import { tool, streamText } from 'ai';
-import { TransformRepository } from '../transform-artifact-framework/TransformRepository';
-import { ArtifactRepository } from '../transform-artifact-framework/ArtifactRepository';
-import { StreamingToolDefinition, createAgentTool } from './StreamingAgentFramework';
-import { buildAgentConfiguration } from './AgentRequestBuilder';
+import { streamText } from 'ai';
+import { TransformRepository } from './TransformRepository';
+import { ArtifactRepository } from './ArtifactRepository';
+import { createAgentTool } from './StreamingAgentFramework';
+import { buildAgentConfiguration } from '../services/AgentRequestBuilder';
 import { getLLMModel } from './LLMConfig';
-import type { ChatMessageRepository } from '../transform-artifact-framework/ChatMessageRepository';
 
 // Schema for general agent requests
 export const GeneralAgentRequestSchema = z.object({

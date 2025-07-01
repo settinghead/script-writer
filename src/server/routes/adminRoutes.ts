@@ -2,7 +2,7 @@ import express from 'express';
 import { TransformRepository } from '../transform-artifact-framework/TransformRepository';
 import { ArtifactRepository } from '../transform-artifact-framework/ArtifactRepository';
 import { buildAgentConfiguration } from '../services/AgentRequestBuilder';
-import { GeneralAgentRequestSchema } from '../services/AgentService';
+import { GeneralAgentRequestSchema } from '../transform-artifact-framework/AgentService';
 
 // Dev-only middleware - simple check for development environment
 function devOnly(req: any, res: any, next: any) {

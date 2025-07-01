@@ -6,8 +6,8 @@ import { TransformRepository } from '../transform-artifact-framework/TransformRe
 import { ProjectRepository } from '../transform-artifact-framework/ProjectRepository';
 import { ChatMessageRepository } from '../transform-artifact-framework/ChatMessageRepository';
 import { ProjectService } from '../services/ProjectService';
-import { AgentService } from '../services/AgentService';
-import { ChatService } from '../services/ChatService';
+import { AgentService } from '../transform-artifact-framework/AgentService';
+import { ChatService } from '../transform-artifact-framework/ChatService';
 
 // Import route creators
 import { createElectricProxyRoutes } from './electricProxy';

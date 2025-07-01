@@ -5,8 +5,8 @@ import { IdeationInputSchema, IdeationOutputSchema } from '../../common/transfor
 import { BrainstormEditInputSchema, BrainstormEditOutputSchema } from '../../common/schemas/transforms';
 import type { TransformRepository } from '../transform-artifact-framework/TransformRepository';
 import type { ArtifactRepository } from '../transform-artifact-framework/ArtifactRepository';
-import type { GeneralAgentRequest } from './AgentService';
-import type { StreamingToolDefinition } from './StreamingAgentFramework';
+import type { GeneralAgentRequest } from '../transform-artifact-framework/AgentService';
+import type { StreamingToolDefinition } from '../transform-artifact-framework/StreamingAgentFramework';
 
 export interface AgentPromptToolsData {
     prompt: string;

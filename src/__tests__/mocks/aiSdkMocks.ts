@@ -1,6 +1,6 @@
 import { vi } from 'vitest';
 import { CacheReader, CachedResponse } from '../utils/cacheReader';
-import { generateCacheKey, generateSchemaHash, CacheKeyParams } from '../../common/utils/cacheKeyGenerator';
+import { generateCacheKey, generateSchemaHash, CacheKeyParams } from '../../common/transform-artifact-framework/cacheKeyGenerator';
 import { z } from 'zod';
 
 const cacheReader = new CacheReader();

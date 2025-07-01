@@ -10,8 +10,8 @@ import {
 import {
     executeStreamingTransform,
     StreamingTransformConfig
-} from '../services/StreamingTransformExecutor';
-import type { StreamingToolDefinition } from '../services/StreamingAgentFramework';
+} from '../transform-artifact-framework/StreamingTransformExecutor';
+import type { StreamingToolDefinition } from '../transform-artifact-framework/StreamingAgentFramework';
 
 const OutlineToolResultSchema = z.object({
     outputArtifactId: z.string(),

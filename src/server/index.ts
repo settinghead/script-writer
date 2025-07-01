@@ -12,9 +12,9 @@ import { db } from './database/connection';
 
 import { ProjectService } from './services/ProjectService.js';
 import { ProjectRepository } from './transform-artifact-framework/ProjectRepository.js';
-import { AgentService } from './services/AgentService.js';
+import { AgentService } from './transform-artifact-framework/AgentService.js';
 import { ChatMessageRepository } from './transform-artifact-framework/ChatMessageRepository.js';
-import { ChatService } from './services/ChatService';
+import { ChatService } from './transform-artifact-framework/ChatService.js';
 
 
 dotenv.config();

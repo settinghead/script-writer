@@ -1,6 +1,6 @@
-import { ArtifactRepository } from '../transform-artifact-framework/ArtifactRepository';
-import { TransformRepository } from '../transform-artifact-framework/TransformRepository';
-import { TransformInstantiationRegistry } from './TransformInstantiationRegistry';
+import { ArtifactRepository } from './ArtifactRepository';
+import { TransformRepository } from './TransformRepository';
+import { TransformInstantiationRegistry } from '../services/TransformInstantiationRegistry';
 import {
   ARTIFACT_SCHEMAS,
   BrainstormIdeaSchema

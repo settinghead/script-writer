@@ -4,7 +4,7 @@ import { ArtifactRepository } from '../transform-artifact-framework/ArtifactRepo
 import {
     executeStreamingTransform,
     StreamingTransformConfig
-} from '../services/StreamingTransformExecutor';
+} from '../transform-artifact-framework/StreamingTransformExecutor';
 
 import {
     BrainstormEditInputSchema,
@@ -13,7 +13,7 @@ import {
     BrainstormEditOutput
 } from '../../common/schemas/transforms';
 import { extractDataAtPath } from '../services/transform-instantiations/pathTransforms';
-import type { StreamingToolDefinition } from '../services/StreamingAgentFramework';
+import type { StreamingToolDefinition } from '../transform-artifact-framework/StreamingAgentFramework';
 import { z } from 'zod';
 
 const BrainstormEditToolResultSchema = z.object({

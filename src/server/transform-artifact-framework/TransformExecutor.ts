@@ -1,5 +1,5 @@
-import { ArtifactRepository } from '../transform-artifact-framework/ArtifactRepository';
-import { TransformRepository } from '../transform-artifact-framework/TransformRepository';
+import { ArtifactRepository } from './ArtifactRepository';
+import { TransformRepository } from './TransformRepository';
 import { Artifact } from '../types/artifacts';
 import { getLLMCredentials } from './LLMConfig';
 import { LLMService } from './LLMService';

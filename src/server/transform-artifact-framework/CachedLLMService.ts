@@ -1,8 +1,7 @@
 import { z } from 'zod';
-import { LLMService, LLMModelInfo, ReasoningResult } from './LLMService';
+import { LLMService, LLMModelInfo } from './LLMService';
 import { StreamCache, getStreamCache, CachedStreamChunk } from './StreamCache';
-import { getLLMCredentials, getLLMModel } from './LLMConfig';
-import { generateCacheKey, generateSchemaHash, extractModelInfo, CacheKeyParams } from '../../common/utils/cacheKeyGenerator';
+import { generateCacheKey, generateSchemaHash, extractModelInfo, CacheKeyParams } from '../../common/transform-artifact-framework/cacheKeyGenerator';
 
 /**
  * Options for streamObject with caching support

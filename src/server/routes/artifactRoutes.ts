@@ -2,8 +2,8 @@ import express from 'express';
 import { AuthMiddleware } from '../middleware/auth';
 import { ArtifactRepository } from '../transform-artifact-framework/ArtifactRepository';
 import { TransformRepository } from '../transform-artifact-framework/TransformRepository';
-import { TransformExecutor } from '../services/TransformExecutor';
-import { HumanTransformExecutor } from '../services/HumanTransformExecutor';
+import { TransformExecutor } from '../transform-artifact-framework/TransformExecutor';
+import { HumanTransformExecutor } from '../transform-artifact-framework/HumanTransformExecutor';
 
 export function createArtifactRoutes(
     authMiddleware: AuthMiddleware,

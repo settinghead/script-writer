@@ -1,6 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { CachedStreamChunk } from '../../server/services/StreamCache';
+import { CachedStreamChunk } from '../../server/transform-artifact-framework/StreamCache';
 
 export interface CachedResponse {
     metadata: {

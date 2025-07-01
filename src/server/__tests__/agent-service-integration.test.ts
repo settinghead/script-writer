@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { AgentService } from '../services/AgentService';
+import { AgentService } from '../transform-artifact-framework/AgentService';
 import { createMockArtifactRepository, createMockTransformRepository } from '../../__tests__/mocks/databaseMocks';
 
 // Mock the lineage utilities since they require complex database state
