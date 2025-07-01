@@ -5,7 +5,6 @@ import { ArtifactRepository } from '../transform-artifact-framework/ArtifactRepo
 import { TransformRepository } from '../transform-artifact-framework/TransformRepository';
 import { ProjectRepository } from '../transform-artifact-framework/ProjectRepository';
 import { ChatMessageRepository } from '../transform-artifact-framework/ChatMessageRepository';
-import { UnifiedStreamingService } from '../services/UnifiedStreamingService';
 import { ProjectService } from '../services/ProjectService';
 import { AgentService } from '../services/AgentService';
 import { ChatService } from '../services/ChatService';
@@ -26,7 +25,6 @@ export function createAPIRoutes(
     transformRepo: TransformRepository,
     projectRepo: ProjectRepository,
     chatMessageRepo: ChatMessageRepository,
-    unifiedStreamingService: UnifiedStreamingService,
     projectService: ProjectService,
     agentService: AgentService,
     chatService: ChatService

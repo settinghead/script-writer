@@ -1,5 +1,4 @@
 // Core components
-export { default as DynamicStreamingUI } from './DynamicStreamingUI';
 
 // Field components
 export {
@@ -32,6 +31,5 @@ export type {
   FieldProps,
   FieldDefinition,
   RenderedField,
-  DynamicStreamingUIProps,
   PathMatch
 } from './types'; 

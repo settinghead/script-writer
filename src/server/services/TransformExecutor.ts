@@ -3,8 +3,6 @@ import { TransformRepository } from '../transform-artifact-framework/TransformRe
 import { Artifact } from '../types/artifacts';
 import { getLLMCredentials } from './LLMConfig';
 import { LLMService } from './LLMService';
-import { UnifiedStreamingService } from './UnifiedStreamingService';
-import { ReasoningEvent } from '../../common/streaming/types';
 
 export class TransformExecutor {
     private llmService: LLMService;
@@ -12,7 +10,6 @@ export class TransformExecutor {
     constructor(
         private artifactRepo: ArtifactRepository,
         private transformRepo: TransformRepository,
-        private unifiedStreamingService?: UnifiedStreamingService
     ) {
         this.llmService = new LLMService();
     }

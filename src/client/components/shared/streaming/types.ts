@@ -34,18 +34,6 @@ export interface RenderedField {
   groupKey?: string; // For array items, the parent path
 }
 
-export interface DynamicStreamingUIProps {
-  fieldRegistry: FieldDefinition[];
-  transformId?: string;
-  onFieldEdit?: (path: string, value: any) => void;
-  data?: any; // Initial/static data
-  streamingData?: any[]; // Current streaming items
-  streamingStatus?: 'idle' | 'streaming' | 'completed' | 'error';
-  isThinking?: boolean; // Whether the AI is in thinking mode
-  onStopStreaming?: () => void;
-  className?: string;
-}
-
 // JSON path utilities
 export interface PathMatch {
   definition: FieldDefinition;

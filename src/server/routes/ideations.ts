@@ -1,11 +1,7 @@
 import express from 'express';
-import { BrainstormingJobParamsV1 } from '../types/artifacts';
 import { TransformRepository } from '../transform-artifact-framework/TransformRepository';
 import { ArtifactRepository } from '../transform-artifact-framework/ArtifactRepository';
-import { ProjectRepository } from '../transform-artifact-framework/ProjectRepository';
 import { ProjectService } from '../services/ProjectService';
-import { TransformExecutor } from '../services/TransformExecutor';
-import { UnifiedStreamingService } from '../services/UnifiedStreamingService';
 
 export function createIdeationRoutes(
     authMiddleware: any,
@@ -18,10 +14,7 @@ export function createIdeationRoutes(
     const db = (artifactRepo as any).db || (transformRepo as any).db;
     const projectService = new ProjectService(db);
 
-    // Initialize ideation service for backward compatibility
-    const unifiedStreamingService = new UnifiedStreamingService(artifactRepo, transformRepo);
 
-    // ========== NEW PROJECT ENDPOINTS ==========
 
     // List projects (replaces GET /api/ideations)
     router.get('/', authMiddleware.authenticate, async (req: any, res: any) => {

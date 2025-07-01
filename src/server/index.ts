@@ -7,9 +7,7 @@ import { createAuthMiddleware } from './middleware/auth';
 import { createAuthRoutes } from './routes/auth';
 import { ArtifactRepository } from './transform-artifact-framework/ArtifactRepository.js';
 import { TransformRepository } from './transform-artifact-framework/TransformRepository.js';
-import { TransformExecutor } from './services/TransformExecutor';
 
-import { UnifiedStreamingService } from './services/UnifiedStreamingService';
 import { db } from './database/connection';
 
 import { ProjectService } from './services/ProjectService.js';
@@ -38,11 +36,8 @@ const artifactRepo = new ArtifactRepository(db);
 const transformRepo = new TransformRepository(db);
 const projectRepo = new ProjectRepository(db);
 
-// Initialize unified streaming service
-const unifiedStreamingService = new UnifiedStreamingService(artifactRepo, transformRepo);
 
 // Initialize services with unified streaming
-const transformExecutor = new TransformExecutor(artifactRepo, transformRepo, unifiedStreamingService);
 const projectService = new ProjectService(db);
 const agentService = new AgentService(transformRepo, artifactRepo);
 
@@ -75,7 +70,6 @@ createAPIRoutes(
   transformRepo,
   projectRepo,
   chatMessageRepo,
-  unifiedStreamingService,
   projectService,
   agentService,
   chatService
