@@ -22,6 +22,7 @@ Script Writer combines AI-powered content generation with sophisticated editing 
 **Brainstorming (灵感生成)**:
 - **Platform-Specific Generation** - Optimized for 抖音, 快手, 小红书, etc.
 - **Genre Specialization** - 现代甜宠, 古装甜宠, 复仇爽文, etc.
+- **Configurable Idea Count** - Generate 1-4 ideas per request based on user preference
 - **AI-Powered Editing** - "让这些故事更现代一些，加入一些科技元素"
 - **Real-time Streaming** - Ideas appear as they're generated
 
@@ -29,6 +30,7 @@ Script Writer combines AI-powered content generation with sophisticated editing 
 - **Comprehensive Structure** - Characters, story stages, selling points (卖点/爽点)
 - **Character System** - Normalized character types (male_lead, female_lead, etc.)
 - **Episode Planning** - ~2000 character synopsis divided into staged progression
+- **Chronological Timeline** - Complete story timeline from earliest events to conclusion (story order, not broadcast order)
 - **Seamless Integration** - "用这个灵感继续" workflow from brainstorm to outline
 
 **Episode Generation (分集规划)**:
