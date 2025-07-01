@@ -122,7 +122,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                 totalEpisodes: values.totalEpisodes,
                 episodeDuration: values.episodeDuration,
                 selectedPlatform: values.platform,
-                selectedGenrePaths: values.genrePaths,
+                selectedGenrePaths: values.genrePaths || [['都市', '爽文']],
                 requirements: values.requirements
             });
         }).catch((error) => {
@@ -348,7 +348,6 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                         totalEpisodes: 60,
                         episodeDuration: 2,
                         platform: '抖音',
-                        genrePaths: [['都市', '爽文']],
                         requirements: ''
                     }}
                     style={{ marginBottom: '24px' }}

@@ -512,12 +512,12 @@ const ProjectLayout: React.FC = () => {
                                     overflowY: 'auto',
                                     padding: '12px'
                                 }}>
-                                    <TextDivider title="头脑风暴" />
+                                    <TextDivider title="头脑风暴" id="brainstorm-ideas" />
                                     <ProjectBrainstormPage />
                                     {/* Conditionally render SingleBrainstormIdeaEditor if there's a chosen idea */}
                                     {chosenIdea && !chosenIdeaLoading && (
                                         <>
-                                            <TextDivider title="灵感编辑" />
+                                            <TextDivider title="灵感编辑" id="ideation-edit" />
 
                                             <SingleBrainstormIdeaEditor
                                                 originalArtifactId={chosenIdea.originalArtifactId}
@@ -535,7 +535,7 @@ const ProjectLayout: React.FC = () => {
                                             />
                                         </>
                                     )}
-                                    <TextDivider title="时序大纲" />
+                                    <TextDivider title="时序大纲" id="story-outline" />
                                     <OutlineDisplay />
 
                                     <Outlet />
@@ -688,14 +688,16 @@ const ProjectLayout: React.FC = () => {
     );
 };
 
-const TextDivider = ({ title }: { title: string }) => {
+const TextDivider = ({ title, id }: { title: string; id: string }) => {
     return (
-        <div style={{
-            margin: '10px 0',
-            padding: '10px 0',
-            borderTop: '2px solidrgb(16, 83, 146)',
-            borderBottom: '2px solidrgb(18, 85, 147)',
-            background: `
+        <div
+            id={id}
+            style={{
+                margin: '10px 0',
+                padding: '10px 0',
+                borderTop: '2px solidrgb(16, 83, 146)',
+                borderBottom: '2px solidrgb(18, 85, 147)',
+                background: `
                 linear-gradient(135deg, 
                     rgb(0, 49, 94) 25%, transparent 25%, 
                     transparent 50%,rgb(0, 49, 94) 50%, 
@@ -703,13 +705,13 @@ const TextDivider = ({ title }: { title: string }) => {
                 ),
                 linear-gradient(135deg,rgb(16, 26, 34) 0%,rgb(29, 39, 61) 50%,rgb(17, 25, 35) 100%)
             `,
-            backgroundSize: '120px 120px, 100% 100%',
-            fontSize: '20px',
-            fontWeight: 'bold',
-            color: '#fff',
-            textShadow: '0 1px 2px rgba(0, 0, 0, 0.5)',
-            textAlign: 'center'
-        }}>
+                backgroundSize: '120px 120px, 100% 100%',
+                fontSize: '20px',
+                fontWeight: 'bold',
+                color: '#fff',
+                textShadow: '0 1px 2px rgba(0, 0, 0, 0.5)',
+                textAlign: 'center'
+            }}>
             {title}
         </div>
     );
