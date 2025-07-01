@@ -1,5 +1,5 @@
-import { ArtifactRepository } from '../repositories/ArtifactRepository.js';
-import { TransformRepository } from '../repositories/TransformRepository.js';
+import { ArtifactRepository } from '../transform-artifact-framework/ArtifactRepository.js';
+import { TransformRepository } from '../transform-artifact-framework/TransformRepository.js';
 import { TransformExecutor } from './TransformExecutor.js';
 import { TemplateService } from './templates/TemplateService.js';
 import { EpisodeSynopsisV1, PlotOutlineV1, BrainstormParamsV1, OutlineJobParamsV1 } from '../types/artifacts.js';
@@ -11,7 +11,7 @@ export class ScriptGenerationService {
         private transformRepo: TransformRepository,
         private transformExecutor: TransformExecutor,
         private templateService: TemplateService
-    ) {}
+    ) { }
 
     async generateScript(
         userId: string,
@@ -50,12 +50,12 @@ export class ScriptGenerationService {
         if (characterArtifacts.length > 0) {
             const latestCharacters = characterArtifacts
                 .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
-            
+
             // Import the type from common/types
             const charactersData = latestCharacters.data as any;
-            
+
             if (charactersData.characters && charactersData.characters.length > 0) {
-                charactersInfo = charactersData.characters.map((char: any) => 
+                charactersInfo = charactersData.characters.map((char: any) =>
                     `**${char.name}** (${char.type}): ${char.description}`
                 ).join('\n');
             }
@@ -79,11 +79,11 @@ export class ScriptGenerationService {
 
         // Get script generation template
         const scriptTemplate = this.templateService.getTemplate('script_generation');
-        
+
         if (!scriptTemplate) {
             throw new Error('Script generation template not found');
         }
-        
+
         // Execute script generation transform
         const result = await this.transformExecutor.executeLLMTransform(
             userId,
@@ -146,7 +146,7 @@ export class ScriptGenerationService {
         // Get brainstorm params
         const brainstormParamsArtifacts = await this.artifactRepo.getArtifactsByType(userId, 'brainstorm_params');
         let brainstormParams: BrainstormParamsV1 | null = null;
-        
+
         if (brainstormParamsArtifacts.length > 0) {
             const latest = brainstormParamsArtifacts
                 .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];

@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, Typography } from 'antd';
 import { StarFilled } from '@ant-design/icons';
 import { useProjectData } from '../../contexts/ProjectDataContext';
-import { getArtifactAtPath } from '../../../common/utils/lineageResolution';
+import { getArtifactAtPath } from '../../../common/transform-artifact-framework/lineageResolution';
 
 const { Text } = Typography;
 

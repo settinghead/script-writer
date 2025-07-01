@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useProjectData } from '../contexts/ProjectDataContext';
-import { buildLineageGraph } from '../../common/utils/lineageResolution';
+import { buildLineageGraph } from '../../common/transform-artifact-framework/lineageResolution';
 import { ElectricArtifact } from '../../common/types';
 
 interface OutlineDescendant {

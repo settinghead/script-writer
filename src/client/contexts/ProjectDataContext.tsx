@@ -10,7 +10,7 @@ import {
     findLatestArtifactForPath,
     getArtifactAtPath,
     getLatestVersionForPath
-} from '../../common/utils/lineageResolution';
+} from '../../common/transform-artifact-framework/lineageResolution';
 import type {
     ProjectDataContextType,
     ElectricArtifact,

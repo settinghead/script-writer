@@ -4,7 +4,7 @@ import { Typography, Checkbox, Space, Tooltip } from 'antd';
 import { DatabaseOutlined, UserOutlined, RobotOutlined } from '@ant-design/icons';
 import dagre from 'dagre';
 import { useProjectData } from '../contexts/ProjectDataContext';
-import { buildLineageGraph } from '../../common/utils/lineageResolution';
+import { buildLineageGraph } from '../../common/transform-artifact-framework/lineageResolution';
 import type { ElectricArtifact, ElectricTransform, ElectricHumanTransform } from '../../common/types';
 import 'reactflow/dist/style.css';
 

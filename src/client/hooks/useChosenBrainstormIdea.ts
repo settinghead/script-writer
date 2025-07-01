@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useProjectData } from '../contexts/ProjectDataContext';
-import { buildLineageGraph, findEffectiveBrainstormIdeas } from '../../common/utils/lineageResolution';
+import { buildLineageGraph, findEffectiveBrainstormIdeas } from '../../common/transform-artifact-framework/lineageResolution';
 
 interface ChosenBrainstormIdea {
     originalArtifactId: string;

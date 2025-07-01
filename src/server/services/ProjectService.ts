@@ -1,12 +1,12 @@
-import { ProjectRepository } from '../repositories/ProjectRepository';
-import { ArtifactRepository } from '../repositories/ArtifactRepository';
-import { TransformRepository } from '../repositories/TransformRepository';
+import { ProjectRepository } from '../transform-artifact-framework/ProjectRepository';
+import { ArtifactRepository } from '../transform-artifact-framework/ArtifactRepository';
+import { TransformRepository } from '../transform-artifact-framework/TransformRepository';
 import { Project } from '../types/artifacts';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../database/connection';
 import type { Kysely } from 'kysely';
 import type { DB } from '../database/types';
-import { ChatMessageRepository } from '../repositories/ChatMessageRepository';
+import { ChatMessageRepository } from '../transform-artifact-framework/ChatMessageRepository';
 
 export class ProjectService {
     private db: Kysely<DB>;

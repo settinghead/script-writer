@@ -1,12 +1,11 @@
 import { IdeationInputSchema, IdeationOutputSchema, IdeationInput, IdeationOutput } from '../../common/transform_schemas';
-import { TransformRepository } from '../repositories/TransformRepository';
-import { ArtifactRepository } from '../repositories/ArtifactRepository';
+import { TransformRepository } from '../transform-artifact-framework/TransformRepository';
+import { ArtifactRepository } from '../transform-artifact-framework/ArtifactRepository';
 import {
     executeStreamingTransform,
     StreamingTransformConfig
 } from '../services/StreamingTransformExecutor';
-import { LLMService } from '../services/LLMService';
-import { brainstormEditTemplate } from '../services/templates/brainstormEdit';
+
 import {
     BrainstormEditInputSchema,
     BrainstormEditInput,
@@ -14,7 +13,6 @@ import {
     BrainstormEditOutput
 } from '../../common/schemas/transforms';
 import { extractDataAtPath } from '../services/transform-instantiations/pathTransforms';
-import { cleanLLMContent, robustJSONParse } from '../../common/utils/textCleaning';
 import type { StreamingToolDefinition } from '../services/StreamingAgentFramework';
 import { z } from 'zod';
 
@@ -35,19 +33,7 @@ const BrainstormToolResultSchema = z.object({
     outputArtifactId: z.string(),
     finishReason: z.string()
 });
-
-interface BrainstormEditToolResult {
-    outputArtifactId: string;
-    finishReason: string;
-    originalIdea?: {
-        title: string;
-        body: string;
-    };
-    editedIdea?: {
-        title: string;
-        body: string;
-    };
-}
+type BrainstormEditToolResult = z.infer<typeof BrainstormEditToolResultSchema>;
 
 /**
  * Extract source idea data from different artifact types

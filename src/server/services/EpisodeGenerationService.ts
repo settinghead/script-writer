@@ -1,5 +1,5 @@
-import { ArtifactRepository } from '../repositories/ArtifactRepository';
-import { TransformRepository } from '../repositories/TransformRepository';
+import { ArtifactRepository } from '../transform-artifact-framework/ArtifactRepository';
+import { TransformRepository } from '../transform-artifact-framework/TransformRepository';
 import {
     EpisodeGenerationSessionV1,
     EpisodeGenerationParamsV1,

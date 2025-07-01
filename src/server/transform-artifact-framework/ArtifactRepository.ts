@@ -2,7 +2,7 @@ import { Kysely, sql } from 'kysely';
 import { v4 as uuidv4 } from 'uuid';
 import { Artifact, validateArtifactData } from '../types/artifacts';
 import type { DB } from '../database/types';
-import { buildLineageGraph, findLatestArtifact } from '../../common/utils/lineageResolution';
+import { buildLineageGraph, findLatestArtifact } from '../../common/transform-artifact-framework/lineageResolution';
 import type { ElectricArtifact, ElectricTransform, ElectricHumanTransform, ElectricTransformInput, ElectricTransformOutput } from '../../common/types';
 
 export class ArtifactRepository {

@@ -5,8 +5,8 @@ import cookieParser from 'cookie-parser';
 import { AuthDatabase } from './database/auth';
 import { createAuthMiddleware } from './middleware/auth';
 import { createAuthRoutes } from './routes/auth';
-import { ArtifactRepository } from './repositories/ArtifactRepository';
-import { TransformRepository } from './repositories/TransformRepository';
+import { ArtifactRepository } from './transform-artifact-framework/ArtifactRepository.js';
+import { TransformRepository } from './transform-artifact-framework/TransformRepository.js';
 import { TransformExecutor } from './services/TransformExecutor';
 import { ScriptService } from './services/ScriptService';
 import {
@@ -18,9 +18,9 @@ import { UnifiedStreamingService } from './services/UnifiedStreamingService';
 import { db } from './database/connection';
 
 import { ProjectService } from './services/ProjectService.js';
-import { ProjectRepository } from './repositories/ProjectRepository.js';
+import { ProjectRepository } from './transform-artifact-framework/ProjectRepository.js';
 import { AgentService } from './services/AgentService.js';
-import { ChatMessageRepository } from './repositories/ChatMessageRepository';
+import { ChatMessageRepository } from './transform-artifact-framework/ChatMessageRepository.js';
 import { ChatService } from './services/ChatService';
 
 

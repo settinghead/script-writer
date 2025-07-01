@@ -12,7 +12,7 @@ import {
     type EffectiveBrainstormIdea,
     type IdeaWithTitle,
     type WorkflowNode
-} from '../../common/utils/lineageResolution';
+} from '../../common/transform-artifact-framework/lineageResolution';
 
 interface UseLineageGraphResult {
     graph: any; // The lineage graph

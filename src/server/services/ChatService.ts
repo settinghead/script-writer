@@ -1,4 +1,4 @@
-import { ChatMessageRepository } from '../repositories/ChatMessageRepository';
+import { ChatMessageRepository } from '../transform-artifact-framework/ChatMessageRepository';
 import { AgentService } from './AgentService';
 import { ChatMessageDisplay } from '../../common/schemas/chatMessages';
 

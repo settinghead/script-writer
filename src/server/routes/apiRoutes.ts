@@ -1,10 +1,10 @@
 import { Express } from 'express';
 import { AuthDatabase } from '../database/auth';
 import { createAuthMiddleware } from '../middleware/auth';
-import { ArtifactRepository } from '../repositories/ArtifactRepository';
-import { TransformRepository } from '../repositories/TransformRepository';
-import { ProjectRepository } from '../repositories/ProjectRepository';
-import { ChatMessageRepository } from '../repositories/ChatMessageRepository';
+import { ArtifactRepository } from '../transform-artifact-framework/ArtifactRepository';
+import { TransformRepository } from '../transform-artifact-framework/TransformRepository';
+import { ProjectRepository } from '../transform-artifact-framework/ProjectRepository';
+import { ChatMessageRepository } from '../transform-artifact-framework/ChatMessageRepository';
 import { UnifiedStreamingService } from '../services/UnifiedStreamingService';
 import { ProjectService } from '../services/ProjectService';
 import { AgentService } from '../services/AgentService';

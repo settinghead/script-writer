@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { ArtifactRepository } from '../repositories/ArtifactRepository';
+import { ArtifactRepository } from '../transform-artifact-framework/ArtifactRepository';
 import { TransformExecutor } from './TransformExecutor';
 import { ScriptDocumentV1 } from '../types/artifacts';
 

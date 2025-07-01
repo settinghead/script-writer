@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { ArtifactRepository } from '../ArtifactRepository';
-import { createMockKyselyDatabase } from '../../../__tests__/mocks/databaseMocks';
-import { mockArtifacts } from '../../../__tests__/fixtures/artifacts';
+import { ArtifactRepository } from '../repositories/ArtifactRepository';
+import { createMockKyselyDatabase } from '../../__tests__/mocks/databaseMocks';
+import { mockArtifacts } from '../../__tests__/fixtures/artifacts';
 
 describe('ArtifactRepository', () => {
     let repository: ArtifactRepository;

@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button, Typography, Divider } from 'antd';
 import { StopOutlined } from '@ant-design/icons';
-import { IdeaWithTitle } from '../../../common/utils/lineageResolution';
+import { IdeaWithTitle } from '../../../common/transform-artifact-framework/lineageResolution';
 import { ReasoningIndicator } from '../shared/ReasoningIndicator';
 import { useProjectData } from '../../contexts/ProjectDataContext';
 import { useLatestBrainstormIdeas } from '../../hooks/useLineageResolution';

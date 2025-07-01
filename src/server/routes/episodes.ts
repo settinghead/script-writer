@@ -1,7 +1,7 @@
 import express from 'express';
 import { EpisodeGenerationService } from '../services/EpisodeGenerationService';
-import { ArtifactRepository } from '../repositories/ArtifactRepository';
-import { TransformRepository } from '../repositories/TransformRepository';
+import { ArtifactRepository } from '../transform-artifact-framework/ArtifactRepository';
+import { TransformRepository } from '../transform-artifact-framework/TransformRepository';
 import { AuthMiddleware } from '../middleware/auth';
 
 export function createEpisodeRoutes(

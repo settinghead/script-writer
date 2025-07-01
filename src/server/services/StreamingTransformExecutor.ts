@@ -2,8 +2,8 @@ import { z } from 'zod';
 import { TemplateService } from './templates/TemplateService';
 import { LLMService } from './LLMService';
 import { CachedLLMService, getCachedLLMService } from './CachedLLMService';
-import { TransformRepository } from '../repositories/TransformRepository';
-import { ArtifactRepository } from '../repositories/ArtifactRepository';
+import { TransformRepository } from '../transform-artifact-framework/TransformRepository';
+import { ArtifactRepository } from '../transform-artifact-framework/ArtifactRepository';
 
 /**
  * Configuration for a streaming transform - minimal interface that tools provide

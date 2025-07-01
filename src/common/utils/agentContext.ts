@@ -1,7 +1,7 @@
 import {
     extractEffectiveBrainstormIdeas,
     convertEffectiveIdeasToIdeaWithTitle
-} from './lineageResolution';
+} from '../transform-artifact-framework/lineageResolution';
 import type {
     ElectricArtifact,
     ElectricTransform,
@@ -39,7 +39,7 @@ export function prepareAgentPromptContext({
         );
 
         if (effectiveIdeas.length === 0) {
-            return '当前项目还没有故事创意。';
+            return '当前项目还没有内容。';
         }
 
         // Convert to IdeaWithTitle format for easier handling

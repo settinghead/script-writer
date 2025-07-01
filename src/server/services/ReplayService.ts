@@ -1,5 +1,5 @@
-import { ArtifactRepository } from '../repositories/ArtifactRepository';
-import { TransformRepository } from '../repositories/TransformRepository';
+import { ArtifactRepository } from '../transform-artifact-framework/ArtifactRepository';
+import { TransformRepository } from '../transform-artifact-framework/TransformRepository';
 import { TransformExecutor } from './TransformExecutor';
 import { Artifact, Transform } from '../types/artifacts';
 

@@ -1,8 +1,8 @@
 import express from 'express';
 import { BrainstormingJobParamsV1 } from '../types/artifacts';
-import { TransformRepository } from '../repositories/TransformRepository';
-import { ArtifactRepository } from '../repositories/ArtifactRepository';
-import { ProjectRepository } from '../repositories/ProjectRepository';
+import { TransformRepository } from '../transform-artifact-framework/TransformRepository';
+import { ArtifactRepository } from '../transform-artifact-framework/ArtifactRepository';
+import { ProjectRepository } from '../transform-artifact-framework/ProjectRepository';
 import { ProjectService } from '../services/ProjectService';
 import { TransformExecutor } from '../services/TransformExecutor';
 import { UnifiedStreamingService } from '../services/UnifiedStreamingService';

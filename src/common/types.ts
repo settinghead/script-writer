@@ -6,7 +6,7 @@ import {
 } from './llm/outlineTypes.js';
 import { z } from 'zod';
 import { UseMutationResult } from '@tanstack/react-query';
-import type { LineageGraph } from './utils/lineageResolution';
+import type { LineageGraph } from './transform-artifact-framework/lineageResolution.js';
 
 // ========== SHARED TYPES FOR CLIENT AND SERVER ==========
 

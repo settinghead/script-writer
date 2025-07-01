@@ -3,8 +3,8 @@ import { prepareAgentPromptContext } from '../../common/utils/agentContext';
 import { createBrainstormToolDefinition, createBrainstormEditToolDefinition } from '../tools/BrainstormTool';
 import { IdeationInputSchema, IdeationOutputSchema } from '../../common/transform_schemas';
 import { BrainstormEditInputSchema, BrainstormEditOutputSchema } from '../../common/schemas/transforms';
-import type { TransformRepository } from '../repositories/TransformRepository';
-import type { ArtifactRepository } from '../repositories/ArtifactRepository';
+import type { TransformRepository } from '../transform-artifact-framework/TransformRepository';
+import type { ArtifactRepository } from '../transform-artifact-framework/ArtifactRepository';
 import type { GeneralAgentRequest } from './AgentService';
 import type { StreamingToolDefinition } from './StreamingAgentFramework';
 
