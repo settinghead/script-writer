@@ -4,11 +4,13 @@ import { ArtifactRepository } from '../transform-artifact-framework/ArtifactRepo
 import { prepareAgentPromptContext } from '../../common/utils/agentContext';
 import { createBrainstormToolDefinition, createBrainstormEditToolDefinition } from '../tools/BrainstormTools';
 import { createOutlineToolDefinition } from '../tools/OutlineTool';
+import { createOutlineSettingsToolDefinition } from '../tools/OutlineSettingsTool';
+import { createChroniclesToolDefinition } from '../tools/ChroniclesTool';
 import type { GeneralAgentRequest } from '../transform-artifact-framework/AgentService';
 import type { StreamingToolDefinition } from '../transform-artifact-framework/StreamingAgentFramework';
 
 // Request type enumeration
-export type RequestType = 'brainstorm_generation' | 'outline_generation' | 'general';
+export type RequestType = 'brainstorm_generation' | 'outline_settings_generation' | 'chronicles_generation' | 'outline_generation' | 'general';
 
 // Interface for the complete agent configuration
 export interface AgentConfiguration {
@@ -29,8 +31,24 @@ export function analyzeRequestType(userRequest: string): RequestType {
     const brainstormKeywords = ['故事', '创意', '想法', '头脑风暴', 'story', 'idea', 'brainstorm'];
     const generationKeywords = ['生成', '创建', '产生', 'generate', 'create'];
 
-    // Outline generation keywords
-    const outlineKeywords = ['大纲', 'outline', '提纲', '结构', '剧集结构', '分集大纲', '时序大纲', '叙事大纲'];
+    // Outline settings generation keywords (NEW)
+    const outlineSettingsKeywords = ['剧本设定', '故事设定', '角色设定', '背景设定', 'outline settings', 'script settings'];
+    const outlineSettingsPatterns = [
+        '生成剧本设定', '创建剧本设定', '生成故事设定', '创建故事设定',
+        '角色设定', '背景设定', '基础设定',
+        'generate outline settings', 'create script settings'
+    ];
+
+    // Chronicles generation keywords (NEW)
+    const chroniclesKeywords = ['时序大纲', '时序发展', '故事时序', '时间线', 'chronicles', '时序阶段'];
+    const chroniclesPatterns = [
+        '生成时序大纲', '创建时序大纲', '时序发展', '时间线生成',
+        '基于剧本设定', '基于设定生成',
+        'generate chronicles', 'create chronicles'
+    ];
+
+    // Outline generation keywords (legacy/general)
+    const outlineKeywords = ['大纲', 'outline', '提纲', '结构', '剧集结构', '分集大纲', '叙事大纲'];
     const outlineGenerationPatterns = [
         '生成大纲', '创建大纲', '制作大纲', '大纲生成',
         'generate outline', 'create outline',
@@ -38,7 +56,25 @@ export function analyzeRequestType(userRequest: string): RequestType {
         '为这个故事', '这个故事创意'
     ];
 
-    // Check for outline generation first (more specific patterns)
+    // Check for outline settings generation first (most specific)
+    const hasOutlineSettingsPattern = outlineSettingsPatterns.some(pattern => request.includes(pattern));
+    const hasOutlineSettingsKeyword = outlineSettingsKeywords.some(keyword => request.includes(keyword));
+
+    if (hasOutlineSettingsPattern || hasOutlineSettingsKeyword) {
+        console.log(`[RequestAnalysis] -> outline_settings_generation (pattern: ${hasOutlineSettingsPattern}, keywords: ${hasOutlineSettingsKeyword})`);
+        return 'outline_settings_generation';
+    }
+
+    // Check for chronicles generation second (specific)
+    const hasChroniclesPattern = chroniclesPatterns.some(pattern => request.includes(pattern));
+    const hasChroniclesKeyword = chroniclesKeywords.some(keyword => request.includes(keyword));
+
+    if (hasChroniclesPattern || hasChroniclesKeyword) {
+        console.log(`[RequestAnalysis] -> chronicles_generation (pattern: ${hasChroniclesPattern}, keywords: ${hasChroniclesKeyword})`);
+        return 'chronicles_generation';
+    }
+
+    // Check for general outline generation (legacy support)
     const hasOutlinePattern = outlineGenerationPatterns.some(pattern => request.includes(pattern));
     const hasOutlineKeyword = outlineKeywords.some(keyword => request.includes(keyword));
     const hasGenerationKeyword = generationKeywords.some(keyword => request.includes(keyword));
@@ -90,8 +126,34 @@ export async function buildContextForRequestType(
             console.log(`[ContextBuilder] Returning minimal context: ${minimalContext}`);
             return minimalContext;
 
+        case 'outline_settings_generation':
+            // For outline settings generation, provide brainstorm context but focus on settings needs
+            const brainstormSettingsContext = prepareAgentPromptContext({
+                artifacts,
+                transforms,
+                humanTransforms,
+                transformInputs,
+                transformOutputs
+            });
+            const settingsContext = `${brainstormSettingsContext}\n\n***准备进行剧本设定创建阶段***\n请基于现有故事创意来创建详细的剧本设定（角色、背景、商业定位等），为后续时序大纲奠定基础。`;
+            console.log(`[ContextBuilder] Returning outline settings context: ${settingsContext.substring(0, 100)}...`);
+            return settingsContext;
+
+        case 'chronicles_generation':
+            // For chronicles generation, provide outline settings context for time-based development
+            const chroniclesFullContext = prepareAgentPromptContext({
+                artifacts,
+                transforms,
+                humanTransforms,
+                transformInputs,
+                transformOutputs
+            });
+            const chroniclesContext = `${chroniclesFullContext}\n\n***准备进行时序大纲创建阶段***\n请基于已确定的剧本设定来创建时序大纲，按时间顺序梳理整个故事发展。`;
+            console.log(`[ContextBuilder] Returning chronicles context: ${chroniclesContext.substring(0, 100)}...`);
+            return chroniclesContext;
+
         case 'outline_generation':
-            // For outline generation, provide brainstorm context but focus on outline needs
+            // For legacy outline generation, provide brainstorm context but focus on outline needs
             const brainstormContext = prepareAgentPromptContext({
                 artifacts,
                 transforms,
@@ -153,6 +215,34 @@ ${context}`;
 **重要提示：** 专注于生成新的创意故事想法，工具会处理结果的存储和展示。
 
 开始分析请求并生成故事创意。`;
+
+        case 'outline_settings_generation':
+            return `${basePrompt}
+
+**你的任务：**
+1. 基于现有的故事创意，创建详细的剧本设定
+2. 分析角色背景、故事世界、商业定位和核心卖点
+3. 使用outline_settings工具生成完整的剧本设定
+4. 确保设定符合短剧制作的要求和去脸谱化原则
+5. 完成后确认任务完成
+
+**重要提示：** 当前是剧本设定创建阶段，需要将故事创意转化为详细的基础设定，为后续时序大纲奠定基础。
+
+开始分析现有创意并创建剧本设定。`;
+
+        case 'chronicles_generation':
+            return `${basePrompt}
+
+**你的任务：**
+1. 基于已确定的剧本设定，创建时序大纲
+2. 按时间顺序分析故事发展阶段，包括历史背景事件
+3. 使用chronicles工具生成完整的时序发展
+4. 确保时序符合逻辑性和短剧节奏要求
+5. 完成后确认任务完成
+
+**重要提示：** 当前是时序大纲创建阶段，需要基于剧本设定来创建按时间顺序的故事发展脉络。
+
+开始分析现有设定并创建时序大纲。`;
 
         case 'outline_generation':
             return `${basePrompt}
@@ -217,8 +307,21 @@ export function buildToolsForRequestType(
                 createBrainstormToolDefinition(transformRepo, artifactRepo, projectId, userId, cachingOptions)
             ];
 
+        case 'outline_settings_generation':
+            // Provide outline settings generation tool and edit tools
+            return [
+                createOutlineSettingsToolDefinition(transformRepo, artifactRepo, projectId, userId, cachingOptions),
+                createBrainstormEditToolDefinition(transformRepo, artifactRepo, projectId, userId, cachingOptions)
+            ];
+
+        case 'chronicles_generation':
+            // Provide chronicles generation tool
+            return [
+                createChroniclesToolDefinition(transformRepo, artifactRepo, projectId, userId, cachingOptions)
+            ];
+
         case 'outline_generation':
-            // Provide outline generation tool
+            // Provide legacy outline generation tool
             return [
                 createOutlineToolDefinition(transformRepo, artifactRepo, projectId, userId, cachingOptions),
                 createBrainstormEditToolDefinition(transformRepo, artifactRepo, projectId, userId, cachingOptions)
@@ -230,7 +333,9 @@ export function buildToolsForRequestType(
             return [
                 createBrainstormToolDefinition(transformRepo, artifactRepo, projectId, userId, cachingOptions),
                 createBrainstormEditToolDefinition(transformRepo, artifactRepo, projectId, userId, cachingOptions),
-                createOutlineToolDefinition(transformRepo, artifactRepo, projectId, userId, cachingOptions)
+                createOutlineToolDefinition(transformRepo, artifactRepo, projectId, userId, cachingOptions),
+                createOutlineSettingsToolDefinition(transformRepo, artifactRepo, projectId, userId, cachingOptions),
+                createChroniclesToolDefinition(transformRepo, artifactRepo, projectId, userId, cachingOptions)
             ];
     }
 }

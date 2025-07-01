@@ -16,6 +16,8 @@ import { useChosenBrainstormIdea } from '../hooks/useChosenBrainstormIdea';
 import { SingleBrainstormIdeaEditor } from './brainstorm/SingleBrainstormIdeaEditor';
 import ProjectBrainstormPage from '../components/brainstorm/ProjectBrainstormPage';
 import { OutlineDisplay } from './OutlineDisplay';
+import { OutlineSettingsDisplay } from './OutlineSettingsDisplay';
+import { ChroniclesDisplay } from './ChroniclesDisplay';
 
 const { Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -514,7 +516,7 @@ const ProjectLayout: React.FC = () => {
                                 }}>
                                     <TextDivider title="头脑风暴" id="brainstorm-ideas" />
                                     <ProjectBrainstormPage />
-                                    {/* Conditionally render SingleBrainstormIdeaEditor if there's a chosen idea */}
+                                    <TextDivider title="灵感编辑" id="brainstorm-ideas" />
                                     <SingleBrainstormIdeaEditor
                                         onViewOriginalIdeas={() => {
                                             // Scroll to the brainstorm ideas section
@@ -524,7 +526,14 @@ const ProjectLayout: React.FC = () => {
                                             }
                                         }}
                                     />
-                                    <TextDivider title="时序大纲" id="story-outline" />
+                                    <TextDivider title="剧本设定" id="outline-settings" />
+                                    <OutlineSettingsDisplay />
+
+                                    <TextDivider title="时序大纲" id="chronicles" />
+                                    <ChroniclesDisplay />
+
+                                    {/* Legacy Support - Show old outline display for backward compatibility */}
+                                    <TextDivider title="完整大纲（向后兼容）" id="story-outline" />
                                     <OutlineDisplay />
 
                                     <Outlet />

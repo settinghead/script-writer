@@ -158,7 +158,7 @@ export const BrainstormIdeaEditor: React.FC<{
                         color: '#722ed1',
                         fontWeight: 'bold'
                     }}>
-                        编辑版本已存在
+                        创意已选，仅供参考
                     </Text>
                 </div>
             )}

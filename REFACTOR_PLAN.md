@@ -9,58 +9,58 @@ Splitting the current chronological outline generation into two sequential steps
 
 ## 📋 Task Checklist
 
-### Phase 1: Schema & Type Definitions
-- [ ] **1.1** Split `outlineSchemas.ts` into two schemas
-  - [ ] Create `OutlineSettingsInputSchema` and `OutlineSettingsOutputSchema` 
-  - [ ] Create `ChroniclesInputSchema` and `ChroniclesOutputSchema`
-  - [ ] Update exports and type definitions
-- [ ] **1.2** Update `artifacts.ts` schema registry
-  - [ ] Add `outline_settings_schema` entry
-  - [ ] Add `chronicles_schema` entry
-  - [ ] Update `ARTIFACT_SCHEMAS` object
-- [ ] **1.3** Update type mappings across codebase
-  - [ ] Update `HumanTransformExecutor.ts` schema mapping
-  - [ ] Update `artifacts.ts` type guard mappings
-  - [ ] Update any other schema type references
+### Phase 1: Schema & Type Definitions ✅ COMPLETED
+- [x] **1.1** Split `outlineSchemas.ts` into two schemas
+  - [x] Create `OutlineSettingsInputSchema` and `OutlineSettingsOutputSchema` 
+  - [x] Create `ChroniclesInputSchema` and `ChroniclesOutputSchema`
+  - [x] Update exports and type definitions
+- [x] **1.2** Update `artifacts.ts` schema registry
+  - [x] Add `outline_settings_schema` entry
+  - [x] Add `chronicles_schema` entry
+  - [x] Update `ARTIFACT_SCHEMAS` object
+- [x] **1.3** Update type mappings across codebase
+  - [x] Update `HumanTransformExecutor.ts` schema mapping
+  - [x] Update `server/types/artifacts.ts` type guard mappings
+  - [x] Update any other schema type references
 
-### Phase 2: Template System
-- [ ] **2.1** Split `outline.ts` template intelligently
-  - [ ] Create `outlineSettings.ts` template (everything except stages)
-  - [ ] Create `chronicles.ts` template (only chronological stages)
-  - [ ] Ensure 去脸谱化 requirements in both templates
-- [ ] **2.2** Update `TemplateService.ts`
-  - [ ] Register `outline_settings` template
-  - [ ] Register `chronicles` template  
-  - [ ] Remove old `chronological_outline` template
-- [ ] **2.3** Update template variable handling
-  - [ ] Ensure outline settings variables are properly extracted
-  - [ ] Ensure chronicles can reference outline settings artifact
+### Phase 2: Template System ✅ COMPLETED
+- [x] **2.1** Split `outline.ts` template intelligently
+  - [x] Create `outlineSettings.ts` template (everything except stages)
+  - [x] Create `chronicles.ts` template (only chronological stages)
+  - [x] Ensure 去脸谱化 requirements in both templates
+- [x] **2.2** Update `TemplateService.ts`
+  - [x] Register `outline_settings` template
+  - [x] Register `chronicles` template  
+  - [x] Keep old `chronological_outline` template for backward compatibility
+- [x] **2.3** Update template variable handling
+  - [x] Ensure outline settings variables are properly extracted
+  - [x] Ensure chronicles can reference outline settings artifact
 
-### Phase 3: Tool Definitions
-- [ ] **3.1** Create `OutlineSettingsTool.ts`
-  - [ ] Follow existing tool pattern from `BrainstormTools.ts`
-  - [ ] Input: brainstorm idea artifact ID
-  - [ ] Output: outline settings artifact
-  - [ ] Use `outline_settings` template
-- [ ] **3.2** Create `ChroniclesTool.ts`
-  - [ ] Input: outline settings artifact ID
-  - [ ] Output: chronicles artifact
-  - [ ] Extract outline settings data for context
-  - [ ] Use `chronicles` template
-- [ ] **3.3** Update `AgentRequestBuilder.ts`
-  - [ ] Add new request types: `outline_settings_generation`, `chronicles_generation`
-  - [ ] Update `analyzeRequestType()` function
-  - [ ] Update context building functions
-  - [ ] Update tool building functions
-  - [ ] Update prompt building functions
-- [ ] **3.4** Remove old `OutlineTool.ts`
+### Phase 3: Tool Definitions ✅ COMPLETED
+- [x] **3.1** Create `OutlineSettingsTool.ts`
+  - [x] Follow existing tool pattern from `BrainstormTools.ts`
+  - [x] Input: brainstorm idea artifact ID
+  - [x] Output: outline settings artifact
+  - [x] Use `outline_settings` template
+- [x] **3.2** Create `ChroniclesTool.ts`
+  - [x] Input: outline settings artifact ID
+  - [x] Output: chronicles artifact
+  - [x] Extract outline settings data for context
+  - [x] Use `chronicles` template
+- [x] **3.3** Update `AgentRequestBuilder.ts`
+  - [x] Add new request types: `outline_settings_generation`, `chronicles_generation`
+  - [x] Update `analyzeRequestType()` function
+  - [x] Update context building functions
+  - [x] Update tool building functions
+  - [x] Update prompt building functions
+- [ ] **3.4** Remove old `OutlineTool.ts` (defer to later phase)
 
-### Phase 4: Agent Integration
-- [ ] **4.1** Update `AgentService.ts` success messages
-  - [ ] Add success message for outline settings generation
-  - [ ] Add success message for chronicles generation
-  - [ ] Update existing outline generation message handling
-- [ ] **4.2** Test agent integration
+### Phase 4: Agent Integration ✅ COMPLETED
+- [x] **4.1** Update `AgentService.ts` success messages
+  - [x] Add success message for outline settings generation
+  - [x] Add success message for chronicles generation
+  - [x] Update existing outline generation message handling
+- [ ] **4.2** Test agent integration (defer to testing phase)
   - [ ] Update test files to use new tools
   - [ ] Update cached responses for new workflow
 

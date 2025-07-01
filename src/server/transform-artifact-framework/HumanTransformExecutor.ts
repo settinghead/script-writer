@@ -3,7 +3,6 @@ import { TransformRepository } from './TransformRepository';
 import { TransformInstantiationRegistry } from '../services/TransformInstantiationRegistry';
 import {
   ARTIFACT_SCHEMAS,
-  BrainstormIdeaSchema
 } from '../../common/schemas/artifacts';
 import { HUMAN_TRANSFORM_DEFINITIONS, validateTransformPath } from '../../common/schemas/transforms';
 
@@ -32,7 +31,10 @@ export class HumanTransformExecutor {
       'outline_synopsis_schema': 'outline_synopsis',
       'outline_characters_schema': 'outline_characters',
       'brainstorm_params_schema': 'brainstorm_params',
-      'plot_outline_schema': 'plot_outline'
+      'plot_outline_schema': 'plot_outline',
+      // NEW: Split outline schemas
+      'outline_settings_schema': 'outline_settings',
+      'chronicles_schema': 'chronicles'
     };
 
     return schemaToLegacyMapping[schemaType] || schemaType.replace('_schema', '');
@@ -52,7 +54,10 @@ export class HumanTransformExecutor {
       'outline_synopsis': 'outline_synopsis_schema',
       'outline_characters': 'outline_characters_schema',
       'brainstorm_params': 'brainstorm_params_schema',
-      'plot_outline': 'plot_outline_schema'
+      'plot_outline': 'plot_outline_schema',
+      // NEW: Split outline schemas
+      'outline_settings': 'outline_settings_schema',
+      'chronicles': 'chronicles_schema'
     };
 
     return legacyToSchemaMapping[legacyType] || legacyType + '_schema';

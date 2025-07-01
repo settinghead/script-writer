@@ -195,7 +195,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                                     {ideaTitle}
                                 </Title>
                                 <Text type="secondary" style={{ fontSize: '12px', color: '#666' }}>
-                                    大纲已存在，无法编辑
+                                    已经进入大纲阶段，无法再编辑初始灵感
                                 </Text>
                             </div>
                         </div>

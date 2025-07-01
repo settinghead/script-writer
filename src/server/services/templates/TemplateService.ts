@@ -1,6 +1,8 @@
 import { brainstormingTemplate } from './brainstorming.js';
 import { brainstormEditTemplate } from './brainstormEdit.js';
 import { outlineTemplate } from './outline.js';
+import { outlineSettingsTemplate } from './outlineSettings.js';
+import { chroniclesTemplate } from './chronicles.js';
 import { generateEpisodeSpecificInstructions, episodeSynopsisGenerationTemplate } from './episodeSynopsisGeneration.js';
 import { scriptGenerationTemplate, generateScriptEpisodeSpecificInstructions } from './scriptGeneration.js';
 
@@ -33,8 +35,12 @@ export class TemplateService {
     // Register brainstorm edit template
     this.templates.set('brainstorm_edit', brainstormEditTemplate);
 
-    // Register outline template with its correct ID
+    // Register outline template with its correct ID (legacy support)
     this.templates.set('chronological_outline', outlineTemplate);
+
+    // NEW: Register split outline templates
+    this.templates.set('outline_settings', outlineSettingsTemplate);
+    this.templates.set('chronicles', chroniclesTemplate);
 
     // Register episode synopsis generation template
     this.templates.set('episode_synopsis_generation', episodeSynopsisGenerationTemplate);

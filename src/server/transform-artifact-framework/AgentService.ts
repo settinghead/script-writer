@@ -232,6 +232,12 @@ export class AgentService {
                     responseMessage = '我已成功为您的项目生成了创意故事想法！您可以在头脑风暴结果中查看它们。';
                 } else if (agentResult.toolResults.some((r: any) => r.toolName === 'edit_brainstorm_idea')) {
                     responseMessage = '我已成功根据您的要求改进了故事创意！您可以查看更新后的想法。';
+                } else if (agentResult.toolResults.some((r: any) => r.toolName === 'generate_outline_settings')) {
+                    responseMessage = '我已成功为您的项目生成了剧本设定！您可以在剧本设定部分查看详细的角色、背景和商业定位信息。';
+                } else if (agentResult.toolResults.some((r: any) => r.toolName === 'generate_chronicles')) {
+                    responseMessage = '我已成功为您的项目生成了时序大纲！您可以在时序大纲部分查看按时间顺序的故事发展阶段。';
+                } else if (agentResult.toolResults.some((r: any) => r.toolName === 'generate_outline')) {
+                    responseMessage = '我已成功为您的项目生成了完整大纲！您可以在大纲部分查看详细的故事结构和发展脉络。';
                 }
 
                 await this.chatMessageRepo.addAgentResponse(

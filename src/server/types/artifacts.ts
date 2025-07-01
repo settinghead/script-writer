@@ -372,7 +372,10 @@ function mapTypeToSchemaType(type: string): string {
         'outline_characters': 'outline_characters_schema',
         'brainstorm_params': 'brainstorm_params_schema',
         'plot_outline': 'plot_outline_schema',
-        'outline': 'outline_schema' // New outline type mapping
+        'outline': 'outline_schema', // New outline type mapping
+        // NEW: Split outline schemas
+        'outline_settings': 'outline_settings_schema',
+        'chronicles': 'chronicles_schema'
     };
 
     return typeMapping[type] || `${type}_schema`;

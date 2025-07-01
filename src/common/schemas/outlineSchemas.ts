@@ -1,7 +1,11 @@
 import { z } from 'zod';
 
-// Input schema for outline generation (agent-based system)
-export const OutlineGenerationInputSchema = z.object({
+// ===========================================
+// OUTLINE SETTINGS SCHEMAS
+// ===========================================
+
+// Input schema for outline settings generation
+export const OutlineSettingsInputSchema = z.object({
     sourceArtifactId: z.string().describe('ID of the brainstorm idea to use'),
     totalEpisodes: z.number().min(6).max(200).describe('Total number of episodes'),
     episodeDuration: z.number().min(1).max(30).describe('Duration per episode in minutes'),
@@ -10,10 +14,10 @@ export const OutlineGenerationInputSchema = z.object({
     requirements: z.string().optional().describe('Special requirements')
 });
 
-export type OutlineGenerationInput = z.infer<typeof OutlineGenerationInputSchema>;
+export type OutlineSettingsInput = z.infer<typeof OutlineSettingsInputSchema>;
 
-// Character schema (from outline.ts template)
-const CharacterSchema = z.object({
+// Character schema (shared between settings and chronicles)
+export const CharacterSchema = z.object({
     name: z.string(),
     type: z.enum(['male_lead', 'female_lead', 'male_second', 'female_second', 'male_supporting', 'female_supporting', 'antagonist', 'other']),
     description: z.string(),
@@ -26,8 +30,41 @@ const CharacterSchema = z.object({
     key_scenes: z.array(z.string())
 });
 
-// Flattened Stage schema - focused on chronological story development
-const StageSchema = z.object({
+// Outline settings output schema - everything except chronological stages
+export const OutlineSettingsOutputSchema = z.object({
+    title: z.string(),
+    genre: z.string(),
+    target_audience: z.object({
+        demographic: z.string(),
+        core_themes: z.array(z.string())
+    }),
+    selling_points: z.array(z.string()),
+    satisfaction_points: z.array(z.string()),
+    setting: z.object({
+        core_setting_summary: z.string(),
+        key_scenes: z.array(z.string())
+    }),
+    characters: z.array(CharacterSchema)
+});
+
+export type OutlineSettingsOutput = z.infer<typeof OutlineSettingsOutputSchema>;
+
+// ===========================================
+// CHRONICLES SCHEMAS
+// ===========================================
+
+// Input schema for chronicles generation
+export const ChroniclesInputSchema = z.object({
+    outlineSettingsArtifactId: z.string().describe('ID of the outline settings artifact to use'),
+    totalEpisodes: z.number().min(6).max(200).describe('Total number of episodes'),
+    episodeDuration: z.number().min(1).max(30).describe('Duration per episode in minutes'),
+    requirements: z.string().optional().describe('Special requirements for chronological development')
+});
+
+export type ChroniclesInput = z.infer<typeof ChroniclesInputSchema>;
+
+// Stage schema - focused on chronological story development
+export const StageSchema = z.object({
     title: z.string(),
     stageSynopsis: z.string(),
     event: z.string(),
@@ -42,7 +79,22 @@ const StageSchema = z.object({
     insights: z.array(z.string())
 });
 
-// Complete outline output schema - simplified and focused on chronological development
+// Chronicles output schema - only chronological stages
+export const ChroniclesOutputSchema = z.object({
+    stages: z.array(StageSchema)
+});
+
+export type ChroniclesOutput = z.infer<typeof ChroniclesOutputSchema>;
+
+// ===========================================
+// LEGACY SCHEMAS (for backward compatibility)
+// ===========================================
+
+// Legacy input schema - maintained for backward compatibility
+export const OutlineGenerationInputSchema = OutlineSettingsInputSchema;
+export type OutlineGenerationInput = OutlineSettingsInput;
+
+// Legacy output schema - maintained for backward compatibility
 export const OutlineGenerationOutputSchema = z.object({
     title: z.string(),
     genre: z.string(),
