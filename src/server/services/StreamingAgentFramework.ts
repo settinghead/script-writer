@@ -1,7 +1,6 @@
 import { tool, streamText } from 'ai';
 import { z } from 'zod';
 import { getLLMModel } from './LLMConfig';
-import { CachedLLMService, getCachedLLMService } from './CachedLLMService';
 import type { ChatMessageRepository } from '../repositories/ChatMessageRepository';
 
 /**
