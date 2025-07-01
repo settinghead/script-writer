@@ -7,7 +7,6 @@ import { ReasoningIndicator } from '../shared/ReasoningIndicator';
 import { useProjectData } from '../../contexts/ProjectDataContext';
 import { useLatestBrainstormIdeas } from '../../transform-artifact-framework/useLineageResolution';
 import { useChosenBrainstormIdea } from '../../hooks/useChosenBrainstormIdea';
-import { useEditableDescendants } from '../../hooks/useEditableDescendants';
 import { BrainstormIdeaEditor } from './BrainstormIdeaEditor';
 
 const { Text } = Typography;
@@ -21,13 +20,19 @@ const IdeaCardWrapper: React.FC<{
   ideaOutlines: any[];
   onIdeaClick: (collectionId: string, index: number) => void;
 }> = ({ idea, index, isSelected, chosenIdea, ideaOutlines, onIdeaClick }) => {
+  const projectData = useProjectData();
+
   // Ensure we have the required fields
   if (!idea.artifactId || !idea.originalArtifactId || !idea.artifactPath) {
     return null;
   }
 
-  // Check if this idea has editable descendants
-  const { hasEditableDescendants } = useEditableDescendants(idea.artifactId);
+  // Check if this idea has descendants (transforms using it as input)
+  const hasEditableDescendants = useMemo(() => {
+    return projectData.transformInputs.some(input =>
+      input.artifact_id === idea.artifactId
+    );
+  }, [projectData.transformInputs, idea.artifactId]);
 
   // Check if this idea is the chosen one
   const isChosenIdea = chosenIdea &&

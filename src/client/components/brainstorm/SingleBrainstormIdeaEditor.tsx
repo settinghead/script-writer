@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button, Typography, Card, Form, InputNumber, Select, Input, message, Space, Divider, Row, Col, Tag, Spin } from 'antd';
 import { FileTextOutlined, EyeOutlined, ArrowLeftOutlined, CheckCircleOutlined, BookOutlined, DoubleRightOutlined, LoadingOutlined } from '@ant-design/icons';
@@ -11,20 +11,10 @@ import { useOutlineDescendants } from '../../hooks/useOutlineDescendants';
 const { Title, Text } = Typography;
 
 interface SingleBrainstormIdeaEditorProps {
-    originalArtifactId: string;
-    originalArtifactPath: string;
-    editableArtifactId: string;
-    index: number;
-    isFromCollection: boolean;
     onViewOriginalIdeas?: () => void;
 }
 
 export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProps> = ({
-    originalArtifactId,
-    originalArtifactPath,
-    editableArtifactId,
-    index,
-    isFromCollection,
     onViewOriginalIdeas
 }) => {
     const { projectId } = useParams<{ projectId: string }>();
@@ -33,19 +23,72 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
     const [form] = Form.useForm();
     const [isCreatingHumanTransform, setIsCreatingHumanTransform] = useState(false);
 
-    // Check for outline descendants
-    const { hasOutlineDescendants, latestOutline, isLoading: outlineLoading } = useOutlineDescendants(editableArtifactId);
+    // Find the editable brainstorm idea artifact and preview artifact using useMemo
+    const { editableArtifactId, previewArtifactId, isEditable } = useMemo(() => {
+        // Get all brainstorm idea artifacts that are user_input type
+        const brainstormIdeaArtifacts = projectData.artifacts.filter(artifact =>
+            (artifact.schema_type === 'brainstorm_idea' || artifact.type === 'brainstorm_idea') &&
+            artifact.origin_type === 'user_input'
+        );
 
-    // Get the editable artifact data to display title
-    const editableArtifact = projectData.getArtifactById(editableArtifactId);
+        // Find the one that doesn't have descendants (no transforms using it as input)
+        const editableArtifacts = brainstormIdeaArtifacts.filter(artifact => {
+            // Check if this artifact is used as input in any transform
+            const hasDescendants = projectData.transformInputs.some(input =>
+                input.artifact_id === artifact.id
+            );
+            return !hasDescendants;
+        });
+
+        // If multiple editable artifacts exist, take the latest one
+        if (editableArtifacts.length > 0) {
+            editableArtifacts.sort((a, b) =>
+                new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            );
+            return {
+                editableArtifactId: editableArtifacts[0].id,
+                previewArtifactId: editableArtifacts[0].id,
+                isEditable: true
+            };
+        }
+
+        // If no editable artifacts, find the latest brainstorm idea for preview
+        if (brainstormIdeaArtifacts.length > 0) {
+            brainstormIdeaArtifacts.sort((a, b) =>
+                new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            );
+            return {
+                editableArtifactId: null,
+                previewArtifactId: brainstormIdeaArtifacts[0].id,
+                isEditable: false
+            };
+        }
+
+        return {
+            editableArtifactId: null,
+            previewArtifactId: null,
+            isEditable: false
+        };
+    }, [projectData.artifacts, projectData.transformInputs]);
+
+    // If no artifacts at all, don't render the component
+    if (!previewArtifactId) {
+        return null;
+    }
+
+    // Check for outline descendants (only if we have an editable artifact)
+    const { hasOutlineDescendants, latestOutline, isLoading: outlineLoading } = useOutlineDescendants(editableArtifactId || '');
+
+    // Get the preview artifact data to display title
+    const previewArtifact = projectData.getArtifactById(previewArtifactId);
     let ideaTitle = '选中的创意';
 
-    if (editableArtifact) {
+    if (previewArtifact) {
         try {
-            const data = JSON.parse(editableArtifact.data);
-            ideaTitle = data.title || `创意 ${index + 1}`;
+            const data = JSON.parse(previewArtifact.data);
+            ideaTitle = data.title || '当前创意';
         } catch (error) {
-            console.warn('Failed to parse editable artifact data:', error);
+            console.warn('Failed to parse preview artifact data:', error);
         }
     }
 
@@ -114,7 +157,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
     });
 
     const handleGenerateOutline = () => {
-        if (isCreatingHumanTransform) return;
+        if (isCreatingHumanTransform || !editableArtifactId) return;
 
         form.validateFields().then((values) => {
             outlineGenerationMutation.mutate({
@@ -130,7 +173,91 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
         });
     };
 
-    // Render compact mode if outline descendants exist
+    // Render non-editable preview mode if not editable
+    if (!isEditable) {
+        return (
+            <div className="single-brainstorm-idea-preview" style={{ marginBottom: '16px' }}>
+                <Card
+                    size="small"
+                    style={{
+                        backgroundColor: '#1a1a1a',
+                        border: '1px solid #555',
+                        borderRadius: '6px',
+                        opacity: 0.7
+                    }}
+                    styles={{ body: { padding: '16px' } }}
+                >
+                    {/* Preview Header */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <EyeOutlined style={{ color: '#888', fontSize: '16px' }} />
+                            <div>
+                                <Title level={5} style={{ margin: 0, color: '#888', fontSize: '14px' }}>
+                                    {ideaTitle}
+                                </Title>
+                                <Text type="secondary" style={{ fontSize: '12px', color: '#666' }}>
+                                    大纲已存在，无法编辑
+                                </Text>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Preview Content */}
+                    <div style={{ marginBottom: '12px', padding: '8px', backgroundColor: '#0f0f0f', borderRadius: '4px', border: '1px solid #333' }}>
+                        {previewArtifact && (() => {
+                            try {
+                                const data = JSON.parse(previewArtifact.data);
+                                return (
+                                    <div style={{ fontSize: '12px', lineHeight: 1.4 }}>
+                                        {data.title && (
+                                            <div style={{ marginBottom: '6px' }}>
+                                                <span style={{ color: '#666', marginRight: '8px' }}>标题:</span>
+                                                <span style={{ color: '#aaa' }}>{data.title}</span>
+                                            </div>
+                                        )}
+                                        {data.body && (
+                                            <div>
+                                                <span style={{ color: '#666', marginRight: '8px' }}>内容:</span>
+                                                <span style={{ color: '#888' }}>{data.body.substring(0, 100)}{data.body.length > 100 ? '...' : ''}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            } catch (error) {
+                                return <div style={{ color: '#666', fontSize: '12px' }}>无法解析创意内容</div>;
+                            }
+                        })()}
+                    </div>
+
+                    {/* Navigation Buttons */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Button
+                            type="text"
+                            icon={<ArrowLeftOutlined />}
+                            onClick={onViewOriginalIdeas}
+                            style={{ color: '#1890ff' }}
+                            disabled={!onViewOriginalIdeas}
+                        >
+                            返回头脑风暴
+                        </Button>
+
+                        {hasOutlineDescendants && (
+                            <Button
+                                type="text"
+                                icon={<BookOutlined />}
+                                onClick={handleViewOutline}
+                                style={{ color: '#1890ff' }}
+                            >
+                                查看时序大纲
+                            </Button>
+                        )}
+                    </div>
+                </Card>
+            </div>
+        );
+    }
+
+    // Render compact mode if outline descendants exist (only for editable artifacts)
     if (hasOutlineDescendants && latestOutline) {
         return (
             <div className="single-brainstorm-idea-editor-compact" style={{ marginBottom: '16px', position: 'relative' }}>
@@ -178,7 +305,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                                     {ideaTitle}
                                 </Title>
                                 <Text type="secondary" style={{ fontSize: '12px' }}>
-                                    {isFromCollection && `• 灵感来自集合第 ${index + 1} 个想法`}
+                                    当前可编辑的创意
                                 </Text>
                             </div>
                         </div>
@@ -228,9 +355,9 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                     {/* Read-only preview of the idea */}
                     <div style={{ marginTop: '12px', padding: '8px', backgroundColor: '#0f0f0f', borderRadius: '4px', border: '1px solid #333' }}>
 
-                        {editableArtifact && (() => {
+                        {previewArtifact && (() => {
                             try {
-                                const data = JSON.parse(editableArtifact.data);
+                                const data = JSON.parse(previewArtifact.data);
                                 return (
                                     <div style={{ fontSize: '12px', lineHeight: 1.4 }}>
                                         {data.title && (
@@ -309,7 +436,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                                     ✏️ 正在编辑创意
                                 </Title>
                                 <Text type="secondary" style={{ fontSize: '14px' }}>
-                                    {ideaTitle} {isFromCollection && `• 来自集合第 ${index + 1} 个想法`}
+                                    当前可编辑的创意
                                 </Text>
                             </div>
                         </div>
@@ -329,14 +456,16 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                 </div>
 
                 {/* Artifact Editor */}
-                <div style={{ marginBottom: '24px' }}>
-                    <ArtifactEditor
-                        artifactId={editableArtifactId}
-                        fields={BRAINSTORM_IDEA_FIELDS}
-                        statusLabel="📝 已编辑版本"
-                        statusColor="green"
-                    />
-                </div>
+                {editableArtifactId && (
+                    <div style={{ marginBottom: '24px' }}>
+                        <ArtifactEditor
+                            artifactId={editableArtifactId}
+                            fields={BRAINSTORM_IDEA_FIELDS}
+                            statusLabel="📝 已编辑版本"
+                            statusColor="green"
+                        />
+                    </div>
+                )}
 
                 <Divider style={{ borderColor: '#434343', margin: '24px 0' }} />
 

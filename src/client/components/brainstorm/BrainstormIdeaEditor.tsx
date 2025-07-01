@@ -16,7 +16,7 @@ export const BrainstormIdeaEditor: React.FC<{
     hasEditableDescendants: boolean;
     ideaOutlines: any[];
     onIdeaClick: (collectionId: string, index: number) => void;
-}> = ({ artifactId, artifactPath, originalCollectionId, index, isSelected, isChosen, hasEditableDescendants, ideaOutlines, onIdeaClick }) => {
+}> = ({ artifactId, artifactPath, originalCollectionId, index, isSelected, isChosen, hasEditableDescendants, onIdeaClick }) => {
     const projectData = useProjectData();
 
     // Get the artifact data to display
