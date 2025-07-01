@@ -72,6 +72,7 @@ class ApiService {
     async updateArtifact(request: {
         artifactId: string;
         data?: any;
+        text?: string;
         metadata?: any;
     }): Promise<any> {
         const response = await fetch(`${this.baseUrl}/artifacts/${request.artifactId}`, {
@@ -82,6 +83,7 @@ class ApiService {
             credentials: 'include',
             body: JSON.stringify({
                 ...(request.data && { data: request.data }),
+                ...(request.text && { text: request.text }),
                 ...(request.metadata && { metadata: request.metadata })
             })
         });

@@ -486,6 +486,7 @@ export interface CreateTransformRequest {
 export interface UpdateArtifactRequest {
     artifactId: string;
     data?: any;
+    text?: string;
     metadata?: any;
 }
 

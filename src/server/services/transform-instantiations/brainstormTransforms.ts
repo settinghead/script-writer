@@ -135,11 +135,12 @@ export const createChroniclesTransform = (sourceArtifactId: string) => {
 
 /**
  * Create editable outline settings from existing outline settings
+ * Returns user_input format with outline settings data stored as JSON in body
  */
 export function createOutlineSettingsFromOutlineSettings(
   sourceArtifactData: any,
   derivationPath: string
-): any {
+): UserInput {
   const outlineSettingsData = extractDataAtPath(sourceArtifactData, derivationPath);
 
   if (!outlineSettingsData || typeof outlineSettingsData !== 'object') {
@@ -149,10 +150,19 @@ export function createOutlineSettingsFromOutlineSettings(
   // Validate the data structure against the output schema
   try {
     const validatedData = OutlineSettingsOutputSchema.parse(outlineSettingsData);
-    return validatedData;
+
+    // Return in user_input format - store outline settings as JSON in body
+    return {
+      title: `Outline Settings: ${validatedData.title || 'Untitled'}`,
+      body: JSON.stringify(validatedData, null, 2)
+    };
   } catch (error) {
     console.warn('Outline settings validation failed, using raw data:', error);
+
     // Return the raw data even if validation fails - user can edit it
-    return outlineSettingsData;
+    return {
+      title: `Outline Settings: ${outlineSettingsData.title || 'Untitled'}`,
+      body: JSON.stringify(outlineSettingsData, null, 2)
+    };
   }
 } 

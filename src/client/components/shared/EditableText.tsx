@@ -13,7 +13,7 @@ interface EditableTextProps {
     rows?: number;
     maxLength?: number;
     isEditable: boolean;
-    onSave: (path: string, value: string) => void;
+    onSave: (path: string, value: string) => Promise<void>;
     debounceMs?: number;
     className?: string;
     style?: React.CSSProperties;
@@ -35,42 +35,47 @@ export const EditableText: React.FC<EditableTextProps> = ({
     const [localValue, setLocalValue] = useState(value);
     const [isEditing, setIsEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
     const [hasRecentSave, setHasRecentSave] = useState(false);
     const inputRef = useRef<any>(null);
-    const valueRef = useRef(value);
 
     // Update local value when prop changes
     useEffect(() => {
         setLocalValue(value);
-        valueRef.current = value;
+        setHasUnsavedChanges(false);
+        setSaveError(null);
     }, [value]);
 
-    // Debounced save function - Remove value from dependencies to prevent infinite loop
+    // Debounced save function - Follow working pattern from streaming components
     const debouncedSave = useMemo(
         () => debounce(async (newValue: string) => {
-            // Use ref to get current value instead of closure
-            if (newValue !== valueRef.current) {
+            if (onSave && newValue !== value) {
                 setIsSaving(true);
+                setSaveError(null);
                 try {
                     await onSave(path, newValue);
+                    setHasUnsavedChanges(false);
                     setHasRecentSave(true);
                     setTimeout(() => setHasRecentSave(false), 2000);
                 } catch (error) {
-                    console.error('Save failed:', error);
+                    console.error('Auto-save failed:', error);
+                    setSaveError('保存失败');
                 } finally {
                     setIsSaving(false);
                 }
             }
         }, debounceMs),
-        [onSave, path, debounceMs] // Removed 'value' to prevent recreation
+        [onSave, value, debounceMs, path] // Following working pattern
     );
 
-    // Trigger save when local value changes (but not on initial render)
+    // Auto-save on value change
     useEffect(() => {
-        if (localValue !== valueRef.current && isEditable) {
+        if (localValue !== value && isEditable) {
+            setHasUnsavedChanges(true);
             debouncedSave(localValue);
         }
-    }, [localValue, debouncedSave, isEditable]); // Removed 'value' dependency
+    }, [localValue, debouncedSave, value, isEditable]);
 
     // Cleanup debounce on unmount
     useEffect(() => {
@@ -100,27 +105,35 @@ export const EditableText: React.FC<EditableTextProps> = ({
         }
         if (e.key === 'Escape') {
             setLocalValue(value); // Reset to original value
+            setHasUnsavedChanges(false);
+            debouncedSave.cancel();
             handleBlur();
         }
-    }, [multiline, value, handleBlur]);
+    }, [multiline, value, handleBlur, debouncedSave]);
 
     const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         setLocalValue(e.target.value);
     }, []);
 
-    // Status indicator
+    // Status indicator - Enhanced with error state
     const statusIndicator = useMemo(() => {
         if (isSaving) {
             return <LoadingOutlined style={{ color: '#1890ff', fontSize: '12px' }} />;
         }
+        if (saveError) {
+            return <span style={{ color: '#ff4d4f', fontSize: '10px' }}>{saveError}</span>;
+        }
         if (hasRecentSave) {
             return <CheckOutlined style={{ color: '#52c41a', fontSize: '12px' }} />;
+        }
+        if (hasUnsavedChanges && !isSaving) {
+            return <span style={{ color: '#faad14', fontSize: '10px' }}>未保存</span>;
         }
         if (isEditable && !isEditing) {
             return <EditOutlined style={{ color: '#8c8c8c', fontSize: '12px', opacity: 0.5 }} />;
         }
         return null;
-    }, [isSaving, hasRecentSave, isEditable, isEditing]);
+    }, [isSaving, saveError, hasRecentSave, hasUnsavedChanges, isEditable, isEditing]);
 
     const containerStyle = {
         ...style,
@@ -191,7 +204,7 @@ interface EditableArrayProps {
     path: string;
     placeholder?: string;
     isEditable: boolean;
-    onSave: (path: string, value: string[]) => void;
+    onSave: (path: string, value: string[]) => Promise<void>;
     debounceMs?: number;
     className?: string;
     addButtonText?: string;
@@ -210,35 +223,44 @@ export const EditableArray: React.FC<EditableArrayProps> = ({
     const [localItems, setLocalItems] = useState(value);
     const [isAdding, setIsAdding] = useState(false);
     const [newItemValue, setNewItemValue] = useState('');
-    const valueRef = useRef(value);
+    const [isSaving, setIsSaving] = useState(false);
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
 
     // Update local items when prop changes
     useEffect(() => {
         setLocalItems(value);
-        valueRef.current = value;
+        setHasUnsavedChanges(false);
+        setSaveError(null);
     }, [value]);
 
-    // Debounced save function - Remove value from dependencies to prevent infinite loop
+    // Debounced save function - Follow working pattern from streaming components
     const debouncedSave = useMemo(
         () => debounce(async (newItems: string[]) => {
-            // Use ref to get current value instead of closure
-            if (JSON.stringify(newItems) !== JSON.stringify(valueRef.current)) {
+            if (onSave && JSON.stringify(newItems) !== JSON.stringify(value)) {
+                setIsSaving(true);
+                setSaveError(null);
                 try {
                     await onSave(path, newItems);
+                    setHasUnsavedChanges(false);
                 } catch (error) {
-                    console.error('Save failed:', error);
+                    console.error('Auto-save failed:', error);
+                    setSaveError('保存失败');
+                } finally {
+                    setIsSaving(false);
                 }
             }
         }, debounceMs),
-        [onSave, path, debounceMs] // Removed 'value' to prevent recreation
+        [onSave, value, debounceMs, path] // Following working pattern
     );
 
-    // Trigger save when local items change
+    // Auto-save on value change
     useEffect(() => {
-        if (JSON.stringify(localItems) !== JSON.stringify(valueRef.current) && isEditable) {
+        if (JSON.stringify(localItems) !== JSON.stringify(value) && isEditable) {
+            setHasUnsavedChanges(true);
             debouncedSave(localItems);
         }
-    }, [localItems, debouncedSave, isEditable]); // Removed 'value' dependency
+    }, [localItems, debouncedSave, value, isEditable]);
 
     // Cleanup debounce on unmount
     useEffect(() => {
@@ -283,6 +305,23 @@ export const EditableArray: React.FC<EditableArrayProps> = ({
 
     return (
         <div className={className}>
+            {/* Status indicator for the array */}
+            {(isSaving || hasUnsavedChanges || saveError) && (
+                <div style={{ marginBottom: '8px', fontSize: '12px' }}>
+                    {isSaving && (
+                        <span style={{ color: '#1890ff' }}>
+                            <LoadingOutlined /> 保存中...
+                        </span>
+                    )}
+                    {hasUnsavedChanges && !isSaving && (
+                        <span style={{ color: '#faad14' }}>未保存</span>
+                    )}
+                    {saveError && (
+                        <span style={{ color: '#ff4d4f' }}>{saveError}</span>
+                    )}
+                </div>
+            )}
+
             {localItems.map((item, index) => (
                 <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                     <EditableText
@@ -290,7 +329,9 @@ export const EditableArray: React.FC<EditableArrayProps> = ({
                         path={`${path}[${index}]`}
                         placeholder={placeholder}
                         isEditable={isEditable}
-                        onSave={(_, newValue) => handleItemChange(index, newValue)}
+                        onSave={async (_, newValue) => {
+                            handleItemChange(index, newValue);
+                        }}
                         style={{ flex: 1 }}
                     />
                     {isEditable && (

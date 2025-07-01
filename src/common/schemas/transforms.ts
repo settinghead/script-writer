@@ -145,7 +145,7 @@ export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinitio
     name: 'edit_outline_settings',
     description: 'Edit outline settings with fine-grained field tracking',
     sourceArtifactType: 'outline_settings_schema',
-    targetArtifactType: 'outline_settings_schema',
+    targetArtifactType: 'user_input_schema',
     pathPattern: '^\\$(\\..*)?$', // Root or any path like $.title, $.characters[0].name, etc.
     instantiationFunction: 'createOutlineSettingsFromOutlineSettings'
   }

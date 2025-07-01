@@ -68,7 +68,25 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
         if (!effectiveArtifact?.data) return null;
 
         try {
-            return JSON.parse(effectiveArtifact.data) as OutlineSettingsOutput;
+            let data: any = effectiveArtifact.data;
+
+            // Handle both user_input format (editable) and direct outline_settings format (original)
+            if (typeof data === 'string') {
+                data = JSON.parse(data);
+            }
+
+            // If this is a user_input artifact (editable), the outline settings are stored in the body field
+            if (effectiveArtifact.origin_type === 'user_input' && data && typeof data === 'object' && data.body) {
+                try {
+                    return JSON.parse(data.body) as OutlineSettingsOutput;
+                } catch (error) {
+                    console.warn('Failed to parse outline settings from user_input body:', error);
+                    return null;
+                }
+            }
+
+            // Otherwise, it's the original outline_settings format
+            return data as OutlineSettingsOutput;
         } catch (error) {
             console.warn('Failed to parse outline settings data:', error);
             return null;
@@ -101,59 +119,62 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
     const handleSave = useCallback(async (path: string, value: any) => {
         if (!effectiveArtifact || !isEditable) return;
 
-        // Update the data at the specified path
-        const currentData = JSON.parse(effectiveArtifact.data);
-        const updatedData = { ...currentData };
+        // Get current outline settings data
+        if (!outlineSettings) return;
+
+        const updatedOutlineSettings = { ...outlineSettings };
 
         // Handle different path types
         if (path === 'title') {
-            updatedData.title = value;
+            updatedOutlineSettings.title = value;
         } else if (path === 'genre') {
-            updatedData.genre = value;
+            updatedOutlineSettings.genre = value;
         } else if (path === 'target_audience.demographic') {
-            if (!updatedData.target_audience) updatedData.target_audience = { demographic: '', core_themes: [] };
-            updatedData.target_audience.demographic = value;
+            if (!updatedOutlineSettings.target_audience) updatedOutlineSettings.target_audience = { demographic: '', core_themes: [] };
+            updatedOutlineSettings.target_audience.demographic = value;
         } else if (path === 'target_audience.core_themes') {
-            if (!updatedData.target_audience) updatedData.target_audience = { demographic: '', core_themes: [] };
-            updatedData.target_audience.core_themes = value;
+            if (!updatedOutlineSettings.target_audience) updatedOutlineSettings.target_audience = { demographic: '', core_themes: [] };
+            updatedOutlineSettings.target_audience.core_themes = value;
         } else if (path === 'selling_points') {
-            updatedData.selling_points = value;
+            updatedOutlineSettings.selling_points = value;
         } else if (path === 'satisfaction_points') {
-            updatedData.satisfaction_points = value;
+            updatedOutlineSettings.satisfaction_points = value;
         } else if (path === 'setting.core_setting_summary') {
-            if (!updatedData.setting) updatedData.setting = { core_setting_summary: '', key_scenes: [] };
-            updatedData.setting.core_setting_summary = value;
+            if (!updatedOutlineSettings.setting) updatedOutlineSettings.setting = { core_setting_summary: '', key_scenes: [] };
+            updatedOutlineSettings.setting.core_setting_summary = value;
         } else if (path === 'setting.key_scenes') {
-            if (!updatedData.setting) updatedData.setting = { core_setting_summary: '', key_scenes: [] };
-            updatedData.setting.key_scenes = value;
+            if (!updatedOutlineSettings.setting) updatedOutlineSettings.setting = { core_setting_summary: '', key_scenes: [] };
+            updatedOutlineSettings.setting.key_scenes = value;
         } else if (path.startsWith('characters[')) {
             // Handle character field updates
             const match = path.match(/^characters\[(\d+)\]\.(.+)$/);
             if (match) {
                 const [, indexStr, field] = match;
                 const index = parseInt(indexStr, 10);
-                if (!updatedData.characters) updatedData.characters = [];
-                if (!updatedData.characters[index]) {
-                    updatedData.characters[index] = {
+                if (!updatedOutlineSettings.characters) updatedOutlineSettings.characters = [];
+                if (!updatedOutlineSettings.characters[index]) {
+                    updatedOutlineSettings.characters[index] = {
                         name: '', type: 'other', description: '', age: '', gender: '',
                         occupation: '', personality_traits: [], character_arc: '',
                         relationships: {}, key_scenes: []
                     };
                 }
                 if (field === 'personality_traits' || field === 'key_scenes') {
-                    updatedData.characters[index][field] = value;
+                    (updatedOutlineSettings.characters[index] as any)[field] = value;
                 } else {
-                    updatedData.characters[index][field] = value;
+                    (updatedOutlineSettings.characters[index] as any)[field] = value;
                 }
             }
         }
 
-        // Update the artifact
+        // Update the artifact - for user_input artifacts, store the JSON in the text field
+        const updatedJson = JSON.stringify(updatedOutlineSettings, null, 2);
+
         await projectData.updateArtifact.mutateAsync({
             artifactId: effectiveArtifact.id,
-            data: updatedData
+            text: updatedJson
         });
-    }, [effectiveArtifact, isEditable, projectData.updateArtifact]);
+    }, [effectiveArtifact, isEditable, outlineSettings, projectData.updateArtifact]);
 
     // Handle click on container to create editable version - MUST be defined before early returns
     const handleContainerClick = useCallback(() => {
@@ -442,7 +463,7 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                                             path={`characters[${index}].description_summary`}
                                             placeholder="年龄 • 性别 • 职业"
                                             isEditable={isEditable}
-                                            onSave={(path, value) => {
+                                            onSave={async (path, value) => {
                                                 // Parse the combined string back to individual fields
                                                 const parts = value.split(' • ').map(p => p.trim());
                                                 const updatedCharacter = { ...character };
@@ -451,7 +472,7 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                                                 updatedCharacter.occupation = parts[2] || '';
                                                 const updatedCharacters = [...outlineSettings.characters];
                                                 updatedCharacters[index] = updatedCharacter;
-                                                handleSave('characters', updatedCharacters);
+                                                return handleSave('characters', updatedCharacters);
                                             }}
                                             style={{ fontSize: '12px', color: '#8c8c8c' }}
                                         />
