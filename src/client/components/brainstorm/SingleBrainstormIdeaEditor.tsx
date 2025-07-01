@@ -217,7 +217,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                                         {data.body && (
                                             <div>
                                                 <span style={{ color: '#666', marginRight: '8px' }}>内容:</span>
-                                                <span style={{ color: '#888' }}>{data.body.substring(0, 100)}{data.body.length > 100 ? '...' : ''}</span>
+                                                <span style={{ color: '#888' }}>{data.body}</span>
                                             </div>
                                         )}
                                     </div>
