@@ -265,7 +265,6 @@ function createFallbackOutlineObject() {
             demographic: "18-35岁都市女性",
             core_themes: ["甜宠恋爱", "误会重重", "职场成长"]
         },
-        platform: "抖音",
         selling_points: ["霸总甜宠", "误会重重", "高颜值演员"],
         satisfaction_points: ["甜蜜互动", "霸道总裁", "逆袭成长"],
         setting: {

@@ -34,7 +34,6 @@ export const OutlineSettingsOutputSchema = z.object({
         demographic: z.string(),
         core_themes: z.array(z.string())
     }),
-    platform: z.string(),
     selling_points: z.array(z.string()),
     satisfaction_points: z.array(z.string()),
     setting: z.object({
