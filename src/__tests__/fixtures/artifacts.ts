@@ -63,44 +63,38 @@ export const mockArtifacts = {
                 {
                     title: '相遇篇',
                     stageSynopsis: '夏栀入职林氏集团，与总裁林慕琛初次相遇',
-                    keyPoints: [
+                    event: '夏栀入职',
+                    emotionArcs: [
                         {
-                            event: '夏栀入职',
-                            emotionArcs: [
-                                {
-                                    characters: ['夏栀'],
-                                    content: '紧张兴奋，希望有好的开始'
-                                }
-                            ],
-                            relationshipDevelopments: [
-                                {
-                                    characters: ['夏栀', '林慕琛'],
-                                    content: '初次相遇，产生第一印象'
-                                }
-                            ]
+                            characters: ['夏栀'],
+                            content: '紧张兴奋，希望有好的开始'
                         }
-                    ]
+                    ],
+                    relationshipDevelopments: [
+                        {
+                            characters: ['夏栀', '林慕琛'],
+                            content: '初次相遇，产生第一印象'
+                        }
+                    ],
+                    insights: ['职场新人的初入体验', '两人命运的初次交集']
                 },
                 {
                     title: '误会篇',
                     stageSynopsis: '林慕琛误以为夏栀是富家千金，开始特殊对待',
-                    keyPoints: [
+                    event: '误会产生',
+                    emotionArcs: [
                         {
-                            event: '误会产生',
-                            emotionArcs: [
-                                {
-                                    characters: ['林慕琛'],
-                                    content: '对夏栀另眼相看，心生好感'
-                                }
-                            ],
-                            relationshipDevelopments: [
-                                {
-                                    characters: ['夏栀', '林慕琛'],
-                                    content: '关系变得复杂，夏栀困惑不解'
-                                }
-                            ]
+                            characters: ['林慕琛'],
+                            content: '对夏栀另眼相看，心生好感'
                         }
-                    ]
+                    ],
+                    relationshipDevelopments: [
+                        {
+                            characters: ['夏栀', '林慕琛'],
+                            content: '关系变得复杂，夏栀困惑不解'
+                        }
+                    ],
+                    insights: ['身份认知错误的影响', '误会如何改变人际关系']
                 }
             ]
         }),

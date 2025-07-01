@@ -257,44 +257,38 @@ function createFallbackOutlineObject() {
             {
                 title: "误会相遇",
                 stageSynopsis: "女主入职遇到男主，因误会开始特殊关系",
-                keyPoints: [
+                event: "初次相遇",
+                emotionArcs: [
                     {
-                        event: "初次相遇",
-                        emotionArcs: [
-                            {
-                                characters: ["林慕琛", "夏栀"],
-                                content: "第一印象的形成和误会的开始"
-                            }
-                        ],
-                        relationshipDevelopments: [
-                            {
-                                characters: ["林慕琛", "夏栀"],
-                                content: "从陌生到产生特殊关注"
-                            }
-                        ]
+                        characters: ["林慕琛", "夏栀"],
+                        content: "第一印象的形成和误会的开始"
                     }
-                ]
+                ],
+                relationshipDevelopments: [
+                    {
+                        characters: ["林慕琛", "夏栀"],
+                        content: "从陌生到产生特殊关注"
+                    }
+                ],
+                insights: ["观众了解到女主的身份误会", "男主的第一印象形成过程"]
             },
             {
                 title: "情感升温",
                 stageSynopsis: "在误会中两人感情逐渐升温",
-                keyPoints: [
+                event: "感情发展",
+                emotionArcs: [
                     {
-                        event: "感情发展",
-                        emotionArcs: [
-                            {
-                                characters: ["林慕琛", "夏栀"],
-                                content: "感情在误会中悄然生长"
-                            }
-                        ],
-                        relationshipDevelopments: [
-                            {
-                                characters: ["林慕琛", "夏栀"],
-                                content: "从关注到产生爱意"
-                            }
-                        ]
+                        characters: ["林慕琛", "夏栀"],
+                        content: "感情在误会中悄然生长"
                     }
-                ]
+                ],
+                relationshipDevelopments: [
+                    {
+                        characters: ["林慕琛", "夏栀"],
+                        content: "从关注到产生爱意"
+                    }
+                ],
+                insights: ["感情在误会中发展的复杂性", "两人内心世界的变化"]
             }
         ]
     };

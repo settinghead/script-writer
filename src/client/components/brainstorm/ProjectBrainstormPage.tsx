@@ -343,15 +343,9 @@ export default function ProjectBrainstormPage() {
             <div className="text-6xl mb-4">🤔</div>
             <h2 className="text-xl font-semibold mb-2">尚未开始头脑风暴</h2>
             <p className="text-gray-400 mb-6">
-              此项目还没有头脑风暴结果。
-              返回开始新的头脑风暴。
+              还没有头脑风暴结果，稍等一下可能就会有
             </p>
-            <button
-              onClick={() => navigate('/projects')}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              开始新的头脑风暴
-            </button>
+
           </div>
         ) : (
           <div className="text-center py-12">
