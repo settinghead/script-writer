@@ -458,6 +458,7 @@ export class ArtifactRepository {
             'brainstorm_idea': 'brainstorm_idea_schema',
             'brainstorm_idea_collection': 'brainstorm_collection_schema',
             'user_input': 'user_input_schema',
+            'chronological_outline_input': 'chronological_outline_input',
             'outline_title': 'outline_title_schema',
             'outline_genre': 'outline_genre_schema',
             'outline_selling_points': 'outline_selling_points_schema',

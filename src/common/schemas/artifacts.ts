@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { OutlineGenerationOutputSchema } from './outlineSchemas';
+import { OutlineGenerationOutputSchema, OutlineGenerationInputSchema } from './outlineSchemas';
 
 // Unified brainstorm idea schema - aligns frontend and backend
 export const BrainstormIdeaSchema = z.object({
@@ -45,6 +45,7 @@ export const ARTIFACT_SCHEMAS = {
   'brainstorm_collection_schema': BrainstormIdeaCollectionSchema,
   'brainstorm_idea_schema': BrainstormIdeaSchema,
   'outline_input_schema': OutlineInputSchema,
+  'chronological_outline_input': OutlineGenerationInputSchema,
   'user_input_schema': UserInputSchema,
   'outline_schema': OutlineGenerationOutputSchema
 } as const;
