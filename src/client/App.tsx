@@ -17,7 +17,6 @@ import ScriptTab from './components/ScriptTab';
 import ProjectLayout from './components/ProjectLayout';
 import Breadcrumb from './components/Breadcrumb';
 import StagewiseToolbar from './components/StagewiseToolbar';
-import { StageDetailView } from './components/StageDetailView';
 import NewProjectFromBrainstormPage from './components/NewProjectFromBrainstormPage';
 
 
@@ -66,7 +65,6 @@ const AppRoutes: React.FC = () => {
           <ProjectLayoutWrapper />
         </ProtectedRoute>
       }>
-        <Route path="stage/:stageId" element={<StageDetailView />} />
       </Route>
       <Route path="/chat" element={
         <ProtectedRoute>

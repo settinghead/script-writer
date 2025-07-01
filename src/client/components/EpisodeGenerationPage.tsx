@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Tree, Empty, Typography, Spin, Alert, Button } from 'antd';
 import type { DataNode } from 'antd/es/tree';
-import { StageDetailView } from './StageDetailView';
 import { useProjectData, useStageEpisodes } from '../hooks/useProjectData';
 import { useProjectStore } from '../stores/projectStore';
 import { OutlineExportModal } from './shared/OutlineExportModal';
@@ -339,18 +338,7 @@ export const EpisodeGenerationPage: React.FC = () => {
             {/* Main Content */}
             <div style={{ flex: 1, overflow: 'auto' }}>
                 {selectedStageId ? (
-                    <StageDetailView
-                        selectedStageId={selectedStageId}
-                        stages={stages}
-                        stageEpisodeData={episodes}
-                        onEpisodeSelect={(episodeNumber) => {
-                            setSelectedEpisodeId(episodeNumber.toString());
-                            setSearchParams({
-                                stage_id: selectedStageId,
-                                episode_id: episodeNumber.toString()
-                            });
-                        }}
-                    />
+                    <>nothing</>
                 ) : (
                     <div style={{
                         display: 'flex',
