@@ -1,8 +1,9 @@
 # Script Writer Project - Cursor Rules
 
-## Core Architecture Principles
+## Framework Foundation
 
-### 1. Artifacts & Transforms System
+### 1. Transform Artifact Framework
+- **ALL implementations MUST follow the Transform Artifact Framework** - see [TRANSFORM_ARTIFACT_FRAMEWORK.md](./TRANSFORM_ARTIFACT_FRAMEWORK.md) for detailed documentation
 - **ALWAYS respect the artifacts => transform => artifacts structure** when changing backend flow logic
 - Every data modification MUST be tracked through transforms with proper input/output artifact relationships
 - Artifacts are immutable - create new versions rather than modifying existing ones
@@ -13,23 +14,27 @@
 - **DO NOT expose artifacts/transforms directly** in server routes - they are low-level constructs
 - **DO NOT make frontend interact with artifacts/transforms directly**
 - Create domain-specific endpoints (e.g., `/api/projects`) that abstract the underlying artifacts system
-- Frontend should work with business domain objects (IdeationRun, ScriptDocument) not raw artifacts
+- Frontend should work with business domain objects not raw artifacts
 - Use repository pattern to encapsulate artifact/transform operations
 
 ## Security & Authentication
 
 ### 3. Authentication Requirements
 - **ALL AI/LLM endpoints MUST require authentication** using `requireAuth` middleware
-- **ALL data operations MUST be scoped to authenticated user** (`user_id` filtering)
+- **ALL data operations MUST be scoped to authenticated user** via project membership
 - Use HTTP-only cookies for JWT tokens to prevent XSS attacks
 - Validate user ownership before allowing access to any resource
-- Room IDs must include user ID for WebSocket security: `script-{user_id}-{timestamp}-{random}`
+- Room IDs must include user ID for WebSocket security: `room-{user_id}-{timestamp}-{random}`
 
-### 4. Data Isolation
-- Every database query MUST filter by user_id for the authenticated user
-- Users can ONLY access their own scripts, ideations, and collaborative sessions
-- WebSocket connections must verify room ownership before allowing access
-- Debug endpoints must scope data to authenticated user only
+### 4. Project-Based Access Control
+- **Access control is managed through PROJECT MEMBERSHIP, NOT direct user ownership**
+- Artifacts and transforms DO NOT have user_id fields - they have project_id fields instead
+- Access control is managed through project membership via the projects_users table
+- Users can ONLY access artifacts/transforms within projects they are members of
+- **ALWAYS use artifactRepo.userHasProjectAccess(userId, projectId)** to validate access
+- **NEVER filter artifacts directly by user_id** - filter by project_id and validate project membership
+- WebSocket connections must verify project membership before allowing access
+- Debug endpoints must scope data to user's accessible projects only
 
 ### 5. Debug Authentication
 - **For development/testing**: Use debug token `debug-auth-token-script-writer-dev` in Authorization header
@@ -42,7 +47,7 @@
 ### 6. Type Safety
 - Use strict TypeScript throughout both frontend and backend
 - **ALWAYS define shared types in `src/common/`** - whenever types can be shared between frontend and backend, they MUST be placed under `/src/common` for consistency and single source of truth
-- Define interfaces with version suffixes (e.g., `IdeationSessionV1`) for artifact types
+- Define interfaces with version suffixes (e.g., `BrainstormCollectionV1`) for artifact types
 - Properly type all streaming services and API responses
 - Frontend-only types go in `src/client/types/`, backend-only types go in `src/server/types/`
 
@@ -52,11 +57,11 @@ src/
 ├── client/                 # React frontend
 │   ├── components/        # UI components with streaming support
 │   ├── hooks/            # Custom hooks including streaming hooks
-│   ├── services/         # RxJS streaming services
+│   ├── services/         # API services
 │   └── types/            # Frontend-specific types
 ├── common/               # Shared types and interfaces
 │   ├── streaming/        # Streaming interfaces
-│   └── llm/             # LLM template types
+│   └── schemas/         # Zod validation schemas
 └── server/               # Express backend
     ├── routes/           # API routes (domain-focused)
     ├── services/         # Business logic with transform execution
@@ -72,63 +77,92 @@ src/
 - Only create custom CSS when Ant Design doesn't provide the needed functionality
 - Follow Ant Design's design principles and component patterns
 
+### 9. Chinese Short Drama Focus
+- All content generation should target Chinese short drama audiences
+- Emphasize 去脸谱化 (de-stereotyping) in all templates and prompts
+- Platform-specific optimization for 抖音, 快手, 小红书, etc.
+- Include modern, non-stereotypical characters and plots in all AI-generated content
 
 ## Database & Performance
 
 ### 10. Database Operations
-- Use `ArtifactRepository` and `TransformRepository` for flow related data access
-
+- Use `ArtifactRepository` and `TransformRepository` for data access
+- **ALWAYS use project-based filtering** - artifacts/transforms have project_id, not user_id
+- Validate project membership before any database operations
+- Use PostgreSQL + Electric SQL + Kysely architecture as documented in framework
 
 ## API Endpoint Patterns
 
-### 12. Route Organization
-- Group routes by domain: `/api/projects`
+### 11. Route Organization
+- Group routes by domain: `/api/projects`, `/api/chat`, `/api/artifacts`
 - Use RESTful conventions where appropriate
-- Streaming endpoints use `/stream` suffix
+- Streaming endpoints use agent-based patterns
 - Debug endpoints under `/debug/` (development only)
 - Authentication endpoints under `/auth/`
 
-### 13. Request/Response Patterns
+### 12. Request/Response Patterns
 - Always validate input parameters
 - Return domain objects, not raw artifacts
 - Include proper error handling with user-friendly messages
 - Use consistent response formats across endpoints
 - Include pagination for list endpoints
 
-
 ## Development & Testing
 
-### 16. Error Handling
+### 13. Error Handling
 - Use try-catch blocks for all async operations
 - Log errors with sufficient context for debugging
 - Return appropriate HTTP status codes
 - Include user-friendly error messages for frontend
 
-### 17. TypeScript Script Execution
+### 14. TypeScript Script Execution
 - **ALWAYS use `./run-ts` when running TypeScript Node.js scripts** - never use `npx tsx` or `node` directly
 - The `./run-ts` script handles proper TypeScript configuration, dotenv loading, and module resolution
 - Example: `./run-ts src/server/test-script.ts` instead of `npx tsx src/server/test-script.ts`
-- run-ts can only run typescript files. DO NOT run inline script (e.g. ./run-ts -e). The feature doesn't exist. Always write down the script in TS file(s).
+- run-ts can only run typescript files. DO NOT run inline scripts. Always write down the script in TS file(s).
 
-### 18. Debugging & Analytics
-- If a new flow is constructed or modified, test by creating a node.js only testing script that executes transforms
+### 15. Testing Framework
+- Use cache-based testing with Vitest for AI functionality
+- Follow patterns documented in TRANSFORM_ARTIFACT_FRAMEWORK.md
+- Test with actual cached LLM responses for realistic validation
+- All tests should use project-based access control patterns
+
+### 16. Debugging & Analytics
+- If a new flow is constructed or modified, test by creating a Node.js testing script that executes transforms
+- Use raw graph visualization for debugging artifact lineage
+- Access via `?raw-graph=1` parameter for development debugging
 
 ## Data Validation
 
-### 19. Input Validation
-- Validate all input data at API boundaries
+### 17. Input Validation
+- Validate all input data at API boundaries using Zod schemas
 - Use TypeScript for compile-time type checking
 - Include runtime validation for external data
 - Test edge cases and error conditions
+- Follow schema patterns documented in framework
 
-### Electric Doc
+## Chinese Content Guidelines
 
-For Electric specific implementations, refer to /electric-llms.txt
+### 18. Content Creation Standards
+- **All prompts MUST include 去脸谱化 requirements** - avoid stereotypical characters and plots
+- Include modern, diverse perspectives in all generated content
+- Create complex character motivations that challenge traditional expectations
+- Platform-specific optimization for Chinese short video platforms
+- Follow genre conventions: 现代甜宠, 古装甜宠, 复仇爽文, 霸总文, etc.
 
+## Framework Documentation Reference
 
-## Document organizaiton
-When the user asks to merge an implementation plan with an existing document (say README), always:
+### 19. Documentation Standards
+- **ALWAYS reference TRANSFORM_ARTIFACT_FRAMEWORK.md** for technical implementation details
+- Use README.md for application-specific features and usage
+- Keep application code focused on Chinese short drama domain
+- Follow framework patterns for agent tools, streaming, and database operations
+- When implementing new features, check framework documentation first for established patterns
+
+## Document Organization
+When the user asks to merge an implementation plan with an existing document:
 - Try merge new content with existing content, instead of blindly appending new items
-- try to understand the rationale of the new features and document it properly
+- Understand the rationale of the new features and document properly
 - Clean and remove any outdated content in the original documentation
 - Make sure all content is transferred over and properly documented, remove the plan document file
+- Reference TRANSFORM_ARTIFACT_FRAMEWORK.md for technical details, README.md for application usage
