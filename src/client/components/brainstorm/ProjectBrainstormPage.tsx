@@ -5,11 +5,10 @@ import { StopOutlined } from '@ant-design/icons';
 import { IdeaWithTitle } from '../../../common/transform-artifact-framework/lineageResolution';
 import { ReasoningIndicator } from '../shared/ReasoningIndicator';
 import { useProjectData } from '../../contexts/ProjectDataContext';
-import { useLatestBrainstormIdeas } from '../../hooks/useLineageResolution';
+import { useLatestBrainstormIdeas } from '../../transform-artifact-framework/useLineageResolution';
 import { useChosenBrainstormIdea } from '../../hooks/useChosenBrainstormIdea';
 import { useEditableDescendants } from '../../hooks/useEditableDescendants';
 import { BrainstormIdeaEditor } from './BrainstormIdeaEditor';
-import { OutlineGenerationOutput } from '../../../common/schemas/outlineSchemas';
 
 const { Text } = Typography;
 

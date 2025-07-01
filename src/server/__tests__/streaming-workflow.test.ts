@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createBrainstormToolDefinition } from '../tools/BrainstormTool';
+import { createBrainstormToolDefinition } from '../tools/BrainstormTools';
 import { createOutlineToolDefinition } from '../tools/OutlineTool';
 import { createMockArtifactRepository, createMockTransformRepository } from '../../__tests__/mocks/databaseMocks';
 

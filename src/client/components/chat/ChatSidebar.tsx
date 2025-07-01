@@ -49,24 +49,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ projectId }) => {
                     />
                 </div>
 
-                {/* <Divider style={{ margin: '8px 0', borderColor: '#333' }} /> */}
 
-                {/* <div style={{ display: 'flex', gap: 8 }}>
-                    <Tooltip title="清除聊天记录">
-                        <Button
-                            type="text"
-                            size="small"
-                            icon={<DeleteOutlined />}
-                            style={{ color: '#888', border: '1px solid #444' }}
-                            onClick={() => {
-                                if (window.confirm('确定要清除聊天记录吗？')) {
-                                    // TODO: Implement clear chat functionality
-                                    console.log('Clear chat requested');
-                                }
-                            }}
-                        />
-                    </Tooltip>
-                </div> */}
             </Header>
 
             <Content style={{ background: '#1a1a1a', overflow: 'hidden' }}>

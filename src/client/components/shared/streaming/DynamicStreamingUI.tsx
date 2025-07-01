@@ -9,7 +9,6 @@ import {
 } from './types';
 import { StreamingFieldDetector, PathMatcher } from './StreamingFieldDetector';
 import { ThinkingIndicator } from '../ThinkingIndicator';
-// import { useLLMStreaming } from '../../../hooks/useLLMStreaming';
 
 /**
  * StreamingFieldRenderer - Renders individual fields with proper containers

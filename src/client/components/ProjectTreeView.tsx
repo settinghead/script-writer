@@ -10,7 +10,7 @@ import {
     LoadingOutlined,
     StarFilled
 } from '@ant-design/icons';
-import { useEffectiveBrainstormIdeas } from '../hooks/useLineageResolution';
+import { useEffectiveBrainstormIdeas } from '../transform-artifact-framework/useLineageResolution';
 import { useProjectData } from '../contexts/ProjectDataContext';
 import { useCurrentSection, type CurrentSection } from '../hooks/useCurrentSection';
 import { useChosenBrainstormIdea } from '../hooks/useChosenBrainstormIdea';

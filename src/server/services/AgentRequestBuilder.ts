@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { TransformRepository } from '../transform-artifact-framework/TransformRepository';
 import { ArtifactRepository } from '../transform-artifact-framework/ArtifactRepository';
 import { prepareAgentPromptContext } from '../../common/utils/agentContext';
-import { createBrainstormToolDefinition, createBrainstormEditToolDefinition } from '../tools/BrainstormTool';
+import { createBrainstormToolDefinition, createBrainstormEditToolDefinition } from '../tools/BrainstormTools';
 import { createOutlineToolDefinition } from '../tools/OutlineTool';
 import type { GeneralAgentRequest } from './AgentService';
 import type { StreamingToolDefinition } from './StreamingAgentFramework';

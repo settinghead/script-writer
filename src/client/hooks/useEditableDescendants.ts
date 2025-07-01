@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useProjectData } from '../contexts/ProjectDataContext';
-import { useLineageGraph } from './useLineageResolution';
+import { useLineageGraph } from '../transform-artifact-framework/useLineageResolution';
 import { ElectricArtifact } from '../../common/types';
 
 interface EditableDescendant {

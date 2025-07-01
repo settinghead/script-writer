@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { createBrainstormEditToolDefinition } from '../BrainstormTool';
+import { createBrainstormEditToolDefinition } from '../BrainstormTools';
 import { createMockArtifactRepository, createMockTransformRepository } from '../../../__tests__/mocks/databaseMocks';
 
 describe('BrainstormEditTool', () => {
