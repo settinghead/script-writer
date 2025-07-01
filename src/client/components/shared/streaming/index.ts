@@ -11,19 +11,7 @@ export {
   SectionWrapper
 } from './fieldComponents';
 
-// Utilities and classes
-export {
-  StreamingFieldDetector,
-  PathMatcher
-} from './StreamingFieldDetector';
 
-// Field registries
-export {
-  outlineFieldRegistry,
-  brainstormFieldRegistry,
-  getFieldRegistry,
-  validateFieldRegistry
-} from './fieldRegistries';
 
 // Types
 export type {
