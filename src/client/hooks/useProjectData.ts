@@ -60,37 +60,3 @@ export const useProjectData = (projectId: string) => {
   };
 };
 
-// Hook for fetching episodes for a specific stage (to be used on-demand)
-export const useStageEpisodes = (projectId: string, stageId: string, enabled: boolean = false) => {
-  const setStageEpisodes = useProjectStore(state => state.setStageEpisodes);
-
-  const { data: episodesData, isLoading, error, ...queryInfo } = useQuery({
-    queryKey: projectKeys.episodes(stageId),
-    queryFn: async () => {
-      // TODO: Replace with artifact-based episode fetching once implemented
-      // For now, return empty state as episode generation is handled through agents
-      return null;
-    },
-    enabled: !!stageId && enabled,
-  });
-
-  useEffect(() => {
-    if (episodesData !== undefined) {
-      // For now, always return empty state as episode generation is handled through agents
-      const episodeState: StageEpisodeState = {
-        episodes: [],
-        loading: false,
-        isStreaming: false,
-      };
-
-      setStageEpisodes(projectId, stageId, episodeState);
-    }
-  }, [episodesData, projectId, stageId, setStageEpisodes]);
-
-  return {
-    isLoading,
-    error,
-    ...queryInfo,
-  };
-};
-
