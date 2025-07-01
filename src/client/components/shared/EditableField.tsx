@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Input } from 'antd';
+import { Input, InputRef } from 'antd';
+import type { TextAreaRef } from 'antd/es/input/TextArea';
 
 const { TextArea } = Input;
 
@@ -39,7 +40,8 @@ export const EditableField: React.FC<EditableFieldProps> = React.memo(({
     const lastTypingTime = useRef<number>(0);
     const lastExternalUpdate = useRef<number>(0);
     const isFocusedRef = useRef<boolean>(false);
-    const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+    const inputRef = useRef<InputRef>(null);
+    const textAreaRef = useRef<TextAreaRef>(null);
 
     // Track focus state
     useEffect(() => {
@@ -111,11 +113,6 @@ export const EditableField: React.FC<EditableFieldProps> = React.memo(({
         setHasUserInput(true);
         lastTypingTime.current = Date.now();
         onFocus();
-
-        // Store reference to the input element
-        if (inputRef.current !== e.target) {
-            inputRef.current = e.target;
-        }
     };
 
     const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -126,28 +123,19 @@ export const EditableField: React.FC<EditableFieldProps> = React.memo(({
 
     // Prevent focus loss during re-renders
     useEffect(() => {
-        if (isFocused && inputRef.current && document.activeElement !== inputRef.current) {
-            // Restore focus if it was lost during re-render
-            const cursorPosition = inputRef.current.selectionStart || 0;
-            inputRef.current.focus();
-
-            // Use a timeout to ensure focus is restored before setting selection
-            setTimeout(() => {
-                if (inputRef.current && typeof inputRef.current.setSelectionRange === 'function') {
-                    try {
-                        inputRef.current.setSelectionRange(cursorPosition, cursorPosition);
-                    } catch (error) {
-                        // Ignore errors - some elements might not support setSelectionRange
-                        console.warn('Could not set selection range:', error);
-                    }
-                }
-            }, 0);
+        if (isFocused) {
+            const currentRef = fieldType === 'textarea' ? textAreaRef.current : inputRef.current;
+            if (currentRef) {
+                // Use Ant Design's focus method
+                setTimeout(() => {
+                    currentRef.focus();
+                }, 0);
+            }
         }
-    }, [isFocused, localValue]);
+    }, [isFocused, localValue, fieldType]);
 
-    // Common props for both input types
+    // Common props for both input types (without ref)
     const commonProps = {
-        ref: inputRef,
         value: localValue, // Use local value instead of prop value
         placeholder,
         maxLength,
@@ -174,6 +162,7 @@ export const EditableField: React.FC<EditableFieldProps> = React.memo(({
     if (fieldType === 'textarea') {
         return (
             <TextArea
+                ref={textAreaRef}
                 {...commonProps}
                 rows={rows}
                 autoSize={{ minRows: 3, }}
@@ -183,6 +172,7 @@ export const EditableField: React.FC<EditableFieldProps> = React.memo(({
 
     return (
         <Input
+            ref={inputRef}
             {...commonProps}
             size="large"
         />

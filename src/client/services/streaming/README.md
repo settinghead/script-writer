@@ -80,12 +80,6 @@ export class MyStreamingService extends LLMStreamingService<MyType> {
 - Easy to add new streaming types
 - Centralized error handling and logging
 
-## Current Implementations
-
-1. **`BrainstormingStreamingService`** - Handles idea streaming with artifact ID tracking
-2. **`OutlineStreamingService`** - Handles complex outline structures with characters and stages
-3. **`EpisodeStreamingService`** - Handles episode synopsis arrays with relationship/emotion tracking
-4. **`ScriptStreamingService`** - Handles full script content with scene breakdown
 
 ## Adding New Streaming Services
 
