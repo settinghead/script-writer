@@ -10,7 +10,7 @@ import { AgentService } from '../transform-artifact-framework/AgentService';
 import { ChatService } from '../transform-artifact-framework/ChatService';
 
 // Import route creators
-import { createElectricProxyRoutes } from './electricProxy';
+import { createElectricProxyRoutes } from '../transform-artifact-framework/electricProxy';
 import { createProjectRoutes } from './projectRoutes';
 import { createArtifactRoutes } from './artifactRoutes';
 import { createChatRoutes } from './chatRoutes';
