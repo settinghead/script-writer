@@ -30,7 +30,7 @@ export function analyzeRequestType(userRequest: string): RequestType {
     const generationKeywords = ['生成', '创建', '产生', 'generate', 'create'];
 
     // Outline generation keywords
-    const outlineKeywords = ['大纲', 'outline', '提纲', '结构', '剧集结构', '分集大纲', '故事大纲', '叙事大纲'];
+    const outlineKeywords = ['大纲', 'outline', '提纲', '结构', '剧集结构', '分集大纲', '时间顺序大纲', '叙事大纲'];
     const outlineGenerationPatterns = [
         '生成大纲', '创建大纲', '制作大纲', '大纲生成',
         'generate outline', 'create outline',

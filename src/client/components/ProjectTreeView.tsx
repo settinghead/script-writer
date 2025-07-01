@@ -90,7 +90,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                         boxShadow: isHighlighted ?
                             '0 0 20px rgba(24, 144, 255, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)' :
                             'none',
-                        transition: 'all 0.3s ease-in-out',
+                        transition: 'all 0.2s ease-in-out',
                         display: 'inline-flex',
                         alignItems: 'center'
                     }}>
@@ -184,7 +184,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
             switch (node.type) {
                 case 'outline':
                     icon = <BookOutlined style={{ color: nodeHighlighted ? '#722ed1' : undefined }} />;
-                    title = '故事大纲';
+                    title = '时间顺序大纲';
 
                     // Add outline sections as children
                     try {
@@ -346,7 +346,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                         boxShadow: nodeHighlighted ?
                             `0 0 20px ${colors.glow}, inset 0 1px 0 rgba(255, 255, 255, 0.1)` :
                             'none',
-                        transition: 'all 0.3s ease-in-out',
+                        transition: 'all 0.2s ease-in-out',
                         display: 'inline-flex',
                         alignItems: 'center'
                     }}>
@@ -478,9 +478,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                 .project-tree-dark .ant-tree-node-content-wrapper:hover {
                     background-color: rgba(255, 255, 255, 0.1) !important;
                 }
-                .project-tree-dark .ant-tree-node-selected .ant-tree-node-content-wrapper {
-                    background-color: rgba(24, 144, 255, 0.2) !important;
-                }
+                
                 .project-tree-dark .ant-tree-switcher {
                     color: #666 !important;
                 }

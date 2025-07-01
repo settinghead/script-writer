@@ -256,7 +256,7 @@ describe('AgentService Integration', () => {
         mockArtifactRepo.getArtifact.mockResolvedValue(existingBrainstormArtifacts[0]);
 
         const outlineRequest = {
-            userRequest: '我想要基于刚才编辑过的第一个故事创意来生成一个详细的故事大纲。请创建一个80集的现代都市甜宠剧大纲。',
+            userRequest: '我想要基于刚才编辑过的第一个故事创意来生成一个详细的时间顺序大纲。请创建一个80集的现代都市甜宠剧大纲。',
             projectId: TEST_PROJECT_ID,
             contextType: 'general' as const
         };

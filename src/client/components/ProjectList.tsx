@@ -456,7 +456,7 @@ const ProjectsList: React.FC = () => {
                                     自己输入素材
                                 </Title>
                                 <Text type="secondary">
-                                    可以是一句话灵感、PDF、Word文档等，AI将为您自动生成详细的故事大纲
+                                    可以是一句话灵感、PDF、Word文档等，AI将为您自动生成详细的时间顺序大纲
                                 </Text>
                             </div>
                         </Card>

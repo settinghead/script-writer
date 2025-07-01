@@ -553,7 +553,7 @@ const HomePage: React.FC = () => {
                                         素材生成大纲
                                     </Title>
                                     <Text type="secondary">
-                                        输入任何形式的素材内容，AI将为您自动生成详细的故事大纲
+                                        输入任何形式的素材内容，AI将为您自动生成详细的时间顺序大纲
                                     </Text>
                                 </div>
                             </div>
