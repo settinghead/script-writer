@@ -340,8 +340,7 @@ export default function ProjectBrainstormPage() {
           </div>
         ) : status === 'idle' ? (
           <div className="text-center py-12">
-            <div className="text-6xl mb-4">🤔</div>
-            <h2 className="text-xl font-semibold mb-2">尚未开始头脑风暴</h2>
+            <h2 className="text-xl font-semibold mb-2">🤔尚未开始头脑风暴</h2>
             <p className="text-gray-400 mb-6">
               还没有头脑风暴结果，稍等一下可能就会有
             </p>

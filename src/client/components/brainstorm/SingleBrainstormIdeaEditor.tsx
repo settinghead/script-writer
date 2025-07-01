@@ -335,10 +335,6 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                         fields={BRAINSTORM_IDEA_FIELDS}
                         statusLabel="📝 已编辑版本"
                         statusColor="green"
-                        onHumanTransformStart={handleHumanTransformStart}
-                        onHumanTransformComplete={handleHumanTransformComplete}
-                        onHumanTransformError={handleHumanTransformError}
-                        disabled={isCreatingHumanTransform}
                     />
                 </div>
 
