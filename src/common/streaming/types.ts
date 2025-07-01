@@ -33,17 +33,6 @@ export interface ReasoningEvent {
     modelName?: string;
 }
 
-// Outline generation types
-export interface OutlineGenerateRequest {
-    sourceArtifactId: string;
-    totalEpisodes?: number;
-    episodeDuration?: number;
-    cascadedParams?: {
-        platform: string;
-        genre_paths: string[][];
-        requirements: string;
-    };
-}
 
 export interface OutlineGenerateResponse {
     sessionId: string;
