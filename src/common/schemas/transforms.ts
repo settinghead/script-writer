@@ -140,6 +140,14 @@ export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinitio
     targetArtifactType: 'user_input_schema',
     pathPattern: '^(title|body)$', // Matches title or body fields
     instantiationFunction: 'createUserInputFromBrainstormField'
+  },
+  'edit_outline_settings': {
+    name: 'edit_outline_settings',
+    description: 'Edit outline settings with fine-grained field tracking',
+    sourceArtifactType: 'outline_settings_schema',
+    targetArtifactType: 'outline_settings_schema',
+    pathPattern: '^\\$(\\..*)?$', // Root or any path like $.title, $.characters[0].name, etc.
+    instantiationFunction: 'createOutlineSettingsFromOutlineSettings'
   }
 };
 

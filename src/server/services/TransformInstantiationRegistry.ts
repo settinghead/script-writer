@@ -2,7 +2,8 @@ import { HUMAN_TRANSFORM_DEFINITIONS } from '../../common/schemas/transforms';
 import {
   createUserInputFromBrainstormIdea,
   createBrainstormIdeaFromBrainstormIdea,
-  createUserInputFromBrainstormField
+  createUserInputFromBrainstormField,
+  createOutlineSettingsFromOutlineSettings
 } from './transform-instantiations/brainstormTransforms';
 import {
   createBrainstormIdeaFromPath,
@@ -32,6 +33,9 @@ export class TransformInstantiationRegistry {
     this.functions.set('createUserInputFromBrainstormIdea', createUserInputFromBrainstormIdea);
     this.functions.set('createBrainstormIdeaFromBrainstormIdea', createBrainstormIdeaFromBrainstormIdea);
     this.functions.set('createUserInputFromBrainstormField', createUserInputFromBrainstormField);
+
+    // NEW: Outline settings editing
+    this.functions.set('createOutlineSettingsFromOutlineSettings', createOutlineSettingsFromOutlineSettings);
   }
 
   executeInstantiation(

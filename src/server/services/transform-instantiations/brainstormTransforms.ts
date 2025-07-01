@@ -131,4 +131,28 @@ export const createChroniclesTransform = (sourceArtifactId: string) => {
     outputSchema: ChroniclesOutputSchema,
     transformType: 'llm' as const
   };
-}; 
+};
+
+/**
+ * Create editable outline settings from existing outline settings
+ */
+export function createOutlineSettingsFromOutlineSettings(
+  sourceArtifactData: any,
+  derivationPath: string
+): any {
+  const outlineSettingsData = extractDataAtPath(sourceArtifactData, derivationPath);
+
+  if (!outlineSettingsData || typeof outlineSettingsData !== 'object') {
+    throw new Error(`Invalid outline settings data at path ${derivationPath}`);
+  }
+
+  // Validate the data structure against the output schema
+  try {
+    const validatedData = OutlineSettingsOutputSchema.parse(outlineSettingsData);
+    return validatedData;
+  } catch (error) {
+    console.warn('Outline settings validation failed, using raw data:', error);
+    // Return the raw data even if validation fails - user can edit it
+    return outlineSettingsData;
+  }
+} 

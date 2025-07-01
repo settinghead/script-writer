@@ -128,7 +128,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
             return response.json();
         },
         onSuccess: () => {
-            message.success('大纲生成已开始！请查看下方或浏览项目页面查看进度。');
+            message.success('框架生成已开始！请查看下方或浏览项目页面查看进度。');
             form.resetFields();
         },
         onError: (error) => {

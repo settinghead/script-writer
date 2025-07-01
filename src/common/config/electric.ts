@@ -3,7 +3,7 @@ export const createElectricConfig = () => {
     // Use absolute URL to avoid "Invalid URL" errors in Electric client
     const baseUrl = typeof window !== 'undefined'
         ? window.location.origin
-        : 'http://localhost:4600';
+        : 'http://127.0.0.1:4600';
 
     return {
         // Use our auth proxy instead of direct Electric URL
@@ -18,7 +18,7 @@ export const createElectricConfigWithDebugAuth = () => {
     // Use absolute URL to avoid "Invalid URL" errors in Electric client
     const baseUrl = typeof window !== 'undefined'
         ? window.location.origin
-        : 'http://localhost:4600';
+        : 'http://127.0.0.1:4600';
 
     return {
         url: `${baseUrl}/api/electric/v1/shape`,
