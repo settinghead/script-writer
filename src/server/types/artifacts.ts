@@ -405,6 +405,7 @@ function mapTypeToSchemaType(type: string): string {
         'plot_outline': 'plot_outline_schema',
         'outline': 'outline_schema', // New outline type mapping
         // NEW: Split outline schemas
+        'outline_settings_input': 'outline_settings_input_schema',
         'outline_settings': 'outline_settings_schema',
         'chronicles': 'chronicles_schema'
     };

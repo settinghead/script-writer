@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  OutlineSettingsInputSchema,
   OutlineSettingsOutputSchema,
   ChroniclesOutputSchema
 } from './outlineSchemas';
@@ -23,6 +24,7 @@ export const ArtifactSchemaRegistry = {
   }),
 
   // New outline schemas
+  'outline_settings_input_schema': OutlineSettingsInputSchema,
   'outline_settings_schema': OutlineSettingsOutputSchema,
   'chronicles_schema': ChroniclesOutputSchema,
 
