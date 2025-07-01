@@ -703,7 +703,7 @@ const TextDivider = ({ title }: { title: string }) => {
                 ),
                 linear-gradient(135deg,rgb(16, 26, 34) 0%,rgb(29, 39, 61) 50%,rgb(17, 25, 35) 100%)
             `,
-            backgroundSize: '80px 80px, 100% 100%',
+            backgroundSize: '120px 120px, 100% 100%',
             fontSize: '20px',
             fontWeight: 'bold',
             color: '#fff',
