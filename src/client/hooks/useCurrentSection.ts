@@ -7,11 +7,9 @@ export type CurrentSection = 'brainstorm-ideas' | 'story-outline' | null;
  * Used for highlighting the current section in the workflow visualization
  */
 export function useCurrentSection(): CurrentSection {
-    console.log('[useCurrentSection] Hook called');
     const [currentSection, setCurrentSection] = useState<CurrentSection>(null);
 
     useEffect(() => {
-        console.log('[useCurrentSection] useEffect started');
         const sectionSelectors = [
             '#brainstorm-ideas',
             '#story-outline'
@@ -19,28 +17,19 @@ export function useCurrentSection(): CurrentSection {
 
         const observer = new IntersectionObserver(
             (entries) => {
-                console.log('🔍 [useCurrentSection] INTERSECTION EVENT - entries received:', entries.length);
 
                 // SOLUTION: Don't rely on entries (which only show changes)
                 // Instead, manually check all target elements on every intersection event
                 const sectionSelectors = ['#brainstorm-ideas', '#story-outline'];
                 const allSectionData: { id: string; rect: DOMRect; element: HTMLElement }[] = [];
 
-                console.log('🔍 [useCurrentSection] Manual check of ALL elements:');
                 sectionSelectors.forEach(selector => {
                     const element = document.querySelector(selector) as HTMLElement;
                     if (element) {
                         const rect = element.getBoundingClientRect();
                         const isVisible = rect.top < window.innerHeight && rect.bottom > 0;
 
-                        console.log(`🔍 ${selector} manual check:`, {
-                            top: rect.top,
-                            bottom: rect.bottom,
-                            height: rect.height,
-                            viewportHeight: window.innerHeight,
-                            isVisible,
-                            intersectionRatio: isVisible ? Math.max(0, Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0)) / rect.height : 0
-                        });
+
 
                         if (isVisible) {
                             allSectionData.push({
@@ -73,13 +62,6 @@ export function useCurrentSection(): CurrentSection {
                     // Calculate intersection ratio manually
                     const intersectionRatio = Math.max(0, Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0)) / rect.height;
 
-                    console.log(`🎯 [useCurrentSection] MANUAL CHECK - ${id}:`, {
-                        intersectionRatio,
-                        elementCenter,
-                        viewportCenter,
-                        distanceToCenter,
-                        rect: { top: rect.top, bottom: rect.bottom, height: rect.height }
-                    });
 
                     if (intersectionRatio > 0.03 && (id === 'brainstorm-ideas' || id === 'story-outline')) {
                         sectionsWithData.push({
@@ -110,18 +92,6 @@ export function useCurrentSection(): CurrentSection {
                     activeSection = winner.id as CurrentSection;
                     minDistanceToCenter = winner.distanceToCenter;
 
-                    console.log(`🏆 [useCurrentSection] SELECTION LOGIC:`, {
-                        candidates: sectionsWithData.map(s => ({
-                            id: s.id,
-                            intersectionRatio: s.intersectionRatio,
-                            distanceToCenter: s.distanceToCenter
-                        })),
-                        winner: {
-                            id: winner.id,
-                            intersectionRatio: winner.intersectionRatio,
-                            distanceToCenter: winner.distanceToCenter
-                        }
-                    });
                 }
 
                 // Fallback: if no section was found with good visibility (>3%), try any visible section
@@ -158,11 +128,9 @@ export function useCurrentSection(): CurrentSection {
                         activeSection = winner.id as CurrentSection;
                         minDistanceToCenter = winner.distanceToCenter;
 
-                        console.log('🎯 [useCurrentSection] FALLBACK winner:', winner);
                     }
                 }
 
-                console.log('✅ [useCurrentSection] FINAL RESULT - Setting active section:', activeSection, 'minDistance:', minDistanceToCenter);
                 setCurrentSection(activeSection);
             },
             {
@@ -186,7 +154,6 @@ export function useCurrentSection(): CurrentSection {
                 }
             });
 
-            console.log('[useCurrentSection] Started observing elements:', elementsFound);
         };
 
         // Setup immediately
@@ -195,20 +162,6 @@ export function useCurrentSection(): CurrentSection {
         // Also try again after a short delay in case elements aren't ready yet
         const timeoutId = setTimeout(() => {
             setupObserver();
-
-            // Additional debugging - check element positions
-            sectionSelectors.forEach(selector => {
-                const element = document.querySelector(selector);
-                if (element) {
-                    const rect = element.getBoundingClientRect();
-                    console.log(`[useCurrentSection] Element ${selector} position:`, {
-                        top: rect.top,
-                        bottom: rect.bottom,
-                        height: rect.height,
-                        visible: rect.top < window.innerHeight && rect.bottom > 0
-                    });
-                }
-            });
         }, 500);
 
         return () => {

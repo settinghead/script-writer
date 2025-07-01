@@ -432,11 +432,8 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                             }} />
                             <div>
                                 <Title level={4} style={{ margin: 0, color: '#52c41a' }}>
-                                    ✏️ 正在编辑创意
+                                    ✏️ 编辑创意
                                 </Title>
-                                <Text type="secondary" style={{ fontSize: '14px' }}>
-                                    当前可编辑的创意
-                                </Text>
                             </div>
                         </div>
 
@@ -460,12 +457,10 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                         <ArtifactEditor
                             artifactId={editableArtifactId}
                             fields={BRAINSTORM_IDEA_FIELDS}
-                            statusLabel="📝 已编辑版本"
                             statusColor="green"
                         />
                     </div>
                 )}
-
                 <Divider style={{ borderColor: '#434343', margin: '24px 0' }} />
 
                 {/* Configuration Form */}

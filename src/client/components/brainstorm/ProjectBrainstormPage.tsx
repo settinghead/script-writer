@@ -35,9 +35,15 @@ const IdeaCardWrapper: React.FC<{
   }, [projectData.transformInputs, idea.artifactId]);
 
   // Check if this idea is the chosen one
-  const isChosenIdea = chosenIdea &&
-    chosenIdea.originalArtifactId === idea.originalArtifactId &&
-    chosenIdea.originalArtifactPath === idea.artifactPath;
+  // Handle both original artifacts (collection items) and edited artifacts (standalone)
+  const isChosenIdea = chosenIdea && (
+    // Case 1: Original artifact comparison (for unedited ideas in collections)
+    (chosenIdea.originalArtifactId === idea.originalArtifactId &&
+      chosenIdea.originalArtifactPath === idea.artifactPath) ||
+    // Case 2: Edited artifact comparison (for edited ideas that became standalone)
+    (chosenIdea.editableArtifactId === idea.artifactId &&
+      idea.artifactPath === '$')
+  );
 
   return (
     <BrainstormIdeaEditor
@@ -193,7 +199,7 @@ export default function ProjectBrainstormPage() {
     // Create human transform to start editing
     projectData.createHumanTransform.mutate({
       transformName,
-      sourceArtifactId: clickedIdea.artifactId,
+      sourceArtifactId: clickedIdea.originalArtifactId || clickedIdea.artifactId,
       derivationPath: clickedIdea.artifactPath,
       fieldUpdates: {} // Start with empty updates
     }, {

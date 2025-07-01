@@ -30,21 +30,17 @@ export function useChosenBrainstormIdea(): {
 
         try {
             // Look directly at human transforms for brainstorm idea editing
-            console.log('[useChosenBrainstormIdea] Checking human transforms:', projectData.humanTransforms.length);
 
             for (const humanTransform of projectData.humanTransforms) {
-                console.log('[useChosenBrainstormIdea] Checking transform:', humanTransform);
 
                 // Check if this is a brainstorm idea editing transform
                 if (humanTransform.transform_name &&
                     (humanTransform.transform_name.includes('brainstorm') ||
                         humanTransform.transform_name.includes('edit'))) {
 
-                    console.log('[useChosenBrainstormIdea] Found brainstorm editing transform');
 
                     if (humanTransform.derived_artifact_id) {
                         const derivedArtifact = projectData.getArtifactById(humanTransform.derived_artifact_id);
-                        console.log('[useChosenBrainstormIdea] Derived artifact:', derivedArtifact);
 
                         if (derivedArtifact && (derivedArtifact.type === 'user_input' || derivedArtifact.type === 'brainstorm_idea')) {
                             // Extract index from derivation path
@@ -60,14 +56,6 @@ export function useChosenBrainstormIdea(): {
                                 }
                             }
 
-                            console.log('[useChosenBrainstormIdea] Found chosen idea!', {
-                                originalArtifactId: humanTransform.source_artifact_id,
-                                originalArtifactPath: humanTransform.derivation_path,
-                                editableArtifactId: derivedArtifact.id,
-                                index,
-                                isFromCollection,
-                                derivedType: derivedArtifact.type
-                            });
 
                             return {
                                 chosenIdea: {
@@ -86,7 +74,6 @@ export function useChosenBrainstormIdea(): {
             }
 
             // No chosen idea found
-            console.log('[useChosenBrainstormIdea] No chosen idea found');
             return { chosenIdea: null, isLoading: false, error: null };
 
         } catch (err) {

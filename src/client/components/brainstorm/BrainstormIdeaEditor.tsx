@@ -92,8 +92,8 @@ export const BrainstormIdeaEditor: React.FC<{
             <div style={{ marginBottom: '8px' }}>
                 <div style={{ marginBottom: '4px' }}>
                     <Text style={{
-                        fontSize: '12px',
-                        color: '#d9d9d9',
+                        fontSize: isClickable ? '14px' : '12px',
+                        color: isClickable ? '#ffffff' : '#d9d9d9',
                         fontWeight: 'bold',
                         opacity: isChosen ? 0.6 : 1
                     }}>
@@ -102,8 +102,8 @@ export const BrainstormIdeaEditor: React.FC<{
                 </div>
                 <div>
                     <Text style={{
-                        fontSize: '11px',
-                        color: '#b0b0b0',
+                        fontSize: isClickable ? '13px' : '11px',
+                        color: isClickable ? '#e6e6e6' : '#b0b0b0',
                         lineHeight: '1.4',
                         opacity: isChosen ? 0.6 : 1
                     }}>
@@ -124,7 +124,7 @@ export const BrainstormIdeaEditor: React.FC<{
                         color: '#888',
                         fontStyle: 'italic'
                     }}>
-                        点击编辑
+                        点击选择
                     </Text>
                 </div>
             )}
