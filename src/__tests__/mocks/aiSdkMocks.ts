@@ -42,13 +42,25 @@ export function createCachedStreamObjectMock() {
             // Fallback to mock data based on schema
             console.warn(`No cached response found for key: ${cacheKey.substring(0, 8)}...`);
             const prompt = options.messages?.map(m => m.content).join('\n') || 'default-prompt';
-            if (prompt.includes('outline') || prompt.includes('Outline') || prompt.includes('大纲')) {
-                return createFallbackOutlineObject();
-            } else if (prompt.includes('chronicles') || prompt.includes('时序') || prompt.includes('timeline') || prompt.includes('Chronological') || prompt.includes('时间顺序') || prompt.includes('stages')) {
+            console.log(`[Mock] Checking prompt for fallback detection: ${prompt.substring(0, 200)}...`);
+            console.log(`[Mock] Contains 'Chronological Outline'?`, prompt.includes('Chronological Outline'));
+            console.log(`[Mock] Contains '剧本设定'?`, prompt.includes('剧本设定'));
+            console.log(`[Mock] Contains 'Story Settings'?`, prompt.includes('Story Settings'));
+            // Check for chronicles first - when asking to CREATE a chronological outline
+            if (prompt.includes('chronicles') || prompt.includes('template: chronicles') || prompt.includes('templateName: chronicles') || (prompt.includes('Chronological Outline') && prompt.includes('创作一个**时序大纲')) || (prompt.includes('时序大纲') && (prompt.includes('创作一个**时序大纲') || prompt.includes('请创作一个**时序大纲'))) || prompt.includes('时间顺序') || prompt.includes('timeline') || prompt.includes('stages')) {
+                console.log('[Mock] Using chronicles fallback');
                 return createFallbackChroniclesObject();
+            } else if (prompt.includes('outline_settings') || prompt.includes('template: outline_settings') || prompt.includes('templateName: outline_settings') || prompt.includes('剧本设定') || prompt.includes('Story Settings')) {
+                console.log('[Mock] Using outline settings fallback');
+                return createFallbackOutlineObject();
+            } else if (prompt.includes('outline') || prompt.includes('Outline') || prompt.includes('大纲')) {
+                console.log('[Mock] Using generic outline fallback');
+                return createFallbackOutlineObject();
             } else if (prompt.includes('edit') || prompt.includes('改进') || prompt.includes('修改')) {
+                console.log('[Mock] Using edit fallback');
                 return createFallbackBrainstormEditObject();
             } else {
+                console.log('[Mock] Using default brainstorm fallback');
                 return createFallbackStreamObject();
             }
         }
@@ -97,6 +109,8 @@ export function createCachedStreamTextMock(mockOptions?: { onToolCall?: (toolNam
  */
 function createStreamObjectFromCache(cachedResponse: CachedResponse) {
     const chunks = cachedResponse.chunks.filter(c => c.type === 'object');
+
+    console.log('[Mock] Using cached response with finalResult:', cachedResponse.metadata.finalResult);
 
     return {
         partialObjectStream: createAsyncIteratorFromChunks(chunks),
@@ -228,6 +242,8 @@ function createFallbackChroniclesObject() {
             "第57-60集：圆满结局 - 最终走向幸福，事业爱情双丰收"
         ]
     };
+
+    console.log('[Mock] Using chronicles fallback with data:', mockChroniclesData);
 
     return {
         partialObjectStream: createAsyncIterator([
