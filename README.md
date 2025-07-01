@@ -136,6 +136,7 @@ Second Run: Cache HIT (77 chunks) → Near-instantaneous replay
 
 **Advanced UI Features**:
 - **Interactive Workflow Visualization** - Real-time project progress with intelligent navigation
+- **Dual-Mode Project Navigation** - Both visual workflow and hierarchical tree views with synchronized highlighting
 - **Entity-Specific Mutation States** - Isolated save indicators prevent UI interference
 - **Advanced Debounced Auto-Save** - Field-level debouncing with request cancellation
 - **Dynamic Streaming UI** - Controls render eagerly as JSON data arrives
@@ -146,6 +147,16 @@ Second Run: Cache HIT (77 chunks) → Near-instantaneous replay
 - **Main Path Algorithm** - Intelligent detection of primary progression
 - **Interactive Navigation** - Click nodes to scroll to project sections
 - **Current Section Highlighting** - Dynamic highlighting with smooth transitions
+
+**Project Tree View**:
+- **Hierarchical Navigation** - Traditional tree structure complementing visual workflow
+- **Dual-Tab Interface** - Switchable between workflow diagram (流程图) and tree view (目录树)
+- **Smart Content Organization** - Automatic structuring of brainstorm ideas, outline sections, and project artifacts
+- **Synchronized Highlighting** - Real-time glow effects matching current scroll position
+- **Responsive Design** - Collapsible sidebar on desktop, drawer interface on mobile
+- **Interactive Tree Nodes** - Click-to-navigate functionality with smooth scrolling
+- **Status Indicators** - Visual markers for processing, completed, and edited content
+- **Theme-Aware Styling** - Color-coded highlighting per content type (blue for brainstorm, purple for outline)
 
 ### 📊 Development & Debugging Tools
 
@@ -217,7 +228,9 @@ CREATE TABLE human_transforms (
 - **TanStack Query** - Server state management with intelligent caching
 - **Zustand** - Global client state for UI interactions
 - **Electric SQL React hooks** - Real-time data synchronization
-- **Ant Design** - Component library with dark theme
+- **Ant Design** - Component library with dark theme and Tree component integration
+- **React Flow** - Workflow visualization with interactive node navigation
+- **Custom Tree Components** - Hierarchical project navigation with synchronized highlighting
 
 **State Management Pattern**:
 ```typescript
@@ -229,6 +242,11 @@ const { chatSidebarWidth, setChatSidebarWidth } = useProjectStore();
 
 // Real-time sync via Electric SQL
 const { results: chatMessages } = useShape(chatMessagesShape);
+
+// Tree view with lineage resolution
+const { workflowNodes } = useWorkflowNodes();
+const { ideas } = useEffectiveBrainstormIdeas();
+const currentSection = useCurrentSection();
 ```
 
 ### Backend Architecture
