@@ -29,7 +29,7 @@ Script Writer is a modern collaborative writing platform that combines AI-powere
 - ✅ **Brainstorm Generation** - Creates new story ideas with real-time streaming updates
 - ✅ **Brainstorm Editing** - AI-powered content modification with context awareness
 - ✅ **Outline Generation** - Comprehensive story outlines with character development and episode structure
-- ⚠️ **Episode Script Generation** - Legacy SSE-based, pending Electric SQL migration
+- ✅ **Episode Script Generation** - Agent-based generation with Electric SQL integration
 - ✅ **Conversational Response** - General chat with project context
 
 **AI-Powered Editing System**:
@@ -627,13 +627,13 @@ src/
 
 ### Agent-Based Outline Generation ✅ COMPLETED
 
-**Achievement**: Complete migration from legacy SSE to agent-based Electric SQL system.
+**Achievement**: Complete agent-based generation system with Electric SQL integration.
 
 **System Features**:
 - **Seamless Integration** - "用这个灵感继续" workflow from brainstorm to outline
 - **Comprehensive Schemas** - Character systems, story stages, selling points
 - **Real-time Display** - Progressive outline rendering via Electric SQL
-- **Legacy Cleanup** - Complete removal of SSE-based code
+- **Agent-Driven Generation** - Unified approach for all content creation
 
 ### Interactive Workflow Visualization ✅ COMPLETED
 

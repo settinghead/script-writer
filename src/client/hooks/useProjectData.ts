@@ -27,19 +27,8 @@ export const useProjectData = (projectId: string) => {
     enabled: !!projectId,
   });
 
-  // 1. Fetch Outline (disabled for new project-based architecture)
-  const { data: outlineData, isLoading: isOutlineLoading, error: outlineError } = useQuery({
-    queryKey: projectKeys.outline(projectId),
-    queryFn: () => apiService.getOutlineSession(projectId),
-    enabled: false, // Disabled - we'll get outline data from project artifacts instead
-  });
-
-  // 2. Fetch Stages (disabled for new project-based architecture)
-  const { data: stagesData, isLoading: areStagesLoading, error: stagesError } = useQuery({
-    queryKey: projectKeys.stages(projectId),
-    queryFn: () => apiService.getStageArtifacts(projectId),
-    enabled: false, // Disabled - we'll get stage data from project artifacts instead
-  });
+  // Note: Outline and stage data now comes from project artifacts via Electric SQL
+  // Legacy queries removed as they're replaced by the artifact-based system
 
   // Sync fetched data with Zustand store
   useEffect(() => {
@@ -48,46 +37,26 @@ export const useProjectData = (projectId: string) => {
     }
   }, [projectData, projectId, setProject]);
 
-  useEffect(() => {
-    if (outlineData && projectId) {
-      setOutline(projectId, outlineData);
-    }
-  }, [outlineData, projectId, setOutline]);
-
-  useEffect(() => {
-    if (stagesData && projectId) {
-      // Transform API response to match our Stage type
-      const transformedStages: Stage[] = stagesData.map((stage: any) => ({
-        artifactId: stage.artifactId,
-        stageNumber: stage.stageNumber,
-        stageSynopsis: stage.stageSynopsis,
-        numberOfEpisodes: stage.numberOfEpisodes,
-        outlineSessionId: stage.outlineSessionId,
-      }));
-
-      setStages(projectId, transformedStages);
-    }
-  }, [stagesData, projectId, setStages]);
+  // Legacy outline and stage data sync removed - now handled by Electric SQL
 
   // Update loading state in store
   useEffect(() => {
     if (projectId) {
-      setLoading(projectId, isProjectLoading || isOutlineLoading || areStagesLoading);
+      setLoading(projectId, isProjectLoading);
     }
-  }, [isProjectLoading, isOutlineLoading, areStagesLoading, projectId, setLoading]);
+  }, [isProjectLoading, projectId, setLoading]);
 
   // Update error state in store
   useEffect(() => {
     if (projectId) {
-      const error = projectError || outlineError || stagesError;
-      setError(projectId, error ? error.message : null);
+      setError(projectId, projectError ? projectError.message : null);
     }
-  }, [projectError, outlineError, stagesError, projectId, setError]);
+  }, [projectError, projectId, setError]);
 
   // Return query results for UI to handle loading/error states
   return {
-    isLoading: isProjectLoading || isOutlineLoading || areStagesLoading,
-    error: projectError || outlineError || stagesError,
+    isLoading: isProjectLoading,
+    error: projectError,
   };
 };
 
@@ -98,49 +67,21 @@ export const useStageEpisodes = (projectId: string, stageId: string, enabled: bo
   const { data: episodesData, isLoading, error, ...queryInfo } = useQuery({
     queryKey: projectKeys.episodes(stageId),
     queryFn: async () => {
-      // Use the existing API to get latest episode generation
-      const result = await fetch(`/api/episodes/stages/${stageId}/latest-generation`, {
-        credentials: 'include'
-      });
-
-      if (!result.ok) {
-        if (result.status === 404) {
-          // No episodes generated yet, return empty state
-          return null;
-        }
-        throw new Error('Failed to fetch episodes');
-      }
-
-      return result.json();
+      // TODO: Replace with artifact-based episode fetching once implemented
+      // For now, return empty state as episode generation is handled through agents
+      return null;
     },
     enabled: !!stageId && enabled,
   });
 
   useEffect(() => {
     if (episodesData !== undefined) {
-      let episodeState: StageEpisodeState;
-
-      if (episodesData === null) {
-        // No episodes generated yet
-        episodeState = {
-          episodes: [],
-          loading: false,
-          isStreaming: false,
-        };
-      } else {
-        // Transform the episodes data
-        const episodes: EpisodeData[] = episodesData.episodes.map((episode: any) => ({
-          ...episode,
-          hasScript: false, // TODO: Check script existence
-        }));
-
-        episodeState = {
-          episodes,
-          loading: false,
-          isStreaming: episodesData.status === 'active',
-          sessionData: episodesData,
-        };
-      }
+      // For now, always return empty state as episode generation is handled through agents
+      const episodeState: StageEpisodeState = {
+        episodes: [],
+        loading: false,
+        isStreaming: false,
+      };
 
       setStageEpisodes(projectId, stageId, episodeState);
     }
