@@ -11,13 +11,13 @@ Script Writer combines AI-powered content generation with sophisticated editing 
 - **Chinese Short Drama Focus** - Specialized for 抖音, 快手, and other Chinese platforms
 - **去脸谱化 Content** - Emphasizes modern, non-stereotypical characters and plots
 - **Real-time Collaboration** - Multiple creators can work simultaneously
-- **Complete Project Workflow** - 灵感 → 大纲 → 分集 → 剧本 pipeline
+- **Complete Project Workflow** - 灵感 → 剧本设定 → 时序大纲 → 分集 → 剧本 pipeline
 
 ## Application-Specific Features
 
 ### 🎭 Script Creation Pipeline
 
-**Complete Workflow**: 灵感生成 → 大纲制作 → 分集规划 → 剧本创作
+**Complete Workflow**: 灵感生成 → 剧本设定 → 时序大纲 → 分集规划 → 剧本创作
 
 **Brainstorming (灵感生成)**:
 - **Platform-Specific Generation** - Optimized for 抖音, 快手, 小红书, etc.
@@ -26,12 +26,18 @@ Script Writer combines AI-powered content generation with sophisticated editing 
 - **AI-Powered Editing** - "让这些故事更现代一些，加入一些科技元素"
 - **Real-time Streaming** - Ideas appear as they're generated
 
-**Outline Generation (大纲制作)**:
-- **Comprehensive Structure** - Characters, story stages, selling points (卖点/爽点)
-- **Character System** - Normalized character types (male_lead, female_lead, etc.)
-- **Episode Planning** - ~2000 character synopsis divided into staged progression
-- **Chronological Timeline** - Complete story timeline from earliest events to conclusion (story order, not broadcast order)
-- **Seamless Integration** - "用这个灵感继续" workflow from brainstorm to outline
+**Outline Settings (剧本设定)**:
+- **Character Development** - Normalized character types (male_lead, female_lead, etc.) with detailed backgrounds
+- **Story Foundation** - Genre, target audience, platform settings, and commercial positioning
+- **Setting & Context** - Time period, location, and social background for the story
+- **Commercial Elements** - Selling points (卖点) and satisfaction points (爽点) for audience engagement
+- **Seamless Integration** - "生成剧本框架" workflow from brainstorm to settings
+
+**Chronicles (时序大纲)**:
+- **Chronological Structure** - Complete story timeline from earliest events to conclusion (story order, not broadcast order)
+- **Episode Planning** - Staged progression with detailed synopsis for each story phase
+- **Context-Aware Generation** - References outline settings for consistent character and world development
+- **Sequential Workflow** - Generated after outline settings are established
 
 **Episode Generation (分集规划)**:
 - **Agent-Based Generation** - Powered by Transform Artifact Framework
@@ -45,7 +51,8 @@ Built on the [Transform Artifact Framework](./TRANSFORM_ARTIFACT_FRAMEWORK.md) a
 **Available Tools**:
 - ✅ **Brainstorm Generation** - Creates new story ideas with platform-specific optimization
 - ✅ **Brainstorm Editing** - AI-powered content modification with context awareness
-- ✅ **Outline Generation** - Comprehensive story outlines with character development
+- ✅ **Outline Settings Generation** - Character development, story foundation, and commercial positioning
+- ✅ **Chronicles Generation** - Chronological story timeline and episode progression
 - ✅ **Episode Script Generation** - Agent-based generation with Electric SQL integration
 - ✅ **Conversational Response** - General chat with project context
 
@@ -102,7 +109,8 @@ UI Update: Real-time display with edit indicators
 
 **Content Types**:
 - **Brainstorm Ideas** - Initial story concepts with platform targeting
-- **Story Outlines** - Detailed character and plot development
+- **Outline Settings** - Character development, story foundation, and commercial elements
+- **Chronicles** - Chronological story timeline and staged progression
 - **Episode Synopses** - Individual episode breakdowns
 - **Script Content** - Full dialogue and scene descriptions
 
@@ -150,16 +158,21 @@ export const BrainstormIdeaSchema = z.object({
 });
 ```
 
-**Outline Schema**:
+**Outline Settings Schema**:
 ```typescript
-export const OutlineSchema = z.object({
+export const OutlineSettingsOutputSchema = z.object({
   title: z.string(),
-  synopsis: z.string(),
-  characters: z.array(CharacterDetailSchema),
-  selling_points: z.array(z.string()),    // 卖点
+  genre: z.string(),
+  target_audience: z.string(),
+  platform: z.string(),
+  selling_points: z.array(z.string()),     // 卖点
   satisfaction_points: z.array(z.string()), // 爽点
-  synopsis_stages: z.array(z.string()),    // ~2000 characters total
-  total_episodes: z.number()
+  setting: z.object({
+    time_period: z.string(),
+    location: z.string(),
+    social_context: z.string()
+  }),
+  characters: z.array(CharacterDetailSchema)
 });
 
 export const CharacterDetailSchema = z.object({
@@ -167,9 +180,17 @@ export const CharacterDetailSchema = z.object({
   type: z.enum(['male_lead', 'female_lead', 'male_second', 'female_second', 
                 'male_supporting', 'female_supporting', 'antagonist', 'other']),
   age: z.string(),
+  occupation: z.string(),
   personality: z.string(),
-  background: z.string(),
-  role_in_story: z.string()
+  appearance: z.string(),
+  background: z.string()
+});
+```
+
+**Chronicles Schema**:
+```typescript
+export const ChroniclesOutputSchema = z.object({
+  synopsis_stages: z.array(z.string())     // Chronological story progression
 });
 ```
 
@@ -208,9 +229,10 @@ npm run dev
 1. **Login** - Use dropdown to select test user (xiyang, xiaolin)
 2. **Create Project** - Start with a new script project
 3. **Brainstorm Ideas** - Generate initial story concepts
-4. **Create Outline** - Use "用这个灵感继续" to develop full outline
-5. **Generate Episodes** - Create detailed episode breakdowns
-6. **Write Scripts** - Develop full dialogue and scenes
+4. **Generate Outline Settings** - Use "生成剧本框架" to create character and story foundation
+5. **Create Chronicles** - Generate chronological story timeline and episode progression
+6. **Generate Episodes** - Create detailed episode breakdowns
+7. **Write Scripts** - Develop full dialogue and scenes
 
 ## Available Scripts
 
@@ -256,7 +278,8 @@ npm run dev
 ### Content Management
 - `POST /api/artifacts/:id/human-transform` - Execute human edit transform
 - `GET /api/artifacts` - List artifacts with filtering
-- `GET /api/projects/:projectId/idea-outlines` - Get outlines for brainstorm ideas
+- `GET /api/projects/:projectId/outline-settings` - Get outline settings for brainstorm ideas
+- `GET /api/projects/:projectId/chronicles` - Get chronicles for outline settings
 
 ### Electric SQL Proxy
 - `GET /api/electric/v1/shape` - Authenticated proxy with user scoping

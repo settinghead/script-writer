@@ -83,7 +83,23 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                     >
                         <Space direction="vertical" size="small" style={{ width: '100%' }}>
                             <Text strong>主要群体：</Text>
-                            <Text>{outlineSettings.target_audience}</Text>
+                            <Text>
+                                {typeof outlineSettings.target_audience === 'string'
+                                    ? outlineSettings.target_audience
+                                    : typeof outlineSettings.target_audience === 'object' && outlineSettings.target_audience !== null && 'demographic' in outlineSettings.target_audience
+                                        ? (outlineSettings.target_audience as any).demographic
+                                        : '未指定'}
+                            </Text>
+                            {typeof outlineSettings.target_audience === 'object' && outlineSettings.target_audience !== null && 'core_themes' in outlineSettings.target_audience && (
+                                <div style={{ marginTop: '8px' }}>
+                                    <Text strong>核心主题：</Text>
+                                    <div style={{ marginTop: '4px' }}>
+                                        {((outlineSettings.target_audience as any).core_themes as string[]).map((theme: string, index: number) => (
+                                            <Tag key={index} style={{ marginBottom: '4px' }}>{theme}</Tag>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </Space>
                     </Card>
                 )}
