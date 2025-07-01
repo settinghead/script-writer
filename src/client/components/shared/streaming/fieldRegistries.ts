@@ -115,12 +115,7 @@ export const outlineFieldRegistry: FieldDefinition[] = [
     label: "集数",
     order: 9.2
   },
-  {
-    path: "synopsis_stages[*].timeframe",
-    component: AutoSaveTextField,
-    label: "时间跨度",
-    order: 9.3
-  },
+
   {
     path: "synopsis_stages[*].startingCondition",
     component: AutoSaveTextAreaField,

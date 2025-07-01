@@ -30,10 +30,8 @@ const CharacterSchema = z.object({
 const StageSchema = z.object({
     title: z.string(),
     stageSynopsis: z.string(),
-    timeframe: z.string(),
     keyPoints: z.array(z.object({
         event: z.string(),
-        timeSpan: z.string(),
         emotionArcs: z.array(z.object({
             characters: z.array(z.string()),
             content: z.string()

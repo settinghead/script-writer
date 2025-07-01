@@ -17,7 +17,6 @@ export const episodeSynopsisGenerationTemplate = {
 
 **阶段信息**：
 - **阶段梗概**: %%params.stageSynopsis%%
-- **时间跨度**: %%params.timeframe%%
 - **开始状态**: %%params.startingCondition%%
 - **结束状态**: %%params.endingCondition%%
 - **起始事件**: %%params.stageStartEvent%%
@@ -229,7 +228,6 @@ export const episodeSynopsisGenerationTemplate = {
     'params.numberOfEpisodes',
     'params.stageSynopsis',
     'params.customRequirements',
-    'params.timeframe',
     'params.startingCondition',
     'params.endingCondition',
     'params.stageStartEvent',
@@ -248,7 +246,7 @@ export const episodeSynopsisGenerationTemplate = {
     'params.endingEpisode',
     'params.episodeSpecificInstructions'
   ]
-}; 
+};
 
 
 
@@ -261,7 +259,7 @@ export function generateEpisodeSpecificInstructions(startingEpisode: number, end
 
   // First episode special requirements
   if (startingEpisode === 1) {
-      instructions.push(`
+    instructions.push(`
 **📺 第1集特殊要求**：
 - **开篇吸引力**：第一集的开头必须用吸引人， 高能量的方式，快速把主要人物的背景、剧中的初始关系都交代清楚
 - **人物碰撞设计**：开头场景选择一些人物短期快速能碰撞的场景，制造戏剧冲突和张力

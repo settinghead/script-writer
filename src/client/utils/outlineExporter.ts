@@ -21,14 +21,12 @@ interface OutlineExportData {
         synopsis_stages?: Array<{
             stageSynopsis: string;
             numberOfEpisodes: number;
-            timeframe?: string;
             startingCondition?: string;
             endingCondition?: string;
             stageStartEvent?: string;
             stageEndEvent?: string;
             keyMilestones?: Array<{
                 event: string;
-                timeSpan: string;
             }>;
             relationshipLevel?: string;
             emotionalArc?: string;
@@ -200,11 +198,8 @@ export function formatOutlineForExport(data: OutlineExportData): string {
             sections.push("");
 
             // Temporal Constraints (🟢)
-            if (stage.timeframe || stage.startingCondition || stage.endingCondition) {
-                sections.push("🟢 时间约束：");
-                if (stage.timeframe) {
-                    sections.push(`   时间框架：${stage.timeframe}`);
-                }
+            if (stage.startingCondition || stage.endingCondition) {
+
                 if (stage.startingCondition) {
                     sections.push(`   开始条件：${stage.startingCondition}`);
                 }
@@ -227,7 +222,7 @@ export function formatOutlineForExport(data: OutlineExportData): string {
                     sections.push("   关键节点：");
                     stage.keyMilestones.forEach((milestone, mIndex) => {
                         if (milestone.event.trim()) {
-                            sections.push(`     ${mIndex + 1}. ${milestone.event} (${milestone.timeSpan})`);
+                            sections.push(`     ${mIndex + 1}. ${milestone.event} `);
                         }
                     });
                 }

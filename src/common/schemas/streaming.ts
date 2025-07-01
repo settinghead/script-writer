@@ -33,14 +33,12 @@ export const CharacterSchema = z.object({
 export const SynopsisStageSchema = z.object({
     stageSynopsis: z.string(),
     numberOfEpisodes: z.number(),
-    timeframe: z.string().optional(),
     startingCondition: z.string().optional(),
     endingCondition: z.string().optional(),
     stageStartEvent: z.string().optional(),
     stageEndEvent: z.string().optional(),
     keyMilestones: z.array(z.object({
         event: z.string(),
-        timeSpan: z.string()
     })).optional(),
     relationshipLevel: z.string().optional(),
     emotionalArc: z.string().optional(),

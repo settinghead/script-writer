@@ -306,7 +306,7 @@ export class ChatMessageRepository {
             case 'brainstorm':
                 return `我已根据您的请求生成了一些创意故事想法。`;
             case 'outline':
-                return `我已为您创建了详细的时间顺序大纲。`;
+                return `我已为您创建了详细的时序大纲。`;
             case 'script':
                 return `我已根据您的规格编写了剧本。`;
             case 'episode':

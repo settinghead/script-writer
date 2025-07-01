@@ -236,12 +236,7 @@ export const OutlineDisplay: React.FC<OutlineDisplayProps> = ({
                                     style={{ backgroundColor: '#1f1f1f', border: '1px solid #434343', marginBottom: '8px' }}
                                 >
                                     <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                                        {stage.timeframe && (
-                                            <div>
-                                                <Text strong>时间跨度：</Text>
-                                                <Tag color="blue">{stage.timeframe}</Tag>
-                                            </div>
-                                        )}
+
                                         {stage.stageSynopsis && (
                                             <Paragraph style={{ margin: 0, lineHeight: 1.6 }}>
                                                 {stage.stageSynopsis}
@@ -254,9 +249,7 @@ export const OutlineDisplay: React.FC<OutlineDisplayProps> = ({
                                                     {stage.keyPoints.map((point, pointIndex) => (
                                                         <div key={pointIndex} style={{ marginBottom: '8px', padding: '8px', backgroundColor: '#262626', borderRadius: '4px' }}>
                                                             <Text strong>{point.event}</Text>
-                                                            {point.timeSpan && (
-                                                                <div><Text type="secondary">时间: {point.timeSpan}</Text></div>
-                                                            )}
+
                                                             {point.emotionArcs && point.emotionArcs.length > 0 && (
                                                                 <div style={{ marginTop: '4px' }}>
                                                                     <Text type="secondary">情感变化: </Text>

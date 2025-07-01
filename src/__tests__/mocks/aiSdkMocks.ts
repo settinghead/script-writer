@@ -257,11 +257,9 @@ function createFallbackOutlineObject() {
             {
                 title: "误会相遇",
                 stageSynopsis: "女主入职遇到男主，因误会开始特殊关系",
-                timeframe: "第1-2集",
                 keyPoints: [
                     {
                         event: "初次相遇",
-                        timeSpan: "第1集",
                         emotionArcs: [
                             {
                                 characters: ["林慕琛", "夏栀"],
@@ -280,11 +278,9 @@ function createFallbackOutlineObject() {
             {
                 title: "情感升温",
                 stageSynopsis: "在误会中两人感情逐渐升温",
-                timeframe: "第3-4集",
                 keyPoints: [
                     {
                         event: "感情发展",
-                        timeSpan: "第3-4集",
                         emotionArcs: [
                             {
                                 characters: ["林慕琛", "夏栀"],

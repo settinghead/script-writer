@@ -63,11 +63,9 @@ export const mockArtifacts = {
                 {
                     title: '相遇篇',
                     stageSynopsis: '夏栀入职林氏集团，与总裁林慕琛初次相遇',
-                    timeframe: '第1-3集',
                     keyPoints: [
                         {
                             event: '夏栀入职',
-                            timeSpan: '第1集',
                             emotionArcs: [
                                 {
                                     characters: ['夏栀'],
@@ -86,11 +84,9 @@ export const mockArtifacts = {
                 {
                     title: '误会篇',
                     stageSynopsis: '林慕琛误以为夏栀是富家千金，开始特殊对待',
-                    timeframe: '第4-6集',
                     keyPoints: [
                         {
                             event: '误会产生',
-                            timeSpan: '第4集',
                             emotionArcs: [
                                 {
                                     characters: ['林慕琛'],

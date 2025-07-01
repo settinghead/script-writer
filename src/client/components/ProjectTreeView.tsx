@@ -184,7 +184,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
             switch (node.type) {
                 case 'outline':
                     icon = <BookOutlined style={{ color: nodeHighlighted ? '#722ed1' : undefined }} />;
-                    title = '时间顺序大纲';
+                    title = '时序大纲';
 
                     // Add outline sections as children
                     try {
