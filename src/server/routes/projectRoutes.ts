@@ -127,7 +127,7 @@ export function createProjectRoutes(
 故事类型：${genreText}
 ${other_requirements ? `其他要求：${other_requirements}` : ''}
 
-请生成几个有创意的故事想法，要符合平台特点和类型要求。`;
+请生成3个有创意的故事想法。`;
 
             // 4. Start the general agent with brainstorm context (this is async and won't be awaited)
             agentService.runGeneralAgent(project.id, user.id, {

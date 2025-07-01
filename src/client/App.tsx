@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import '@ant-design/v5-patch-for-react-19';
 
-import ReactDOM from 'react-dom/client';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
@@ -12,8 +11,6 @@ import { ProjectDataProvider } from './contexts/ProjectDataContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './components/LoginPage';
 import ProjectsList from './components/ProjectList';
-import ChatTab from './components/ChatTab';
-import ScriptTab from './components/ScriptTab';
 import ProjectLayout from './components/ProjectLayout';
 import Breadcrumb from './components/Breadcrumb';
 import StagewiseToolbar from './components/StagewiseToolbar';
@@ -66,16 +63,8 @@ const AppRoutes: React.FC = () => {
         </ProtectedRoute>
       }>
       </Route>
-      <Route path="/chat" element={
-        <ProtectedRoute>
-          <ChatTab />
-        </ProtectedRoute>
-      } />
-      <Route path="/script" element={
-        <ProtectedRoute>
-          <ScriptTab />
-        </ProtectedRoute>
-      } />
+
+
       <Route path="/new-project-from-brainstorming" element={
         <ProtectedRoute>
           <NewProjectFromBrainstormPage />
