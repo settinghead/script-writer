@@ -104,8 +104,8 @@ export interface WorkflowCascadingParamsV1 {
     // Add more cascading params as needed
 }
 
-// Job parameters for outline generation
-export interface OutlineJobParamsV1 {
+// Job parameters for chronological outline generation
+export interface ChronologicalOutlineJobParamsV1 {
     sourceArtifactId: string;
     totalEpisodes?: number;
     episodeDuration?: number;
@@ -239,7 +239,7 @@ export type TypedArtifact =
     | ArtifactWithData<'user_input_schema', 'v1', UserInputV1>
     | ArtifactWithData<'brainstorm_params_schema', 'v1', BrainstormParamsV1>
     | ArtifactWithData<'brainstorming_job_params', 'v1', BrainstormingJobParamsV1>
-    | ArtifactWithData<'outline_job_params', 'v1', OutlineJobParamsV1>
+    | ArtifactWithData<'chronological_outline_job_params', 'v1', ChronologicalOutlineJobParamsV1>
     | ArtifactWithData<'outline_session', 'v1', OutlineSessionV1>
     | ArtifactWithData<'outline_title_schema', 'v1', OutlineTitleV1>
     | ArtifactWithData<'outline_genre_schema', 'v1', OutlineGenreV1>

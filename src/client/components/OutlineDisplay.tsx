@@ -14,43 +14,43 @@ export const OutlineDisplay: React.FC<OutlineDisplayProps> = ({
 }) => {
     const projectData = useProjectData()
 
-    // Get outline artifacts
-    const outlineArtifacts = useMemo(() => {
+    // Get chronological outline artifacts
+    const chronologicalOutlineArtifacts = useMemo(() => {
         return projectData.artifacts.filter(artifact =>
             artifact.schema_type === 'outline_schema' &&
             artifact.data
         );
     }, [projectData.artifacts]);
 
-    // Parse outline data
-    const outlines = useMemo(() => {
-        return outlineArtifacts.map(artifact => {
+    // Parse chronological outline data
+    const chronologicalOutlines = useMemo(() => {
+        return chronologicalOutlineArtifacts.map(artifact => {
             try {
                 return JSON.parse(artifact.data) as OutlineGenerationOutput;
             } catch (error) {
-                console.warn('Failed to parse outline data:', error);
+                console.warn('Failed to parse chronological outline data:', error);
                 return null;
             }
         }).filter(outline => outline !== null) as OutlineGenerationOutput[];
-    }, [outlineArtifacts]);
+    }, [chronologicalOutlineArtifacts]);
 
-    const outline = useMemo(() => {
-        if (outlines?.length > 1) {
+    const chronologicalOutline = useMemo(() => {
+        if (chronologicalOutlines?.length > 1) {
             return "multiple-outline-error" as const;
         }
-        return outlines?.[0] ?? null;
-    }, [outlines]);
+        return chronologicalOutlines?.[0] ?? null;
+    }, [chronologicalOutlines]);
 
-    if (outline === "multiple-outline-error") {
-        return <div>Error: multiple outlines found</div>
+    if (chronologicalOutline === "multiple-outline-error") {
+        return <div>Error: multiple chronological outlines found</div>
     }
 
-    if (!outline) {
+    if (!chronologicalOutline) {
         return null;
     }
 
     return (
-        <div id="story-outline" style={{ marginTop: '24px' }}>
+        <div id="chronological-outline" style={{ marginTop: '24px' }}>
             <Card
                 style={{
                     backgroundColor: '#1f1f1f',
@@ -60,40 +60,40 @@ export const OutlineDisplay: React.FC<OutlineDisplayProps> = ({
                 styles={{ body: { padding: '24px' } }}
             >
                 {/* Header Section - only show if title or genre is available */}
-                {(outline.title || outline.genre) && (
+                {(chronologicalOutline.title || chronologicalOutline.genre) && (
                     <div style={{ marginBottom: '24px', textAlign: 'center' }}>
-                        {outline.title && (
+                        {chronologicalOutline.title && (
                             <Title level={2} style={{ color: '#fff', marginBottom: '8px' }}>
-                                {outline.title}
+                                {chronologicalOutline.title}
                             </Title>
                         )}
-                        {outline.genre && (
+                        {chronologicalOutline.genre && (
                             <Tag color="purple" style={{ fontSize: '14px', padding: '4px 12px' }}>
-                                {outline.genre}
+                                {chronologicalOutline.genre}
                             </Tag>
                         )}
                     </div>
                 )}
 
                 {/* Target Audience - only show if available */}
-                {outline.target_audience && (
+                {chronologicalOutline.target_audience && (
                     <Card
                         size="small"
                         title={<span><UserOutlined /> 目标受众</span>}
                         style={{ marginBottom: '16px', backgroundColor: '#262626', border: '1px solid #434343' }}
                     >
                         <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                            {outline.target_audience.demographic && (
+                            {chronologicalOutline.target_audience.demographic && (
                                 <>
                                     <Text strong>主要群体：</Text>
-                                    <Text>{outline.target_audience.demographic}</Text>
+                                    <Text>{chronologicalOutline.target_audience.demographic}</Text>
                                 </>
                             )}
-                            {outline.target_audience.core_themes && outline.target_audience.core_themes.length > 0 && (
+                            {chronologicalOutline.target_audience.core_themes && chronologicalOutline.target_audience.core_themes.length > 0 && (
                                 <>
                                     <Text strong>核心主题：</Text>
                                     <div>
-                                        {outline.target_audience.core_themes.map((theme, index) => (
+                                        {chronologicalOutline.target_audience.core_themes.map((theme: string, index: number) => (
                                             <Tag key={index} color="blue" style={{ marginBottom: '4px' }}>
                                                 {theme}
                                             </Tag>
@@ -106,32 +106,32 @@ export const OutlineDisplay: React.FC<OutlineDisplayProps> = ({
                 )}
 
                 {/* Selling Points & Satisfaction Points - only show if available */}
-                {(outline.selling_points || outline.satisfaction_points) && (
+                {(chronologicalOutline.selling_points || chronologicalOutline.satisfaction_points) && (
                     <Row gutter={16} style={{ marginBottom: '16px' }}>
-                        {outline.selling_points && outline.selling_points.length > 0 && (
-                            <Col span={outline.satisfaction_points && outline.satisfaction_points.length > 0 ? 12 : 24}>
+                        {chronologicalOutline.selling_points && chronologicalOutline.selling_points.length > 0 && (
+                            <Col span={chronologicalOutline.satisfaction_points && chronologicalOutline.satisfaction_points.length > 0 ? 12 : 24}>
                                 <Card
                                     size="small"
                                     title={<span><StarOutlined /> 产品卖点</span>}
                                     style={{ backgroundColor: '#262626', border: '1px solid #434343', height: '100%' }}
                                 >
                                     <Space direction="vertical" size="small">
-                                        {outline.selling_points.map((point, index) => (
+                                        {chronologicalOutline.selling_points.map((point: string, index: number) => (
                                             <Text key={index}>• {point}</Text>
                                         ))}
                                     </Space>
                                 </Card>
                             </Col>
                         )}
-                        {outline.satisfaction_points && outline.satisfaction_points.length > 0 && (
-                            <Col span={outline.selling_points && outline.selling_points.length > 0 ? 12 : 24}>
+                        {chronologicalOutline.satisfaction_points && chronologicalOutline.satisfaction_points.length > 0 && (
+                            <Col span={chronologicalOutline.selling_points && chronologicalOutline.selling_points.length > 0 ? 12 : 24}>
                                 <Card
                                     size="small"
                                     title={<span><HeartOutlined /> 情感爽点</span>}
                                     style={{ backgroundColor: '#262626', border: '1px solid #434343', height: '100%' }}
                                 >
                                     <Space direction="vertical" size="small">
-                                        {outline.satisfaction_points.map((point, index) => (
+                                        {chronologicalOutline.satisfaction_points.map((point: string, index: number) => (
                                             <Text key={index}>• {point}</Text>
                                         ))}
                                     </Space>
@@ -142,24 +142,24 @@ export const OutlineDisplay: React.FC<OutlineDisplayProps> = ({
                 )}
 
                 {/* Story Setting - only show if available */}
-                {outline.setting && (
+                {chronologicalOutline.setting && (
                     <Card
                         size="small"
                         title={<span><EnvironmentOutlined /> 故事设定</span>}
                         style={{ marginBottom: '16px', backgroundColor: '#262626', border: '1px solid #434343' }}
                     >
                         <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                            {outline.setting.core_setting_summary && (
+                            {chronologicalOutline.setting.core_setting_summary && (
                                 <div>
                                     <Text strong>核心设定：</Text>
-                                    <Paragraph style={{ margin: '8px 0' }}>{outline.setting.core_setting_summary}</Paragraph>
+                                    <Paragraph style={{ margin: '8px 0' }}>{chronologicalOutline.setting.core_setting_summary}</Paragraph>
                                 </div>
                             )}
-                            {outline.setting.key_scenes && outline.setting.key_scenes.length > 0 && (
+                            {chronologicalOutline.setting.key_scenes && chronologicalOutline.setting.key_scenes.length > 0 && (
                                 <div>
                                     <Text strong>关键场景：</Text>
                                     <div style={{ marginTop: '8px' }}>
-                                        {outline.setting.key_scenes.map((scene, index) => (
+                                        {chronologicalOutline.setting.key_scenes.map((scene: string, index: number) => (
                                             <Tag key={index} color="green" style={{ marginBottom: '4px', display: 'block', marginRight: 0 }}>
                                                 {scene}
                                             </Tag>
@@ -172,14 +172,14 @@ export const OutlineDisplay: React.FC<OutlineDisplayProps> = ({
                 )}
 
                 {/* Characters - only show if available */}
-                {outline.characters && outline.characters.length > 0 && (
+                {chronologicalOutline.characters && chronologicalOutline.characters.length > 0 && (
                     <Card
                         size="small"
                         title={<span><TeamOutlined /> 人物角色</span>}
                         style={{ marginBottom: '16px', backgroundColor: '#262626', border: '1px solid #434343' }}
                     >
                         <Row gutter={[16, 16]}>
-                            {outline.characters.map((character, index) => (
+                            {chronologicalOutline.characters.map((character: any, index: number) => (
                                 <Col span={12} key={index}>
                                     <Card
                                         size="small"
@@ -206,7 +206,7 @@ export const OutlineDisplay: React.FC<OutlineDisplayProps> = ({
                                             )}
                                             {character.personality_traits && character.personality_traits.length > 0 && (
                                                 <div>
-                                                    {character.personality_traits.slice(0, 3).map((trait, traitIndex) => (
+                                                    {character.personality_traits.slice(0, 3).map((trait: string, traitIndex: number) => (
                                                         <Tag key={traitIndex} style={{ fontSize: '10px' }}>
                                                             {trait}
                                                         </Tag>
@@ -221,15 +221,15 @@ export const OutlineDisplay: React.FC<OutlineDisplayProps> = ({
                     </Card>
                 )}
 
-                {/* Story Stages - only show if available */}
-                {outline.stages && outline.stages.length > 0 && (
+                {/* Chronological Timeline Stages - only show if available */}
+                {((chronologicalOutline as any).chronological_stages || chronologicalOutline.stages) && ((chronologicalOutline as any).chronological_stages?.length > 0 || chronologicalOutline.stages?.length > 0) && (
                     <Card
                         size="small"
-                        title="故事发展阶段"
+                        title="时序发展阶段（按时间顺序）"
                         style={{ backgroundColor: '#262626', border: '1px solid #434343' }}
                     >
-                        <Collapse ghost activeKey={outline.stages.map((stage, index) => index.toString())}>
-                            {outline.stages.map((stage, index) => (
+                        <Collapse ghost activeKey={((chronologicalOutline as any).chronological_stages || chronologicalOutline.stages)?.map((stage: any, index: number) => index.toString())}>
+                            {((chronologicalOutline as any).chronological_stages || chronologicalOutline.stages)?.map((stage: any, index: number) => (
                                 <Panel
                                     header={stage.title || `第${index + 1}阶段`}
                                     key={index}
@@ -256,7 +256,7 @@ export const OutlineDisplay: React.FC<OutlineDisplayProps> = ({
                                             <div style={{ marginTop: '8px' }}>
                                                 <Text strong>情感变化：</Text>
                                                 <div style={{ marginTop: '4px' }}>
-                                                    {stage.emotionArcs.map((arc, arcIndex) => (
+                                                    {stage.emotionArcs.map((arc: any, arcIndex: number) => (
                                                         <div key={arcIndex} style={{ marginBottom: '4px', fontSize: '12px' }}>
                                                             <Text type="secondary">
                                                                 {(arc.characters && Array.isArray(arc.characters) ? arc.characters.join(', ') : '未知角色')}:
@@ -272,7 +272,7 @@ export const OutlineDisplay: React.FC<OutlineDisplayProps> = ({
                                             <div style={{ marginTop: '8px' }}>
                                                 <Text strong>关系发展：</Text>
                                                 <div style={{ marginTop: '4px' }}>
-                                                    {stage.relationshipDevelopments.map((dev, devIndex) => (
+                                                    {stage.relationshipDevelopments.map((dev: any, devIndex: number) => (
                                                         <div key={devIndex} style={{ marginBottom: '4px', fontSize: '12px' }}>
                                                             <Text type="secondary">
                                                                 {(dev.characters && Array.isArray(dev.characters) ? dev.characters.join(' & ') : '未知角色')}:
@@ -288,7 +288,7 @@ export const OutlineDisplay: React.FC<OutlineDisplayProps> = ({
                                             <div style={{ marginTop: '8px' }}>
                                                 <Text strong>观众洞察：</Text>
                                                 <div style={{ marginTop: '4px' }}>
-                                                    {stage.insights.map((insight, insightIndex) => (
+                                                    {stage.insights.map((insight: string, insightIndex: number) => (
                                                         <div key={insightIndex} style={{ marginBottom: '4px' }}>
                                                             <Tag color="cyan" style={{ fontSize: '11px' }}>
                                                                 {insight}

@@ -18,7 +18,6 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
     onViewOriginalIdeas
 }) => {
     const { projectId } = useParams<{ projectId: string }>();
-    const navigate = useNavigate();
     const projectData = useProjectData();
     const [form] = Form.useForm();
     const [isCreatingHumanTransform, setIsCreatingHumanTransform] = useState(false);
@@ -71,50 +70,31 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
         };
     }, [projectData.artifacts, projectData.transformInputs]);
 
-    // If no artifacts at all, don't render the component
-    if (!previewArtifactId) {
-        return null;
-    }
-
     // Check for outline descendants (only if we have an editable artifact)
     const { hasOutlineDescendants, latestOutline, isLoading: outlineLoading } = useOutlineDescendants(editableArtifactId || '');
 
-    // Get the preview artifact data to display title
-    const previewArtifact = projectData.getArtifactById(previewArtifactId);
-    let ideaTitle = '选中的创意';
 
-    if (previewArtifact) {
+    // Get the preview artifact data to display title
+    const previewArtifact = useMemo(() => {
+        if (!previewArtifactId) return null;
+        return projectData.getArtifactById(previewArtifactId);
+    }, [previewArtifactId, projectData.getArtifactById]);
+
+
+    const ideaTitle = useMemo(() => {
+        if (!previewArtifact) return '选中的创意';
         try {
             const data = JSON.parse(previewArtifact.data);
-            ideaTitle = data.title || '当前创意';
+            return data.title || '当前创意';
         } catch (error) {
             console.warn('Failed to parse preview artifact data:', error);
+            return '当前创意';
         }
-    }
+    }, [previewArtifact]);
 
-    // Handle navigation to outline
-    const handleViewOutline = useCallback(() => {
-        if (latestOutline && !isCreatingHumanTransform) {
-            // Scroll to the outline section
-            const outlineSection = document.getElementById('story-outline');
-            if (outlineSection) {
-                outlineSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-        }
-    }, [latestOutline, isCreatingHumanTransform]);
 
-    // Handle human transform creation state
-    const handleHumanTransformStart = useCallback(() => {
-        setIsCreatingHumanTransform(true);
-    }, []);
 
-    const handleHumanTransformComplete = useCallback(() => {
-        setIsCreatingHumanTransform(false);
-    }, []);
 
-    const handleHumanTransformError = useCallback(() => {
-        setIsCreatingHumanTransform(false);
-    }, []);
 
     // Outline generation mutation
     const outlineGenerationMutation = useMutation({
@@ -172,6 +152,25 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
             console.warn('Form validation failed:', error);
         });
     };
+
+
+    // Handle navigation to outline
+    const handleViewOutline = useCallback(() => {
+        if (latestOutline && !isCreatingHumanTransform) {
+            // Scroll to the outline section
+            const outlineSection = document.getElementById('story-outline');
+            if (outlineSection) {
+                outlineSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+    }, [latestOutline, isCreatingHumanTransform]);
+
+
+    // If no artifacts at all, don't render the component
+    if (!previewArtifactId) {
+        return null;
+    }
+
 
     // Render non-editable preview mode if not editable
     if (!isEditable) {

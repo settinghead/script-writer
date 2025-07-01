@@ -515,26 +515,15 @@ const ProjectLayout: React.FC = () => {
                                     <TextDivider title="头脑风暴" id="brainstorm-ideas" />
                                     <ProjectBrainstormPage />
                                     {/* Conditionally render SingleBrainstormIdeaEditor if there's a chosen idea */}
-                                    {chosenIdea && !chosenIdeaLoading && (
-                                        <>
-                                            <TextDivider title="灵感编辑" id="ideation-edit" />
-
-                                            <SingleBrainstormIdeaEditor
-                                                originalArtifactId={chosenIdea.originalArtifactId}
-                                                originalArtifactPath={chosenIdea.originalArtifactPath}
-                                                editableArtifactId={chosenIdea.editableArtifactId}
-                                                index={chosenIdea.index}
-                                                isFromCollection={chosenIdea.isFromCollection}
-                                                onViewOriginalIdeas={() => {
-                                                    // Scroll to the brainstorm ideas section
-                                                    const brainstormSection = document.getElementById('brainstorm-ideas');
-                                                    if (brainstormSection) {
-                                                        brainstormSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                                    }
-                                                }}
-                                            />
-                                        </>
-                                    )}
+                                    <SingleBrainstormIdeaEditor
+                                        onViewOriginalIdeas={() => {
+                                            // Scroll to the brainstorm ideas section
+                                            const brainstormSection = document.getElementById('brainstorm-ideas');
+                                            if (brainstormSection) {
+                                                brainstormSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                            }
+                                        }}
+                                    />
                                     <TextDivider title="时序大纲" id="story-outline" />
                                     <OutlineDisplay />
 

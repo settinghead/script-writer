@@ -83,7 +83,7 @@ export function createOutlineToolDefinition(
 
             // Create streaming config with extracted data
             const config: StreamingTransformConfig<OutlineGenerationInput, OutlineGenerationOutput> = {
-                templateName: 'outline',
+                templateName: 'chronological_outline',
                 inputSchema: OutlineGenerationInputSchema,
                 outputSchema: OutlineGenerationOutputSchema,
                 prepareTemplateVariables: (input) => {
