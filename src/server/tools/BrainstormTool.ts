@@ -15,15 +15,26 @@ import {
 } from '../../common/schemas/transforms';
 import { extractDataAtPath } from '../services/transform-instantiations/pathTransforms';
 import { cleanLLMContent, robustJSONParse } from '../../common/utils/textCleaning';
+import type { StreamingToolDefinition } from '../services/StreamingAgentFramework';
+import { z } from 'zod';
 
-// Temporary type definition for Electric Sync migration - matches actual StreamingAgentFramework
-interface StreamingToolDefinition<TInput, TOutput> {
-    name: string;
-    description: string;
-    inputSchema: any;
-    outputSchema: any;
-    execute: (params: TInput, options: { toolCallId: string }) => Promise<any>;
-}
+const BrainstormEditToolResultSchema = z.object({
+    outputArtifactId: z.string(),
+    finishReason: z.string(),
+    originalIdea: z.object({
+        title: z.string(),
+        body: z.string()
+    }).optional(),
+    editedIdea: z.object({
+        title: z.string(),
+        body: z.string()
+    }).optional()
+});
+
+const BrainstormToolResultSchema = z.object({
+    outputArtifactId: z.string(),
+    finishReason: z.string()
+});
 
 interface BrainstormEditToolResult {
     outputArtifactId: string;
@@ -157,7 +168,7 @@ export function createBrainstormEditToolDefinition(
         name: 'edit_brainstorm_idea',
         description: '编辑和改进现有故事创意。适用场景：用户对现有创意有具体的修改要求或改进建议。重要：必须使用项目背景信息中显示的完整ID作为sourceArtifactId参数。支持各种编辑类型：内容扩展（"每个再长一点"、"详细一些"）、风格调整（"太老套，创新一点"、"更有趣一些"）、情节修改（"改成现代背景"、"加入悬疑元素"）、结构调整（"重新安排情节"、"调整人物关系"）、其他改进（"更符合年轻人口味"、"增加商业价值"）等。',
         inputSchema: BrainstormEditInputSchema,
-        outputSchema: BrainstormEditOutputSchema,
+        outputSchema: BrainstormEditToolResultSchema,
         execute: async (params: BrainstormEditInput, { toolCallId }): Promise<BrainstormEditToolResult> => {
             console.log(`[BrainstormEditTool] Starting streaming edit for artifact ${params.sourceArtifactId}`);
 
@@ -219,14 +230,6 @@ export function createBrainstormEditToolDefinition(
             };
         }
     };
-}
-// Temporary type definition for Electric Sync migration - matches actual StreamingAgentFramework
-interface StreamingToolDefinition<TInput, TOutput> {
-    name: string;
-    description: string;
-    inputSchema: any;
-    outputSchema: any;
-    execute: (params: TInput, options: { toolCallId: string }) => Promise<any>; // Changed to match actual framework
 }
 
 // Tool execution result type - now returns single collection artifact ID
@@ -310,7 +313,7 @@ export function createBrainstormToolDefinition(
         name: 'generate_brainstorm_ideas',
         description: '生成新的故事创意。适用场景：用户想要全新的故事想法、需要更多创意选择、或当前没有满意的故事创意时。例如："给我一些新的故事想法"、"再想几个不同的创意"。基于平台和类型生成适合短视频内容的创意故事概念。',
         inputSchema: IdeationInputSchema,
-        outputSchema: IdeationOutputSchema,
+        outputSchema: BrainstormToolResultSchema,
         execute: async (params: IdeationInput): Promise<BrainstormToolResult> => {
             const result = await executeStreamingTransform({
                 config,

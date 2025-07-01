@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { TransformRepository } from '../repositories/TransformRepository';
 import { ArtifactRepository } from '../repositories/ArtifactRepository';
 import {
@@ -10,15 +11,12 @@ import {
     executeStreamingTransform,
     StreamingTransformConfig
 } from '../services/StreamingTransformExecutor';
+import type { StreamingToolDefinition } from '../services/StreamingAgentFramework';
 
-// Temporary type definition for Electric Sync migration - matches actual StreamingAgentFramework
-interface StreamingToolDefinition<TInput, TOutput> {
-    name: string;
-    description: string;
-    inputSchema: any;
-    outputSchema: any;
-    execute: (params: TInput, options: { toolCallId: string }) => Promise<any>;
-}
+const OutlineToolResultSchema = z.object({
+    outputArtifactId: z.string(),
+    finishReason: z.string()
+});
 
 interface OutlineToolResult {
     outputArtifactId: string;
@@ -45,7 +43,7 @@ export function createOutlineToolDefinition(
         name: 'generate_outline',
         description: '基于选定的故事创意生成详细的剧集大纲。适用场景：用户已有满意的故事创意，需要生成可执行的剧集结构和角色发展。要求用户提供集数配置、平台要求等参数。必须使用项目背景信息中显示的完整artifact ID作为sourceArtifactId参数。',
         inputSchema: OutlineGenerationInputSchema,
-        outputSchema: OutlineGenerationOutputSchema,
+        outputSchema: OutlineToolResultSchema,
         execute: async (params: OutlineGenerationInput, { toolCallId }): Promise<OutlineToolResult> => {
             console.log(`[OutlineTool] Starting streaming outline generation for artifact ${params.sourceArtifactId}`);
 
