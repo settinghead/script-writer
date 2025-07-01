@@ -12,7 +12,6 @@ import { ChatService } from '../services/ChatService';
 // Import route creators
 import { createElectricProxyRoutes } from './electricProxy';
 import { createProjectRoutes } from './projectRoutes';
-import { createIdeationRoutes } from './ideations';
 import { createArtifactRoutes } from './artifactRoutes';
 import { createChatRoutes } from './chatRoutes';
 import { createAdminRoutes } from './adminRoutes';
@@ -34,9 +33,6 @@ export function createAPIRoutes(
 
     // Mount project routes
     app.use('/api/projects', createProjectRoutes(authMiddleware, projectService, agentService));
-
-    // Mount ideation routes - now serving projects list
-    app.use('/api/ideations', createIdeationRoutes(authMiddleware, artifactRepo, transformRepo));
 
     // Mount artifact routes
     app.use('/api/artifacts', createArtifactRoutes(authMiddleware, artifactRepo, transformRepo));
