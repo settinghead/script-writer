@@ -18,40 +18,30 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
 
-    // Auto-scroll to bottom when new messages arrive
-    const scrollToBottom = () => {
-        if (messagesEndRef.current) {
-            messagesEndRef.current.scrollIntoView({
+    // This single useEffect now handles auto-scrolling efficiently.
+    useEffect(() => {
+        // A function to check if the user is scrolled near the bottom.
+        const isNearBottom = () => {
+            if (!containerRef.current) return false;
+
+            const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
+            // Consider the user "near the bottom" if they are within 100px of it.
+            const threshold = 100;
+
+            return scrollHeight - scrollTop - clientHeight < threshold;
+        };
+
+        // Only scroll to the bottom if the user is already near it.
+        // This prevents interrupting them if they've scrolled up to read past messages.
+        if (isNearBottom()) {
+            messagesEndRef.current?.scrollIntoView({
                 behavior: 'smooth',
                 block: 'end'
             });
         }
-    };
+        // **KEY CHANGE**: This effect now ONLY runs when the number of messages changes.
+    }, [messages.length]);
 
-    useEffect(() => {
-        scrollToBottom();
-    }, [messages]);
-
-    // Check if user is near bottom to decide whether to auto-scroll
-    const isNearBottom = () => {
-        if (!containerRef.current) return true;
-
-        const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
-        const threshold = 100; // pixels from bottom
-
-        return scrollHeight - scrollTop - clientHeight < threshold;
-    };
-
-    // Only auto-scroll if user is near bottom (prevents interrupting reading)
-    useEffect(() => {
-        if (isNearBottom()) {
-            scrollToBottom();
-        }
-    }, [messages]);
-
-    const getStreamingMessage = () => {
-        return messages.find(msg => msg.status === 'streaming');
-    };
 
     return (
         <div
@@ -117,4 +107,4 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
             <div ref={messagesEndRef} />
         </div>
     );
-}; 
+};
