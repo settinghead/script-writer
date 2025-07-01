@@ -107,7 +107,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
             requirements?: string;
         }) => {
             const agentRequest = {
-                userRequest: `基于artifact ID ${params.sourceArtifactId} 的故事创意，生成详细的叙事大纲。要求：${params.totalEpisodes}集，每集${params.episodeDuration}分钟，平台${params.selectedPlatform}，类型${params.selectedGenrePaths.map(path => path.join(' > ')).join(', ')}${params.requirements ? `，其他要求：${params.requirements}` : ''}`,
+                userRequest: `基于artifact ID ${params.sourceArtifactId} 的故事创意，生成详细的剧本设定。要求：${params.totalEpisodes}集，每集${params.episodeDuration}分钟，平台${params.selectedPlatform}，类型${params.selectedGenrePaths.map(path => path.join(' > ')).join(', ')}${params.requirements ? `，其他要求：${params.requirements}` : ''}`,
                 projectId: projectId!
             };
 

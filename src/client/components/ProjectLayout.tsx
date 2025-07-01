@@ -513,7 +513,7 @@ const ProjectLayout: React.FC = () => {
                                 }}>
                                     <TextDivider title="头脑风暴" id="brainstorm-ideas" />
                                     <ProjectBrainstormPage />
-                                    <TextDivider title="灵感编辑" id="brainstorm-ideas" />
+                                    <TextDivider title="灵感编辑" id="ideation-edit" />
                                     <SingleBrainstormIdeaEditor
                                         onViewOriginalIdeas={() => {
                                             // Scroll to the brainstorm ideas section
