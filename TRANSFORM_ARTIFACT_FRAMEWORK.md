@@ -791,6 +791,473 @@ export const ContentGenerator: React.FC<{ projectId: string }> = ({ projectId })
 
 This example demonstrates the complete framework lifecycle: schema definition, tool creation, frontend integration with Electric SQL, and UI components. The framework handles all complex aspects (streaming, caching, lineage, validation) while application code focuses on domain-specific business logic.
 
+## Advanced Frontend Integration
+
+### Project Data Hook (`useProjectData`)
+
+The `useProjectData` hook from `ProjectDataContext` provides access to all raw artifacts and transforms with real-time Electric SQL synchronization:
+
+```typescript
+// Basic usage - get all project data
+const useContentViewer = (projectId: string) => {
+  const projectData = useProjectData();
+
+  // Access raw data from Electric SQL
+  const { 
+    artifacts,           // All artifacts in the project
+    transforms,          // All transforms (LLM and human)  
+    humanTransforms,     // Human-specific transforms with derivation paths
+    transformInputs,     // Transform input relationships
+    transformOutputs,    // Transform output relationships
+    isLoading,          // Loading state
+    error               // Error state
+  } = projectData;
+
+  // Mutations for data modification
+  const {
+    createHumanTransform,  // Create human edits
+    updateArtifact,        // Update artifact data
+    mutationStates         // Track mutation status
+  } = projectData;
+
+  // Find specific artifact types
+  const brainstormCollections = artifacts.filter(a => 
+    a.schema_type === 'brainstorm_collection_schema'
+  );
+
+  const outlineArtifacts = artifacts.filter(a => 
+    a.schema_type === 'outline_schema'
+  );
+
+  // Check for active transforms
+  const activeTransforms = transforms.filter(t => 
+    t.streaming_status === 'streaming'
+  );
+
+  return {
+    brainstormCollections,
+    outlineArtifacts,
+    activeTransforms,
+    isLoading,
+    error
+  };
+};
+```
+
+**Advanced Project Data Usage - Transform Tracking:**
+```typescript
+const useTransformHistory = (artifactId: string) => {
+  const projectData = useProjectData();
+
+  const transformHistory = useMemo(() => {
+    // Find all transforms that produced this artifact
+    const producingTransforms = projectData.transformOutputs
+      .filter(output => output.artifact_id === artifactId)
+      .map(output => {
+        const transform = projectData.transforms.find(t => t.id === output.transform_id);
+        const humanTransform = projectData.humanTransforms.find(ht => ht.transform_id === output.transform_id);
+        
+        return {
+          transform,
+          humanTransform,
+          type: transform?.type,
+          createdAt: transform?.created_at
+        };
+      })
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+    return producingTransforms;
+  }, [artifactId, projectData.transforms, projectData.transformOutputs, projectData.humanTransforms]);
+
+  return transformHistory;
+};
+```
+
+### Lineage Resolution Hook (`useLineageResolution`)
+
+The `useLineageResolution` hook provides intelligent artifact resolution following the artifact → transform → artifact paradigm:
+
+```typescript
+// Basic lineage resolution - find latest version of an artifact
+const useLatestArtifactVersion = (sourceArtifactId: string, path: string = '$') => {
+  const lineageResult = useLineageResolution({
+    sourceArtifactId,
+    path,
+    options: { enabled: !!sourceArtifactId }
+  });
+
+  return {
+    latestArtifactId: lineageResult.latestArtifactId,
+    hasBeenEdited: lineageResult.hasLineage,
+    editDepth: lineageResult.depth,
+    isLoading: lineageResult.isLoading,
+    error: lineageResult.error
+  };
+};
+
+// Advanced usage - resolve specific collection item
+const useBrainstormIdeaResolution = (collectionId: string, ideaIndex: number) => {
+  const path = `$.ideas[${ideaIndex}]`;
+  
+  const {
+    latestArtifactId,
+    resolvedPath,
+    lineagePath,
+    depth,
+    hasLineage,
+    isLoading,
+    error
+  } = useLineageResolution({
+    sourceArtifactId: collectionId,
+    path,
+    options: { enabled: !!collectionId }
+  });
+
+  // Determine edit status
+  const editStatus = useMemo(() => {
+    if (depth === 0) return 'original';
+    if (hasLineage) return 'edited';
+    return 'unknown';
+  }, [depth, hasLineage]);
+
+  return {
+    ideaArtifactId: latestArtifactId,
+    editStatus,
+    editDepth: depth,
+    lineageChain: lineagePath,
+    isLoading,
+    error
+  };
+};
+```
+
+**UI Implementation with Lineage Resolution:**
+```typescript
+const BrainstormIdeaCard: React.FC<{ collectionId: string, ideaIndex: number }> = ({ 
+  collectionId, 
+  ideaIndex 
+}) => {
+  const projectData = useProjectData();
+  
+  // Resolve to latest version of this idea
+  const {
+    ideaArtifactId,
+    editStatus,
+    editDepth,
+    isLoading
+  } = useBrainstormIdeaResolution(collectionId, ideaIndex);
+
+  // Get the actual artifact data
+  const ideaArtifact = projectData.getArtifactById(ideaArtifactId);
+  const ideaData = ideaArtifact ? JSON.parse(ideaArtifact.data) : null;
+
+  if (isLoading) {
+    return <Skeleton active />;
+  }
+
+  return (
+    <Card 
+      className={editStatus === 'edited' ? 'border-green-500' : 'border-blue-500'}
+      title={
+        <div className="flex items-center gap-2">
+          <span>{ideaData?.title || `创意 ${ideaIndex + 1}`}</span>
+          {editStatus === 'edited' && (
+            <Tag color="green">已编辑 ({editDepth} 次)</Tag>
+          )}
+          {editStatus === 'original' && (
+            <Tag color="blue">AI生成</Tag>
+          )}
+        </div>
+      }
+    >
+      <p>{ideaData?.body}</p>
+      
+      {/* Show edit lineage */}
+      {editDepth > 0 && (
+        <div className="mt-2 text-xs text-gray-500">
+          编辑历史: {editDepth} 个版本
+        </div>
+      )}
+    </Card>
+  );
+};
+```
+
+### Effective Brainstorm Ideas Hook
+
+For complex scenarios involving collections and individual edits:
+
+```typescript
+const useBrainstormIdeasWithResolution = () => {
+  // Get all effective brainstorm ideas using principled lineage resolution
+  const { ideas, isLoading, error } = useEffectiveBrainstormIdeas();
+  
+  // Convert to UI-friendly format
+  const latestIdeas = useLatestBrainstormIdeas();
+
+  const organizedIdeas = useMemo(() => {
+    return latestIdeas.map((idea, index) => ({
+      ...idea,
+      displayIndex: index,
+      isFromCollection: idea.originalArtifactId !== idea.artifactId,
+      editLevel: idea.artifactPath === '$' ? 'standalone' : 'collection-item'
+    }));
+  }, [latestIdeas]);
+
+  return {
+    ideas: organizedIdeas,
+    totalCount: organizedIdeas.length,
+    editedCount: organizedIdeas.filter(idea => idea.isFromCollection).length,
+    isLoading,
+    error
+  };
+};
+```
+
+### Artifact Editor Component (`ArtifactEditor`)
+
+The `ArtifactEditor` provides a comprehensive editing interface that respects the immutability paradigm:
+
+```typescript
+// Basic usage - edit a brainstorm idea
+const BrainstormIdeaEditor: React.FC<{ artifactId: string }> = ({ artifactId }) => {
+  const [activeArtifactId, setActiveArtifactId] = useState(artifactId);
+
+  return (
+    <ArtifactEditor
+      artifactId={activeArtifactId}
+      transformName="brainstorm_idea_edit" // Transform schema name
+      fields={[
+        { field: 'title', component: 'input', maxLength: 100, placeholder: '输入创意标题' },
+        { field: 'body', component: 'textarea', rows: 6, placeholder: '详细描述创意内容' }
+      ]}
+      onTransition={(newArtifactId) => {
+        // When user clicks to edit, transition to the new editable artifact
+        setActiveArtifactId(newArtifactId);
+      }}
+      onSaveSuccess={() => {
+        message.success('保存成功');
+      }}
+      statusLabel="创意内容"
+      statusColor="blue"
+      className="mb-4"
+    />
+  );
+};
+
+// Advanced usage - edit collection item with path resolution
+const CollectionItemEditor: React.FC<{ 
+  collectionId: string, 
+  itemIndex: number 
+}> = ({ collectionId, itemIndex }) => {
+  const [editingArtifactId, setEditingArtifactId] = useState<string | null>(null);
+  const itemPath = `$.ideas[${itemIndex}]`;
+
+  // Resolve to latest version
+  const { latestArtifactId } = useLineageResolution({
+    sourceArtifactId: collectionId,
+    path: itemPath,
+    options: { enabled: true }
+  });
+
+  const targetArtifactId = editingArtifactId || latestArtifactId || collectionId;
+
+  return (
+    <ArtifactEditor
+      artifactId={targetArtifactId}
+      sourceArtifactId={collectionId}  // Original collection
+      path={itemPath}                  // Path within collection
+      transformName="collection_item_edit"
+      fields={[
+        { field: 'title', component: 'input', maxLength: 100 },
+        { field: 'body', component: 'textarea', rows: 4 }
+      ]}
+      onTransition={(newArtifactId) => {
+        // User started editing - switch to the new editable artifact
+        setEditingArtifactId(newArtifactId);
+      }}
+      onSaveSuccess={() => {
+        message.success('创意已更新');
+      }}
+      className="collection-item-editor"
+    />
+  );
+};
+```
+
+**Complex Artifact Editor - Multi-field with Validation:**
+```typescript
+const OutlineEditor: React.FC<{ outlineId: string }> = ({ outlineId }) => {
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+
+  const validateField = useCallback((field: string, value: string) => {
+    const errors: Record<string, string> = {};
+    
+    if (field === 'title' && value.length < 5) {
+      errors.title = '标题至少需要5个字符';
+    }
+    
+    if (field === 'synopsis' && value.length < 50) {
+      errors.synopsis = '简介至少需要50个字符';
+    }
+
+    setValidationErrors(prev => ({ ...prev, ...errors }));
+    return Object.keys(errors).length === 0;
+  }, []);
+
+  return (
+    <div className="outline-editor-container">
+      <ArtifactEditor
+        artifactId={outlineId}
+        transformName="outline_edit"
+        fields={[
+          { 
+            field: 'title', 
+            component: 'input', 
+            maxLength: 200,
+            placeholder: '输入故事标题'
+          },
+          { 
+            field: 'synopsis', 
+            component: 'textarea', 
+            rows: 8,
+            placeholder: '输入故事简介'
+          },
+          { 
+            field: 'genre', 
+            component: 'input', 
+            maxLength: 50,
+            placeholder: '例如：现代甜宠、古装复仇'
+          }
+        ]}
+        onSaveSuccess={() => {
+          message.success('大纲已保存');
+          setValidationErrors({});
+        }}
+        statusLabel="故事大纲"
+        statusColor="purple"
+        className="outline-editor"
+      />
+      
+      {Object.keys(validationErrors).length > 0 && (
+        <Alert
+          type="warning"
+          message="验证错误"
+          description={
+            <ul>
+              {Object.entries(validationErrors).map(([field, error]) => (
+                <li key={field}>{error}</li>
+              ))}
+            </ul>
+          }
+          className="mt-2"
+        />
+      )}
+    </div>
+  );
+};
+```
+
+### Complete Integration Example
+
+Here's a comprehensive example showing how all components work together:
+
+```typescript
+const ProjectWorkspace: React.FC<{ projectId: string }> = ({ projectId }) => {
+  const projectData = useProjectData();
+  const { workflowNodes } = useWorkflowNodes();
+  const { ideas: effectiveIdeas } = useEffectiveBrainstormIdeas();
+
+  // Track active editing states
+  const [activeEditingSessions, setActiveEditingSessions] = useState<Set<string>>(new Set());
+
+  const handleStartEditing = useCallback((artifactId: string) => {
+    setActiveEditingSessions(prev => new Set(prev).add(artifactId));
+  }, []);
+
+  const handleFinishEditing = useCallback((artifactId: string) => {
+    setActiveEditingSessions(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(artifactId);
+      return newSet;
+    });
+  }, []);
+
+  if (projectData.isLoading) {
+    return <Spin size="large" />;
+  }
+
+  return (
+    <div className="project-workspace">
+      {/* Workflow Progress */}
+      <Card title="项目进度" className="mb-6">
+        <div className="flex items-center gap-4">
+          {workflowNodes.map((node, index) => (
+            <div key={node.id} className="flex items-center">
+              <div 
+                className={`px-3 py-2 rounded ${
+                  node.isActive ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                }`}
+              >
+                {node.title}
+              </div>
+              {index < workflowNodes.length - 1 && (
+                <ArrowRightOutlined className="mx-2 text-gray-400" />
+              )}
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* Brainstorm Ideas Section */}
+      <Card title="创意想法" className="mb-6">
+        <Row gutter={[16, 16]}>
+          {effectiveIdeas.map((idea, index) => {
+            const isEditing = activeEditingSessions.has(idea.artifactId);
+            
+            return (
+              <Col xs={24} md={12} lg={8} key={`${idea.artifactId}-${idea.artifactPath}`}>
+                <ArtifactEditor
+                  artifactId={idea.artifactId}
+                  sourceArtifactId={idea.originalArtifactId}
+                  path={idea.artifactPath}
+                  transformName="brainstorm_idea_edit"
+                  fields={[
+                    { field: 'title', component: 'input', maxLength: 100 },
+                    { field: 'body', component: 'textarea', rows: 4 }
+                  ]}
+                  onTransition={(newArtifactId) => {
+                    handleStartEditing(newArtifactId);
+                  }}
+                  onSaveSuccess={() => {
+                    handleFinishEditing(idea.artifactId);
+                    message.success(`创意 ${index + 1} 已保存`);
+                  }}
+                  statusLabel={`创意 ${index + 1}`}
+                  statusColor={isEditing ? "green" : "blue"}
+                  className="h-full"
+                />
+              </Col>
+            );
+          })}
+        </Row>
+      </Card>
+
+      {/* Show active mutations */}
+      {projectData.mutationStates.artifacts.size > 0 && (
+        <Card title="保存状态" size="small">
+          <div className="text-sm text-gray-600">
+            正在保存 {projectData.mutationStates.artifacts.size} 个更改...
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+};
+```
+
+These examples demonstrate the complete integration of the Transform Artifact Framework's frontend components, showing how lineage resolution, project data management, and artifact editing work together to provide a seamless user experience while maintaining the immutable artifact → transform → artifact paradigm.
+
 ## Summary
 
 The Transform Artifact Framework provides a complete foundation for sophisticated data transformation applications with intelligent agent orchestration, immutable artifact management, real-time collaboration, and enterprise-grade development tooling. Applications built on this framework benefit from automatic lineage tracking, type-safe operations, and advanced caching while maintaining focus on domain-specific business logic. 
