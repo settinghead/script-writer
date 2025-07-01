@@ -1,8 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import { message } from 'antd';
 import { LoadingOutlined, CheckOutlined } from '@ant-design/icons';
-import { useProjectData } from '../../contexts/ProjectDataContext';
-import { extractDataAtPath } from '../../../common/utils/pathExtraction';
+import { useProjectData } from '../contexts/ProjectDataContext';
+import { extractDataAtPath } from '../../common/utils/pathExtraction';
 import { EditableField } from './EditableField';
 
 export interface FieldConfig {

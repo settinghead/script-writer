@@ -1,4 +1,4 @@
-import type { FieldConfig } from './ArtifactEditor';
+import type { FieldConfig } from '../../transform-artifact-framework/ArtifactEditor';
 
 // Common field configurations for different artifact types
 export const FIELD_CONFIGS = {
@@ -32,8 +32,3 @@ export const FIELD_CONFIGS = {
     ] as FieldConfig[]
 };
 
-// Convenience exports for commonly used configurations
-export const BRAINSTORM_IDEA_FIELDS = FIELD_CONFIGS.TITLE_BODY;
-export const USER_INPUT_FIELDS = FIELD_CONFIGS.TITLE_BODY;
-export const OUTLINE_FIELDS = FIELD_CONFIGS.OUTLINE;
-export const SCRIPT_FIELDS = FIELD_CONFIGS.SCRIPT; 

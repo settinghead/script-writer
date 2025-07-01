@@ -4,8 +4,8 @@ import { Button, Typography, Card, Form, InputNumber, Select, Input, message, Sp
 import { FileTextOutlined, EyeOutlined, ArrowLeftOutlined, CheckCircleOutlined, BookOutlined, DoubleRightOutlined, LoadingOutlined } from '@ant-design/icons';
 import { useMutation } from '@tanstack/react-query';
 import { useProjectData } from '../../contexts/ProjectDataContext';
-import { ArtifactEditor } from '../shared/ArtifactEditor';
-import { BRAINSTORM_IDEA_FIELDS } from '../shared/fieldConfigs';
+import { ArtifactEditor } from '../../transform-artifact-framework/ArtifactEditor';
+import { BRAINSTORM_IDEA_FIELDS } from '../shared/MIGUANG_APP_FIELDS';
 import { useOutlineDescendants } from '../../hooks/useOutlineDescendants';
 
 const { Title, Text } = Typography;
