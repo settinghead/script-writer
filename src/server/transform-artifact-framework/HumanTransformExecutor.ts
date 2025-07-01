@@ -47,7 +47,7 @@ export class HumanTransformExecutor {
   // Map schema types back to legacy types for ArtifactRepository.createArtifact
   private mapSchemaTypeToLegacyType(schemaType: string): string {
     const schemaToLegacyMapping: Record<string, string> = {
-      'brainstorm_idea_schema': 'brainstorm_idea',
+      'brainstorm_item_schema': 'brainstorm_idea',
       'brainstorm_collection_schema': 'brainstorm_idea_collection',
       'user_input_schema': 'user_input',
       'outline_input_schema': 'outline_input',
@@ -70,7 +70,7 @@ export class HumanTransformExecutor {
 
   private mapLegacyTypeToSchemaType(legacyType: string): string {
     const legacyToSchemaMapping: Record<string, string> = {
-      'brainstorm_idea': 'brainstorm_idea_schema',
+      'brainstorm_idea': 'brainstorm_item_schema',
       'brainstorm_idea_collection': 'brainstorm_collection_schema',
       'user_input': 'user_input_schema',
       'outline_input': 'outline_input_schema',
@@ -238,15 +238,16 @@ export class HumanTransformExecutor {
 
     // Validate against the correct schema based on target type
     let validationResult;
-    if (transformDef.targetArtifactType === 'user_input') {
 
-      const targetSchema = ArtifactSchemaRegistry[transformDef.targetArtifactType as keyof typeof ArtifactSchemaRegistry];
-      validationResult = targetSchema.safeParse(updatedData);
-    } else {
-      // For direct artifact types (like brainstorm_idea), validate against target schema
-      const targetSchema = ArtifactSchemaRegistry[transformDef.targetArtifactType as keyof typeof ArtifactSchemaRegistry];
-      validationResult = targetSchema.safeParse(updatedData);
+    // Get the correct schema key from the registry
+    const targetSchemaKey = transformDef.targetArtifactType as keyof typeof ArtifactSchemaRegistry;
+    const targetSchema = ArtifactSchemaRegistry[targetSchemaKey];
+
+    if (!targetSchema) {
+      throw new Error(`Schema not found for type: ${transformDef.targetArtifactType}. Available schemas: ${Object.keys(ArtifactSchemaRegistry).join(', ')}`);
     }
+
+    validationResult = targetSchema.safeParse(updatedData);
 
     if (!validationResult.success) {
       throw new Error(`Schema validation failed: ${validationResult.error.message}`);

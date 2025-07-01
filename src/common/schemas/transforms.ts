@@ -105,7 +105,7 @@ export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinitio
     name: 'edit_brainstorm_collection_idea',
     description: 'Edit individual idea within brainstorm collection',
     sourceArtifactType: 'brainstorm_collection_schema',
-    targetArtifactType: 'brainstorm_idea_schema',
+    targetArtifactType: 'brainstorm_item_schema',
     pathPattern: '^\\$.ideas\\[\\d+\\]$', // JSONPath for ideas[n]
     instantiationFunction: 'createBrainstormIdeaFromPath'
   },
@@ -120,7 +120,7 @@ export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinitio
   'brainstorm_to_outline': {
     name: 'brainstorm_to_outline',
     description: 'Convert a brainstorm idea to outline input',
-    sourceArtifactType: 'brainstorm_idea_schema',
+    sourceArtifactType: 'brainstorm_item_schema',
     targetArtifactType: 'outline_input_schema',
     pathPattern: '^\\$$', // Root path indicator ($)
     instantiationFunction: 'createOutlineInputFromBrainstormIdea'
@@ -128,15 +128,15 @@ export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinitio
   'edit_brainstorm_idea': {
     name: 'edit_brainstorm_idea',
     description: 'Edit entire brainstorm idea object',
-    sourceArtifactType: 'brainstorm_idea_schema',
-    targetArtifactType: 'brainstorm_idea_schema',
+    sourceArtifactType: 'brainstorm_item_schema',
+    targetArtifactType: 'brainstorm_item_schema',
     pathPattern: '^\\$$', // Root path indicator ($)
     instantiationFunction: 'createBrainstormIdeaFromBrainstormIdea'
   },
   'edit_brainstorm_idea_field': {
     name: 'edit_brainstorm_idea_field',
     description: 'Edit individual fields of brainstorm ideas',
-    sourceArtifactType: 'brainstorm_idea_schema',
+    sourceArtifactType: 'brainstorm_item_schema',
     targetArtifactType: 'user_input_schema',
     pathPattern: '^(title|body)$', // Matches title or body fields
     instantiationFunction: 'createUserInputFromBrainstormField'
@@ -165,7 +165,7 @@ export const LLM_TRANSFORM_DEFINITIONS: Record<string, LLMTransformDefinition> =
     name: 'llm_edit_brainstorm_collection_idea',
     description: 'AI editing of ideas within brainstorm collections',
     inputTypes: ['brainstorm_collection_schema'],
-    outputType: 'brainstorm_idea_schema',
+    outputType: 'brainstorm_item_schema',
     templateName: 'brainstormEdit',
     inputSchema: BrainstormEditInputSchema,
     outputSchema: BrainstormEditOutputSchema
@@ -182,8 +182,8 @@ export const LLM_TRANSFORM_DEFINITIONS: Record<string, LLMTransformDefinition> =
   'llm_edit_brainstorm_idea': {
     name: 'llm_edit_brainstorm_idea',
     description: 'AI-powered editing of brainstorm ideas based on user requirements',
-    inputTypes: ['brainstorm_idea_schema', 'user_input_schema'],
-    outputType: 'brainstorm_idea_schema',
+    inputTypes: ['brainstorm_item_schema', 'user_input_schema'],
+    outputType: 'brainstorm_item_schema',
     templateName: 'brainstormEdit',
     inputSchema: BrainstormEditInputSchema,
     outputSchema: BrainstormEditOutputSchema
@@ -191,7 +191,7 @@ export const LLM_TRANSFORM_DEFINITIONS: Record<string, LLMTransformDefinition> =
   'llm_generate_outline_settings': {
     name: 'llm_generate_outline_settings',
     description: 'AI generation of outline settings from brainstorm idea',
-    inputTypes: ['brainstorm_idea_schema', 'user_input_schema'],
+    inputTypes: ['brainstorm_item_schema', 'user_input_schema'],
     outputType: 'outline_settings_schema',
     templateName: 'outline_settings',
     inputSchema: OutlineSettingsInputSchema,
