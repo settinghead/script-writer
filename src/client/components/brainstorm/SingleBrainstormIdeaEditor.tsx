@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Button, Typography, Card, Form, InputNumber, Select, Input, message, Space, Divider, Row, Col, Tag } from 'antd';
-import { FileTextOutlined, EyeOutlined, ArrowLeftOutlined, CheckCircleOutlined, BookOutlined, DoubleRightOutlined } from '@ant-design/icons';
+import { Button, Typography, Card, Form, InputNumber, Select, Input, message, Space, Divider, Row, Col, Tag, Spin } from 'antd';
+import { FileTextOutlined, EyeOutlined, ArrowLeftOutlined, CheckCircleOutlined, BookOutlined, DoubleRightOutlined, LoadingOutlined } from '@ant-design/icons';
 import { useMutation } from '@tanstack/react-query';
 import { useProjectData } from '../../contexts/ProjectDataContext';
 import { ArtifactEditor } from '../shared/ArtifactEditor';
@@ -31,6 +31,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
     const navigate = useNavigate();
     const projectData = useProjectData();
     const [form] = Form.useForm();
+    const [isCreatingHumanTransform, setIsCreatingHumanTransform] = useState(false);
 
     // Check for outline descendants
     const { hasOutlineDescendants, latestOutline, isLoading: outlineLoading } = useOutlineDescendants(editableArtifactId);
@@ -50,14 +51,27 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
 
     // Handle navigation to outline
     const handleViewOutline = useCallback(() => {
-        if (latestOutline) {
+        if (latestOutline && !isCreatingHumanTransform) {
             // Scroll to the outline section
             const outlineSection = document.getElementById('story-outline');
             if (outlineSection) {
                 outlineSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         }
-    }, [latestOutline]);
+    }, [latestOutline, isCreatingHumanTransform]);
+
+    // Handle human transform creation state
+    const handleHumanTransformStart = useCallback(() => {
+        setIsCreatingHumanTransform(true);
+    }, []);
+
+    const handleHumanTransformComplete = useCallback(() => {
+        setIsCreatingHumanTransform(false);
+    }, []);
+
+    const handleHumanTransformError = useCallback(() => {
+        setIsCreatingHumanTransform(false);
+    }, []);
 
     // Outline generation mutation
     const outlineGenerationMutation = useMutation({
@@ -100,6 +114,8 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
     });
 
     const handleGenerateOutline = () => {
+        if (isCreatingHumanTransform) return;
+
         form.validateFields().then((values) => {
             outlineGenerationMutation.mutate({
                 sourceArtifactId: editableArtifactId,
@@ -117,13 +133,39 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
     // Render compact mode if outline descendants exist
     if (hasOutlineDescendants && latestOutline) {
         return (
-            <div className="single-brainstorm-idea-editor-compact" style={{ marginBottom: '16px' }}>
+            <div className="single-brainstorm-idea-editor-compact" style={{ marginBottom: '16px', position: 'relative' }}>
+                {/* Loading overlay for compact mode */}
+                {isCreatingHumanTransform && (
+                    <div style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 10,
+                        borderRadius: '6px'
+                    }}>
+                        <Spin
+                            indicator={<LoadingOutlined style={{ fontSize: 24, color: '#722ed1' }} spin />}
+                            tip="创建编辑版本中..."
+                        >
+                            <div style={{ padding: '20px' }} />
+                        </Spin>
+                    </div>
+                )}
+
                 <Card
                     size="small"
                     style={{
                         backgroundColor: '#1a1a1a',
                         border: '1px solid #722ed1',
-                        borderRadius: '6px'
+                        borderRadius: '6px',
+                        opacity: isCreatingHumanTransform ? 0.7 : 1,
+                        pointerEvents: isCreatingHumanTransform ? 'none' : 'auto'
                     }}
                     styles={{ body: { padding: '16px' } }}
                 >
@@ -148,6 +190,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                                 onClick={onViewOriginalIdeas}
                                 size="small"
                                 style={{ color: '#1890ff' }}
+                                disabled={isCreatingHumanTransform}
                             >
                                 查看所有创意
                             </Button>
@@ -171,6 +214,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                             type="primary"
                             icon={<BookOutlined />}
                             onClick={handleViewOutline}
+                            disabled={isCreatingHumanTransform}
                             style={{
                                 background: 'linear-gradient(100deg, #722ed1, #9254de)',
                                 border: 'none',
@@ -215,12 +259,38 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
 
     // Normal editing mode
     return (
-        <div className="single-brainstorm-idea-editor" style={{ marginBottom: '24px' }}>
+        <div className="single-brainstorm-idea-editor" style={{ marginBottom: '24px', position: 'relative' }}>
+            {/* Loading overlay for normal mode */}
+            {isCreatingHumanTransform && (
+                <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 10,
+                    borderRadius: '8px'
+                }}>
+                    <Spin
+                        indicator={<LoadingOutlined style={{ fontSize: 32, color: '#52c41a' }} spin />}
+                        tip="创建编辑版本中..."
+                    >
+                        <div style={{ padding: '40px' }} />
+                    </Spin>
+                </div>
+            )}
+
             <Card
                 style={{
                     backgroundColor: '#1a1a1a',
                     border: '1px solid #52c41a',
-                    borderRadius: '8px'
+                    borderRadius: '8px',
+                    opacity: isCreatingHumanTransform ? 0.7 : 1,
+                    pointerEvents: isCreatingHumanTransform ? 'none' : 'auto'
                 }}
                 styles={{ body: { padding: '24px' } }}
             >
@@ -250,6 +320,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                                 icon={<EyeOutlined />}
                                 onClick={onViewOriginalIdeas}
                                 style={{ color: '#1890ff' }}
+                                disabled={isCreatingHumanTransform}
                             >
                                 查看所有创意
                             </Button>
@@ -264,6 +335,10 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                         fields={BRAINSTORM_IDEA_FIELDS}
                         statusLabel="📝 已编辑版本"
                         statusColor="green"
+                        onHumanTransformStart={handleHumanTransformStart}
+                        onHumanTransformComplete={handleHumanTransformComplete}
+                        onHumanTransformError={handleHumanTransformError}
+                        disabled={isCreatingHumanTransform}
                     />
                 </div>
 
@@ -281,6 +356,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                         requirements: ''
                     }}
                     style={{ marginBottom: '24px' }}
+                    disabled={isCreatingHumanTransform}
                 >
                     <Row gutter={16}>
                         <Col span={8}>
@@ -294,6 +370,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                                     max={200}
                                     placeholder="请输入总集数"
                                     style={{ width: '100%' }}
+                                    disabled={isCreatingHumanTransform}
                                 />
                             </Form.Item>
                         </Col>
@@ -309,6 +386,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                                     max={30}
                                     placeholder="请输入每集时长"
                                     style={{ width: '100%' }}
+                                    disabled={isCreatingHumanTransform}
                                 />
                             </Form.Item>
                         </Col>
@@ -319,7 +397,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                                 label="目标平台"
                                 rules={[{ required: true, message: '请选择目标平台' }]}
                             >
-                                <Select placeholder="请选择目标平台">
+                                <Select placeholder="请选择目标平台" disabled={isCreatingHumanTransform}>
                                     <Select.Option value="抖音">抖音</Select.Option>
                                     <Select.Option value="快手">快手</Select.Option>
                                     <Select.Option value="小红书">小红书</Select.Option>
@@ -337,6 +415,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                         <Input.TextArea
                             rows={3}
                             placeholder="如：加强悬疑色彩、突出女性角色、适合年轻观众等..."
+                            disabled={isCreatingHumanTransform}
                         />
                     </Form.Item>
                 </Form>
@@ -349,6 +428,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                         icon={<FileTextOutlined />}
                         onClick={handleGenerateOutline}
                         loading={outlineGenerationMutation.isPending}
+                        disabled={isCreatingHumanTransform}
                         style={{
                             background: 'linear-gradient(100deg, #40a9ff, rgb(22, 106, 184))',
                             border: 'none',
