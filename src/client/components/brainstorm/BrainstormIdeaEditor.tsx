@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card, Typography } from 'antd';
+import { StarFilled } from '@ant-design/icons';
 import { useProjectData } from '../../contexts/ProjectDataContext';
 import { getArtifactAtPath } from '../../../common/utils/lineageResolution';
 
@@ -12,9 +13,10 @@ export const BrainstormIdeaEditor: React.FC<{
     index: number;
     isSelected: boolean;
     isChosen: boolean;
+    hasEditableDescendants: boolean;
     ideaOutlines: any[];
     onIdeaClick: (collectionId: string, index: number) => void;
-}> = ({ artifactId, artifactPath, originalCollectionId, index, isSelected, isChosen, ideaOutlines, onIdeaClick }) => {
+}> = ({ artifactId, artifactPath, originalCollectionId, index, isSelected, isChosen, hasEditableDescendants, ideaOutlines, onIdeaClick }) => {
     const projectData = useProjectData();
 
     // Get the artifact data to display
@@ -41,6 +43,9 @@ export const BrainstormIdeaEditor: React.FC<{
     // Check if this is a derived artifact (has been edited)
     const hasBeenEdited = artifact?.origin_type === 'user_input' || artifact?.isEditable || false;
 
+    // Determine if this idea is clickable
+    const isClickable = !isChosen && !hasEditableDescendants;
+
     return (
         <Card
             key={`${artifactId}-${index}`}
@@ -50,32 +55,36 @@ export const BrainstormIdeaEditor: React.FC<{
                 transition: 'all 0.2s ease',
                 animation: 'fadeIn 0.3s ease-out',
                 position: 'relative',
-                opacity: isChosen ? 1 : 0.8
+                opacity: hasEditableDescendants ? 0.6 : (isChosen ? 1 : 0.8),
+                cursor: isClickable ? 'pointer' : 'default'
             }}
             styles={{ body: { padding: '12px' } }}
-            hoverable={!isSelected && !isChosen}
+            hoverable={isClickable}
             onMouseEnter={(e) => {
-                if (!isSelected && !isChosen) {
+                if (isClickable) {
                     e.currentTarget.style.borderColor = '#1890ff';
                     e.currentTarget.style.backgroundColor = '#2d3436';
                 }
             }}
             onMouseLeave={(e) => {
-                if (!isSelected && !isChosen) {
+                if (isClickable) {
                     e.currentTarget.style.borderColor = '#434343';
                     e.currentTarget.style.backgroundColor = '#262626';
                 }
             }}
-            onClick={() => !isChosen && onIdeaClick(originalCollectionId, index)}
+            onClick={() => isClickable && onIdeaClick(originalCollectionId, index)}
         >
             {/* Status indicator */}
-            <div style={{ marginBottom: '8px' }}>
+            <div style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                {isChosen && <StarFilled style={{ color: '#52c41a', fontSize: '12px' }} />}
                 <Text style={{
                     fontSize: '10px',
-                    color: isChosen ? '#52c41a' : (hasBeenEdited ? '#52c41a' : '#1890ff'),
+                    color: isChosen ? '#52c41a' : (hasEditableDescendants ? '#722ed1' : (hasBeenEdited ? '#52c41a' : '#1890ff')),
                     fontWeight: 'bold'
                 }}>
-                    {isChosen ? '✏️ 正在编辑' : (hasBeenEdited ? '📝 已编辑版本' : 'AI生成')}
+                    {isChosen ? '✏️ 正在编辑' :
+                        hasEditableDescendants ? '📝 已有编辑版本' :
+                            (hasBeenEdited ? '📝 已编辑版本' : 'AI生成')}
                 </Text>
             </div>
 
@@ -103,8 +112,8 @@ export const BrainstormIdeaEditor: React.FC<{
                 </div>
             </div>
 
-            {/* Click hint for non-chosen ideas */}
-            {!isChosen && (
+            {/* Click hint for clickable ideas */}
+            {!isChosen && !hasEditableDescendants && (
                 <div style={{
                     textAlign: 'center',
                     paddingTop: '8px',
@@ -133,6 +142,23 @@ export const BrainstormIdeaEditor: React.FC<{
                         fontWeight: 'bold'
                     }}>
                         已选中进行编辑
+                    </Text>
+                </div>
+            )}
+
+            {/* Editable descendants indicator */}
+            {hasEditableDescendants && !isChosen && (
+                <div style={{
+                    textAlign: 'center',
+                    paddingTop: '8px',
+                    borderTop: '1px solid #722ed1'
+                }}>
+                    <Text style={{
+                        fontSize: '10px',
+                        color: '#722ed1',
+                        fontWeight: 'bold'
+                    }}>
+                        编辑版本已存在
                     </Text>
                 </div>
             )}

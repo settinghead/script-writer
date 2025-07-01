@@ -280,7 +280,7 @@ const ProjectLayout: React.FC = () => {
 
     return (
         <ProjectDataProvider projectId={projectId!}>
-            <Layout style={{ height: '100%', overflow: 'hidden' }}>
+            <Layout style={{ height: '100%', overflow: 'hidden', }}>
                 {/* Mobile Drawer for Chat */}
                 {isMobile && (
                     <Drawer
@@ -408,7 +408,8 @@ const ProjectLayout: React.FC = () => {
                     flex: 1,
                     height: '100%',
                     display: 'flex',
-                    flexDirection: 'row'
+                    flexDirection: 'row',
+                    padding: "0"
                 }}>
                     {/* Breadcrumb and Toggle Buttons Row */}
                     <div style={{
@@ -511,27 +512,31 @@ const ProjectLayout: React.FC = () => {
                                     overflowY: 'auto',
                                     padding: '12px'
                                 }}>
+                                    <TextDivider title="头脑风暴" />
                                     <ProjectBrainstormPage />
                                     {/* Conditionally render SingleBrainstormIdeaEditor if there's a chosen idea */}
                                     {chosenIdea && !chosenIdeaLoading && (
-                                        <SingleBrainstormIdeaEditor
-                                            originalArtifactId={chosenIdea.originalArtifactId}
-                                            originalArtifactPath={chosenIdea.originalArtifactPath}
-                                            editableArtifactId={chosenIdea.editableArtifactId}
-                                            index={chosenIdea.index}
-                                            isFromCollection={chosenIdea.isFromCollection}
-                                            onViewOriginalIdeas={() => {
-                                                // Scroll to the brainstorm ideas section
-                                                const brainstormSection = document.getElementById('brainstorm-ideas');
-                                                if (brainstormSection) {
-                                                    brainstormSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                                }
-                                            }}
-                                        />
-                                    )}
+                                        <>
+                                            <TextDivider title="灵感编辑" />
 
-                                    <OutlineDisplay
-                                    />
+                                            <SingleBrainstormIdeaEditor
+                                                originalArtifactId={chosenIdea.originalArtifactId}
+                                                originalArtifactPath={chosenIdea.originalArtifactPath}
+                                                editableArtifactId={chosenIdea.editableArtifactId}
+                                                index={chosenIdea.index}
+                                                isFromCollection={chosenIdea.isFromCollection}
+                                                onViewOriginalIdeas={() => {
+                                                    // Scroll to the brainstorm ideas section
+                                                    const brainstormSection = document.getElementById('brainstorm-ideas');
+                                                    if (brainstormSection) {
+                                                        brainstormSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                                    }
+                                                }}
+                                            />
+                                        </>
+                                    )}
+                                    <TextDivider title="时序大纲" />
+                                    <OutlineDisplay />
 
                                     <Outlet />
                                 </div>
@@ -680,6 +685,33 @@ const ProjectLayout: React.FC = () => {
                 </Layout>
             </Layout>
         </ProjectDataProvider>
+    );
+};
+
+const TextDivider = ({ title }: { title: string }) => {
+    return (
+        <div style={{
+            margin: '10px 0',
+            padding: '10px 0',
+            borderTop: '2px solidrgb(16, 83, 146)',
+            borderBottom: '2px solidrgb(18, 85, 147)',
+            background: `
+                linear-gradient(135deg, 
+                    rgb(0, 49, 94) 25%, transparent 25%, 
+                    transparent 50%,rgb(0, 49, 94) 50%, 
+                    rgb(0, 49, 94) 75%, transparent 75%, transparent
+                ),
+                linear-gradient(135deg,rgb(16, 26, 34) 0%,rgb(29, 39, 61) 50%,rgb(17, 25, 35) 100%)
+            `,
+            backgroundSize: '80px 80px, 100% 100%',
+            fontSize: '20px',
+            fontWeight: 'bold',
+            color: '#fff',
+            textShadow: '0 1px 2px rgba(0, 0, 0, 0.5)',
+            textAlign: 'center'
+        }}>
+            {title}
+        </div>
     );
 };
 

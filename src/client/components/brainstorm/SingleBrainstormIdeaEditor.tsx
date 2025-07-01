@@ -1,11 +1,12 @@
 import React, { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Button, Typography, Card, Form, InputNumber, Select, Input, message, Space, Divider, Row, Col } from 'antd';
-import { FileTextOutlined, EyeOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import { Button, Typography, Card, Form, InputNumber, Select, Input, message, Space, Divider, Row, Col, Tag } from 'antd';
+import { FileTextOutlined, EyeOutlined, ArrowLeftOutlined, CheckCircleOutlined, BookOutlined, DoubleRightOutlined } from '@ant-design/icons';
 import { useMutation } from '@tanstack/react-query';
 import { useProjectData } from '../../contexts/ProjectDataContext';
 import { ArtifactEditor } from '../shared/ArtifactEditor';
 import { BRAINSTORM_IDEA_FIELDS } from '../shared/fieldConfigs';
+import { useOutlineDescendants } from '../../hooks/useOutlineDescendants';
 
 const { Title, Text } = Typography;
 
@@ -31,6 +32,9 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
     const projectData = useProjectData();
     const [form] = Form.useForm();
 
+    // Check for outline descendants
+    const { hasOutlineDescendants, latestOutline, isLoading: outlineLoading } = useOutlineDescendants(editableArtifactId);
+
     // Get the editable artifact data to display title
     const editableArtifact = projectData.getArtifactById(editableArtifactId);
     let ideaTitle = '选中的创意';
@@ -43,6 +47,17 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
             console.warn('Failed to parse editable artifact data:', error);
         }
     }
+
+    // Handle navigation to outline
+    const handleViewOutline = useCallback(() => {
+        if (latestOutline) {
+            // Scroll to the outline section
+            const outlineSection = document.getElementById('story-outline');
+            if (outlineSection) {
+                outlineSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+    }, [latestOutline]);
 
     // Outline generation mutation
     const outlineGenerationMutation = useMutation({
@@ -99,6 +114,106 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
         });
     };
 
+    // Render compact mode if outline descendants exist
+    if (hasOutlineDescendants && latestOutline) {
+        return (
+            <div className="single-brainstorm-idea-editor-compact" style={{ marginBottom: '16px' }}>
+                <Card
+                    size="small"
+                    style={{
+                        backgroundColor: '#1a1a1a',
+                        border: '1px solid #722ed1',
+                        borderRadius: '6px'
+                    }}
+                    styles={{ body: { padding: '16px' } }}
+                >
+                    {/* Compact Header */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <CheckCircleOutlined style={{ color: '#722ed1', fontSize: '16px' }} />
+                            <div>
+                                <Title level={5} style={{ margin: 0, color: '#722ed1', fontSize: '14px' }}>
+                                    {ideaTitle}
+                                </Title>
+                                <Text type="secondary" style={{ fontSize: '12px' }}>
+                                    {isFromCollection && `• 灵感来自集合第 ${index + 1} 个想法`}
+                                </Text>
+                            </div>
+                        </div>
+
+                        {onViewOriginalIdeas && (
+                            <Button
+                                type="text"
+                                icon={<DoubleRightOutlined />}
+                                onClick={onViewOriginalIdeas}
+                                size="small"
+                                style={{ color: '#1890ff' }}
+                            >
+                                查看所有创意
+                            </Button>
+                        )}
+                    </div>
+
+                    {/* Compact Content */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ flex: 1 }}>
+                            <Space direction="vertical" size="small">
+                                <div>
+                                    <Tag color="purple" icon={<BookOutlined />}>
+                                        {latestOutline.title || '时序大纲'}
+                                    </Tag>
+                                </div>
+
+                            </Space>
+                        </div>
+
+                        <Button
+                            type="primary"
+                            icon={<BookOutlined />}
+                            onClick={handleViewOutline}
+                            style={{
+                                background: 'linear-gradient(100deg, #722ed1, #9254de)',
+                                border: 'none',
+                                borderRadius: '4px'
+                            }}
+                        >
+                            查看时序大纲
+                        </Button>
+                    </div>
+
+                    {/* Read-only preview of the idea */}
+                    <div style={{ marginTop: '12px', padding: '8px', backgroundColor: '#0f0f0f', borderRadius: '4px', border: '1px solid #333' }}>
+
+                        {editableArtifact && (() => {
+                            try {
+                                const data = JSON.parse(editableArtifact.data);
+                                return (
+                                    <div style={{ fontSize: '12px', lineHeight: 1.4 }}>
+                                        {data.title && (
+                                            <div style={{ marginBottom: '6px' }}>
+                                                <span style={{ color: '#888', marginRight: '8px' }}>标题:</span>
+                                                <span style={{ color: '#fff' }}>{data.title}</span>
+                                            </div>
+                                        )}
+                                        {data.body && (
+                                            <div>
+                                                <span style={{ color: '#888', marginRight: '8px' }}>内容:</span>
+                                                <span style={{ color: '#ccc' }}>{data.body.substring(0, 100)}{data.body.length > 100 ? '...' : ''}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            } catch (error) {
+                                return <div style={{ color: '#888', fontSize: '12px' }}>无法解析创意内容</div>;
+                            }
+                        })()}
+                    </div>
+                </Card>
+            </div>
+        );
+    }
+
+    // Normal editing mode
     return (
         <div className="single-brainstorm-idea-editor" style={{ marginBottom: '24px' }}>
             <Card

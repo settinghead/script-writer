@@ -7,6 +7,7 @@ import { ReasoningIndicator } from '../shared/ReasoningIndicator';
 import { useProjectData } from '../../contexts/ProjectDataContext';
 import { useLatestBrainstormIdeas } from '../../hooks/useLineageResolution';
 import { useChosenBrainstormIdea } from '../../hooks/useChosenBrainstormIdea';
+import { useEditableDescendants } from '../../hooks/useEditableDescendants';
 import { BrainstormIdeaEditor } from './BrainstormIdeaEditor';
 import { OutlineGenerationOutput } from '../../../common/schemas/outlineSchemas';
 
@@ -245,9 +246,7 @@ export default function ProjectBrainstormPage() {
             {/* Header with controls */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <Text className={`${isCollapsedView ? 'text-base' : 'text-lg'} font-semibold text-white`}>
-                  {isCollapsedView ? '所有创意想法' : '创意想法'} ({ideas.length})
-                </Text>
+
                 {isStreaming && (
                   <div className="flex items-center gap-2">
                     <ReasoningIndicator isVisible={false} />
@@ -281,20 +280,13 @@ export default function ProjectBrainstormPage() {
               {ideas.map((idea, index) => {
                 if (!idea.artifactId || !idea.originalArtifactId || !idea.artifactPath) return null;
 
-                // Check if this idea is the chosen one
-                const isChosenIdea = chosenIdea &&
-                  chosenIdea.originalArtifactId === idea.originalArtifactId &&
-                  chosenIdea.originalArtifactPath === idea.artifactPath;
-
                 return (
-                  <BrainstormIdeaEditor
+                  <IdeaCardWrapper
                     key={`${idea.artifactId}-${index}`}
-                    artifactId={idea.artifactId}
-                    artifactPath={idea.artifactPath}
-                    originalCollectionId={idea.originalArtifactId}
+                    idea={idea}
                     index={index}
                     isSelected={selectedIdea === index}
-                    isChosen={!!isChosenIdea}
+                    chosenIdea={chosenIdea}
                     ideaOutlines={ideaOutlines[idea.artifactId || ''] || []}
                     onIdeaClick={handleIdeaClick}
                   />
