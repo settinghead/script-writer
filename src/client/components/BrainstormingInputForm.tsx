@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, Typography, Input, Tag, Space } from 'antd';
+import { Button, Typography, Input, Tag, Space, InputNumber } from 'antd';
 import { BulbOutlined, RightOutlined } from '@ant-design/icons';
 import GenreSelectionPopup from './GenreSelectionPopup';
 import PlatformSelection from './PlatformSelection';
@@ -10,9 +10,11 @@ interface BrainstormingInputFormProps {
     selectedPlatform: string;
     selectedGenrePaths: string[][];
     requirements: string;
+    numberOfIdeas: number;
     onPlatformChange: (value: string) => void;
     onGenreSelectionChange: (paths: string[][]) => void;
     onRequirementsChange: (value: string) => void;
+    onNumberOfIdeasChange: (value: number) => void;
     onGenerate: () => void;
     isGenerating?: boolean;
 }
@@ -21,9 +23,11 @@ const BrainstormingInputForm: React.FC<BrainstormingInputFormProps> = ({
     selectedPlatform,
     selectedGenrePaths,
     requirements,
+    numberOfIdeas,
     onPlatformChange,
     onGenreSelectionChange,
     onRequirementsChange,
+    onNumberOfIdeasChange,
     onGenerate,
     isGenerating = false
 }) => {
@@ -60,7 +64,7 @@ const BrainstormingInputForm: React.FC<BrainstormingInputFormProps> = ({
         }}>
             {/* Platform Selection */}
             <div>
-                
+
                 <PlatformSelection
                     selectedPlatform={selectedPlatform}
                     onPlatformChange={onPlatformChange}
@@ -112,6 +116,30 @@ const BrainstormingInputForm: React.FC<BrainstormingInputFormProps> = ({
                 currentSelectionPaths={selectedGenrePaths}
             />
 
+            {/* Number of Ideas Selection */}
+            <div>
+                <Text style={{ color: '#d9d9d9', marginBottom: '8px', display: 'block', fontWeight: 500 }}>
+                    生成创意数量
+                </Text>
+                <InputNumber
+                    min={1}
+                    max={4}
+                    value={numberOfIdeas}
+                    onChange={(value) => onNumberOfIdeasChange(value || 3)}
+                    style={{
+                        width: '100%',
+                        background: '#141414',
+                        borderColor: '#434343',
+                        color: '#d9d9d9'
+                    }}
+                    size="large"
+                    placeholder="选择要生成的创意数量 (1-4)"
+                />
+                <Text style={{ color: '#666', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+                    建议生成2-3个创意进行对比选择
+                </Text>
+            </div>
+
             {/* Requirements Input */}
             <div>
                 <Text style={{ color: '#d9d9d9', marginBottom: '8px', display: 'block', fontWeight: 500 }}>
@@ -146,7 +174,7 @@ const BrainstormingInputForm: React.FC<BrainstormingInputFormProps> = ({
                     fontWeight: 500
                 }}
             >
-                {isGenerating ? '生成中...' : '开始头脑风暴'}
+                {isGenerating ? '生成中...' : `开始头脑风暴 (${numberOfIdeas}个创意)`}
             </Button>
         </div>
     );

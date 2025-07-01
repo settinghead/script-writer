@@ -10,6 +10,7 @@ interface BrainstormParams {
     platform: string;
     genrePaths: string[][];
     other_requirements?: string;
+    numberOfIdeas: number;
 }
 
 interface CreateProjectResponse {
@@ -25,6 +26,7 @@ const NewProjectFromBrainstormPage: React.FC = () => {
     const [selectedPlatform, setSelectedPlatform] = useState<string>('抖音');
     const [selectedGenrePaths, setSelectedGenrePaths] = useState<string[][]>([]);
     const [requirements, setRequirements] = useState<string>('');
+    const [numberOfIdeas, setNumberOfIdeas] = useState<number>(3);
 
     // TanStack Query mutation for creating projects and starting brainstorm via chat
     const createProjectMutation = useMutation({
@@ -39,7 +41,8 @@ const NewProjectFromBrainstormPage: React.FC = () => {
                 body: JSON.stringify({
                     platform: params.platform,
                     genrePaths: params.genrePaths,
-                    other_requirements: params.other_requirements
+                    other_requirements: params.other_requirements,
+                    numberOfIdeas: params.numberOfIdeas
                 })
             });
 
@@ -72,7 +75,8 @@ const NewProjectFromBrainstormPage: React.FC = () => {
         const params: BrainstormParams = {
             platform: selectedPlatform,
             genrePaths: selectedGenrePaths,
-            other_requirements: requirements || undefined
+            other_requirements: requirements || undefined,
+            numberOfIdeas: numberOfIdeas
         };
 
         // Use TanStack mutation
@@ -91,9 +95,11 @@ const NewProjectFromBrainstormPage: React.FC = () => {
                     selectedPlatform={selectedPlatform}
                     selectedGenrePaths={selectedGenrePaths}
                     requirements={requirements}
+                    numberOfIdeas={numberOfIdeas}
                     onPlatformChange={setSelectedPlatform}
                     onGenreSelectionChange={setSelectedGenrePaths}
                     onRequirementsChange={setRequirements}
+                    onNumberOfIdeasChange={setNumberOfIdeas}
                     onGenerate={handleGenerate}
                     isGenerating={createProjectMutation.isPending}
                 />

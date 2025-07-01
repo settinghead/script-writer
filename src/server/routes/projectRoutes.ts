@@ -105,12 +105,19 @@ export function createProjectRoutes(
                 return res.status(401).json({ error: "User not authenticated" });
             }
 
-            // Expect the new format from the frontend: { platform, genrePaths, other_requirements }
-            const { platform, genrePaths, other_requirements } = req.body;
+            // Expect the new format from the frontend: { platform, genrePaths, other_requirements, numberOfIdeas }
+            const { platform, genrePaths, other_requirements, numberOfIdeas = 3 } = req.body;
 
             if (!platform || !genrePaths || !Array.isArray(genrePaths) || genrePaths.length === 0) {
                 return res.status(400).json({
                     error: "Missing required fields: platform and genrePaths are required"
+                });
+            }
+
+            // Validate numberOfIdeas
+            if (numberOfIdeas && (typeof numberOfIdeas !== 'number' || numberOfIdeas < 1 || numberOfIdeas > 4)) {
+                return res.status(400).json({
+                    error: "numberOfIdeas must be a number between 1 and 4"
                 });
             }
 
@@ -127,7 +134,7 @@ export function createProjectRoutes(
 故事类型：${genreText}
 ${other_requirements ? `其他要求：${other_requirements}` : ''}
 
-请生成3个有创意的故事想法。`;
+请生成${numberOfIdeas}个有创意的故事想法。`;
 
             // 4. Start the general agent with brainstorm context (this is async and won't be awaited)
             agentService.runGeneralAgent(project.id, user.id, {

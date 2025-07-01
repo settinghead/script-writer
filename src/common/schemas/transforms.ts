@@ -139,7 +139,7 @@ export const LLM_TRANSFORM_DEFINITIONS: Record<string, LLMTransformDefinition> =
     description: 'AI generation of story outline from brainstorm idea',
     inputTypes: ['brainstorm_idea_schema', 'user_input_schema'],
     outputType: 'outline_schema',
-    templateName: 'outline',
+    templateName: 'chronological_outline',
     inputSchema: OutlineGenerationInputSchema,
     outputSchema: OutlineGenerationOutputSchema
   }

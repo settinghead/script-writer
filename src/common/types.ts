@@ -47,6 +47,7 @@ export interface BrainstormParamsV1 {
     platform: string;
     genre_paths: string[][];
     requirements: string;
+    numberOfIdeas: number;
 }
 
 // Individual brainstorm ideas  
@@ -338,6 +339,7 @@ export const AgentBrainstormRequestSchema = z.object({
     platform: z.string().optional(),
     genre: z.string().optional(),
     other_requirements: z.string().optional(),
+    numberOfIdeas: z.number().min(1).max(4),
 });
 
 export type AgentBrainstormRequest = z.infer<typeof AgentBrainstormRequestSchema>;

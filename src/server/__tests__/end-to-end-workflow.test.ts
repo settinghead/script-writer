@@ -44,7 +44,8 @@ describe('End-to-End Workflow Integration', () => {
         const brainstormInput = {
             platform: '抖音',
             genre: '现代甜宠',
-            other_requirements: '快节奏，高颜值主角'
+            other_requirements: '快节奏，高颜值主角',
+            numberOfIdeas: 3
         };
 
         const brainstormResult = await brainstormTool.execute(brainstormInput, { toolCallId: 'test-brainstorm' });
@@ -215,7 +216,8 @@ describe('End-to-End Workflow Integration', () => {
         const input = {
             platform: 'YouTube',
             genre: '悬疑',
-            other_requirements: '反转剧情'
+            other_requirements: '反转剧情',
+            numberOfIdeas: 3
         };
 
         // Both tools should work with different configurations

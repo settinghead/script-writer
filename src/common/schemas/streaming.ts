@@ -155,7 +155,7 @@ export type IdeaArray = z.infer<typeof IdeaArraySchema>;
 
 export const TEMPLATE_SCHEMAS = {
     brainstorming: IdeaArraySchema,
-    outline: OutlineSchema,
+    chronological_outline: OutlineSchema,
     episode_synopsis_generation: EpisodeArraySchema,
     script_generation: ScriptSchema
 } as const;

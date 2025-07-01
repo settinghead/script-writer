@@ -33,8 +33,8 @@ export class TemplateService {
     // Register brainstorm edit template
     this.templates.set('brainstorm_edit', brainstormEditTemplate);
 
-    // Register outline template
-    this.templates.set('outline', outlineTemplate);
+    // Register outline template with its correct ID
+    this.templates.set('chronological_outline', outlineTemplate);
 
     // Register episode synopsis generation template
     this.templates.set('episode_synopsis_generation', episodeSynopsisGenerationTemplate);

@@ -254,13 +254,7 @@ export default function ProjectBrainstormPage() {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
-            <div>
-              {lastSyncedAt && (
-                <p className="text-xs text-gray-500 mt-1">
-                  最后同步: {new Date(lastSyncedAt).toLocaleTimeString()}
-                </p>
-              )}
-            </div>
+
 
             {/* Status indicator */}
             <div className="flex items-center gap-4">

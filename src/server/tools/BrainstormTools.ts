@@ -236,6 +236,9 @@ function buildRequirementsSection(input: IdeationInput): string {
     // Add platform and genre context
     parts.push(`请为${input.platform}平台创作${input.genre}类型的故事创意。`);
 
+    // Add number of ideas requirement
+    parts.push(`请生成${input.numberOfIdeas}个故事创意（不多不少）。`);
+
     // Add user requirements if provided
     if (input.other_requirements) {
         parts.push(`用户要求: ${input.other_requirements}`);
@@ -290,6 +293,7 @@ export function createBrainstormToolDefinition(
         prepareTemplateVariables: (input) => ({
             genre: input.genre,
             platform: input.platform,
+            numberOfIdeas: input.numberOfIdeas.toString(),
             requirementsSection: buildRequirementsSection(input)
         }),
         transformLLMOutput: transformToCollectionFormat
@@ -313,6 +317,7 @@ export function createBrainstormToolDefinition(
                     toolName: 'generate_brainstorm_ideas',
                     platform: params.platform,
                     genre: params.genre,
+                    numberOfIdeas: params.numberOfIdeas,
                     initialData: {
                         ideas: [],
                         platform: params.platform,

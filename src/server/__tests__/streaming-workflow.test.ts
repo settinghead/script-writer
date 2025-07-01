@@ -33,7 +33,8 @@ describe('Streaming Workflow Integration', () => {
         const brainstormResult = await brainstormTool.execute({
             platform: '抖音',
             genre: '现代甜宠',
-            other_requirements: '快节奏，高颜值主角'
+            other_requirements: '快节奏，高颜值主角',
+            numberOfIdeas: 3
         }, { toolCallId: 'brainstorm-1' });
 
         expect(brainstormResult.outputArtifactId).toBeTruthy();
@@ -87,7 +88,8 @@ describe('Streaming Workflow Integration', () => {
         const input = {
             platform: '抖音',
             genre: '现代甜宠',
-            other_requirements: '快节奏，高颜值主角'
+            other_requirements: '快节奏，高颜值主角',
+            numberOfIdeas: 3
         };
 
         // Act
