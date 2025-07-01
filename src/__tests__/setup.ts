@@ -31,18 +31,37 @@ vi.mock('../server/database/connection', () => ({
     }
 }));
 
-// Mock LLM Configuration
-vi.mock('../server/services/LLMConfig', () => ({
+// Mock LLM Configuration - correct path
+vi.mock('../server/transform-artifact-framework/LLMConfig', () => ({
     getLLMCredentials: vi.fn().mockReturnValue({
-        apiKey: 'test-api-key'
+        apiKey: 'test-api-key',
+        baseUrl: 'https://test-api.example.com',
+        modelName: 'test-model',
+        provider: 'openai'
     }),
-    getLLMModel: vi.fn().mockReturnValue({
+    getLLMModel: vi.fn().mockResolvedValue({
         modelId: 'test-model',
-        provider: 'test-provider'
+        provider: 'test-provider',
+        // Mock the actual language model interface
+        generateText: vi.fn().mockResolvedValue({ text: 'Generated text' }),
+        stream: vi.fn()
+    })
+}));
+
+// Also mock relative import paths for LLMConfig
+vi.mock('./LLMConfig', () => ({
+    getLLMCredentials: vi.fn().mockReturnValue({
+        apiKey: 'test-api-key',
+        baseUrl: 'https://test-api.example.com',
+        modelName: 'test-model',
+        provider: 'openai'
     }),
-    getTemperature: vi.fn().mockReturnValue(0.7),
-    getTopP: vi.fn().mockReturnValue(0.9),
-    getMaxTokens: vi.fn().mockReturnValue(2000)
+    getLLMModel: vi.fn().mockResolvedValue({
+        modelId: 'test-model',
+        provider: 'test-provider',
+        generateText: vi.fn().mockResolvedValue({ text: 'Generated text' }),
+        stream: vi.fn()
+    })
 }));
 
 // Mock lineage resolution utilities
@@ -96,4 +115,7 @@ vi.mock('../../common/utils/lineageResolution', () => ({
 
 // Mock environment variables
 process.env.NODE_ENV = 'test';
-process.env.LLM_API_KEY = 'test-api-key'; 
+process.env.LLM_API_KEY = 'test-api-key';
+process.env.LLM_BASE_URL = 'https://test-api.example.com';
+process.env.LLM_MODEL_NAME = 'test-model';
+process.env.LLM_PROVIDER = 'openai'; 
