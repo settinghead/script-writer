@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { ARTIFACT_SCHEMAS, ArtifactSchemaType } from './artifacts';
 import { OutlineGenerationInputSchema, OutlineGenerationOutputSchema } from './outlineSchemas';
 
 // Transform definition schema
