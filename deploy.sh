@@ -53,20 +53,14 @@ NODE_ENV=production
 PORT=3001
 
 # PostgreSQL Configuration
-DATABASE_URL=postgresql://script_writer:script_writer_password@localhost:5432/script_writer
+DATABASE_URL=postgresql://postgres:password@localhost:5432/script_writer
 POSTGRES_DB=script_writer
-POSTGRES_USER=script_writer
-POSTGRES_PASSWORD=script_writer_password
-
-# Electric SQL Configuration
-ELECTRIC_URL=http://localhost:5133
-ELECTRIC_DATABASE_URL=postgresql://script_writer:script_writer_password@localhost:5432/script_writer
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=password
 
 # JWT Configuration (replace with secure secret in production)
-JWT_SECRET=your-super-secure-jwt-secret-change-this-in-production
+JWT_SECRET=your-super-secret-jwt-key-256-bits-minimum-change-this-in-production
 
-# OpenAI Configuration (set your actual API key)
-OPENAI_API_KEY=your-openai-api-key-here
 
 # Cache directory
 CACHE_DIR=/var/data/$PROJECT_NAME/cache
