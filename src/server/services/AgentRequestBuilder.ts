@@ -79,8 +79,8 @@ ${context}
 → 使用 generate_outline_settings 工具
 → 参数：sourceArtifactId="abc123"
 
-**示例3：生成时序大纲**
-用户请求："基于剧本框架创建60集的时序大纲"
+**示例3：生成时间顺序故事描述**
+用户请求："基于剧本框架创建60集的时间顺序故事描述"
 → 使用 generate_chronicles 工具
 → 参数：sourceArtifactId="设定artifact的ID", totalEpisodes=60
 

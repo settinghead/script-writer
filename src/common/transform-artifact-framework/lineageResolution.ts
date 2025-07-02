@@ -1417,9 +1417,9 @@ function createWorkflowNodeFromArtifact(
         // Try to extract title from outline data
         try {
             const data = JSON.parse(artifact.data);
-            title = data.title || '时序大纲';
+            title = data.title || '时间顺序故事描述';
         } catch {
-            title = '时序大纲';
+            title = '时间顺序故事描述';
         }
 
         navigationTarget = '#story-outline';

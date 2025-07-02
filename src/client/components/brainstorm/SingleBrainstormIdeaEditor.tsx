@@ -247,7 +247,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                                 onClick={handleViewOutline}
                                 style={{ color: '#1890ff' }}
                             >
-                                查看时序大纲
+                                查看时间顺序故事描述
                             </Button>
                         )}
                     </div>
@@ -329,7 +329,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                             <Space direction="vertical" size="small">
                                 <div>
                                     <Tag color="purple" icon={<BookOutlined />}>
-                                        {latestOutline.title || '时序大纲'}
+                                        {latestOutline.title || '时间顺序故事描述'}
                                     </Tag>
                                 </div>
 
@@ -347,7 +347,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                                 borderRadius: '4px'
                             }}
                         >
-                            查看时序大纲
+                            查看时间顺序故事描述
                         </Button>
                     </div>
 

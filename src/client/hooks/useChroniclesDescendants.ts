@@ -67,12 +67,12 @@ export const useChroniclesDescendants = (outlineSettingsArtifactId: string): Use
         const latestChronicles = sortedChronicles[0];
 
         // Try to extract title from chronicles data
-        let chroniclesTitle = '时序大纲';
+        let chroniclesTitle = '时间顺序故事描述';
         try {
             if (latestChronicles.data && typeof latestChronicles.data === 'object') {
                 const data = latestChronicles.data as any;
                 if (data.stages && Array.isArray(data.stages) && data.stages.length > 0) {
-                    chroniclesTitle = `时序大纲 (${data.stages.length}个阶段)`;
+                    chroniclesTitle = `时间顺序故事描述 (${data.stages.length}个阶段)`;
                 }
             }
         } catch (error) {

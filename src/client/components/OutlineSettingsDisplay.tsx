@@ -144,7 +144,7 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
             requirements?: string;
         }) => {
             const agentRequest = {
-                userRequest: `基于outline settings artifact ID ${params.sourceArtifactId} 生成详细的时序大纲。${params.requirements ? `特殊要求：${params.requirements}` : ''}`,
+                userRequest: `基于outline settings artifact ID ${params.sourceArtifactId} 生成详细的时间顺序故事描述。${params.requirements ? `特殊要求：${params.requirements}` : ''}`,
                 projectId: projectId!
             };
 
@@ -165,10 +165,10 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
             return response.json();
         },
         onSuccess: () => {
-            message.success('时序大纲生成已开始！请稍后查看进度。');
+            message.success('时间顺序故事描述生成已开始！请稍后查看进度。');
         },
         onError: (error) => {
-            message.error(`生成时序大纲失败：${error.message}`);
+            message.error(`生成时间顺序故事描述失败：${error.message}`);
         }
     });
 
@@ -666,7 +666,7 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                         <Space direction="vertical" size="large">
                             <div>
                                 <Tag color="purple" icon={<HistoryOutlined />} style={{ marginBottom: '12px' }}>
-                                    {latestChronicles.title || '时序大纲'}
+                                    {latestChronicles.title || '时间顺序故事描述'}
                                 </Tag>
                             </div>
                             <Button
@@ -683,7 +683,7 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                                     height: 'auto'
                                 }}
                             >
-                                查看时序大纲 &gt;&gt;
+                                查看时间顺序故事描述 &gt;&gt;
                             </Button>
                         </Space>
                     ) : (
@@ -703,7 +703,7 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                                 height: 'auto'
                             }}
                         >
-                            {chroniclesGenerationMutation.isPending ? '生成中...' : '生成时序大纲 &gt;&gt;'}
+                            {chroniclesGenerationMutation.isPending ? '生成中...' : '生成时间顺序故事描述 &gt;&gt;'}
                         </Button>
                     )}
                 </div>
