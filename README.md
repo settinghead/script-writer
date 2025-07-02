@@ -90,7 +90,8 @@ UI Update: Real-time display with edit indicators
 - **Dynamic Streaming UI** - Controls render eagerly as content arrives
 - **Interactive Workflow Visualization** - Real-time project progress navigation
 - **Dual-Mode Project Navigation** - Visual workflow + hierarchical tree views
-- **Entity-Specific Auto-Save** - Field-level debouncing with isolated save states
+- **Optimistic State Management** - Electric SQL write patterns with concurrent edit handling
+- **Smart Auto-Save System** - Advanced debouncing with edit preservation during saves
 - **Edit History Visualization** - Visual indicators (📝 已编辑版本) for modified content
 
 **Chat Interface**:
@@ -143,6 +144,40 @@ Script Writer is built on the **Transform Artifact Framework**. For detailed tec
 - **Project-Based Access Control** - All content scoped to projects
 - **Artifact System** - Immutable content with edit lineage
 - **Transform Tracking** - Complete audit trail of all modifications
+
+### Optimistic State Implementation
+
+Following the [Electric SQL write guide patterns](https://electric-sql.com/docs/guides/writes), the application implements sophisticated optimistic state management:
+
+**Concurrent Edit Handling**:
+- **Queue-Based Saves** - Pending edits are queued during active saves to prevent data loss
+- **Recursive Processing** - Queued values are automatically processed after current saves complete
+- **No Lost Edits** - Latest user input is preserved even during rapid typing
+
+**Smart State Synchronization**:
+- **Edit Preservation** - Local edits are protected during optimistic state updates
+- **Fresh Data Fetching** - Save operations always use current artifact data to prevent stale closures
+- **Conditional Prop Syncing** - Props only update local state when not actively saving
+
+**Race Condition Prevention**:
+```typescript
+// Example: Concurrent edit handling with queueing
+if (savingRef.current) {
+    pendingSaveRef.current = valueToSave; // Queue latest value
+    return;
+}
+
+// After save completes, process any queued values
+if (pendingSaveRef.current && pendingSaveRef.current !== valueToSave) {
+    const queuedValue = pendingSaveRef.current;
+    setTimeout(() => saveValue(queuedValue), 0); // Save queued value
+}
+```
+
+**Benefits**:
+- **Seamless UX** - Users can type continuously without interruption
+- **Data Integrity** - No edits are lost during network operations
+- **Real-time Collaboration** - Multiple users can edit simultaneously without conflicts
 
 ### Script-Specific Schemas
 
