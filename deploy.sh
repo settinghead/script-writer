@@ -75,7 +75,7 @@ EOF
 fi
 
 # Copy environment file
-cp .env.production .env
+cp /var/www/.env.prod .env
 
 # Ensure data directories exist with correct permissions
 echo "📁 Setting up data directories..."

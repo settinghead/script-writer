@@ -6,6 +6,14 @@ export default defineConfig({
         globals: true,
         environment: 'node',
         setupFiles: ['./src/__tests__/setup.ts'],
+        include: ['src/**/*.{test,spec}.{js,ts}'],
+        exclude: [
+            '**/node_modules/**',
+            '**/dist/**',
+            '**/dist-server/**',
+            '**/dist-client/**',
+            '**/coverage/**'
+        ],
         coverage: {
             provider: 'v8',
             reporter: ['text', 'html', 'lcov'],
@@ -13,7 +21,10 @@ export default defineConfig({
                 '**/__tests__/**',
                 '**/node_modules/**',
                 '**/*.test.ts',
-                '**/coverage/**'
+                '**/coverage/**',
+                '**/dist/**',
+                '**/dist-server/**',
+                '**/dist-client/**'
             ]
         },
         testTimeout: 10000

@@ -32,6 +32,10 @@
     "src/server/**/*.spec.ts",
     "src/server/**/*.test.ts",
     "src/**/__tests__/**/*",
-    "src/__tests__/**/*"
+    "src/__tests__/**/*",
+    "**/*.test.*",
+    "**/*.spec.*",
+    "**/test/**",
+    "**/tests/**"
   ]
 }
