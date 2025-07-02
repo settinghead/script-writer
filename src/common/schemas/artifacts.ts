@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   OutlineSettingsInputSchema,
   OutlineSettingsOutputSchema,
+  ChroniclesInputSchema,
   ChroniclesOutputSchema
 } from './outlineSchemas';
 
@@ -26,6 +27,7 @@ export const ArtifactSchemaRegistry = {
   // New outline schemas
   'outline_settings_input_schema': OutlineSettingsInputSchema,
   'outline_settings_schema': OutlineSettingsOutputSchema,
+  'chronicles_input_schema': ChroniclesInputSchema,
   'chronicles_schema': ChroniclesOutputSchema,
 
   // Script schemas

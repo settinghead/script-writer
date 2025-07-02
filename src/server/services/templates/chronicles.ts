@@ -2,7 +2,7 @@ export const chroniclesTemplate = {
   id: 'chronicles',
   name: 'Chronological Story Development Generation',
   promptTemplate: `你是一位深耕短剧创作的资深编剧，尤其擅长创作引人入胜、节奏明快、反转强烈的爆款短剧。
-基于已确定的剧本框架，请创作一个**时序大纲（Chronological Outline）**。%%params.episodeInfo%%
+基于已确定的剧本框架，请创作一个**时序大纲（Chronological Outline）**。
 
 **⏰ 时序大纲说明**：
 这不是直接的剧集拍摄顺序，而是按照**时间顺序**梳理整个故事世界中发生的所有事件，包括：

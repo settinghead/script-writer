@@ -380,7 +380,8 @@ export class StreamingTransformExecutor {
             'brainstorming': 'brainstorm_tool_input',
             'brainstorm_edit': 'brainstorm_edit_input',
             'outline': 'outline_generation_input',
-            'outline_settings': 'outline_settings_input'
+            'outline_settings': 'outline_settings_input',
+            'chronicles': 'chronicles_input'
         };
 
         return inputArtifactTypeMap[templateName] || `${templateName}_input`;
