@@ -1,9 +1,12 @@
 import React, { useMemo, useState, useCallback, useEffect, useRef } from 'react';
-import { Card, Typography, Tag, Space, Row, Col, Button, message, Spin } from 'antd';
-import { UserOutlined, HeartOutlined, StarOutlined, EnvironmentOutlined, TeamOutlined, EditOutlined, LoadingOutlined, PlusOutlined, CloseOutlined } from '@ant-design/icons';
+import { Card, Typography, Tag, Space, Row, Col, Button, message, Spin, Divider } from 'antd';
+import { UserOutlined, HeartOutlined, StarOutlined, EnvironmentOutlined, TeamOutlined, EditOutlined, LoadingOutlined, PlusOutlined, CloseOutlined, HistoryOutlined, BookOutlined } from '@ant-design/icons';
+import { useMutation } from '@tanstack/react-query';
+import { useParams } from 'react-router-dom';
 import { OutlineSettingsOutput } from '../../common/schemas/outlineSchemas';
 import { useProjectData } from '../contexts/ProjectDataContext';
 import { useLineageResolution } from '../transform-artifact-framework/useLineageResolution';
+import { useChroniclesDescendants } from '../hooks/useChroniclesDescendants';
 import { EditableText, EditableArray } from './shared/EditableText';
 
 const { Title, Text, Paragraph } = Typography;
@@ -14,6 +17,7 @@ interface OutlineSettingsDisplayProps {
 export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
 }) => {
     const projectData = useProjectData();
+    const { projectId } = useParams<{ projectId: string }>();
     const [isCreatingTransform, setIsCreatingTransform] = useState(false);
 
     // Get outline settings artifacts
@@ -117,6 +121,11 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
         outlineSettingsRef.current = outlineSettings;
     }, [outlineSettings]);
 
+    // Check for chronicles descendants (use effectiveArtifact ID for the check)
+    const { hasChroniclesDescendants, latestChronicles, isLoading: chroniclesLoading } = useChroniclesDescendants(
+        effectiveArtifact?.id || ''
+    );
+
     // Handle click to create human transform (only once)
     const handleCreateEditableVersion = useCallback(() => {
         if (!rootOutlineArtifact || isCreatingTransform || isEditable) return;
@@ -139,6 +148,61 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
             }
         });
     }, [rootOutlineArtifact, isCreatingTransform, isEditable, projectData.createHumanTransform]);
+
+    // Chronicles generation mutation
+    const chroniclesGenerationMutation = useMutation({
+        mutationFn: async (params: {
+            sourceArtifactId: string;
+            requirements?: string;
+        }) => {
+            const agentRequest = {
+                userRequest: `基于outline settings artifact ID ${params.sourceArtifactId} 生成详细的时序大纲。${params.requirements ? `特殊要求：${params.requirements}` : ''}`,
+                projectId: projectId!
+            };
+
+            const response = await fetch(`/api/projects/${projectId}/agent`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer debug-auth-token-script-writer-dev`
+                },
+                body: JSON.stringify(agentRequest)
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to generate chronicles');
+            }
+
+            return response.json();
+        },
+        onSuccess: () => {
+            message.success('时序大纲生成已开始！请稍后查看进度。');
+        },
+        onError: (error) => {
+            message.error(`生成时序大纲失败：${error.message}`);
+        }
+    });
+
+    // Handle chronicles generation
+    const handleGenerateChronicles = useCallback(() => {
+        if (!effectiveArtifact?.id || chroniclesGenerationMutation.isPending) return;
+
+        chroniclesGenerationMutation.mutate({
+            sourceArtifactId: effectiveArtifact.id
+        });
+    }, [effectiveArtifact?.id, chroniclesGenerationMutation]);
+
+    // Handle view chronicles
+    const handleViewChronicles = useCallback(() => {
+        if (latestChronicles) {
+            // Scroll to the chronicles section
+            const chroniclesSection = document.getElementById('story-chronicles');
+            if (chroniclesSection) {
+                chroniclesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+    }, [latestChronicles]);
 
     // Handle saving individual fields
     const handleSave = useCallback(async (path: string, newValue: any) => {
@@ -605,6 +669,56 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                         )}
                     </Space>
                 </Card>
+
+                {/* Chronicles Generation Section */}
+                <Divider style={{ borderColor: '#434343', margin: '24px 0' }} />
+
+                <div style={{ textAlign: 'center', marginTop: '32px' }}>
+                    {hasChroniclesDescendants && latestChronicles ? (
+                        <Space direction="vertical" size="large">
+                            <div>
+                                <Tag color="purple" icon={<HistoryOutlined />} style={{ marginBottom: '12px' }}>
+                                    {latestChronicles.title || '时序大纲'}
+                                </Tag>
+                            </div>
+                            <Button
+                                type="primary"
+                                size="large"
+                                icon={<BookOutlined />}
+                                onClick={handleViewChronicles}
+                                style={{
+                                    background: 'linear-gradient(100deg, #722ed1, #9254de)',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    padding: '16px 32px',
+                                    fontSize: '16px',
+                                    height: 'auto'
+                                }}
+                            >
+                                查看时序大纲 &gt;&gt;
+                            </Button>
+                        </Space>
+                    ) : (
+                        <Button
+                            type="primary"
+                            size="large"
+                            icon={<HistoryOutlined />}
+                            onClick={handleGenerateChronicles}
+                            loading={chroniclesGenerationMutation.isPending}
+                            disabled={!effectiveArtifact?.id || chroniclesGenerationMutation.isPending}
+                            style={{
+                                background: 'linear-gradient(100deg, #ff7a45, #f5222d)',
+                                border: 'none',
+                                borderRadius: '6px',
+                                padding: '16px 32px',
+                                fontSize: '16px',
+                                height: 'auto'
+                            }}
+                        >
+                            生成时序大纲 &gt;&gt;
+                        </Button>
+                    )}
+                </div>
             </Card>
         </div>
     );

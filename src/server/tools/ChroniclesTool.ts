@@ -79,30 +79,17 @@ export function createChroniclesToolDefinition(
                 inputSchema: ChroniclesInputSchema,
                 outputSchema: ChroniclesOutputSchema,
                 prepareTemplateVariables: (input) => {
-                    // Use default values for template variables that aren't in the input schema
-                    const episodeInfo = `总共60集，每集2分钟`; // Default episode configuration
+                    // Use default values for template variables
                     const recommendedStages = 8; // Default stage count
                     const stageGuidance = `请创建${recommendedStages}个左右的故事阶段（60集适合${recommendedStages}个阶段）`;
 
-                    // Format characters for template
-                    const charactersString = outlineSettingsData.characters
-                        .map((char: any) => `${char.name}(${char.type}): ${char.description || ''}`)
-                        .join('; ');
-
-                    // Format setting for template
-                    const settingString = outlineSettingsData.setting
-                        ? `${outlineSettingsData.setting.core_setting_summary || ''}${outlineSettingsData.setting.key_scenes ? ' 关键场景：' + outlineSettingsData.setting.key_scenes.join('、') : ''}`.trim()
-                        : '未设定';
+                    // Stringify the complete outline settings for the template
+                    const outlineSettingsJson = JSON.stringify(outlineSettingsData, null, 2);
 
                     return ({
-                        title: outlineSettingsData.title,
-                        genre: outlineSettingsData.genre,
-                        setting: settingString,
-                        characters: charactersString,
-                        totalEpisodes: '60',
-                        episodeInfo: episodeInfo,
+                        outlineSettingsJson,
                         requirements: input.requirements || '无特殊要求',
-                        stageGuidance: stageGuidance
+                        stageGuidance
                     });
                 },
                 // Extract source artifact for proper lineage

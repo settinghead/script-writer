@@ -21,12 +21,11 @@ export const chroniclesTemplate = {
 - 避免剧情漏洞和时间线事件
 
 **📺 剧本框架基础**：
-基于已设定的故事元素：
-- **剧名**: %%params.title%%
-- **类型**: %%params.genre%%
-- **核心设定**: %%params.setting%%
-- **主要角色**: %%params.characters%%
-- **特殊要求**: %%params.requirements%%
+基于以下完整的剧本框架设定：
+
+%%params.outlineSettingsJson%%
+
+**特殊要求**: %%params.requirements%%
 
 **重要时间规划原则**：
 1. **集数与时间的关系**：
@@ -152,5 +151,5 @@ export const chroniclesTemplate = {
 **CRITICAL: 只输出纯JSON格式，绝对不要在JSON后添加任何解释、设计说明、补充内容或其他文本。JSON结构必须完整且正确。**`,
   outputFormat: 'json',
   responseWrapper: '```json',
-  variables: ['params.episodeInfo', 'params.totalEpisodes', 'params.requirements', 'params.stageGuidance', 'params.title', 'params.genre', 'params.setting', 'params.characters']
+  variables: ['params.outlineSettingsJson', 'params.requirements', 'params.stageGuidance']
 }; 
