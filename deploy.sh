@@ -15,7 +15,7 @@ nvm use 22
 # Project configuration
 PROJECT_NAME="script-writer"
 GITHUB_REPO="settinghead/script-writer"
-BRANCH="${DEPLOY_BRANCH:-dev}"
+BRANCH="${DEPLOY_BRANCH:-main}"
 
 # Create deployment directory with timestamp
 TIMESTAMP=$(date +%Y%m%d%H%M%S)
