@@ -450,155 +450,152 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                     title={<span><TeamOutlined /> 人物角色</span>}
                     style={{ marginBottom: '16px', backgroundColor: '#262626', border: '1px solid #434343' }}
                 >
-                    <Row gutter={[16, 16]}>
+                    <Space direction="vertical" size="large" style={{ width: '100%' }}>
                         {outlineSettings.characters && outlineSettings.characters.map((character: any, index: number) => (
-                            <Col span={12} key={index}>
-                                <Card
-                                    size="small"
-                                    style={{ backgroundColor: '#1f1f1f', border: '1px solid #434343', position: 'relative' }}
-                                >
-                                    {isEditable && (
-                                        <Button
-                                            type="text"
-                                            icon={<CloseOutlined />}
-                                            size="small"
-                                            onClick={() => {
-                                                const updatedCharacters = [...outlineSettings.characters];
-                                                updatedCharacters.splice(index, 1);
-                                                handleSave('characters', updatedCharacters);
-                                            }}
+                            <Card
+                                key={index}
+                                size="small"
+                                style={{ backgroundColor: '#1f1f1f', border: '1px solid #434343', position: 'relative' }}
+                            >
+                                {isEditable && (
+                                    <Button
+                                        type="text"
+                                        icon={<CloseOutlined />}
+                                        size="small"
+                                        onClick={() => {
+                                            const updatedCharacters = [...outlineSettings.characters];
+                                            updatedCharacters.splice(index, 1);
+                                            handleSave('characters', updatedCharacters);
+                                        }}
+                                        style={{
+                                            position: 'absolute',
+                                            top: '4px',
+                                            right: '4px',
+                                            color: '#ff4d4f',
+                                            opacity: 0.7,
+                                            zIndex: 1
+                                        }}
+                                    />
+                                )}
+                                <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <EditableText
+                                            value={character.name || ''}
+                                            path={`characters[${index}].name`}
+                                            placeholder="角色姓名"
+                                            isEditable={isEditable}
+                                            onSave={handleSave}
+                                            style={{ fontSize: '16px', fontWeight: 'bold', flex: 1 }}
+                                        />
+                                        <EditableText
+                                            value={getCharacterTypeLabel(character.type) || ''}
+                                            path={`characters[${index}].type`}
+                                            placeholder="类型"
+                                            isEditable={isEditable}
+                                            onSave={handleSave}
                                             style={{
-                                                position: 'absolute',
-                                                top: '4px',
-                                                right: '4px',
-                                                color: '#ff4d4f',
-                                                opacity: 0.7,
-                                                zIndex: 1
+                                                fontSize: '12px',
+                                                padding: '2px 8px',
+                                                borderRadius: '12px',
+                                                backgroundColor: isEditable ? 'rgba(24, 144, 255, 0.1)' : getCharacterTypeColor(character.type),
+                                                border: isEditable ? '1px solid #1890ff' : 'none',
+                                                color: isEditable ? '#1890ff' : '#fff'
                                             }}
                                         />
-                                    )}
-                                    <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <EditableText
-                                                value={character.name || ''}
-                                                path={`characters[${index}].name`}
-                                                placeholder="角色姓名"
-                                                isEditable={isEditable}
-                                                onSave={handleSave}
-                                                style={{ fontSize: '16px', fontWeight: 'bold', flex: 1 }}
-                                            />
-                                            <EditableText
-                                                value={getCharacterTypeLabel(character.type) || ''}
-                                                path={`characters[${index}].type`}
-                                                placeholder="类型"
-                                                isEditable={isEditable}
-                                                onSave={handleSave}
-                                                style={{
-                                                    fontSize: '12px',
-                                                    padding: '2px 8px',
-                                                    borderRadius: '12px',
-                                                    backgroundColor: isEditable ? 'rgba(24, 144, 255, 0.1)' : getCharacterTypeColor(character.type),
-                                                    border: isEditable ? '1px solid #1890ff' : 'none',
-                                                    color: isEditable ? '#1890ff' : '#fff'
-                                                }}
-                                            />
-                                        </div>
-                                        <EditableText
-                                            value={[character.age, character.gender, character.occupation].filter(Boolean).join(' • ') || ''}
-                                            path={`characters[${index}].description_summary`}
-                                            placeholder="年龄 • 性别 • 职业"
-                                            isEditable={isEditable}
-                                            onSave={async (path, value) => {
-                                                // Parse the combined string back to individual fields
-                                                const parts = value.split(' • ').map(p => p.trim());
-                                                const updatedCharacter = { ...character };
-                                                updatedCharacter.age = parts[0] || '';
-                                                updatedCharacter.gender = parts[1] || '';
-                                                updatedCharacter.occupation = parts[2] || '';
-                                                const updatedCharacters = [...outlineSettings.characters];
-                                                updatedCharacters[index] = updatedCharacter;
-                                                return handleSave('characters', updatedCharacters);
-                                            }}
-                                            style={{ fontSize: '12px', color: '#8c8c8c' }}
-                                        />
-                                        <EditableText
-                                            value={character.description || ''}
-                                            path={`characters[${index}].description`}
-                                            placeholder="角色描述"
-                                            multiline={true}
-                                            rows={2}
+                                    </div>
+                                    <EditableText
+                                        value={[character.age, character.gender, character.occupation].filter(Boolean).join(' • ') || ''}
+                                        path={`characters[${index}].description_summary`}
+                                        placeholder="年龄 • 性别 • 职业"
+                                        isEditable={isEditable}
+                                        onSave={async (path, value) => {
+                                            // Parse the combined string back to individual fields
+                                            const parts = value.split(' • ').map(p => p.trim());
+                                            const updatedCharacter = { ...character };
+                                            updatedCharacter.age = parts[0] || '';
+                                            updatedCharacter.gender = parts[1] || '';
+                                            updatedCharacter.occupation = parts[2] || '';
+                                            const updatedCharacters = [...outlineSettings.characters];
+                                            updatedCharacters[index] = updatedCharacter;
+                                            return handleSave('characters', updatedCharacters);
+                                        }}
+                                        style={{ fontSize: '12px', color: '#8c8c8c' }}
+                                    />
+                                    <EditableText
+                                        value={character.description || ''}
+                                        path={`characters[${index}].description`}
+                                        placeholder="角色描述"
+                                        multiline={true}
+                                        rows={2}
+                                        isEditable={isEditable}
+                                        onSave={handleSave}
+                                        style={{ fontSize: '12px', width: '100%' }}
+                                    />
+                                    <div>
+                                        <Text strong style={{ fontSize: '11px' }}>性格特点：</Text>
+                                        <EditableArray
+                                            value={character.personality_traits || []}
+                                            path={`characters[${index}].personality_traits`}
+                                            placeholder="每行一个性格特点..."
                                             isEditable={isEditable}
                                             onSave={handleSave}
-                                            style={{ fontSize: '12px', width: '100%' }}
+                                            mode="textarea"
                                         />
-                                        <div>
-                                            <Text strong style={{ fontSize: '11px' }}>性格特点：</Text>
-                                            <EditableArray
-                                                value={character.personality_traits || []}
-                                                path={`characters[${index}].personality_traits`}
-                                                placeholder="每行一个性格特点..."
-                                                isEditable={isEditable}
-                                                onSave={handleSave}
-                                                mode="textarea"
-                                            />
-                                        </div>
-                                        <EditableText
-                                            value={character.character_arc || ''}
-                                            path={`characters[${index}].character_arc`}
-                                            placeholder="成长轨迹"
-                                            multiline={true}
-                                            rows={2}
-                                            isEditable={isEditable}
-                                            onSave={handleSave}
-                                            style={{ fontSize: '12px', width: '100%' }}
-                                        />
-                                    </Space>
-                                </Card>
-                            </Col>
+                                    </div>
+                                    <EditableText
+                                        value={character.character_arc || ''}
+                                        path={`characters[${index}].character_arc`}
+                                        placeholder="成长轨迹"
+                                        multiline={true}
+                                        rows={2}
+                                        isEditable={isEditable}
+                                        onSave={handleSave}
+                                        style={{ fontSize: '12px', width: '100%' }}
+                                    />
+                                </Space>
+                            </Card>
                         ))}
                         {isEditable && (
-                            <Col span={12}>
-                                <Card
-                                    size="small"
-                                    style={{
-                                        backgroundColor: 'transparent',
-                                        border: '2px dashed #434343',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        minHeight: '200px',
-                                        cursor: 'pointer'
-                                    }}
-                                    bodyStyle={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        flexDirection: 'column',
-                                        padding: '24px'
-                                    }}
-                                    onClick={() => {
-                                        const newCharacter = {
-                                            name: '新角色',
-                                            type: 'other',
-                                            description: '',
-                                            age: '',
-                                            gender: '',
-                                            occupation: '',
-                                            personality_traits: [],
-                                            character_arc: '',
-                                            relationships: {},
-                                            key_scenes: []
-                                        };
-                                        const currentCharacters = outlineSettings.characters || [];
-                                        handleSave('characters', [...currentCharacters, newCharacter]);
-                                    }}
-                                >
-                                    <PlusOutlined style={{ fontSize: '24px', color: '#8c8c8c', marginBottom: '8px' }} />
-                                    <Text style={{ color: '#8c8c8c' }}>添加新角色</Text>
-                                </Card>
-                            </Col>
+                            <Card
+                                size="small"
+                                style={{
+                                    backgroundColor: 'transparent',
+                                    border: '2px dashed #434343',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    minHeight: '120px',
+                                    cursor: 'pointer'
+                                }}
+                                bodyStyle={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    flexDirection: 'column',
+                                    padding: '24px'
+                                }}
+                                onClick={() => {
+                                    const newCharacter = {
+                                        name: '新角色',
+                                        type: 'other',
+                                        description: '',
+                                        age: '',
+                                        gender: '',
+                                        occupation: '',
+                                        personality_traits: [],
+                                        character_arc: '',
+                                        relationships: {},
+                                        key_scenes: []
+                                    };
+                                    const currentCharacters = outlineSettings.characters || [];
+                                    handleSave('characters', [...currentCharacters, newCharacter]);
+                                }}
+                            >
+                                <PlusOutlined style={{ fontSize: '24px', color: '#8c8c8c', marginBottom: '8px' }} />
+                                <Text style={{ color: '#8c8c8c' }}>添加新角色</Text>
+                            </Card>
                         )}
-                    </Row>
+                    </Space>
                 </Card>
             </Card>
         </div>
