@@ -95,6 +95,7 @@ export function useLineageResolution(
     { sourceArtifactId, path, options }: { sourceArtifactId: string | null; path: string; options: UseLineageResolutionOptions; }): UseLineageResolutionResult {
     const { enabled } = options;
     const { graph, isLoading: graphLoading, error: graphError } = useLineageGraph();
+    const projectData = useProjectData();
 
     const [error, setError] = useState<Error | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -116,7 +117,7 @@ export function useLineageResolution(
             setIsProcessing(true);
 
             // Resolve the latest artifact for the given path using the shared graph
-            const result = findLatestArtifact(sourceArtifactId, path, graph);
+            const result = findLatestArtifact(sourceArtifactId, path, graph, projectData.artifacts);
 
             setIsProcessing(false);
             return result;
@@ -135,7 +136,7 @@ export function useLineageResolution(
                 lineagePath: []
             };
         }
-    }, [enabled, sourceArtifactId, path, graph]);
+    }, [enabled, sourceArtifactId, path, graph, projectData.artifacts]);
 
     // Determine loading state
     const isLoading = graphLoading || isProcessing;

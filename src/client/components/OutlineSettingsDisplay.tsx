@@ -24,25 +24,32 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
         );
     }, [projectData.artifacts]);
 
-    // Find the latest outline settings artifact
-    const latestOutlineArtifact = useMemo(() => {
+    // Find the ROOT outline settings artifact (AI-generated) for lineage resolution
+    const rootOutlineArtifact = useMemo(() => {
         if (outlineSettingsArtifacts.length === 0) return null;
 
-        // Sort by creation time and get the latest
+        // Find the AI-generated artifact (should be the root of the lineage chain)
+        const aiGenerated = outlineSettingsArtifacts.find(artifact =>
+            artifact.origin_type === 'ai_generated'
+        );
+
+        if (aiGenerated) {
+            return aiGenerated;
+        }
+
+        // Fallback: if no AI-generated found, sort by creation time and get the earliest
         const sorted = [...outlineSettingsArtifacts].sort((a, b) =>
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         );
         return sorted[0];
     }, [outlineSettingsArtifacts]);
 
-    // Use lineage resolution to determine if we have an editable version
+    // Use lineage resolution starting from the ROOT artifact to find the latest version
     const { latestArtifactId, isLoading: lineageLoading } = useLineageResolution({
-        sourceArtifactId: latestOutlineArtifact?.id || null,
+        sourceArtifactId: rootOutlineArtifact?.id || null,
         path: '$',
-        options: { enabled: !!latestOutlineArtifact?.id }
+        options: { enabled: !!rootOutlineArtifact?.id }
     });
-
-
 
     // Helper function to extract title from artifact data
     const getArtifactTitle = (artifact: any) => {
@@ -64,8 +71,8 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
             const resolved = projectData.getArtifactById(latestArtifactId);
             return resolved;
         }
-        return latestOutlineArtifact;
-    }, [latestArtifactId, latestOutlineArtifact, projectData.getArtifactById]);
+        return rootOutlineArtifact;
+    }, [latestArtifactId, rootOutlineArtifact, projectData.getArtifactById]);
 
     // Determine if the current artifact is editable
     const isEditable = useMemo(() => {
@@ -110,16 +117,14 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
         outlineSettingsRef.current = outlineSettings;
     }, [outlineSettings]);
 
-
-
     // Handle click to create human transform (only once)
     const handleCreateEditableVersion = useCallback(() => {
-        if (!latestOutlineArtifact || isCreatingTransform || isEditable) return;
+        if (!rootOutlineArtifact || isCreatingTransform || isEditable) return;
 
         setIsCreatingTransform(true);
         projectData.createHumanTransform.mutate({
             transformName: 'edit_outline_settings',
-            sourceArtifactId: latestOutlineArtifact.id,
+            sourceArtifactId: rootOutlineArtifact.id,
             derivationPath: '$',
             fieldUpdates: {}
         }, {
@@ -133,11 +138,10 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                 message.error(`创建编辑版本失败: ${error.message}`);
             }
         });
-    }, [latestOutlineArtifact, isCreatingTransform, isEditable, projectData.createHumanTransform]);
+    }, [rootOutlineArtifact, isCreatingTransform, isEditable, projectData.createHumanTransform]);
 
     // Handle saving individual fields
     const handleSave = useCallback(async (path: string, newValue: any) => {
-
         if (!outlineSettingsRef.current) {
             return;
         }
@@ -149,13 +153,6 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
             if (path.includes('[') && path.includes(']')) {
                 const [basePath, indexStr] = path.split('[');
                 const index = parseInt(indexStr.replace(']', ''));
-
-                console.log('[OutlineSettingsDisplay] Handling array index path:', {
-                    basePath,
-                    index,
-                    newValue,
-                    path
-                });
 
                 // Handle different array paths
                 if (basePath === 'target_audience.core_themes') {
@@ -184,19 +181,15 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
             } else {
                 // Handle direct array paths like "target_audience.core_themes"
                 if (path === 'target_audience.core_themes') {
-                    console.log('[OutlineSettingsDisplay] Updating core_themes array:', { newValue });
                     updatedSettings.target_audience = {
                         ...updatedSettings.target_audience,
                         core_themes: Array.isArray(newValue) ? newValue : []
                     };
                 } else if (path === 'selling_points') {
-                    console.log('[OutlineSettingsDisplay] Updating selling_points array:', { newValue });
                     updatedSettings.selling_points = Array.isArray(newValue) ? newValue : [];
                 } else if (path === 'satisfaction_points') {
-                    console.log('[OutlineSettingsDisplay] Updating satisfaction_points array:', { newValue });
                     updatedSettings.satisfaction_points = Array.isArray(newValue) ? newValue : [];
                 } else if (path === 'setting.key_scenes') {
-                    console.log('[OutlineSettingsDisplay] Updating key_scenes array:', { newValue });
                     updatedSettings.setting = {
                         ...updatedSettings.setting,
                         key_scenes: Array.isArray(newValue) ? newValue : []
@@ -227,8 +220,6 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                 artifactId: effectiveArtifact.id,
                 data: updatedSettings
             });
-
-            console.log('[OutlineSettingsDisplay] onSave completed successfully');
         } catch (error) {
             console.error('[OutlineSettingsDisplay] Save failed:', { error, path, newValue });
         }

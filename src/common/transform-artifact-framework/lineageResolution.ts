@@ -72,6 +72,7 @@ export function buildLineageGraph(
     transformInputs: ElectricTransformInput[],
     transformOutputs: ElectricTransformOutput[]
 ): LineageGraph {
+
     // Internal phase types for multi-pass algorithm
     type PhaseOneArtifactNode = Omit<LineageNodeArtifact, 'sourceTransform'> & {
         sourceTransformId: string | "none";
@@ -483,70 +484,63 @@ function processLLMTransformPhaseOne(
 export function findLatestArtifact(
     sourceArtifactId: string,
     path: string | undefined,
-    graph: LineageGraph
+    graph: LineageGraph,
+    artifacts?: ElectricArtifact[]
 ): LineageResolutionResult {
     const sourceNode = graph.nodes.get(sourceArtifactId);
     if (!sourceNode) {
         return {
             artifactId: null,
+            path: path,
             depth: 0,
             lineagePath: []
         };
     }
 
-    // If no path specified, traverse the entire lineage from this artifact
-    if (!path) {
-        return traverseToLeaf(sourceArtifactId, graph);
+    // If we have a specific path, look for path-specific lineage
+    if (path && path !== '$') {
+        const pathKey = `${sourceArtifactId}:${path}`;
+        const pathLineage = graph.paths.get(pathKey);
+
+        if (pathLineage && pathLineage.length > 0) {
+            // Find the deepest artifact node in the path lineage
+            const artifactNodes = pathLineage.filter(node => node.type === 'artifact');
+
+            if (artifactNodes.length === 0) {
+                // No artifact nodes found in path lineage, fall back to root traversal
+            } else {
+                const deepestArtifactNode = artifactNodes.reduce((deepest, current) =>
+                    current.depth > deepest.depth ? current : deepest
+                );
+
+                // Continue traversing from the deepest artifact node to find the actual leaf
+                const finalResult = traverseToLeaf(deepestArtifactNode.artifactId, graph, new Set(), artifacts);
+
+                // Build complete lineage path without duplicates
+                const completePath = [sourceNode];
+
+                // Add artifact nodes from path lineage (excluding the deepest to avoid duplication)
+                for (const node of artifactNodes) {
+                    if (node.artifactId !== deepestArtifactNode.artifactId) {
+                        completePath.push(node);
+                    }
+                }
+
+                // Add final result lineage (this includes the deepest node)
+                completePath.push(...finalResult.lineagePath);
+
+                return {
+                    artifactId: finalResult.artifactId,
+                    path: path,
+                    depth: finalResult.depth,
+                    lineagePath: completePath
+                };
+            }
+        }
     }
 
-    // Path-based resolution: look for specific path lineages
-    const pathKey = `${sourceArtifactId}:${path}`;
-    const pathLineage = graph.paths.get(pathKey);
-
-    if (pathLineage && pathLineage.length > 0) {
-        // Find the deepest node in this path
-        const deepestNode = pathLineage.reduce((deepest, current) =>
-            current.depth > deepest.depth ? current : deepest
-        );
-
-        if (deepestNode.type !== "artifact") {
-            throw new Error("Deepest node is not an artifact");
-        }
-
-        // Continue traversing from the deepest node to find the actual leaf
-        const finalResult = traverseToLeaf(deepestNode.artifactId, graph);
-
-        // Build complete lineage path without duplicates
-        const completePath = [sourceNode];
-
-        // Add path lineage nodes (excluding the deepest node to avoid duplication)
-        for (const node of pathLineage) {
-            if (node.type !== "artifact") {
-                throw new Error("Node is not an artifact");
-            }
-            if (node.artifactId !== deepestNode.artifactId) {
-                completePath.push(node);
-            }
-        }
-
-        // Add final result lineage (this includes the deepest node)
-        completePath.push(...finalResult.lineagePath);
-
-        return {
-            artifactId: finalResult.artifactId,
-            path: path,
-            depth: finalResult.depth,
-            lineagePath: completePath
-        };
-    }
-
-    // No path-specific lineage found, return original artifact with path
-    return {
-        artifactId: sourceArtifactId,
-        path: path,
-        depth: 0,
-        lineagePath: [sourceNode]
-    };
+    // No path-specific lineage found or no path specified, traverse from root
+    return traverseToLeaf(sourceArtifactId, graph, new Set(), artifacts);
 }
 
 /**
@@ -555,7 +549,8 @@ export function findLatestArtifact(
 function traverseToLeaf(
     artifactId: string,
     graph: LineageGraph,
-    visited: Set<string> = new Set()
+    visited: Set<string> = new Set(),
+    artifacts?: ElectricArtifact[]
 ): LineageResolutionResult {
     // Prevent infinite loops
     if (visited.has(artifactId)) {
@@ -578,6 +573,7 @@ function traverseToLeaf(
 
     // If this is a leaf node, return it
     if (node.isLeaf) {
+        const artifact = artifacts?.find(a => a.id === artifactId);
         return {
             artifactId: artifactId,
             depth: node.depth,
@@ -587,6 +583,7 @@ function traverseToLeaf(
 
     // Find all children and traverse to the deepest one
     const children = graph.edges.get(artifactId) || [];
+
     let deepestResult: LineageResolutionResult = {
         artifactId: artifactId,
         depth: node.depth,
@@ -594,16 +591,38 @@ function traverseToLeaf(
     };
 
     for (const childId of children) {
-        const childResult = traverseToLeaf(childId, graph, new Set(visited));
+        const childResult = traverseToLeaf(childId, graph, new Set(visited), artifacts);
+
+        // Use tie-breaking logic when depths are equal
         if (childResult.depth > deepestResult.depth) {
             deepestResult = {
                 artifactId: childResult.artifactId,
                 depth: childResult.depth,
                 lineagePath: [node, ...childResult.lineagePath]
             };
+        } else if (childResult.depth === deepestResult.depth && childResult.artifactId && deepestResult.artifactId) {
+            // Tie-breaking: prioritize user_input artifacts over ai_generated ones
+            const childArtifact = artifacts?.find(a => a.id === childResult.artifactId);
+            const currentArtifact = artifacts?.find(a => a.id === deepestResult.artifactId);
+
+            if (childArtifact && currentArtifact) {
+                const childIsUserInput = childArtifact.origin_type === 'user_input';
+                const currentIsUserInput = currentArtifact.origin_type === 'user_input';
+
+                // Prefer user_input over ai_generated
+                if (childIsUserInput && !currentIsUserInput) {
+                    deepestResult = {
+                        artifactId: childResult.artifactId,
+                        depth: childResult.depth,
+                        lineagePath: [node, ...childResult.lineagePath]
+                    };
+                }
+                // If both are user_input or both are ai_generated, keep the current one (first-wins)
+            }
         }
     }
 
+    const finalArtifact = artifacts?.find(a => a.id === deepestResult.artifactId);
     return deepestResult;
 }
 
@@ -612,9 +631,10 @@ function traverseToLeaf(
  */
 export function getLineagePath(
     artifactId: string,
-    graph: LineageGraph
+    graph: LineageGraph,
+    artifacts?: ElectricArtifact[]
 ): LineageNode[] {
-    const result = traverseToLeaf(artifactId, graph);
+    const result = traverseToLeaf(artifactId, graph, new Set(), artifacts);
     return result.lineagePath;
 }
 

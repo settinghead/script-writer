@@ -313,6 +313,51 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
         return () => clearInterval(interval);
     }, []);
 
+    // Auto-cleanup local updates when Electric SQL data matches
+    // This implements the optimistic state pattern from Electric SQL write guide
+    useEffect(() => {
+        if (!artifacts) return;
+
+        const updatesToRemove: string[] = [];
+
+        // Check each local update against the latest Electric SQL data
+        localUpdates.forEach((localUpdate, key) => {
+            if (key.startsWith('artifact-')) {
+                const artifactId = key.replace('artifact-', '');
+                const baseArtifact = artifacts.find(a => a.id === artifactId);
+
+                if (baseArtifact && localUpdate) {
+                    // Check if Electric SQL data already contains the local update changes
+                    let electricDataMatches = true;
+
+                    if (localUpdate.data) {
+                        // Compare the data field specifically
+                        const localData = typeof localUpdate.data === 'string' ? localUpdate.data : JSON.stringify(localUpdate.data);
+                        const electricData = baseArtifact.data;
+
+                        if (localData !== electricData) {
+                            electricDataMatches = false;
+                        }
+                    }
+
+                    if (electricDataMatches) {
+                        console.log(`[ProjectDataContext] Electric SQL data matches local update for ${artifactId}, scheduling cleanup`);
+                        updatesToRemove.push(key);
+                    }
+                }
+            }
+        });
+
+        // Remove matching local updates in a batch
+        if (updatesToRemove.length > 0) {
+            setLocalUpdates(prev => {
+                const newMap = new Map(prev);
+                updatesToRemove.forEach(key => newMap.delete(key));
+                return newMap;
+            });
+        }
+    }, [artifacts, localUpdates]);
+
     // Memoized lineage graph computation
     const lineageGraph = useMemo<LineageGraph>(() => {
         if (!artifacts || !transforms || !humanTransforms || !transformInputs || !transformOutputs) {
@@ -375,7 +420,10 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
             const localUpdate = localUpdates.get(`artifact-${id}`);
             const baseArtifact = artifacts?.find(a => a.id === id);
             let artifact = baseArtifact;
+
             if (localUpdate && baseArtifact) {
+                // Always merge local updates with base artifact for display
+                // The cleanup logic is handled separately in useEffect
                 artifact = { ...baseArtifact, ...localUpdate };
             }
 
@@ -466,9 +514,10 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
             return optimisticUpdate;
         },
         onSuccess: (data, variables, optimisticData) => {
-            removeLocalUpdate(`artifact-${variables.artifactId}`);
             setEntityMutationState('artifacts', variables.artifactId, { status: 'success' });
+            // Invalidate queries to trigger Electric SQL sync
             queryClient.invalidateQueries({ queryKey: ['artifacts'] });
+            // Note: Local update will be automatically removed when Electric SQL data matches
         },
         onError: (error, variables, optimisticData) => {
             removeLocalUpdate(`artifact-${variables.artifactId}`);
