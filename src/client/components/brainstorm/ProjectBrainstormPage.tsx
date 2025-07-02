@@ -193,14 +193,37 @@ export default function ProjectBrainstormPage() {
       return;
     }
 
-    // Determine the correct transform name based on artifact path
-    const transformName = clickedIdea.artifactPath === '$' ? 'edit_brainstorm_idea' : 'edit_brainstorm_collection_idea';
+    // Determine the correct transform parameters based on artifact type
+    let transformName: string;
+    let sourceArtifactId: string;
+    let derivationPath: string;
+
+    if (clickedIdea.artifactPath === '$') {
+      // This is a standalone brainstorm idea (derived from collection or original)
+      // Use the idea artifact itself as the source
+      transformName = 'edit_brainstorm_idea';
+      sourceArtifactId = clickedIdea.artifactId;
+      derivationPath = '$';
+    } else {
+      // This is an item within a collection (original collection item)
+      // Use the collection as source with the specific path
+      transformName = 'edit_brainstorm_collection_idea';
+      sourceArtifactId = clickedIdea.originalArtifactId || clickedIdea.artifactId;
+      derivationPath = clickedIdea.artifactPath;
+    }
+
+    console.log('[ProjectBrainstormPage] Creating human transform:', {
+      transformName,
+      sourceArtifactId,
+      derivationPath,
+      clickedIdea
+    });
 
     // Create human transform to start editing
     projectData.createHumanTransform.mutate({
       transformName,
-      sourceArtifactId: clickedIdea.originalArtifactId || clickedIdea.artifactId,
-      derivationPath: clickedIdea.artifactPath,
+      sourceArtifactId,
+      derivationPath,
       fieldUpdates: {} // Start with empty updates
     }, {
       onSuccess: (response) => {
