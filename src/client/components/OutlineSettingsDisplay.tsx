@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useCallback, useEffect, useRef } from 'react';
-import { Card, Typography, Tag, Space, Row, Col, Button, message, Spin, Divider } from 'antd';
+import { Card, Typography, Tag, Space, Button, message, Spin, Divider } from 'antd';
 import { UserOutlined, HeartOutlined, StarOutlined, EnvironmentOutlined, TeamOutlined, EditOutlined, LoadingOutlined, PlusOutlined, CloseOutlined, HistoryOutlined, BookOutlined } from '@ant-design/icons';
 import { useMutation } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
@@ -9,7 +9,7 @@ import { useLineageResolution } from '../transform-artifact-framework/useLineage
 import { useChroniclesDescendants } from '../hooks/useChroniclesDescendants';
 import { EditableText, EditableArray } from './shared/EditableText';
 
-const { Title, Text, Paragraph } = Typography;
+const { Text } = Typography;
 
 interface OutlineSettingsDisplayProps {
 }
@@ -55,19 +55,7 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
         options: { enabled: !!rootOutlineArtifact?.id }
     });
 
-    // Helper function to extract title from artifact data
-    const getArtifactTitle = (artifact: any) => {
-        try {
-            if (!artifact?.data) return 'No data';
-            let data = artifact.data;
-            if (typeof data === 'string') {
-                data = JSON.parse(data);
-            }
-            return data?.title || 'No title';
-        } catch {
-            return 'Parse error';
-        }
-    };
+
 
     // Get the effective artifact (original or edited version)
     const effectiveArtifact = useMemo(() => {
@@ -185,7 +173,8 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
     });
 
     // Handle chronicles generation
-    const handleGenerateChronicles = useCallback(() => {
+    const handleGenerateChronicles = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation(); // Prevent event bubbling to card container
         if (!effectiveArtifact?.id || chroniclesGenerationMutation.isPending) return;
 
         console.log(`[OutlineSettingsDisplay] Generating chronicles for artifact: ${effectiveArtifact.id} (origin: ${effectiveArtifact.origin_type})`);
@@ -196,7 +185,8 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
     }, [effectiveArtifact?.id, chroniclesGenerationMutation]);
 
     // Handle view chronicles
-    const handleViewChronicles = useCallback(() => {
+    const handleViewChronicles = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation(); // Prevent any potential event bubbling
         if (latestChronicles) {
             // Scroll to the chronicles section
             const chroniclesSection = document.getElementById('story-chronicles');
@@ -299,21 +289,7 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
         }
     }, [latestArtifactId, rootOutlineArtifact, projectData]);
 
-    // Handle click on container to create editable version - MUST be defined before early returns
-    const handleContainerClick = useCallback(() => {
-        if (!isEditable && !isCreatingTransform) {
-            handleCreateEditableVersion();
-        }
-    }, [isEditable, isCreatingTransform, handleCreateEditableVersion]);
 
-    // Determine container styling based on editable state
-    const containerStyle = useMemo(() => ({
-        backgroundColor: '#1f1f1f',
-        border: isEditable ? '2px solid #52c41a' : '2px solid transparent',
-        borderRadius: '8px',
-        cursor: !isEditable && !isCreatingTransform ? 'pointer' : 'default',
-        position: 'relative' as const
-    }), [isEditable, isCreatingTransform]);
 
     // Loading state
     if (lineageLoading) {
@@ -354,25 +330,35 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
             )}
 
             <Card
-                style={containerStyle}
+                style={{
+                    backgroundColor: '#1f1f1f',
+                    border: isEditable ? '2px solid #52c41a' : '2px solid transparent',
+                    borderRadius: '8px',
+                    position: 'relative' as const
+                }}
                 styles={{ body: { padding: '24px' } }}
-                onClick={handleContainerClick}
                 title={
-                    isEditable ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#52c41a' }}>
-                            <EditOutlined />
-                            <span>剧本框架 (可编辑)</span>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: isEditable ? '#52c41a' : '#fff' }}>
+                            {isEditable && <EditOutlined />}
+                            <span>剧本框架{isEditable ? ' (可编辑)' : ''}</span>
                         </div>
-                    ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#fff' }}>
-                            <span>剧本框架</span>
-                            {!isCreatingTransform && (
-                                <span style={{ fontSize: '12px', color: '#8c8c8c' }}>
-                                    点击编辑
-                                </span>
-                            )}
-                        </div>
-                    )
+                        {!isEditable && !isCreatingTransform && (
+                            <Button
+                                type="primary"
+                                size="small"
+                                icon={<EditOutlined />}
+                                onClick={handleCreateEditableVersion}
+                                style={{
+                                    backgroundColor: '#1890ff',
+                                    border: 'none',
+                                    borderRadius: '4px'
+                                }}
+                            >
+                                编辑
+                            </Button>
+                        )}
+                    </div>
                 }
             >
                 {/* Header Section */}

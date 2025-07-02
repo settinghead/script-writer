@@ -35,12 +35,10 @@ export const EditableText: React.FC<EditableTextProps> = ({
     disableAutoSave = false
 }) => {
     const [localValue, setLocalValue] = useState(value);
-    const [isEditing, setIsEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
     const [showSavedState, setShowSavedState] = useState(false);
-    const inputRef = useRef<any>(null);
     const valueRef = useRef(value);
     const lastSavedValueRef = useRef(value); // Track the last value we actually saved
     const savingRef = useRef(false); // Track if we're currently saving
@@ -144,18 +142,8 @@ export const EditableText: React.FC<EditableTextProps> = ({
         };
     }, [debouncedSave]);
 
-    const handleClick = useCallback(() => {
-        if (isEditable && !isEditing) {
-            setIsEditing(true);
-            // Focus input after state update
-            setTimeout(() => {
-                inputRef.current?.focus();
-            }, 0);
-        }
-    }, [isEditable, isEditing]);
-
     const handleBlur = useCallback(() => {
-        setIsEditing(false);
+        // No longer need to track editing state since we removed click-to-edit
     }, []);
 
     const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -217,6 +205,7 @@ export const EditableText: React.FC<EditableTextProps> = ({
         color: '#fff',
         fontSize: '14px',
         transition: 'border-color 0.3s ease',
+        cursor: isEditable ? 'text' : 'default', // Remove pointer cursor on read-only fields
         ...getBorderStyle(),
         ...style
     };
@@ -544,6 +533,7 @@ export const EditableArray: React.FC<EditableArrayProps> = ({
                         color: '#fff',
                         fontSize: '14px',
                         transition: 'border-color 0.3s ease',
+                        cursor: isEditable ? 'text' : 'default', // Remove pointer cursor on read-only fields
                         ...getBorderStyle()
                     }}
                 />
