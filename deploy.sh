@@ -84,6 +84,7 @@ sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname = 'script_wri
 # Run database migrations
 echo "🔄 Running database migrations..."
 NODE_ENV=production ./run-ts src/server/scripts/migrate.ts
+NODE_ENV=production ./run-ts src/server/scripts/seed.ts
 
 # Setup systemd service
 echo "🔧 Setting up systemd service..."
