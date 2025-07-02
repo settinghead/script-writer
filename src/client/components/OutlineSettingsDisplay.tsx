@@ -235,7 +235,7 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
     // Determine container styling based on editable state
     const containerStyle = useMemo(() => ({
         backgroundColor: '#1f1f1f',
-        border: isEditable ? '2px solid #52c41a' : '1px solid #434343',
+        border: isEditable ? '2px solid #52c41a' : '2px solid transparent',
         borderRadius: '8px',
         cursor: !isEditable && !isCreatingTransform ? 'pointer' : 'default',
         position: 'relative' as const
@@ -376,41 +376,37 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                     </Space>
                 </Card>
 
-                {/* Selling Points & Satisfaction Points */}
-                <Row gutter={16} style={{ marginBottom: '16px' }}>
-                    <Col span={12}>
-                        <Card
-                            size="small"
-                            title={<span><StarOutlined /> 产品卖点</span>}
-                            style={{ backgroundColor: '#262626', border: '1px solid #434343', height: '100%' }}
-                        >
-                            <EditableArray
-                                value={outlineSettings.selling_points || []}
-                                path="selling_points"
-                                placeholder="每行一个卖点..."
-                                isEditable={isEditable}
-                                onSave={handleSave}
-                                mode="textarea"
-                            />
-                        </Card>
-                    </Col>
-                    <Col span={12}>
-                        <Card
-                            size="small"
-                            title={<span><HeartOutlined /> 情感爽点</span>}
-                            style={{ backgroundColor: '#262626', border: '1px solid #434343', height: '100%' }}
-                        >
-                            <EditableArray
-                                value={outlineSettings.satisfaction_points || []}
-                                path="satisfaction_points"
-                                placeholder="每行一个爽点..."
-                                isEditable={isEditable}
-                                onSave={handleSave}
-                                mode="textarea"
-                            />
-                        </Card>
-                    </Col>
-                </Row>
+                {/* Selling Points */}
+                <Card
+                    size="small"
+                    title={<span><StarOutlined /> 产品卖点</span>}
+                    style={{ marginBottom: '16px', backgroundColor: '#262626', border: '1px solid #434343' }}
+                >
+                    <EditableArray
+                        value={outlineSettings.selling_points || []}
+                        path="selling_points"
+                        placeholder="每行一个卖点..."
+                        isEditable={isEditable}
+                        onSave={handleSave}
+                        mode="textarea"
+                    />
+                </Card>
+
+                {/* Satisfaction Points */}
+                <Card
+                    size="small"
+                    title={<span><HeartOutlined /> 情感爽点</span>}
+                    style={{ marginBottom: '16px', backgroundColor: '#262626', border: '1px solid #434343' }}
+                >
+                    <EditableArray
+                        value={outlineSettings.satisfaction_points || []}
+                        path="satisfaction_points"
+                        placeholder="每行一个爽点..."
+                        isEditable={isEditable}
+                        onSave={handleSave}
+                        mode="textarea"
+                    />
+                </Card>
 
                 {/* Story Setting */}
                 <Card
