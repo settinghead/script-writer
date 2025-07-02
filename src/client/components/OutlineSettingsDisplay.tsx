@@ -142,12 +142,24 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
 
     // Handle saving individual fields
     const handleSave = useCallback(async (path: string, newValue: any) => {
-        if (!outlineSettingsRef.current) {
+        // Always get the current effective artifact to avoid stale closures
+        const currentArtifact = latestArtifactId ?
+            projectData.getArtifactById(latestArtifactId) :
+            rootOutlineArtifact;
+
+        if (!currentArtifact?.data) {
+            console.error('[OutlineSettingsDisplay] No current artifact data available for save');
             return;
         }
 
         try {
-            const updatedSettings = { ...outlineSettingsRef.current };
+            // Parse current data fresh to avoid stale state
+            let currentData: any = currentArtifact.data;
+            if (typeof currentData === 'string') {
+                currentData = JSON.parse(currentData);
+            }
+
+            const updatedSettings = { ...currentData };
 
             // Handle array index paths like "target_audience.core_themes[0]"
             if (path.includes('[') && path.includes(']')) {
@@ -212,18 +224,14 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                 }
             }
 
-            if (!effectiveArtifact) {
-                return;
-            }
-
             await projectData.updateArtifact.mutateAsync({
-                artifactId: effectiveArtifact.id,
+                artifactId: currentArtifact.id,
                 data: updatedSettings
             });
         } catch (error) {
             console.error('[OutlineSettingsDisplay] Save failed:', { error, path, newValue });
         }
-    }, [effectiveArtifact, projectData.updateArtifact]);
+    }, [latestArtifactId, rootOutlineArtifact, projectData]);
 
     // Handle click on container to create editable version - MUST be defined before early returns
     const handleContainerClick = useCallback(() => {

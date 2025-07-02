@@ -51,40 +51,74 @@ export const EditableText: React.FC<EditableTextProps> = ({
         onSaveRef.current = onSave;
     }, [onSave]);
 
-    // Update local value when prop changes
+    // Update local value when prop changes, but preserve edits during saves
     useEffect(() => {
-        setLocalValue(value);
-        lastSavedValueRef.current = value;
-        setHasUnsavedChanges(false);
+        // Don't reset local value if we're currently saving or have pending saves
+        // This prevents losing user edits during optimistic state updates
+        if (savingRef.current || pendingSaveRef.current) {
+            return;
+        }
+
+        // Only update if the value actually changed from what we expect
+        if (value !== lastSavedValueRef.current) {
+            setLocalValue(value);
+            lastSavedValueRef.current = value;
+            setHasUnsavedChanges(false);
+            setSaveError(null);
+            setShowSavedState(false);
+        }
+    }, [value]);
+
+    // Queue for pending saves during concurrent edits
+    const pendingSaveRef = useRef<string | null>(null);
+
+    // Save function that handles concurrent edits properly
+    const saveValue = useCallback(async (valueToSave: string) => {
+        if (!onSaveRef.current || valueToSave === lastSavedValueRef.current) {
+            return;
+        }
+
+        // If already saving, queue this value
+        if (savingRef.current) {
+            pendingSaveRef.current = valueToSave;
+            return;
+        }
+
+        savingRef.current = true;
+        setIsSaving(true);
         setSaveError(null);
         setShowSavedState(false);
-    }, [value]);
+
+        try {
+            await onSaveRef.current(path, valueToSave);
+            lastSavedValueRef.current = valueToSave;
+            setHasUnsavedChanges(false);
+            setShowSavedState(true);
+            setTimeout(() => setShowSavedState(false), 2000);
+
+            // Process any queued save after current save completes
+            if (pendingSaveRef.current && pendingSaveRef.current !== valueToSave) {
+                const queuedValue = pendingSaveRef.current;
+                pendingSaveRef.current = null;
+                // Recursively save the queued value
+                setTimeout(() => saveValue(queuedValue), 0);
+            } else {
+                pendingSaveRef.current = null;
+            }
+        } catch (error) {
+            console.error(`[EditableText] Save failed for ${path}:`, error);
+            setSaveError('保存失败');
+            pendingSaveRef.current = null;
+        } finally {
+            setIsSaving(false);
+            savingRef.current = false;
+        }
+    }, [path]);
 
     // Debounced save function
     const debouncedSave = useMemo(
-        () => debounce(async (newValue: string) => {
-            if (onSaveRef.current && newValue !== lastSavedValueRef.current && !savingRef.current) {
-                savingRef.current = true;
-                setIsSaving(true);
-                setSaveError(null);
-                setShowSavedState(false);
-                try {
-                    await onSaveRef.current(path, newValue);
-                    lastSavedValueRef.current = newValue;
-                    setHasUnsavedChanges(false);
-                    setShowSavedState(true);
-                    // Hide saved state after 2 seconds
-                    setTimeout(() => setShowSavedState(false), 2000);
-                } catch (error) {
-                    console.error(`[EditableText] Save failed for ${path}:`, error);
-                    setSaveError('保存失败');
-                } finally {
-                    setIsSaving(false);
-                    savingRef.current = false;
-                }
-            }
-        }, debounceMs),
-        [debounceMs, path] // Removed 'onSave' to prevent recreation
+        () => debounce(saveValue, debounceMs),
+        [saveValue, debounceMs]
     );
 
     // Auto-save on value change
@@ -263,6 +297,7 @@ export const EditableArray: React.FC<EditableArrayProps> = ({
     const lastSavedValueRef = useRef<string[]>(value);
     const lastSavedTextareaRef = useRef<string>('');
     const savingRef = useRef(false);
+    const pendingSaveRef = useRef<string[] | null>(null);
 
     // Helper functions to convert between array and textarea - Remove from useCallback dependencies
     const arrayToTextarea = useCallback((items: string[]) => items.join('\n'), []);
@@ -279,61 +314,90 @@ export const EditableArray: React.FC<EditableArrayProps> = ({
         }
     }, []);
 
-    // Update local state when value prop changes
+    // Update local state when value prop changes, but preserve edits during saves
     useEffect(() => {
-        // Always sync local state with incoming props
-        if (mode === 'list') {
-            setLocalItems(value);
-            lastSavedValueRef.current = value;
+        // Don't reset local state if we're currently saving or have pending saves
+        // This prevents losing user edits during optimistic state updates
+        if (savingRef.current || pendingSaveRef.current) {
+            return;
         }
 
-        // Update textarea value for textarea mode
-        if (mode === 'textarea') {
-            const newTextareaValue = arrayToTextarea(value);
-            setTextareaValue(newTextareaValue);
-            // Always update refs when props change - this ensures we stay in sync with database
-            lastSavedTextareaRef.current = newTextareaValue;
-        }
+        // Only update if the value actually changed from what we expect
+        if (JSON.stringify(value) !== JSON.stringify(lastSavedValueRef.current)) {
+            if (mode === 'list') {
+                setLocalItems(value);
+                lastSavedValueRef.current = value;
+            }
 
-        // Reset status indicators when props change
-        setShowSavedState(false);
-        setSaveError(null);
-        setHasUnsavedChanges(false);
+            // Update textarea value for textarea mode
+            if (mode === 'textarea') {
+                const newTextareaValue = arrayToTextarea(value);
+                setTextareaValue(newTextareaValue);
+                lastSavedTextareaRef.current = newTextareaValue;
+            }
+
+            // Reset status indicators when props change
+            setShowSavedState(false);
+            setSaveError(null);
+            setHasUnsavedChanges(false);
+        }
     }, [value, mode, arrayToTextarea]);
 
     // Update textarea value when value prop changes (handled in main useEffect above)
     // No separate useEffect needed since textarea value is updated in the main prop sync useEffect
 
-    // Debounced save function - Remove value from dependencies to prevent infinite loop
-    const debouncedSave = useMemo(
-        () => debounce(async (newItems: string[]) => {
-            if (onSave && JSON.stringify(newItems) !== JSON.stringify(lastSavedValueRef.current) && !savingRef.current) {
-                savingRef.current = true;
-                setIsSaving(true);
-                setSaveError(null);
-                setShowSavedState(false);
-                try {
-                    await onSave(path, newItems);
-                    lastSavedValueRef.current = newItems;
-                    // Update textarea ref if in textarea mode
-                    if (mode === 'textarea') {
-                        const savedTextareaValue = arrayToTextarea(newItems);
-                        lastSavedTextareaRef.current = savedTextareaValue;
-                    }
-                    setHasUnsavedChanges(false);
-                    setShowSavedState(true);
-                    // Hide saved state after 2 seconds
-                    setTimeout(() => setShowSavedState(false), 2000);
-                } catch (error) {
-                    console.error(`[EditableArray] SAVE FAILED ${path}:`, error);
-                    setSaveError('保存失败');
-                } finally {
-                    setIsSaving(false);
-                    savingRef.current = false;
-                }
+    // Save function that handles concurrent edits properly
+    const saveArrayValue = useCallback(async (itemsToSave: string[]) => {
+        if (!onSave || JSON.stringify(itemsToSave) === JSON.stringify(lastSavedValueRef.current)) {
+            return;
+        }
+
+        // If already saving, queue this value
+        if (savingRef.current) {
+            pendingSaveRef.current = itemsToSave;
+            return;
+        }
+
+        savingRef.current = true;
+        setIsSaving(true);
+        setSaveError(null);
+        setShowSavedState(false);
+
+        try {
+            await onSave(path, itemsToSave);
+            lastSavedValueRef.current = itemsToSave;
+            // Update textarea ref if in textarea mode
+            if (mode === 'textarea') {
+                const savedTextareaValue = arrayToTextarea(itemsToSave);
+                lastSavedTextareaRef.current = savedTextareaValue;
             }
-        }, debounceMs),
-        [onSave, debounceMs, path, mode, arrayToTextarea]
+            setHasUnsavedChanges(false);
+            setShowSavedState(true);
+            setTimeout(() => setShowSavedState(false), 2000);
+
+            // Process any queued save after current save completes
+            if (pendingSaveRef.current && JSON.stringify(pendingSaveRef.current) !== JSON.stringify(itemsToSave)) {
+                const queuedValue = pendingSaveRef.current;
+                pendingSaveRef.current = null;
+                // Recursively save the queued value
+                setTimeout(() => saveArrayValue(queuedValue), 0);
+            } else {
+                pendingSaveRef.current = null;
+            }
+        } catch (error) {
+            console.error(`[EditableArray] SAVE FAILED ${path}:`, error);
+            setSaveError('保存失败');
+            pendingSaveRef.current = null;
+        } finally {
+            setIsSaving(false);
+            savingRef.current = false;
+        }
+    }, [onSave, path, mode, arrayToTextarea]);
+
+    // Debounced save function
+    const debouncedSave = useMemo(
+        () => debounce(saveArrayValue, debounceMs),
+        [saveArrayValue, debounceMs]
     );
 
     // Auto-save on value change
