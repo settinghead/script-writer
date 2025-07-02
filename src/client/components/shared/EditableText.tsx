@@ -245,6 +245,7 @@ interface EditableArrayProps {
     debounceMs?: number;
     className?: string;
     addButtonText?: string;
+    mode: 'list' | 'textarea'; // New prop to control editing mode
 }
 
 export const EditableArray: React.FC<EditableArrayProps> = ({
@@ -255,7 +256,8 @@ export const EditableArray: React.FC<EditableArrayProps> = ({
     onSave,
     debounceMs = 1000,
     className = '',
-    addButtonText = '添加'
+    addButtonText = '添加',
+    mode
 }) => {
     const [localItems, setLocalItems] = useState(value);
     const [isAdding, setIsAdding] = useState(false);
@@ -267,6 +269,32 @@ export const EditableArray: React.FC<EditableArrayProps> = ({
     const lastSavedValueRef = useRef(value);
     const savingRef = useRef(false);
 
+    // For textarea mode: convert array to/from newline-separated string
+    const [textareaValue, setTextareaValue] = useState(() => {
+        if (mode === 'textarea' && Array.isArray(value)) {
+            const initialValue = value.join('\n');
+            console.log('[EditableArray] Initial textarea value:', { value, initialValue, path });
+            return initialValue;
+        }
+        return '';
+    });
+    const lastSavedTextareaRef = useRef(
+        mode === 'textarea' && Array.isArray(value) ? value.join('\n') : ''
+    );
+
+    // Helper functions for textarea mode
+    const arrayToTextarea = useCallback((items: string[]) => {
+        const result = items.join('\n');
+        console.log('[EditableArray] arrayToTextarea:', { items, result, path });
+        return result;
+    }, []);
+
+    const textareaToArray = useCallback((text: string) => {
+        const result = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+        console.log('[EditableArray] textareaToArray:', { text, result, path });
+        return result;
+    }, []);
+
     // Update local items when prop changes
     useEffect(() => {
         setLocalItems(value);
@@ -276,38 +304,139 @@ export const EditableArray: React.FC<EditableArrayProps> = ({
         if (!savingRef.current) {
             lastSavedValueRef.current = value;
         }
-    }, [value]);
+
+        // Update textarea value for textarea mode
+        if (mode === 'textarea') {
+            const newTextareaValue = arrayToTextarea(value);
+            console.log('[EditableArray] Updating textarea value from prop change:', {
+                oldTextareaValue: textareaValue,
+                newTextareaValue,
+                value,
+                path,
+                timestamp: new Date().toISOString()
+            });
+            setTextareaValue(newTextareaValue);
+            // Always update refs when props change - this ensures we stay in sync with database
+            lastSavedTextareaRef.current = newTextareaValue;
+            console.log('[EditableArray] Updated refs from prop sync:', {
+                lastSavedTextareaRef: lastSavedTextareaRef.current,
+                lastSavedValueRef: lastSavedValueRef.current,
+                path
+            });
+        }
+    }, [value, mode, arrayToTextarea]);
+
+    // Update textarea value when value prop changes (handled in main useEffect above)
+    // No separate useEffect needed since textarea value is updated in the main prop sync useEffect
 
     // Debounced save function - Remove value from dependencies to prevent infinite loop
     const debouncedSave = useMemo(
         () => debounce(async (newItems: string[]) => {
+            console.log('[EditableArray] debouncedSave called:', {
+                newItems,
+                path,
+                lastSavedValue: lastSavedValueRef.current,
+                savingState: savingRef.current,
+                timestamp: new Date().toISOString()
+            });
+
             if (onSave && JSON.stringify(newItems) !== JSON.stringify(lastSavedValueRef.current) && !savingRef.current) {
+                console.log('[EditableArray] Executing save:', { newItems, path });
                 savingRef.current = true;
                 setIsSaving(true);
                 setSaveError(null);
                 try {
                     await onSave(path, newItems);
                     lastSavedValueRef.current = newItems;
+                    // Update textarea ref if in textarea mode
+                    if (mode === 'textarea') {
+                        const savedTextareaValue = arrayToTextarea(newItems);
+                        lastSavedTextareaRef.current = savedTextareaValue;
+                        console.log('[EditableArray] Updated textarea ref after save:', {
+                            newItems,
+                            savedTextareaValue,
+                            path
+                        });
+                    }
                     setHasUnsavedChanges(false);
+                    console.log('[EditableArray] Save completed successfully:', { newItems, path });
                 } catch (error) {
-                    console.error('Auto-save failed:', error);
+                    console.error('[EditableArray] Save failed:', { error, newItems, path });
                     setSaveError('保存失败');
                 } finally {
                     setIsSaving(false);
                     savingRef.current = false;
                 }
+            } else {
+                console.log('[EditableArray] Skipping save:', {
+                    hasOnSave: !!onSave,
+                    valuesEqual: JSON.stringify(newItems) === JSON.stringify(lastSavedValueRef.current),
+                    alreadySaving: savingRef.current,
+                    newItems,
+                    lastSavedValue: lastSavedValueRef.current,
+                    path
+                });
             }
         }, debounceMs),
-        [onSave, debounceMs, path] // Removed 'value' to prevent recreation
+        [onSave, debounceMs, path, mode, arrayToTextarea] // Added mode and arrayToTextarea
     );
 
     // Auto-save on value change
     useEffect(() => {
-        if (JSON.stringify(localItems) !== JSON.stringify(lastSavedValueRef.current) && isEditable && !savingRef.current) {
-            setHasUnsavedChanges(true);
-            debouncedSave(localItems);
+        console.log('[EditableArray] Auto-save effect triggered:', {
+            mode,
+            path,
+            isEditable,
+            savingState: savingRef.current,
+            timestamp: new Date().toISOString()
+        });
+
+        if (mode === 'list') {
+            // List mode: save when localItems change
+            if (JSON.stringify(localItems) !== JSON.stringify(lastSavedValueRef.current) && isEditable && !savingRef.current) {
+                console.log('[EditableArray] Triggering auto-save for list mode:', {
+                    localItems,
+                    lastSavedItems: lastSavedValueRef.current,
+                    path
+                });
+                console.log('[EditableArray] Debounced save for list mode');
+                setHasUnsavedChanges(true);
+                debouncedSave(localItems);
+            }
+        } else if (mode === 'textarea') {
+            console.log('[EditableArray] Textarea mode auto-save check:', {
+                textareaValue,
+                currentArrayValue: Array.isArray(value) ? value : [],
+                lastSavedValue: lastSavedValueRef.current,
+                path
+            });
+
+            if (isEditable && !savingRef.current) {
+                const newItems = textareaToArray(textareaValue);
+                const databaseItems = Array.isArray(value) ? value : [];
+
+                console.log('[EditableArray] Comparing arrays for textarea mode:', {
+                    newItems,
+                    databaseItems,
+                    lastSavedItems: lastSavedValueRef.current,
+                    areEqual: JSON.stringify(newItems) === JSON.stringify(databaseItems),
+                    path
+                });
+
+                // Compare with database value, not our local tracking
+                if (JSON.stringify(newItems) !== JSON.stringify(databaseItems)) {
+                    console.log('[EditableArray] Triggering auto-save for textarea mode:', {
+                        newItems,
+                        databaseItems,
+                        path
+                    });
+                    console.log('[EditableArray] Debounced save for textarea mode');
+                    setHasUnsavedChanges(true);
+                    debouncedSave(newItems);
+                }
+            }
         }
-    }, [localItems, debouncedSave, isEditable]); // Removed 'value' from dependencies
+    }, [localItems, textareaValue, debouncedSave, isEditable, path, mode, textareaToArray]);
 
     // Cleanup debounce on unmount
     useEffect(() => {
@@ -350,6 +479,27 @@ export const EditableArray: React.FC<EditableArrayProps> = ({
         }
     }, [handleAddItem, handleCancelAdd]);
 
+    // Textarea mode handlers
+    const handleTextareaChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const newValue = e.target.value;
+        console.log('[EditableArray] Textarea change:', {
+            oldValue: textareaValue,
+            newValue,
+            path,
+            timestamp: new Date().toISOString()
+        });
+        setTextareaValue(newValue);
+    }, [textareaValue, path]);
+
+    // Check if there are unsaved changes based on mode
+    const hasUnsavedData = useMemo(() => {
+        if (mode === 'list') {
+            return JSON.stringify(localItems) !== JSON.stringify(lastSavedValueRef.current);
+        } else {
+            return textareaValue !== lastSavedTextareaRef.current;
+        }
+    }, [mode, localItems, textareaValue]);
+
     return (
         <div className={className}>
             {/* Status indicator for the array */}
@@ -360,7 +510,7 @@ export const EditableArray: React.FC<EditableArrayProps> = ({
                             <LoadingOutlined /> 保存中...
                         </span>
                     )}
-                    {JSON.stringify(localItems) !== JSON.stringify(lastSavedValueRef.current) && !isSaving && (
+                    {hasUnsavedData && !isSaving && (
                         <span style={{ color: '#faad14' }}>未保存</span>
                     )}
                     {saveError && (
@@ -369,75 +519,95 @@ export const EditableArray: React.FC<EditableArrayProps> = ({
                 </div>
             )}
 
-            {localItems.map((item, index) => (
-                <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                    <EditableText
-                        value={item}
-                        path={`${path}[${index}]`}
-                        placeholder={placeholder}
-                        isEditable={isEditable}
-                        onSave={async (_, newValue) => {
-                            handleItemChange(index, newValue);
-                        }}
-                        style={{ flex: 1 }}
-                        disableAutoSave={true} // Disable auto-save for individual items in array
-                    />
-                    {isEditable && (
-                        <Button
-                            type="text"
-                            icon={<CloseOutlined />}
-                            size="small"
-                            onClick={() => handleRemoveItem(index)}
-                            style={{ color: '#ff4d4f', opacity: 0.7 }}
-                        />
-                    )}
-                </div>
-            ))}
-
-            {isEditable && (
-                <div style={{ marginTop: '8px' }}>
-                    {isAdding ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Input
-                                value={newItemValue}
-                                onChange={(e) => setNewItemValue(e.target.value)}
-                                onKeyDown={handleAddKeyDown}
+            {mode === 'textarea' ? (
+                // Textarea mode: single auto-sized textarea where each line is an array item
+                <TextArea
+                    value={textareaValue}
+                    onChange={handleTextareaChange}
+                    placeholder={placeholder || '每行一个项目...'}
+                    autoSize={{ minRows: 3, maxRows: 15 }}
+                    disabled={!isEditable}
+                    style={{
+                        backgroundColor: isEditable ? '#001529' : 'transparent',
+                        borderColor: isEditable ? '#434343' : 'transparent',
+                        color: '#fff',
+                        fontSize: '14px'
+                    }}
+                />
+            ) : (
+                // List mode: individual EditableText components (existing behavior)
+                <>
+                    {localItems.map((item, index) => (
+                        <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                            <EditableText
+                                value={item}
+                                path={`${path}[${index}]`}
                                 placeholder={placeholder}
-                                size="small"
-                                autoFocus
+                                isEditable={isEditable}
+                                onSave={async (_, newValue) => {
+                                    handleItemChange(index, newValue);
+                                }}
                                 style={{ flex: 1 }}
+                                disableAutoSave={true} // Disable auto-save for individual items in array
                             />
-                            <Button
-                                type="text"
-                                icon={<CheckOutlined />}
-                                size="small"
-                                onClick={handleAddItem}
-                                style={{ color: '#52c41a' }}
-                            />
-                            <Button
-                                type="text"
-                                icon={<CloseOutlined />}
-                                size="small"
-                                onClick={handleCancelAdd}
-                                style={{ color: '#ff4d4f' }}
-                            />
+                            {isEditable && (
+                                <Button
+                                    type="text"
+                                    icon={<CloseOutlined />}
+                                    size="small"
+                                    onClick={() => handleRemoveItem(index)}
+                                    style={{ color: '#ff4d4f', opacity: 0.7 }}
+                                />
+                            )}
                         </div>
-                    ) : (
-                        <Button
-                            type="dashed"
-                            icon={<PlusOutlined />}
-                            size="small"
-                            onClick={() => setIsAdding(true)}
-                            style={{
-                                borderColor: '#434343',
-                                color: '#8c8c8c',
-                                backgroundColor: 'transparent'
-                            }}
-                        >
-                            {addButtonText}
-                        </Button>
+                    ))}
+
+                    {isEditable && (
+                        <div style={{ marginTop: '8px' }}>
+                            {isAdding ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Input
+                                        value={newItemValue}
+                                        onChange={(e) => setNewItemValue(e.target.value)}
+                                        onKeyDown={handleAddKeyDown}
+                                        placeholder={placeholder}
+                                        size="small"
+                                        autoFocus
+                                        style={{ flex: 1 }}
+                                    />
+                                    <Button
+                                        type="text"
+                                        icon={<CheckOutlined />}
+                                        size="small"
+                                        onClick={handleAddItem}
+                                        style={{ color: '#52c41a' }}
+                                    />
+                                    <Button
+                                        type="text"
+                                        icon={<CloseOutlined />}
+                                        size="small"
+                                        onClick={handleCancelAdd}
+                                        style={{ color: '#ff4d4f' }}
+                                    />
+                                </div>
+                            ) : (
+                                <Button
+                                    type="dashed"
+                                    icon={<PlusOutlined />}
+                                    size="small"
+                                    onClick={() => setIsAdding(true)}
+                                    style={{
+                                        borderColor: '#434343',
+                                        color: '#8c8c8c',
+                                        backgroundColor: 'transparent'
+                                    }}
+                                >
+                                    {addButtonText}
+                                </Button>
+                            )}
+                        </div>
                     )}
-                </div>
+                </>
             )}
         </div>
     );

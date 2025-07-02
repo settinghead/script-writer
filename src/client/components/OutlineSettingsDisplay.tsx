@@ -104,7 +104,11 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
 
     // Use ref for outlineSettings to prevent stale closures
     const outlineSettingsRef = useRef(outlineSettings);
-    outlineSettingsRef.current = outlineSettings;
+
+    // Update the ref when settings change
+    useEffect(() => {
+        outlineSettingsRef.current = outlineSettings;
+    }, [outlineSettings]);
 
 
 
@@ -132,110 +136,103 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
     }, [latestOutlineArtifact, isCreatingTransform, isEditable, projectData.createHumanTransform]);
 
     // Handle saving individual fields
-    const handleSave = useCallback(async (path: string, value: any) => {
-        if (!effectiveArtifact || !isEditable) {
-            return;
-        }
+    const handleSave = useCallback(async (path: string, newValue: any) => {
 
-        // Get current outline settings data using ref to avoid stale closure
         if (!outlineSettingsRef.current) {
             return;
         }
 
-        const updatedOutlineSettings = { ...outlineSettingsRef.current };
-
-        // Handle different path types
-        if (path === 'title') {
-            updatedOutlineSettings.title = value;
-        } else if (path === 'genre') {
-            updatedOutlineSettings.genre = value;
-        } else if (path === 'target_audience.demographic') {
-            if (!updatedOutlineSettings.target_audience) updatedOutlineSettings.target_audience = { demographic: '', core_themes: [] };
-            updatedOutlineSettings.target_audience.demographic = value;
-        } else if (path === 'target_audience.core_themes') {
-            if (!updatedOutlineSettings.target_audience) updatedOutlineSettings.target_audience = { demographic: '', core_themes: [] };
-            updatedOutlineSettings.target_audience.core_themes = value;
-        } else if (path.startsWith('target_audience.core_themes[')) {
-            // Handle individual core themes array item updates (e.g., target_audience.core_themes[1])
-            const match = path.match(/^target_audience\.core_themes\[(\d+)\]$/);
-            if (match) {
-                const index = parseInt(match[1], 10);
-                if (!updatedOutlineSettings.target_audience) updatedOutlineSettings.target_audience = { demographic: '', core_themes: [] };
-                if (!updatedOutlineSettings.target_audience.core_themes) updatedOutlineSettings.target_audience.core_themes = [];
-                updatedOutlineSettings.target_audience.core_themes[index] = value;
-
-            }
-        } else if (path === 'selling_points') {
-            updatedOutlineSettings.selling_points = value;
-        } else if (path.startsWith('selling_points[')) {
-            // Handle individual selling points array item updates
-            const match = path.match(/^selling_points\[(\d+)\]$/);
-            if (match) {
-                const index = parseInt(match[1], 10);
-                if (!updatedOutlineSettings.selling_points) updatedOutlineSettings.selling_points = [];
-                updatedOutlineSettings.selling_points[index] = value;
-
-            }
-        } else if (path === 'satisfaction_points') {
-            updatedOutlineSettings.satisfaction_points = value;
-        } else if (path.startsWith('satisfaction_points[')) {
-            // Handle individual satisfaction points array item updates
-            const match = path.match(/^satisfaction_points\[(\d+)\]$/);
-            if (match) {
-                const index = parseInt(match[1], 10);
-                if (!updatedOutlineSettings.satisfaction_points) updatedOutlineSettings.satisfaction_points = [];
-                updatedOutlineSettings.satisfaction_points[index] = value;
-
-            }
-        } else if (path === 'setting.core_setting_summary') {
-            if (!updatedOutlineSettings.setting) updatedOutlineSettings.setting = { core_setting_summary: '', key_scenes: [] };
-            updatedOutlineSettings.setting.core_setting_summary = value;
-        } else if (path === 'setting.key_scenes') {
-            if (!updatedOutlineSettings.setting) updatedOutlineSettings.setting = { core_setting_summary: '', key_scenes: [] };
-            updatedOutlineSettings.setting.key_scenes = value;
-        } else if (path.startsWith('setting.key_scenes[')) {
-            // Handle individual key scenes array item updates
-            const match = path.match(/^setting\.key_scenes\[(\d+)\]$/);
-            if (match) {
-                const index = parseInt(match[1], 10);
-                if (!updatedOutlineSettings.setting) updatedOutlineSettings.setting = { core_setting_summary: '', key_scenes: [] };
-                if (!updatedOutlineSettings.setting.key_scenes) updatedOutlineSettings.setting.key_scenes = [];
-                updatedOutlineSettings.setting.key_scenes[index] = value;
-
-            }
-        } else if (path.startsWith('characters[')) {
-            // Handle character field updates
-            const match = path.match(/^characters\[(\d+)\]\.(.+)$/);
-            if (match) {
-                const [, indexStr, field] = match;
-                const index = parseInt(indexStr, 10);
-                if (!updatedOutlineSettings.characters) updatedOutlineSettings.characters = [];
-                if (!updatedOutlineSettings.characters[index]) {
-                    updatedOutlineSettings.characters[index] = {
-                        name: '', type: 'other', description: '', age: '', gender: '',
-                        occupation: '', personality_traits: [], character_arc: '',
-                        relationships: {}, key_scenes: []
-                    };
-                }
-                if (field === 'personality_traits' || field === 'key_scenes') {
-                    (updatedOutlineSettings.characters[index] as any)[field] = value;
-                } else {
-                    (updatedOutlineSettings.characters[index] as any)[field] = value;
-                }
-            }
-        }
-
-        // Update the artifact - send outline settings data directly
         try {
+            const updatedSettings = { ...outlineSettingsRef.current };
+
+            // Handle array index paths like "target_audience.core_themes[0]"
+            if (path.includes('[') && path.includes(']')) {
+                const [basePath, indexStr] = path.split('[');
+                const index = parseInt(indexStr.replace(']', ''));
+
+                console.log('[OutlineSettingsDisplay] Handling array index path:', {
+                    basePath,
+                    index,
+                    newValue,
+                    path
+                });
+
+                // Handle different array paths
+                if (basePath === 'target_audience.core_themes') {
+                    if (!updatedSettings.target_audience?.core_themes) {
+                        updatedSettings.target_audience = { ...updatedSettings.target_audience, core_themes: [] };
+                    }
+                    const newThemes = [...(updatedSettings.target_audience.core_themes || [])];
+                    newThemes[index] = newValue;
+                    updatedSettings.target_audience.core_themes = newThemes;
+                } else if (basePath === 'selling_points') {
+                    const newPoints = [...(updatedSettings.selling_points || [])];
+                    newPoints[index] = newValue;
+                    updatedSettings.selling_points = newPoints;
+                } else if (basePath === 'satisfaction_points') {
+                    const newPoints = [...(updatedSettings.satisfaction_points || [])];
+                    newPoints[index] = newValue;
+                    updatedSettings.satisfaction_points = newPoints;
+                } else if (basePath === 'setting.key_scenes') {
+                    if (!updatedSettings.setting?.key_scenes) {
+                        updatedSettings.setting = { ...updatedSettings.setting, key_scenes: [] };
+                    }
+                    const newScenes = [...(updatedSettings.setting.key_scenes || [])];
+                    newScenes[index] = newValue;
+                    updatedSettings.setting.key_scenes = newScenes;
+                }
+            } else {
+                // Handle direct array paths like "target_audience.core_themes"
+                if (path === 'target_audience.core_themes') {
+                    console.log('[OutlineSettingsDisplay] Updating core_themes array:', { newValue });
+                    updatedSettings.target_audience = {
+                        ...updatedSettings.target_audience,
+                        core_themes: Array.isArray(newValue) ? newValue : []
+                    };
+                } else if (path === 'selling_points') {
+                    console.log('[OutlineSettingsDisplay] Updating selling_points array:', { newValue });
+                    updatedSettings.selling_points = Array.isArray(newValue) ? newValue : [];
+                } else if (path === 'satisfaction_points') {
+                    console.log('[OutlineSettingsDisplay] Updating satisfaction_points array:', { newValue });
+                    updatedSettings.satisfaction_points = Array.isArray(newValue) ? newValue : [];
+                } else if (path === 'setting.key_scenes') {
+                    console.log('[OutlineSettingsDisplay] Updating key_scenes array:', { newValue });
+                    updatedSettings.setting = {
+                        ...updatedSettings.setting,
+                        key_scenes: Array.isArray(newValue) ? newValue : []
+                    };
+                } else {
+                    // Handle other paths using the existing logic
+                    const pathParts = path.split('.');
+                    let current: any = updatedSettings;
+
+                    for (let i = 0; i < pathParts.length - 1; i++) {
+                        const part = pathParts[i];
+                        if (!(part in current)) {
+                            current[part] = {};
+                        }
+                        current = current[part];
+                    }
+
+                    const lastPart = pathParts[pathParts.length - 1];
+                    current[lastPart] = newValue;
+                }
+            }
+
+            if (!effectiveArtifact) {
+                return;
+            }
+
             await projectData.updateArtifact.mutateAsync({
                 artifactId: effectiveArtifact.id,
-                data: updatedOutlineSettings
+                data: updatedSettings
             });
+
+            console.log('[OutlineSettingsDisplay] onSave completed successfully');
         } catch (error) {
-            console.error('[OutlineSettingsDisplay] Update failed:', error);
-            throw error;
+            console.error('[OutlineSettingsDisplay] Save failed:', { error, path, newValue });
         }
-    }, [effectiveArtifact, isEditable, projectData.updateArtifact, getArtifactTitle]); // Removed outlineSettings to prevent stale closures
+    }, [effectiveArtifact, projectData.updateArtifact]);
 
     // Handle click on container to create editable version - MUST be defined before early returns
     const handleContainerClick = useCallback(() => {
@@ -378,10 +375,10 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                                 <EditableArray
                                     value={outlineSettings.target_audience?.core_themes || []}
                                     path="target_audience.core_themes"
-                                    placeholder="添加核心主题"
+                                    placeholder="每行一个核心主题..."
                                     isEditable={isEditable}
                                     onSave={handleSave}
-                                    addButtonText="添加主题"
+                                    mode="textarea"
                                 />
                             </div>
                         </div>
@@ -399,10 +396,10 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                             <EditableArray
                                 value={outlineSettings.selling_points || []}
                                 path="selling_points"
-                                placeholder="添加卖点"
+                                placeholder="每行一个卖点..."
                                 isEditable={isEditable}
                                 onSave={handleSave}
-                                addButtonText="添加卖点"
+                                mode="textarea"
                             />
                         </Card>
                     </Col>
@@ -415,10 +412,10 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                             <EditableArray
                                 value={outlineSettings.satisfaction_points || []}
                                 path="satisfaction_points"
-                                placeholder="添加爽点"
+                                placeholder="每行一个爽点..."
                                 isEditable={isEditable}
                                 onSave={handleSave}
-                                addButtonText="添加爽点"
+                                mode="textarea"
                             />
                         </Card>
                     </Col>
@@ -450,10 +447,10 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                                 <EditableArray
                                     value={outlineSettings.setting?.key_scenes || []}
                                     path="setting.key_scenes"
-                                    placeholder="添加关键场景"
+                                    placeholder="每行一个关键场景..."
                                     isEditable={isEditable}
                                     onSave={handleSave}
-                                    addButtonText="添加场景"
+                                    mode="textarea"
                                 />
                             </div>
                         </div>
@@ -552,10 +549,10 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                                             <EditableArray
                                                 value={character.personality_traits || []}
                                                 path={`characters[${index}].personality_traits`}
-                                                placeholder="添加性格特点"
+                                                placeholder="每行一个性格特点..."
                                                 isEditable={isEditable}
                                                 onSave={handleSave}
-                                                addButtonText="添加"
+                                                mode="textarea"
                                             />
                                         </div>
                                         <EditableText
