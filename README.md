@@ -1,10 +1,10 @@
-# Script Writer
+# 觅光助创
 
 A collaborative Chinese short drama script writing application built on the [Transform Artifact Framework](./TRANSFORM_ARTIFACT_FRAMEWORK.md). Features AI-powered brainstorming, intelligent outline generation, and real-time collaboration for creating compelling short drama content.
 
 ## Overview
 
-Script Writer combines AI-powered content generation with sophisticated editing workflows specifically designed for Chinese short drama production. The application leverages the Transform Artifact Framework to provide intelligent agents, real-time collaboration, and complete content audit trails.
+觅光助创 combines AI-powered content generation with sophisticated editing workflows specifically designed for Chinese short drama production. The application leverages the Transform Artifact Framework to provide intelligent agents, real-time collaboration, and complete content audit trails.
 
 **Key Features**:
 - **AI-Powered Script Creation** - From initial brainstorming to complete episode scripts
@@ -118,7 +118,7 @@ UI Update: Real-time display with edit indicators
 ## Technical Architecture
 
 ### Framework Foundation
-Script Writer is built on the **Transform Artifact Framework**. For detailed technical documentation, see [TRANSFORM_ARTIFACT_FRAMEWORK.md](./TRANSFORM_ARTIFACT_FRAMEWORK.md).
+觅光助创 is built on the **Transform Artifact Framework**. For detailed technical documentation, see [TRANSFORM_ARTIFACT_FRAMEWORK.md](./TRANSFORM_ARTIFACT_FRAMEWORK.md).
 
 **Key Framework Benefits**:
 - **Immutable Content History** - All edits tracked with complete lineage

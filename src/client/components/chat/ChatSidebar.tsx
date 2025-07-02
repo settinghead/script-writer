@@ -34,7 +34,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ projectId }) => {
                     <div>
                         <Title level={4} style={{ margin: 0, color: '#f0f0f0', display: 'flex', alignItems: 'center', gap: 8 }}>
                             <RobotOutlined />
-                            觅光助手
+                            觅光助创
                         </Title>
 
                     </div>

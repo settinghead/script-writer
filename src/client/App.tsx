@@ -152,7 +152,7 @@ const AppContent: React.FC = () => {
         alignItems: 'center',
         justifyContent: 'space-between'
       }}>
-        <Title level={3} style={{ color: 'white', margin: '5px 0' }}>觅光助手</Title>
+        <Title level={3} style={{ color: 'white', margin: '5px 0' }}>觅光助创</Title>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {/* User Authentication Section */}
           {isAuthenticated && user ? (
