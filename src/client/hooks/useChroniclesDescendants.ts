@@ -19,9 +19,14 @@ export const useChroniclesDescendants = (outlineSettingsArtifactId: string): Use
             };
         }
 
-        // Find transforms that use this outline settings artifact as input
+        // Get all outline settings artifacts in the lineage chain
+        const allOutlineSettingsArtifacts = projectData.artifacts.filter(artifact =>
+            artifact.schema_type === 'outline_settings_schema' && artifact.data
+        );
+
+        // Find transforms that use ANY outline settings artifact as input (lineage-aware)
         const relatedTransforms = projectData.transformInputs.filter(input =>
-            input.artifact_id === outlineSettingsArtifactId
+            allOutlineSettingsArtifacts.some(artifact => artifact.id === input.artifact_id)
         );
 
         if (relatedTransforms.length === 0) {
@@ -44,12 +49,15 @@ export const useChroniclesDescendants = (outlineSettingsArtifactId: string): Use
         );
 
         if (chroniclesArtifacts.length === 0) {
+            console.log(`[useChroniclesDescendants] No chronicles found for outline settings artifact: ${outlineSettingsArtifactId}`);
             return {
                 hasChroniclesDescendants: false,
                 latestChronicles: null,
                 isLoading: false
             };
         }
+
+        console.log(`[useChroniclesDescendants] Found ${chroniclesArtifacts.length} chronicles for outline settings artifact: ${outlineSettingsArtifactId}`);
 
         // Sort by creation time and get the latest
         const sortedChronicles = [...chroniclesArtifacts].sort((a, b) =>

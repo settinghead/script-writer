@@ -188,6 +188,8 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
     const handleGenerateChronicles = useCallback(() => {
         if (!effectiveArtifact?.id || chroniclesGenerationMutation.isPending) return;
 
+        console.log(`[OutlineSettingsDisplay] Generating chronicles for artifact: ${effectiveArtifact.id} (origin: ${effectiveArtifact.origin_type})`);
+
         chroniclesGenerationMutation.mutate({
             sourceArtifactId: effectiveArtifact.id
         });
@@ -715,7 +717,7 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                                 height: 'auto'
                             }}
                         >
-                            生成时序大纲 &gt;&gt;
+                            {chroniclesGenerationMutation.isPending ? '生成中...' : '生成时序大纲 &gt;&gt;'}
                         </Button>
                     )}
                 </div>
