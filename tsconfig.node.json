@@ -29,6 +29,9 @@
     "src/common/**/*.ts",
   ],
   "exclude": [
-    "src/server/**/*.spec.ts"
+    "src/server/**/*.spec.ts",
+    "src/server/**/*.test.ts",
+    "src/**/__tests__/**/*",
+    "src/__tests__/**/*"
   ]
 }
