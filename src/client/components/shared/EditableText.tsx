@@ -39,18 +39,20 @@ export const EditableText: React.FC<EditableTextProps> = ({
     const [saveError, setSaveError] = useState<string | null>(null);
     const [hasRecentSave, setHasRecentSave] = useState(false);
     const inputRef = useRef<any>(null);
+    const valueRef = useRef(value);
 
     // Update local value when prop changes
     useEffect(() => {
         setLocalValue(value);
         setHasUnsavedChanges(false);
         setSaveError(null);
+        valueRef.current = value; // Update ref
     }, [value]);
 
-    // Debounced save function - Follow working pattern from streaming components
+    // Debounced save function - Remove value from dependencies to prevent infinite loop
     const debouncedSave = useMemo(
         () => debounce(async (newValue: string) => {
-            if (onSave && newValue !== value) {
+            if (onSave && newValue !== valueRef.current) {
                 setIsSaving(true);
                 setSaveError(null);
                 try {
@@ -66,16 +68,16 @@ export const EditableText: React.FC<EditableTextProps> = ({
                 }
             }
         }, debounceMs),
-        [onSave, value, debounceMs, path] // Following working pattern
+        [onSave, debounceMs, path] // Removed 'value' to prevent recreation
     );
 
     // Auto-save on value change
     useEffect(() => {
-        if (localValue !== value && isEditable) {
+        if (localValue !== valueRef.current && isEditable) {
             setHasUnsavedChanges(true);
             debouncedSave(localValue);
         }
-    }, [localValue, debouncedSave, value, isEditable]);
+    }, [localValue, debouncedSave, isEditable]); // Removed 'value' from dependencies
 
     // Cleanup debounce on unmount
     useEffect(() => {
@@ -226,18 +228,20 @@ export const EditableArray: React.FC<EditableArrayProps> = ({
     const [isSaving, setIsSaving] = useState(false);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
+    const valueRef = useRef(value);
 
     // Update local items when prop changes
     useEffect(() => {
         setLocalItems(value);
         setHasUnsavedChanges(false);
         setSaveError(null);
+        valueRef.current = value; // Update ref
     }, [value]);
 
-    // Debounced save function - Follow working pattern from streaming components
+    // Debounced save function - Remove value from dependencies to prevent infinite loop
     const debouncedSave = useMemo(
         () => debounce(async (newItems: string[]) => {
-            if (onSave && JSON.stringify(newItems) !== JSON.stringify(value)) {
+            if (onSave && JSON.stringify(newItems) !== JSON.stringify(valueRef.current)) {
                 setIsSaving(true);
                 setSaveError(null);
                 try {
@@ -251,16 +255,16 @@ export const EditableArray: React.FC<EditableArrayProps> = ({
                 }
             }
         }, debounceMs),
-        [onSave, value, debounceMs, path] // Following working pattern
+        [onSave, debounceMs, path] // Removed 'value' to prevent recreation
     );
 
     // Auto-save on value change
     useEffect(() => {
-        if (JSON.stringify(localItems) !== JSON.stringify(value) && isEditable) {
+        if (JSON.stringify(localItems) !== JSON.stringify(valueRef.current) && isEditable) {
             setHasUnsavedChanges(true);
             debouncedSave(localItems);
         }
-    }, [localItems, debouncedSave, value, isEditable]);
+    }, [localItems, debouncedSave, isEditable]); // Removed 'value' from dependencies
 
     // Cleanup debounce on unmount
     useEffect(() => {

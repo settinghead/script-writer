@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { Card, Typography, Tag, Space, Row, Col, Button, message, Spin } from 'antd';
 import { UserOutlined, HeartOutlined, StarOutlined, EnvironmentOutlined, TeamOutlined, EditOutlined, LoadingOutlined, PlusOutlined, CloseOutlined } from '@ant-design/icons';
 import { OutlineSettingsOutput } from '../../common/schemas/outlineSchemas';
@@ -42,11 +42,44 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
         options: { enabled: !!latestOutlineArtifact?.id }
     });
 
+    // Debug lineage resolution
+    useEffect(() => {
+        console.log('[OutlineSettingsDisplay] Lineage resolution:', {
+            sourceArtifactId: latestOutlineArtifact?.id || null,
+            latestArtifactId,
+            lineageLoading,
+            enabled: !!latestOutlineArtifact?.id
+        });
+    }, [latestOutlineArtifact?.id, latestArtifactId, lineageLoading]);
+
     // Get the effective artifact (original or edited version)
     const effectiveArtifact = useMemo(() => {
+        console.log('[OutlineSettingsDisplay] Artifact selection:', {
+            latestArtifactId,
+            latestOutlineArtifact: latestOutlineArtifact ? {
+                id: latestOutlineArtifact.id,
+                type: latestOutlineArtifact.type,
+                schema_type: latestOutlineArtifact.schema_type,
+                origin_type: latestOutlineArtifact.origin_type
+            } : null
+        });
+
         if (latestArtifactId) {
-            return projectData.getArtifactById(latestArtifactId);
+            const resolved = projectData.getArtifactById(latestArtifactId);
+            console.log('[OutlineSettingsDisplay] Using resolved artifact:', resolved ? {
+                id: resolved.id,
+                type: resolved.type,
+                schema_type: resolved.schema_type,
+                origin_type: resolved.origin_type
+            } : null);
+            return resolved;
         }
+        console.log('[OutlineSettingsDisplay] Using original artifact:', latestOutlineArtifact ? {
+            id: latestOutlineArtifact.id,
+            type: latestOutlineArtifact.type,
+            schema_type: latestOutlineArtifact.schema_type,
+            origin_type: latestOutlineArtifact.origin_type
+        } : null);
         return latestOutlineArtifact;
     }, [latestArtifactId, latestOutlineArtifact, projectData.getArtifactById]);
 
@@ -70,22 +103,12 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
         try {
             let data: any = effectiveArtifact.data;
 
-            // Handle both user_input format (editable) and direct outline_settings format (original)
+            // Handle string data (parse as JSON)
             if (typeof data === 'string') {
                 data = JSON.parse(data);
             }
 
-            // If this is a user_input artifact (editable), the outline settings are stored in the body field
-            if (effectiveArtifact.origin_type === 'user_input' && data && typeof data === 'object' && data.body) {
-                try {
-                    return JSON.parse(data.body) as OutlineSettingsOutput;
-                } catch (error) {
-                    console.warn('Failed to parse outline settings from user_input body:', error);
-                    return null;
-                }
-            }
-
-            // Otherwise, it's the original outline_settings format
+            // Now both original LLM artifacts and human-created artifacts store outline settings directly
             return data as OutlineSettingsOutput;
         } catch (error) {
             console.warn('Failed to parse outline settings data:', error);
@@ -97,6 +120,14 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
     const handleCreateEditableVersion = useCallback(() => {
         if (!latestOutlineArtifact || isCreatingTransform || isEditable) return;
 
+        console.log('[OutlineSettingsDisplay] Creating human transform:', {
+            transformName: 'edit_outline_settings',
+            sourceArtifactId: latestOutlineArtifact.id,
+            sourceArtifactType: latestOutlineArtifact.type,
+            sourceSchemaType: latestOutlineArtifact.schema_type,
+            derivationPath: '$'
+        });
+
         setIsCreatingTransform(true);
         projectData.createHumanTransform.mutate({
             transformName: 'edit_outline_settings',
@@ -104,11 +135,13 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
             derivationPath: '$',
             fieldUpdates: {}
         }, {
-            onSuccess: () => {
+            onSuccess: (response) => {
+                console.log('[OutlineSettingsDisplay] Human transform created successfully:', response);
                 setIsCreatingTransform(false);
                 message.success('开始编辑剧本框架');
             },
             onError: (error) => {
+                console.error('[OutlineSettingsDisplay] Human transform creation failed:', error);
                 setIsCreatingTransform(false);
                 message.error(`创建编辑版本失败: ${error.message}`);
             }
@@ -117,10 +150,29 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
 
     // Handle saving individual fields
     const handleSave = useCallback(async (path: string, value: any) => {
-        if (!effectiveArtifact || !isEditable) return;
+        console.log('[OutlineSettingsDisplay] Save attempt:', {
+            path,
+            value,
+            effectiveArtifact: effectiveArtifact ? {
+                id: effectiveArtifact.id,
+                type: effectiveArtifact.type,
+                schema_type: effectiveArtifact.schema_type,
+                origin_type: effectiveArtifact.origin_type
+            } : null,
+            isEditable,
+            hasOutlineSettings: !!outlineSettings
+        });
+
+        if (!effectiveArtifact || !isEditable) {
+            console.log('[OutlineSettingsDisplay] Save blocked - not editable or no artifact');
+            return;
+        }
 
         // Get current outline settings data
-        if (!outlineSettings) return;
+        if (!outlineSettings) {
+            console.log('[OutlineSettingsDisplay] Save blocked - no outline settings data');
+            return;
+        }
 
         const updatedOutlineSettings = { ...outlineSettings };
 
@@ -167,13 +219,25 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
             }
         }
 
-        // Update the artifact - for user_input artifacts, store the JSON in the text field
-        const updatedJson = JSON.stringify(updatedOutlineSettings, null, 2);
-
-        await projectData.updateArtifact.mutateAsync({
+        // Update the artifact - send outline settings data directly
+        console.log('[OutlineSettingsDisplay] Updating artifact:', {
             artifactId: effectiveArtifact.id,
-            text: updatedJson
+            artifactType: effectiveArtifact.type,
+            schema_type: effectiveArtifact.schema_type,
+            origin_type: effectiveArtifact.origin_type,
+            updatePayload: { data: updatedOutlineSettings }
         });
+
+        try {
+            const result = await projectData.updateArtifact.mutateAsync({
+                artifactId: effectiveArtifact.id,
+                data: updatedOutlineSettings
+            });
+            console.log('[OutlineSettingsDisplay] Update successful:', result);
+        } catch (error) {
+            console.error('[OutlineSettingsDisplay] Update failed:', error);
+            throw error;
+        }
     }, [effectiveArtifact, isEditable, outlineSettings, projectData.updateArtifact]);
 
     // Handle click on container to create editable version - MUST be defined before early returns

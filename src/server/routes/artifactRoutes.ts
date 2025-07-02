@@ -269,8 +269,19 @@ export function createArtifactRoutes(
 
             let updatedData;
 
-            if (existingArtifact.type === 'user_input') {
-                // Validate required fields for user_input
+            // Allow updates based on origin_type (human-created artifacts) or specific types
+            if (existingArtifact.origin_type === 'user_input') {
+                // For human-created artifacts, allow direct data updates regardless of schema type
+                if (!data || typeof data !== 'object') {
+                    res.status(400).json({
+                        error: 'Missing or invalid data',
+                        details: 'data must be an object for user-created artifacts'
+                    });
+                    return;
+                }
+                updatedData = data;
+            } else if (existingArtifact.type === 'user_input') {
+                // Legacy: Handle old user_input type artifacts with text field
                 if (!text || typeof text !== 'string' || !text.trim()) {
                     res.status(400).json({
                         error: 'Missing or empty text',
@@ -297,7 +308,7 @@ export function createArtifactRoutes(
                 // Update the artifact in place (for brainstorm_idea artifacts)
                 updatedData = data;
             } else {
-                res.status(400).json({ error: `Cannot update artifacts of type: ${existingArtifact.type}` });
+                res.status(400).json({ error: `Cannot update artifacts of type: ${existingArtifact.type} with origin_type: ${existingArtifact.origin_type}` });
                 return;
             }
 
