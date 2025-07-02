@@ -68,7 +68,7 @@ ln -sfn $DEPLOY_DIR/dist-server /var/www/script-writer-current/dist-server
 # Restart backend with PM2
 pm2 delete script-writer-api || true
 cd $DEPLOY_DIR
-NODE_ENV=production pm2 start dist-server/index.js --name script-writer-api
+NODE_ENV=production pm2 start dist-server/server/index.js --name script-writer-api
 
 # Keep only the 5 most recent deployments
 cd /var/www
