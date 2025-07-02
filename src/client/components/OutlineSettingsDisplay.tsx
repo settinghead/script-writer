@@ -42,24 +42,7 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
         options: { enabled: !!latestOutlineArtifact?.id }
     });
 
-    // Debug lineage resolution - Enhanced
-    useEffect(() => {
-        console.log('🔍 [OutlineSettingsDisplay] Lineage resolution debug:', {
-            sourceArtifactId: latestOutlineArtifact?.id || null,
-            latestArtifactId,
-            lineageLoading,
-            enabled: !!latestOutlineArtifact?.id,
-            // Additional debugging
-            timestamp: new Date().toISOString(),
-            sourceArtifactType: latestOutlineArtifact?.type,
-            sourceOriginType: latestOutlineArtifact?.origin_type,
-            resolvedArtifactExists: !!projectData.getArtifactById(latestArtifactId || ''),
-            // Check if there are any human transforms for this artifact
-            humanTransformsForThisArtifact: projectData.humanTransforms.filter(ht =>
-                ht.source_artifact_id === latestOutlineArtifact?.id
-            ).length
-        });
-    }, [latestOutlineArtifact?.id, latestArtifactId, lineageLoading, projectData.humanTransforms]);
+
 
     // Helper function to extract title from artifact data
     const getArtifactTitle = (artifact: any) => {
@@ -77,41 +60,10 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
 
     // Get the effective artifact (original or edited version)
     const effectiveArtifact = useMemo(() => {
-        const timestamp = new Date().toISOString();
-        console.log('🎯 [OutlineSettingsDisplay] Artifact selection:', {
-            timestamp,
-            latestArtifactId,
-            latestOutlineArtifact: latestOutlineArtifact ? {
-                id: latestOutlineArtifact.id,
-                type: latestOutlineArtifact.type,
-                schema_type: latestOutlineArtifact.schema_type,
-                origin_type: latestOutlineArtifact.origin_type,
-                created_at: latestOutlineArtifact.created_at,
-                title: getArtifactTitle(latestOutlineArtifact)
-            } : null
-        });
-
         if (latestArtifactId) {
             const resolved = projectData.getArtifactById(latestArtifactId);
-            console.log('✅ [OutlineSettingsDisplay] Using resolved artifact:', resolved ? {
-                id: resolved.id,
-                type: resolved.type,
-                schema_type: resolved.schema_type,
-                origin_type: resolved.origin_type,
-                created_at: resolved.created_at,
-                title: getArtifactTitle(resolved),
-                isSameAsOriginal: resolved.id === latestOutlineArtifact?.id
-            } : null);
             return resolved;
         }
-        console.log('⚠️ [OutlineSettingsDisplay] Using original artifact (no lineage resolution):', latestOutlineArtifact ? {
-            id: latestOutlineArtifact.id,
-            type: latestOutlineArtifact.type,
-            schema_type: latestOutlineArtifact.schema_type,
-            origin_type: latestOutlineArtifact.origin_type,
-            created_at: latestOutlineArtifact.created_at,
-            title: getArtifactTitle(latestOutlineArtifact)
-        } : null);
         return latestOutlineArtifact;
     }, [latestArtifactId, latestOutlineArtifact, projectData.getArtifactById]);
 
@@ -130,21 +82,7 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
 
     // Parse outline settings data from the effective artifact
     const outlineSettings = useMemo(() => {
-        const timestamp = new Date().toISOString();
-        console.log('📊 [OutlineSettingsDisplay] Parsing outline settings:', {
-            timestamp,
-            effectiveArtifactId: effectiveArtifact?.id,
-            effectiveArtifactType: effectiveArtifact?.type,
-            effectiveArtifactOriginType: effectiveArtifact?.origin_type,
-            hasData: !!effectiveArtifact?.data,
-            dataType: typeof effectiveArtifact?.data,
-            dataKeys: effectiveArtifact?.data && typeof effectiveArtifact.data === 'object'
-                ? Object.keys(effectiveArtifact.data)
-                : 'Not object'
-        });
-
         if (!effectiveArtifact?.data) {
-            console.log('❌ [OutlineSettingsDisplay] No data in effective artifact');
             return null;
         }
 
@@ -153,18 +91,8 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
 
             // Handle string data (parse as JSON)
             if (typeof data === 'string') {
-                console.log('📝 [OutlineSettingsDisplay] Parsing string data...');
                 data = JSON.parse(data);
-            } else {
-                console.log('📋 [OutlineSettingsDisplay] Using object data directly');
             }
-
-            console.log('✅ [OutlineSettingsDisplay] Parsed data:', {
-                title: data?.title,
-                genre: data?.genre,
-                hasCharacters: !!data?.characters,
-                charactersCount: data?.characters?.length || 0
-            });
 
             // Now both original LLM artifacts and human-created artifacts store outline settings directly
             return data as OutlineSettingsOutput;
@@ -178,28 +106,11 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
     const outlineSettingsRef = useRef(outlineSettings);
     outlineSettingsRef.current = outlineSettings;
 
-    // Debug outline settings changes to detect alternation
-    useEffect(() => {
-        console.log('🔄 [OutlineSettingsDisplay] OutlineSettings changed:', {
-            timestamp: new Date().toISOString(),
-            hasOutlineSettings: !!outlineSettings,
-            title: outlineSettings?.title,
-            genre: outlineSettings?.genre,
-            effectiveArtifactId: effectiveArtifact?.id
-        });
-    }, [outlineSettings, effectiveArtifact?.id]);
+
 
     // Handle click to create human transform (only once)
     const handleCreateEditableVersion = useCallback(() => {
         if (!latestOutlineArtifact || isCreatingTransform || isEditable) return;
-
-        console.log('[OutlineSettingsDisplay] Creating human transform:', {
-            transformName: 'edit_outline_settings',
-            sourceArtifactId: latestOutlineArtifact.id,
-            sourceArtifactType: latestOutlineArtifact.type,
-            sourceSchemaType: latestOutlineArtifact.schema_type,
-            derivationPath: '$'
-        });
 
         setIsCreatingTransform(true);
         projectData.createHumanTransform.mutate({
@@ -209,7 +120,6 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
             fieldUpdates: {}
         }, {
             onSuccess: (response) => {
-                console.log('[OutlineSettingsDisplay] Human transform created successfully:', response);
                 setIsCreatingTransform(false);
                 message.success('开始编辑剧本框架');
             },
@@ -223,31 +133,12 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
 
     // Handle saving individual fields
     const handleSave = useCallback(async (path: string, value: any) => {
-        const timestamp = new Date().toISOString();
-        console.log('💾 [OutlineSettingsDisplay] Save attempt:', {
-            timestamp,
-            path,
-            value,
-            effectiveArtifact: effectiveArtifact ? {
-                id: effectiveArtifact.id,
-                type: effectiveArtifact.type,
-                schema_type: effectiveArtifact.schema_type,
-                origin_type: effectiveArtifact.origin_type,
-                title: getArtifactTitle(effectiveArtifact)
-            } : null,
-            isEditable,
-            hasOutlineSettings: !!outlineSettingsRef.current,
-            currentOutlineSettingsTitle: outlineSettingsRef.current?.title
-        });
-
         if (!effectiveArtifact || !isEditable) {
-            console.log('[OutlineSettingsDisplay] Save blocked - not editable or no artifact');
             return;
         }
 
         // Get current outline settings data using ref to avoid stale closure
         if (!outlineSettingsRef.current) {
-            console.log('[OutlineSettingsDisplay] Save blocked - no outline settings data');
             return;
         }
 
@@ -272,7 +163,7 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                 if (!updatedOutlineSettings.target_audience) updatedOutlineSettings.target_audience = { demographic: '', core_themes: [] };
                 if (!updatedOutlineSettings.target_audience.core_themes) updatedOutlineSettings.target_audience.core_themes = [];
                 updatedOutlineSettings.target_audience.core_themes[index] = value;
-                console.log(`[OutlineSettingsDisplay] Updated core_themes[${index}] to:`, value);
+
             }
         } else if (path === 'selling_points') {
             updatedOutlineSettings.selling_points = value;
@@ -283,7 +174,7 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                 const index = parseInt(match[1], 10);
                 if (!updatedOutlineSettings.selling_points) updatedOutlineSettings.selling_points = [];
                 updatedOutlineSettings.selling_points[index] = value;
-                console.log(`[OutlineSettingsDisplay] Updated selling_points[${index}] to:`, value);
+
             }
         } else if (path === 'satisfaction_points') {
             updatedOutlineSettings.satisfaction_points = value;
@@ -294,7 +185,7 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                 const index = parseInt(match[1], 10);
                 if (!updatedOutlineSettings.satisfaction_points) updatedOutlineSettings.satisfaction_points = [];
                 updatedOutlineSettings.satisfaction_points[index] = value;
-                console.log(`[OutlineSettingsDisplay] Updated satisfaction_points[${index}] to:`, value);
+
             }
         } else if (path === 'setting.core_setting_summary') {
             if (!updatedOutlineSettings.setting) updatedOutlineSettings.setting = { core_setting_summary: '', key_scenes: [] };
@@ -310,7 +201,7 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                 if (!updatedOutlineSettings.setting) updatedOutlineSettings.setting = { core_setting_summary: '', key_scenes: [] };
                 if (!updatedOutlineSettings.setting.key_scenes) updatedOutlineSettings.setting.key_scenes = [];
                 updatedOutlineSettings.setting.key_scenes[index] = value;
-                console.log(`[OutlineSettingsDisplay] Updated setting.key_scenes[${index}] to:`, value);
+
             }
         } else if (path.startsWith('characters[')) {
             // Handle character field updates
@@ -332,25 +223,14 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                     (updatedOutlineSettings.characters[index] as any)[field] = value;
                 }
             }
-        } else {
-            console.warn(`[OutlineSettingsDisplay] Unhandled path: ${path} with value:`, value);
         }
 
         // Update the artifact - send outline settings data directly
-        console.log('[OutlineSettingsDisplay] Updating artifact:', {
-            artifactId: effectiveArtifact.id,
-            artifactType: effectiveArtifact.type,
-            schema_type: effectiveArtifact.schema_type,
-            origin_type: effectiveArtifact.origin_type,
-            updatePayload: { data: updatedOutlineSettings }
-        });
-
         try {
-            const result = await projectData.updateArtifact.mutateAsync({
+            await projectData.updateArtifact.mutateAsync({
                 artifactId: effectiveArtifact.id,
                 data: updatedOutlineSettings
             });
-            console.log('[OutlineSettingsDisplay] Update successful:', result);
         } catch (error) {
             console.error('[OutlineSettingsDisplay] Update failed:', error);
             throw error;

@@ -67,16 +67,6 @@ export const EditableText: React.FC<EditableTextProps> = ({
     // Debounced save function - Remove value from dependencies to prevent infinite loop
     const debouncedSave = useMemo(
         () => debounce(async (newValue: string) => {
-            console.log(`🔧 [EditableText] Debounced save triggered for path ${path}:`, {
-                newValue,
-                currentValueRef: valueRef.current,
-                lastSavedValueRef: lastSavedValueRef.current,
-                localValue,
-                shouldSave: newValue !== lastSavedValueRef.current && !savingRef.current,
-                timestamp: new Date().toISOString(),
-                isCurrentlySaving: savingRef.current
-            });
-
             // Check if we should actually save:
             // 1. onSave function exists
             // 2. newValue is different from the last value we saved to the database
@@ -86,7 +76,6 @@ export const EditableText: React.FC<EditableTextProps> = ({
                 setIsSaving(true);
                 setSaveError(null);
                 try {
-                    console.log(`💾 [EditableText] Calling onSave for path ${path} with value:`, newValue);
                     await onSaveRef.current(path, newValue);
                     // Update the last saved value after successful save
                     lastSavedValueRef.current = newValue;
@@ -100,8 +89,6 @@ export const EditableText: React.FC<EditableTextProps> = ({
                     setIsSaving(false);
                     savingRef.current = false; // Mark as not saving
                 }
-            } else {
-                console.log(`⏭️ [EditableText] Skipping save for path ${path} - no change or already saving`);
             }
         }, debounceMs),
         [debounceMs, path] // Removed 'onSave' and 'value' to prevent recreation
