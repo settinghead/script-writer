@@ -46,11 +46,8 @@ npm run build
 
 # Setup environment variables for production
 echo "⚙️  Setting up environment..."
-if [ ! -f .env.production ]; then
-    echo "Creating .env.production file..."
-    cat > .env.production << EOF
+
 NODE_ENV=production
-PORT=3001
 
 # PostgreSQL Configuration
 DATABASE_URL=postgresql://postgres:password@localhost:5432/script_writer
@@ -64,9 +61,7 @@ JWT_SECRET=your-super-secret-jwt-key-256-bits-minimum-change-this-in-production
 
 # Cache directory
 CACHE_DIR=/var/data/$PROJECT_NAME/cache
-EOF
-    echo "⚠️  Please update .env.production with actual production values!"
-fi
+
 
 # Copy environment file
 cp /var/www/.env.prod .env
