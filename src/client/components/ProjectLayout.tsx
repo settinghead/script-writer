@@ -507,31 +507,57 @@ const ProjectLayout: React.FC = () => {
                             ) : (
                                 <div style={{
                                     flex: 1,
-                                    overflowY: 'auto',
-                                    padding: '12px'
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    height: '100%',
+                                    overflow: 'hidden'
                                 }}>
-                                    <TextDivider title="头脑风暴" id="brainstorm-ideas" />
-                                    <ProjectBrainstormPage />
-                                    <TextDivider title="灵感编辑" id="ideation-edit" />
-                                    <SingleBrainstormIdeaEditor
-                                        onViewOriginalIdeas={() => {
-                                            // Scroll to the brainstorm ideas section
-                                            const brainstormSection = document.getElementById('brainstorm-ideas');
-                                            if (brainstormSection) {
-                                                brainstormSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                            }
-                                        }}
-                                    />
-                                    <TextDivider title="剧本框架" id="outline-settings" />
-                                    <OutlineSettingsDisplay />
+                                    {/* Scrollable Content Container */}
+                                    <div style={{
+                                        flex: 1,
+                                        overflowY: 'auto',
+                                        padding: '12px',
+                                        paddingBottom: '24px'
+                                    }}>
+                                        <TextDivider title="头脑风暴" id="brainstorm-ideas" />
+                                        <ProjectBrainstormPage />
+                                        <TextDivider title="灵感编辑" id="ideation-edit" />
+                                        <SingleBrainstormIdeaEditor
+                                            onViewOriginalIdeas={() => {
+                                                // Scroll to the brainstorm ideas section
+                                                const brainstormSection = document.getElementById('brainstorm-ideas');
+                                                if (brainstormSection) {
+                                                    brainstormSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                                }
+                                            }}
+                                        />
+                                        <TextDivider title="剧本框架" id="outline-settings" />
+                                        <OutlineSettingsDisplay />
 
-                                    <TextDivider title="时间顺序故事描述" id="chronicles" />
-                                    <ChroniclesDisplay />
+                                        <TextDivider title="时间顺序故事描述" id="chronicles" />
+                                        <ChroniclesDisplay />
 
-                                    {/* Legacy Support - Show old outline display for backward compatibility */}
-                                    {/* Legacy outline display removed - replaced by outline settings + chronicles */}
+                                        {/* Legacy Support - Show old outline display for backward compatibility */}
+                                        {/* Legacy outline display removed - replaced by outline settings + chronicles */}
 
-                                    <Outlet />
+                                        <Outlet />
+                                    </div>
+
+                                    {/* Sticky Action Items Placeholder */}
+                                    <div style={{
+                                        height: '80px',
+                                        background: '#1a1a1a',
+                                        borderTop: '1px solid #333',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        padding: '0 12px',
+                                        flexShrink: 0
+                                    }}>
+                                        <Text type="secondary" style={{ fontSize: '16px', fontWeight: 500 }}>
+                                            Action Items Placeholder
+                                        </Text>
+                                    </div>
                                 </div>
                             )}
                         </Content>
