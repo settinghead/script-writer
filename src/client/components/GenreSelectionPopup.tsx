@@ -421,20 +421,13 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
         }
 
         return (
-            <Flex vertical>
-                <Flex gap={COLUMN_GAP} style={{ paddingBottom: tempSelectedPaths.length > 0 ? 16 : 0 }}>
+            <Flex vertical style={{ height: MODAL_HEIGHT - 150 }}> {/* Reserve space for header and footer */}
+                <Flex gap={COLUMN_GAP} style={{ marginBottom: 16 }}>
                     {columns}
                 </Flex>
-                {tempSelectedPaths.length >= MAX_GENRE_SELECTIONS && (
-                    <Alert
-                        message={`已选择最大数量 (${MAX_GENRE_SELECTIONS}个) 的故事类型`}
-                        description="如需选择其他类型，请先移除已选择的类型。"
-                        type="info"
-                        showIcon
-                        style={{ margin: '16px 0' }}
-                    />
-                )}
-                {tempSelectedPaths.length > 0 && renderSelectedItemsTags()}
+                <div style={{ height: SELECTED_ITEMS_HEIGHT, overflow: 'auto' }}>
+                    {tempSelectedPaths.length > 0 && renderSelectedItemsTags()}
+                </div>
             </Flex>
         );
     };
@@ -558,20 +551,31 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
             open={visible}
             onCancel={handleCancel}
             width={MODAL_WIDTH}
+            height={MODAL_HEIGHT}
             centered
-            footer={[
-                <Button key="cancel" onClick={handleCancel}>
-                    取消
-                </Button>,
-                <Button
-                    key="confirm"
-                    type="primary"
-                    onClick={handleConfirm}
-                    disabled={tempSelectedPaths.length === 0 || tempSelectedPaths.length > MAX_GENRE_SELECTIONS}
-                >
-                    确定 ({tempSelectedPaths.length})
-                </Button>
-            ]}
+            footer={
+                <Flex justify="space-between" align="center">
+                    <div>
+                        {tempSelectedPaths.length >= MAX_GENRE_SELECTIONS && (
+                            <Text type="warning" style={{ fontSize: '12px' }}>
+                                已选择最大数量 ({MAX_GENRE_SELECTIONS}个)，如需选择其他类型，请先移除已选择的类型
+                            </Text>
+                        )}
+                    </div>
+                    <Space>
+                        <Button onClick={handleCancel}>
+                            取消
+                        </Button>
+                        <Button
+                            type="primary"
+                            onClick={handleConfirm}
+                            disabled={tempSelectedPaths.length === 0 || tempSelectedPaths.length > MAX_GENRE_SELECTIONS}
+                        >
+                            确定 ({tempSelectedPaths.length})
+                        </Button>
+                    </Space>
+                </Flex>
+            }
         >
             {renderMillerColumns()}
         </Modal>
