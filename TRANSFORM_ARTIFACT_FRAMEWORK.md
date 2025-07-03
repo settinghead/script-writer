@@ -13,6 +13,176 @@ The Transform Artifact Framework provides a sophisticated foundation for applica
 - **Schema-Driven Architecture** - Type-safe operations with Zod validation throughout
 - **Advanced Caching System** - Development-optimized streaming response caching
 
+## Core Concepts
+
+### Understanding Artifacts and Transforms
+
+At its heart, the framework operates on two fundamental concepts that work together to create a complete data transformation system:
+
+#### **Artifacts: The Data Containers**
+Think of artifacts as **immutable snapshots of content** at specific points in time. Like taking a photograph, once an artifact is created, it never changes. This could be:
+
+- **A user's initial story idea** - "I want a romance story about a chef"
+- **AI-generated content** - A detailed story outline created by an AI model
+- **User-edited content** - The same outline after the user modified character names
+- **Processed data** - A script generated from the outline
+
+Each artifact contains:
+- **The actual data** (story text, character details, etc.)
+- **Metadata** about when it was created and by what process
+- **Type information** that defines its structure and purpose
+
+#### **Transforms: The Change Agents**
+Transforms are **the processes that create new artifacts from existing ones**. They're like functions that take input artifacts and produce output artifacts, but with complete tracking of what happened and why.
+
+The framework recognizes two fundamentally different types of transforms:
+
+### **Human Transforms: When People Edit Content**
+
+**What they are**: Human transforms occur when a person directly edits, modifies, or derives content from existing artifacts through user interfaces.
+
+**How they work**:
+- User sees AI-generated content in an editing interface
+- User makes changes (edit text, select options, modify fields)
+- System creates a new "user_input" artifact with the changes
+- The original AI-generated artifact remains unchanged
+- A human transform links the original to the edited version
+
+**Key characteristics**:
+- **Immediate** - Changes appear instantly in the UI
+- **Granular** - Can edit specific fields or sections
+- **Traceable** - System knows exactly what the user changed
+- **Reversible** - Original content is preserved
+
+**Real-world example**:
+```
+AI generates: "Character: John, a shy baker"
+User edits to: "Character: Maria, a confident chef"
+Result: New artifact with user's version + transform tracking the change
+```
+
+**Technical implementation**:
+```typescript
+// Human transform triggered by edit interface
+const humanTransform = {
+  type: 'human',
+  trigger: 'user_edit',
+  input_artifacts: [originalAIContent],
+  edit_path: '/characters/0/name',
+  user_id: 'user-123',
+  streaming_status: 'completed'
+};
+```
+
+### **Machine Transforms: When AI Processes Content**
+
+**What they are**: Machine transforms occur when AI models, algorithms, or automated processes generate new content from existing artifacts.
+
+**How they work**:
+- System analyzes existing artifacts (user requirements, previous content)
+- AI model processes the input using prompts and context
+- AI generates new content (stories, outlines, scripts)
+- System creates new "ai_generated" artifacts with the output
+- Machine transform links inputs to outputs with full execution details
+
+**Key characteristics**:
+- **Intelligent** - AI makes creative and contextual decisions
+- **Streaming** - Content appears progressively as AI generates it
+- **Context-aware** - Uses complete project history for better results
+- **Reproducible** - Same inputs + prompts can recreate similar outputs
+
+**Real-world example**:
+```
+User request: "Create a story about a chef"
+AI processes: Requirements + genre preferences + platform constraints
+AI generates: Full story outline with characters, plot, and episodes
+Result: New "ai_generated" artifact + transform tracking the process
+```
+
+**Technical implementation**:
+```typescript
+// Machine transform triggered by AI agent
+const machineTransform = {
+  type: 'llm',
+  trigger: 'agent_request',
+  input_artifacts: [userRequest, contextArtifacts],
+  model: 'gpt-4',
+  prompt_template: 'story_generation',
+  streaming_status: 'active'
+};
+```
+
+### **The Interplay: Human + Machine Collaboration**
+
+The real power emerges when human and machine transforms work together in iterative cycles:
+
+**Collaborative workflow example**:
+```
+1. User Request → [Machine Transform] → AI Story Ideas
+2. AI Story Ideas → [Human Transform] → User Selects Idea #2
+3. Selected Idea → [Machine Transform] → Detailed Outline
+4. Detailed Outline → [Human Transform] → User Edits Character Names
+5. Edited Outline → [Machine Transform] → Episode Scripts
+6. Episode Scripts → [Human Transform] → User Refines Dialogue
+```
+
+**Why this matters**:
+- **Quality Improvement** - AI generates content, humans refine it
+- **Learning Loop** - System learns from human edits to improve AI
+- **Flexibility** - Users can intervene at any stage
+- **Transparency** - Complete history of who/what changed what
+
+### **Origin Types: Understanding Content Sources**
+
+Every artifact has an `origin_type` that indicates how it was created:
+
+- **`ai_generated`** - Created by machine transforms (LLM, algorithms)
+- **`user_input`** - Created by human transforms (direct user edits)
+- **`decomposed_from_collection`** - Extracted from larger artifacts for individual editing
+
+**Why origin types matter**:
+- **Edit permissions** - Only user_input artifacts can be directly modified
+- **UI behavior** - Different interfaces for AI vs human content
+- **Data collection** - Track human preferences and corrections
+- **Quality control** - Prevent accidental corruption of AI outputs
+
+### **Schema Types: Understanding Content Structure**
+
+Artifacts also have `schema_type` that defines their data structure:
+
+- **`brainstorm_collection_schema`** - Multiple story ideas grouped together
+- **`outline_schema`** - Detailed story structure with characters and plot
+- **`episode_script_schema`** - Individual episode content and dialogue
+- **`user_request_schema`** - User requirements and preferences
+
+**Why schema types matter**:
+- **Validation** - Ensure data integrity and type safety
+- **UI generation** - Automatically create appropriate editing interfaces
+- **Transform compatibility** - Match inputs/outputs correctly
+- **Evolution** - Version schemas as requirements change
+
+### **The Immutability Principle**
+
+**Core rule**: Once created, artifacts never change. All modifications create new artifacts.
+
+**Why immutability**:
+- **Complete history** - Never lose previous versions
+- **Parallel experimentation** - Try different approaches simultaneously
+- **Collaboration safety** - Multiple users can work without conflicts
+- **Debugging power** - Trace any issue through the complete chain
+
+**The one exception**: During streaming, AI can update artifacts in real-time for better UX, but this is carefully controlled and only for active generation processes.
+
+### **Putting It All Together**
+
+The framework creates a **living history** of content creation where:
+- Every user action is preserved
+- Every AI generation is tracked
+- Every change can be understood and reversed
+- Every improvement can be learned from
+
+This enables applications that are not just functional, but continuously improving through the natural interaction between human creativity and machine intelligence.
+
 ## Core Paradigm: Artifact → Transform → Artifact
 
 ### The Fundamental Pattern
@@ -101,10 +271,12 @@ if (transform.streaming_status === 'active') {
 
 ### Transform Types & Triggers
 
-#### LLM Transforms
-Triggered by AI agents or direct API calls:
+Building on the conceptual foundation above, transforms are triggered through specific mechanisms:
+
+#### **Machine Transforms (LLM/AI)**
+Triggered by AI agents, API calls, or automated processes:
 ```typescript
-const llmTransform = {
+const machineTransform = {
   type: 'llm',
   trigger: 'agent_request',
   input_artifacts: [userRequest, contextArtifacts],
@@ -114,8 +286,8 @@ const llmTransform = {
 };
 ```
 
-#### Human Transforms  
-Triggered by direct user edits:
+#### **Human Transforms (User Edits)**
+Triggered by direct user interactions through edit interfaces:
 ```typescript
 const humanTransform = {
   type: 'human', 
@@ -126,6 +298,8 @@ const humanTransform = {
   streaming_status: 'completed'
 };
 ```
+
+**Key Implementation Detail**: Human transforms are typically triggered through edit interfaces (like those in `artifactRoutes.ts`) that allow users to modify specific fields or sections of AI-generated content, creating new `user_input` artifacts while preserving the original AI-generated versions.
 
 ### Practical Benefits
 
@@ -147,31 +321,41 @@ const humanTransform = {
 - **Collaboration** - See complete history of who changed what
 - **AI Transparency** - Understand exactly what the AI modified
 
-### Real-World Example
+### Real-World Example: Human-Machine Collaboration
 
-Consider a brainstorming session that gets refined:
+Consider a typical content creation workflow showing the interplay between human and machine transforms:
 
 ```
-1. User Request Artifact
-   ↓ (AI Transform)
-2. Generated Ideas Artifact
-   ↓ (Human Transform - user selects idea 2)  
-3. Selected Idea Artifact
-   ↓ (AI Transform - expand into outline)
-4. Story Outline Artifact
-   ↓ (Human Transform - edit character name)
-5. Refined Outline Artifact
-   ↓ (AI Transform - generate first episode)
-6. Episode Script Artifact
+1. User Request Artifact ("Create a romance story about a chef")
+   ↓ (MACHINE Transform - AI brainstorming)
+2. AI-Generated Ideas Collection (3 story concepts)
+   ↓ (HUMAN Transform - user selects idea #2 via edit interface)  
+3. User-Selected Idea Artifact (origin_type: user_input)
+   ↓ (MACHINE Transform - AI outline generation)
+4. AI Story Outline Artifact (detailed plot, characters, episodes)
+   ↓ (HUMAN Transform - user edits character name "John" → "Maria")
+5. User-Refined Outline Artifact (origin_type: user_input)
+   ↓ (MACHINE Transform - AI script generation)
+6. AI Episode Script Artifact (full dialogue and scenes)
+   ↓ (HUMAN Transform - user refines dialogue in specific scenes)
+7. User-Polished Script Artifact (origin_type: user_input)
 ```
 
-Each step preserves the previous version while building toward the final result. The lineage tree allows:
-- **Rollback** to any previous version
-- **Branching** to try different AI generations from step 4
-- **Context** for future AI operations using complete history
-- **Data Collection** of human preferences and corrections
+**What this demonstrates**:
+- **Alternating Intelligence** - AI handles generation, humans handle refinement
+- **Preserved History** - Every AI version and human edit is kept
+- **Contextual Improvement** - Each AI generation uses complete previous context
+- **Granular Control** - Users can edit specific fields without losing other content
+- **Quality Evolution** - Content gets progressively better through collaboration
 
-This paradigm transforms complex content creation workflows into simple, traceable, and improvable processes.
+**Lineage Benefits**:
+- **Rollback** to any previous version (go back to step 4's AI outline)
+- **Branching** to try different AI generations (alternative outlines from step 3)
+- **Context** for future AI operations (complete editing history available)
+- **Data Collection** of human preferences (what users actually change)
+- **A/B Testing** - Compare different AI approaches using same human input
+
+This paradigm transforms complex content creation workflows into simple, traceable, and continuously improving processes where human creativity and machine intelligence enhance each other.
 
 ## Core Architecture Principles
 
