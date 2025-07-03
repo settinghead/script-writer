@@ -11,13 +11,13 @@ A collaborative Chinese short drama script writing application built on the [Tra
 - **Chinese Short Drama Focus** - Specialized for 抖音, 快手, and other Chinese platforms
 - **去脸谱化 Content** - Emphasizes modern, non-stereotypical characters and plots
 - **Real-time Collaboration** - Multiple creators can work simultaneously
-- **Complete Project Workflow** - 灵感 → 剧本框架 → 时间顺序故事描述 → 分集 → 剧本 pipeline
+- **Complete Project Workflow** - 灵感 → 剧本框架 → 时间顺序大纲 → 分集 → 剧本 pipeline
 
 ## Application-Specific Features
 
 ### 🎭 Script Creation Pipeline
 
-**Complete Workflow**: 灵感生成 → 剧本框架 → 时间顺序故事描述 → 分集规划 → 剧本创作
+**Complete Workflow**: 灵感生成 → 剧本框架 → 时间顺序大纲 → 分集规划 → 剧本创作
 
 **Brainstorming (灵感生成)**:
 - **Platform-Specific Generation** - Optimized for 抖音, 快手, 小红书, etc.
@@ -33,7 +33,7 @@ A collaborative Chinese short drama script writing application built on the [Tra
 - **Commercial Elements** - Selling points (卖点) and satisfaction points (爽点) for audience engagement
 - **Seamless Integration** - "生成剧本框架" workflow from brainstorm to settings
 
-**Chronicles (时间顺序故事描述)**:
+**Chronicles (时间顺序大纲)**:
 - **Chronological Structure** - Complete story timeline from earliest events to conclusion (story order, not broadcast order)
 - **Episode Planning** - Staged progression with detailed synopsis for each story phase
 - **Context-Aware Generation** - References outline settings for consistent character and world development

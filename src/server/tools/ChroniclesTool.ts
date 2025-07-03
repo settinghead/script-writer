@@ -41,7 +41,7 @@ export function createChroniclesToolDefinition(
 ): StreamingToolDefinition<ChroniclesInput, ChroniclesToolResult> {
     return {
         name: 'generate_chronicles',
-        description: '基于已确定的剧本框架生成时间顺序故事描述（按时间顺序的故事发展阶段）。适用场景：用户已完成剧本框架，需要生成完整的时间发展脉络。必须使用项目背景信息中显示的完整outline settings artifact ID作为sourceArtifactId参数。',
+        description: '基于已确定的剧本框架生成时间顺序大纲（按时间顺序的故事发展阶段）。适用场景：用户已完成剧本框架，需要生成完整的时间发展脉络。必须使用项目背景信息中显示的完整outline settings artifact ID作为sourceArtifactId参数。',
         inputSchema: ChroniclesInputSchema,
         outputSchema: ChroniclesToolResultSchema,
         execute: async (params: ChroniclesInput, { toolCallId }): Promise<ChroniclesToolResult> => {

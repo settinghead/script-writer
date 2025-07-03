@@ -235,7 +235,7 @@ export class AgentService {
                 } else if (agentResult.toolResults.some((r: any) => r.toolName === 'generate_outline_settings')) {
                     responseMessage = '我已成功为您的项目生成了剧本框架！您可以在剧本框架部分查看详细的角色、背景和商业定位信息。';
                 } else if (agentResult.toolResults.some((r: any) => r.toolName === 'generate_chronicles')) {
-                    responseMessage = '我已成功为您的项目生成了时间顺序故事描述！您可以在时间顺序故事描述部分查看按时间顺序的故事发展阶段。';
+                    responseMessage = '我已成功为您的项目生成了时间顺序大纲！您可以在时间顺序大纲部分查看按时间顺序的故事发展阶段。';
                 } else if (agentResult.toolResults.some((r: any) => r.toolName === 'generate_outline')) {
                     responseMessage = '我已成功为您的项目生成了完整大纲！您可以在大纲部分查看详细的故事结构和发展脉络。';
                 }

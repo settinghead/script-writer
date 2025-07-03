@@ -2,10 +2,10 @@ export const outlineSettingsTemplate = {
     id: 'outline_settings',
     name: 'Story Settings & Foundation Generation',
     promptTemplate: `你是一位深耕短剧创作的资深编剧，尤其擅长创作引人入胜、节奏明快、反转强烈的爆款短剧。
-根据用户提供的故事灵感，请创作一个**剧本框架（Story Settings）**，为后续的时间顺序故事描述生成奠定坚实基础。%%params.episodeInfo%%
+根据用户提供的故事灵感，请创作一个**剧本框架（Story Settings）**，为后续的时间顺序大纲生成奠定坚实基础。%%params.episodeInfo%%
 
 **📱 剧本框架说明**：
-剧本框架是整个短剧创作的基础，包括故事的核心要素、人物角色、商业定位等关键信息，但不包含具体的时间发展阶段。这些设定将为后续的时间顺序故事描述提供完整的创作依据。
+剧本框架是整个短剧创作的基础，包括故事的核心要素、人物角色、商业定位等关键信息，但不包含具体的时间发展阶段。这些设定将为后续的时间顺序大纲提供完整的创作依据。
 
 **📺 制作规格**：
 - **目标平台**: %%params.platform%%

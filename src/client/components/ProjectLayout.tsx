@@ -535,7 +535,7 @@ const ProjectLayout: React.FC = () => {
                                         <TextDivider title="剧本框架" id="outline-settings" />
                                         <OutlineSettingsDisplay />
 
-                                        <TextDivider title="时间顺序故事描述" id="chronicles" />
+                                        <TextDivider title="时间顺序大纲" id="chronicles" />
                                         <ChroniclesDisplay />
 
                                         {/* Legacy Support - Show old outline display for backward compatibility */}

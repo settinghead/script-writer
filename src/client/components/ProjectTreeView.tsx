@@ -312,7 +312,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                         fontWeight: chroniclesHighlighted ? 700 : 500,
                         textShadow: chroniclesHighlighted ? '0 0 8px rgba(114, 46, 209, 0.8)' : 'none'
                     }}>
-                        时间顺序故事描述
+                        时间顺序大纲
                     </Text>
                     {hasChronicles && (
                         <CheckCircleOutlined style={{

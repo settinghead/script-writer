@@ -56,14 +56,14 @@ const Breadcrumb: React.FC = () => {
             }
         } else if (location.pathname.startsWith('/new-outline')) {
             items.push({
-                title: '设计时间顺序故事描述',
+                title: '设计时间顺序大纲',
                 icon: <FileTextOutlined />
             });
         } else if (location.pathname.startsWith('/outlines')) {
             const outlineId = location.pathname.split('/')[2];
             if (outlineId) {
                 items.push({
-                    title: `时间顺序故事描述详情 (${outlineId.slice(0, 8)}...)`,
+                    title: `时间顺序大纲详情 (${outlineId.slice(0, 8)}...)`,
                     icon: <FileTextOutlined />
                 });
             }
