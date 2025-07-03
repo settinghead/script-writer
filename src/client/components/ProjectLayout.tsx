@@ -35,14 +35,12 @@ const ProjectLayout: React.FC = () => {
     const [isResizingRightSidebar, setIsResizingRightSidebar] = useState(false);
     const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
     const [mobileRightDrawerOpen, setMobileRightDrawerOpen] = useState(false);
-    const [activeRightTab, setActiveRightTab] = useLocalStorage('right-sidebar-tab', 'workflow');
+    const [activeRightTab, setActiveRightTab] = useLocalStorage('right-sidebar-tab', 'tree');
 
     // Responsive breakpoints
     const screens = useBreakpoint();
     const isMobile = !screens.md; // Mobile when smaller than md breakpoint (768px)
 
-    // Check for chosen brainstorm idea
-    const { chosenIdea, isLoading: chosenIdeaLoading } = useChosenBrainstormIdea();
 
 
     // Debug toggles
@@ -371,6 +369,20 @@ const ProjectLayout: React.FC = () => {
                             }}
                             items={[
                                 {
+                                    key: 'tree',
+                                    label: (
+                                        <Space>
+                                            <UnorderedListOutlined />
+                                            <span>目录树</span>
+                                        </Space>
+                                    ),
+                                    children: (
+                                        <div style={{ padding: '12px' }}>
+                                            <ProjectTreeView width={280} />
+                                        </div>
+                                    )
+                                },
+                                {
                                     key: 'workflow',
                                     label: (
                                         <Space>
@@ -384,20 +396,7 @@ const ProjectLayout: React.FC = () => {
                                         </div>
                                     )
                                 },
-                                {
-                                    key: 'tree',
-                                    label: (
-                                        <Space>
-                                            <UnorderedListOutlined />
-                                            <span>目录树</span>
-                                        </Space>
-                                    ),
-                                    children: (
-                                        <div style={{ padding: '12px' }}>
-                                            <ProjectTreeView width={280} />
-                                        </div>
-                                    )
-                                }
+
                             ]}
                         />
                     </Drawer>
@@ -617,6 +616,20 @@ const ProjectLayout: React.FC = () => {
                                                 }}
                                                 items={[
                                                     {
+                                                        key: 'tree',
+                                                        label: (
+                                                            <Space>
+                                                                <UnorderedListOutlined />
+                                                                <span>目录树</span>
+                                                            </Space>
+                                                        ),
+                                                        children: (
+                                                            <div style={{ padding: '12px' }}>
+                                                                <ProjectTreeView width={rightSidebarWidth - 48} />
+                                                            </div>
+                                                        )
+                                                    },
+                                                    {
                                                         key: 'workflow',
                                                         label: (
                                                             <Space>
@@ -630,20 +643,7 @@ const ProjectLayout: React.FC = () => {
                                                             </div>
                                                         )
                                                     },
-                                                    {
-                                                        key: 'tree',
-                                                        label: (
-                                                            <Space>
-                                                                <UnorderedListOutlined />
-                                                                <span>目录树</span>
-                                                            </Space>
-                                                        ),
-                                                        children: (
-                                                            <div style={{ padding: '12px' }}>
-                                                                <ProjectTreeView width={rightSidebarWidth - 48} />
-                                                            </div>
-                                                        )
-                                                    }
+
                                                 ]}
                                             />
                                         </div>
