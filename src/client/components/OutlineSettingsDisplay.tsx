@@ -363,7 +363,8 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
             >
                 {/* Header Section */}
                 <div style={{ marginBottom: '24px', textAlign: 'center', borderBottom: '1px solid #434343', paddingBottom: '16px' }}>
-                    <div style={{ marginBottom: '8px' }}>
+                    <div style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                        <Text strong style={{ fontSize: '14px', color: '#fff', whiteSpace: 'nowrap' }}>剧本标题：</Text>
                         <EditableText
                             value={outlineSettings.title || ''}
                             path="title"
@@ -374,13 +375,14 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                                 fontSize: '20px',
                                 fontWeight: 'bold',
                                 color: '#fff',
-                                display: 'block',
                                 minHeight: '28px',
-                                textAlign: 'center'
+                                textAlign: 'center',
+                                flex: 1
                             }}
                         />
                     </div>
-                    <div style={{ marginTop: '8px' }}>
+                    <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                        <Text strong style={{ fontSize: '14px', color: '#fff', whiteSpace: 'nowrap' }}>剧本类型：</Text>
                         <EditableText
                             value={outlineSettings.genre || ''}
                             path="genre"
@@ -393,7 +395,7 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                                 borderRadius: '16px',
                                 backgroundColor: isEditable ? 'rgba(138, 43, 226, 0.1)' : '#722ed1',
                                 border: isEditable ? '1px solid #722ed1' : 'none',
-                                color: isEditable ? '#722ed1' : '#fff',
+                                color: '#fff',
                                 display: 'inline-block',
                                 minWidth: '80px',
                                 textAlign: 'center'
@@ -539,14 +541,18 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                                 )}
                                 <Space direction="vertical" size="small" style={{ width: '100%' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <Text strong style={{ fontSize: '14px', color: '#fff', whiteSpace: 'nowrap' }}>角色姓名：</Text>
                                         <EditableText
                                             value={character.name || ''}
                                             path={`characters[${index}].name`}
                                             placeholder="角色姓名"
                                             isEditable={isEditable}
                                             onSave={handleSave}
-                                            style={{ fontSize: '16px', fontWeight: 'bold', flex: 1 }}
+                                            style={{ fontSize: '16px', fontWeight: 'bold', color: '#fff', flex: 1 }}
                                         />
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <Text strong style={{ fontSize: '14px', color: '#fff', whiteSpace: 'nowrap' }}>角色类型：</Text>
                                         <EditableText
                                             value={getCharacterTypeLabel(character.type) || ''}
                                             path={`characters[${index}].type`}
@@ -554,45 +560,51 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                                             isEditable={isEditable}
                                             onSave={handleSave}
                                             style={{
-                                                fontSize: '12px',
-                                                padding: '2px 8px',
+                                                fontSize: '14px',
+                                                padding: '4px 12px',
                                                 borderRadius: '12px',
                                                 backgroundColor: isEditable ? 'rgba(24, 144, 255, 0.1)' : getCharacterTypeColor(character.type),
                                                 border: isEditable ? '1px solid #1890ff' : 'none',
-                                                color: isEditable ? '#1890ff' : '#fff'
+                                                color: '#fff'
                                             }}
                                         />
                                     </div>
-                                    <EditableText
-                                        value={[character.age, character.gender, character.occupation].filter(Boolean).join(' • ') || ''}
-                                        path={`characters[${index}].description_summary`}
-                                        placeholder="年龄 • 性别 • 职业"
-                                        isEditable={isEditable}
-                                        onSave={async (path, value) => {
-                                            // Parse the combined string back to individual fields
-                                            const parts = value.split(' • ').map(p => p.trim());
-                                            const updatedCharacter = { ...character };
-                                            updatedCharacter.age = parts[0] || '';
-                                            updatedCharacter.gender = parts[1] || '';
-                                            updatedCharacter.occupation = parts[2] || '';
-                                            const updatedCharacters = [...outlineSettings.characters];
-                                            updatedCharacters[index] = updatedCharacter;
-                                            return handleSave('characters', updatedCharacters);
-                                        }}
-                                        style={{ fontSize: '12px', color: '#8c8c8c' }}
-                                    />
-                                    <EditableText
-                                        value={character.description || ''}
-                                        path={`characters[${index}].description`}
-                                        placeholder="角色描述"
-                                        multiline={true}
-                                        rows={2}
-                                        isEditable={isEditable}
-                                        onSave={handleSave}
-                                        style={{ fontSize: '12px', width: '100%' }}
-                                    />
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <Text strong style={{ fontSize: '14px', color: '#fff', whiteSpace: 'nowrap' }}>基本信息：</Text>
+                                        <EditableText
+                                            value={[character.age, character.gender, character.occupation].filter(Boolean).join(' • ') || ''}
+                                            path={`characters[${index}].description_summary`}
+                                            placeholder="年龄 • 性别 • 职业"
+                                            isEditable={isEditable}
+                                            onSave={async (path, value) => {
+                                                // Parse the combined string back to individual fields
+                                                const parts = value.split(' • ').map(p => p.trim());
+                                                const updatedCharacter = { ...character };
+                                                updatedCharacter.age = parts[0] || '';
+                                                updatedCharacter.gender = parts[1] || '';
+                                                updatedCharacter.occupation = parts[2] || '';
+                                                const updatedCharacters = [...outlineSettings.characters];
+                                                updatedCharacters[index] = updatedCharacter;
+                                                return handleSave('characters', updatedCharacters);
+                                            }}
+                                            style={{ fontSize: '14px', color: '#fff', flex: 1 }}
+                                        />
+                                    </div>
                                     <div>
-                                        <Text strong style={{ fontSize: '11px' }}>性格特点：</Text>
+                                        <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>角色描述：</Text>
+                                        <EditableText
+                                            value={character.description || ''}
+                                            path={`characters[${index}].description`}
+                                            placeholder="角色描述"
+                                            multiline={true}
+                                            rows={2}
+                                            isEditable={isEditable}
+                                            onSave={handleSave}
+                                            style={{ fontSize: '14px', color: '#fff', width: '100%' }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>性格特点：</Text>
                                         <EditableArray
                                             value={character.personality_traits || []}
                                             path={`characters[${index}].personality_traits`}
@@ -602,16 +614,19 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                                             mode="textarea"
                                         />
                                     </div>
-                                    <EditableText
-                                        value={character.character_arc || ''}
-                                        path={`characters[${index}].character_arc`}
-                                        placeholder="成长轨迹"
-                                        multiline={true}
-                                        rows={2}
-                                        isEditable={isEditable}
-                                        onSave={handleSave}
-                                        style={{ fontSize: '12px', width: '100%' }}
-                                    />
+                                    <div>
+                                        <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>成长轨迹：</Text>
+                                        <EditableText
+                                            value={character.character_arc || ''}
+                                            path={`characters[${index}].character_arc`}
+                                            placeholder="成长轨迹"
+                                            multiline={true}
+                                            rows={2}
+                                            isEditable={isEditable}
+                                            onSave={handleSave}
+                                            style={{ fontSize: '14px', color: '#fff', width: '100%' }}
+                                        />
+                                    </div>
                                 </Space>
                             </Card>
                         ))}
