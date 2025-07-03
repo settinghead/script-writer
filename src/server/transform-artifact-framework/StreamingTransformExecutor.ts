@@ -92,226 +92,301 @@ export class StreamingTransformExecutor {
         let transformId: string | null = null;
         let outputArtifactId: string | null = null;
         let outputLinked = false; // Track if we've linked the output artifact to transform
+        let retryCount = 0;
+        const maxRetries = 3;
 
-        try {
-            // 1. Input validation against schema
-            const validatedInput = config.inputSchema.parse(input);
-            console.log(`[StreamingTransformExecutor] Input validated for template ${config.templateName}`);
+        while (retryCount <= maxRetries) {
+            try {
+                // 1. Input validation against schema
+                const validatedInput = config.inputSchema.parse(input);
+                console.log(`[StreamingTransformExecutor] Input validated for template ${config.templateName} (attempt ${retryCount + 1}/${maxRetries + 1})`);
 
-            // 2. Create transform for this execution
-            const transform = await transformRepo.createTransform(
-                projectId,
-                'llm',
-                'v1',
-                'running',
-                {
-                    template_name: config.templateName,
-                    ...transformMetadata
-                }
-            );
-            transformId = transform.id;
-
-            // 3. Handle input artifacts: both source artifacts and tool input
-            const transformInputs: Array<{ artifactId: string; inputRole: string }> = [];
-
-            // 3a. Link source artifacts if specified by the tool
-            if (config.extractSourceArtifacts) {
-                const sourceArtifacts = config.extractSourceArtifacts(validatedInput);
-                console.log(`[StreamingTransformExecutor] Linking ${sourceArtifacts.length} source artifacts for ${config.templateName}`);
-                transformInputs.push(...sourceArtifacts);
-            }
-
-            // 3b. Create tool input artifact from tool parameters
-            const inputArtifactType = this.getInputArtifactType(config.templateName);
-            const inputArtifact = await artifactRepo.createArtifact(
-                projectId,
-                inputArtifactType,
-                validatedInput,
-                'v1',
-                {},
-                'completed',
-                'user_input'
-            );
-            transformInputs.push({ artifactId: inputArtifact.id, inputRole: 'tool_input' });
-
-            // 3c. Add all transform inputs at once
-            await transformRepo.addTransformInputs(transformId, transformInputs, projectId);
-
-            // 4. Create initial output artifact in streaming state
-            const initialData = this.createInitialArtifactData(outputArtifactType, transformMetadata);
-            const outputArtifact = await artifactRepo.createArtifact(
-                projectId,
-                outputArtifactType,
-                initialData,
-                'v1',
-                {
-                    started_at: new Date().toISOString(),
-                    template_name: config.templateName,
-                    ...transformMetadata
-                },
-                'streaming',
-                'ai_generated'
-            );
-            outputArtifactId = outputArtifact.id;
-
-            console.log(`[StreamingTransformExecutor] Created output artifact ${outputArtifactId} for ${config.templateName}`);
-
-            // 5. Template rendering
-            const template = this.templateService.getTemplate(config.templateName);
-            if (!template) {
-                throw new Error(`Template '${config.templateName}' not found`);
-            }
-
-            const templateVariables = config.prepareTemplateVariables(validatedInput);
-            const finalPrompt = await this.templateService.renderTemplate(template, {
-                params: templateVariables
-            });
-
-            // 6. Store the prompt
-            await transformRepo.addLLMPrompts(transformId, [
-                { promptText: finalPrompt, promptRole: 'primary' }
-            ], projectId);
-
-            console.log(`[StreamingTransformExecutor] Starting LLM streaming for ${config.templateName}...`);
-
-            // 7. Execute streaming with single retry
-            const stream = await this.executeStreamingWithRetry({
-                prompt: finalPrompt,
-                schema: config.outputSchema,
-                templateName: config.templateName,
-                enableCaching,
-                seed,
-                temperature,
-                topP,
-                maxTokens
-            });
-
-            // 8. Process stream and update artifact periodically
-            let chunkCount = 0;
-            let updateCount = 0;
-            let lastData: TOutput | null = null;
-
-            for await (const partialData of stream) {
-                chunkCount++;
-                lastData = partialData as TOutput;
-
-                // Update artifact every N chunks or if this is the final chunk
-                if (chunkCount % updateIntervalChunks === 0) {
-                    try {
-                        // Transform LLM output to final artifact format if needed
-                        const artifactData = config.transformLLMOutput
-                            ? config.transformLLMOutput(partialData as TOutput, validatedInput)
-                            : partialData;
-
-                        await artifactRepo.updateArtifact(
-                            outputArtifactId,
-                            artifactData,
-                            {
-                                chunk_count: chunkCount,
-                                last_updated: new Date().toISOString(),
-                                update_count: ++updateCount
-                            }
-                        );
-                        console.log(`[StreamingTransformExecutor] Updated artifact (update #${updateCount})`);
-
-                        // Link output artifact to transform eagerly on first update
-                        if (!outputLinked) {
-                            try {
-                                await transformRepo.addTransformOutputs(transformId, [
-                                    { artifactId: outputArtifactId, outputRole: 'generated_output' }
-                                ], projectId);
-                                outputLinked = true;
-                                console.log(`[StreamingTransformExecutor] Eagerly linked output artifact ${outputArtifactId} to transform`);
-                            } catch (linkError) {
-                                console.warn(`[StreamingTransformExecutor] Failed to link output artifact during streaming:`, linkError);
-                                // Don't throw - we'll retry at completion
-                            }
+                // 2. Create transform for this execution (or update existing one on retry)
+                if (!transformId) {
+                    const transform = await transformRepo.createTransform(
+                        projectId,
+                        'llm',
+                        'v1',
+                        'running',
+                        {
+                            template_name: config.templateName,
+                            retry_count: retryCount,
+                            max_retries: maxRetries,
+                            ...transformMetadata
                         }
-                    } catch (updateError) {
-                        console.warn(`[StreamingTransformExecutor] Failed to update artifact at chunk ${chunkCount}:`, updateError);
-                    }
-                }
-            }
-
-            // 9. Final validation and artifact update
-            if (!lastData) {
-                throw new Error('No data received from streaming');
-            }
-
-            const finalValidatedData = config.outputSchema.parse(lastData);
-
-            // Transform LLM output to final artifact format if needed
-            const finalArtifactData = config.transformLLMOutput
-                ? config.transformLLMOutput(finalValidatedData, validatedInput)
-                : finalValidatedData;
-
-            await artifactRepo.updateArtifact(
-                outputArtifactId,
-                finalArtifactData,
-                {
-                    chunk_count: chunkCount,
-                    completed_at: new Date().toISOString(),
-                    total_updates: updateCount + 1
-                },
-                'completed'  // Mark as completed to trigger validation
-            );
-
-            // 10. Link output artifact to transform (if not already linked during streaming)
-            if (!outputLinked) {
-                await transformRepo.addTransformOutputs(transformId, [
-                    { artifactId: outputArtifactId, outputRole: 'generated_output' }
-                ], projectId);
-                console.log(`[StreamingTransformExecutor] Linked output artifact ${outputArtifactId} to transform at completion`);
-            }
-
-            // 11. Store LLM metadata (simplified - we don't have detailed usage from streaming)
-            await transformRepo.addLLMTransform({
-                transform_id: transformId,
-                model_name: 'streaming_model',
-                raw_response: JSON.stringify(finalValidatedData), // Store LLM output, not transformed
-                token_usage: null,
-                project_id: projectId
-            });
-
-            // 12. Mark transform as completed
-            await transformRepo.updateTransform(transformId, {
-                status: 'completed',
-                execution_context: {
-                    ...transform.execution_context,
-                    completed_at: new Date().toISOString(),
-                    output_artifact_id: outputArtifactId,
-                    total_chunks: chunkCount,
-                    total_updates: updateCount + 1
-                }
-            });
-
-            console.log(`[StreamingTransformExecutor] Successfully completed ${config.templateName} with artifact ${outputArtifactId}`);
-
-            return {
-                outputArtifactId,
-                finishReason: 'stop'
-            };
-
-        } catch (error) {
-            console.error(`[StreamingTransformExecutor] Error executing ${config.templateName}:`, error);
-
-            // Update transform status to failed
-            if (transformId) {
-                try {
+                    );
+                    transformId = transform.id;
+                } else {
+                    // Update retry count on existing transform
                     await transformRepo.updateTransform(transformId, {
-                        status: 'failed',
+                        status: 'running',
+                        retry_count: retryCount,
                         execution_context: {
-                            error_message: error instanceof Error ? error.message : String(error),
-                            failed_at: new Date().toISOString()
+                            template_name: config.templateName,
+                            retry_count: retryCount,
+                            max_retries: maxRetries,
+                            ...transformMetadata
                         }
                     });
-                } catch (statusUpdateError) {
-                    console.error(`[StreamingTransformExecutor] Failed to update transform status:`, statusUpdateError);
+                }
+
+                // 3. Handle input artifacts: both source artifacts and tool input (only on first attempt)
+                if (retryCount === 0) {
+                    const transformInputs: Array<{ artifactId: string; inputRole: string }> = [];
+
+                    // 3a. Link source artifacts if specified by the tool
+                    if (config.extractSourceArtifacts) {
+                        const sourceArtifacts = config.extractSourceArtifacts(validatedInput);
+                        console.log(`[StreamingTransformExecutor] Linking ${sourceArtifacts.length} source artifacts for ${config.templateName}`);
+                        transformInputs.push(...sourceArtifacts);
+                    }
+
+                    // 3b. Create tool input artifact from tool parameters
+                    const inputArtifactType = this.getInputArtifactType(config.templateName);
+                    const inputArtifact = await artifactRepo.createArtifact(
+                        projectId,
+                        inputArtifactType,
+                        validatedInput,
+                        'v1',
+                        {},
+                        'completed',
+                        'user_input'
+                    );
+                    transformInputs.push({ artifactId: inputArtifact.id, inputRole: 'tool_input' });
+
+                    // 3c. Add all transform inputs at once
+                    await transformRepo.addTransformInputs(transformId, transformInputs, projectId);
+                }
+
+                // 4. Create initial output artifact in streaming state (only on first attempt)
+                if (!outputArtifactId) {
+                    const initialData = this.createInitialArtifactData(outputArtifactType, transformMetadata);
+                    const outputArtifact = await artifactRepo.createArtifact(
+                        projectId,
+                        outputArtifactType,
+                        initialData,
+                        'v1',
+                        {
+                            started_at: new Date().toISOString(),
+                            template_name: config.templateName,
+                            retry_count: retryCount,
+                            ...transformMetadata
+                        },
+                        'streaming',
+                        'ai_generated'
+                    );
+                    outputArtifactId = outputArtifact.id;
+                    console.log(`[StreamingTransformExecutor] Created output artifact ${outputArtifactId} for ${config.templateName}`);
+                }
+
+                // 5. Template rendering
+                const template = this.templateService.getTemplate(config.templateName);
+                if (!template) {
+                    throw new Error(`Template '${config.templateName}' not found`);
+                }
+
+                const templateVariables = config.prepareTemplateVariables(validatedInput);
+                const finalPrompt = await this.templateService.renderTemplate(template, {
+                    params: templateVariables
+                });
+
+                // 6. Store the prompt (only on first attempt)
+                if (retryCount === 0) {
+                    await transformRepo.addLLMPrompts(transformId, [
+                        { promptText: finalPrompt, promptRole: 'primary' }
+                    ], projectId);
+                }
+
+                console.log(`[StreamingTransformExecutor] Starting LLM streaming for ${config.templateName} (attempt ${retryCount + 1})...`);
+
+                // 7. Execute streaming with internal retry (this handles LLM-level retries)
+                const stream = await this.executeStreamingWithRetry({
+                    prompt: finalPrompt,
+                    schema: config.outputSchema,
+                    templateName: config.templateName,
+                    enableCaching,
+                    seed,
+                    temperature,
+                    topP,
+                    maxTokens
+                });
+
+                // 8. Process stream and update artifact periodically
+                let chunkCount = 0;
+                let updateCount = 0;
+                let lastData: TOutput | null = null;
+
+                for await (const partialData of stream) {
+                    chunkCount++;
+                    lastData = partialData as TOutput;
+
+                    // Update artifact every N chunks or if this is the final chunk
+                    if (chunkCount % updateIntervalChunks === 0) {
+                        try {
+                            // Transform LLM output to final artifact format if needed
+                            const artifactData = config.transformLLMOutput
+                                ? config.transformLLMOutput(partialData as TOutput, validatedInput)
+                                : partialData;
+
+                            await artifactRepo.updateArtifact(
+                                outputArtifactId,
+                                artifactData,
+                                {
+                                    chunk_count: chunkCount,
+                                    last_updated: new Date().toISOString(),
+                                    update_count: ++updateCount,
+                                    retry_count: retryCount
+                                }
+                            );
+                            console.log(`[StreamingTransformExecutor] Updated artifact (update #${updateCount}, attempt ${retryCount + 1})`);
+
+                            // Link output artifact to transform eagerly on first update
+                            if (!outputLinked) {
+                                try {
+                                    await transformRepo.addTransformOutputs(transformId, [
+                                        { artifactId: outputArtifactId, outputRole: 'generated_output' }
+                                    ], projectId);
+                                    outputLinked = true;
+                                    console.log(`[StreamingTransformExecutor] Eagerly linked output artifact ${outputArtifactId} to transform`);
+                                } catch (linkError) {
+                                    console.warn(`[StreamingTransformExecutor] Failed to link output artifact during streaming:`, linkError);
+                                    // Don't throw - we'll retry at completion
+                                }
+                            }
+                        } catch (updateError) {
+                            console.warn(`[StreamingTransformExecutor] Failed to update artifact at chunk ${chunkCount}:`, updateError);
+                        }
+                    }
+                }
+
+                // 9. Final validation and artifact update
+                if (!lastData) {
+                    throw new Error('No data received from streaming');
+                }
+
+                // **CRITICAL: Strict schema validation here**
+                let finalValidatedData: TOutput;
+                try {
+                    finalValidatedData = config.outputSchema.parse(lastData);
+                } catch (validationError) {
+                    console.error(`[StreamingTransformExecutor] Schema validation failed for ${config.templateName}:`, validationError);
+                    throw new Error(`Schema validation failed: ${validationError instanceof Error ? validationError.message : String(validationError)}`);
+                }
+
+                // Transform LLM output to final artifact format if needed
+                const finalArtifactData = config.transformLLMOutput
+                    ? config.transformLLMOutput(finalValidatedData, validatedInput)
+                    : finalValidatedData;
+
+                await artifactRepo.updateArtifact(
+                    outputArtifactId,
+                    finalArtifactData,
+                    {
+                        chunk_count: chunkCount,
+                        completed_at: new Date().toISOString(),
+                        total_updates: updateCount + 1,
+                        retry_count: retryCount
+                    },
+                    'completed'  // Mark as completed to trigger validation
+                );
+
+                // 10. Link output artifact to transform (if not already linked during streaming)
+                if (!outputLinked) {
+                    await transformRepo.addTransformOutputs(transformId, [
+                        { artifactId: outputArtifactId, outputRole: 'generated_output' }
+                    ], projectId);
+                    console.log(`[StreamingTransformExecutor] Linked output artifact ${outputArtifactId} to transform at completion`);
+                }
+
+                // 11. Store LLM metadata (simplified - we don't have detailed usage from streaming)
+                await transformRepo.addLLMTransform({
+                    transform_id: transformId,
+                    model_name: 'streaming_model',
+                    raw_response: JSON.stringify(finalValidatedData), // Store LLM output, not transformed
+                    token_usage: null,
+                    project_id: projectId
+                });
+
+                // 12. Mark transform as completed
+                await transformRepo.updateTransform(transformId, {
+                    status: 'completed',
+                    execution_context: {
+                        template_name: config.templateName,
+                        completed_at: new Date().toISOString(),
+                        output_artifact_id: outputArtifactId,
+                        total_chunks: chunkCount,
+                        total_updates: updateCount + 1,
+                        retry_count: retryCount,
+                        max_retries: maxRetries
+                    }
+                });
+
+                console.log(`[StreamingTransformExecutor] Successfully completed ${config.templateName} with artifact ${outputArtifactId} (attempt ${retryCount + 1})`);
+
+                return {
+                    outputArtifactId,
+                    finishReason: 'stop'
+                };
+
+            } catch (error) {
+                console.error(`[StreamingTransformExecutor] Error executing ${config.templateName} (attempt ${retryCount + 1}):`, error);
+
+                retryCount++;
+
+                // If we've exhausted all retries, mark as permanently failed
+                if (retryCount > maxRetries) {
+                    console.error(`[StreamingTransformExecutor] All ${maxRetries + 1} attempts failed for ${config.templateName}`);
+
+                    // Update transform status to failed
+                    if (transformId) {
+                        try {
+                            await transformRepo.updateTransform(transformId, {
+                                status: 'failed',
+                                retry_count: retryCount - 1, // Actual retry count
+                                error_message: error instanceof Error ? error.message : String(error),
+                                execution_context: {
+                                    template_name: config.templateName,
+                                    error_message: error instanceof Error ? error.message : String(error),
+                                    failed_at: new Date().toISOString(),
+                                    retry_count: retryCount - 1,
+                                    max_retries: maxRetries
+                                }
+                            });
+                        } catch (statusUpdateError) {
+                            console.error(`[StreamingTransformExecutor] Failed to update transform status:`, statusUpdateError);
+                        }
+                    }
+
+                    // Mark output artifact as failed if it exists
+                    if (outputArtifactId) {
+                        try {
+                            await artifactRepo.updateArtifact(
+                                outputArtifactId,
+                                {},
+                                {
+                                    error_message: error instanceof Error ? error.message : String(error),
+                                    failed_at: new Date().toISOString(),
+                                    retry_count: retryCount - 1
+                                },
+                                'failed'
+                            );
+                        } catch (artifactUpdateError) {
+                            console.error(`[StreamingTransformExecutor] Failed to update artifact status:`, artifactUpdateError);
+                        }
+                    }
+
+                    throw error;
+                } else {
+                    // Wait before retry with exponential backoff
+                    const waitTime = Math.min(1000 * Math.pow(2, retryCount - 1), 10000); // Max 10 seconds
+                    console.log(`[StreamingTransformExecutor] Retrying ${config.templateName} in ${waitTime}ms (attempt ${retryCount + 1}/${maxRetries + 1})`);
+                    await new Promise(resolve => setTimeout(resolve, waitTime));
                 }
             }
-
-            throw error;
         }
+
+        // This should never be reached due to the throw in the retry exhaustion case
+        throw new Error('Unexpected end of retry loop');
     }
 
     /**

@@ -140,7 +140,7 @@ export function buildLineageGraph(
     // Step 2: Process all transforms in dependency order (Phase 1)
     // We need to process transforms in topological order to ensure depths are calculated correctly
     const processedTransforms = new Set<string>();
-    const pendingTransforms = [...transforms];
+    const pendingTransforms = [...transforms.filter(t => t.status !== 'failed')]; // Skip failed transforms
 
     while (pendingTransforms.length > 0) {
         const initialLength = pendingTransforms.length;
@@ -148,6 +148,13 @@ export function buildLineageGraph(
         for (let i = pendingTransforms.length - 1; i >= 0; i--) {
             const transform = pendingTransforms[i];
             const transformId = transform.id;
+
+            // Skip failed transforms
+            if (transform.status === 'failed') {
+                console.log(`[LineageResolution] Skipping failed transform: ${transformId}`);
+                pendingTransforms.splice(i, 1);
+                continue;
+            }
 
             // Check if all input artifacts for this transform have been processed
             const inputs = transformInputs.filter(ti => ti.transform_id === transformId);

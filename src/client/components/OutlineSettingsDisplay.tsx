@@ -79,6 +79,23 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
         return isUserInput && !hasDescendants;
     }, [effectiveArtifact, projectData.transformInputs]);
 
+    // Check if the artifact comes from a failed transform
+    const isFromFailedTransform = useMemo(() => {
+        if (!effectiveArtifact) return false;
+
+        // Find the transform that created this artifact
+        const outputRecord = projectData.transformOutputs.find(output =>
+            output.artifact_id === effectiveArtifact.id
+        );
+
+        if (outputRecord) {
+            const transform = projectData.transforms.find(t => t.id === outputRecord.transform_id);
+            return transform?.status === 'failed';
+        }
+
+        return false;
+    }, [effectiveArtifact, projectData.transformOutputs, projectData.transforms]);
+
     // Parse outline settings data from the effective artifact
     const outlineSettings = useMemo(() => {
         if (!effectiveArtifact?.data) {
@@ -195,6 +212,15 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
             }
         }
     }, [latestChronicles]);
+
+    // Utility function to get editable props with failed transform handling
+    const getEditableProps = useCallback((isLocalEditable: boolean = true) => ({
+        isEditable: isEditable && !isFromFailedTransform && isLocalEditable,
+        style: {
+            opacity: isFromFailedTransform ? 0.7 : 1,
+            color: isFromFailedTransform ? '#ff4d4f' : '#fff'
+        }
+    }), [isEditable, isFromFailedTransform]);
 
     // Handle saving individual fields
     const handleSave = useCallback(async (path: string, newValue: any) => {
@@ -339,11 +365,16 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                 styles={{ body: { padding: '24px' } }}
                 title={
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: isEditable ? '#52c41a' : '#fff' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: isEditable ? '#52c41a' : isFromFailedTransform ? '#ff4d4f' : '#fff' }}>
                             {isEditable && <EditOutlined />}
-                            <span>剧本框架{isEditable ? ' (可编辑)' : ''}</span>
+                            {isFromFailedTransform && <span style={{ fontSize: '14px' }}>⚠️</span>}
+                            <span>剧本框架{isEditable ? ' (可编辑)' : isFromFailedTransform ? ' (生成失败)' : ''}</span>
                         </div>
-                        {!isEditable && !isCreatingTransform && (
+                        {isFromFailedTransform ? (
+                            <div style={{ color: '#ff4d4f', fontSize: '12px', fontStyle: 'italic' }}>
+                                生成过程中出现错误，请重新生成
+                            </div>
+                        ) : !isEditable && !isCreatingTransform && (
                             <Button
                                 type="primary"
                                 size="small"
@@ -369,15 +400,16 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                             value={outlineSettings.title || ''}
                             path="title"
                             placeholder="剧本标题"
-                            isEditable={isEditable}
+                            isEditable={isEditable && !isFromFailedTransform}
                             onSave={handleSave}
                             style={{
                                 fontSize: '20px',
                                 fontWeight: 'bold',
-                                color: '#fff',
+                                color: isFromFailedTransform ? '#ff4d4f' : '#fff',
                                 minHeight: '28px',
                                 textAlign: 'center',
-                                flex: 1
+                                flex: 1,
+                                opacity: isFromFailedTransform ? 0.7 : 1
                             }}
                         />
                     </div>
@@ -387,18 +419,19 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                             value={outlineSettings.genre || ''}
                             path="genre"
                             placeholder="剧本类型"
-                            isEditable={isEditable}
+                            isEditable={isEditable && !isFromFailedTransform}
                             onSave={handleSave}
                             style={{
                                 fontSize: '14px',
                                 padding: '4px 12px',
                                 borderRadius: '16px',
-                                backgroundColor: isEditable ? 'rgba(138, 43, 226, 0.1)' : '#722ed1',
-                                border: isEditable ? '1px solid #722ed1' : 'none',
-                                color: '#fff',
+                                backgroundColor: isFromFailedTransform ? 'rgba(255, 77, 79, 0.1)' : isEditable ? 'rgba(138, 43, 226, 0.1)' : '#722ed1',
+                                border: isFromFailedTransform ? '1px solid #ff4d4f' : isEditable ? '1px solid #722ed1' : 'none',
+                                color: isFromFailedTransform ? '#ff4d4f' : '#fff',
                                 display: 'inline-block',
                                 minWidth: '80px',
-                                textAlign: 'center'
+                                textAlign: 'center',
+                                opacity: isFromFailedTransform ? 0.7 : 1
                             }}
                         />
                     </div>
@@ -417,9 +450,9 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                                 value={outlineSettings.target_audience?.demographic || ''}
                                 path="target_audience.demographic"
                                 placeholder="目标受众群体"
-                                isEditable={isEditable}
+                                {...getEditableProps()}
                                 onSave={handleSave}
-                                style={{ marginLeft: '8px' }}
+                                style={{ marginLeft: '8px', ...getEditableProps().style }}
                             />
                         </div>
                         <div style={{ marginTop: '8px' }}>
@@ -429,7 +462,7 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                                     value={outlineSettings.target_audience?.core_themes || []}
                                     path="target_audience.core_themes"
                                     placeholder="每行一个核心主题..."
-                                    isEditable={isEditable}
+                                    {...getEditableProps()}
                                     onSave={handleSave}
                                     mode="textarea"
                                 />
@@ -448,7 +481,7 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                         value={outlineSettings.selling_points || []}
                         path="selling_points"
                         placeholder="每行一个卖点..."
-                        isEditable={isEditable}
+                        {...getEditableProps()}
                         onSave={handleSave}
                         mode="textarea"
                     />
@@ -464,7 +497,7 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                         value={outlineSettings.satisfaction_points || []}
                         path="satisfaction_points"
                         placeholder="每行一个爽点..."
-                        isEditable={isEditable}
+                        {...getEditableProps()}
                         onSave={handleSave}
                         mode="textarea"
                     />
@@ -708,17 +741,18 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                             icon={<HistoryOutlined />}
                             onClick={handleGenerateChronicles}
                             loading={chroniclesGenerationMutation.isPending}
-                            disabled={!effectiveArtifact?.id || chroniclesGenerationMutation.isPending}
+                            disabled={!effectiveArtifact?.id || chroniclesGenerationMutation.isPending || isFromFailedTransform}
                             style={{
-                                background: 'linear-gradient(100deg, #ff7a45, #f5222d)',
+                                background: isFromFailedTransform ? '#666' : 'linear-gradient(100deg, #ff7a45, #f5222d)',
                                 border: 'none',
                                 borderRadius: '6px',
                                 padding: '16px 32px',
                                 fontSize: '16px',
-                                height: 'auto'
+                                height: 'auto',
+                                opacity: isFromFailedTransform ? 0.5 : 1
                             }}
                         >
-                            {chroniclesGenerationMutation.isPending ? '生成中...' : '生成时间顺序故事描述 &gt;&gt;'}
+                            {isFromFailedTransform ? '剧本框架生成失败，无法继续' : chroniclesGenerationMutation.isPending ? '生成中...' : '生成时间顺序故事描述 &gt;&gt;'}
                         </Button>
                     )}
                 </div>

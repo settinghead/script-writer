@@ -469,6 +469,11 @@ export class TransformRepository {
             updated_at: new Date()
         };
 
+        // Serialize execution_context if it exists
+        if (updateData.execution_context && typeof updateData.execution_context === 'object') {
+            updateData.execution_context = JSON.stringify(updateData.execution_context);
+        }
+
         await this.db
             .updateTable('transforms')
             .set(updateData)

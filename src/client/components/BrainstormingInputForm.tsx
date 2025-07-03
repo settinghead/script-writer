@@ -3,6 +3,7 @@ import { Button, Typography, Input, Tag, Space, InputNumber } from 'antd';
 import { BulbOutlined, RightOutlined } from '@ant-design/icons';
 import GenreSelectionPopup from './GenreSelectionPopup';
 import PlatformSelection from './PlatformSelection';
+import { MAX_GENRE_SELECTIONS } from './GenreSelectionPopup';
 
 const { Text } = Typography;
 
@@ -102,7 +103,7 @@ const BrainstormingInputForm: React.FC<BrainstormingInputFormProps> = ({
                         </div>
                     ) : (
                         <span style={{ color: '#666', cursor: 'pointer' }}>
-                            点击选择故事类型 (可多选, 最多3个)
+                            点击选择故事类型 (可多选, 最多{MAX_GENRE_SELECTIONS}个)
                         </span>
                     )}
                     <RightOutlined style={{ fontSize: '12px', color: '#666', marginLeft: '8px' }} />
