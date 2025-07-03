@@ -44,9 +44,10 @@ const ArtifactNode: React.FC<{ data: any }> = ({ data }) => {
             background: '#1a1a1a',
             border: `${borderWidth}px solid ${borderColor}`,
             borderRadius: '8px',
-            padding: '12px',
-            minWidth: '200px',
-            maxWidth: '300px',
+            padding: '16px',
+            minWidth: '220px',
+            maxWidth: '320px',
+            minHeight: '100px',
             color: 'white',
             position: 'relative'
         }}>
@@ -117,11 +118,53 @@ const ArtifactNode: React.FC<{ data: any }> = ({ data }) => {
                         )}
                     </div>
                     <Text style={{ color: '#ccc', fontSize: '10px' }}>
-                        Data object
+                        {artifact.schema_type || artifact.type}
                     </Text>
                     <br />
-                    <Text style={{ color: '#999', fontSize: '9px' }}>
-                        {new Date(artifact.created_at).toLocaleString()}
+                    <Text style={{ color: '#aaa', fontSize: '9px', fontStyle: 'italic' }}>
+                        {(() => {
+                            try {
+                                const data = typeof artifact.data === 'string' ? JSON.parse(artifact.data) : artifact.data;
+                                let preview = '';
+
+                                if (artifact.schema_type === 'brainstorm_collection_schema' || artifact.type === 'brainstorm_idea_collection') {
+                                    if (data.ideas && Array.isArray(data.ideas) && data.ideas.length > 0) {
+                                        const firstIdea = data.ideas[0];
+                                        const title = firstIdea.title || '';
+                                        preview = title.length > 25 ? `${title.substring(0, 25)}...` : title;
+                                    } else {
+                                        preview = '创意集合';
+                                    }
+                                } else if (artifact.schema_type === 'brainstorm_idea_schema' || artifact.type === 'brainstorm_idea') {
+                                    const title = data.title || '';
+                                    preview = title.length > 25 ? `${title.substring(0, 25)}...` : title;
+                                } else if (artifact.schema_type === 'outline_schema' || artifact.type === 'outline_response' || artifact.type === 'outline') {
+                                    const outlineTitle = data.title || data.synopsis || '';
+                                    preview = outlineTitle.length > 25 ? `${outlineTitle.substring(0, 25)}...` : outlineTitle;
+                                } else if (artifact.schema_type === 'user_input_schema' || artifact.type === 'user_input') {
+                                    const content = data.content || data.text || '';
+                                    preview = content.length > 25 ? `${content.substring(0, 25)}...` : content;
+                                } else {
+                                    // Generic preview for other types
+                                    const keys = Object.keys(data);
+                                    if (keys.length > 0) {
+                                        const firstKey = keys[0];
+                                        const firstValue = data[firstKey];
+                                        if (typeof firstValue === 'string') {
+                                            preview = firstValue.length > 25 ? `${firstValue.substring(0, 25)}...` : firstValue;
+                                        } else {
+                                            preview = `${firstKey}: ${typeof firstValue}`;
+                                        }
+                                    } else {
+                                        preview = '空数据';
+                                    }
+                                }
+
+                                return preview || '无预览';
+                            } catch (error) {
+                                return '数据解析错误';
+                            }
+                        })()}
                     </Text>
                 </div>
             </Tooltip>
@@ -239,7 +282,7 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'LR') => 
     dagreGraph.setGraph({ rankdir: direction, nodesep: 100, ranksep: 150 });
 
     nodes.forEach((node) => {
-        dagreGraph.setNode(node.id, { width: node.type === 'artifact' ? 220 : 140, height: node.type === 'artifact' ? 120 : 100 });
+        dagreGraph.setNode(node.id, { width: node.type === 'artifact' ? 240 : 140, height: node.type === 'artifact' ? 140 : 100 });
     });
 
     edges.forEach((edge) => {
@@ -253,8 +296,8 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'LR') => 
         node.targetPosition = Position.Left;
         node.sourcePosition = Position.Right;
         node.position = {
-            x: nodeWithPosition.x - (node.type === 'artifact' ? 110 : 70),
-            y: nodeWithPosition.y - (node.type === 'artifact' ? 60 : 50),
+            x: nodeWithPosition.x - (node.type === 'artifact' ? 120 : 70),
+            y: nodeWithPosition.y - (node.type === 'artifact' ? 70 : 50),
         };
     });
 

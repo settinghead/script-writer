@@ -1160,6 +1160,7 @@ export interface WorkflowNode {
     navigationTarget: string; // anchor or route
     createdAt: string;
     status?: 'completed' | 'processing' | 'failed';
+    schemaType?: string; // NEW: Include artifact schema_type for display
 }
 
 /**
@@ -1312,7 +1313,8 @@ function createBrainstormOnlyWorkflow(artifacts: ElectricArtifact[]): WorkflowNo
         isActive: true,
         navigationTarget: '#brainstorm-ideas',
         createdAt: latestCollection.created_at,
-        status: latestCollection.streaming_status === 'streaming' ? 'processing' : 'completed'
+        status: latestCollection.streaming_status === 'streaming' ? 'processing' : 'completed',
+        schemaType: latestCollection.schema_type // NEW: Include schema_type for display
     }];
 }
 
@@ -1438,6 +1440,7 @@ function createWorkflowNodeFromArtifact(
         isActive: isLatest, // Only the latest node is "active"
         navigationTarget,
         createdAt: artifact.created_at,
-        status: artifact.streaming_status === 'streaming' ? 'processing' : 'completed'
+        status: artifact.streaming_status === 'streaming' ? 'processing' : 'completed',
+        schemaType: artifact.schema_type // NEW: Include schema_type for display
     };
 } 
