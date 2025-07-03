@@ -19,18 +19,19 @@ import {
 } from 'antd';
 import { RightOutlined, LeftOutlined, CloseOutlined, HomeOutlined } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
+import { useLocalStorage } from '../hooks/useLocalStorage';
 
 const { Text, Title } = Typography;
 
 // Configuration constants
-const MAX_GENRE_SELECTIONS = 4;
+export const MAX_GENRE_SELECTIONS = 4;
 const COLUMN_WIDTH = 200;
 const COLUMN_GAP = 8;
 const MAX_COLUMNS = 3;
 const MODAL_PADDING = 48; // Modal internal padding
 const MODAL_WIDTH = MAX_COLUMNS * COLUMN_WIDTH + (MAX_COLUMNS - 1) * COLUMN_GAP + MODAL_PADDING;
 const COLUMN_HEIGHT = 300;
-const SELECTED_ITEMS_HEIGHT = 120; // Reserved space for selected items section
+const SELECTED_ITEMS_HEIGHT = 200; // Increased from 120 to 180 for better display
 const MODAL_HEIGHT = COLUMN_HEIGHT + SELECTED_ITEMS_HEIGHT + 100; // Extra space for padding
 
 // Genre hierarchy with disabled states
@@ -189,8 +190,11 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
 }) => {
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
     const [navigationPath, setNavigationPath] = useState<string[]>([]);
-    const [tempSelectedPaths, setTempSelectedPaths] = useState<string[][]>(currentSelectionPaths);
     const [activeNavigationPath, setActiveNavigationPath] = useState<string[]>([]);
+
+    // Use localStorage to persist temporary selections
+    const [tempSelectedPathsStorage, setTempSelectedPathsStorage] = useLocalStorage<string[][]>('genreSelections', []);
+    const [tempSelectedPaths, setTempSelectedPaths] = useState<string[][]>(currentSelectionPaths);
 
     useEffect(() => {
         const handleResize = () => {
@@ -202,17 +206,19 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
 
     useEffect(() => {
         if (visible) {
-            setTempSelectedPaths(currentSelectionPaths);
+            // Use localStorage selections if available, otherwise use current selections
+            const initialSelections = tempSelectedPathsStorage.length > 0 ? tempSelectedPathsStorage : currentSelectionPaths;
+            setTempSelectedPaths(initialSelections);
             setNavigationPath([]);
             if (!isMobile) {
-                if (currentSelectionPaths.length > 0 && currentSelectionPaths[0].length > 0) {
-                    setActiveNavigationPath(currentSelectionPaths[0].slice(0, -1));
+                if (initialSelections.length > 0 && initialSelections[0].length > 0) {
+                    setActiveNavigationPath(initialSelections[0].slice(0, -1));
                 } else {
                     setActiveNavigationPath([]);
                 }
             }
         }
-    }, [visible, currentSelectionPaths, isMobile]);
+    }, [visible, currentSelectionPaths, isMobile, tempSelectedPathsStorage]);
 
     const isOptionDisabled = (path: string[]) => {
         // Check if the path is in disabledOptions
@@ -276,32 +282,44 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
 
         setTempSelectedPaths(prevSelectedPaths => {
             const isAlreadySelected = prevSelectedPaths.some(p => JSON.stringify(p) === JSON.stringify(fullItemPath));
+            let newSelectedPaths;
+
             if (isAlreadySelected) {
-                return prevSelectedPaths.filter(p => JSON.stringify(p) !== JSON.stringify(fullItemPath));
+                newSelectedPaths = prevSelectedPaths.filter(p => JSON.stringify(p) !== JSON.stringify(fullItemPath));
             } else {
                 if (prevSelectedPaths.length < MAX_GENRE_SELECTIONS) {
-                    return [...prevSelectedPaths, fullItemPath];
+                    newSelectedPaths = [...prevSelectedPaths, fullItemPath];
                 } else {
-                    return prevSelectedPaths;
+                    newSelectedPaths = prevSelectedPaths;
                 }
             }
+
+            // Persist to localStorage
+            setTempSelectedPathsStorage(newSelectedPaths);
+            return newSelectedPaths;
         });
     };
 
     const handleRemoveSelectedItem = (indexToRemove: number) => {
         const newSelectedPaths = tempSelectedPaths.filter((_, index) => index !== indexToRemove);
         setTempSelectedPaths(newSelectedPaths);
+        // Persist to localStorage
+        setTempSelectedPathsStorage(newSelectedPaths);
     };
 
     const handleConfirm = () => {
         if (tempSelectedPaths.length > 0 && tempSelectedPaths.length <= MAX_GENRE_SELECTIONS) {
             onSelect({ paths: tempSelectedPaths });
             onClose();
+            // Clear localStorage after confirming selection
+            setTempSelectedPathsStorage([]);
         }
     };
 
     const handleCancel = () => {
         setTempSelectedPaths(currentSelectionPaths);
+        // Clear localStorage when canceling
+        setTempSelectedPathsStorage([]);
         onClose();
     };
 
@@ -310,8 +328,8 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
 
         return (
             <Card size="small" style={{ marginTop: 16 }}>
-                <Title level={5} style={{ marginBottom: 16 }}>已选择的故事类型</Title>
-                <Space wrap>
+                <Title level={5} style={{ marginBottom: 12, marginTop: 0 }}>已选择的故事类型</Title>
+                <Space wrap size="small">
                     {tempSelectedPaths.map((path, index) => {
                         const pathString = path.join(' > ');
                         return (
@@ -320,7 +338,7 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
                                 closable
                                 onClose={() => handleRemoveSelectedItem(index)}
                                 color="blue"
-                                style={{ marginBottom: 8 }}
+                                style={{ marginBottom: 6, fontSize: '12px' }}
                             >
                                 {pathString}
                             </Tag>
@@ -425,7 +443,11 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
                 <Flex gap={COLUMN_GAP} style={{ marginBottom: 16 }}>
                     {columns}
                 </Flex>
-                <div style={{ height: SELECTED_ITEMS_HEIGHT, overflow: 'auto' }}>
+                <div style={{
+                    minHeight: tempSelectedPaths.length > 0 ? 'auto' : 0,
+                    maxHeight: SELECTED_ITEMS_HEIGHT,
+                    overflow: tempSelectedPaths.length > 2 ? 'auto' : 'visible'
+                }}>
                     {tempSelectedPaths.length > 0 && renderSelectedItemsTags()}
                 </div>
             </Flex>

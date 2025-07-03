@@ -51,7 +51,7 @@ export const outlineSettingsTemplate = {
     - **正义伸张类**: "坏人得到应有惩罚，好人获得圆满结局"
 6.  **故事设定 (setting)**:
     *   **core_setting_summary**: [string] 一句话核心设定
-    *   **key_scenes**: [string[]] 2-3个推动剧情发展的核心场景
+    *   **key_scenes**: [string[]] 5-8个推动剧情发展的核心场景
 7.  **人物角色 (characters)**: **完整的角色体系数组，必须体现去脸谱化要求**，每个人物对象包含以下字段：
     *   **name**: [string] 人物姓名
     *   **type**: [string] 角色类型（"male_lead", "female_lead", "male_second", "female_second", "male_supporting", "female_supporting", "antagonist", "other"）

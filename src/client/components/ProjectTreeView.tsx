@@ -218,7 +218,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                             fontWeight: ideationHighlighted ? 700 : 500,
                             textShadow: ideationHighlighted ? '0 0 8px rgba(82, 196, 26, 0.8)' : 'none'
                         }}>
-                            创意编辑
+                            编辑选中创意
                         </Text>
                     </Space>
                 ),
