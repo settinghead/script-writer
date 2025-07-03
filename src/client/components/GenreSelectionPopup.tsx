@@ -22,6 +22,9 @@ import type { MenuProps } from 'antd';
 
 const { Text, Title } = Typography;
 
+// Configuration constants
+const MAX_GENRE_SELECTIONS = 4;
+
 // Genre hierarchy with disabled states
 export const genreOptions = {
     '人物设定': {
@@ -268,7 +271,7 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
             if (isAlreadySelected) {
                 return prevSelectedPaths.filter(p => JSON.stringify(p) !== JSON.stringify(fullItemPath));
             } else {
-                if (prevSelectedPaths.length < 3) {
+                if (prevSelectedPaths.length < MAX_GENRE_SELECTIONS) {
                     return [...prevSelectedPaths, fullItemPath];
                 } else {
                     return prevSelectedPaths;
@@ -283,7 +286,7 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
     };
 
     const handleConfirm = () => {
-        if (tempSelectedPaths.length > 0 && tempSelectedPaths.length <= 3) {
+        if (tempSelectedPaths.length > 0 && tempSelectedPaths.length <= MAX_GENRE_SELECTIONS) {
             onSelect({ paths: tempSelectedPaths });
             onClose();
         }
@@ -340,7 +343,7 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
                                     checked={isSelected}
                                     onChange={() => handleCheckboxChange(basePath, key)}
                                     onClick={(e) => e.stopPropagation()}
-                                    disabled={!isSelected && tempSelectedPaths.length >= 3}
+                                    disabled={!isSelected && tempSelectedPaths.length >= MAX_GENRE_SELECTIONS}
                                     style={{ marginRight: 8 }}
                                 />
                             )}
@@ -403,9 +406,9 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
                 <Flex gap={8} style={{ overflowX: 'auto', paddingBottom: tempSelectedPaths.length > 0 ? 16 : 0 }}>
                     {columns}
                 </Flex>
-                {tempSelectedPaths.length >= 3 && (
+                {tempSelectedPaths.length >= MAX_GENRE_SELECTIONS && (
                     <Alert
-                        message="已选择最大数量 (3个) 的故事类型"
+                        message={`已选择最大数量 (${MAX_GENRE_SELECTIONS}个) 的故事类型`}
                         description="如需选择其他类型，请先移除已选择的类型。"
                         type="info"
                         showIcon
@@ -479,7 +482,7 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
                                                     checked={isItemSelected}
                                                     onChange={() => handleCheckboxChange(navigationPath, key)}
                                                     onClick={(e) => e.stopPropagation()}
-                                                    disabled={!isItemSelected && tempSelectedPaths.length >= 3}
+                                                    disabled={!isItemSelected && tempSelectedPaths.length >= MAX_GENRE_SELECTIONS}
                                                 />
                                             ) : null}
                                             title={key}
@@ -518,7 +521,7 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
                         <Button
                             type="primary"
                             onClick={handleConfirm}
-                            disabled={tempSelectedPaths.length === 0 || tempSelectedPaths.length > 3}
+                            disabled={tempSelectedPaths.length === 0 || tempSelectedPaths.length > MAX_GENRE_SELECTIONS}
                         >
                             确定 ({tempSelectedPaths.length})
                         </Button>
@@ -545,7 +548,7 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
                     key="confirm"
                     type="primary"
                     onClick={handleConfirm}
-                    disabled={tempSelectedPaths.length === 0 || tempSelectedPaths.length > 3}
+                    disabled={tempSelectedPaths.length === 0 || tempSelectedPaths.length > MAX_GENRE_SELECTIONS}
                 >
                     确定 ({tempSelectedPaths.length})
                 </Button>
