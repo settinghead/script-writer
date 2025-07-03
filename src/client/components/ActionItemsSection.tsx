@@ -6,7 +6,6 @@ const { Text } = Typography;
 const ActionItemsSection: React.FC = () => {
     return (
         <div style={{
-            height: '80px',
             background: '#1a1a1a',
             borderTop: '1px solid #333',
             display: 'flex',
