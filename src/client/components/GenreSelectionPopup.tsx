@@ -24,6 +24,14 @@ const { Text, Title } = Typography;
 
 // Configuration constants
 const MAX_GENRE_SELECTIONS = 4;
+const COLUMN_WIDTH = 200;
+const COLUMN_GAP = 8;
+const MAX_COLUMNS = 3;
+const MODAL_PADDING = 48; // Modal internal padding
+const MODAL_WIDTH = MAX_COLUMNS * COLUMN_WIDTH + (MAX_COLUMNS - 1) * COLUMN_GAP + MODAL_PADDING;
+const COLUMN_HEIGHT = 300;
+const SELECTED_ITEMS_HEIGHT = 120; // Reserved space for selected items section
+const MODAL_HEIGHT = COLUMN_HEIGHT + SELECTED_ITEMS_HEIGHT + 100; // Extra space for padding
 
 // Genre hierarchy with disabled states
 export const genreOptions = {
@@ -370,7 +378,7 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
 
         // Root column
         columns.push(
-            <Card key="col-root" size="small" style={{ width: 200, height: 300, overflow: 'auto' }}>
+            <Card key="col-root" size="small" style={{ width: COLUMN_WIDTH, height: COLUMN_HEIGHT, overflow: 'auto' }}>
                 <Menu
                     mode="vertical"
                     selectedKeys={activeNavigationPath.length > 0 ? [activeNavigationPath[0]] : []}
@@ -387,7 +395,7 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
 
             if (currentLevelData && typeof currentLevelData === 'object' && !Array.isArray(currentLevelData)) {
                 columns.push(
-                    <Card key={`col-${i}`} size="small" style={{ width: 200, height: 300, overflow: 'auto' }}>
+                    <Card key={`col-${i}`} size="small" style={{ width: COLUMN_WIDTH, height: COLUMN_HEIGHT, overflow: 'auto' }}>
                         <Menu
                             mode="vertical"
                             selectedKeys={activeNavigationPath.length > i + 1 ? [activeNavigationPath[i + 1]] : []}
@@ -401,9 +409,20 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
             }
         }
 
+        // Add placeholder columns to maintain consistent width
+        while (columns.length < MAX_COLUMNS) {
+            columns.push(
+                <Card key={`placeholder-${columns.length}`} size="small" style={{ width: COLUMN_WIDTH, height: COLUMN_HEIGHT, opacity: 0.3 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#666' }}>
+                        <Text type="secondary">选择左侧分类</Text>
+                    </div>
+                </Card>
+            );
+        }
+
         return (
             <Flex vertical>
-                <Flex gap={8} style={{ overflowX: 'auto', paddingBottom: tempSelectedPaths.length > 0 ? 16 : 0 }}>
+                <Flex gap={COLUMN_GAP} style={{ paddingBottom: tempSelectedPaths.length > 0 ? 16 : 0 }}>
                     {columns}
                 </Flex>
                 {tempSelectedPaths.length >= MAX_GENRE_SELECTIONS && (
@@ -538,7 +557,7 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
             title="选择故事类型"
             open={visible}
             onCancel={handleCancel}
-            width={Math.min(220 * (activeNavigationPath.length + 2) + (tempSelectedPaths.length > 0 ? 50 : 0), 1000)}
+            width={MODAL_WIDTH}
             centered
             footer={[
                 <Button key="cancel" onClick={handleCancel}>
