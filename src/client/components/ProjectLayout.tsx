@@ -17,6 +17,7 @@ import { SingleBrainstormIdeaEditor } from './brainstorm/SingleBrainstormIdeaEdi
 import ProjectBrainstormPage from '../components/brainstorm/ProjectBrainstormPage';
 import { OutlineSettingsDisplay } from './OutlineSettingsDisplay';
 import { ChroniclesDisplay } from './ChroniclesDisplay';
+import ActionItemsSection from './ActionItemsSection';
 
 const { Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -543,21 +544,8 @@ const ProjectLayout: React.FC = () => {
                                         <Outlet />
                                     </div>
 
-                                    {/* Sticky Action Items Placeholder */}
-                                    <div style={{
-                                        height: '80px',
-                                        background: '#1a1a1a',
-                                        borderTop: '1px solid #333',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        padding: '0 12px',
-                                        flexShrink: 0
-                                    }}>
-                                        <Text type="secondary" style={{ fontSize: '16px', fontWeight: 500 }}>
-                                            Action Items Placeholder
-                                        </Text>
-                                    </div>
+                                    {/* Sticky Action Items Section */}
+                                    <ActionItemsSection />
                                 </div>
                             )}
                         </Content>
