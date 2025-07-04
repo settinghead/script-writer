@@ -104,7 +104,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, isStreaming =
                 }}>
                     <Text strong style={{ color: '#e0e0e0', fontSize: 12 }}>
                         {message.role === 'user' ? '你' :
-                            message.role === 'assistant' ? '觅光助创' :
+                            message.role === 'assistant' ? '觅子' :
                                 '系统'}
                     </Text>
                     <Text type="secondary" style={{ fontSize: 11 }}>
