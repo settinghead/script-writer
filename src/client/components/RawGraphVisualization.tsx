@@ -39,9 +39,41 @@ const deleteTransform = async (transformId: string) => {
     }
 };
 
+// Delete artifact function
+const deleteArtifact = async (artifactId: string) => {
+    try {
+        const response = await fetch(`/api/artifacts/${artifactId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer debug-auth-token-script-writer-dev`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to delete artifact');
+        }
+
+        const result = await response.json();
+        message.success(result.message || 'Artifact deleted successfully');
+
+        // Refresh the page to update the graph
+        window.location.reload();
+    } catch (error: any) {
+        console.error('Error deleting artifact:', error);
+        message.error(`Failed to delete artifact: ${error.message}`);
+    }
+};
+
 // Custom node components
 const ArtifactNode: React.FC<{ data: any }> = ({ data }) => {
     const { artifact, isLatest, originType } = data;
+
+    const handleDelete = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        deleteArtifact(artifact.id);
+    };
 
     const getTypeColor = (type: string, originType?: string) => {
         // Input params get purple color
@@ -127,6 +159,18 @@ const ArtifactNode: React.FC<{ data: any }> = ({ data }) => {
                         <pre style={{ maxHeight: '250px', overflow: 'auto', fontSize: '10px', background: '#262626', padding: '8px', borderRadius: '4px' }}>
                             {JSON.stringify(parsedData, null, 2)}
                         </pre>
+                    </div>
+                    <div style={{ textAlign: 'center', borderTop: '1px solid #444', paddingTop: '8px' }}>
+                        <Button
+                            type="primary"
+                            danger
+                            size="small"
+                            icon={<DeleteOutlined />}
+                            onClick={handleDelete}
+                            style={{ fontSize: '12px' }}
+                        >
+                            删除工件
+                        </Button>
                     </div>
                 </div>}
                 overlayStyle={{ maxWidth: '600px' }}

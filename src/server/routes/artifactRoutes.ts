@@ -229,6 +229,64 @@ export function createArtifactRoutes(
         }
     });
 
+    // Delete artifact by ID
+    router.delete('/:id', authMiddleware.authenticate, async (req: any, res: any) => {
+        try {
+            const { id: artifactId } = req.params;
+            const user = authMiddleware.getCurrentUser(req);
+
+            if (!user) {
+                res.status(401).json({ error: 'User not authenticated' });
+                return;
+            }
+
+            // Get artifact to verify it exists and get project_id
+            const artifact = await artifactRepo.getArtifact(artifactId);
+            if (!artifact) {
+                res.status(404).json({ error: 'Artifact not found' });
+                return;
+            }
+
+            // Verify user has access to this artifact's project
+            const hasAccess = await artifactRepo.userHasProjectAccess(user.id, artifact.project_id);
+            if (!hasAccess) {
+                res.status(403).json({ error: 'Access denied' });
+                return;
+            }
+
+            // Validate that this is a leaf artifact (no other transforms depend on it)
+            const dependentTransforms = await transformRepo.getTransformInputsByArtifact(artifactId);
+            if (dependentTransforms.length > 0) {
+                res.status(400).json({
+                    error: 'Cannot delete non-leaf artifact',
+                    details: `Artifact ${artifactId} is used by other transforms`,
+                    dependentTransforms: dependentTransforms.map(t => t.transform_id)
+                });
+                return;
+            }
+
+            // Delete associated transform output records first
+            await transformRepo.deleteTransformOutputsByArtifact(artifactId);
+
+            // Now safe to delete the artifact
+            await artifactRepo.deleteArtifact(artifactId);
+
+            res.json({
+                success: true,
+                deletedArtifactId: artifactId,
+                message: `Artifact ${artifactId} deleted successfully`
+            });
+
+        } catch (error: any) {
+            console.error('Error deleting artifact:', error);
+            res.status(500).json({
+                error: 'Failed to delete artifact',
+                details: error.message,
+                timestamp: new Date().toISOString()
+            });
+        }
+    });
+
     // Update artifact by ID
     router.put('/:id', authMiddleware.authenticate, async (req: any, res: any) => {
         try {

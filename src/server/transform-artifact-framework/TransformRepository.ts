@@ -640,6 +640,14 @@ export class TransformRepository {
             .execute();
     }
 
+    // Delete transform outputs by artifact ID
+    async deleteTransformOutputsByArtifact(artifactId: string): Promise<void> {
+        await this.db
+            .deleteFrom('transform_outputs')
+            .where('artifact_id', '=', artifactId)
+            .execute();
+    }
+
     // Delete human transform by transform ID
     async deleteHumanTransformByTransformId(transformId: string): Promise<void> {
         await this.db
