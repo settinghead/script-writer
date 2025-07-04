@@ -1,16 +1,13 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Outlet, useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { Outlet, useParams, useNavigate } from 'react-router-dom';
 import { Layout, Breadcrumb, Typography, Spin, Alert, Space, Button, Card, List, Drawer, Grid, Tabs } from 'antd';
-import { HomeOutlined, ProjectOutlined, ArrowLeftOutlined, EyeOutlined, EyeInvisibleOutlined, NodeIndexOutlined, MessageOutlined, FileTextOutlined, MenuOutlined, ApartmentOutlined, UnorderedListOutlined } from '@ant-design/icons';
+import { HomeOutlined, ProjectOutlined, ArrowLeftOutlined, EyeOutlined, EyeInvisibleOutlined, MenuOutlined, ApartmentOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import { useProjectData } from '../hooks/useProjectData';
 import { useProjectStore } from '../stores/projectStore';
 import { ProjectDataProvider } from '../contexts/ProjectDataContext';
 import { ChatSidebarWrapper } from './chat/ChatSidebarWrapper';
 import WorkflowVisualization from './WorkflowVisualization';
 import ProjectTreeView from './ProjectTreeView';
-import RawGraphVisualization from './RawGraphVisualization';
-import RawChatMessages from './RawChatMessages';
-import RawAgentContext from './RawAgentContext';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { useChosenBrainstormIdea } from '../hooks/useChosenBrainstormIdea';
 import { SingleBrainstormIdeaEditor } from './brainstorm/SingleBrainstormIdeaEditor';
@@ -18,6 +15,7 @@ import ProjectBrainstormPage from '../components/brainstorm/ProjectBrainstormPag
 import { OutlineSettingsDisplay } from './OutlineSettingsDisplay';
 import { ChroniclesDisplay } from './ChroniclesDisplay';
 import ActionItemsSection from './ActionItemsSection';
+import { DebugMenu, useDebugState, DebugPanels } from './debug';
 
 const { Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -28,7 +26,6 @@ const { useBreakpoint } = Grid;
 const ProjectLayout: React.FC = () => {
     const { projectId } = useParams<{ projectId: string }>();
     const navigate = useNavigate();
-    const [searchParams, setSearchParams] = useSearchParams();
     const [rightSidebarVisible, setRightSidebarVisible] = useLocalStorage('right-sidebar-visible', true);
     const [rightSidebarWidth, setRightSidebarWidth] = useLocalStorage('right-sidebar-width', 350);
     const [sidebarWidth, setSidebarWidth] = useLocalStorage('sidebar-width', 350);
@@ -42,17 +39,13 @@ const ProjectLayout: React.FC = () => {
     const screens = useBreakpoint();
     const isMobile = !screens.md; // Mobile when smaller than md breakpoint (768px)
 
-
-
-    // Debug toggles
-    const showRawGraph = searchParams.get('raw-graph') === '1';
-    const showRawChat = searchParams.get('raw-chat') === '1';
-    const showRawContext = searchParams.get('raw-context') === '1';
+    // Debug state
+    const { isDebugMode } = useDebugState();
 
     // Cache the selector to avoid infinite loop warning
     const emptyProject = useMemo(() => ({}), []);
     const project = useProjectStore(useMemo(() => (state: any) => state.projects[projectId!] || emptyProject, [projectId, emptyProject]));
-    const { name, description, loading, error } = project;
+    const { name, loading, error } = project;
 
     // Fetch project data using our main hook
     useProjectData(projectId!);
@@ -66,45 +59,7 @@ const ProjectLayout: React.FC = () => {
         }
     }, [isMobile, rightSidebarVisible]);
 
-    // Debug toggle handlers
-    const toggleRawGraph = useCallback(() => {
-        const newSearchParams = new URLSearchParams(searchParams);
-        if (showRawGraph) {
-            newSearchParams.delete('raw-graph');
-        } else {
-            newSearchParams.set('raw-graph', '1');
-            // Clear other debug views
-            newSearchParams.delete('raw-chat');
-            newSearchParams.delete('raw-context');
-        }
-        setSearchParams(newSearchParams);
-    }, [showRawGraph, searchParams, setSearchParams]);
 
-    const toggleRawChat = useCallback(() => {
-        const newSearchParams = new URLSearchParams(searchParams);
-        if (showRawChat) {
-            newSearchParams.delete('raw-chat');
-        } else {
-            newSearchParams.set('raw-chat', '1');
-            // Clear other debug views
-            newSearchParams.delete('raw-graph');
-            newSearchParams.delete('raw-context');
-        }
-        setSearchParams(newSearchParams);
-    }, [showRawChat, searchParams, setSearchParams]);
-
-    const toggleRawContext = useCallback(() => {
-        const newSearchParams = new URLSearchParams(searchParams);
-        if (showRawContext) {
-            newSearchParams.delete('raw-context');
-        } else {
-            newSearchParams.set('raw-context', '1');
-            // Clear other debug views
-            newSearchParams.delete('raw-graph');
-            newSearchParams.delete('raw-chat');
-        }
-        setSearchParams(newSearchParams);
-    }, [showRawContext, searchParams, setSearchParams]);
 
     // Resize handlers for right sidebar
     const handleRightSidebarMouseDown = (e: React.MouseEvent) => {
@@ -268,8 +223,6 @@ const ProjectLayout: React.FC = () => {
         }
     ];
 
-    // Determine layout based on debug modes
-    const isDebugMode = showRawGraph || showRawChat || showRawContext;
 
     // Chat sidebar content component for reuse
     const ChatSidebarContent = () => (
@@ -410,81 +363,34 @@ const ProjectLayout: React.FC = () => {
                     flexDirection: 'row',
                     padding: "0"
                 }}>
-                    {/* Breadcrumb and Toggle Buttons Row */}
-                    <div style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: isMobile ? 0 : sidebarWidth + 6,
-                        right: !isMobile && rightSidebarVisible ? rightSidebarWidth + 6 : 0,
-                        zIndex: 100,
-                        padding: isMobile ? '8px 12px' : '12px 16px',
-                        borderBottom: '1px solid #333',
-                        background: '#1a1a1a',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        height: '60px'
-                    }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            {/* Mobile Menu Button */}
-                            {isMobile && (
-                                <Button
-                                    type="text"
-                                    icon={<MenuOutlined />}
-                                    onClick={showMobileDrawer}
-                                    style={{ color: '#1890ff' }}
-                                    size="large"
-                                />
-                            )}
-                            <Breadcrumb items={breadcrumbItems} />
-                        </div>
-
-                        <Space size={isMobile ? 'small' : 'middle'}>
-                            {isMobile && (
-                                <Button
-                                    type="text"
-                                    icon={<NodeIndexOutlined />}
-                                    onClick={showMobileRightDrawer}
-                                    style={{ color: '#1890ff' }}
-                                    size="small"
-                                />
-                            )}
-                            <Button
-                                type="text"
-                                icon={<NodeIndexOutlined />}
-                                onClick={toggleRawGraph}
-                                style={{ color: showRawGraph ? '#52c41a' : '#1890ff' }}
-                                size={isMobile ? 'small' : 'middle'}
-                            >
-                                {isMobile ? '' : (showRawGraph ? '关闭图谱' : '打开图谱')}
-                            </Button>
-                            <Button
-                                type="text"
-                                icon={<MessageOutlined />}
-                                onClick={toggleRawChat}
-                                style={{ color: showRawChat ? '#52c41a' : '#1890ff' }}
-                                size={isMobile ? 'small' : 'middle'}
-                            >
-                                {isMobile ? '' : (showRawChat ? '关闭内部对话' : '打开内部对话')}
-                            </Button>
-                            <Button
-                                type="text"
-                                icon={<FileTextOutlined />}
-                                onClick={toggleRawContext}
-                                style={{ color: showRawContext ? '#52c41a' : '#1890ff' }}
-                                size={isMobile ? 'small' : 'middle'}
-                            >
-                                {isMobile ? '' : (showRawContext ? '关闭上下文' : '打开上下文')}
-                            </Button>
-                        </Space>
-                    </div>
 
                     {/* Main Content Layout */}
                     <Layout style={{
                         flex: 1,
                         overflow: 'hidden',
-                        paddingTop: '60px' // Account for fixed header
                     }}>
+                        {/* Breadcrumb and Toggle Buttons Row */}
+                        <div style={{
+                            top: 0,
+                            left: isMobile ? 0 : sidebarWidth + 6,
+                            right: !isMobile && rightSidebarVisible ? rightSidebarWidth + 6 : 0,
+                            zIndex: 100,
+                            padding: isMobile ? '8px 12px' : '12px 16px',
+                            borderBottom: '1px solid #333',
+                            background: '#1a1a1a',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            height: '60px'
+                        }}>
+
+
+                            <DebugMenu
+                                isMobile={isMobile}
+                                onMobileRightDrawerOpen={showMobileRightDrawer}
+                            />
+                        </div>
+
                         {/* Main Content Area */}
                         <Content style={{
                             display: 'flex',
@@ -493,18 +399,8 @@ const ProjectLayout: React.FC = () => {
                             overflow: 'hidden'
                         }}>
                             {/* Conditional Content */}
-                            {showRawGraph ? (
-                                <div style={{ flex: 1, overflow: 'hidden' }}>
-                                    <RawGraphVisualization />
-                                </div>
-                            ) : showRawChat ? (
-                                <div style={{ flex: 1, overflow: 'hidden' }}>
-                                    <RawChatMessages projectId={projectId!} />
-                                </div>
-                            ) : showRawContext ? (
-                                <div style={{ flex: 1, overflow: 'hidden' }}>
-                                    <RawAgentContext projectId={projectId!} />
-                                </div>
+                            {isDebugMode ? (
+                                <DebugPanels projectId={projectId!} />
                             ) : (
                                 <div style={{
                                     flex: 1,
