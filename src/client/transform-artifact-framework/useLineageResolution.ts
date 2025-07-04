@@ -157,8 +157,6 @@ export function useLineageResolution(
     };
 }
 
-
-
 /**
  * Hook to get all effective brainstorm ideas using principled lineage graph traversal
  * This replaces the patchy approach with proper graph-based resolution
@@ -201,7 +199,9 @@ export function useEffectiveBrainstormIdeas(): {
         isLoading: projectData.isLoading,
         error: projectData.error || error
     };
-}/**
+}
+
+/**
  * Hook to get effective brainstorm ideas using principled lineage graph traversal
  */
 export function useLatestBrainstormIdeas(): IdeaWithTitle[] {
@@ -254,6 +254,47 @@ export function useWorkflowNodes(): {
         workflowNodes,
         isLoading: graphLoading,
         error: graphError || error
+    };
+}
+
+/**
+ * Hook to detect if the project is in initial mode (no artifacts)
+ * This is used by the chat UI to determine if it should show the special initial mode
+ */
+export function useProjectInitialMode(): {
+    isInitialMode: boolean;
+    isLoading: boolean;
+    error: Error | null;
+} {
+    const projectData = useProjectData();
+    const [error, setError] = useState<Error | null>(null);
+
+    const isInitialMode = useMemo(() => {
+        if (projectData.isLoading) {
+            return false; // Default to false while loading
+        }
+
+        try {
+            setError(null);
+
+            // Check if there are any artifacts in the project
+            const hasArtifacts = projectData.artifacts && projectData.artifacts.length > 0;
+
+            // Initial mode means no artifacts exist
+            return !hasArtifacts;
+
+        } catch (err) {
+            const error = err instanceof Error ? err : new Error('Failed to detect initial mode');
+            console.error('[useProjectInitialMode] Error:', error);
+            setError(error);
+            return false; // Default to false on error
+        }
+    }, [projectData.isLoading, projectData.artifacts]);
+
+    return {
+        isInitialMode,
+        isLoading: projectData.isLoading,
+        error: projectData.error || error
     };
 }
 

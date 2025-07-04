@@ -1,10 +1,11 @@
 import React from 'react';
-import { Layout, Typography, Badge, Button, Tooltip, Divider } from 'antd';
-import { RobotOutlined, DeleteOutlined, UserOutlined } from '@ant-design/icons';
+import { Layout, Typography, Badge, Button, Tooltip, Divider, Empty } from 'antd';
+import { RobotOutlined, DeleteOutlined, UserOutlined, BulbOutlined } from '@ant-design/icons';
 import './chat.css';
 import { ChatMessageList } from './ChatMessageList';
 import { ChatInput } from './ChatInput';
 import { useChatMessages } from '../../hooks/useChatMessages.js';
+import { useProjectInitialMode } from '../../transform-artifact-framework/useLineageResolution';
 
 const { Header, Content, Footer } = Layout;
 const { Title, Text } = Typography;
@@ -15,12 +16,60 @@ interface ChatSidebarProps {
 
 export const ChatSidebar: React.FC<ChatSidebarProps> = ({ projectId }) => {
     const { messages, sendMessage, isLoading } = useChatMessages(projectId);
+    const { isInitialMode, isLoading: initialModeLoading } = useProjectInitialMode();
 
     const handleSendMessage = (content: string) => {
         sendMessage(content);
     };
 
-    // Simple layout that fits within the Sider
+    // Show initial mode when no artifacts exist
+    if (isInitialMode && !initialModeLoading) {
+        return (
+            <Layout style={{ height: '100%', background: '#1a1a1a' }}>
+                <Header style={{
+                    background: '#1e1e1e',
+                    borderBottom: '1px solid #333',
+                    paddingLeft: '16px',
+                    paddingRight: "16px",
+                    height: 'auto'
+                }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        <div>
+                            <Title level={4} style={{ margin: 0, color: '#f0f0f0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <RobotOutlined />
+                                觅子智能体
+                            </Title>
+                        </div>
+
+                        <Badge
+                            status="default"
+                            text={
+                                <Text style={{ fontSize: 12, color: '#666' }}>
+                                    等待中...
+                                </Text>
+                            }
+                        />
+                    </div>
+                </Header>
+
+                <Content style={{ background: '#1a1a1a', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ textAlign: 'center' }}>
+                        <BulbOutlined style={{ fontSize: 64, color: '#666' }} />
+                    </div>
+                </Content>
+
+                <Footer style={{
+                    background: '#1e1e1e',
+                    borderTop: '1px solid #333',
+                    padding: '16px'
+                }}>
+                    <div style={{ height: '1px' }} />
+                </Footer>
+            </Layout>
+        );
+    }
+
+    // Normal chat mode when artifacts exist
     return (
         <Layout style={{ height: '100%', background: '#1a1a1a' }}>
             <Header style={{
@@ -36,7 +85,6 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ projectId }) => {
                             <RobotOutlined />
                             觅子智能体
                         </Title>
-
                     </div>
 
                     <Badge
@@ -48,12 +96,10 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ projectId }) => {
                         }
                     />
                 </div>
-
-
             </Header>
 
             <Content style={{ background: '#1a1a1a', overflow: 'hidden' }}>
-                <ChatMessageList messages={messages} isLoading={isLoading} />
+                <ChatMessageList messages={messages} isLoading={isLoading} hideInitialPrompt={isInitialMode} />
             </Content>
 
             <Footer style={{

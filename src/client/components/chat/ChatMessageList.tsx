@@ -9,11 +9,13 @@ const { Title, Paragraph } = Typography;
 interface ChatMessageListProps {
     messages: ChatMessageDisplay[];
     isLoading?: boolean;
+    hideInitialPrompt?: boolean;
 }
 
 export const ChatMessageList: React.FC<ChatMessageListProps> = ({
     messages,
-    isLoading = false
+    isLoading = false,
+    hideInitialPrompt = false
 }) => {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -53,7 +55,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                 background: '#1a1a1a'
             }}
         >
-            {messages.length === 0 && !isLoading ? (
+            {messages.length === 0 && !isLoading && !hideInitialPrompt ? (
                 <Empty
                     image={<MessageOutlined style={{ fontSize: 64, color: '#666' }} />}
                     styles={{ image: { height: 80 } }}
@@ -79,6 +81,8 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                         </div>
                     }
                 />
+            ) : messages.length === 0 && !isLoading && hideInitialPrompt ? (
+                <div style={{ height: '100%' }} />
             ) : (
                 <List
                     dataSource={messages}
