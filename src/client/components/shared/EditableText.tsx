@@ -143,14 +143,6 @@ export const EditableText: React.FC<EditableTextProps> = ({
         }
 
         if (localValue !== lastSavedValueRef.current && isEditableRef.current && !savingRef.current) {
-            console.log('🔍 [EditableText] Auto-save triggered:', {
-                path,
-                localValue,
-                lastSavedValue: lastSavedValueRef.current,
-                isEditable: isEditableRef.current,
-                disableAutoSave: disableAutoSaveRef.current
-            });
-
             if (disableAutoSaveRef.current) {
                 onSaveRef.current(path, localValue);
                 lastSavedValueRef.current = localValue;
@@ -333,13 +325,6 @@ export const EditableArray: React.FC<EditableArrayProps> = ({
     useEffect(() => {
         if (mode === 'textarea' && !textareaInitializedRef.current) {
             const initialValue = arrayToTextarea(value);
-            console.log('🔍 [EditableArray] Initializing textarea:', {
-                path,
-                value,
-                initialValue,
-                valueLength: value.length,
-                currentTextareaValue: textareaValue
-            });
 
             // Only update if the current value doesn't match what it should be
             if (textareaValue !== initialValue) {
@@ -445,11 +430,6 @@ export const EditableArray: React.FC<EditableArrayProps> = ({
     if (mode === 'textarea' && !textareaInitializedRef.current) {
         // Mark as initialized immediately to prevent race conditions
         textareaInitializedRef.current = true;
-        console.log('🔍 [EditableArray] Synchronously marking textarea as initialized:', {
-            path,
-            valueLength: value.length,
-            textareaValue
-        });
     }
 
     // Refs for functions to avoid dependency issues
@@ -479,12 +459,6 @@ export const EditableArray: React.FC<EditableArrayProps> = ({
         if (modeRef.current === 'list') {
             // List mode: save when localItems change
             if (JSON.stringify(localItems) !== JSON.stringify(lastSavedValueRef.current) && isEditableRef.current && !savingRef.current) {
-                console.log('🔍 [EditableArray] Auto-save triggered (list mode):', {
-                    path,
-                    localItems,
-                    lastSavedValue: lastSavedValueRef.current,
-                    isEditable: isEditableRef.current
-                });
                 setHasUnsavedChanges(true);
                 debouncedSaveRef.current(localItems);
             }
@@ -496,14 +470,6 @@ export const EditableArray: React.FC<EditableArrayProps> = ({
 
                 // Compare with database value, not our local tracking  
                 if (JSON.stringify(newItems) !== JSON.stringify(databaseItems)) {
-                    console.log('🔍 [EditableArray] Auto-save triggered (textarea mode):', {
-                        path,
-                        newItems,
-                        databaseItems,
-                        textareaValue,
-                        isEditable: isEditableRef.current,
-                        textareaInitialized: textareaInitializedRef.current
-                    });
                     setHasUnsavedChanges(true);
                     debouncedSaveRef.current(newItems);
                 }
