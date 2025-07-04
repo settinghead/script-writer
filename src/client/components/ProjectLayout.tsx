@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Outlet, useParams, useNavigate } from 'react-router-dom';
-import { Layout, Breadcrumb, Typography, Spin, Alert, Space, Button, Card, List, Drawer, Grid, Tabs } from 'antd';
+import { Layout, Typography, Spin, Alert, Space, Button, Card, List, Drawer, Grid, Tabs } from 'antd';
 import { HomeOutlined, ProjectOutlined, ArrowLeftOutlined, EyeOutlined, EyeInvisibleOutlined, MenuOutlined, ApartmentOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import { useProjectData } from '../hooks/useProjectData';
 import { useProjectStore } from '../stores/projectStore';
@@ -9,13 +9,12 @@ import { ChatSidebarWrapper } from './chat/ChatSidebarWrapper';
 import WorkflowVisualization from './WorkflowVisualization';
 import ProjectTreeView from './ProjectTreeView';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import { useChosenBrainstormIdea } from '../hooks/useChosenBrainstormIdea';
 import { SingleBrainstormIdeaEditor } from './brainstorm/SingleBrainstormIdeaEditor';
 import ProjectBrainstormPage from '../components/brainstorm/ProjectBrainstormPage';
 import { OutlineSettingsDisplay } from './OutlineSettingsDisplay';
 import { ChroniclesDisplay } from './ChroniclesDisplay';
 import ActionItemsSection from './ActionItemsSection';
-import { DebugMenu, useDebugState, DebugPanels } from './debug';
+import { DebugMenu, DebugPanels } from './debug';
 
 const { Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -39,8 +38,7 @@ const ProjectLayout: React.FC = () => {
     const screens = useBreakpoint();
     const isMobile = !screens.md; // Mobile when smaller than md breakpoint (768px)
 
-    // Debug state
-    const { isDebugMode } = useDebugState();
+
 
     // Cache the selector to avoid infinite loop warning
     const emptyProject = useMemo(() => ({}), []);
@@ -398,52 +396,51 @@ const ProjectLayout: React.FC = () => {
                             height: '100%',
                             overflow: 'hidden'
                         }}>
-                            {/* Conditional Content */}
-                            {isDebugMode ? (
-                                <DebugPanels projectId={projectId!} />
-                            ) : (
+                            {/* Main Content - Always Rendered */}
+                            <div style={{
+                                flex: 1,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                height: '100%',
+                                overflow: 'hidden'
+                            }}>
+                                {/* Scrollable Content Container */}
                                 <div style={{
                                     flex: 1,
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    height: '100%',
-                                    overflow: 'hidden'
+                                    overflowY: 'auto',
+                                    padding: '12px',
+                                    paddingBottom: '24px'
                                 }}>
-                                    {/* Scrollable Content Container */}
-                                    <div style={{
-                                        flex: 1,
-                                        overflowY: 'auto',
-                                        padding: '12px',
-                                        paddingBottom: '24px'
-                                    }}>
-                                        <TextDivider title="头脑风暴" id="brainstorm-ideas" />
-                                        <ProjectBrainstormPage />
-                                        <TextDivider title="灵感编辑" id="ideation-edit" />
-                                        <SingleBrainstormIdeaEditor
-                                            onViewOriginalIdeas={() => {
-                                                // Scroll to the brainstorm ideas section
-                                                const brainstormSection = document.getElementById('brainstorm-ideas');
-                                                if (brainstormSection) {
-                                                    brainstormSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                                }
-                                            }}
-                                        />
-                                        <TextDivider title="剧本框架" id="outline-settings" />
-                                        <OutlineSettingsDisplay />
+                                    <TextDivider title="头脑风暴" id="brainstorm-ideas" />
+                                    <ProjectBrainstormPage />
+                                    <TextDivider title="灵感编辑" id="ideation-edit" />
+                                    <SingleBrainstormIdeaEditor
+                                        onViewOriginalIdeas={() => {
+                                            // Scroll to the brainstorm ideas section
+                                            const brainstormSection = document.getElementById('brainstorm-ideas');
+                                            if (brainstormSection) {
+                                                brainstormSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                            }
+                                        }}
+                                    />
+                                    <TextDivider title="剧本框架" id="outline-settings" />
+                                    <OutlineSettingsDisplay />
 
-                                        <TextDivider title="时间顺序大纲" id="chronicles" />
-                                        <ChroniclesDisplay />
+                                    <TextDivider title="时间顺序大纲" id="chronicles" />
+                                    <ChroniclesDisplay />
 
-                                        {/* Legacy Support - Show old outline display for backward compatibility */}
-                                        {/* Legacy outline display removed - replaced by outline settings + chronicles */}
+                                    {/* Legacy Support - Show old outline display for backward compatibility */}
+                                    {/* Legacy outline display removed - replaced by outline settings + chronicles */}
 
-                                        <Outlet />
-                                    </div>
-
-                                    {/* Sticky Action Items Section */}
-                                    <ActionItemsSection />
+                                    <Outlet />
                                 </div>
-                            )}
+
+                                {/* Sticky Action Items Section */}
+                                <ActionItemsSection />
+                            </div>
+
+                            {/* Debug Panels Overlay */}
+                            <DebugPanels projectId={projectId!} />
                         </Content>
                     </Layout>
 
