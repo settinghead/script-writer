@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { ReactFlow, Node, Edge, Background, Controls, MiniMap, useNodesState, useEdgesState, BackgroundVariant, MarkerType, Handle, Position, NodeTypes } from 'reactflow';
-import { Typography, Checkbox, Space, Tooltip, Spin } from 'antd';
-import { DatabaseOutlined, UserOutlined, RobotOutlined, CloseOutlined } from '@ant-design/icons';
+import { Typography, Checkbox, Space, Tooltip, Spin, Button, message } from 'antd';
+import { DatabaseOutlined, UserOutlined, RobotOutlined, CloseOutlined, DeleteOutlined } from '@ant-design/icons';
 import dagre from 'dagre';
 import { useProjectData } from '../contexts/ProjectDataContext';
 import { buildLineageGraph } from '../../common/transform-artifact-framework/lineageResolution';
@@ -11,6 +11,33 @@ import 'reactflow/dist/style.css';
 const { Text } = Typography;
 
 
+
+// Delete transform function
+const deleteTransform = async (transformId: string) => {
+    try {
+        const response = await fetch(`/api/transforms/${transformId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer debug-auth-token-script-writer-dev`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to delete transform');
+        }
+
+        const result = await response.json();
+        message.success(result.message || 'Transform deleted successfully');
+
+        // Refresh the page to update the graph
+        window.location.reload();
+    } catch (error: any) {
+        console.error('Error deleting transform:', error);
+        message.error(`Failed to delete transform: ${error.message}`);
+    }
+};
 
 // Custom node components
 const ArtifactNode: React.FC<{ data: any }> = ({ data }) => {
@@ -207,19 +234,26 @@ const TransformNode: React.FC<{ data: any }> = ({ data }) => {
         contextData = { error: 'Invalid JSON' };
     }
 
+    const handleDelete = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        deleteTransform(transform.id);
+    };
+
     return (
-        <div style={{
-            background: '#2a2a2a',
-            border: `2px solid ${typeColor}`,
-            borderRadius: '8px',
-            padding: '12px',
-            minWidth: '180px',
-            maxWidth: '250px',
-            color: 'white',
-            position: 'relative',
-            transform: 'rotate(45deg)',
-            transformOrigin: 'center'
-        }}>
+        <div
+            style={{
+                background: '#2a2a2a',
+                border: `2px solid ${typeColor}`,
+                borderRadius: '8px',
+                padding: '12px',
+                minWidth: '180px',
+                maxWidth: '250px',
+                color: 'white',
+                position: 'relative',
+                transform: 'rotate(45deg)',
+                transformOrigin: 'center'
+            }}
+        >
             {/* Connection handles */}
             <Handle
                 type="target"
@@ -235,23 +269,37 @@ const TransformNode: React.FC<{ data: any }> = ({ data }) => {
             <div style={{ transform: 'rotate(-45deg)' }}>
                 <Tooltip
                     title={<div>
-                        <div><strong>Transform ID:</strong> {transform.id}</div>
-                        <div><strong>Type:</strong> {transform.type}</div>
-                        <div><strong>Status:</strong> {transform.status}</div>
-                        <div><strong>Created:</strong> {new Date(transform.created_at).toLocaleString()}</div>
-                        {humanTransform && (
-                            <>
-                                <div><strong>Action:</strong> {humanTransform.action_type}</div>
-                                <div><strong>Path:</strong> {humanTransform.derivation_path}</div>
-                                {humanTransform.transform_name && (
-                                    <div><strong>Transform Name:</strong> {humanTransform.transform_name}</div>
-                                )}
-                            </>
-                        )}
-                        <div><strong>Context:</strong></div>
-                        <pre style={{ fontSize: '10px', maxHeight: '200px', overflow: 'auto' }}>
-                            {JSON.stringify(contextData, null, 2)}
-                        </pre>
+                        <div style={{ marginBottom: '12px' }}>
+                            <div><strong>Transform ID:</strong> {transform.id}</div>
+                            <div><strong>Type:</strong> {transform.type}</div>
+                            <div><strong>Status:</strong> {transform.status}</div>
+                            <div><strong>Created:</strong> {new Date(transform.created_at).toLocaleString()}</div>
+                            {humanTransform && (
+                                <>
+                                    <div><strong>Action:</strong> {humanTransform.action_type}</div>
+                                    <div><strong>Path:</strong> {humanTransform.derivation_path}</div>
+                                    {humanTransform.transform_name && (
+                                        <div><strong>Transform Name:</strong> {humanTransform.transform_name}</div>
+                                    )}
+                                </>
+                            )}
+                            <div><strong>Context:</strong></div>
+                            <pre style={{ fontSize: '10px', maxHeight: '200px', overflow: 'auto' }}>
+                                {JSON.stringify(contextData, null, 2)}
+                            </pre>
+                        </div>
+                        <div style={{ textAlign: 'center', borderTop: '1px solid #444', paddingTop: '8px' }}>
+                            <Button
+                                type="primary"
+                                danger
+                                size="small"
+                                icon={<DeleteOutlined />}
+                                onClick={handleDelete}
+                                style={{ fontSize: '12px' }}
+                            >
+                                删除转换
+                            </Button>
+                        </div>
                     </div>}
                     overlayStyle={{ maxWidth: '400px' }}
                 >

@@ -605,4 +605,69 @@ export class TransformRepository {
             updated_at: row.updated_at?.toISOString() || new Date().toISOString()
         }));
     }
+
+    // DELETION METHODS
+
+    // Get transform inputs by artifact ID (for validation)
+    async getTransformInputsByArtifact(artifactId: string): Promise<TransformInput[]> {
+        const rows = await this.db
+            .selectFrom('transform_inputs')
+            .selectAll()
+            .where('artifact_id', '=', artifactId)
+            .execute();
+
+        return rows.map(row => ({
+            id: row.id,
+            transform_id: row.transform_id,
+            artifact_id: row.artifact_id,
+            input_role: row.input_role || undefined
+        }));
+    }
+
+    // Delete transform inputs
+    async deleteTransformInputs(transformId: string): Promise<void> {
+        await this.db
+            .deleteFrom('transform_inputs')
+            .where('transform_id', '=', transformId)
+            .execute();
+    }
+
+    // Delete transform outputs
+    async deleteTransformOutputs(transformId: string): Promise<void> {
+        await this.db
+            .deleteFrom('transform_outputs')
+            .where('transform_id', '=', transformId)
+            .execute();
+    }
+
+    // Delete human transform by transform ID
+    async deleteHumanTransformByTransformId(transformId: string): Promise<void> {
+        await this.db
+            .deleteFrom('human_transforms')
+            .where('transform_id', '=', transformId)
+            .execute();
+    }
+
+    // Delete LLM transform by transform ID
+    async deleteLLMTransformByTransformId(transformId: string): Promise<void> {
+        // Delete LLM prompts first
+        await this.db
+            .deleteFrom('llm_prompts')
+            .where('transform_id', '=', transformId)
+            .execute();
+
+        // Delete LLM transform
+        await this.db
+            .deleteFrom('llm_transforms')
+            .where('transform_id', '=', transformId)
+            .execute();
+    }
+
+    // Delete transform (main record)
+    async deleteTransform(transformId: string): Promise<void> {
+        await this.db
+            .deleteFrom('transforms')
+            .where('id', '=', transformId)
+            .execute();
+    }
 }

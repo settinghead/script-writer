@@ -79,15 +79,7 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
             >
                 {isMobile ? '' : (showRawGraph ? '关闭图谱' : '打开图谱')}
             </Button>
-            <Button
-                type="text"
-                icon={<MessageOutlined />}
-                onClick={toggleRawChat}
-                style={{ color: showRawChat ? '#52c41a' : '#1890ff' }}
-                size={isMobile ? 'small' : 'middle'}
-            >
-                {isMobile ? '' : (showRawChat ? '关闭内部对话' : '打开内部对话')}
-            </Button>
+
             <Button
                 type="text"
                 icon={<FileTextOutlined />}
@@ -96,6 +88,15 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
                 size={isMobile ? 'small' : 'middle'}
             >
                 {isMobile ? '' : (showRawContext ? '关闭上下文' : '打开上下文')}
+            </Button>
+            <Button
+                type="text"
+                icon={<MessageOutlined />}
+                onClick={toggleRawChat}
+                style={{ color: showRawChat ? '#52c41a' : '#1890ff' }}
+                size={isMobile ? 'small' : 'middle'}
+            >
+                {isMobile ? '' : (showRawChat ? '关闭内部对话' : '打开内部对话')}
             </Button>
         </Space>
     );

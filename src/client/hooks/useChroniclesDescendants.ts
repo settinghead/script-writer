@@ -49,7 +49,7 @@ export const useChroniclesDescendants = (outlineSettingsArtifactId: string): Use
         );
 
         if (chroniclesArtifacts.length === 0) {
-            console.log(`[useChroniclesDescendants] No chronicles found for outline settings artifact: ${outlineSettingsArtifactId}`);
+            // console.log(`[useChroniclesDescendants] No chronicles found for outline settings artifact: ${outlineSettingsArtifactId}`);
             return {
                 hasChroniclesDescendants: false,
                 latestChronicles: null,
@@ -57,7 +57,7 @@ export const useChroniclesDescendants = (outlineSettingsArtifactId: string): Use
             };
         }
 
-        console.log(`[useChroniclesDescendants] Found ${chroniclesArtifacts.length} chronicles for outline settings artifact: ${outlineSettingsArtifactId}`);
+        // console.log(`[useChroniclesDescendants] Found ${chroniclesArtifacts.length} chronicles for outline settings artifact: ${outlineSettingsArtifactId}`);
 
         // Sort by creation time and get the latest
         const sortedChronicles = [...chroniclesArtifacts].sort((a, b) =>

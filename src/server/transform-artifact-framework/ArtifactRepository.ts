@@ -244,12 +244,16 @@ export class ArtifactRepository {
     }
 
     // Delete artifact (should be rare since artifacts are immutable)
-    async deleteArtifact(artifactId: string, projectId: string): Promise<boolean> {
-        const result = await this.db
+    async deleteArtifact(artifactId: string, projectId?: string): Promise<boolean> {
+        let query = this.db
             .deleteFrom('artifacts')
-            .where('id', '=', artifactId)
-            .where('project_id', '=', projectId)
-            .execute();
+            .where('id', '=', artifactId);
+
+        if (projectId) {
+            query = query.where('project_id', '=', projectId);
+        }
+
+        const result = await query.execute();
 
         return result.length > 0 && Number(result[0].numDeletedRows) > 0;
     }

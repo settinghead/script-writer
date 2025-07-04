@@ -13,6 +13,7 @@ import { ChatService } from '../transform-artifact-framework/ChatService';
 import { createElectricProxyRoutes } from '../transform-artifact-framework/electricProxy';
 import { createProjectRoutes } from './projectRoutes';
 import { createArtifactRoutes } from './artifactRoutes';
+import { createTransformRoutes } from './transformRoutes';
 import { createChatRoutes } from './chatRoutes';
 import { createAdminRoutes } from './adminRoutes';
 
@@ -36,6 +37,9 @@ export function createAPIRoutes(
 
     // Mount artifact routes
     app.use('/api/artifacts', createArtifactRoutes(authMiddleware, artifactRepo, transformRepo));
+
+    // Mount transform routes
+    app.use('/api/transforms', createTransformRoutes(authMiddleware, artifactRepo, transformRepo));
 
     // Mount chat routes
     app.use('/api/chat', createChatRoutes(authMiddleware, chatService));
