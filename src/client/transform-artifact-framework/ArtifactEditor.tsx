@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { message } from 'antd';
 import { LoadingOutlined, CheckOutlined } from '@ant-design/icons';
 import { useProjectData } from '../contexts/ProjectDataContext';
+import { useArtifactEditor } from '../hooks/useArtifactEditor';
 import { extractDataAtPath } from '../../common/utils/pathExtraction';
 import { EditableField } from './EditableField';
 
@@ -150,53 +151,22 @@ const EditableView: React.FC<EditableViewProps> = ({
     statusColor = "green",
     className = ""
 }) => {
-    const [editingField, setEditingField] = useState<string | null>(null);
-    const [pendingSaves, setPendingSaves] = useState<Set<string>>(new Set());
-    const projectData = useProjectData();
-
-    // Get mutation state for this artifact
-    const mutationState = projectData.mutationStates.artifacts.get(fragment.artifactId);
-    const isPending = mutationState?.status === 'pending';
-    const isSuccess = mutationState?.status === 'success';
-
-    const handleFieldChange = useCallback((field: string, value: any) => {
-        setPendingSaves(prev => new Set(prev).add(field));
-
-        const updatedData = { ...fragment.data, [field]: value };
-
-        // Prepare request based on artifact type to match backend expectations
-        // Backend expects: { text: "..." } for user_input, { data: rawObject } for others
-        let requestData;
-        if (fragment.type === 'user_input') {
-            requestData = { text: JSON.stringify(updatedData) };
-        } else {
-            // For non-user_input artifacts (like brainstorm_idea), send the raw data directly
-            // The apiService will wrap it in { data: ... }, so the backend gets { data: rawObject }
-            requestData = updatedData;
+    // Use the reusable artifact editor hook
+    const {
+        pendingSaves,
+        editingField,
+        handleFieldChange,
+        setEditingField,
+        isPending,
+        isSuccess
+    } = useArtifactEditor({
+        artifactId: fragment.artifactId,
+        debounceMs: 1000,
+        onSaveSuccess,
+        onSaveError: (error) => {
+            message.error(`保存失败: ${error.message}`);
         }
-
-        projectData.updateArtifact.mutate({
-            artifactId: fragment.artifactId,
-            data: requestData
-        }, {
-            onSuccess: () => {
-                setPendingSaves(prev => {
-                    const newSet = new Set(prev);
-                    newSet.delete(field);
-                    return newSet;
-                });
-                onSaveSuccess?.();
-            },
-            onError: (error) => {
-                setPendingSaves(prev => {
-                    const newSet = new Set(prev);
-                    newSet.delete(field);
-                    return newSet;
-                });
-                message.error(`保存失败: ${error.message}`);
-            }
-        });
-    }, [fragment, projectData.updateArtifact, onSaveSuccess]);
+    });
 
     return (
         <div className={`artifact-editor editable border-2 border-green-500 rounded-lg p-4 ${className}`}>

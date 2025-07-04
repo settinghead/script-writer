@@ -14,7 +14,7 @@ import ProjectsList from './components/ProjectList';
 import ProjectLayout from './components/ProjectLayout';
 import Breadcrumb from './components/Breadcrumb';
 import StagewiseToolbar from './components/StagewiseToolbar';
-import NewProjectFromBrainstormPage from './components/NewProjectFromBrainstormPage';
+
 
 
 // Import CSS for any custom styling needed
@@ -65,11 +65,7 @@ const AppRoutes: React.FC = () => {
       </Route>
 
 
-      <Route path="/new-project-from-brainstorming" element={
-        <ProtectedRoute>
-          <NewProjectFromBrainstormPage />
-        </ProtectedRoute>
-      } />
+
 
       <Route path="/" element={<Navigate to="/projects" replace />} />
     </Routes>

@@ -5,6 +5,7 @@ import { TransformRepository } from '../transform-artifact-framework/TransformRe
 import { TransformExecutor } from '../transform-artifact-framework/TransformExecutor';
 import { HumanTransformExecutor } from '../transform-artifact-framework/HumanTransformExecutor';
 
+
 export function createArtifactRoutes(
     authMiddleware: AuthMiddleware,
     artifactRepo: ArtifactRepository,
@@ -13,6 +14,68 @@ export function createArtifactRoutes(
     const router = express.Router();
     const transformExecutor = new TransformExecutor(artifactRepo, transformRepo);
     const schemaExecutor = new HumanTransformExecutor(artifactRepo, transformRepo);
+
+    // Create new artifact
+    router.post('/', authMiddleware.authenticate, async (req: any, res: any) => {
+        try {
+            const { projectId, type, data } = req.body;
+            const user = authMiddleware.getCurrentUser(req);
+
+            if (!user) {
+                res.status(401).json({ error: 'User not authenticated' });
+                return;
+            }
+
+            if (!projectId || !type) {
+                res.status(400).json({ error: 'projectId and type are required' });
+                return;
+            }
+
+            // Verify user has access to this project
+            const hasAccess = await artifactRepo.userHasProjectAccess(user.id, projectId);
+            if (!hasAccess) {
+                res.status(403).json({ error: 'Access denied - user not member of project' });
+                return;
+            }
+
+            // Allow minimal data for brainstorm_tool_input_schema to enable empty artifact creation
+            let artifactData = data;
+            if (type === 'brainstorm_tool_input_schema') {
+                // Provide defaults for brainstorm input if not specified
+                artifactData = {
+                    platform: '抖音',
+                    genre: '',
+                    genrePaths: [],
+                    other_requirements: '',
+                    numberOfIdeas: 3,
+                    ...data // Override with any provided data
+                };
+            } else if (!data) {
+                res.status(400).json({ error: 'data is required for this artifact type' });
+                return;
+            }
+
+            // Create the artifact
+            const artifact = await artifactRepo.createArtifact(
+                projectId,
+                type,
+                artifactData,
+                'v1', // Default type version
+                {}, // Empty metadata
+                'completed', // New artifacts are completed
+                'user_input' // New artifacts created via API are user input
+            );
+
+            res.status(201).json(artifact);
+        } catch (error: any) {
+            console.error('Error creating artifact:', error);
+            res.status(500).json({
+                error: 'Failed to create artifact',
+                details: error.message,
+                timestamp: new Date().toISOString()
+            });
+        }
+    });
 
     // Get artifact by ID
     router.get('/:id', authMiddleware.authenticate, async (req: any, res: any) => {

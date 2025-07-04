@@ -10,7 +10,6 @@ import {
     Alert,
     Empty,
     Space,
-    Modal,
     Popconfirm,
     message,
     Tooltip
@@ -24,12 +23,11 @@ import {
     FileTextOutlined,
     PlayCircleOutlined,
     FileDoneOutlined,
-    ThunderboltOutlined,
-    FormOutlined,
     BulbOutlined
 } from '@ant-design/icons';
 import { formatDistanceToNow } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
+import { useQueryClient, useMutation } from '@tanstack/react-query';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -53,11 +51,11 @@ interface ProjectSummary {
 
 const ProjectsList: React.FC = () => {
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const [projects, setProjects] = useState<ProjectSummary[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-    const [showCreateModal, setShowCreateModal] = useState(false);
 
     useEffect(() => {
         fetchProjects();
@@ -108,18 +106,37 @@ const ProjectsList: React.FC = () => {
         }
     };
 
+    // Create project mutation - simplified to just create empty project
+    const createProjectMutation = useMutation({
+        mutationFn: async () => {
+            const response = await fetch('/api/projects', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name: `新项目 - ${new Date().toLocaleString('zh-CN')}`,
+                    description: '通过头脑风暴创建的项目'
+                })
+            });
+            if (!response.ok) {
+                throw new Error('Failed to create project');
+            }
+            return response.json();
+        },
+        onSuccess: (project: any) => {
+            message.success('项目已创建！');
+            queryClient.invalidateQueries({ queryKey: ['user-projects'] });
+            // Navigate to the new project where ProjectCreationForm will appear
+            navigate(`/projects/${project.id}`);
+        },
+        onError: (error: any) => {
+            message.error(`创建失败: ${error.message}`);
+        },
+    });
+
     const handleCreateNew = () => {
-        setShowCreateModal(true);
-    };
-
-    const handleCreateWithBrainstorm = () => {
-        setShowCreateModal(false);
-        navigate('/new-project-from-brainstorming');
-    };
-
-    const handleCreateWithDirectOutline = () => {
-        setShowCreateModal(false);
-        navigate('/projects/new/outline');
+        createProjectMutation.mutate();
     };
 
     const handleDeleteProject = async (projectId: string) => {
@@ -241,6 +258,7 @@ const ProjectsList: React.FC = () => {
                     type="primary"
                     icon={<PlusOutlined />}
                     onClick={handleCreateNew}
+                    loading={createProjectMutation.isPending}
                     size={isMobile ? 'middle' : 'large'}
                 >
                     创建新项目
@@ -252,7 +270,12 @@ const ProjectsList: React.FC = () => {
                     description="还没有创建过项目"
                     style={{ margin: '60px 0' }}
                 >
-                    <Button type="primary" icon={<PlusOutlined />} onClick={handleCreateNew}>
+                    <Button
+                        type="primary"
+                        icon={<PlusOutlined />}
+                        onClick={handleCreateNew}
+                        loading={createProjectMutation.isPending}
+                    >
                         创建第一个项目
                     </Button>
                 </Empty>
@@ -385,84 +408,6 @@ const ProjectsList: React.FC = () => {
                     )}
                 />
             )}
-
-            {/* Create Project Modal - Two Options */}
-            <Modal
-                title="选择创建方式"
-                open={showCreateModal}
-                onCancel={() => setShowCreateModal(false)}
-                footer={null}
-                width={600}
-                centered
-            >
-                <div style={{ padding: '20px 0' }}>
-                    <Text type="secondary" style={{ display: 'block', marginBottom: '24px', textAlign: 'center' }}>
-                        选择您希望如何开始创建项目
-                    </Text>
-
-                    <div style={{ display: 'flex', gap: '16px' }}>
-                        <Card
-                            hoverable
-                            onClick={handleCreateWithBrainstorm}
-                            style={{ cursor: 'pointer', flex: 1 }}
-                            bodyStyle={{ padding: '20px' }}
-                        >
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-                                <div style={{
-                                    width: '48px',
-                                    height: '48px',
-                                    borderRadius: '50%',
-                                    backgroundColor: '#faad14',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontSize: '20px',
-                                    color: '#fff',
-                                    marginBottom: '16px'
-                                }}>
-                                    <ThunderboltOutlined />
-                                </div>
-                                <Title level={4} style={{ margin: 0, marginBottom: '8px' }}>
-                                    使用头脑风暴
-                                </Title>
-                                <Text type="secondary">
-                                    通过AI辅助的头脑风暴生成创意想法，然后逐步完善为完整项目
-                                </Text>
-                            </div>
-                        </Card>
-
-                        <Card
-                            hoverable
-                            onClick={handleCreateWithDirectOutline}
-                            style={{ cursor: 'pointer', flex: 1 }}
-                            bodyStyle={{ padding: '20px' }}
-                        >
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-                                <div style={{
-                                    width: '48px',
-                                    height: '48px',
-                                    borderRadius: '50%',
-                                    backgroundColor: '#1890ff',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontSize: '20px',
-                                    color: '#fff',
-                                    marginBottom: '16px'
-                                }}>
-                                    <FormOutlined />
-                                </div>
-                                <Title level={4} style={{ margin: 0, marginBottom: '8px' }}>
-                                    自己输入素材
-                                </Title>
-                                <Text type="secondary">
-                                    可以是一句话灵感、PDF、Word文档等，AI将为您自动生成详细的时间顺序大纲
-                                </Text>
-                            </div>
-                        </Card>
-                    </div>
-                </div>
-            </Modal>
         </div>
     );
 };

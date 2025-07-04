@@ -9,6 +9,17 @@ import {
 // Import schemas from streaming.ts 
 import { IdeaSchema, ScriptSchema } from './streaming';
 
+// Brainstorm tool input schema
+export const BrainstormToolInputSchema = z.object({
+  platform: z.string().min(1, "平台不能为空"),
+  genre: z.string().min(1, "类型不能为空"),
+  genrePaths: z.array(z.array(z.string())).min(1, "必须选择至少一个类型"),
+  other_requirements: z.string().optional(),
+  numberOfIdeas: z.number().min(1).max(4).default(3)
+});
+
+export type BrainstormToolInput = z.infer<typeof BrainstormToolInputSchema>;
+
 // Artifact Schema Registry
 export const ArtifactSchemaRegistry = {
   // Brainstorm schemas
@@ -19,6 +30,7 @@ export const ArtifactSchemaRegistry = {
     total_ideas: z.number()
   }),
   'brainstorm_item_schema': IdeaSchema,
+  'brainstorm_tool_input_schema': BrainstormToolInputSchema,
   'user_input_schema': z.object({
     title: z.string(),
     body: z.string()

@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Outlet, useParams, useNavigate } from 'react-router-dom';
 import { Layout, Typography, Spin, Alert, Space, Button, Card, List, Drawer, Grid, Tabs } from 'antd';
 import { HomeOutlined, ProjectOutlined, ArrowLeftOutlined, EyeOutlined, EyeInvisibleOutlined, MenuOutlined, ApartmentOutlined, UnorderedListOutlined } from '@ant-design/icons';
-import { useProjectData } from '../hooks/useProjectData';
+import { useProjectData as useProjectDataHook } from '../hooks/useProjectData';
+import { useProjectData } from '../contexts/ProjectDataContext';
 import { useProjectStore } from '../stores/projectStore';
 import { ProjectDataProvider } from '../contexts/ProjectDataContext';
 import { ChatSidebarWrapper } from './chat/ChatSidebarWrapper';
@@ -15,10 +16,70 @@ import { OutlineSettingsDisplay } from './OutlineSettingsDisplay';
 import { ChroniclesDisplay } from './ChroniclesDisplay';
 import ActionItemsSection from './ActionItemsSection';
 import { DebugMenu, DebugPanels } from './debug';
+import { ProjectCreationForm } from './ProjectCreationForm';
 
 const { Sider, Content } = Layout;
 const { Title, Text } = Typography;
 const { useBreakpoint } = Grid;
+
+// Component to render project content conditionally
+const ProjectContentRenderer: React.FC<{ projectId: string }> = ({ projectId }) => {
+    const projectData = useProjectData();
+
+    // Check if project has brainstorm input artifacts
+    const hasBrainstormInput = useMemo(() => {
+        if (!projectData.artifacts || projectData.artifacts.length === 0) {
+            return false;
+        }
+
+        // Look for brainstorm_tool_input_schema artifacts
+        return projectData.artifacts.some(artifact =>
+            artifact.type === 'brainstorm_tool_input_schema'
+        );
+    }, [projectData.artifacts]);
+
+    // Show creation form if no brainstorm input exists
+    if (!hasBrainstormInput) {
+        return (
+            <div style={{ padding: '24px 0' }}>
+                <ProjectCreationForm
+                    projectId={projectId}
+                    onCreated={() => {
+                        // Artifact created, component will re-render with new data
+                        console.log('Brainstorm input artifact created');
+                        // The component will automatically re-render when projectData updates
+                    }}
+                />
+            </div>
+        );
+    }
+
+    // Show normal project content
+    return (
+        <>
+            <TextDivider title="头脑风暴" id="brainstorm-ideas" />
+            <ProjectBrainstormPage />
+            <TextDivider title="灵感编辑" id="ideation-edit" />
+            <SingleBrainstormIdeaEditor
+                onViewOriginalIdeas={() => {
+                    // Scroll to the brainstorm ideas section
+                    const brainstormSection = document.getElementById('brainstorm-ideas');
+                    if (brainstormSection) {
+                        brainstormSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }}
+            />
+            <TextDivider title="剧本框架" id="outline-settings" />
+            <OutlineSettingsDisplay />
+
+            <TextDivider title="时间顺序大纲" id="chronicles" />
+            <ChroniclesDisplay />
+
+            {/* Legacy Support - Show old outline display for backward compatibility */}
+            {/* Legacy outline display removed - replaced by outline settings + chronicles */}
+        </>
+    );
+};
 
 
 
@@ -46,7 +107,9 @@ const ProjectLayout: React.FC = () => {
     const { name, loading, error } = project;
 
     // Fetch project data using our main hook
-    useProjectData(projectId!);
+    useProjectDataHook(projectId!);
+
+    // We'll add the empty project detection inside the ProjectDataProvider
 
     // Debug: Log when right sidebar is rendered
     useEffect(() => {
@@ -411,27 +474,7 @@ const ProjectLayout: React.FC = () => {
                                     padding: '12px',
                                     paddingBottom: '24px'
                                 }}>
-                                    <TextDivider title="头脑风暴" id="brainstorm-ideas" />
-                                    <ProjectBrainstormPage />
-                                    <TextDivider title="灵感编辑" id="ideation-edit" />
-                                    <SingleBrainstormIdeaEditor
-                                        onViewOriginalIdeas={() => {
-                                            // Scroll to the brainstorm ideas section
-                                            const brainstormSection = document.getElementById('brainstorm-ideas');
-                                            if (brainstormSection) {
-                                                brainstormSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                            }
-                                        }}
-                                    />
-                                    <TextDivider title="剧本框架" id="outline-settings" />
-                                    <OutlineSettingsDisplay />
-
-                                    <TextDivider title="时间顺序大纲" id="chronicles" />
-                                    <ChroniclesDisplay />
-
-                                    {/* Legacy Support - Show old outline display for backward compatibility */}
-                                    {/* Legacy outline display removed - replaced by outline settings + chronicles */}
-
+                                    <ProjectContentRenderer projectId={projectId!} />
                                     <Outlet />
                                 </div>
 

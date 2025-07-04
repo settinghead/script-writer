@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ArtifactSchemaRegistry } from '../../../common/schemas/artifacts';
+import { ArtifactSchemaRegistry, BrainstormToolInputSchema } from '../../../common/schemas/artifacts';
 import {
   OutlineSettingsInputSchema,
   OutlineSettingsOutputSchema,
@@ -14,6 +14,7 @@ const UserInputSchema = ArtifactSchemaRegistry.user_input_schema;
 // Type definitions based on schemas
 type BrainstormIdea = z.infer<typeof BrainstormIdeaSchema>;
 type UserInput = z.infer<typeof UserInputSchema>;
+type BrainstormToolInput = z.infer<typeof BrainstormToolInputSchema>;
 
 /**
  * Extract data at a given path from source data
@@ -132,6 +133,24 @@ export const createChroniclesTransform = (sourceArtifactId: string) => {
     transformType: 'llm' as const
   };
 };
+
+/**
+ * Create brainstorm tool input parameters (for new project creation)
+ */
+export function createBrainstormToolInput(
+  sourceArtifactData: any,
+  derivationPath: string
+): BrainstormToolInput {
+  // For new creation, provide default values
+  // This function is called when creating a new brainstorm input artifact
+  return {
+    platform: '抖音',
+    genre: '',
+    genrePaths: [],
+    other_requirements: '',
+    numberOfIdeas: 3
+  };
+}
 
 /**
  * Create editable outline settings from existing outline settings

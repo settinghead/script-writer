@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { OutlineSettingsInputSchema, OutlineSettingsOutputSchema, ChroniclesInputSchema, ChroniclesOutputSchema } from './outlineSchemas';
+import { BrainstormToolInputSchema } from './artifacts';
 
 // Base transform definition
 export const BaseTransformDefinition = z.object({
@@ -100,6 +101,15 @@ export type BrainstormEditOutput = z.infer<typeof BrainstormEditOutputSchema>;
 
 // Transform registry
 export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinition> = {
+  // Brainstorm input creation transform
+  'create_brainstorm_input': {
+    name: 'create_brainstorm_input',
+    description: 'Create brainstorm input parameters',
+    sourceArtifactType: '*', // Can be created from any source or standalone
+    targetArtifactType: 'brainstorm_tool_input_schema',
+    pathPattern: '^\\$$', // Root path for new creation
+    instantiationFunction: 'createBrainstormToolInput'
+  },
   // Collection-specific transforms
   'edit_brainstorm_collection_idea': {
     name: 'edit_brainstorm_collection_idea',

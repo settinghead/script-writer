@@ -3,7 +3,8 @@ import {
   createUserInputFromBrainstormIdea,
   createBrainstormIdeaFromBrainstormIdea,
   createUserInputFromBrainstormField,
-  createOutlineSettingsFromOutlineSettings
+  createOutlineSettingsFromOutlineSettings,
+  createBrainstormToolInput
 } from './transform-instantiations/brainstormTransforms';
 import {
   createBrainstormIdeaFromPath,
@@ -36,6 +37,9 @@ export class TransformInstantiationRegistry {
 
     // NEW: Outline settings editing
     this.functions.set('createOutlineSettingsFromOutlineSettings', createOutlineSettingsFromOutlineSettings);
+
+    // NEW: Brainstorm tool input creation
+    this.functions.set('createBrainstormToolInput', createBrainstormToolInput);
   }
 
   executeInstantiation(
