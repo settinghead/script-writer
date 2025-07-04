@@ -152,7 +152,11 @@ const AppContent: React.FC = () => {
         alignItems: 'center',
         justifyContent: 'space-between'
       }}>
-        <Title level={3} style={{ color: 'white', margin: '5px 0' }}>觅光助创</Title>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <Title level={3} style={{ color: 'white', margin: '5px 0' }}>觅光助创</Title>
+          <Breadcrumb style={{ margin: '0 30px' }} />
+        </div>
+
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {/* User Authentication Section */}
           {isAuthenticated && user ? (
@@ -249,7 +253,6 @@ const AppContent: React.FC = () => {
 
         {/* Unified Content Area */}
         <div style={getContentWrapperStyle()}>
-          <Breadcrumb />
           <AppRoutes />
         </div>
       </Content>

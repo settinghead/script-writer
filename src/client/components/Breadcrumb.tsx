@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, HTMLAttributes } from 'react';
 import { Breadcrumb as AntBreadcrumb } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { HomeOutlined, BulbOutlined, MessageOutlined, EditOutlined, HistoryOutlined, FileTextOutlined, PlayCircleOutlined, ProjectOutlined } from '@ant-design/icons';
@@ -12,7 +12,7 @@ interface BreadcrumbItem {
     onClick?: () => void;
 }
 
-const Breadcrumb: React.FC = () => {
+const Breadcrumb: React.FC<HTMLAttributes<HTMLDivElement>> = (props) => {
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -176,9 +176,9 @@ const Breadcrumb: React.FC = () => {
     }));
 
     return (
-        <div style={{
+        <div {...props} style={{
             padding: '12px 0',
-            borderBottom: '1px solid #434343',
+            ...props.style
         }}>
             <AntBreadcrumb
                 items={items}
