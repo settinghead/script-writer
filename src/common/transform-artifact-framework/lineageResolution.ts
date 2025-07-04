@@ -7,7 +7,13 @@
  * brainstorm_collection[0] → human_transform → user_input → llm_transform → brainstorm_idea
  */
 
-import { ElectricArtifact, ElectricTransform, ElectricHumanTransform, ElectricTransformInput, ElectricTransformOutput } from '../types';
+import type {
+    ElectricArtifact,
+    ElectricTransform,
+    ElectricHumanTransform,
+    ElectricTransformInput,
+    ElectricTransformOutput
+} from '../types';
 
 // ============================================================================
 // Data Structures
@@ -18,6 +24,7 @@ export type LineageNodeBase = {
     depth: number;
     isLeaf: boolean;
     type: 'artifact' | 'transform';
+    createdAt: string; // NEW: Add timestamp for chronological narrative
 }
 
 export type LineageNodeArtifact = LineageNodeBase & {
@@ -25,6 +32,9 @@ export type LineageNodeArtifact = LineageNodeBase & {
     artifactId: string;
     artifactType: string;
     sourceTransform: LineageNodeTransform | "none";
+    schemaType: string; // NEW: Add schema type for better narrative description
+    originType: 'ai_generated' | 'user_input'; // NEW: Add origin type for narrative
+    artifact: ElectricArtifact; // NEW: Include the actual artifact object
 }
 
 export type LineageNodeTransform = LineageNodeBase & {
@@ -32,6 +42,7 @@ export type LineageNodeTransform = LineageNodeBase & {
     transformId: string;
     transformType: 'human' | 'llm';
     sourceArtifacts: LineageNodeArtifact[];
+    transform: ElectricTransform; // NEW: Include the actual transform object
 }
 
 export type LineageNode = LineageNodeArtifact | LineageNodeTransform;
@@ -56,6 +67,7 @@ export interface LineageResolutionResult {
     path?: string;
     depth: number;
     lineagePath: LineageNode[];
+    createdAt?: string; // NEW: Add timestamp for chronological narrative
 }
 
 // ============================================================================
@@ -119,7 +131,11 @@ export function buildLineageGraph(
             isLeaf: true, // Will be updated if we find outgoing transforms
             artifactType: artifact.type,
             path: undefined,
-            sourceTransformId
+            sourceTransformId,
+            createdAt: artifact.created_at,
+            schemaType: artifact.schema_type,
+            originType: artifact.origin_type,
+            artifact: artifact
         } as PhaseOneArtifactNode);
     }
 
@@ -206,7 +222,11 @@ export function buildLineageGraph(
                 path: artifactNode.path,
                 depth: artifactNode.depth,
                 isLeaf: artifactNode.isLeaf,
-                sourceTransform: "none" // Will be populated in second pass
+                sourceTransform: "none", // Will be populated in second pass
+                schemaType: artifactNode.schemaType,
+                originType: artifactNode.originType,
+                artifact: artifactNode.artifact,
+                createdAt: artifactNode.createdAt
             };
 
             nodes.set(nodeId, finalArtifactNode);
@@ -221,7 +241,9 @@ export function buildLineageGraph(
                 path: transformNode.path,
                 depth: transformNode.depth,
                 isLeaf: transformNode.isLeaf,
-                sourceArtifacts: [] // Will be populated in second pass
+                sourceArtifacts: [], // Will be populated in second pass
+                transform: transformNode.transform,
+                createdAt: transformNode.createdAt
             };
 
             nodes.set(nodeId, finalTransformNode);
@@ -329,7 +351,9 @@ function processHumanTransformPhaseOne(
         depth: 0, // Will be calculated based on sources
         isLeaf: false,
         path: humanTransform.derivation_path,
-        sourceArtifactIds
+        sourceArtifactIds,
+        createdAt: transform.created_at,
+        transform: transform
     });
 
     for (const input of inputs) {
@@ -421,7 +445,9 @@ function processLLMTransformPhaseOne(
         depth: 0, // Will be calculated based on sources
         isLeaf: false,
         path: transformPath,
-        sourceArtifactIds
+        sourceArtifactIds,
+        createdAt: transform.created_at,
+        transform: transform
     });
 
     for (const input of inputs) {
@@ -584,7 +610,8 @@ function traverseToLeaf(
         return {
             artifactId: artifactId,
             depth: node.depth,
-            lineagePath: [node]
+            lineagePath: [node],
+            createdAt: node.createdAt
         };
     }
 
@@ -594,7 +621,8 @@ function traverseToLeaf(
     let deepestResult: LineageResolutionResult = {
         artifactId: artifactId,
         depth: node.depth,
-        lineagePath: [node]
+        lineagePath: [node],
+        createdAt: node.createdAt
     };
 
     for (const childId of children) {
@@ -605,7 +633,8 @@ function traverseToLeaf(
             deepestResult = {
                 artifactId: childResult.artifactId,
                 depth: childResult.depth,
-                lineagePath: [node, ...childResult.lineagePath]
+                lineagePath: [node, ...childResult.lineagePath],
+                createdAt: childResult.createdAt
             };
         } else if (childResult.depth === deepestResult.depth && childResult.artifactId && deepestResult.artifactId) {
             // Tie-breaking: prioritize user_input artifacts over ai_generated ones
@@ -621,7 +650,8 @@ function traverseToLeaf(
                     deepestResult = {
                         artifactId: childResult.artifactId,
                         depth: childResult.depth,
-                        lineagePath: [node, ...childResult.lineagePath]
+                        lineagePath: [node, ...childResult.lineagePath],
+                        createdAt: childResult.createdAt
                     };
                 }
                 // If both are user_input or both are ai_generated, keep the current one (first-wins)
@@ -630,7 +660,10 @@ function traverseToLeaf(
     }
 
     const finalArtifact = artifacts?.find(a => a.id === deepestResult.artifactId);
-    return deepestResult;
+    return {
+        ...deepestResult,
+        createdAt: finalArtifact?.created_at || ''
+    };
 }
 
 /**

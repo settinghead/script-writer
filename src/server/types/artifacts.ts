@@ -353,40 +353,6 @@ export interface WorkflowContextV1 {
     [key: string]: any;
 }
 
-// Type mappings for different artifact types
-export const ARTIFACT_TYPE_MAPPINGS = {
-    // Direct mappings
-    'brainstorm_collection': 'brainstorm_collection_schema',
-    'brainstorm_idea': 'brainstorm_item_schema',
-    'user_input': 'user_input_schema',
-
-    // New outline system
-    'outline_settings': 'outline_settings_schema',
-    'chronicles': 'chronicles_schema',
-
-    // Script types
-    'script': 'script_schema',
-
-    // Technical types
-    'debug': 'debug_schema'
-} as const;
-
-// Reverse mappings for schema to type
-export const SCHEMA_TO_TYPE_MAPPINGS = {
-    'brainstorm_collection_schema': 'brainstorm_collection',
-    'brainstorm_item_schema': 'brainstorm_idea',
-    'user_input_schema': 'user_input',
-
-    // New outline system
-    'outline_settings_schema': 'outline_settings',
-    'chronicles_schema': 'chronicles',
-
-    // Script types
-    'script_schema': 'script',
-
-    // Technical types
-    'debug_schema': 'debug'
-} as const;
 
 // Map legacy type names to new schema types for backward compatibility
 function mapTypeToSchemaType(type: string): string {

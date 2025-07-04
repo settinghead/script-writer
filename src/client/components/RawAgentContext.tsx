@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, Typography, Tabs, Spin, Alert, Input } from 'antd';
 import { LoadingOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { useProjectData } from '../contexts/ProjectDataContext';
@@ -54,19 +54,32 @@ const RawAgentContext: React.FC<RawAgentContextProps> = ({ projectId }) => {
     const debouncedUserRequest = useDebounce(userRequest, 1000);
 
     // Generate the agent context using the common function (client-side)
-    const agentContext = useMemo(() => {
+    const [agentContext, setAgentContext] = useState<string | null>(null);
+
+    useEffect(() => {
         if (isLoading || !artifacts.length) {
-            return null;
+            setAgentContext(null);
+            return;
         }
 
-        return prepareAgentPromptContext({
-            artifacts,
-            transforms,
-            humanTransforms,
-            transformInputs,
-            transformOutputs
-        });
-    }, [artifacts, transforms, humanTransforms, transformInputs, transformOutputs, isLoading]);
+        const generateContext = async () => {
+            try {
+                const context = await prepareAgentPromptContext({
+                    artifacts,
+                    transforms,
+                    humanTransforms,
+                    transformInputs,
+                    transformOutputs
+                }, projectId);
+                setAgentContext(context);
+            } catch (error) {
+                console.error('Failed to generate agent context:', error);
+                setAgentContext('生成上下文失败');
+            }
+        };
+
+        generateContext();
+    }, [artifacts, transforms, humanTransforms, transformInputs, transformOutputs, isLoading, projectId]);
 
     const fetchDebugData = async (requestText: string) => {
         if (!requestText.trim()) {

@@ -169,7 +169,7 @@ const ArtifactNode: React.FC<{ data: any }> = ({ data }) => {
                             onClick={handleDelete}
                             style={{ fontSize: '12px' }}
                         >
-                            删除工件
+                            删除Artifact
                         </Button>
                     </div>
                 </div>}
@@ -688,7 +688,7 @@ const RawGraphVisualization: React.FC = () => {
                         onChange={(e) => setShowArtifacts(e.target.checked)}
                         style={{ color: 'white' }}
                     >
-                        <DatabaseOutlined /> 工件 ({projectData.artifacts.length})
+                        <DatabaseOutlined /> Artifact ({projectData.artifacts.length})
                     </Checkbox>
                     <Checkbox
                         checked={showTransforms}
@@ -696,7 +696,7 @@ const RawGraphVisualization: React.FC = () => {
                         style={{ color: 'white' }}
                         disabled={!showHumanTransforms && !showLLMTransforms}
                     >
-                        转换 ({projectData.transforms.length})
+                        Transform ({projectData.transforms.length})
                     </Checkbox>
                     <div style={{ marginLeft: '20px' }}>
                         <Checkbox
@@ -704,7 +704,7 @@ const RawGraphVisualization: React.FC = () => {
                             onChange={(e) => setShowHumanTransforms(e.target.checked)}
                             style={{ color: 'white' }}
                         >
-                            <UserOutlined /> 人工转换
+                            <UserOutlined /> Human Transform
                         </Checkbox>
                         <br />
                         <Checkbox
@@ -712,7 +712,7 @@ const RawGraphVisualization: React.FC = () => {
                             onChange={(e) => setShowLLMTransforms(e.target.checked)}
                             style={{ color: 'white' }}
                         >
-                            <RobotOutlined /> AI转换
+                            <RobotOutlined /> LLM Transform
                         </Checkbox>
                     </div>
                 </Space>
