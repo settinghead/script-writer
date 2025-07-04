@@ -42,58 +42,56 @@ export const DebugPanels: React.FC<DebugPanelsProps> = ({ projectId }) => {
             right: 0,
             bottom: 0,
             zIndex: 1000,
-            background: 'rgba(0, 0, 0, 0.8)',
+            backgroundColor: '#1a1a1a',
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '20px'
+            flexDirection: 'column'
         }}>
-            <Card
-                title={debugTitle}
-                style={{
-                    width: '90%',
-                    height: '90%',
-                    maxWidth: '1200px',
-                    backgroundColor: '#1a1a1a',
-                    border: '1px solid #434343'
-                }}
-                styles={{
-                    body: {
-                        padding: 0,
-                        height: 'calc(100% - 57px)', // Account for header height
-                        overflow: 'hidden'
-                    },
-                    header: {
-                        backgroundColor: '#1a1a1a',
-                        borderBottom: '1px solid #434343',
-                        color: '#fff'
-                    }
-                }}
-                extra={
-                    <Button
-                        type="text"
-                        icon={<CloseOutlined />}
-                        onClick={() => {
-                            // Close debug panel by clearing search params
-                            const newSearchParams = new URLSearchParams(searchParams);
-                            newSearchParams.delete('raw-graph');
-                            newSearchParams.delete('raw-chat');
-                            newSearchParams.delete('raw-context');
-                            setSearchParams(newSearchParams);
-                        }}
-                        style={{ color: '#fff' }}
-                    />
-                }
-            >
+            {/* Debug Panel Header */}
+            <div style={{
+                height: '60px',
+                backgroundColor: '#1a1a1a',
+                borderBottom: '1px solid #434343',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0 24px',
+                flexShrink: 0
+            }}>
                 <div style={{
-                    height: '100%',
-                    overflow: 'hidden',
-                    display: 'flex',
-                    flexDirection: 'column'
+                    fontSize: '18px',
+                    fontWeight: 600,
+                    color: '#fff'
                 }}>
-                    {debugContent}
+                    {debugTitle}
                 </div>
-            </Card>
+                <Button
+                    type="text"
+                    icon={<CloseOutlined />}
+                    onClick={() => {
+                        // Close debug panel by clearing search params
+                        const newSearchParams = new URLSearchParams(searchParams);
+                        newSearchParams.delete('raw-graph');
+                        newSearchParams.delete('raw-chat');
+                        newSearchParams.delete('raw-context');
+                        setSearchParams(newSearchParams);
+                    }}
+                    style={{
+                        color: '#fff',
+                        fontSize: '16px'
+                    }}
+                    size="large"
+                />
+            </div>
+
+            {/* Debug Panel Content */}
+            <div style={{
+                flex: 1,
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column'
+            }}>
+                {debugContent}
+            </div>
         </div>
     );
 }; 

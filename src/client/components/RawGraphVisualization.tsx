@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { ReactFlow, Node, Edge, Background, Controls, MiniMap, useNodesState, useEdgesState, BackgroundVariant, MarkerType, Handle, Position, NodeTypes } from 'reactflow';
-import { Typography, Checkbox, Space, Tooltip } from 'antd';
-import { DatabaseOutlined, UserOutlined, RobotOutlined } from '@ant-design/icons';
+import { Typography, Checkbox, Space, Tooltip, Spin } from 'antd';
+import { DatabaseOutlined, UserOutlined, RobotOutlined, CloseOutlined } from '@ant-design/icons';
 import dagre from 'dagre';
 import { useProjectData } from '../contexts/ProjectDataContext';
 import { buildLineageGraph } from '../../common/transform-artifact-framework/lineageResolution';
@@ -14,21 +14,32 @@ const { Text } = Typography;
 
 // Custom node components
 const ArtifactNode: React.FC<{ data: any }> = ({ data }) => {
-    const { artifact, isLatest } = data;
+    const { artifact, isLatest, originType } = data;
 
-    const getTypeColor = (type: string) => {
+    const getTypeColor = (type: string, originType?: string) => {
+        // Input params get purple color
+        if (type === 'brainstorm_params' || type === 'brainstorm_tool_input' || type === 'outline_input' || type.includes('input')) {
+            return '#722ed1'; // Purple for input params
+        }
+
+        // Color based on origin type
+        if (originType === 'human') {
+            return '#52c41a'; // Green for human-derived artifacts
+        } else if (originType === 'llm') {
+            return '#fa8c16'; // Orange for AI-generated artifacts
+        }
+
+        // Fallback colors for specific types
         switch (type) {
-            case 'brainstorm_idea': return '#52c41a';
-            case 'user_input': return '#fa8c16';
-            case 'brainstorm_params': return '#1890ff';
-            case 'brainstorm_tool_input': return '#722ed1';
-            case 'outline_input': return '#13c2c2';
-            case 'outline_response': return '#eb2f96';
-            default: return '#666';
+            case 'user_input': return '#52c41a'; // Green for user input
+            case 'brainstorm_idea': return '#fa8c16'; // Orange for AI-generated ideas
+            case 'outline_response': return '#fa8c16'; // Orange for AI-generated outlines
+            case 'chronicles': return '#fa8c16'; // Orange for AI-generated chronicles
+            default: return '#666'; // Gray for unknown types
         }
     };
 
-    const typeColor = getTypeColor(artifact.type);
+    const typeColor = getTypeColor(artifact.type, originType);
     const borderColor = isLatest ? '#fadb14' : typeColor;
     const borderWidth = isLatest ? 3 : 2;
 
@@ -176,10 +187,14 @@ const TransformNode: React.FC<{ data: any }> = ({ data }) => {
     const { transform, humanTransform } = data;
 
     const getTypeColor = (type: string) => {
-        return type === 'human' ? '#fa8c16' : '#f5222d';
+        return type === 'human' ? '#52c41a' : '#fa8c16'; // Green for human, orange for AI
     };
 
     const typeColor = getTypeColor(transform.type);
+
+    // Status indicators
+    const isInProgress = transform.status === 'in_progress' || transform.status === 'running';
+    const isFailed = transform.status === 'failed' || transform.status === 'error';
 
     let contextData;
     try {
@@ -240,7 +255,7 @@ const TransformNode: React.FC<{ data: any }> = ({ data }) => {
                     </div>}
                     overlayStyle={{ maxWidth: '400px' }}
                 >
-                    <div style={{ textAlign: 'center' }}>
+                    <div style={{ textAlign: 'center', position: 'relative' }}>
                         <div style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -256,6 +271,39 @@ const TransformNode: React.FC<{ data: any }> = ({ data }) => {
                                 {transform.type.toUpperCase()}
                             </Text>
                         </div>
+
+                        {/* Status indicator overlay */}
+                        {isInProgress && (
+                            <div style={{
+                                position: 'absolute',
+                                top: '-8px',
+                                right: '-8px',
+                                background: '#1a1a1a',
+                                borderRadius: '50%',
+                                padding: '2px'
+                            }}>
+                                <Spin size="small" />
+                            </div>
+                        )}
+
+                        {isFailed && (
+                            <div style={{
+                                position: 'absolute',
+                                top: '-8px',
+                                right: '-8px',
+                                background: '#f5222d',
+                                borderRadius: '50%',
+                                padding: '2px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '16px',
+                                height: '16px'
+                            }}>
+                                <CloseOutlined style={{ color: 'white', fontSize: '10px' }} />
+                            </div>
+                        )}
+
                         <Text style={{ color: '#ccc', fontSize: '9px' }}>
                             {transform.status}
                         </Text>
@@ -336,10 +384,28 @@ const RawGraphVisualization: React.FC = () => {
                 const lineageNode = lineageGraph.nodes.get(artifact.id);
                 const isLatest = lineageNode?.isLeaf || false;
 
+                // Determine origin type by checking which transforms created this artifact
+                let originType: string | undefined;
+                const creatingTransform = projectData.transformOutputs
+                    .find(output => output.artifact_id === artifact.id);
+
+                if (creatingTransform) {
+                    const transform = projectData.transforms
+                        .find(t => t.id === creatingTransform.transform_id);
+                    if (transform) {
+                        originType = transform.type; // 'human' or 'llm'
+                    }
+                }
+
+                // Special handling for user input artifacts
+                if (artifact.origin_type === 'user_input' || artifact.type === 'user_input') {
+                    originType = 'human';
+                }
+
                 nodes.push({
                     id: artifact.id,
                     type: 'artifact',
-                    data: { artifact, isLatest },
+                    data: { artifact, isLatest, originType },
                     position: { x: 0, y: 0 }, // Will be set by layout
                 });
             });
@@ -370,6 +436,7 @@ const RawGraphVisualization: React.FC = () => {
 
                 // Create edges from input artifacts to transform
                 const inputs = projectData.transformInputs.filter(ti => ti.transform_id === transform.id);
+                const edgeColor = transform.type === 'human' ? '#52c41a' : '#fa8c16'; // Green for human, orange for AI
 
                 inputs.forEach((input) => {
                     if (showArtifacts && projectData.artifacts.some(a => a.id === input.artifact_id)) {
@@ -378,8 +445,8 @@ const RawGraphVisualization: React.FC = () => {
                             source: input.artifact_id,
                             target: transform.id,
                             type: 'default',
-                            style: { stroke: '#1890ff', strokeWidth: 2 },
-                            markerEnd: { type: MarkerType.ArrowClosed, color: '#1890ff' },
+                            style: { stroke: edgeColor, strokeWidth: 2 },
+                            markerEnd: { type: MarkerType.ArrowClosed, color: edgeColor },
                         });
                     }
                 });
@@ -394,8 +461,8 @@ const RawGraphVisualization: React.FC = () => {
                             source: transform.id,
                             target: output.artifact_id,
                             type: 'default',
-                            style: { stroke: '#52c41a', strokeWidth: 2 },
-                            markerEnd: { type: MarkerType.ArrowClosed, color: '#52c41a' },
+                            style: { stroke: edgeColor, strokeWidth: 2 },
+                            markerEnd: { type: MarkerType.ArrowClosed, color: edgeColor },
                         });
                     }
                 });
@@ -414,6 +481,8 @@ const RawGraphVisualization: React.FC = () => {
                     (transform.type === 'llm' && showLLMTransforms);
                 if (!shouldShow) return;
 
+                const edgeColor = transform.type === 'human' ? '#52c41a' : '#fa8c16'; // Green for human, orange for AI
+
                 // Create edge from source artifact to transform (if both exist in nodes)
                 if (humanTransform.source_artifact_id &&
                     nodes.some(n => n.id === humanTransform.source_artifact_id) &&
@@ -424,8 +493,8 @@ const RawGraphVisualization: React.FC = () => {
                         source: humanTransform.source_artifact_id,
                         target: transform.id,
                         type: 'default',
-                        style: { stroke: '#1890ff', strokeWidth: 2 },
-                        markerEnd: { type: MarkerType.ArrowClosed, color: '#1890ff' },
+                        style: { stroke: edgeColor, strokeWidth: 2 },
+                        markerEnd: { type: MarkerType.ArrowClosed, color: edgeColor },
                     });
                 }
 
@@ -439,8 +508,8 @@ const RawGraphVisualization: React.FC = () => {
                         source: transform.id,
                         target: humanTransform.derived_artifact_id,
                         type: 'default',
-                        style: { stroke: '#52c41a', strokeWidth: 2 },
-                        markerEnd: { type: MarkerType.ArrowClosed, color: '#52c41a' },
+                        style: { stroke: edgeColor, strokeWidth: 2 },
+                        markerEnd: { type: MarkerType.ArrowClosed, color: edgeColor },
                     });
                 }
             });
