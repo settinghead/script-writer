@@ -98,7 +98,17 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
 
     // Parse outline settings data from the effective artifact
     const outlineSettings = useMemo(() => {
+        console.log('🔍 [OutlineSettingsDisplay] Parsing outline settings:', {
+            hasEffectiveArtifact: !!effectiveArtifact,
+            artifactId: effectiveArtifact?.id,
+            originType: effectiveArtifact?.origin_type,
+            hasData: !!effectiveArtifact?.data,
+            dataType: typeof effectiveArtifact?.data,
+            timestamp: new Date().toISOString()
+        });
+
         if (!effectiveArtifact?.data) {
+            console.log('🔍 [OutlineSettingsDisplay] No effective artifact data, returning null');
             return null;
         }
 
@@ -109,6 +119,15 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
             if (typeof data === 'string') {
                 data = JSON.parse(data);
             }
+
+            console.log('🔍 [OutlineSettingsDisplay] Parsed outline settings data:', {
+                artifactId: effectiveArtifact.id,
+                dataKeys: Object.keys(data),
+                sellingPointsLength: data.selling_points?.length || 0,
+                satisfactionPointsLength: data.satisfaction_points?.length || 0,
+                coreThemesLength: data.target_audience?.core_themes?.length || 0,
+                keyScenesLength: data.setting?.key_scenes?.length || 0
+            });
 
             // Now both original LLM artifacts and human-created artifacts store outline settings directly
             return data as OutlineSettingsOutput;
@@ -125,6 +144,17 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
     useEffect(() => {
         outlineSettingsRef.current = outlineSettings;
     }, [outlineSettings]);
+
+    // Debug: Track component lifecycle and key state changes
+    useEffect(() => {
+        console.log('🔍 [OutlineSettingsDisplay] Component mounted or key dependencies changed:', {
+            hasOutlineSettings: !!outlineSettings,
+            isEditable,
+            latestArtifactId,
+            effectiveArtifactId: effectiveArtifact?.id,
+            timestamp: new Date().toISOString()
+        });
+    }, [outlineSettings, isEditable, latestArtifactId, effectiveArtifact?.id]);
 
     // Check for chronicles descendants (use effectiveArtifact ID for the check)
     const { hasChroniclesDescendants, latestChronicles, isLoading: chroniclesLoading } = useChroniclesDescendants(
@@ -224,6 +254,16 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
 
     // Handle saving individual fields
     const handleSave = useCallback(async (path: string, newValue: any) => {
+        console.log('🔍 [OutlineSettingsDisplay] handleSave called:', {
+            path,
+            newValue,
+            newValueType: typeof newValue,
+            isArray: Array.isArray(newValue),
+            arrayLength: Array.isArray(newValue) ? newValue.length : 'N/A',
+            latestArtifactId,
+            timestamp: new Date().toISOString()
+        });
+
         // Always get the current effective artifact to avoid stale closures
         const currentArtifact = latestArtifactId ?
             projectData.getArtifactById(latestArtifactId) :
@@ -233,6 +273,15 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
             console.error('[OutlineSettingsDisplay] No current artifact data available for save');
             return;
         }
+
+        console.log('🔍 [OutlineSettingsDisplay] Current artifact data before save:', {
+            artifactId: currentArtifact.id,
+            originType: currentArtifact.origin_type,
+            dataKeys: Object.keys(currentArtifact.data),
+            relevantField: path.includes('.') ?
+                path.split('.').reduce((obj: any, key: string) => obj?.[key], currentArtifact.data) :
+                (currentArtifact.data as any)[path]
+        });
 
         try {
             // Parse current data fresh to avoid stale state
@@ -306,12 +355,23 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                 }
             }
 
+            console.log('🔍 [OutlineSettingsDisplay] About to save updated settings:', {
+                artifactId: currentArtifact.id,
+                path,
+                updatedSettingsKeys: Object.keys(updatedSettings),
+                updatedFieldValue: path.includes('.') ?
+                    path.split('.').reduce((obj: any, key: string) => obj?.[key], updatedSettings) :
+                    (updatedSettings as any)[path]
+            });
+
             await projectData.updateArtifact.mutateAsync({
                 artifactId: currentArtifact.id,
                 data: updatedSettings
             });
+
+            console.log('✅ [OutlineSettingsDisplay] Save completed successfully for path:', path);
         } catch (error) {
-            console.error('[OutlineSettingsDisplay] Save failed:', { error, path, newValue });
+            console.error('❌ [OutlineSettingsDisplay] Save failed:', { error, path, newValue, artifactId: currentArtifact?.id });
         }
     }, [latestArtifactId, rootOutlineArtifact, projectData]);
 

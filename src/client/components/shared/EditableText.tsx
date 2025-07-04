@@ -119,21 +119,50 @@ export const EditableText: React.FC<EditableTextProps> = ({
         [saveValue, debounceMs]
     );
 
-    // Auto-save on value change
+    // Track if component has been initialized to prevent auto-save on initial render
+    const initializedRef = useRef(false);
+
+    // Refs for functions to avoid dependency issues
+    const debouncedSaveRef = useRef(debouncedSave);
+    const isEditableRef = useRef(isEditable);
+    const disableAutoSaveRef = useRef(disableAutoSave);
+
+    // Update refs when values change
     useEffect(() => {
-        if (localValue !== lastSavedValueRef.current && isEditable && !savingRef.current) {
-            if (disableAutoSave) {
+        debouncedSaveRef.current = debouncedSave;
+        isEditableRef.current = isEditable;
+        disableAutoSaveRef.current = disableAutoSave;
+    });
+
+    // Auto-save on value change (but not on initial render)
+    useEffect(() => {
+        // Skip auto-save on initial render
+        if (!initializedRef.current) {
+            initializedRef.current = true;
+            return;
+        }
+
+        if (localValue !== lastSavedValueRef.current && isEditableRef.current && !savingRef.current) {
+            console.log('🔍 [EditableText] Auto-save triggered:', {
+                path,
+                localValue,
+                lastSavedValue: lastSavedValueRef.current,
+                isEditable: isEditableRef.current,
+                disableAutoSave: disableAutoSaveRef.current
+            });
+
+            if (disableAutoSaveRef.current) {
                 onSaveRef.current(path, localValue);
                 lastSavedValueRef.current = localValue;
             } else {
                 setHasUnsavedChanges(true);
-                debouncedSave(localValue);
+                debouncedSaveRef.current(localValue);
             }
         } else if (localValue === lastSavedValueRef.current) {
             // Value matches saved value, no unsaved changes
             setHasUnsavedChanges(false);
         }
-    }, [localValue, debouncedSave, isEditable, disableAutoSave, path]);
+    }, [localValue, path]); // Only include actual data dependencies
 
     // Cleanup debounce on unmount
     useEffect(() => {
@@ -280,7 +309,13 @@ export const EditableArray: React.FC<EditableArrayProps> = ({
     const [showSavedState, setShowSavedState] = useState(false);
     const [isAdding, setIsAdding] = useState(false);
     const [newItemValue, setNewItemValue] = useState('');
-    const [textareaValue, setTextareaValue] = useState('');
+    const [textareaValue, setTextareaValue] = useState(() => {
+        // Initialize with proper value for textarea mode
+        if (mode === 'textarea') {
+            return value.join('\n');
+        }
+        return '';
+    });
 
     // Refs to prevent stale closures
     const lastSavedValueRef = useRef<string[]>(value);
@@ -294,14 +329,26 @@ export const EditableArray: React.FC<EditableArrayProps> = ({
         return text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
     }, []);
 
-    // Initialize textarea value
+    // Initialize textarea value and refs
     useEffect(() => {
-        if (mode === 'textarea') {
+        if (mode === 'textarea' && !textareaInitializedRef.current) {
             const initialValue = arrayToTextarea(value);
-            setTextareaValue(initialValue);
+            console.log('🔍 [EditableArray] Initializing textarea:', {
+                path,
+                value,
+                initialValue,
+                valueLength: value.length,
+                currentTextareaValue: textareaValue
+            });
+
+            // Only update if the current value doesn't match what it should be
+            if (textareaValue !== initialValue) {
+                setTextareaValue(initialValue);
+            }
             lastSavedTextareaRef.current = initialValue;
+            textareaInitializedRef.current = true;
         }
-    }, []);
+    }, [mode, arrayToTextarea, value]); // Keep original dependencies
 
     // Update local state when value prop changes, but preserve edits during saves
     useEffect(() => {
@@ -389,27 +436,80 @@ export const EditableArray: React.FC<EditableArrayProps> = ({
         [saveArrayValue, debounceMs]
     );
 
-    // Auto-save on value change
+    // Track if component has been initialized to prevent auto-save on initial render
+    const arrayInitializedRef = useRef(false);
+    const textareaInitializedRef = useRef(false);
+
+    // Synchronously mark textarea as initialized if we're in textarea mode
+    // This prevents auto-save from running before proper initialization
+    if (mode === 'textarea' && !textareaInitializedRef.current) {
+        // Mark as initialized immediately to prevent race conditions
+        textareaInitializedRef.current = true;
+        console.log('🔍 [EditableArray] Synchronously marking textarea as initialized:', {
+            path,
+            valueLength: value.length,
+            textareaValue
+        });
+    }
+
+    // Refs for functions to avoid dependency issues
+    const debouncedSaveRef = useRef(debouncedSave);
+    const textareaToArrayRef = useRef(textareaToArray);
+    const isEditableRef = useRef(isEditable);
+    const modeRef = useRef(mode);
+    const valueRef = useRef(value);
+
+    // Update refs when values change
     useEffect(() => {
-        if (mode === 'list') {
+        debouncedSaveRef.current = debouncedSave;
+        textareaToArrayRef.current = textareaToArray;
+        isEditableRef.current = isEditable;
+        modeRef.current = mode;
+        valueRef.current = value;
+    });
+
+    // Auto-save on value change (but not on initial render)
+    useEffect(() => {
+        // Skip auto-save on initial render
+        if (!arrayInitializedRef.current) {
+            arrayInitializedRef.current = true;
+            return;
+        }
+
+        if (modeRef.current === 'list') {
             // List mode: save when localItems change
-            if (JSON.stringify(localItems) !== JSON.stringify(lastSavedValueRef.current) && isEditable && !savingRef.current) {
+            if (JSON.stringify(localItems) !== JSON.stringify(lastSavedValueRef.current) && isEditableRef.current && !savingRef.current) {
+                console.log('🔍 [EditableArray] Auto-save triggered (list mode):', {
+                    path,
+                    localItems,
+                    lastSavedValue: lastSavedValueRef.current,
+                    isEditable: isEditableRef.current
+                });
                 setHasUnsavedChanges(true);
-                debouncedSave(localItems);
+                debouncedSaveRef.current(localItems);
             }
-        } else if (mode === 'textarea') {
-            if (isEditable && !savingRef.current) {
-                const newItems = textareaToArray(textareaValue);
-                const databaseItems = Array.isArray(value) ? value : [];
+        } else if (modeRef.current === 'textarea') {
+            // For textarea mode, also check if textarea has been initialized
+            if (isEditableRef.current && !savingRef.current && textareaInitializedRef.current) {
+                const newItems = textareaToArrayRef.current(textareaValue);
+                const databaseItems = Array.isArray(valueRef.current) ? valueRef.current : [];
 
                 // Compare with database value, not our local tracking  
                 if (JSON.stringify(newItems) !== JSON.stringify(databaseItems)) {
+                    console.log('🔍 [EditableArray] Auto-save triggered (textarea mode):', {
+                        path,
+                        newItems,
+                        databaseItems,
+                        textareaValue,
+                        isEditable: isEditableRef.current,
+                        textareaInitialized: textareaInitializedRef.current
+                    });
                     setHasUnsavedChanges(true);
-                    debouncedSave(newItems);
+                    debouncedSaveRef.current(newItems);
                 }
             }
         }
-    }, [localItems, textareaValue, debouncedSave, isEditable, path, mode, textareaToArray]);
+    }, [localItems, textareaValue, path]); // Only include actual data dependencies
 
     // Cleanup debounce on unmount
     useEffect(() => {
