@@ -231,15 +231,59 @@ function createFallbackBrainstormEditObject() {
  */
 function createFallbackChroniclesObject() {
     const mockChroniclesData = {
-        synopsis_stages: [
-            "第1-8集：初遇与误会 - 女主入职遇到男主，因误会开始特殊关系",
-            "第9-16集：感情升温 - 在误会中两人感情逐渐升温，互相关注",
-            "第17-24集：矛盾冲突 - 真相逐渐浮现，两人产生误解和冲突",
-            "第25-32集：真相大白 - 误会解除，两人重新认识彼此",
-            "第33-40集：甜蜜恋爱 - 正式确立关系，享受甜蜜恋爱时光",
-            "第41-48集：外界阻力 - 面对家庭和事业的挑战和阻力",
-            "第49-56集：共同成长 - 携手克服困难，彼此成长和支持",
-            "第57-60集：圆满结局 - 最终走向幸福，事业爱情双丰收"
+        stages: [
+            {
+                title: "初遇与误会阶段（第1-8集）",
+                stageSynopsis: "女主入职遇到男主，因误会开始特殊关系。双方在职场环境中频繁接触，但由于误解而产生复杂的情感纠葛。",
+                event: "女主入职新公司，意外与男主发生误会，被迫开始特殊的合作关系",
+                emotionArcs: [
+                    {
+                        characters: ["女主"],
+                        content: "从紧张不安到逐渐适应，对男主的态度从抗拒到好奇"
+                    },
+                    {
+                        characters: ["男主"],
+                        content: "从冷漠到关注，开始对女主产生特殊的兴趣"
+                    }
+                ],
+                relationshipDevelopments: [
+                    {
+                        characters: ["女主", "男主"],
+                        content: "从陌生人到被迫合作的搭档，关系在误会中逐渐建立"
+                    }
+                ],
+                insights: [
+                    "女主的真实身份尚未暴露",
+                    "男主对女主的误会是推动剧情的关键",
+                    "职场环境为两人关系发展提供了特殊背景"
+                ]
+            },
+            {
+                title: "感情升温阶段（第9-16集）",
+                stageSynopsis: "在误会中两人感情逐渐升温，互相关注。工作中的配合让他们更加了解彼此，情感开始微妙变化。",
+                event: "通过工作合作，两人开始互相了解，感情在不知不觉中升温",
+                emotionArcs: [
+                    {
+                        characters: ["女主"],
+                        content: "开始欣赏男主的能力和人格魅力，内心产生动摇"
+                    },
+                    {
+                        characters: ["男主"],
+                        content: "被女主的坚强和聪明吸引，开始主动关心"
+                    }
+                ],
+                relationshipDevelopments: [
+                    {
+                        characters: ["女主", "男主"],
+                        content: "从合作伙伴发展为互相关心的朋友，情感边界开始模糊"
+                    }
+                ],
+                insights: [
+                    "两人的性格互补成为感情发展的基础",
+                    "工作中的默契预示着更深层的感情连接",
+                    "周围同事开始注意到两人的特殊关系"
+                ]
+            }
         ]
     };
 
@@ -247,7 +291,7 @@ function createFallbackChroniclesObject() {
 
     return {
         partialObjectStream: createAsyncIterator([
-            { synopsis_stages: mockChroniclesData.synopsis_stages.slice(0, 2) },
+            { stages: mockChroniclesData.stages.slice(0, 1) },
             mockChroniclesData
         ]),
         object: Promise.resolve(mockChroniclesData)

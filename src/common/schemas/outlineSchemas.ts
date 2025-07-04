@@ -50,6 +50,28 @@ export type OutlineSettingsOutput = z.infer<typeof OutlineSettingsOutputSchema>;
 // CHRONICLES SCHEMAS
 // ===========================================
 
+// Emotion arc schema for chronicles stages
+export const EmotionArcSchema = z.object({
+    characters: z.array(z.string()),
+    content: z.string()
+});
+
+// Relationship development schema for chronicles stages
+export const RelationshipDevelopmentSchema = z.object({
+    characters: z.array(z.string()),
+    content: z.string()
+});
+
+// Chronicles stage schema - matches the template requirements
+export const ChroniclesStageSchema = z.object({
+    title: z.string(),
+    stageSynopsis: z.string(),
+    event: z.string(),
+    emotionArcs: z.array(EmotionArcSchema),
+    relationshipDevelopments: z.array(RelationshipDevelopmentSchema),
+    insights: z.array(z.string())
+});
+
 // Chronicles Schemas
 export const ChroniclesInputSchema = z.object({
     sourceArtifactId: z.string(),
@@ -57,8 +79,11 @@ export const ChroniclesInputSchema = z.object({
 });
 
 export const ChroniclesOutputSchema = z.object({
-    synopsis_stages: z.array(z.string())
+    stages: z.array(ChroniclesStageSchema)
 });
 
+export type EmotionArc = z.infer<typeof EmotionArcSchema>;
+export type RelationshipDevelopment = z.infer<typeof RelationshipDevelopmentSchema>;
+export type ChroniclesStage = z.infer<typeof ChroniclesStageSchema>;
 export type ChroniclesInput = z.infer<typeof ChroniclesInputSchema>;
 export type ChroniclesOutput = z.infer<typeof ChroniclesOutputSchema>; 

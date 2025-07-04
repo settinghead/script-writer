@@ -73,6 +73,9 @@ export const useChroniclesDescendants = (outlineSettingsArtifactId: string): Use
                 const data = latestChronicles.data as any;
                 if (data.stages && Array.isArray(data.stages) && data.stages.length > 0) {
                     chroniclesTitle = `时间顺序大纲 (${data.stages.length}个阶段)`;
+                } else if (data.synopsis_stages && Array.isArray(data.synopsis_stages) && data.synopsis_stages.length > 0) {
+                    // Legacy support for old format
+                    chroniclesTitle = `时间顺序大纲 (${data.synopsis_stages.length}个阶段)`;
                 }
             }
         } catch (error) {

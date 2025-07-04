@@ -141,7 +141,7 @@ const RawAgentContext: React.FC<RawAgentContextProps> = ({ projectId }) => {
         return (
             <Alert
                 message="加载失败"
-                description={error?.message || '无法加载代理上下文数据'}
+                description={error?.message || '无法加载智能体上下文数据'}
                 type="error"
                 showIcon
                 style={{ margin: '16px' }}
@@ -186,8 +186,7 @@ const RawAgentContext: React.FC<RawAgentContextProps> = ({ projectId }) => {
                             color: '#888',
                             fontStyle: 'italic'
                         }}>
-                            💡 这是发送给LLM的完整上下文信息。代理会根据请求类型提供不同的上下文内容：
-                            brainstorm_generation（头脑风暴生成）、outline_generation（大纲生成）、general（通用/编辑）。
+                            💡 这是发送给LLM的完整上下文信息。
                         </Paragraph>
                     </div>
                 </div>
@@ -243,7 +242,7 @@ const RawAgentContext: React.FC<RawAgentContextProps> = ({ projectId }) => {
                             color: '#888',
                             fontStyle: 'italic'
                         }}>
-                            🔧 这是代理可以使用的工具定义，包含输入/输出模式。
+                            🔧 这是智能体可以使用的工具定义，包含输入/输出模式。
                         </Paragraph>
                     </div>
                 </div>
@@ -267,7 +266,7 @@ const RawAgentContext: React.FC<RawAgentContextProps> = ({ projectId }) => {
             <Card
                 title={
                     <Title level={4} style={{ margin: 0, color: '#fff' }}>
-                        代理调试 (Agent Debug)
+                        智能体调试 (Agent Debug)
                     </Title>
                 }
                 extra={

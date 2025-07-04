@@ -29,11 +29,11 @@ export const brainstormEditTemplate: LLMTemplate = {
 **用户修改要求：**
 %%params.editRequirements%%
 
-**代理增强指导：**
+**智能体增强指导：**
 %%params.agentInstructions%%
 
 **任务要求：**
-基于用户的修改要求和代理的增强指导，对现有故事进行改进。你需要：
+基于用户的修改要求和智能体的增强指导，对现有故事进行改进。你需要：
 
 1. **分析原故事**：理解故事的核心元素、人物设定、情节发展和情感基调
 2. **理解修改意图**：准确把握用户想要的改进方向
