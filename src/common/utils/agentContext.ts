@@ -223,7 +223,7 @@ export async function prepareAgentPromptContext(
         .map(node => node as LineageNodeArtifact);
 
     for (const artifact of leafNodes) {
-        narrative += `• ${artifact.schemaType} - ${artifactToContextString(artifact.artifact)}\n`;
+        narrative += `• ${artifact.schemaType}[${artifact.artifactId}] - ${artifactToContextString(artifact.artifact)}\n`;
     }
 
     return narrative;
