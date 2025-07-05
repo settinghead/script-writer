@@ -107,7 +107,7 @@ export const ChroniclesDisplay: React.FC<ChroniclesDisplayProps> = ({
                             <Space>
                                 <Text style={{ color: '#8c8c8c' }}>详细信息</Text>
                                 <Text type="secondary" style={{ fontSize: '12px' }}>
-                                    ({stage.emotionArcs.length + stage.relationshipDevelopments.length + stage.insights.length} 项)
+                                    ({(stage.emotionArcs?.length || 0) + (stage.relationshipDevelopments?.length || 0) + (stage.insights?.length || 0)} 项)
                                 </Text>
                             </Space>
                         }
@@ -116,7 +116,7 @@ export const ChroniclesDisplay: React.FC<ChroniclesDisplayProps> = ({
                     >
                         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                             {/* Emotion Arcs */}
-                            {stage.emotionArcs.length > 0 && (
+                            {stage.emotionArcs && stage.emotionArcs.length > 0 && (
                                 <div>
                                     <Space align="center" style={{ marginBottom: '8px' }}>
                                         <HeartOutlined style={{ color: '#f759ab' }} />
@@ -129,7 +129,7 @@ export const ChroniclesDisplay: React.FC<ChroniclesDisplayProps> = ({
                                             <List.Item style={{ padding: '4px 0', border: 'none' }}>
                                                 <div style={{ width: '100%', paddingLeft: '20px' }}>
                                                     <Space wrap style={{ marginBottom: '4px' }}>
-                                                        {arc.characters.map((character, charIndex) => (
+                                                        {arc.characters?.map((character, charIndex) => (
                                                             <Tag key={charIndex} color="magenta">
                                                                 {character}
                                                             </Tag>
@@ -146,7 +146,7 @@ export const ChroniclesDisplay: React.FC<ChroniclesDisplayProps> = ({
                             )}
 
                             {/* Relationship Developments */}
-                            {stage.relationshipDevelopments.length > 0 && (
+                            {stage.relationshipDevelopments && stage.relationshipDevelopments.length > 0 && (
                                 <div>
                                     <Space align="center" style={{ marginBottom: '8px' }}>
                                         <TeamOutlined style={{ color: '#52c41a' }} />
@@ -159,7 +159,7 @@ export const ChroniclesDisplay: React.FC<ChroniclesDisplayProps> = ({
                                             <List.Item style={{ padding: '4px 0', border: 'none' }}>
                                                 <div style={{ width: '100%', paddingLeft: '20px' }}>
                                                     <Space wrap style={{ marginBottom: '4px' }}>
-                                                        {rel.characters.map((character, charIndex) => (
+                                                        {rel.characters?.map((character, charIndex) => (
                                                             <Tag key={charIndex} color="green">
                                                                 {character}
                                                             </Tag>
@@ -176,7 +176,7 @@ export const ChroniclesDisplay: React.FC<ChroniclesDisplayProps> = ({
                             )}
 
                             {/* Key Insights */}
-                            {stage.insights.length > 0 && (
+                            {stage.insights && stage.insights.length > 0 && (
                                 <div>
                                     <Space align="center" style={{ marginBottom: '8px' }}>
                                         <BulbOutlined style={{ color: '#fadb14' }} />
