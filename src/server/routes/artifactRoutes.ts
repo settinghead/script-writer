@@ -40,6 +40,8 @@ export function createArtifactRoutes(
 
             // Allow minimal data for brainstorm_tool_input_schema to enable empty artifact creation
             let artifactData = data;
+            let isInitialInput = false;
+
             if (type === 'brainstorm_tool_input_schema') {
                 // Provide defaults for brainstorm input if not specified
                 artifactData = {
@@ -50,6 +52,9 @@ export function createArtifactRoutes(
                     numberOfIdeas: 3,
                     ...data // Override with any provided data
                 };
+
+                // Mark as initial input if no data was provided or if explicitly marked
+                isInitialInput = !data || data.initialInput === true;
             } else if (!data) {
                 res.status(400).json({ error: 'data is required for this artifact type' });
                 return;
@@ -63,7 +68,8 @@ export function createArtifactRoutes(
                 'v1', // Default type version
                 {}, // Empty metadata
                 'completed', // New artifacts are completed
-                'user_input' // New artifacts created via API are user input
+                'user_input', // New artifacts created via API are user input
+                isInitialInput // Skip validation for initial brainstorm inputs
             );
 
             res.status(201).json(artifact);

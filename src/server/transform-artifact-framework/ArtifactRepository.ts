@@ -16,10 +16,14 @@ export class ArtifactRepository {
         typeVersion: string,
         metadata: any | undefined,
         streamingStatus: string,
-        originType: 'ai_generated' | 'user_input'
+        originType: 'ai_generated' | 'user_input',
+        initialInput: boolean = false
     ): Promise<Artifact> {
-        // Only validate completed artifacts, skip validation during streaming
-        if (streamingStatus === 'completed' && !validateArtifactData(type, typeVersion, data)) {
+        // Skip validation for initial brainstorm input artifacts
+        const shouldSkipValidation = type === 'brainstorm_tool_input_schema' && initialInput;
+
+        // Only validate completed artifacts, skip validation during streaming or for initial brainstorm inputs
+        if (streamingStatus === 'completed' && !shouldSkipValidation && !validateArtifactData(type, typeVersion, data)) {
             console.error(`Invalid data for artifact type ${type}:${typeVersion}`);
             console.error("data:", data);
             throw new Error(`Invalid data for artifact type ${type}:${typeVersion}`);
