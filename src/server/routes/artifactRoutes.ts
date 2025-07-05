@@ -43,6 +43,9 @@ export function createArtifactRoutes(
             let isInitialInput = false;
 
             if (type === 'brainstorm_tool_input_schema') {
+                // Check if this is explicitly marked as initial input
+                isInitialInput = data && data.initialInput === true;
+
                 // Provide defaults for brainstorm input if not specified
                 artifactData = {
                     platform: '抖音',
@@ -53,8 +56,8 @@ export function createArtifactRoutes(
                     ...data // Override with any provided data
                 };
 
-                // Mark as initial input if no data was provided or if explicitly marked
-                isInitialInput = !data || data.initialInput === true;
+                // Remove the initialInput flag from the actual artifact data
+                delete artifactData.initialInput;
             } else if (!data) {
                 res.status(400).json({ error: 'data is required for this artifact type' });
                 return;

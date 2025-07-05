@@ -17,6 +17,7 @@ import { ChroniclesDisplay } from './ChroniclesDisplay';
 import ActionItemsSection from './ActionItemsSection';
 import { DebugMenu, DebugPanels } from './debug';
 import { ProjectCreationForm } from './ProjectCreationForm';
+import { BrainstormInputEditor } from './BrainstormInputEditor';
 
 const { Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -57,6 +58,9 @@ const ProjectContentRenderer: React.FC<{ projectId: string }> = ({ projectId }) 
     // Show normal project content
     return (
         <>
+            {/* Brainstorm Input Editor - shows when artifact exists and is leaf node */}
+            <BrainstormInputEditor projectId={projectId} />
+
             <TextDivider title="头脑风暴" id="brainstorm-ideas" />
             <ProjectBrainstormPage />
             <TextDivider title="灵感编辑" id="ideation-edit" />

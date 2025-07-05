@@ -33,7 +33,9 @@ const BrainstormCreationSection: React.FC<{ projectId: string; onCreated?: (arti
                 body: JSON.stringify({
                     projectId,
                     type: 'brainstorm_tool_input_schema',
-                    data: {} // Empty data, backend will provide defaults
+                    data: {
+                        initialInput: true // Explicitly mark as initial input to bypass validation
+                    }
                 })
             });
 
@@ -53,7 +55,7 @@ const BrainstormCreationSection: React.FC<{ projectId: string; onCreated?: (arti
     }, [projectId, onCreated, isCreating]);
 
     return (
-        <div style={{ textAlign: 'center', padding: '48px 24px' }}>
+        <div style={{ textAlign: 'center', padding: '24px 12px' }}>
             <Button
                 type="primary"
                 size="large"
@@ -62,8 +64,9 @@ const BrainstormCreationSection: React.FC<{ projectId: string; onCreated?: (arti
                 loading={isCreating}
                 style={{
                     height: '120px',
-                    width: '300px',
-                    fontSize: '18px',
+                    width: '100%',
+                    minWidth: '200px',
+                    fontSize: '16px',
                     borderRadius: '12px',
                     background: 'linear-gradient(135deg, #faad14, #ffc53d)',
                     border: 'none',
@@ -87,15 +90,16 @@ const ManualCreationSection: React.FC<{ projectId: string; onCreated?: (artifact
     onCreated
 }) => {
     return (
-        <div style={{ textAlign: 'center', padding: '48px 24px' }}>
+        <div style={{ textAlign: 'center', padding: '24px 12px' }}>
             <Button
                 size="large"
                 icon={<EditOutlined />}
                 disabled
                 style={{
                     height: '120px',
-                    width: '300px',
-                    fontSize: '18px',
+                    width: '100%',
+                    minWidth: '200px',
+                    fontSize: '16px',
                     borderRadius: '12px',
                     borderColor: '#434343',
                     color: '#8c8c8c'
@@ -250,10 +254,11 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
                 </Text>
 
                 <div style={{
-                    display: 'flex',
-                    gap: '32px',
-                    justifyContent: 'center',
-                    flexWrap: 'wrap'
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '16px',
+                    maxWidth: '640px',
+                    margin: '0 auto'
                 }}>
                     <BrainstormCreationSection
                         projectId={projectId}
