@@ -53,6 +53,16 @@ export const BrainstormInputEditor: React.FC<BrainstormInputEditorProps> = ({
         return !hasDescendants;
     }, [brainstormInputArtifact, projectData.transformInputs]);
 
+    // Check if this artifact has been used to generate ideas (has descendants)
+    const hasGeneratedIdeas = useMemo(() => {
+        if (!brainstormInputArtifact) return false;
+
+        // Check if any transforms use this artifact as input
+        return projectData.transformInputs.some(input =>
+            input.artifact_id === brainstormInputArtifact.id
+        );
+    }, [brainstormInputArtifact, projectData.transformInputs]);
+
     // Use the artifact editor hook
     const { handleFieldChange, handleBatchFieldChange, isPending } = useArtifactEditor({
         artifactId: brainstormInputArtifact?.id || '',
@@ -194,8 +204,8 @@ export const BrainstormInputEditor: React.FC<BrainstormInputEditorProps> = ({
         });
     };
 
-    // Don't render if no artifact exists or if it's not a leaf node
-    if (!brainstormInputArtifact || !isLeafNode) {
+    // Don't render if no artifact exists
+    if (!brainstormInputArtifact) {
         return null;
     }
 
@@ -223,6 +233,56 @@ export const BrainstormInputEditor: React.FC<BrainstormInputEditorProps> = ({
                         配置头脑风暴参数
                     </Title>
                     <Text style={{ color: '#666' }}>正在加载...</Text>
+                </div>
+            </Card>
+        );
+    }
+
+    // Show compact read-only view if ideas have been generated
+    if (hasGeneratedIdeas) {
+        return (
+            <Card
+                size="small"
+                style={{
+                    maxWidth: '600px',
+                    margin: '0 auto 16px auto',
+                    background: '#1a1a1a',
+                    borderColor: '#434343',
+                    borderWidth: '1px'
+                }}
+                headStyle={{
+                    background: '#1a1a1a',
+                    borderBottom: '1px solid #333',
+                    color: '#fff',
+                    minHeight: 'auto',
+                    padding: '8px 16px'
+                }}
+                bodyStyle={{ background: '#1a1a1a', padding: '12px 16px' }}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <BulbOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
+                        <Text style={{ color: '#fff', fontWeight: 500 }}>头脑风暴要求</Text>
+                    </div>
+                </div>
+                <div style={{ marginTop: '8px', display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+                    <Text style={{ color: '#999', fontSize: '12px' }}>平台:</Text>
+                    <Tag color="blue" style={{ fontSize: '11px', padding: '0 6px', lineHeight: '18px' }}>{currentData.platform}</Tag>
+                    <Text style={{ color: '#999', fontSize: '12px' }}>类型:</Text>
+                    {currentData.genrePaths && currentData.genrePaths.length > 0 ? (
+                        currentData.genrePaths.slice(0, 2).map((path: string[], index: number) => (
+                            <Tag key={index} color="green" style={{ fontSize: '11px', padding: '0 6px', lineHeight: '18px' }}>
+                                {path.join(' > ')}
+                            </Tag>
+                        ))
+                    ) : (
+                        <Tag color="green" style={{ fontSize: '11px', padding: '0 6px', lineHeight: '18px' }}>{currentData.genre}</Tag>
+                    )}
+                    {currentData.genrePaths && currentData.genrePaths.length > 2 && (
+                        <Text style={{ color: '#666', fontSize: '12px' }}>+{currentData.genrePaths.length - 2}个</Text>
+                    )}
+                    <Text style={{ color: '#999', fontSize: '12px' }}>数量:</Text>
+                    <Tag color="orange" style={{ fontSize: '11px', padding: '0 6px', lineHeight: '18px' }}>{currentData.numberOfIdeas}个</Tag>
                 </div>
             </Card>
         );

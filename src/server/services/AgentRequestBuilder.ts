@@ -71,9 +71,9 @@ ${context}
 
 ===工具选择示例 开始===
 示例1：生成新的故事创意
-用户请求："为抖音平台生成3个现代甜宠故事创意"
+用户请求："基于artifact ID abc123 的头脑风暴参数生成故事创意"
 → 使用 generate_brainstorm_ideas 工具
-→ 参数：platform="抖音", genre="现代甜宠", numberOfIdeas=3
+→ 参数：sourceArtifactId="abc123"
 
 示例2：基于现有创意生成剧本框架
 用户请求："基于artifact ID abc123 的故事创意，生成详细的剧本框架"

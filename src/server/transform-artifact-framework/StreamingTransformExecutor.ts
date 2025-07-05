@@ -141,18 +141,21 @@ export class StreamingTransformExecutor {
                         transformInputs.push(...sourceArtifacts);
                     }
 
-                    // 3b. Create tool input artifact from tool parameters
-                    const inputArtifactType = this.getInputArtifactType(config.templateName);
-                    const inputArtifact = await artifactRepo.createArtifact(
-                        projectId,
-                        inputArtifactType,
-                        validatedInput,
-                        'v1',
-                        {},
-                        'completed',
-                        'user_input'
-                    );
-                    transformInputs.push({ artifactId: inputArtifact.id, inputRole: 'tool_input' });
+                    // 3b. Create tool input artifact from tool parameters (only if we don't have source artifacts)
+                    // For tools that use source artifacts, we don't need a separate tool input artifact
+                    if (!config.extractSourceArtifacts || config.extractSourceArtifacts(validatedInput).length === 0) {
+                        const inputArtifactType = this.getInputArtifactType(config.templateName);
+                        const inputArtifact = await artifactRepo.createArtifact(
+                            projectId,
+                            inputArtifactType,
+                            validatedInput,
+                            'v1',
+                            {},
+                            'completed',
+                            'user_input'
+                        );
+                        transformInputs.push({ artifactId: inputArtifact.id, inputRole: 'tool_input' });
+                    }
 
                     // 3c. Add all transform inputs at once
                     await transformRepo.addTransformInputs(transformId, transformInputs, projectId);

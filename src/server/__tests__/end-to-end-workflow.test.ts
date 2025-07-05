@@ -18,26 +18,10 @@ describe('End-to-End Workflow Tests', () => {
 
         // Setup mock getArtifact to return proper artifact data
         mockArtifactRepo.getArtifact.mockImplementation(async (id: string) => {
-            if (id.includes('brainstorm') || id.includes('mock-artifact-1') || id.includes('mock-artifact-2')) {
-                // Return brainstorm_idea with user_input schema (from human transform)
-                return {
-                    id: id,
-                    project_id: testProjectId,
-                    type: 'brainstorm_idea',
-                    data: {
-                        title: '现代都市甜宠',
-                        body: '一个关于都市白领的甜宠故事，男女主角在职场相遇，经历误会后走到一起'
-                    },
-                    schema_type: 'user_input_schema',
-                    origin_type: 'user_input',
-                    metadata: {
-                        derived_data: {
-                            title: '现代都市甜宠',
-                            body: '一个关于都市白领的甜宠故事，男女主角在职场相遇，经历误会后走到一起'
-                        }
-                    }
-                };
-            } else if (id.includes('outline') || id.includes('mock-artifact-3') || id.includes('mock-artifact-4')) {
+            if (!id) return null;
+
+            // Check for outline settings first (mock-artifact-2 should be outline settings)
+            if (id === 'mock-artifact-2' || id === 'mock-artifact-3' || id === 'mock-artifact-4' || id.includes('outline')) {
                 return {
                     id: id,
                     project_id: testProjectId,
@@ -69,8 +53,55 @@ describe('End-to-End Workflow Tests', () => {
                     schema_type: 'outline_settings_schema',
                     origin_type: 'ai_generated'
                 };
+            } else if (id.includes('brainstorm') || id === 'mock-artifact-1') {
+                // Return brainstorm_idea with user_input schema (from human transform)
+                return {
+                    id: id,
+                    project_id: testProjectId,
+                    type: 'brainstorm_idea',
+                    data: {
+                        title: '现代都市甜宠',
+                        body: '一个关于都市白领的甜宠故事，男女主角在职场相遇，经历误会后走到一起'
+                    },
+                    schema_type: 'user_input_schema',
+                    origin_type: 'user_input',
+                    metadata: {
+                        derived_data: {
+                            title: '现代都市甜宠',
+                            body: '一个关于都市白领的甜宠故事，男女主角在职场相遇，经历误会后走到一起'
+                        }
+                    }
+                };
+            } else if (id.includes('input') || id === 'test-brainstorm-input') {
+                // Return brainstorm input artifact
+                return {
+                    id: id,
+                    project_id: testProjectId,
+                    type: 'brainstorm_tool_input_schema',
+                    data: {
+                        platform: '抖音',
+                        genre: '现代甜宠',
+                        other_requirements: '生成3个故事创意',
+                        numberOfIdeas: 3
+                    },
+                    schema_type: 'brainstorm_tool_input_schema',
+                    origin_type: 'user_input'
+                };
             }
             return null;
+        });
+
+        // Setup mock createArtifact to return sequential IDs
+        let artifactCounter = 1;
+        mockArtifactRepo.createArtifact.mockImplementation(async () => {
+            const artifactId = `mock-artifact-${artifactCounter++}`;
+            return { id: artifactId };
+        });
+
+        // Setup mock createTransform to return sequential IDs
+        let transformCounter = 1;
+        mockTransformRepo.createTransform.mockImplementation(async () => {
+            return { id: `mock-transform-${transformCounter++}` };
         });
     });
 
@@ -94,10 +125,7 @@ describe('End-to-End Workflow Tests', () => {
         );
 
         const brainstormInput = {
-            platform: '抖音',
-            genre: '现代甜宠',
-            other_requirements: '生成3个故事创意',
-            numberOfIdeas: 3
+            sourceArtifactId: 'test-brainstorm-input'
         };
 
         console.log('📝 Step 1: Generating brainstorm ideas...');

@@ -9,10 +9,7 @@ import { z } from 'zod';
  * This schema validates the data provided by the user to generate story ideas.
  */
 export const IdeationInputSchema = z.object({
-  platform: z.string().nonempty({ message: '目标平台不能为空' }).describe('目标发布平台，如：抖音、快手、小红书、微博等短视频平台'),
-  genre: z.string().nonempty({ message: '故事类型不能为空' }).describe('故事类型或题材，如：甜宠、霸总、复仇、悬疑、古装、现代等'),
-  other_requirements: z.string().optional().describe('其他特殊要求，如：特定年龄段、特定风格、避免某些元素等'),
-  numberOfIdeas: z.number().min(1).max(4).describe('要生成的故事创意数量，范围1-4个'),
+  sourceArtifactId: z.string().min(1, '源artifact ID不能为空').describe('源头脑风暴参数artifact ID，包含所有生成参数'),
 });
 
 /**

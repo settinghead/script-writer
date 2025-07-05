@@ -46,13 +46,13 @@ export function createCachedStreamObjectMock() {
             console.log(`[Mock] Contains 'Chronological Outline'?`, prompt.includes('Chronological Outline'));
             console.log(`[Mock] Contains '剧本框架'?`, prompt.includes('剧本框架'));
             console.log(`[Mock] Contains 'Story Settings'?`, prompt.includes('Story Settings'));
-            // Check for chronicles first - when asking to CREATE a chronological outline
-            if (prompt.includes('chronicles') || prompt.includes('template: chronicles') || prompt.includes('templateName: chronicles') || (prompt.includes('Chronological Outline') && prompt.includes('创作一个**时间顺序大纲')) || (prompt.includes('时间顺序大纲') && (prompt.includes('创作一个**时间顺序大纲') || prompt.includes('请创作一个**时间顺序大纲'))) || prompt.includes('时间顺序') || prompt.includes('timeline') || prompt.includes('stages')) {
-                console.log('[Mock] Using chronicles fallback');
-                return createFallbackChroniclesObject();
-            } else if (prompt.includes('outline_settings') || prompt.includes('template: outline_settings') || prompt.includes('templateName: outline_settings') || prompt.includes('剧本框架') || prompt.includes('Story Settings')) {
+            // Check for outline settings first - when asking to CREATE a story settings/framework
+            if (prompt.includes('outline_settings') || prompt.includes('template: outline_settings') || prompt.includes('templateName: outline_settings') || (prompt.includes('剧本框架') && prompt.includes('Story Settings')) || (prompt.includes('Story Settings') && !prompt.includes('Chronological Outline'))) {
                 console.log('[Mock] Using outline settings fallback');
                 return createFallbackOutlineObject();
+            } else if (prompt.includes('chronicles') || prompt.includes('template: chronicles') || prompt.includes('templateName: chronicles') || (prompt.includes('Chronological Outline') && prompt.includes('创作一个**时间顺序大纲')) || (prompt.includes('时间顺序大纲') && (prompt.includes('创作一个**时间顺序大纲') || prompt.includes('请创作一个**时间顺序大纲'))) || prompt.includes('时间顺序') || prompt.includes('timeline') || prompt.includes('stages')) {
+                console.log('[Mock] Using chronicles fallback');
+                return createFallbackChroniclesObject();
             } else if (prompt.includes('outline') || prompt.includes('Outline') || prompt.includes('大纲')) {
                 console.log('[Mock] Using generic outline fallback');
                 return createFallbackOutlineObject();

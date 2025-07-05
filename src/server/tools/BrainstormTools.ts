@@ -227,21 +227,70 @@ interface BrainstormToolResult {
 // Collection-based brainstorm tool - no longer needs individual idea caching
 
 /**
+ * Extract brainstorm parameters from source artifact
+ */
+async function extractBrainstormParams(
+    sourceArtifactId: string,
+    artifactRepo: ArtifactRepository,
+    userId: string
+): Promise<{
+    platform: string;
+    genre: string;
+    other_requirements: string;
+    numberOfIdeas: number;
+}> {
+    // Get source artifact
+    const sourceArtifact = await artifactRepo.getArtifact(sourceArtifactId);
+    if (!sourceArtifact) {
+        throw new Error('Source artifact not found');
+    }
+
+    // Verify user has access to this artifact's project
+    const hasAccess = await artifactRepo.userHasProjectAccess(userId, sourceArtifact.project_id);
+    if (!hasAccess) {
+        throw new Error('Access denied to source artifact');
+    }
+
+    // Parse source data
+    let sourceData;
+    try {
+        sourceData = typeof sourceArtifact.data === 'string'
+            ? JSON.parse(sourceArtifact.data)
+            : sourceArtifact.data;
+    } catch (error) {
+        throw new Error('Failed to parse source artifact data');
+    }
+
+    // Extract parameters
+    return {
+        platform: sourceData.platform || '抖音',
+        genre: sourceData.genre || '甜宠',
+        other_requirements: sourceData.other_requirements || '',
+        numberOfIdeas: sourceData.numberOfIdeas || 3
+    };
+}
+
+/**
  * Build requirements section for brainstorming template
  */
-function buildRequirementsSection(input: IdeationInput): string {
-    // Build requirements based on actual input parameters
+function buildRequirementsSection(params: {
+    platform: string;
+    genre: string;
+    other_requirements: string;
+    numberOfIdeas: number;
+}): string {
+    // Build requirements based on extracted parameters
     const parts: string[] = [];
 
     // Add platform and genre context
-    parts.push(`请为${input.platform}平台创作${input.genre}类型的故事创意。`);
+    parts.push(`请为${params.platform}平台创作${params.genre}类型的故事创意。`);
 
     // Add number of ideas requirement
-    parts.push(`请生成${input.numberOfIdeas}个故事创意（不多不少）。`);
+    parts.push(`请生成${params.numberOfIdeas}个故事创意（不多不少）。`);
 
     // Add user requirements if provided
-    if (input.other_requirements) {
-        parts.push(`用户要求: ${input.other_requirements}`);
+    if (params.other_requirements) {
+        parts.push(`用户要求: ${params.other_requirements}`);
     }
 
     return parts.join('\n');
@@ -250,7 +299,12 @@ function buildRequirementsSection(input: IdeationInput): string {
 /**
  * Transform LLM output (array of ideas) to collection artifact format
  */
-function transformToCollectionFormat(llmOutput: IdeationOutput, input: IdeationInput): any {
+function transformToCollectionFormat(llmOutput: IdeationOutput, extractedParams: {
+    platform: string;
+    genre: string;
+    other_requirements: string;
+    numberOfIdeas: number;
+}): any {
     const collectionIdeas = llmOutput
         .filter((idea: any) => idea && idea.title && idea.body && idea.body.length >= 10)
         .map((idea: any, index: number) => ({
@@ -264,8 +318,8 @@ function transformToCollectionFormat(llmOutput: IdeationOutput, input: IdeationI
 
     return {
         ideas: collectionIdeas,
-        platform: input.platform,
-        genre: input.genre,
+        platform: extractedParams.platform,
+        genre: extractedParams.genre,
         total_ideas: collectionIdeas.length
     };
 }
@@ -286,25 +340,36 @@ export function createBrainstormToolDefinition(
         maxTokens?: number;
     }
 ): StreamingToolDefinition<IdeationInput, BrainstormToolResult> {
-    const config: StreamingTransformConfig<IdeationInput, IdeationOutput> = {
-        templateName: 'brainstorming',
-        inputSchema: IdeationInputSchema,
-        outputSchema: IdeationOutputSchema,
-        prepareTemplateVariables: (input) => ({
-            genre: input.genre,
-            platform: input.platform,
-            numberOfIdeas: input.numberOfIdeas.toString(),
-            requirementsSection: buildRequirementsSection(input)
-        }),
-        transformLLMOutput: transformToCollectionFormat
-    };
-
     return {
         name: 'generate_brainstorm_ideas',
         description: '生成新的故事创意。适用场景：用户想要全新的故事想法、需要更多创意选择、或当前没有满意的故事创意时。例如："给我一些新的故事想法"、"再想几个不同的创意"。基于平台和类型生成适合短视频内容的创意故事概念。',
         inputSchema: IdeationInputSchema,
         outputSchema: BrainstormToolResultSchema,
         execute: async (params: IdeationInput): Promise<BrainstormToolResult> => {
+            console.log(`[BrainstormTool] Starting brainstorm generation for artifact ${params.sourceArtifactId}`);
+
+            // Extract parameters from source artifact
+            const extractedParams = await extractBrainstormParams(params.sourceArtifactId, artifactRepo, userId);
+
+            // Create config with extracted parameters
+            const config: StreamingTransformConfig<IdeationInput, IdeationOutput> = {
+                templateName: 'brainstorming',
+                inputSchema: IdeationInputSchema,
+                outputSchema: IdeationOutputSchema,
+                prepareTemplateVariables: (input) => ({
+                    genre: extractedParams.genre,
+                    platform: extractedParams.platform,
+                    numberOfIdeas: extractedParams.numberOfIdeas.toString(),
+                    requirementsSection: buildRequirementsSection(extractedParams)
+                }),
+                transformLLMOutput: (llmOutput) => transformToCollectionFormat(llmOutput, extractedParams),
+                // Extract source artifact for proper lineage
+                extractSourceArtifacts: (input) => [{
+                    artifactId: input.sourceArtifactId,
+                    inputRole: 'source'
+                }]
+            };
+
             const result = await executeStreamingTransform({
                 config,
                 input: params,
@@ -315,13 +380,14 @@ export function createBrainstormToolDefinition(
                 outputArtifactType: 'brainstorm_idea_collection',
                 transformMetadata: {
                     toolName: 'generate_brainstorm_ideas',
-                    platform: params.platform,
-                    genre: params.genre,
-                    numberOfIdeas: params.numberOfIdeas,
+                    platform: extractedParams.platform,
+                    genre: extractedParams.genre,
+                    numberOfIdeas: extractedParams.numberOfIdeas,
+                    source_artifact_id: params.sourceArtifactId,
                     initialData: {
                         ideas: [],
-                        platform: params.platform,
-                        genre: params.genre,
+                        platform: extractedParams.platform,
+                        genre: extractedParams.genre,
                         total_ideas: 0
                     }
                 },
@@ -332,6 +398,8 @@ export function createBrainstormToolDefinition(
                 topP: cachingOptions?.topP,
                 maxTokens: cachingOptions?.maxTokens
             });
+
+            console.log(`[BrainstormTool] Successfully completed brainstorm generation with artifact ${result.outputArtifactId}`);
 
             return {
                 outputArtifactId: result.outputArtifactId,

@@ -11,6 +11,26 @@ describe('BrainstormTool', () => {
         mockTransformRepo = createMockTransformRepository();
         mockArtifactRepo = createMockArtifactRepository();
 
+        // Setup mock getArtifact to return proper brainstorm input artifact
+        mockArtifactRepo.getArtifact.mockImplementation(async (id: string) => {
+            if (id === 'test-brainstorm-input-1' || id === 'test-brainstorm-input-2') {
+                return {
+                    id: id,
+                    project_id: 'test-project-1',
+                    type: 'brainstorm_tool_input_schema',
+                    data: {
+                        platform: '抖音',
+                        genre: '现代甜宠',
+                        other_requirements: '快节奏，高颜值主角',
+                        numberOfIdeas: 3
+                    },
+                    schema_type: 'brainstorm_tool_input_schema',
+                    origin_type: 'user_input'
+                };
+            }
+            return null;
+        });
+
         brainstormTool = createBrainstormToolDefinition(
             mockTransformRepo,
             mockArtifactRepo,
@@ -26,10 +46,7 @@ describe('BrainstormTool', () => {
         mockTransformRepo.createTransform.mockResolvedValue({ id: 'new-transform-1' });
 
         const input = {
-            platform: '抖音',
-            genre: '现代甜宠',
-            other_requirements: '快节奏，高颜值主角',
-            numberOfIdeas: 3
+            sourceArtifactId: 'test-brainstorm-input-1'
         };
 
         // Act
@@ -46,11 +63,28 @@ describe('BrainstormTool', () => {
         mockArtifactRepo.createArtifact.mockResolvedValue({ id: 'new-artifact-2' });
         mockTransformRepo.createTransform.mockResolvedValue({ id: 'new-transform-2' });
 
+        // Setup different input data
+        mockArtifactRepo.getArtifact.mockImplementation(async (id: string) => {
+            if (id === 'test-brainstorm-input-2') {
+                return {
+                    id: id,
+                    project_id: 'test-project-1',
+                    type: 'brainstorm_tool_input_schema',
+                    data: {
+                        platform: 'YouTube',
+                        genre: '悬疑',
+                        other_requirements: '反转剧情',
+                        numberOfIdeas: 3
+                    },
+                    schema_type: 'brainstorm_tool_input_schema',
+                    origin_type: 'user_input'
+                };
+            }
+            return null;
+        });
+
         const input = {
-            platform: 'YouTube',
-            genre: '悬疑',
-            other_requirements: '反转剧情',
-            numberOfIdeas: 3
+            sourceArtifactId: 'test-brainstorm-input-2'
         };
 
         // Act
@@ -73,15 +107,13 @@ describe('BrainstormTool', () => {
 
     it('should handle repository errors gracefully', async () => {
         // Arrange - Mock all repository methods to throw errors
+        mockArtifactRepo.getArtifact.mockRejectedValue(new Error('Database error'));
         mockArtifactRepo.createArtifact.mockRejectedValue(new Error('Database error'));
         mockTransformRepo.createTransform.mockRejectedValue(new Error('Database error'));
         mockTransformRepo.addTransformInputs.mockRejectedValue(new Error('Database error'));
 
         const input = {
-            platform: '抖音',
-            genre: '现代甜宠',
-            other_requirements: '快节奏，高颜值主角',
-            numberOfIdeas: 3
+            sourceArtifactId: 'test-brainstorm-input-1'
         };
 
         // Act & Assert
