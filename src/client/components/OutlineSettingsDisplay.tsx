@@ -22,10 +22,17 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
 
     // Get outline settings artifacts
     const outlineSettingsArtifacts = useMemo(() => {
-        return projectData.artifacts.filter(artifact =>
+        const filtered = projectData.artifacts.filter(artifact =>
             artifact.schema_type === 'outline_settings_schema' &&
             artifact.data
         );
+
+        console.log('🔍 [OutlineSettingsDisplay] Found outline_settings artifacts:', filtered.length);
+        if (filtered.length === 0) {
+            console.log('❌ Available schema types:', [...new Set(projectData.artifacts.map(a => a.schema_type))]);
+        }
+
+        return filtered;
     }, [projectData.artifacts]);
 
     // Find the ROOT outline settings artifact (AI-generated) for lineage resolution
@@ -48,23 +55,56 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
         return sorted[0];
     }, [outlineSettingsArtifacts]);
 
-    // Use lineage resolution starting from the ROOT artifact to find the latest version
-    const { latestArtifactId, isLoading: lineageLoading } = useLineageResolution({
-        sourceArtifactId: rootOutlineArtifact?.id || null,
-        path: '$',
-        options: { enabled: !!rootOutlineArtifact?.id }
-    });
+    // Find the latest version of the outline settings artifact (not its descendants)
+    const latestOutlineSettingsArtifact = useMemo(() => {
+        if (!rootOutlineArtifact) return null;
 
+        // Look for human transforms that edit this outline settings artifact
+        const humanEditTransforms = projectData.humanTransforms.filter(ht => {
+            // Find transform inputs for this human transform
+            const inputs = projectData.transformInputs.filter(ti => ti.transform_id === ht.transform_id);
+            // Check if any input references our root outline artifact
+            return inputs.some(input => input.artifact_id === rootOutlineArtifact.id);
+        });
 
-
-    // Get the effective artifact (original or edited version)
-    const effectiveArtifact = useMemo(() => {
-        if (latestArtifactId) {
-            const resolved = projectData.getArtifactById(latestArtifactId);
-            return resolved;
+        if (humanEditTransforms.length === 0) {
+            // No edits, use the original artifact
+            return rootOutlineArtifact;
         }
+
+        // Find the latest human edit transform
+        const latestEditTransform = humanEditTransforms.sort((a, b) => {
+            const aDate = typeof a.created_at === 'string' ? new Date(a.created_at) : new Date();
+            const bDate = typeof b.created_at === 'string' ? new Date(b.created_at) : new Date();
+            return bDate.getTime() - aDate.getTime();
+        })[0];
+
+        // Find the output artifact of this transform
+        const outputRecord = projectData.transformOutputs.find(to =>
+            to.transform_id === latestEditTransform.transform_id
+        );
+
+        if (outputRecord) {
+            const editedArtifact = projectData.getArtifactById(outputRecord.artifact_id);
+            // Verify it's still an outline settings artifact
+            if (editedArtifact?.schema_type === 'outline_settings_schema') {
+                console.log('🔍 [OutlineSettingsDisplay] Using edited version:', editedArtifact.id);
+                return editedArtifact;
+            }
+        }
+
+        // Fallback to original
         return rootOutlineArtifact;
-    }, [latestArtifactId, rootOutlineArtifact, projectData.getArtifactById]);
+    }, [rootOutlineArtifact, projectData.humanTransforms, projectData.transformInputs, projectData.transformOutputs, projectData.getArtifactById]);
+
+    const isLoading = projectData.isLoading;
+
+
+
+
+
+    // Use the latest outline settings artifact as the effective artifact
+    const effectiveArtifact = latestOutlineSettingsArtifact;
 
     // Determine if the current artifact is editable
     const isEditable = useMemo(() => {
@@ -98,9 +138,14 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
 
     // Parse outline settings data from the effective artifact
     const outlineSettings = useMemo(() => {
-
-
         if (!effectiveArtifact?.data) {
+            return null;
+        }
+
+        console.log('🔍 [OutlineSettingsDisplay] Artifact schema_type:', effectiveArtifact?.schema_type);
+
+        if (effectiveArtifact.schema_type !== 'outline_settings_schema') {
+            console.log('❌ [OutlineSettingsDisplay] Wrong artifact type! Expected outline_settings_schema, got:', effectiveArtifact.schema_type);
             return null;
         }
 
@@ -112,8 +157,7 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                 data = JSON.parse(data);
             }
 
-
-            // Now both original LLM artifacts and human-created artifacts store outline settings directly
+            console.log('✅ [OutlineSettingsDisplay] Successfully parsed outline settings data');
             return data as OutlineSettingsOutput;
         } catch (error) {
             console.error('❌ [OutlineSettingsDisplay] Failed to parse outline settings data:', error);
@@ -230,9 +274,7 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
 
 
         // Always get the current effective artifact to avoid stale closures
-        const currentArtifact = latestArtifactId ?
-            projectData.getArtifactById(latestArtifactId) :
-            rootOutlineArtifact;
+        const currentArtifact = effectiveArtifact;
 
         if (!currentArtifact?.data) {
             console.error('[OutlineSettingsDisplay] No current artifact data available for save');
@@ -323,20 +365,23 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
         } catch (error) {
             console.error('❌ [OutlineSettingsDisplay] Save failed:', { error, path, newValue, artifactId: currentArtifact?.id });
         }
-    }, [latestArtifactId, rootOutlineArtifact, projectData]);
+    }, [effectiveArtifact, projectData]);
 
 
 
     // Loading state
-    if (lineageLoading) {
+    if (isLoading) {
         return (
-            <div style={{ textAlign: 'center', padding: '24px' }}>
+            <div style={{ textAlign: 'center', padding: '40px' }}>
                 <Spin size="large" />
+                <div style={{ marginTop: '16px', color: '#8c8c8c' }}>
+                    加载剧本框架...
+                </div>
             </div>
         );
     }
 
-    // No outline settings found
+    // No outline settings available
     if (!outlineSettings) {
         return null;
     }
