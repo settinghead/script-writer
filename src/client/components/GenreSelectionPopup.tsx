@@ -206,8 +206,9 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
 
     useEffect(() => {
         if (visible) {
-            // Use localStorage selections if available, otherwise use current selections
-            const initialSelections = tempSelectedPathsStorage.length > 0 ? tempSelectedPathsStorage : currentSelectionPaths;
+            // Always prioritize server data (currentSelectionPaths) over localStorage
+            // Only use localStorage if server data is empty
+            const initialSelections = currentSelectionPaths.length > 0 ? currentSelectionPaths : tempSelectedPathsStorage;
             setTempSelectedPaths(initialSelections);
             setNavigationPath([]);
             if (!isMobile) {

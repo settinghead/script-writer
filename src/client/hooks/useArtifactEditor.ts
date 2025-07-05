@@ -16,6 +16,7 @@ export interface UseArtifactEditorReturn {
 
     // Handlers
     handleFieldChange: (field: string, value: any) => void;
+    handleBatchFieldChange: (updates: Record<string, any>) => void;
     setEditingField: (field: string | null) => void;
 
     // Status
@@ -123,12 +124,50 @@ export const useArtifactEditor = (options: UseArtifactEditorOptions): UseArtifac
         debouncedSave(field, requestData);
     }, [artifactId, debouncedSave, projectData]);
 
+    const handleBatchFieldChange = useCallback((updates: Record<string, any>) => {
+        // Get current artifact data
+        const artifact = projectData.getArtifactById(artifactId);
+        if (!artifact) {
+            onSaveErrorRef.current?.(new Error('Artifact not found'));
+            return;
+        }
+
+        // Parse current data
+        let currentData;
+        try {
+            currentData = typeof artifact.data === 'string'
+                ? JSON.parse(artifact.data)
+                : artifact.data;
+        } catch (error) {
+            console.error('Failed to parse artifact data:', error);
+            currentData = {};
+        }
+
+        // Prepare the updated data with all batch changes
+        const updatedData = { ...currentData, ...updates };
+
+        // Prepare request based on artifact type to match backend expectations
+        let requestData;
+        if (artifact.type === 'user_input') {
+            requestData = { text: JSON.stringify(updatedData) };
+        } else {
+            requestData = updatedData;
+        }
+
+        // Create a batch key for tracking
+        const batchKey = `batch_${Object.keys(updates).join('_')}`;
+
+        // Trigger debounced save
+        debouncedSave(batchKey, requestData);
+    }, [artifactId, debouncedSave, projectData]);
+
     const hasUnsavedChanges = pendingSaves.size > 0;
 
     return {
         pendingSaves,
         editingField,
         handleFieldChange,
+        handleBatchFieldChange,
         setEditingField,
         isPending,
         isSuccess,

@@ -54,7 +54,7 @@ export const BrainstormInputEditor: React.FC<BrainstormInputEditorProps> = ({
     }, [brainstormInputArtifact, projectData.transformInputs]);
 
     // Use the artifact editor hook
-    const { handleFieldChange, isPending } = useArtifactEditor({
+    const { handleFieldChange, handleBatchFieldChange, isPending } = useArtifactEditor({
         artifactId: brainstormInputArtifact?.id || '',
         onSaveSuccess: () => {
             // Optional: show success message
@@ -109,9 +109,13 @@ export const BrainstormInputEditor: React.FC<BrainstormInputEditorProps> = ({
             genrePaths: selection.paths,
             genre: genreText
         } : null);
-        // Persist to server
-        handleFieldChange('genrePaths', selection.paths);
-        handleFieldChange('genre', genreText);
+
+        // Save both fields together in a single operation to prevent race conditions
+        handleBatchFieldChange({
+            genrePaths: selection.paths,
+            genre: genreText
+        });
+
         setGenrePopupVisible(false);
     };
 
