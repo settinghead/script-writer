@@ -10,7 +10,7 @@
     "build:frontend": "vite build",
     "build": "npm run clean && npm run build:backend && npm run build:frontend",
     "clean": "rimraf dist-client dist-server",
-    "start": "node dist-server/index.js",
+    "start": "node dist-server/server/index.js",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
