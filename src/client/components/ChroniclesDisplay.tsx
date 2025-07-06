@@ -103,103 +103,91 @@ export const ChroniclesDisplay: React.FC<ChroniclesDisplayProps> = ({
                     style={{ backgroundColor: 'transparent' }}
                     expandIconPosition="end"
                 >
-                    <Panel
-                        header={
-                            <Space>
-                                <Text style={{ color: '#8c8c8c' }}>详细信息</Text>
-                                <Text type="secondary" style={{ fontSize: '12px' }}>
-                                    ({(stage.emotionArcs?.length || 0) + (stage.relationshipDevelopments?.length || 0) + (stage.insights?.length || 0)} 项)
-                                </Text>
-                            </Space>
-                        }
-                        key="details"
-                        style={{ backgroundColor: 'transparent' }}
-                    >
-                        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                            {/* Emotion Arcs */}
-                            {stage.emotionArcs && stage.emotionArcs.length > 0 && (
-                                <div>
-                                    <Space align="center" style={{ marginBottom: '8px' }}>
-                                        <HeartOutlined style={{ color: '#f759ab' }} />
-                                        <Text strong style={{ color: '#f759ab' }}>情感发展</Text>
-                                    </Space>
-                                    <List
-                                        size="small"
-                                        dataSource={stage.emotionArcs}
-                                        renderItem={(arc, arcIndex) => (
-                                            <List.Item style={{ padding: '4px 0', border: 'none' }}>
-                                                <div style={{ width: '100%', paddingLeft: '20px' }}>
-                                                    <Space wrap style={{ marginBottom: '4px' }}>
-                                                        {arc.characters?.map((character, charIndex) => (
-                                                            <Tag key={charIndex} color="magenta">
-                                                                {character}
-                                                            </Tag>
-                                                        ))}
-                                                    </Space>
-                                                    <Text style={{ color: '#fff', fontSize: '14px' }}>
-                                                        {arc.content}
-                                                    </Text>
-                                                </div>
-                                            </List.Item>
-                                        )}
-                                    />
-                                </div>
-                            )}
 
-                            {/* Relationship Developments */}
-                            {stage.relationshipDevelopments && stage.relationshipDevelopments.length > 0 && (
-                                <div>
-                                    <Space align="center" style={{ marginBottom: '8px' }}>
-                                        <TeamOutlined style={{ color: '#52c41a' }} />
-                                        <Text strong style={{ color: '#52c41a' }}>关系发展</Text>
-                                    </Space>
-                                    <List
-                                        size="small"
-                                        dataSource={stage.relationshipDevelopments}
-                                        renderItem={(rel, relIndex) => (
-                                            <List.Item style={{ padding: '4px 0', border: 'none' }}>
-                                                <div style={{ width: '100%', paddingLeft: '20px' }}>
-                                                    <Space wrap style={{ marginBottom: '4px' }}>
-                                                        {rel.characters?.map((character, charIndex) => (
-                                                            <Tag key={charIndex} color="green">
-                                                                {character}
-                                                            </Tag>
-                                                        ))}
-                                                    </Space>
-                                                    <Text style={{ color: '#fff', fontSize: '14px' }}>
-                                                        {rel.content}
-                                                    </Text>
-                                                </div>
-                                            </List.Item>
-                                        )}
-                                    />
-                                </div>
-                            )}
+                    <div style={{ width: '100%' }}>
+                        {/* Emotion Arcs */}
+                        {stage.emotionArcs && stage.emotionArcs.length > 0 && (
+                            <div>
+                                <Space align="center" style={{ marginBottom: '8px' }}>
+                                    <HeartOutlined style={{ color: '#f759ab' }} />
+                                    <Text strong style={{ color: '#f759ab' }}>情感发展</Text>
+                                </Space>
+                                <List
+                                    size="small"
+                                    dataSource={stage.emotionArcs}
+                                    renderItem={(arc, arcIndex) => (
+                                        <List.Item style={{ padding: '4px 0', border: 'none' }}>
+                                            <div style={{ width: '100%', paddingLeft: '20px' }}>
+                                                <Space wrap style={{ marginBottom: '4px' }}>
+                                                    {arc.characters?.map((character, charIndex) => (
+                                                        <Tag key={charIndex} color="magenta">
+                                                            {character}
+                                                        </Tag>
+                                                    ))}
+                                                </Space>
+                                                <Text style={{ color: '#fff', fontSize: '14px' }}>
+                                                    {arc.content}
+                                                </Text>
+                                            </div>
+                                        </List.Item>
+                                    )}
+                                />
+                            </div>
+                        )}
 
-                            {/* Key Insights */}
-                            {stage.insights && stage.insights.length > 0 && (
-                                <div>
-                                    <Space align="center" style={{ marginBottom: '8px' }}>
-                                        <BulbOutlined style={{ color: '#fadb14' }} />
-                                        <Text strong style={{ color: '#fadb14' }}>关键洞察</Text>
-                                    </Space>
-                                    <List
-                                        size="small"
-                                        dataSource={stage.insights}
-                                        renderItem={(insight, insightIndex) => (
-                                            <List.Item style={{ padding: '4px 0', border: 'none' }}>
-                                                <div style={{ paddingLeft: '20px' }}>
-                                                    <Text style={{ color: '#fff', fontSize: '14px' }}>
-                                                        • {insight}
-                                                    </Text>
-                                                </div>
-                                            </List.Item>
-                                        )}
-                                    />
-                                </div>
-                            )}
-                        </Space>
-                    </Panel>
+                        {/* Relationship Developments */}
+                        {stage.relationshipDevelopments && stage.relationshipDevelopments.length > 0 && (
+                            <div>
+                                <Space align="center" style={{ marginBottom: '8px' }}>
+                                    <TeamOutlined style={{ color: '#52c41a' }} />
+                                    <Text strong style={{ color: '#52c41a' }}>关系发展</Text>
+                                </Space>
+                                <List
+                                    size="small"
+                                    dataSource={stage.relationshipDevelopments}
+                                    renderItem={(rel, relIndex) => (
+                                        <List.Item style={{ padding: '4px 0', border: 'none' }}>
+                                            <div style={{ width: '100%', paddingLeft: '20px' }}>
+                                                <Space wrap style={{ marginBottom: '4px' }}>
+                                                    {rel.characters?.map((character, charIndex) => (
+                                                        <Tag key={charIndex} color="green">
+                                                            {character}
+                                                        </Tag>
+                                                    ))}
+                                                </Space>
+                                                <Text style={{ color: '#fff', fontSize: '14px' }}>
+                                                    {rel.content}
+                                                </Text>
+                                            </div>
+                                        </List.Item>
+                                    )}
+                                />
+                            </div>
+                        )}
+
+                        {/* Key Insights */}
+                        {stage.insights && stage.insights.length > 0 && (
+                            <div>
+                                <Space align="center" style={{ marginBottom: '8px' }}>
+                                    <BulbOutlined style={{ color: '#fadb14' }} />
+                                    <Text strong style={{ color: '#fadb14' }}>关键洞察</Text>
+                                </Space>
+                                <List
+                                    size="small"
+                                    dataSource={stage.insights}
+                                    renderItem={(insight, insightIndex) => (
+                                        <List.Item style={{ padding: '4px 0', border: 'none' }}>
+                                            <div style={{ paddingLeft: '20px' }}>
+                                                <Text style={{ color: '#fff', fontSize: '14px' }}>
+                                                    • {insight}
+                                                </Text>
+                                            </div>
+                                        </List.Item>
+                                    )}
+                                />
+                            </div>
+                        )}
+                    </div>
                 </Collapse>
             </Card>
         );
