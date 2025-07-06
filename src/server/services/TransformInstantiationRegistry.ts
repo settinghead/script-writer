@@ -4,7 +4,8 @@ import {
   createBrainstormIdeaFromBrainstormIdea,
   createUserInputFromBrainstormField,
   createOutlineSettingsFromOutlineSettings,
-  createBrainstormToolInput
+  createBrainstormToolInput,
+  createChronicleStageFromPath
 } from './transform-instantiations/brainstormTransforms';
 import {
   createBrainstormIdeaFromPath,
@@ -40,6 +41,9 @@ export class TransformInstantiationRegistry {
 
     // NEW: Brainstorm tool input creation
     this.functions.set('createBrainstormToolInput', createBrainstormToolInput);
+
+    // NEW: Chronicle stage from path
+    this.functions.set('createChronicleStageFromPath', createChronicleStageFromPath);
   }
 
   executeInstantiation(

@@ -5,7 +5,6 @@ import { useMutation } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { OutlineSettingsOutput } from '../../common/schemas/outlineSchemas';
 import { useProjectData } from '../contexts/ProjectDataContext';
-import { useLineageResolution } from '../transform-artifact-framework/useLineageResolution';
 import { useChroniclesDescendants } from '../hooks/useChroniclesDescendants';
 import { EditableText, EditableArray } from './shared/EditableText';
 import { SectionWrapper, ArtifactSchemaType } from './shared';

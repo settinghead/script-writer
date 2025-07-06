@@ -3,7 +3,8 @@ import {
   OutlineSettingsInputSchema,
   OutlineSettingsOutputSchema,
   ChroniclesInputSchema,
-  ChroniclesOutputSchema
+  ChroniclesOutputSchema,
+  ChroniclesStageSchema
 } from './outlineSchemas';
 
 // Import schemas from streaming.ts 
@@ -42,6 +43,9 @@ export const ArtifactSchemaRegistry = {
   'chronicles_input_schema': ChroniclesInputSchema,
   'chronicles_schema': ChroniclesOutputSchema,
 
+  // NEW: Individual chronicle stage schema for granular editing
+  'chronicle_stage_schema': ChroniclesStageSchema,
+
   // Script schemas
   'script_schema': ScriptSchema,
 
@@ -54,4 +58,5 @@ export const ArtifactSchemaRegistry = {
 
 // Type exports
 export type OutlineSettingsOutput = z.infer<typeof OutlineSettingsOutputSchema>;
-export type ChroniclesOutput = z.infer<typeof ChroniclesOutputSchema>; 
+export type ChroniclesOutput = z.infer<typeof ChroniclesOutputSchema>;
+export type ChroniclesStage = z.infer<typeof ChroniclesStageSchema>; 

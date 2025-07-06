@@ -2,6 +2,7 @@
 import { z } from 'zod';
 import { UseMutationResult } from '@tanstack/react-query';
 import type { LineageGraph } from './transform-artifact-framework/lineageResolution.js';
+import type { ChroniclesStage } from './schemas/outlineSchemas.js';
 
 // ========== SHARED TYPES FOR CLIENT AND SERVER ==========
 
@@ -242,7 +243,8 @@ export type TypedArtifact =
     | ArtifactWithData<'outline_selling_points_schema', 'v1', OutlineSellingPointsV1>
     | ArtifactWithData<'outline_setting_schema', 'v1', OutlineSettingV1>
     | ArtifactWithData<'outline_synopsis_schema', 'v1', OutlineSynopsisV1>
-    | ArtifactWithData<'outline_characters_schema', 'v1', OutlineCharactersV1>;
+    | ArtifactWithData<'outline_characters_schema', 'v1', OutlineCharactersV1>
+    | ArtifactWithData<'chronicle_stage_schema', 'v1', ChroniclesStage>;
 
 // Helper type for creating strongly typed artifacts
 export interface ArtifactWithData<SchemaType extends string, SchemaVersion extends string, Data> extends Omit<Artifact, 'schema_type' | 'schema_version' | 'data'> {
@@ -262,6 +264,10 @@ export function isUserInputArtifact(artifact: Artifact): artifact is ArtifactWit
 
 export function isBrainstormCollectionArtifact(artifact: Artifact): artifact is ArtifactWithData<'brainstorm_collection_schema', 'v1', BrainstormIdeaCollectionV1> {
     return artifact.schema_type === 'brainstorm_collection_schema' && artifact.schema_version === 'v1';
+}
+
+export function isChronicleStageArtifact(artifact: Artifact): artifact is ArtifactWithData<'chronicle_stage_schema', 'v1', ChroniclesStage> {
+    return artifact.schema_type === 'chronicle_stage_schema' && artifact.schema_version === 'v1';
 }
 
 // Helper function to get text content from any artifact type

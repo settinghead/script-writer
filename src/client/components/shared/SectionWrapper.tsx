@@ -8,6 +8,7 @@ export enum ArtifactSchemaType {
     BRAINSTORM_ITEM = 'brainstorm_item_schema',
     OUTLINE_SETTINGS = 'outline_settings_schema',
     CHRONICLES = 'chronicles_schema',
+    CHRONICLE_STAGE = 'chronicle_stage_schema',
     SCRIPT = 'script_schema',
     USER_INPUT = 'user_input_schema'
 }

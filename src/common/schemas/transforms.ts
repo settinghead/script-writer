@@ -119,6 +119,17 @@ export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinitio
     pathPattern: '^\\$.ideas\\[\\d+\\]$', // JSONPath for ideas[n]
     instantiationFunction: 'createBrainstormIdeaFromPath'
   },
+
+  // NEW: Chronicle stage editing transforms
+  'edit_chronicles_stage': {
+    name: 'edit_chronicles_stage',
+    description: 'Edit individual stage within chronicles collection',
+    sourceArtifactType: 'chronicles_schema',
+    targetArtifactType: 'chronicle_stage_schema',
+    pathPattern: '^\\$.stages\\[\\d+\\]$', // JSONPath for stages[n]
+    instantiationFunction: 'createChronicleStageFromPath'
+  },
+
   'edit_artifact_field': {
     name: 'edit_artifact_field',
     description: 'Generic field editing using JSONPath',

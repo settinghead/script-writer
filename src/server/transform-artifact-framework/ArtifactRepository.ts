@@ -474,7 +474,12 @@ export class ArtifactRepository {
             'outline_synopsis': 'outline_synopsis_schema',
             'outline_characters': 'outline_characters_schema',
             'brainstorm_params': 'brainstorm_params_schema',
-            'plot_outline': 'plot_outline_schema'
+            'plot_outline': 'plot_outline_schema',
+            // NEW: Split outline schemas
+            'outline_settings': 'outline_settings_schema',
+            'chronicles': 'chronicles_schema',
+            // NEW: Individual chronicle stage schema
+            'chronicle_stage': 'chronicle_stage_schema'
         };
 
         return typeMapping[type] || `${type}_schema`;
