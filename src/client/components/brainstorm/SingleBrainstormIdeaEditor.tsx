@@ -174,7 +174,6 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
 
     let mainPart: React.ReactNode | null = null;
 
-
     // Render non-editable preview mode if not editable
     if (!isEditable) {
         mainPart = (
@@ -258,9 +257,8 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
             </div>
         );
     }
-
     // Render compact mode if outline descendants exist (only for editable artifacts)
-    if (hasOutlineDescendants && latestOutline) {
+    else if (hasOutlineDescendants && latestOutline) {
         mainPart = (
             <div className="single-brainstorm-idea-editor-compact" style={{ marginBottom: '16px', position: 'relative' }}>
                 {/* Loading overlay for compact mode */}
@@ -307,7 +305,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                                     {ideaTitle}
                                 </Title>
                                 <Text type="secondary" style={{ fontSize: '12px' }}>
-                                    当前可编辑的创意
+                                    已用于生成大纲，无法再编辑
                                 </Text>
                             </div>
                         </div>
@@ -354,219 +352,206 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                         </Button>
                     </div>
 
-                    {/* Read-only preview of the idea */}
-                    <div style={{ marginTop: '12px', padding: '8px', backgroundColor: '#0f0f0f', borderRadius: '4px', border: '1px solid #333' }}>
+                    {/* Read-only ArtifactEditor */}
+                    {editableArtifactId && (
+                        <div style={{ marginTop: '12px' }}>
+                            <ArtifactEditor
+                                artifactId={editableArtifactId}
+                                fields={BRAINSTORM_IDEA_FIELDS}
+                                statusColor="purple"
+                                statusLabel="已用于生成大纲"
+                                forceReadOnly={true}
+                            />
+                        </div>
+                    )}
+                </Card>
+            </div>
+        );
+    }
+    // Normal editing mode
+    else {
+        mainPart = (
+            <div className="single-brainstorm-idea-editor" style={{ marginBottom: '24px', position: 'relative' }}>
+                {/* Loading overlay for normal mode */}
+                {isCreatingHumanTransform && (
+                    <div style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 10,
+                        borderRadius: '8px'
+                    }}>
+                        <Spin
+                            indicator={<LoadingOutlined style={{ fontSize: 32, color: '#52c41a' }} spin />}
+                            tip="创建编辑版本中..."
+                        >
+                            <div style={{ padding: '40px' }} />
+                        </Spin>
+                    </div>
+                )}
 
-                        {previewArtifact && (() => {
-                            try {
-                                const data = JSON.parse(previewArtifact.data);
-                                return (
-                                    <div style={{ fontSize: '12px', lineHeight: 1.4 }}>
-                                        {data.title && (
-                                            <div style={{ marginBottom: '6px' }}>
-                                                <span style={{ color: '#888', marginRight: '8px' }}>标题:</span>
-                                                <span style={{ color: '#fff' }}>{data.title}</span>
-                                            </div>
-                                        )}
-                                        {data.body && (
-                                            <div>
-                                                <span style={{ color: '#888', marginRight: '8px' }}>内容:</span>
-                                                <span style={{ color: '#ccc' }}>{data.body.substring(0, 100)}{data.body.length > 100 ? '...' : ''}</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            } catch (error) {
-                                return <div style={{ color: '#888', fontSize: '12px' }}>无法解析创意内容</div>;
-                            }
-                        })()}
+                <Card
+                    style={{
+                        backgroundColor: '#1a1a1a',
+                        border: '1px solid #52c41a',
+                        borderRadius: '8px',
+                        opacity: isCreatingHumanTransform ? 0.7 : 1,
+                        pointerEvents: isCreatingHumanTransform ? 'none' : 'auto'
+                    }}
+                    styles={{ body: { padding: '24px' } }}
+                >
+                    {/* Header */}
+                    <div style={{ marginBottom: '24px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <div style={{
+                                    width: '6px',
+                                    height: '32px',
+                                    backgroundColor: '#52c41a',
+                                    borderRadius: '3px'
+                                }} />
+                                <div>
+                                    <Title level={4} style={{ margin: 0, color: '#52c41a' }}>
+                                        ✏️ 编辑创意
+                                    </Title>
+                                </div>
+                            </div>
+
+                            {onViewOriginalIdeas && (
+                                <Button
+                                    type="text"
+                                    icon={<EyeOutlined />}
+                                    onClick={onViewOriginalIdeas}
+                                    style={{ color: '#1890ff' }}
+                                    disabled={isCreatingHumanTransform}
+                                >
+                                    查看所有创意
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Artifact Editor */}
+                    {editableArtifactId && (
+                        <div style={{ marginBottom: '24px' }}>
+                            <ArtifactEditor
+                                artifactId={editableArtifactId}
+                                fields={BRAINSTORM_IDEA_FIELDS}
+                                statusColor="green"
+                                forceReadOnly={!isEditable}
+                            />
+                        </div>
+                    )}
+                    <Divider style={{ borderColor: '#434343', margin: '24px 0' }} />
+
+                    {/* Configuration Form */}
+                    <Form
+                        form={form}
+                        layout="vertical"
+                        initialValues={{
+                            totalEpisodes: 60,
+                            episodeDuration: 2,
+                            platform: '抖音',
+                            requirements: ''
+                        }}
+                        style={{ marginBottom: '24px' }}
+                        disabled={isCreatingHumanTransform}
+                    >
+                        <Row gutter={16}>
+                            <Col span={8}>
+                                <Form.Item
+                                    name="totalEpisodes"
+                                    label="总集数"
+                                    rules={[{ required: true, message: '请输入总集数' }]}
+                                >
+                                    <InputNumber
+                                        min={6}
+                                        max={200}
+                                        placeholder="请输入总集数"
+                                        style={{ width: '100%' }}
+                                        disabled={isCreatingHumanTransform}
+                                    />
+                                </Form.Item>
+                            </Col>
+
+                            <Col span={8}>
+                                <Form.Item
+                                    name="episodeDuration"
+                                    label="每集时长（分钟）"
+                                    rules={[{ required: true, message: '请输入每集时长' }]}
+                                >
+                                    <InputNumber
+                                        min={1}
+                                        max={30}
+                                        placeholder="请输入每集时长"
+                                        style={{ width: '100%' }}
+                                        disabled={isCreatingHumanTransform}
+                                    />
+                                </Form.Item>
+                            </Col>
+
+                            <Col span={8}>
+                                <Form.Item
+                                    name="platform"
+                                    label="目标平台"
+                                    rules={[{ required: true, message: '请选择目标平台' }]}
+                                >
+                                    <Select placeholder="请选择目标平台" disabled={isCreatingHumanTransform}>
+                                        <Select.Option value="抖音">抖音</Select.Option>
+                                        <Select.Option value="快手">快手</Select.Option>
+                                        <Select.Option value="小红书">小红书</Select.Option>
+                                        <Select.Option value="B站">B站</Select.Option>
+                                        <Select.Option value="通用">通用</Select.Option>
+                                    </Select>
+                                </Form.Item>
+                            </Col>
+                        </Row>
+
+                        <Form.Item
+                            name="requirements"
+                            label="其他要求（可选）"
+                        >
+                            <Input.TextArea
+                                rows={3}
+                                placeholder="如：加强悬疑色彩、突出女性角色、适合年轻观众等..."
+                                disabled={isCreatingHumanTransform}
+                            />
+                        </Form.Item>
+                    </Form>
+
+                    {/* Action Button */}
+                    <div style={{ textAlign: 'center' }}>
+                        <Button
+                            type="primary"
+                            size="large"
+                            icon={<FileTextOutlined />}
+                            onClick={handleGenerateOutlineSettings}
+                            loading={outlineGenerationMutation.isPending}
+                            disabled={isCreatingHumanTransform}
+                            style={{
+                                background: 'linear-gradient(100deg, #40a9ff, rgb(22, 106, 184))',
+                                border: 'none',
+                                borderRadius: '6px',
+                                padding: "24px 32px",
+                                fontSize: "18px",
+                                height: 'auto'
+                            }}
+                        >
+                            生成剧本框架 &gt;&gt;
+                        </Button>
+                        <br />
+
                     </div>
                 </Card>
             </div>
         );
     }
-
-    // Normal editing mode
-    mainPart = (
-        <div className="single-brainstorm-idea-editor" style={{ marginBottom: '24px', position: 'relative' }}>
-            {/* Loading overlay for normal mode */}
-            {isCreatingHumanTransform && (
-                <div style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 10,
-                    borderRadius: '8px'
-                }}>
-                    <Spin
-                        indicator={<LoadingOutlined style={{ fontSize: 32, color: '#52c41a' }} spin />}
-                        tip="创建编辑版本中..."
-                    >
-                        <div style={{ padding: '40px' }} />
-                    </Spin>
-                </div>
-            )}
-
-            <Card
-                style={{
-                    backgroundColor: '#1a1a1a',
-                    border: '1px solid #52c41a',
-                    borderRadius: '8px',
-                    opacity: isCreatingHumanTransform ? 0.7 : 1,
-                    pointerEvents: isCreatingHumanTransform ? 'none' : 'auto'
-                }}
-                styles={{ body: { padding: '24px' } }}
-            >
-                {/* Header */}
-                <div style={{ marginBottom: '24px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <div style={{
-                                width: '6px',
-                                height: '32px',
-                                backgroundColor: '#52c41a',
-                                borderRadius: '3px'
-                            }} />
-                            <div>
-                                <Title level={4} style={{ margin: 0, color: '#52c41a' }}>
-                                    ✏️ 编辑创意
-                                </Title>
-                            </div>
-                        </div>
-
-                        {onViewOriginalIdeas && (
-                            <Button
-                                type="text"
-                                icon={<EyeOutlined />}
-                                onClick={onViewOriginalIdeas}
-                                style={{ color: '#1890ff' }}
-                                disabled={isCreatingHumanTransform}
-                            >
-                                查看所有创意
-                            </Button>
-                        )}
-                    </div>
-                </div>
-
-                {/* Artifact Editor */}
-                {editableArtifactId && (
-                    <div style={{ marginBottom: '24px' }}>
-                        <ArtifactEditor
-                            artifactId={editableArtifactId}
-                            fields={BRAINSTORM_IDEA_FIELDS}
-                            statusColor="green"
-                        />
-                    </div>
-                )}
-                <Divider style={{ borderColor: '#434343', margin: '24px 0' }} />
-
-                {/* Configuration Form */}
-                <Form
-                    form={form}
-                    layout="vertical"
-                    initialValues={{
-                        totalEpisodes: 60,
-                        episodeDuration: 2,
-                        platform: '抖音',
-                        requirements: ''
-                    }}
-                    style={{ marginBottom: '24px' }}
-                    disabled={isCreatingHumanTransform}
-                >
-                    <Row gutter={16}>
-                        <Col span={8}>
-                            <Form.Item
-                                name="totalEpisodes"
-                                label="总集数"
-                                rules={[{ required: true, message: '请输入总集数' }]}
-                            >
-                                <InputNumber
-                                    min={6}
-                                    max={200}
-                                    placeholder="请输入总集数"
-                                    style={{ width: '100%' }}
-                                    disabled={isCreatingHumanTransform}
-                                />
-                            </Form.Item>
-                        </Col>
-
-                        <Col span={8}>
-                            <Form.Item
-                                name="episodeDuration"
-                                label="每集时长（分钟）"
-                                rules={[{ required: true, message: '请输入每集时长' }]}
-                            >
-                                <InputNumber
-                                    min={1}
-                                    max={30}
-                                    placeholder="请输入每集时长"
-                                    style={{ width: '100%' }}
-                                    disabled={isCreatingHumanTransform}
-                                />
-                            </Form.Item>
-                        </Col>
-
-                        <Col span={8}>
-                            <Form.Item
-                                name="platform"
-                                label="目标平台"
-                                rules={[{ required: true, message: '请选择目标平台' }]}
-                            >
-                                <Select placeholder="请选择目标平台" disabled={isCreatingHumanTransform}>
-                                    <Select.Option value="抖音">抖音</Select.Option>
-                                    <Select.Option value="快手">快手</Select.Option>
-                                    <Select.Option value="小红书">小红书</Select.Option>
-                                    <Select.Option value="B站">B站</Select.Option>
-                                    <Select.Option value="通用">通用</Select.Option>
-                                </Select>
-                            </Form.Item>
-                        </Col>
-                    </Row>
-
-                    <Form.Item
-                        name="requirements"
-                        label="其他要求（可选）"
-                    >
-                        <Input.TextArea
-                            rows={3}
-                            placeholder="如：加强悬疑色彩、突出女性角色、适合年轻观众等..."
-                            disabled={isCreatingHumanTransform}
-                        />
-                    </Form.Item>
-                </Form>
-
-                {/* Action Button */}
-                <div style={{ textAlign: 'center' }}>
-                    <Button
-                        type="primary"
-                        size="large"
-                        icon={<FileTextOutlined />}
-                        onClick={handleGenerateOutlineSettings}
-                        loading={outlineGenerationMutation.isPending}
-                        disabled={isCreatingHumanTransform}
-                        style={{
-                            background: 'linear-gradient(100deg, #40a9ff, rgb(22, 106, 184))',
-                            border: 'none',
-                            borderRadius: '6px',
-                            padding: "24px 32px",
-                            fontSize: "18px",
-                            height: 'auto'
-                        }}
-                    >
-                        生成剧本框架 &gt;&gt;
-                    </Button>
-                    <br />
-
-                </div>
-            </Card>
-        </div>
-    );
 
     return (
         <>

@@ -25,6 +25,7 @@ interface ArtifactEditorProps {
     fields?: FieldConfig[];
     statusLabel?: string;
     statusColor?: string;
+    forceReadOnly?: boolean;
 }
 
 interface ArtifactFragment {
@@ -220,7 +221,8 @@ const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
     onSaveSuccess,
     fields = [],
     statusLabel,
-    statusColor = 'blue'
+    statusColor = 'blue',
+    forceReadOnly
 }) => {
     const projectData = useProjectData();
 
@@ -302,7 +304,7 @@ const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
     }
 
     // Decide which sub-component to render
-    if (fragment.isEditable && fields.length > 0) {
+    if (fragment.isEditable && fields.length > 0 && !forceReadOnly) {
         return (
             <EditableView
                 fragment={fragment}
