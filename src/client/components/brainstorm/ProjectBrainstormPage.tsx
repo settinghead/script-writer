@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Button, Typography, Divider } from 'antd';
+import { Button, Typography } from 'antd';
 import { StopOutlined } from '@ant-design/icons';
 import { IdeaWithTitle } from '../../../common/transform-artifact-framework/lineageResolution';
 import { ReasoningIndicator } from '../shared/ReasoningIndicator';
