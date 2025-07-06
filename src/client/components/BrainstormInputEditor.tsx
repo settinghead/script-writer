@@ -230,7 +230,7 @@ export const BrainstormInputEditor: React.FC<BrainstormInputEditorProps> = ({
                 <div style={{ padding: '24px', textAlign: 'center' }}>
                     <Title level={4} style={{ color: '#fff' }}>
                         <BulbOutlined style={{ marginRight: '8px', color: '#1890ff' }} />
-                        配置头脑风暴参数
+                        头脑风暴要求
                     </Title>
                     <Text style={{ color: '#666' }}>正在加载...</Text>
                 </div>
@@ -307,7 +307,8 @@ export const BrainstormInputEditor: React.FC<BrainstormInputEditorProps> = ({
             <div style={{ padding: '24px' }}>
                 <Title level={4} style={{ marginBottom: '24px', color: '#fff', textAlign: 'center' }}>
                     <BulbOutlined style={{ marginRight: '8px', color: '#1890ff' }} />
-                    配置头脑风暴参数
+                    头脑风暴要求
+
                 </Title>
 
                 <div style={{

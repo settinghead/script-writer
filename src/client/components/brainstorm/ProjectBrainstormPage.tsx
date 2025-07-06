@@ -3,12 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button, Typography } from 'antd';
 import { StopOutlined } from '@ant-design/icons';
 import { IdeaWithTitle } from '../../../common/transform-artifact-framework/lineageResolution';
-import { ReasoningIndicator } from '../shared/ReasoningIndicator';
+import { ReasoningIndicator, SectionWrapper, ArtifactSchemaType } from '../shared';
 import { useProjectData } from '../../contexts/ProjectDataContext';
 import { useLatestBrainstormIdeas } from '../../transform-artifact-framework/useLineageResolution';
 import { useChosenBrainstormIdea } from '../../hooks/useChosenBrainstormIdea';
 import { BrainstormIdeaEditor } from './BrainstormIdeaEditor';
-import { TextDivider } from '../TextDivider';
 
 const { Text } = Typography;
 
@@ -279,9 +278,12 @@ export default function ProjectBrainstormPage() {
   }
 
   return (
-    <>
-      <TextDivider title="头脑风暴" id="brainstorm-ideas" mode="normal" />
-      <div id="brainstorm-ideas" className={`${isCollapsedView ? 'bg-gray-900' : 'min-h-screen bg-gray-900'} text-white`}>
+    <SectionWrapper
+      schemaType={ArtifactSchemaType.BRAINSTORM_COLLECTION}
+      title="头脑风暴"
+      sectionId="brainstorm-ideas"
+    >
+      <div className={`${isCollapsedView ? 'bg-gray-900' : 'min-h-screen bg-gray-900'} text-white`}>
         <div className={`container mx-auto px-4 ${isCollapsedView ? 'py-4' : 'py-8'}`}>
           {/* Header */}
           <div className="mb-8">
@@ -389,6 +391,6 @@ export default function ProjectBrainstormPage() {
           )}
         </div>
       </div>
-    </>
+    </SectionWrapper>
   )
 } 

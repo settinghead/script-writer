@@ -7,7 +7,7 @@ import { useProjectData } from '../../contexts/ProjectDataContext';
 import { ArtifactEditor } from '../../transform-artifact-framework/ArtifactEditor';
 import { BRAINSTORM_IDEA_FIELDS } from '../shared/MIGUANG_APP_FIELDS';
 import { useOutlineDescendants } from '../../hooks/useOutlineDescendants';
-import { TextDivider } from '../TextDivider';
+import { SectionWrapper, ArtifactSchemaType } from '../shared';
 
 const { Title, Text } = Typography;
 
@@ -554,9 +554,13 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
     }
 
     return (
-        <>
-            <TextDivider title="初始创意" id="ideation-edit" mode="normal" />
+        <SectionWrapper
+            schemaType={ArtifactSchemaType.BRAINSTORM_ITEM}
+            title="初始创意"
+            sectionId="ideation-edit"
+            artifactId={editableArtifactId || previewArtifactId || undefined}
+        >
             {mainPart}
-        </>
+        </SectionWrapper>
     )
 }; 

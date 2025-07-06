@@ -8,7 +8,7 @@ import { useProjectData } from '../contexts/ProjectDataContext';
 import { useLineageResolution } from '../transform-artifact-framework/useLineageResolution';
 import { useChroniclesDescendants } from '../hooks/useChroniclesDescendants';
 import { EditableText, EditableArray } from './shared/EditableText';
-import { TextDivider } from './TextDivider';
+import { SectionWrapper, ArtifactSchemaType } from './shared';
 
 const { Text } = Typography;
 
@@ -400,10 +400,13 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
     }
 
     return (
-        <>
-            <TextDivider title="剧本框架" id="outline-settings" mode="normal" />
-
-            <div id="outline-settings" style={{ marginTop: '24px' }}>
+        <SectionWrapper
+            schemaType={ArtifactSchemaType.OUTLINE_SETTINGS}
+            title="剧本框架"
+            sectionId="outline-settings"
+            artifactId={effectiveArtifact?.id}
+        >
+            <div style={{ marginTop: '24px' }}>
                 {/* Loading overlay */}
                 {isCreatingTransform && (
                     <div style={{
@@ -829,7 +832,7 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                     </div>
                 </Card>
             </div>
-        </>
+        </SectionWrapper>
     );
 };
 

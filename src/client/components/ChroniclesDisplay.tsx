@@ -3,7 +3,7 @@ import { Card, Typography, Space, Tag, Divider, Collapse, List } from 'antd';
 import { HeartOutlined, TeamOutlined, BulbOutlined, ClockCircleOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { ChroniclesOutput, ChroniclesStage } from '../../common/schemas/outlineSchemas';
 import { useProjectData } from '../contexts/ProjectDataContext';
-import { TextDivider } from './TextDivider';
+import { SectionWrapper, ArtifactSchemaType } from './shared';
 
 const { Text, Paragraph, Title } = Typography;
 const { Panel } = Collapse;
@@ -206,10 +206,12 @@ export const ChroniclesDisplay: React.FC<ChroniclesDisplayProps> = ({
     };
 
     return (
-        <>
-            <TextDivider title="时间顺序大纲" id="chronicles" mode="normal" />
-
-            <div id="chronicles" style={{ marginTop: '24px' }}>
+        <SectionWrapper
+            schemaType={ArtifactSchemaType.CHRONICLES}
+            title="时间顺序大纲"
+            sectionId="chronicles"
+        >
+            <div style={{ marginTop: '24px' }}>
                 <Card
                     style={{
                         backgroundColor: '#1f1f1f',
@@ -234,6 +236,6 @@ export const ChroniclesDisplay: React.FC<ChroniclesDisplayProps> = ({
                     </div>
                 </Card>
             </div>
-        </>
+        </SectionWrapper>
     );
 }; 

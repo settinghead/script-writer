@@ -138,7 +138,8 @@ const BrainstormEditingSection: React.FC<{
             <div style={{ padding: '24px' }}>
                 <Title level={4} style={{ marginBottom: '24px', color: '#fff', textAlign: 'center' }}>
                     <BulbOutlined style={{ marginRight: '8px', color: '#1890ff' }} />
-                    配置头脑风暴参数
+                    头脑风暴要求
+
                 </Title>
 
                 <div style={{ maxWidth: '600px', margin: '0 auto' }}>
