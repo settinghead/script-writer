@@ -93,6 +93,7 @@ UI Update: Real-time display with edit indicators
 - **Optimistic State Management** - Electric SQL write patterns with concurrent edit handling
 - **Smart Auto-Save System** - Advanced debouncing with edit preservation during saves
 - **Edit History Visualization** - Visual indicators (📝 已编辑版本) for modified content
+- **Unified Section Management** - `SectionWrapper` component for consistent section rendering with automatic status detection
 
 **Chat Interface**:
 - **ChatGPT-style Sidebar** - Resizable (250px-600px) with mobile responsive design
@@ -133,6 +134,7 @@ UI Update: Real-time display with edit indicators
 - **Zustand** - Global client state for UI interactions
 - **Electric SQL React hooks** - Real-time data synchronization
 - **Ant Design** - Component library with dark theme throughout
+- **SectionWrapper Architecture** - Unified section management with automatic status detection
 
 **Backend (Express.js + TypeScript)**:
 - **Agent Service** - Central orchestration with tool selection
@@ -144,6 +146,45 @@ UI Update: Real-time display with edit indicators
 - **Project-Based Access Control** - All content scoped to projects
 - **Artifact System** - Immutable content with edit lineage
 - **Transform Tracking** - Complete audit trail of all modifications
+
+### SectionWrapper Architecture
+
+The application uses a unified `SectionWrapper` component that provides consistent section rendering with intelligent status detection across all major content areas.
+
+**Component Features**:
+- **Automatic Artifact Resolution** - Finds the latest/deepest artifact in lineage chains
+- **Smart Status Detection** - Automatically detects loading/failed/normal states based on transform status
+- **Lineage Chain Support** - Handles AI-generated → human-edited artifact flows seamlessly
+- **Type-Safe Schema Types** - Uses TypeScript enums for artifact schema type safety
+
+**Usage Pattern**:
+```typescript
+<SectionWrapper
+  schemaType={ArtifactSchemaType.BRAINSTORM_COLLECTION}
+  title="头脑风暴"
+  sectionId="brainstorm-ideas"
+  artifactId={specificArtifactId} // Optional: for precise artifact targeting
+>
+  {/* Section content */}
+</SectionWrapper>
+```
+
+**Implemented Sections**:
+- **ProjectBrainstormPage** - `BRAINSTORM_COLLECTION` with automatic artifact resolution
+- **SingleBrainstormIdeaEditor** - `BRAINSTORM_ITEM` with specific artifact targeting
+- **OutlineSettingsDisplay** - `OUTLINE_SETTINGS` with effective artifact detection
+- **ChroniclesDisplay** - `CHRONICLES` with automatic latest artifact resolution
+
+**Status Detection Logic**:
+- **Loading State** - When transforms are running/pending that produce or modify the artifact
+- **Failed State** - When transforms have failed, with red color scheme and warning indicators
+- **Normal State** - When artifacts exist and are successfully created/edited
+
+**Benefits**:
+- **Consistent UX** - All sections follow the same visual and behavioral patterns
+- **Reduced Boilerplate** - No need to manually implement TextDivider and status logic
+- **Automatic Updates** - Status changes are reflected immediately across all sections
+- **Lineage Awareness** - Automatically handles complex artifact inheritance chains
 
 ### Optimistic State Implementation
 
@@ -361,7 +402,55 @@ npm run dev
 2. **Create Template** - Add prompt template in `src/server/services/templates/`
 3. **Build Tool** - Implement using streaming framework pattern
 4. **Add UI Components** - Create React components with Ant Design
-5. **Test Integration** - Add cache-based tests for AI functionality
+5. **Integrate SectionWrapper** - Use `SectionWrapper` for consistent section management
+6. **Test Integration** - Add cache-based tests for AI functionality
+
+### SectionWrapper Integration Pattern
+
+When creating new content sections, follow this established pattern:
+
+**Step 1: Add Schema Type**
+```typescript
+// In src/client/components/shared/SectionWrapper.tsx
+export enum ArtifactSchemaType {
+  // ... existing types
+  NEW_CONTENT = 'new_content_schema'
+}
+```
+
+**Step 2: Replace TextDivider Usage**
+```typescript
+// Before:
+<>
+  <TextDivider title="Section Title" id="section-id" mode="normal" />
+  <div id="section-id">
+    {/* content */}
+  </div>
+</>
+
+// After:
+<SectionWrapper
+  schemaType={ArtifactSchemaType.NEW_CONTENT}
+  title="Section Title"
+  sectionId="section-id"
+  artifactId={specificArtifactId} // Optional: for precise targeting
+>
+  {/* content */}
+</SectionWrapper>
+```
+
+**Step 3: Update Imports**
+```typescript
+// Remove TextDivider import
+import { SectionWrapper, ArtifactSchemaType } from './shared';
+```
+
+**Common Patterns Established**:
+- **Automatic Status Detection** - All sections automatically show loading/failed/normal states
+- **Consistent Visual Design** - Unified TextDivider styling with red failed state
+- **Artifact Lineage Support** - Handles AI-generated → human-edited chains
+- **Type Safety** - Schema types enforced through TypeScript enums
+- **Flexible Targeting** - Can use automatic resolution or specific artifact IDs
 
 ### Custom Prompt Development
 
