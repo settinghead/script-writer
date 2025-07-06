@@ -3,11 +3,11 @@ import React from 'react';
 export const TextDivider = ({
     title,
     id,
-    mode = "loading"
+    mode
 }: {
     title: string;
     id: string;
-    mode?: "normal" | "loading";
+    mode: "normal" | "loading";
 }) => {
     const isLoading = mode === "loading";
     const animationId = `moveStripes-${id}`;
@@ -50,7 +50,7 @@ export const TextDivider = ({
                     textShadow: '0 1px 2px rgba(0, 0, 0, 0.5)',
                     textAlign: 'center',
                     ...(isLoading && {
-                        animation: `${animationId} 2s linear infinite`,
+                        animation: `${animationId} 1.5s linear infinite`,
                     })
                 }}>
                 {title}

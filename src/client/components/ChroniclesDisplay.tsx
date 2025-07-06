@@ -3,6 +3,7 @@ import { Card, Typography, Space, Tag, Divider, Collapse, List } from 'antd';
 import { HeartOutlined, TeamOutlined, BulbOutlined, ClockCircleOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { ChroniclesOutput, ChroniclesStage } from '../../common/schemas/outlineSchemas';
 import { useProjectData } from '../contexts/ProjectDataContext';
+import { TextDivider } from './TextDivider';
 
 const { Text, Paragraph, Title } = Typography;
 const { Panel } = Collapse;
@@ -205,32 +206,34 @@ export const ChroniclesDisplay: React.FC<ChroniclesDisplayProps> = ({
     };
 
     return (
-        <div id="chronicles" style={{ marginTop: '24px' }}>
-            <Card
-                style={{
-                    backgroundColor: '#1f1f1f',
-                    border: '1px solid #434343',
-                    borderRadius: '8px',
-                }}
-                styles={{ body: { padding: '24px' } }}
-            >
-                {/* Header */}
-                <div style={{ marginBottom: '24px', textAlign: 'center' }}>
-                    <Space direction="vertical" size="small">
-                        <Title level={3} style={{ color: '#1890ff', margin: 0 }}>
-                            时间顺序大纲
-                        </Title>
-                        <Text type="secondary">
-                            按时间顺序梳理的完整故事发展阶段（共 {chronicles.stages.length} 个阶段）
-                        </Text>
-                    </Space>
-                </div>
+        <>
+            <TextDivider title="时间顺序大纲" id="chronicles" mode="normal" />
 
-                {/* Stages Timeline */}
-                <div>
-                    {chronicles.stages.map((stage, index) => renderStageCard(stage, index))}
-                </div>
-            </Card>
-        </div>
+            <div id="chronicles" style={{ marginTop: '24px' }}>
+                <Card
+                    style={{
+                        backgroundColor: '#1f1f1f',
+                        border: '1px solid #434343',
+                        borderRadius: '8px',
+                    }}
+                    styles={{ body: { padding: '24px' } }}
+                >
+                    {/* Header */}
+                    <div style={{ marginBottom: '24px', textAlign: 'center' }}>
+                        <Space direction="vertical" size="small">
+
+                            <Text type="secondary">
+                                按时间顺序梳理的完整故事发展阶段（共 {chronicles.stages.length} 个阶段）
+                            </Text>
+                        </Space>
+                    </div>
+
+                    {/* Stages Timeline */}
+                    <div>
+                        {chronicles.stages.map((stage, index) => renderStageCard(stage, index))}
+                    </div>
+                </Card>
+            </div>
+        </>
     );
 }; 

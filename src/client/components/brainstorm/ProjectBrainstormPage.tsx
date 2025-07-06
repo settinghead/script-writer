@@ -8,6 +8,7 @@ import { useProjectData } from '../../contexts/ProjectDataContext';
 import { useLatestBrainstormIdeas } from '../../transform-artifact-framework/useLineageResolution';
 import { useChosenBrainstormIdea } from '../../hooks/useChosenBrainstormIdea';
 import { BrainstormIdeaEditor } from './BrainstormIdeaEditor';
+import { TextDivider } from '../TextDivider';
 
 const { Text } = Typography;
 
@@ -278,113 +279,116 @@ export default function ProjectBrainstormPage() {
   }
 
   return (
-    <div id="brainstorm-ideas" className={`${isCollapsedView ? 'bg-gray-900' : 'min-h-screen bg-gray-900'} text-white`}>
-      <div className={`container mx-auto px-4 ${isCollapsedView ? 'py-4' : 'py-8'}`}>
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-
-
-            {/* Status indicator */}
-            <div className="flex items-center gap-4">
-              {isStreaming && (
-                <div className="flex items-center gap-2">
-                  <ReasoningIndicator isVisible={false} />
-                  <span className="text-sm text-blue-400">正在生成想法...</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Progress bar */}
-          {isStreaming && (
-            <div className="mt-4">
-              正在生成想法...
-            </div>
-          )}
-        </div>
-
-        {/* Results */}
-        {ideas.length > 0 ? (
-          <div className="space-y-6">
-            {/* Header with controls */}
+    <>
+      <TextDivider title="头脑风暴" id="brainstorm-ideas" mode="normal" />
+      <div id="brainstorm-ideas" className={`${isCollapsedView ? 'bg-gray-900' : 'min-h-screen bg-gray-900'} text-white`}>
+        <div className={`container mx-auto px-4 ${isCollapsedView ? 'py-4' : 'py-8'}`}>
+          {/* Header */}
+          <div className="mb-8">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
 
+
+              {/* Status indicator */}
+              <div className="flex items-center gap-4">
                 {isStreaming && (
                   <div className="flex items-center gap-2">
                     <ReasoningIndicator isVisible={false} />
-                    <Text className="text-sm text-blue-400">
-                      生成中...
-                    </Text>
+                    <span className="text-sm text-blue-400">正在生成想法...</span>
                   </div>
                 )}
               </div>
-
-              <div className="flex items-center gap-2">
-                {isStreaming && (
-                  <Button
-                    type="primary"
-                    danger
-                    size="small"
-                    icon={<StopOutlined />}
-                    onClick={handleStop}
-                  >
-                    停止生成
-                  </Button>
-                )}
-              </div>
             </div>
 
-            {/* Ideas grid - responsive layout based on collapsed state */}
-            <div className={isCollapsedView
-              ? "grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3"
-              : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-            }>
-              {ideas.map((idea, index) => (
-                <IdeaCardWrapper
-                  key={`${idea.artifactId}-${index}`}
-                  idea={idea}
-                  index={index}
-                  isSelected={selectedIdea === index}
-                  chosenIdea={chosenIdea}
-                  ideaOutlines={ideaOutlines[idea.artifactId || ''] || []}
-                  onIdeaClick={handleIdeaClick}
-                />
-              ))}
-            </div>
-
-            {/* Streaming indicator */}
+            {/* Progress bar */}
             {isStreaming && (
-              <div className="text-center py-4">
-                <Text className="text-sm text-gray-400">
-                  正在生成更多创意想法...
-                </Text>
+              <div className="mt-4">
+                正在生成想法...
               </div>
             )}
-
-
           </div>
-        ) : status === 'idle' ? (
-          <div className="text-center py-12">
-            <h2 className="text-xl font-semibold mb-2">🤔尚未开始头脑风暴</h2>
-            <p className="text-gray-400 mb-6">
-              还没有头脑风暴结果，稍等一下可能就会有
-            </p>
 
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <div className="animate-pulse">
-              <div className="text-4xl mb-4">⚡</div>
-              <h2 className="text-xl font-semibold mb-2">头脑风暴进行中</h2>
-              <p className="text-gray-400">
-                正在生成您的创意。结果将自动显示在这里。
-              </p>
+          {/* Results */}
+          {ideas.length > 0 ? (
+            <div className="space-y-6">
+              {/* Header with controls */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+
+                  {isStreaming && (
+                    <div className="flex items-center gap-2">
+                      <ReasoningIndicator isVisible={false} />
+                      <Text className="text-sm text-blue-400">
+                        生成中...
+                      </Text>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {isStreaming && (
+                    <Button
+                      type="primary"
+                      danger
+                      size="small"
+                      icon={<StopOutlined />}
+                      onClick={handleStop}
+                    >
+                      停止生成
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Ideas grid - responsive layout based on collapsed state */}
+              <div className={isCollapsedView
+                ? "grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3"
+                : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+              }>
+                {ideas.map((idea, index) => (
+                  <IdeaCardWrapper
+                    key={`${idea.artifactId}-${index}`}
+                    idea={idea}
+                    index={index}
+                    isSelected={selectedIdea === index}
+                    chosenIdea={chosenIdea}
+                    ideaOutlines={ideaOutlines[idea.artifactId || ''] || []}
+                    onIdeaClick={handleIdeaClick}
+                  />
+                ))}
+              </div>
+
+              {/* Streaming indicator */}
+              {isStreaming && (
+                <div className="text-center py-4">
+                  <Text className="text-sm text-gray-400">
+                    正在生成更多创意想法...
+                  </Text>
+                </div>
+              )}
+
+
             </div>
-          </div>
-        )}
+          ) : status === 'idle' ? (
+            <div className="text-center py-12">
+              <h2 className="text-xl font-semibold mb-2">🤔尚未开始头脑风暴</h2>
+              <p className="text-gray-400 mb-6">
+                还没有头脑风暴结果，稍等一下可能就会有
+              </p>
+
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <div className="animate-pulse">
+                <div className="text-4xl mb-4">⚡</div>
+                <h2 className="text-xl font-semibold mb-2">头脑风暴进行中</h2>
+                <p className="text-gray-400">
+                  正在生成您的创意。结果将自动显示在这里。
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   )
 } 

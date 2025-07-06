@@ -62,9 +62,8 @@ const ProjectContentRenderer: React.FC<{ projectId: string }> = ({ projectId }) 
             {/* Brainstorm Input Editor - shows when artifact exists and is leaf node */}
             <BrainstormInputEditor projectId={projectId} />
 
-            <TextDivider title="头脑风暴" id="brainstorm-ideas" />
+
             <ProjectBrainstormPage />
-            <TextDivider title="灵感编辑" id="ideation-edit" />
             <SingleBrainstormIdeaEditor
                 onViewOriginalIdeas={() => {
                     // Scroll to the brainstorm ideas section
@@ -74,10 +73,8 @@ const ProjectContentRenderer: React.FC<{ projectId: string }> = ({ projectId }) 
                     }
                 }}
             />
-            <TextDivider title="剧本框架" id="outline-settings" />
             <OutlineSettingsDisplay />
 
-            <TextDivider title="时间顺序大纲" id="chronicles" />
             <ChroniclesDisplay />
 
             {/* Legacy Support - Show old outline display for backward compatibility */}

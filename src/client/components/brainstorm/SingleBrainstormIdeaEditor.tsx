@@ -7,6 +7,7 @@ import { useProjectData } from '../../contexts/ProjectDataContext';
 import { ArtifactEditor } from '../../transform-artifact-framework/ArtifactEditor';
 import { BRAINSTORM_IDEA_FIELDS } from '../shared/MIGUANG_APP_FIELDS';
 import { useOutlineDescendants } from '../../hooks/useOutlineDescendants';
+import { TextDivider } from '../TextDivider';
 
 const { Title, Text } = Typography;
 
@@ -171,10 +172,12 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
         return null;
     }
 
+    let mainPart: React.ReactNode | null = null;
+
 
     // Render non-editable preview mode if not editable
     if (!isEditable) {
-        return (
+        mainPart = (
             <div className="single-brainstorm-idea-preview" style={{ marginBottom: '16px' }}>
                 <Card
                     size="small"
@@ -258,7 +261,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
 
     // Render compact mode if outline descendants exist (only for editable artifacts)
     if (hasOutlineDescendants && latestOutline) {
-        return (
+        mainPart = (
             <div className="single-brainstorm-idea-editor-compact" style={{ marginBottom: '16px', position: 'relative' }}>
                 {/* Loading overlay for compact mode */}
                 {isCreatingHumanTransform && (
@@ -384,7 +387,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
     }
 
     // Normal editing mode
-    return (
+    mainPart = (
         <div className="single-brainstorm-idea-editor" style={{ marginBottom: '24px', position: 'relative' }}>
             {/* Loading overlay for normal mode */}
             {isCreatingHumanTransform && (
@@ -564,4 +567,11 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
             </Card>
         </div>
     );
+
+    return (
+        <>
+            <TextDivider title="初始创意" id="ideation-edit" mode="normal" />
+            {mainPart}
+        </>
+    )
 }; 
