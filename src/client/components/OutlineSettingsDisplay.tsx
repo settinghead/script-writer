@@ -119,6 +119,18 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
         return isUserInput && !hasDescendants;
     }, [effectiveArtifact, projectData.transformInputs]);
 
+    // Check if the current artifact can be made editable (i.e., it's a leaf node)
+    const canBecomeEditable = useMemo(() => {
+        if (!effectiveArtifact) return false;
+
+        // Check if the effective artifact has descendants
+        const hasDescendants = projectData.transformInputs.some(input =>
+            input.artifact_id === effectiveArtifact.id
+        );
+
+        return !hasDescendants;
+    }, [effectiveArtifact, projectData.transformInputs]);
+
     // Check if the artifact comes from a failed transform
     const isFromFailedTransform = useMemo(() => {
         if (!effectiveArtifact) return false;
@@ -429,7 +441,7 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                             <div style={{ color: '#ff4d4f', fontSize: '12px', fontStyle: 'italic' }}>
                                 生成过程中出现错误，请重新生成
                             </div>
-                        ) : !isEditable && !isCreatingTransform && (
+                        ) : !isEditable && !isCreatingTransform && canBecomeEditable && (
                             <Button
                                 type="primary"
                                 size="small"
