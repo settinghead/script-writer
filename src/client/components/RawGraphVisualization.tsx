@@ -4,8 +4,6 @@ import { Typography, Checkbox, Space, Tooltip, Spin, Button, message } from 'ant
 import { DatabaseOutlined, UserOutlined, RobotOutlined, CloseOutlined, DeleteOutlined } from '@ant-design/icons';
 import dagre from 'dagre';
 import { useProjectData } from '../contexts/ProjectDataContext';
-import { buildLineageGraph } from '../../common/transform-artifact-framework/lineageResolution';
-import type { ElectricArtifact, ElectricTransform, ElectricHumanTransform } from '../../common/types';
 import 'reactflow/dist/style.css';
 
 const { Text } = Typography;
@@ -457,14 +455,8 @@ const RawGraphVisualization: React.FC = () => {
             return { nodes: [], edges: [] };
         }
 
-        // Build lineage graph using existing function
-        const lineageGraph = buildLineageGraph(
-            projectData.artifacts,
-            projectData.transforms,
-            projectData.humanTransforms,
-            projectData.transformInputs,
-            projectData.transformOutputs
-        );
+        // Use the globally shared lineage graph from context
+        const lineageGraph = projectData.lineageGraph;
 
         const nodes: Node[] = [];
         const edges: Edge[] = [];

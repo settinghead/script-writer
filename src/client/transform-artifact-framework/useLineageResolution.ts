@@ -1,9 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useProjectData } from '../contexts/ProjectDataContext';
 import {
-    buildLineageGraph,
     findLatestArtifact,
-    findEffectiveBrainstormIdeas,
     extractEffectiveBrainstormIdeas,
     convertEffectiveIdeasToIdeaWithTitle,
     findMainWorkflowPath,
@@ -14,61 +12,8 @@ import {
     type WorkflowNode
 } from '../../common/transform-artifact-framework/lineageResolution';
 
-interface UseLineageGraphResult {
-    graph: any; // The lineage graph
-    isLoading: boolean;
-    error: Error | null;
-}
-
 interface UseLineageResolutionOptions {
     enabled: boolean; // Caller must explicitly specify if enabled
-}
-
-/**
- * Hook to get the memoized lineage graph for the current project
- * This is the centralized way to access the lineage graph to avoid rebuilding it multiple times
- */
-export function useLineageGraph(): UseLineageGraphResult {
-    const projectData = useProjectData();
-    const [error, setError] = useState<Error | null>(null);
-
-    const graph = useMemo(() => {
-        if (projectData.isLoading) {
-            return null;
-        }
-
-        try {
-            setError(null);
-
-            // Build the lineage graph from project data
-            return buildLineageGraph(
-                projectData.artifacts,
-                projectData.transforms,
-                projectData.humanTransforms,
-                projectData.transformInputs,
-                projectData.transformOutputs
-            );
-
-        } catch (err) {
-            const error = err instanceof Error ? err : new Error('Failed to build lineage graph');
-            console.error('[useLineageGraph] Error building graph:', error);
-            setError(error);
-            return null;
-        }
-    }, [
-        projectData.isLoading,
-        projectData.artifacts,
-        projectData.transforms,
-        projectData.humanTransforms,
-        projectData.transformInputs,
-        projectData.transformOutputs
-    ]);
-
-    return {
-        graph,
-        isLoading: projectData.isLoading,
-        error: projectData.error || error
-    };
 }
 
 interface UseLineageResolutionResult {
@@ -94,16 +39,15 @@ interface UseLineageResolutionResult {
 export function useLineageResolution(
     { sourceArtifactId, path, options }: { sourceArtifactId: string | null; path: string; options: UseLineageResolutionOptions; }): UseLineageResolutionResult {
     const { enabled } = options;
-    const { graph, isLoading: graphLoading, error: graphError } = useLineageGraph();
     const projectData = useProjectData();
 
     const [error, setError] = useState<Error | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
 
-    // Use the shared lineage graph for resolution
+    // Use the globally shared lineage graph from context
     const lineageResult = useMemo((): LineageResolutionResult => {
         // Return early if disabled, no source artifact, or graph not ready
-        if (!enabled || !sourceArtifactId || !graph) {
+        if (!enabled || !sourceArtifactId || !projectData.lineageGraph) {
             return {
                 artifactId: sourceArtifactId,
                 path: path,
@@ -117,7 +61,7 @@ export function useLineageResolution(
             setIsProcessing(true);
 
             // Resolve the latest artifact for the given path using the shared graph
-            const result = findLatestArtifact(sourceArtifactId, path, graph, projectData.artifacts);
+            const result = findLatestArtifact(sourceArtifactId, path, projectData.lineageGraph, projectData.artifacts);
 
             setIsProcessing(false);
             return result;
@@ -136,10 +80,10 @@ export function useLineageResolution(
                 lineagePath: []
             };
         }
-    }, [enabled, sourceArtifactId, path, graph, projectData.artifacts]);
+    }, [enabled, sourceArtifactId, path, projectData.lineageGraph, projectData.artifacts]);
 
     // Determine loading state
-    const isLoading = graphLoading || isProcessing;
+    const isLoading = projectData.isLoading || isProcessing;
 
     // Extract results
     const latestArtifactId = lineageResult.artifactId;
@@ -151,7 +95,7 @@ export function useLineageResolution(
         lineagePath: lineageResult.lineagePath,
         depth: lineageResult.depth,
         isLoading,
-        error: graphError || error,
+        error: projectData.error || error,
         hasLineage,
         originalArtifactId: sourceArtifactId || ''
     };
@@ -228,19 +172,18 @@ export function useWorkflowNodes(): {
     error: Error | null;
 } {
     const projectData = useProjectData();
-    const { graph, isLoading: graphLoading, error: graphError } = useLineageGraph();
     const [error, setError] = useState<Error | null>(null);
 
     const workflowNodes = useMemo((): WorkflowNode[] => {
-        if (!graph) {
+        if (!projectData.lineageGraph) {
             return [];
         }
 
         try {
             setError(null);
 
-            // Use the shared lineage graph to get workflow nodes
-            return findMainWorkflowPath(projectData.artifacts, graph);
+            // Use the globally shared lineage graph to get workflow nodes
+            return findMainWorkflowPath(projectData.artifacts, projectData.lineageGraph);
 
         } catch (err) {
             const error = err instanceof Error ? err : new Error('Workflow nodes computation failed');
@@ -248,12 +191,12 @@ export function useWorkflowNodes(): {
             setError(error);
             return [];
         }
-    }, [graph, projectData.artifacts]);
+    }, [projectData.lineageGraph, projectData.artifacts]);
 
     return {
         workflowNodes,
-        isLoading: graphLoading,
-        error: graphError || error
+        isLoading: projectData.isLoading,
+        error: projectData.error || error
     };
 }
 

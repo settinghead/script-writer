@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 import { useProjectData } from '../contexts/ProjectDataContext';
-import { buildLineageGraph } from '../../common/transform-artifact-framework/lineageResolution';
 import { ElectricArtifact } from '../../common/types';
 
 interface OutlineDescendant {
@@ -48,14 +47,8 @@ export function useOutlineDescendants(brainstormArtifactId: string): UseOutlineD
         }
 
         try {
-            // Build lineage graph
-            const graph = buildLineageGraph(
-                projectData.artifacts,
-                projectData.transforms,
-                projectData.humanTransforms,
-                projectData.transformInputs,
-                projectData.transformOutputs
-            );
+            // Use the globally shared lineage graph from context
+            const graph = projectData.lineageGraph;
 
             // Find all outline artifacts that can be traced back to this brainstorm idea
             const outlineDescendants: OutlineDescendant[] = [];
@@ -119,10 +112,7 @@ export function useOutlineDescendants(brainstormArtifactId: string): UseOutlineD
         projectData.isLoading,
         projectData.error,
         projectData.artifacts,
-        projectData.transforms,
-        projectData.humanTransforms,
-        projectData.transformInputs,
-        projectData.transformOutputs
+        projectData.lineageGraph
     ]);
 
     return result;

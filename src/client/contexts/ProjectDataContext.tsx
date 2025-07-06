@@ -635,6 +635,9 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
         isError,
         error,
 
+        // Lineage graph (globally shared)
+        lineageGraph,
+
         // Selectors
         ...selectors,
 

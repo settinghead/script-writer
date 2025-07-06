@@ -513,6 +513,9 @@ export interface ProjectDataContextType {
     isError: boolean;
     error: Error | null;
 
+    // Lineage graph (globally shared)
+    lineageGraph: LineageGraph;
+
     // Selectors (memoized)
     // NEW: Collection-aware selectors
     getBrainstormCollections: () => ElectricArtifact[];
