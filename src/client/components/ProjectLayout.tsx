@@ -18,7 +18,6 @@ import ActionItemsSection from './ActionItemsSection';
 import { DebugMenu, DebugPanels } from './debug';
 import { ProjectCreationForm } from './ProjectCreationForm';
 import { BrainstormInputEditor } from './BrainstormInputEditor';
-import { TextDivider } from './TextDivider';
 
 const { Sider, Content } = Layout;
 const { Title, Text } = Typography;
