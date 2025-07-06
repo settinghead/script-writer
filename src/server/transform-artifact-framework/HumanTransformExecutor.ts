@@ -16,33 +16,7 @@ export class HumanTransformExecutor {
     this.instantiationRegistry = new TransformInstantiationRegistry();
   }
 
-  // Schema to type mappings for artifact creation
-  private SCHEMA_TO_TYPE_MAP = {
-    'brainstorm_collection_schema': 'brainstorm_collection',
-    'brainstorm_item_schema': 'brainstorm_idea',
-    'user_input_schema': 'user_input',
 
-    // New outline system
-    'outline_settings_schema': 'outline_settings',
-    'chronicles_schema': 'chronicles',
-
-    // Script types
-    'script_schema': 'script'
-  } as const;
-
-  // Type to schema mappings for validation
-  private TYPE_TO_SCHEMA_MAP = {
-    'brainstorm_collection': 'brainstorm_collection_schema',
-    'brainstorm_idea': 'brainstorm_item_schema',
-    'user_input': 'user_input_schema',
-
-    // New outline system
-    'outline_settings': 'outline_settings_schema',
-    'chronicles': 'chronicles_schema',
-
-    // Script types
-    'script': 'script_schema'
-  } as const;
 
   // Map schema types back to legacy types for ArtifactRepository.createArtifact
   private mapSchemaTypeToLegacyType(schemaType: string): string {
