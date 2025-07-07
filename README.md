@@ -38,6 +38,9 @@ A collaborative Chinese short drama script writing application built on the [Tra
 - **Episode Planning** - Staged progression with detailed synopsis for each story phase
 - **Context-Aware Generation** - References outline settings for consistent character and world development
 - **Sequential Workflow** - Generated after outline settings are established
+- **Individual Stage Editing** - Granular editing of individual chronicle stages with full field support
+- **Stage-Level Human Transforms** - Each stage can be independently edited while preserving the overall chronicles structure
+- **Complete Field Editing** - All stage fields editable: title, synopsis, events, emotion arcs, relationship developments, insights
 
 **Episode Generation (分集规划)**:
 - **Agent-Based Generation** - Powered by Transform Artifact Framework
@@ -174,6 +177,7 @@ The application uses a unified `SectionWrapper` component that provides consiste
 - **SingleBrainstormIdeaEditor** - `BRAINSTORM_ITEM` with specific artifact targeting
 - **OutlineSettingsDisplay** - `OUTLINE_SETTINGS` with effective artifact detection
 - **ChroniclesDisplay** - `CHRONICLES` with automatic latest artifact resolution
+- **ChronicleStageCard** - `CHRONICLE_STAGE` with individual stage editing support
 
 **Status Detection Logic**:
 - **Loading State** - When transforms are running/pending that produce or modify the artifact
@@ -270,6 +274,76 @@ export const ChroniclesOutputSchema = z.object({
 });
 ```
 
+### Chronicles Stage Editing System
+
+The application implements a sophisticated individual stage editing system for Chronicles, allowing granular modification of story progression while maintaining the overall narrative structure.
+
+**Chronicle Stage Schema**:
+```typescript
+export const ChroniclesStageSchema = z.object({
+  title: z.string(),
+  stageSynopsis: z.string(),
+  event: z.string(),
+  emotionArcs: z.array(z.object({
+    characters: z.array(z.string()),
+    content: z.string()
+  })),
+  relationshipDevelopments: z.array(z.object({
+    characters: z.array(z.string()),
+    content: z.string()
+  })),
+  insights: z.array(z.string())
+});
+```
+
+**Stage-Level Human Transforms**:
+- **Individual Stage Artifacts** - Each stage can be converted to a `chronicle_stage_schema` artifact for independent editing
+- **JSONPath Targeting** - Uses paths like `$.stages[0]`, `$.stages[1]` for precise stage identification
+- **Transform Name**: `edit_chronicles_stage` for all stage-level modifications
+- **Lineage Preservation** - Original chronicles collection remains intact while individual stages can be edited
+
+**UI Features**:
+- **Smart Editability Detection** - Only stages with `chronicle_stage_schema` artifacts show as editable (green border)
+- **Complete Field Editing** - All stage fields become editable when in edit mode:
+  - `title` - Stage title (text input)
+  - `stageSynopsis` - Stage overview (textarea)
+  - `event` - Core event description (textarea)
+  - `emotionArcs` - Character emotion development (textarea array)
+  - `relationshipDevelopments` - Character relationship progression (textarea array)
+  - `insights` - Key story insights (textarea array)
+- **Edit Button** - Non-editable stages show "编辑阶段" button to create editable versions
+- **Visual Indicators** - Green border and "已编辑" tag for edited stages
+
+**Data Conversion**:
+- **Complex Fields** - `emotionArcs` and `relationshipDevelopments` convert to/from "characters: content" format for editing
+- **Simple Arrays** - `insights` edited directly as string arrays
+- **Textarea Mode** - All array fields use textarea editing with one item per line
+
+**Technical Implementation**:
+```typescript
+// Stage editability check
+const isEditable = isUserInput && isStageArtifact && !hasDescendants;
+
+// Transform creation for stage editing
+projectData.createHumanTransform.mutate({
+  transformName: 'edit_chronicles_stage',
+  sourceArtifactId: chroniclesArtifactId,
+  derivationPath: `$.stages[${stageIndex}]`,
+  fieldUpdates: {}
+});
+
+// Individual field saving
+await handleSave('title', newValue);
+await handleSave('emotionArcs', convertedEmotionArcs);
+```
+
+**Benefits**:
+- **Granular Control** - Edit individual stages without affecting the entire chronicles
+- **Preserved Structure** - Original AI-generated chronicles remains as reference
+- **Complete Audit Trail** - All stage modifications tracked through transform system
+- **Flexible Editing** - Can edit some stages while leaving others unchanged
+- **Type Safety** - Full TypeScript support for all stage fields and operations
+
 ## Getting Started
 
 ### Prerequisites
@@ -352,10 +426,29 @@ npm run dev
 - `GET /api/chat/:projectId/messages` - Get chat history (Electric SQL)
 
 ### Content Management
-- `POST /api/artifacts/:id/human-transform` - Execute human edit transform
+- `POST /api/artifacts/:id/human-transform` - Execute human edit transform (supports chronicle stage editing, field edits, etc.)
 - `GET /api/artifacts` - List artifacts with filtering
 - `GET /api/projects/:projectId/outline-settings` - Get outline settings for brainstorm ideas
 - `GET /api/projects/:projectId/chronicles` - Get chronicles for outline settings
+
+**Human Transform Examples**:
+```bash
+# Create editable chronicle stage
+POST /api/artifacts/chronicles-artifact-id/human-transform
+{
+  "transformName": "edit_chronicles_stage",
+  "derivationPath": "$.stages[0]",
+  "fieldUpdates": {}
+}
+
+# Edit specific fields in outline settings
+POST /api/artifacts/outline-artifact-id/human-transform
+{
+  "transformName": "edit_outline_field",
+  "derivationPath": "$.title",
+  "fieldUpdates": { "title": "New Title" }
+}
+```
 
 ### Electric SQL Proxy
 - `GET /api/electric/v1/shape` - Authenticated proxy with user scoping
