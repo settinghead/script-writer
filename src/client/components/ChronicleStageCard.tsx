@@ -4,7 +4,7 @@ import { HeartOutlined, TeamOutlined, BulbOutlined, ClockCircleOutlined, Thunder
 import { ChroniclesStage } from '../../common/schemas/outlineSchemas';
 import { useLineageResolution } from '../transform-artifact-framework/useLineageResolution';
 import { useProjectData } from '../contexts/ProjectDataContext';
-import { EditableText } from './shared/EditableText';
+import { EditableText, EditableArray } from './shared/EditableText';
 
 const { Text, Paragraph, Title } = Typography;
 
@@ -68,14 +68,20 @@ export const ChronicleStageCard: React.FC<ChronicleStageCardProps> = ({
     const isEditable = useMemo(() => {
         if (!effectiveArtifact) return false;
 
-        // Check if it's a user_input type (editable) and is a leaf node (no descendants)
+        // Only editable if:
+        // 1. The effective artifact is a user_input type (meaning it was created by human transform)
+        // 2. The effective artifact is a chronicle_stage_schema (individual stage, not full chronicles)
+        // 3. It has no descendants (it's a leaf node)
         const isUserInput = effectiveArtifact.origin_type === 'user_input';
+        const isStageArtifact = effectiveArtifact.schema_type === 'chronicle_stage_schema';
         const hasDescendants = projectData.transformInputs.some(input =>
             input.artifact_id === effectiveArtifact.id
         );
 
-        return isUserInput && !hasDescendants;
-    }, [effectiveArtifact, projectData.transformInputs]);
+        const result = isUserInput && isStageArtifact && !hasDescendants;
+
+        return result;
+    }, [effectiveArtifact, projectData.transformInputs, stageIndex]);
 
     // Check if the stage can be made editable
     const canBecomeEditable = useMemo(() => {
@@ -290,87 +296,155 @@ export const ChronicleStageCard: React.FC<ChronicleStageCardProps> = ({
             >
                 <div style={{ width: '100%' }}>
                     {/* Emotion Arcs */}
-                    {stageData.emotionArcs && stageData.emotionArcs.length > 0 && (
-                        <div>
-                            <Space align="center" style={{ marginBottom: '8px' }}>
-                                <HeartOutlined style={{ color: '#f759ab' }} />
-                                <Text strong style={{ color: '#f759ab' }}>情感发展</Text>
-                            </Space>
-                            <List
-                                size="small"
-                                dataSource={stageData.emotionArcs}
-                                renderItem={(arc, arcIndex) => (
-                                    <List.Item style={{ padding: '4px 0', border: 'none' }}>
-                                        <div style={{ width: '100%', paddingLeft: '20px' }}>
-                                            <Space wrap style={{ marginBottom: '4px' }}>
-                                                {arc.characters?.map((character, charIndex) => (
-                                                    <Tag key={charIndex} color="magenta">
-                                                        {character}
-                                                    </Tag>
-                                                ))}
-                                            </Space>
-                                            <Text style={{ color: '#fff', fontSize: '14px' }}>
-                                                {arc.content}
-                                            </Text>
-                                        </div>
-                                    </List.Item>
-                                )}
-                            />
-                        </div>
-                    )}
+                    <div style={{ marginBottom: '16px' }}>
+                        <Space align="center" style={{ marginBottom: '8px' }}>
+                            <HeartOutlined style={{ color: '#f759ab' }} />
+                            <Text strong style={{ color: '#f759ab' }}>情感发展</Text>
+                        </Space>
+
+                        {isEditable ? (
+                            <div style={{ paddingLeft: '20px' }}>
+                                <EditableArray
+                                    value={stageData.emotionArcs?.map(arc =>
+                                        `${arc.characters?.join(', ') || ''}: ${arc.content || ''}`
+                                    ) || []}
+                                    path="emotionArcs"
+                                    placeholder="角色: 情感发展描述"
+                                    isEditable={isEditable}
+                                    mode="textarea"
+                                    onSave={async (path, newValue) => {
+                                        // Convert string array back to emotion arc objects
+                                        const emotionArcs = newValue.map((item: string) => {
+                                            const [charactersStr, content] = item.split(': ');
+                                            return {
+                                                characters: charactersStr ? charactersStr.split(', ') : [],
+                                                content: content || ''
+                                            };
+                                        });
+                                        await handleSave(path, emotionArcs);
+                                    }}
+                                />
+                            </div>
+                        ) : (
+                            stageData.emotionArcs && stageData.emotionArcs.length > 0 && (
+                                <List
+                                    size="small"
+                                    dataSource={stageData.emotionArcs}
+                                    renderItem={(arc, arcIndex) => (
+                                        <List.Item style={{ padding: '4px 0', border: 'none' }}>
+                                            <div style={{ width: '100%', paddingLeft: '20px' }}>
+                                                <Space wrap style={{ marginBottom: '4px' }}>
+                                                    {arc.characters?.map((character, charIndex) => (
+                                                        <Tag key={charIndex} color="magenta">
+                                                            {character}
+                                                        </Tag>
+                                                    ))}
+                                                </Space>
+                                                <Text style={{ color: '#fff', fontSize: '14px' }}>
+                                                    {arc.content}
+                                                </Text>
+                                            </div>
+                                        </List.Item>
+                                    )}
+                                />
+                            )
+                        )}
+                    </div>
 
                     {/* Relationship Developments */}
-                    {stageData.relationshipDevelopments && stageData.relationshipDevelopments.length > 0 && (
-                        <div>
-                            <Space align="center" style={{ marginBottom: '8px' }}>
-                                <TeamOutlined style={{ color: '#52c41a' }} />
-                                <Text strong style={{ color: '#52c41a' }}>关系发展</Text>
-                            </Space>
-                            <List
-                                size="small"
-                                dataSource={stageData.relationshipDevelopments}
-                                renderItem={(rel, relIndex) => (
-                                    <List.Item style={{ padding: '4px 0', border: 'none' }}>
-                                        <div style={{ width: '100%', paddingLeft: '20px' }}>
-                                            <Space wrap style={{ marginBottom: '4px' }}>
-                                                {rel.characters?.map((character, charIndex) => (
-                                                    <Tag key={charIndex} color="green">
-                                                        {character}
-                                                    </Tag>
-                                                ))}
-                                            </Space>
-                                            <Text style={{ color: '#fff', fontSize: '14px' }}>
-                                                {rel.content}
-                                            </Text>
-                                        </div>
-                                    </List.Item>
-                                )}
-                            />
-                        </div>
-                    )}
+                    <div style={{ marginBottom: '16px' }}>
+                        <Space align="center" style={{ marginBottom: '8px' }}>
+                            <TeamOutlined style={{ color: '#52c41a' }} />
+                            <Text strong style={{ color: '#52c41a' }}>关系发展</Text>
+                        </Space>
+
+                        {isEditable ? (
+                            <div style={{ paddingLeft: '20px' }}>
+                                <EditableArray
+                                    value={stageData.relationshipDevelopments?.map(rel =>
+                                        `${rel.characters?.join(', ') || ''}: ${rel.content || ''}`
+                                    ) || []}
+                                    path="relationshipDevelopments"
+                                    placeholder="角色关系: 关系发展描述"
+                                    isEditable={isEditable}
+                                    mode="textarea"
+                                    onSave={async (path, newValue) => {
+                                        // Convert string array back to relationship development objects
+                                        const relationshipDevelopments = newValue.map((item: string) => {
+                                            const [charactersStr, content] = item.split(': ');
+                                            return {
+                                                characters: charactersStr ? charactersStr.split(', ') : [],
+                                                content: content || ''
+                                            };
+                                        });
+                                        await handleSave(path, relationshipDevelopments);
+                                    }}
+                                />
+                            </div>
+                        ) : (
+                            stageData.relationshipDevelopments && stageData.relationshipDevelopments.length > 0 && (
+                                <List
+                                    size="small"
+                                    dataSource={stageData.relationshipDevelopments}
+                                    renderItem={(rel, relIndex) => (
+                                        <List.Item style={{ padding: '4px 0', border: 'none' }}>
+                                            <div style={{ width: '100%', paddingLeft: '20px' }}>
+                                                <Space wrap style={{ marginBottom: '4px' }}>
+                                                    {rel.characters?.map((character, charIndex) => (
+                                                        <Tag key={charIndex} color="green">
+                                                            {character}
+                                                        </Tag>
+                                                    ))}
+                                                </Space>
+                                                <Text style={{ color: '#fff', fontSize: '14px' }}>
+                                                    {rel.content}
+                                                </Text>
+                                            </div>
+                                        </List.Item>
+                                    )}
+                                />
+                            )
+                        )}
+                    </div>
 
                     {/* Key Insights */}
-                    {stageData.insights && stageData.insights.length > 0 && (
-                        <div>
-                            <Space align="center" style={{ marginBottom: '8px' }}>
-                                <BulbOutlined style={{ color: '#fadb14' }} />
-                                <Text strong style={{ color: '#fadb14' }}>关键洞察</Text>
-                            </Space>
-                            <List
-                                size="small"
-                                dataSource={stageData.insights}
-                                renderItem={(insight, insightIndex) => (
-                                    <List.Item style={{ padding: '4px 0', border: 'none' }}>
-                                        <div style={{ paddingLeft: '20px' }}>
-                                            <Text style={{ color: '#fff', fontSize: '14px' }}>
-                                                • {insight}
-                                            </Text>
-                                        </div>
-                                    </List.Item>
-                                )}
-                            />
-                        </div>
-                    )}
+                    <div style={{ marginBottom: '16px' }}>
+                        <Space align="center" style={{ marginBottom: '8px' }}>
+                            <BulbOutlined style={{ color: '#fadb14' }} />
+                            <Text strong style={{ color: '#fadb14' }}>关键洞察</Text>
+                        </Space>
+
+                        {isEditable ? (
+                            <div style={{ paddingLeft: '20px' }}>
+                                <EditableArray
+                                    value={stageData.insights || []}
+                                    path="insights"
+                                    placeholder="关键洞察描述"
+                                    isEditable={isEditable}
+                                    mode="textarea"
+                                    onSave={async (path, newValue) => {
+                                        await handleSave(path, newValue);
+                                    }}
+                                />
+                            </div>
+                        ) : (
+                            stageData.insights && stageData.insights.length > 0 && (
+                                <List
+                                    size="small"
+                                    dataSource={stageData.insights}
+                                    renderItem={(insight, insightIndex) => (
+                                        <List.Item style={{ padding: '4px 0', border: 'none' }}>
+                                            <div style={{ paddingLeft: '20px' }}>
+                                                <Text style={{ color: '#fff', fontSize: '14px' }}>
+                                                    • {insight}
+                                                </Text>
+                                            </div>
+                                        </List.Item>
+                                    )}
+                                />
+                            )
+                        )}
+                    </div>
                 </div>
             </Collapse>
         </Card>
