@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Card, Typography, Space, Tag, List, Collapse, Button, message } from 'antd';
 import { HeartOutlined, TeamOutlined, BulbOutlined, ClockCircleOutlined, ThunderboltOutlined, EditOutlined } from '@ant-design/icons';
 import { ChroniclesStage } from '../../common/schemas/outlineSchemas';
@@ -46,8 +46,10 @@ export const ChronicleStageCard: React.FC<ChronicleStageCardProps> = ({
         if (projectData.artifacts === "pending" || projectData.artifacts === "error") {
             return null;
         }
-        return projectData.artifacts.find(a => a.id === latestArtifactId);
-    }, [latestArtifactId, projectData.artifacts]);
+        const artifact = projectData.artifacts.find(a => a.id === latestArtifactId);
+
+        return artifact;
+    }, [latestArtifactId, projectData.artifacts, stageIndex]);
 
     // Parse stage data from the effective artifact
     const stageData = useMemo(() => {
@@ -63,12 +65,12 @@ export const ChronicleStageCard: React.FC<ChronicleStageCardProps> = ({
 
             // If this is the original chronicles artifact, extract the stage by index
             if (parsedData.stages && parsedData.stages[stageIndex]) {
-                return parsedData.stages[stageIndex] as ChroniclesStage;
+                const stageAtIndex = parsedData.stages[stageIndex];
+                return stageAtIndex as ChroniclesStage;
             }
 
             return null;
         } catch (error) {
-            console.warn('Failed to parse stage data:', error);
             return null;
         }
     }, [effectiveArtifact, stageIndex]);
@@ -135,7 +137,6 @@ export const ChronicleStageCard: React.FC<ChronicleStageCardProps> = ({
     // Handle saving individual fields
     const handleSave = useCallback(async (path: string, newValue: any) => {
         if (!effectiveArtifact?.data) {
-            console.error('[ChronicleStageCard] No effective artifact data available for save');
             return;
         }
 
@@ -168,9 +169,7 @@ export const ChronicleStageCard: React.FC<ChronicleStageCardProps> = ({
                 data: updatedStage
             });
 
-            console.log('✅ [ChronicleStageCard] Save completed successfully for path:', path);
         } catch (error) {
-            console.error('❌ [ChronicleStageCard] Save failed:', { error, path, newValue, artifactId: effectiveArtifact?.id });
         }
     }, [effectiveArtifact, projectData]);
 

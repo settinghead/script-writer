@@ -392,6 +392,13 @@ function processHumanTransformPhaseOne(
             const transformNode = phaseOneNodes.get(transformId);
             if (transformNode) {
                 paths.get(pathKey)!.push(transformNode);
+
+                // Also add the output artifact to the path lineage
+                // This ensures that findLatestArtifact can find the edited artifact
+                const outputNode = phaseOneNodes.get(targetId);
+                if (outputNode) {
+                    paths.get(pathKey)!.push(outputNode);
+                }
             }
         }
     }
@@ -539,41 +546,38 @@ export function findLatestArtifact(
             // Find the deepest artifact node in the path lineage
             const artifactNodes = pathLineage.filter(node => node.type === 'artifact');
 
-            if (artifactNodes.length === 0) {
-                // No artifact nodes found in path lineage, fall back to root traversal
-            } else {
-                const deepestArtifactNode = artifactNodes.reduce((deepest, current) =>
+            if (artifactNodes.length > 0) {
+                const deepestArtifact = artifactNodes.reduce((deepest, current) =>
                     current.depth > deepest.depth ? current : deepest
                 );
-
-                // Continue traversing from the deepest artifact node to find the actual leaf
-                const finalResult = traverseToLeaf(deepestArtifactNode.artifactId, graph, new Set(), artifacts);
-
-                // Build complete lineage path without duplicates
-                const completePath = [sourceNode];
-
-                // Add artifact nodes from path lineage (excluding the deepest to avoid duplication)
-                for (const node of artifactNodes) {
-                    if (node.artifactId !== deepestArtifactNode.artifactId) {
-                        completePath.push(node);
-                    }
-                }
-
-                // Add final result lineage (this includes the deepest node)
-                completePath.push(...finalResult.lineagePath);
-
                 return {
-                    artifactId: finalResult.artifactId,
+                    artifactId: deepestArtifact.artifactId,
                     path: path,
-                    depth: finalResult.depth,
-                    lineagePath: completePath
+                    depth: deepestArtifact.depth,
+                    lineagePath: pathLineage
+                };
+            } else {
+                return {
+                    artifactId: sourceArtifactId,
+                    path: path,
+                    depth: 0,
+                    lineagePath: pathLineage
                 };
             }
+        } else {
+            // No path-specific lineage found - return original artifact for this path
+            // This is the key fix: don't traverse to deepest leaf, just return the original
+            return {
+                artifactId: sourceArtifactId,
+                path: path,
+                depth: sourceNode.depth,
+                lineagePath: [sourceNode]
+            };
         }
+    } else {
+        // No path specified, traverse from root to find deepest leaf
+        return traverseToLeaf(sourceArtifactId, graph, new Set(), artifacts);
     }
-
-    // No path-specific lineage found or no path specified, traverse from root
-    return traverseToLeaf(sourceArtifactId, graph, new Set(), artifacts);
 }
 
 /**

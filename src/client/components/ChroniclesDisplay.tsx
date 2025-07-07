@@ -170,14 +170,19 @@ export const ChroniclesDisplay: React.FC<ChroniclesDisplayProps> = ({
 
                     {/* Stages Timeline */}
                     <div>
-                        {chroniclesData.stages.map((stage, index) => (
-                            <ChronicleStageCard
-                                key={`stage-${index}`}
-                                chroniclesArtifactId={rootChroniclesArtifact?.id || ''}
-                                stagePath={`$.stages[${index}]`}
-                                stageIndex={index}
-                            />
-                        ))}
+                        {chroniclesData.stages.map((stage, index) => {
+                            const stagePath = `$.stages[${index}]`;
+                            const chroniclesArtifactId = rootChroniclesArtifact?.id || '';
+
+                            return (
+                                <ChronicleStageCard
+                                    key={`stage-${index}`}
+                                    chroniclesArtifactId={chroniclesArtifactId}
+                                    stagePath={stagePath}
+                                    stageIndex={index}
+                                />
+                            );
+                        })}
                     </div>
                 </Card>
             </div>

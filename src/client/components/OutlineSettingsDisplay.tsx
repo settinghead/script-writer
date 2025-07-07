@@ -28,8 +28,6 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
         );
 
         if (filtered.length === 0) {
-            console.log('❌ No outline settings artifacts found');
-            console.log('❌ Available schema types:', [...new Set(Array.isArray(projectData.artifacts) ? projectData.artifacts.map((a: any) => a.schema_type) : [])]);
             return [];
         }
 
