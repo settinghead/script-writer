@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { Card, Button, Typography, message, Tag, Space, InputNumber, Input } from 'antd';
 import { BulbOutlined, RightOutlined } from '@ant-design/icons';
 import { useProjectData } from '../contexts/ProjectDataContext';
@@ -31,7 +31,7 @@ export const BrainstormInputEditor: React.FC<BrainstormInputEditorProps> = ({
 
     // Find the brainstorm input artifact
     const brainstormInputArtifact = useMemo(() => {
-        if (!projectData.artifacts || projectData.artifacts.length === 0) {
+        if (!Array.isArray(projectData.artifacts) || projectData.artifacts.length === 0) {
             return null;
         }
 
@@ -44,6 +44,7 @@ export const BrainstormInputEditor: React.FC<BrainstormInputEditorProps> = ({
     // Check if this artifact is a leaf node (no transforms use it as input)
     const isLeafNode = useMemo(() => {
         if (!brainstormInputArtifact) return false;
+        if (!Array.isArray(projectData.transformInputs)) return true;
 
         // Check if any transforms use this artifact as input
         const hasDescendants = projectData.transformInputs.some(input =>
@@ -56,6 +57,7 @@ export const BrainstormInputEditor: React.FC<BrainstormInputEditorProps> = ({
     // Check if this artifact has been used to generate ideas (has descendants)
     const hasGeneratedIdeas = useMemo(() => {
         if (!brainstormInputArtifact) return false;
+        if (!Array.isArray(projectData.transformInputs)) return false;
 
         // Check if any transforms use this artifact as input
         return projectData.transformInputs.some(input =>
@@ -220,12 +222,14 @@ export const BrainstormInputEditor: React.FC<BrainstormInputEditorProps> = ({
                     borderColor: '#1890ff',
                     borderWidth: '2px'
                 }}
-                headStyle={{
-                    background: '#1a1a1a',
-                    borderBottom: '1px solid #333',
-                    color: '#fff'
+                styles={{
+                    header: {
+                        background: '#1a1a1a',
+                        borderBottom: '1px solid #333',
+                        color: '#fff'
+                    },
+                    body: { background: '#1a1a1a' }
                 }}
-                bodyStyle={{ background: '#1a1a1a' }}
             >
                 <div style={{ padding: '24px', textAlign: 'center' }}>
                     <Title level={4} style={{ color: '#fff' }}>
@@ -250,14 +254,16 @@ export const BrainstormInputEditor: React.FC<BrainstormInputEditorProps> = ({
                     borderColor: '#434343',
                     borderWidth: '1px'
                 }}
-                headStyle={{
-                    background: '#1a1a1a',
-                    borderBottom: '1px solid #333',
-                    color: '#fff',
-                    minHeight: 'auto',
-                    padding: '8px 16px'
+                styles={{
+                    header: {
+                        background: '#1a1a1a',
+                        borderBottom: '1px solid #333',
+                        color: '#fff',
+                        minHeight: 'auto',
+                        padding: '8px 16px'
+                    },
+                    body: { background: '#1a1a1a', padding: '12px 16px' }
                 }}
-                bodyStyle={{ background: '#1a1a1a', padding: '12px 16px' }}
             >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -297,12 +303,14 @@ export const BrainstormInputEditor: React.FC<BrainstormInputEditorProps> = ({
                 borderColor: '#1890ff',
                 borderWidth: '2px'
             }}
-            headStyle={{
-                background: '#1a1a1a',
-                borderBottom: '1px solid #333',
-                color: '#fff'
+            styles={{
+                header: {
+                    background: '#1a1a1a',
+                    borderBottom: '1px solid #333',
+                    color: '#fff'
+                },
+                body: { background: '#1a1a1a' }
             }}
-            bodyStyle={{ background: '#1a1a1a' }}
         >
             <div style={{ padding: '24px' }}>
                 <Title level={4} style={{ marginBottom: '24px', color: '#fff', textAlign: 'center' }}>

@@ -22,17 +22,9 @@ const IdeaCardWrapper: React.FC<{
 }> = ({ idea, index, isSelected, chosenIdea, ideaOutlines, onIdeaClick }) => {
   const projectData = useProjectData();
 
-  // Ensure we have the required fields
-  if (!idea.artifactId || !idea.originalArtifactId || !idea.artifactPath) {
-    return null;
-  }
-
   // Check if this idea has descendants (transforms using it as input)
   const hasEditableDescendants = useMemo(() => {
-    if (projectData.transformInputs === "pending") {
-      return false;
-    }
-    if (projectData.transformInputs === "error") {
+    if (projectData.transformInputs === "pending" || projectData.transformInputs === "error") {
       return false;
     }
     return projectData.transformInputs.some(input =>
@@ -50,6 +42,11 @@ const IdeaCardWrapper: React.FC<{
     (chosenIdea.editableArtifactId === idea.artifactId &&
       idea.artifactPath === '$')
   );
+
+  // Ensure we have the required fields - check after all hooks are called
+  if (!idea.artifactId || !idea.originalArtifactId || !idea.artifactPath) {
+    return null;
+  }
 
   return (
     <BrainstormIdeaEditor
@@ -89,7 +86,7 @@ export default function ProjectBrainstormPage() {
   // Extract brainstorm data using the new collection-based approach as fallback
   const { ideas: fallbackIdeas, status, progress, error, isLoading, lastSyncedAt } = useMemo(() => {
     // If we have latest ideas from the hook, use those
-    if (latestIdeas.length > 0) {
+    if (latestIdeas !== "pending" && latestIdeas !== "error" && latestIdeas.length > 0) {
       return {
         ideas: latestIdeas,
         status: 'completed' as const,
@@ -102,19 +99,6 @@ export default function ProjectBrainstormPage() {
 
     // Fallback to legacy collection-based approach
     const collections = projectData.getBrainstormCollections();
-
-    const hasAnyBrainstormData = collections.length > 0;
-
-    if (!hasAnyBrainstormData) {
-      return {
-        ideas: [],
-        status: 'idle' as const,
-        progress: 0,
-        error: null,
-        isLoading: projectData.isLoading,
-        lastSyncedAt: null
-      }
-    }
 
     if (collections === "pending") {
       return {
@@ -133,6 +117,19 @@ export default function ProjectBrainstormPage() {
         status: 'failed' as const,
         progress: 0,
         error: projectData.error?.message || null,
+        isLoading: projectData.isLoading,
+        lastSyncedAt: null
+      }
+    }
+
+    const hasAnyBrainstormData = collections.length > 0;
+
+    if (!hasAnyBrainstormData) {
+      return {
+        ideas: [],
+        status: 'idle' as const,
+        progress: 0,
+        error: null,
         isLoading: projectData.isLoading,
         lastSyncedAt: null
       }
@@ -195,24 +192,21 @@ export default function ProjectBrainstormPage() {
       isLoading: projectData.isLoading,
       lastSyncedAt
     }
-  }, [latestIdeas, projectData])
-
-
+  }, [latestIdeas, projectData.isLoading, projectData.error]);
 
   // Use the better data source
   const ideas = useMemo(() => {
-    if (latestIdeas === "pending" || latestIdeas === "error" || fallbackIdeas === "pending" || fallbackIdeas === "error") {
-      return [];
+    if (latestIdeas === "pending" || latestIdeas === "error") {
+      return fallbackIdeas;
     }
     return latestIdeas.length > 0 ? latestIdeas : fallbackIdeas;
   }, [latestIdeas, fallbackIdeas]);
+
   const isStreaming = status === 'streaming';
   const isConnecting = isLoading && ideas.length === 0;
 
   // Determine if we should show collapsed view
   const isCollapsedView = chosenIdea && !chosenIdeaLoading;
-
-
 
   // Handle idea card click - create human transform to start editing
   const handleIdeaClick = useCallback((collectionId: string, index: number) => {
@@ -220,7 +214,6 @@ export default function ProjectBrainstormPage() {
     if (chosenIdea) {
       return;
     }
-
 
     // Find the idea that was clicked
     const clickedIdea = ideas[index];
@@ -273,8 +266,6 @@ export default function ProjectBrainstormPage() {
     // Set selected idea for visual feedback during transition
     setSelectedIdea(index);
   }, [chosenIdea, ideas, projectData.createHumanTransform]);
-
-
 
   // Handle stop streaming
   const handleStop = useCallback(() => {
@@ -408,7 +399,6 @@ export default function ProjectBrainstormPage() {
             </div>
           ) : status === 'idle' ? (
             <div className="text-center py-12">
-              <h2 className="text-xl font-semibold mb-2">🤔尚未开始头脑风暴</h2>
               <p className="text-gray-400 mb-6">
                 还没有头脑风暴结果，稍等一下可能就会有
               </p>

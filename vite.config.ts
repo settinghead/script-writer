@@ -30,7 +30,7 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     hmr: {
-      protocol: 'ws',
+      protocol: 'wss',
       host: '0.0.0.0',
     },
     // Enable history API fallback for client-side routing

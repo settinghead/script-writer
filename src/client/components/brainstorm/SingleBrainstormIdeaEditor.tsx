@@ -25,6 +25,16 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
 
     // Find the editable brainstorm idea artifact and preview artifact using useMemo
     const { editableArtifactId, previewArtifactId, isEditable } = useMemo(() => {
+        // Check if data is ready
+        if (projectData.artifacts === "pending" || projectData.artifacts === "error" ||
+            projectData.transformInputs === "pending" || projectData.transformInputs === "error") {
+            return {
+                editableArtifactId: null,
+                previewArtifactId: null,
+                isEditable: false
+            };
+        }
+
         // Get all brainstorm idea artifacts that are user_input type
         const brainstormIdeaArtifacts = projectData.artifacts.filter(artifact =>
             (artifact.schema_type === 'brainstorm_idea' || artifact.type === 'brainstorm_idea') &&
@@ -34,7 +44,9 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
         // Find the one that doesn't have descendants (no transforms using it as input)
         const editableArtifacts = brainstormIdeaArtifacts.filter(artifact => {
             // Check if this artifact is used as input in any transform
-            const hasDescendants = projectData.transformInputs.some(input =>
+            // We already checked that transformInputs is an array above
+            const transformInputs = projectData.transformInputs as any[];
+            const hasDescendants = transformInputs.some(input =>
                 input.artifact_id === artifact.id
             );
             return !hasDescendants;

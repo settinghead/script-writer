@@ -136,7 +136,7 @@ export function useEffectiveBrainstormIdeas(): {
             if (projectData.artifacts === "pending" || projectData.transforms === "pending" || projectData.humanTransforms === "pending" || projectData.transformInputs === "pending" || projectData.transformOutputs === "pending") {
                 return "pending" as const;
             }
-            if (projectData.artifacts === "error" || projectData.transforms === "error" || projectData.humanTransforms || projectData.transformInputs || projectData.transformOutputs) {
+            if (projectData.artifacts === "error" || projectData.transforms === "error" || projectData.humanTransforms === "error" || projectData.transformInputs === "error" || projectData.transformOutputs === "error") {
                 return "error" as const;
             }
 
@@ -169,12 +169,13 @@ export function useEffectiveBrainstormIdeas(): {
  */
 export function useLatestBrainstormIdeas(): IdeaWithTitle[] | "pending" | "error" {
     const { ideas, isLoading, error } = useEffectiveBrainstormIdeas();
-    if (ideas === "pending" || ideas === "error") {
-        return ideas;
-    }
     const projectData = useProjectData();
 
     return useMemo(() => {
+        if (ideas === "pending" || ideas === "error") {
+            return ideas;
+        }
+
         if (isLoading) {
             return "pending" as const;
         }
