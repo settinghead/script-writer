@@ -182,13 +182,9 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
     const projectData = useProjectData();
 
     // Check if project has brainstorm input artifacts
-    const brainstormArtifact = useMemo(() => {
-        if (!projectData.artifacts || projectData.artifacts.length === 0) {
-            return null;
-        }
-
-        // Look for brainstorm_tool_input_schema artifacts
-        return projectData.artifacts.find(artifact =>
+    const getBrainstormInputArtifact = useCallback(() => {
+        if (!Array.isArray(projectData.artifacts)) return null;
+        return projectData.artifacts.find((artifact: any) =>
             artifact.type === 'brainstorm_tool_input_schema'
         );
     }, [projectData.artifacts]);
@@ -206,7 +202,7 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
     }
 
     // If brainstorm artifact exists, show editing interface
-    if (brainstormArtifact) {
+    if (getBrainstormInputArtifact()) {
         return (
             <Card
                 title="编辑头脑风暴参数"
@@ -225,7 +221,7 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
             >
                 <BrainstormEditingSection
                     projectId={projectId}
-                    brainstormArtifact={brainstormArtifact}
+                    brainstormArtifact={getBrainstormInputArtifact()}
                     onCreated={onCreated}
                 />
             </Card>

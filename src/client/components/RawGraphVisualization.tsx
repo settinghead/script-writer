@@ -451,6 +451,25 @@ const RawGraphVisualization: React.FC = () => {
 
     // Process lineage data and convert to React Flow format
     const { nodes: flowNodes, edges: flowEdges } = useMemo(() => {
+        // Handle loading/error states
+        if (projectData.artifacts === "pending" ||
+            projectData.transforms === "pending" ||
+            projectData.humanTransforms === "pending" ||
+            projectData.transformInputs === "pending" ||
+            projectData.transformOutputs === "pending" ||
+            projectData.lineageGraph === "pending") {
+            return { nodes: [], edges: [] };
+        }
+
+        if (projectData.artifacts === "error" ||
+            projectData.transforms === "error" ||
+            projectData.humanTransforms === "error" ||
+            projectData.transformInputs === "error" ||
+            projectData.transformOutputs === "error" ||
+            projectData.lineageGraph === "error") {
+            return { nodes: [], edges: [] };
+        }
+
         if (!projectData.artifacts.length) {
             return { nodes: [], edges: [] };
         }
@@ -462,22 +481,24 @@ const RawGraphVisualization: React.FC = () => {
         const edges: Edge[] = [];
 
         // Create artifact nodes
-        if (showArtifacts) {
-            projectData.artifacts.forEach((artifact) => {
+        if (showArtifacts && Array.isArray(projectData.artifacts)) {
+            projectData.artifacts.forEach((artifact: any) => {
                 // Check if this is the latest version in a lineage chain
-                const lineageNode = lineageGraph.nodes.get(artifact.id);
+                const lineageNode = lineageGraph.nodes?.get(artifact.id);
                 const isLatest = lineageNode?.isLeaf || false;
 
                 // Determine origin type by checking which transforms created this artifact
                 let originType: string | undefined;
-                const creatingTransform = projectData.transformOutputs
-                    .find(output => output.artifact_id === artifact.id);
+                if (Array.isArray(projectData.transformOutputs)) {
+                    const creatingTransform = projectData.transformOutputs
+                        .find((output: any) => output.artifact_id === artifact.id);
 
-                if (creatingTransform) {
-                    const transform = projectData.transforms
-                        .find(t => t.id === creatingTransform.transform_id);
-                    if (transform) {
-                        originType = transform.type; // 'human' or 'llm'
+                    if (creatingTransform && Array.isArray(projectData.transforms)) {
+                        const transform = projectData.transforms
+                            .find((t: any) => t.id === creatingTransform.transform_id);
+                        if (transform) {
+                            originType = transform.type; // 'human' or 'llm'
+                        }
                     }
                 }
 
@@ -496,8 +517,8 @@ const RawGraphVisualization: React.FC = () => {
         }
 
         // Create transform nodes and edges
-        if (showTransforms) {
-            projectData.transforms.forEach((transform) => {
+        if (showTransforms && Array.isArray(projectData.transforms)) {
+            projectData.transforms.forEach((transform: any) => {
                 const shouldShow =
                     (transform.type === 'human' && showHumanTransforms) ||
                     (transform.type === 'llm' && showLLMTransforms);
@@ -505,11 +526,14 @@ const RawGraphVisualization: React.FC = () => {
                 if (!shouldShow) return;
 
                 // Find associated human transform if it exists
-                const humanTransform = projectData.humanTransforms.find(ht =>
-                    projectData.transformInputs.some(ti =>
-                        ti.transform_id === transform.id && ti.artifact_id === ht.source_artifact_id
-                    )
-                );
+                let humanTransform;
+                if (Array.isArray(projectData.humanTransforms) && Array.isArray(projectData.transformInputs)) {
+                    humanTransform = projectData.humanTransforms.find((ht: any) =>
+                        Array.isArray(projectData.transformInputs) && projectData.transformInputs.some((ti: any) =>
+                            ti.transform_id === transform.id && ti.artifact_id === ht.source_artifact_id
+                        )
+                    );
+                }
 
                 nodes.push({
                     id: transform.id,
@@ -519,90 +543,97 @@ const RawGraphVisualization: React.FC = () => {
                 });
 
                 // Create edges from input artifacts to transform
-                const inputs = projectData.transformInputs.filter(ti => ti.transform_id === transform.id);
-                const edgeColor = transform.type === 'human' ? '#52c41a' : '#fa8c16'; // Green for human, orange for AI
+                if (Array.isArray(projectData.transformInputs)) {
+                    const inputs = projectData.transformInputs.filter((ti: any) => ti.transform_id === transform.id);
+                    const edgeColor = transform.type === 'human' ? '#52c41a' : '#fa8c16'; // Green for human, orange for AI
 
-                inputs.forEach((input) => {
-                    if (showArtifacts && projectData.artifacts.some(a => a.id === input.artifact_id)) {
+                    inputs.forEach((input: any) => {
+                        if (showArtifacts && Array.isArray(projectData.artifacts) && projectData.artifacts.some((a: any) => a.id === input.artifact_id)) {
+                            edges.push({
+                                id: `${input.artifact_id}-${transform.id}`,
+                                source: input.artifact_id,
+                                target: transform.id,
+                                type: 'default',
+                                style: { stroke: edgeColor, strokeWidth: 2 },
+                                markerEnd: { type: MarkerType.ArrowClosed, color: edgeColor },
+                            });
+                        }
+                    });
+                }
+
+                // Create edges from transform to output artifacts
+                if (Array.isArray(projectData.transformOutputs)) {
+                    const outputs = projectData.transformOutputs.filter((to: any) => to.transform_id === transform.id);
+                    const edgeColor = transform.type === 'human' ? '#52c41a' : '#fa8c16'; // Green for human, orange for AI
+
+                    outputs.forEach((output: any) => {
+                        if (showArtifacts && Array.isArray(projectData.artifacts) && projectData.artifacts.some((a: any) => a.id === output.artifact_id)) {
+                            edges.push({
+                                id: `${transform.id}-${output.artifact_id}`,
+                                source: transform.id,
+                                target: output.artifact_id,
+                                type: 'default',
+                                style: { stroke: edgeColor, strokeWidth: 2 },
+                                markerEnd: { type: MarkerType.ArrowClosed, color: edgeColor },
+                            });
+                        }
+                    });
+                }
+            });
+        }
+
+        // Fallback: If we have no edges but have human transforms, create edges from human transform data
+        if (edges.length === 0 && Array.isArray(projectData.humanTransforms) && projectData.humanTransforms.length > 0) {
+            projectData.humanTransforms.forEach((humanTransform: any) => {
+                // Find the corresponding transform
+                if (Array.isArray(projectData.transforms)) {
+                    const transform = projectData.transforms.find((t: any) => t.id === humanTransform.transform_id);
+                    if (!transform) return;
+
+                    const shouldShow =
+                        (transform.type === 'human' && showHumanTransforms) ||
+                        (transform.type === 'llm' && showLLMTransforms);
+                    if (!shouldShow) return;
+
+                    const edgeColor = transform.type === 'human' ? '#52c41a' : '#fa8c16'; // Green for human, orange for AI
+
+                    // Create edge from source artifact to transform (if both exist in nodes)
+                    if (humanTransform.source_artifact_id &&
+                        nodes.some(n => n.id === humanTransform.source_artifact_id) &&
+                        nodes.some(n => n.id === transform.id)) {
+
                         edges.push({
-                            id: `${input.artifact_id}-${transform.id}`,
-                            source: input.artifact_id,
+                            id: `fallback-${humanTransform.source_artifact_id}-${transform.id}`,
+                            source: humanTransform.source_artifact_id,
                             target: transform.id,
                             type: 'default',
                             style: { stroke: edgeColor, strokeWidth: 2 },
                             markerEnd: { type: MarkerType.ArrowClosed, color: edgeColor },
                         });
                     }
-                });
 
-                // Create edges from transform to output artifacts
-                const outputs = projectData.transformOutputs.filter(to => to.transform_id === transform.id);
+                    // Create edge from transform to derived artifact (if both exist in nodes)
+                    if (humanTransform.derived_artifact_id &&
+                        nodes.some(n => n.id === transform.id) &&
+                        nodes.some(n => n.id === humanTransform.derived_artifact_id)) {
 
-                outputs.forEach((output) => {
-                    if (showArtifacts && projectData.artifacts.some(a => a.id === output.artifact_id)) {
                         edges.push({
-                            id: `${transform.id}-${output.artifact_id}`,
+                            id: `fallback-${transform.id}-${humanTransform.derived_artifact_id}`,
                             source: transform.id,
-                            target: output.artifact_id,
+                            target: humanTransform.derived_artifact_id,
                             type: 'default',
                             style: { stroke: edgeColor, strokeWidth: 2 },
                             markerEnd: { type: MarkerType.ArrowClosed, color: edgeColor },
                         });
                     }
-                });
-            });
-        }
-
-        // Fallback: If we have no edges but have human transforms, create edges from human transform data
-        if (edges.length === 0 && projectData.humanTransforms.length > 0) {
-            projectData.humanTransforms.forEach((humanTransform) => {
-                // Find the corresponding transform
-                const transform = projectData.transforms.find(t => t.id === humanTransform.transform_id);
-                if (!transform) return;
-
-                const shouldShow =
-                    (transform.type === 'human' && showHumanTransforms) ||
-                    (transform.type === 'llm' && showLLMTransforms);
-                if (!shouldShow) return;
-
-                const edgeColor = transform.type === 'human' ? '#52c41a' : '#fa8c16'; // Green for human, orange for AI
-
-                // Create edge from source artifact to transform (if both exist in nodes)
-                if (humanTransform.source_artifact_id &&
-                    nodes.some(n => n.id === humanTransform.source_artifact_id) &&
-                    nodes.some(n => n.id === transform.id)) {
-
-                    edges.push({
-                        id: `fallback-${humanTransform.source_artifact_id}-${transform.id}`,
-                        source: humanTransform.source_artifact_id,
-                        target: transform.id,
-                        type: 'default',
-                        style: { stroke: edgeColor, strokeWidth: 2 },
-                        markerEnd: { type: MarkerType.ArrowClosed, color: edgeColor },
-                    });
-                }
-
-                // Create edge from transform to derived artifact (if both exist in nodes)
-                if (humanTransform.derived_artifact_id &&
-                    nodes.some(n => n.id === transform.id) &&
-                    nodes.some(n => n.id === humanTransform.derived_artifact_id)) {
-
-                    edges.push({
-                        id: `fallback-${transform.id}-${humanTransform.derived_artifact_id}`,
-                        source: transform.id,
-                        target: humanTransform.derived_artifact_id,
-                        type: 'default',
-                        style: { stroke: edgeColor, strokeWidth: 2 },
-                        markerEnd: { type: MarkerType.ArrowClosed, color: edgeColor },
-                    });
                 }
             });
         }
 
         // Additional fallback: Use lineage graph relationships to create edges
-        if (edges.length === 0) {
-            lineageGraph.edges.forEach((targetIds, sourceId) => {
-                targetIds.forEach((targetId) => {
+        if (edges.length === 0 && lineageGraph.edges) {
+            lineageGraph.edges.forEach((targetIds: any, sourceId: any) => {
+                targetIds.forEach((targetId: any) => {
                     const sourceExists = nodes.some(n => n.id === sourceId);
                     const targetExists = nodes.some(n => n.id === targetId);
 
@@ -627,6 +658,7 @@ const RawGraphVisualization: React.FC = () => {
         projectData.humanTransforms,
         projectData.transformInputs,
         projectData.transformOutputs,
+        projectData.lineageGraph,
         showArtifacts,
         showTransforms,
         showHumanTransforms,

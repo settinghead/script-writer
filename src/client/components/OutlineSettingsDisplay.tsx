@@ -22,14 +22,15 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
 
     // Get outline settings artifacts
     const outlineSettingsArtifacts = useMemo(() => {
-        const filtered = projectData.artifacts.filter(artifact =>
-            artifact.schema_type === 'outline_settings_schema' &&
-            artifact.data
+        if (!Array.isArray(projectData.artifacts)) return [];
+        const filtered = projectData.artifacts.filter((artifact: any) =>
+            artifact.schema_type === 'outline_settings_schema' || artifact.type === 'outline_settings'
         );
 
-        console.log('🔍 [OutlineSettingsDisplay] Found outline_settings artifacts:', filtered.length);
         if (filtered.length === 0) {
-            console.log('❌ Available schema types:', [...new Set(projectData.artifacts.map(a => a.schema_type))]);
+            console.log('❌ No outline settings artifacts found');
+            console.log('❌ Available schema types:', [...new Set(Array.isArray(projectData.artifacts) ? projectData.artifacts.map((a: any) => a.schema_type) : [])]);
+            return [];
         }
 
         return filtered;
@@ -37,22 +38,10 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
 
     // Find the ROOT outline settings artifact (AI-generated) for lineage resolution
     const rootOutlineArtifact = useMemo(() => {
-        if (outlineSettingsArtifacts.length === 0) return null;
-
-        // Find the AI-generated artifact (should be the root of the lineage chain)
-        const aiGenerated = outlineSettingsArtifacts.find(artifact =>
+        const aiGenerated = outlineSettingsArtifacts.find((artifact: any) =>
             artifact.origin_type === 'ai_generated'
         );
-
-        if (aiGenerated) {
-            return aiGenerated;
-        }
-
-        // Fallback: if no AI-generated found, sort by creation time and get the earliest
-        const sorted = [...outlineSettingsArtifacts].sort((a, b) =>
-            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-        );
-        return sorted[0];
+        return aiGenerated || outlineSettingsArtifacts[0];
     }, [outlineSettingsArtifacts]);
 
     // Find the latest version of the outline settings artifact (not its descendants)
@@ -60,11 +49,15 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
         if (!rootOutlineArtifact) return null;
 
         // Look for human transforms that edit this outline settings artifact
-        const humanEditTransforms = projectData.humanTransforms.filter(ht => {
+        if (!Array.isArray(projectData.humanTransforms)) return rootOutlineArtifact;
+        if (!Array.isArray(projectData.transformInputs)) return rootOutlineArtifact;
+
+        const humanEditTransforms = projectData.humanTransforms.filter((ht: any) => {
             // Find transform inputs for this human transform
-            const inputs = projectData.transformInputs.filter(ti => ti.transform_id === ht.transform_id);
+            if (!Array.isArray(projectData.transformInputs)) return false;
+            const inputs = projectData.transformInputs.filter((ti: any) => ti.transform_id === ht.transform_id);
             // Check if any input references our root outline artifact
-            return inputs.some(input => input.artifact_id === rootOutlineArtifact.id);
+            return inputs.some((input: any) => input.artifact_id === rootOutlineArtifact.id);
         });
 
         if (humanEditTransforms.length === 0) {
@@ -73,14 +66,15 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
         }
 
         // Find the latest human edit transform
-        const latestEditTransform = humanEditTransforms.sort((a, b) => {
-            const aDate = typeof a.created_at === 'string' ? new Date(a.created_at) : new Date();
-            const bDate = typeof b.created_at === 'string' ? new Date(b.created_at) : new Date();
-            return bDate.getTime() - aDate.getTime();
+        const latestEditTransform = humanEditTransforms.sort((a: any, b: any) => {
+            const dateA = new Date(a.created_at || 0).getTime();
+            const dateB = new Date(b.created_at || 0).getTime();
+            return dateB - dateA;
         })[0];
 
         // Find the output artifact of this transform
-        const outputRecord = projectData.transformOutputs.find(to =>
+        if (!Array.isArray(projectData.transformOutputs)) return null;
+        const outputRecord = projectData.transformOutputs.find((to: any) =>
             to.transform_id === latestEditTransform.transform_id
         );
 
@@ -88,7 +82,6 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
             const editedArtifact = projectData.getArtifactById(outputRecord.artifact_id);
             // Verify it's still an outline settings artifact
             if (editedArtifact?.schema_type === 'outline_settings_schema') {
-                console.log('🔍 [OutlineSettingsDisplay] Using edited version:', editedArtifact.id);
                 return editedArtifact;
             }
         }
@@ -99,10 +92,6 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
 
     const isLoading = projectData.isLoading;
 
-
-
-
-
     // Use the latest outline settings artifact as the effective artifact
     const effectiveArtifact = latestOutlineSettingsArtifact;
 
@@ -112,7 +101,9 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
 
         // Check if it's a user_input type (editable) and is a leaf node (no descendants)
         const isUserInput = effectiveArtifact.origin_type === 'user_input';
-        const hasDescendants = projectData.transformInputs.some(input =>
+        if (!Array.isArray(projectData.transformInputs)) return isUserInput;
+
+        const hasDescendants = projectData.transformInputs.some((input: any) =>
             input.artifact_id === effectiveArtifact.id
         );
 
@@ -124,7 +115,9 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
         if (!effectiveArtifact) return false;
 
         // Check if the effective artifact has descendants
-        const hasDescendants = projectData.transformInputs.some(input =>
+        if (!Array.isArray(projectData.transformInputs)) return true;
+
+        const hasDescendants = projectData.transformInputs.some((input: any) =>
             input.artifact_id === effectiveArtifact.id
         );
 
@@ -136,12 +129,14 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
         if (!effectiveArtifact) return false;
 
         // Find the transform that created this artifact
-        const outputRecord = projectData.transformOutputs.find(output =>
+        if (!Array.isArray(projectData.transformOutputs)) return false;
+        const outputRecord = projectData.transformOutputs.find((output: any) =>
             output.artifact_id === effectiveArtifact.id
         );
 
         if (outputRecord) {
-            const transform = projectData.transforms.find(t => t.id === outputRecord.transform_id);
+            if (!Array.isArray(projectData.transforms)) return false;
+            const transform = projectData.transforms.find((t: any) => t.id === outputRecord.transform_id);
             return transform?.status === 'failed';
         }
 
@@ -154,10 +149,7 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
             return null;
         }
 
-        console.log('🔍 [OutlineSettingsDisplay] Artifact schema_type:', effectiveArtifact?.schema_type);
-
         if (effectiveArtifact.schema_type !== 'outline_settings_schema') {
-            console.log('❌ [OutlineSettingsDisplay] Wrong artifact type! Expected outline_settings_schema, got:', effectiveArtifact.schema_type);
             return null;
         }
 
@@ -169,10 +161,8 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                 data = JSON.parse(data);
             }
 
-            console.log('✅ [OutlineSettingsDisplay] Successfully parsed outline settings data');
             return data as OutlineSettingsOutput;
         } catch (error) {
-            console.error('❌ [OutlineSettingsDisplay] Failed to parse outline settings data:', error);
             return null;
         }
     }, [effectiveArtifact]);
@@ -184,7 +174,6 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
     useEffect(() => {
         outlineSettingsRef.current = outlineSettings;
     }, [outlineSettings]);
-
 
     // Check for chronicles descendants (use effectiveArtifact ID for the check)
     const { hasChroniclesDescendants, latestChronicles, isLoading: chroniclesLoading } = useChroniclesDescendants(
@@ -207,7 +196,7 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                 message.success('开始编辑剧本框架');
             },
             onError: (error) => {
-                console.error('[OutlineSettingsDisplay] Human transform creation failed:', error);
+
                 setIsCreatingTransform(false);
                 message.error(`创建编辑版本失败: ${error.message}`);
             }
@@ -254,7 +243,6 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
         e.stopPropagation(); // Prevent event bubbling to card container
         if (!effectiveArtifact?.id || chroniclesGenerationMutation.isPending) return;
 
-
         chroniclesGenerationMutation.mutate({
             sourceArtifactId: effectiveArtifact.id
         });
@@ -283,16 +271,12 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
 
     // Handle saving individual fields
     const handleSave = useCallback(async (path: string, newValue: any) => {
-
-
         // Always get the current effective artifact to avoid stale closures
         const currentArtifact = effectiveArtifact;
 
         if (!currentArtifact?.data) {
-            console.error('[OutlineSettingsDisplay] No current artifact data available for save');
             return;
         }
-
 
         try {
             // Parse current data fresh to avoid stale state
@@ -366,20 +350,14 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                 }
             }
 
-
-
             await projectData.updateArtifact.mutateAsync({
                 artifactId: currentArtifact.id,
                 data: updatedSettings
             });
 
-            console.log('✅ [OutlineSettingsDisplay] Save completed successfully for path:', path);
         } catch (error) {
-            console.error('❌ [OutlineSettingsDisplay] Save failed:', { error, path, newValue, artifactId: currentArtifact?.id });
         }
     }, [effectiveArtifact, projectData]);
-
-
 
     // Loading state
     if (isLoading) {

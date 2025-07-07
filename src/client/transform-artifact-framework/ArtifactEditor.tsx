@@ -238,7 +238,7 @@ const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
         if (humanTransforms.length > 0) {
             // Use the derived artifact from the latest human transform
             const latestTransform = humanTransforms[humanTransforms.length - 1];
-            if (latestTransform.derived_artifact_id) {
+            if (typeof latestTransform !== 'string' && latestTransform.derived_artifact_id) {
                 targetArtifact = projectData.getArtifactById(latestTransform.derived_artifact_id);
             }
         } else {

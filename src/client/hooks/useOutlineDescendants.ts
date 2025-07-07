@@ -54,10 +54,9 @@ export function useOutlineDescendants(brainstormArtifactId: string): UseOutlineD
             const outlineDescendants: OutlineDescendant[] = [];
 
             // Get all outline artifacts
-            const outlineArtifacts = projectData.artifacts.filter(artifact =>
-                artifact.schema_type === 'outline_schema' ||
-                artifact.type === 'outline_response' ||
-                artifact.type === 'outline'
+            if (!Array.isArray(projectData.artifacts)) return { hasOutlineDescendants: false, outlineDescendants: [], latestOutline: null, isLoading: false, error: null };
+            const outlineArtifacts = projectData.artifacts.filter((artifact: any) =>
+                artifact.schema_type === 'outline_response_schema' || artifact.type === 'outline_response'
             );
 
             // For each outline artifact, trace back through the lineage to see if it connects to our brainstorm idea

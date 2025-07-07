@@ -65,11 +65,11 @@ const RawAgentContext: React.FC<RawAgentContextProps> = ({ projectId }) => {
         const generateContext = async () => {
             try {
                 const context = await prepareAgentPromptContext({
-                    artifacts,
-                    transforms,
-                    humanTransforms,
-                    transformInputs,
-                    transformOutputs
+                    artifacts: Array.isArray(artifacts) ? artifacts : [],
+                    transforms: Array.isArray(transforms) ? transforms : [],
+                    humanTransforms: Array.isArray(humanTransforms) ? humanTransforms : [],
+                    transformInputs: Array.isArray(transformInputs) ? transformInputs : [],
+                    transformOutputs: Array.isArray(transformOutputs) ? transformOutputs : []
                 }, projectId);
                 setAgentContext(context);
             } catch (error) {

@@ -29,12 +29,12 @@ const ProjectContentRenderer: React.FC<{ projectId: string }> = ({ projectId }) 
 
     // Check if project has brainstorm input artifacts
     const hasBrainstormInput = useMemo(() => {
-        if (!projectData.artifacts || projectData.artifacts.length === 0) {
+        if (!Array.isArray(projectData.artifacts) || projectData.artifacts.length === 0) {
             return false;
         }
 
         // Look for brainstorm_tool_input_schema artifacts
-        return projectData.artifacts.some(artifact =>
+        return projectData.artifacts.some((artifact: any) =>
             artifact.type === 'brainstorm_tool_input_schema'
         );
     }, [projectData.artifacts]);
@@ -290,6 +290,8 @@ const ProjectLayout: React.FC = () => {
     const ChatSidebarContent = () => (
         <ChatSidebarWrapper projectId={projectId!} />
     );
+
+
 
     return (
         <ProjectDataProvider projectId={projectId!}>
