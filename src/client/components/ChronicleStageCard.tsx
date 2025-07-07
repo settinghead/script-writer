@@ -104,13 +104,24 @@ export const ChronicleStageCard: React.FC<ChronicleStageCardProps> = ({
         }
         if (!effectiveArtifact) return false;
 
-        // Check if the effective artifact has descendants
-        const hasDescendants = projectData.transformInputs.some(input =>
-            input.artifact_id === effectiveArtifact.id
-        );
+        // A stage can become editable if:
+        // 1. It's not already editable, AND
+        // 2. This specific stage path hasn't been edited yet (no path-specific lineage)
 
-        return !hasDescendants;
-    }, [effectiveArtifact, projectData.transformInputs]);
+        // If we already resolved to a user_input artifact for this stage, it means this stage path
+        // has already been edited and we can't create another edit
+        if (effectiveArtifact.origin_type === 'user_input' && effectiveArtifact.schema_type === 'chronicle_stage_schema') {
+            return false;
+        }
+
+        // If we resolved to the original chronicles artifact, this stage path hasn't been edited yet
+        // and can become editable (regardless of whether other stage paths have been edited)
+        if (effectiveArtifact.schema_type === 'chronicles_schema' && effectiveArtifact.origin_type === 'ai_generated') {
+            return true;
+        }
+
+        return false;
+    }, [effectiveArtifact]);
 
     // Handle creating an editable version of this stage
     const handleCreateEditableVersion = useCallback(() => {
