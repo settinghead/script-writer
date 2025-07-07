@@ -30,6 +30,9 @@ export function useChosenBrainstormIdea(): {
 
         try {
             // Look directly at human transforms for brainstorm idea editing
+            if (projectData.humanTransforms === "pending" || projectData.humanTransforms === "error") {
+                return { chosenIdea: null, isLoading: false, error: null };
+            }
 
             for (const humanTransform of projectData.humanTransforms) {
 
@@ -83,13 +86,10 @@ export function useChosenBrainstormIdea(): {
         }
     }, [
         projectData.isLoading,
-        projectData.artifacts,
-        projectData.transforms,
         projectData.humanTransforms,
-        projectData.transformInputs,
-        projectData.transformOutputs,
-        projectData.getHumanTransformsForArtifact,
-        projectData.getArtifactById
+        // Remove unstable function references from dependencies
+        // The getArtifactById function should be stable, but we'll rely on the artifacts array instead
+        projectData.artifacts
     ]);
 
     return result;
