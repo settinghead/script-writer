@@ -37,7 +37,7 @@ interface UseLineageResolutionResult {
  * @returns Lineage resolution result with latest artifact ID
  */
 export function useLineageResolution(
-    { sourceArtifactId, path, options }: { sourceArtifactId: string | null; path: string; options: UseLineageResolutionOptions; }): UseLineageResolutionResult {
+    { sourceArtifactId, path, options }: { sourceArtifactId: string | null; path: string; options: UseLineageResolutionOptions; }): UseLineageResolutionResult | "pending" | "error" {
     const { enabled } = options;
     const projectData = useProjectData();
 
@@ -45,7 +45,7 @@ export function useLineageResolution(
     const [isProcessing, setIsProcessing] = useState(false);
 
     // Use the globally shared lineage graph from context
-    const lineageResult = useMemo((): LineageResolutionResult => {
+    const lineageResult = useMemo((): LineageResolutionResult | "pending" | "error" => {
         // Return early if disabled, no source artifact, or graph not ready
         if (!enabled || !sourceArtifactId || !projectData.lineageGraph) {
             return {
@@ -61,6 +61,12 @@ export function useLineageResolution(
             setIsProcessing(true);
 
             // Resolve the latest artifact for the given path using the shared graph
+            if (projectData.lineageGraph === "pending") {
+                return "pending" as const;
+            }
+            if (projectData.lineageGraph === "error" || projectData.artifacts === "pending" || projectData.artifacts === "error") {
+                return "error" as const;
+            }
             const result = findLatestArtifact(sourceArtifactId, path, projectData.lineageGraph, projectData.artifacts);
 
             setIsProcessing(false);
@@ -86,6 +92,13 @@ export function useLineageResolution(
     const isLoading = projectData.isLoading || isProcessing;
 
     // Extract results
+
+    if (lineageResult === "pending") {
+        return "pending" as const;
+    }
+    if (lineageResult === "error") {
+        return "error" as const;
+    }
     const latestArtifactId = lineageResult.artifactId;
     const hasLineage = lineageResult.lineagePath.length > 1; // More than just the source node
 
@@ -106,20 +119,26 @@ export function useLineageResolution(
  * This replaces the patchy approach with proper graph-based resolution
  */
 export function useEffectiveBrainstormIdeas(): {
-    ideas: EffectiveBrainstormIdea[];
+    ideas: EffectiveBrainstormIdea[] | "pending" | "error";
     isLoading: boolean;
     error: Error | null;
 } {
     const projectData = useProjectData();
     const [error, setError] = useState<Error | null>(null);
 
-    const ideas = useMemo((): EffectiveBrainstormIdea[] => {
+    const ideas = useMemo((): EffectiveBrainstormIdea[] | "pending" | "error" => {
         if (projectData.isLoading) {
             return [];
         }
 
         try {
             setError(null);
+            if (projectData.artifacts === "pending" || projectData.transforms === "pending" || projectData.humanTransforms === "pending" || projectData.transformInputs === "pending" || projectData.transformOutputs === "pending") {
+                return "pending" as const;
+            }
+            if (projectData.artifacts === "error" || projectData.transforms === "error" || projectData.humanTransforms || projectData.transformInputs || projectData.transformOutputs) {
+                return "error" as const;
+            }
 
             // Use the pure function to extract effective brainstorm ideas
             return extractEffectiveBrainstormIdeas(
@@ -148,13 +167,23 @@ export function useEffectiveBrainstormIdeas(): {
 /**
  * Hook to get effective brainstorm ideas using principled lineage graph traversal
  */
-export function useLatestBrainstormIdeas(): IdeaWithTitle[] {
+export function useLatestBrainstormIdeas(): IdeaWithTitle[] | "pending" | "error" {
     const { ideas, isLoading, error } = useEffectiveBrainstormIdeas();
+    if (ideas === "pending" || ideas === "error") {
+        return ideas;
+    }
     const projectData = useProjectData();
 
     return useMemo(() => {
-        if (isLoading || error) {
-            return [];
+        if (isLoading) {
+            return "pending" as const;
+        }
+
+        if (error) {
+            return "error" as const;
+        }
+        if (projectData.artifacts === "pending" || projectData.artifacts === "error") {
+            return "pending" as const;
         }
 
         // Use the pure function to convert EffectiveBrainstormIdea[] to IdeaWithTitle[]
@@ -167,20 +196,23 @@ export function useLatestBrainstormIdeas(): IdeaWithTitle[] {
  * This represents the main workflow path from brainstorm to outline to episodes
  */
 export function useWorkflowNodes(): {
-    workflowNodes: WorkflowNode[];
+    workflowNodes: WorkflowNode[] | "pending" | "error";
     isLoading: boolean;
     error: Error | null;
 } {
     const projectData = useProjectData();
     const [error, setError] = useState<Error | null>(null);
 
-    const workflowNodes = useMemo((): WorkflowNode[] => {
-        if (!projectData.lineageGraph) {
-            return [];
+    const workflowNodes = useMemo((): WorkflowNode[] | "pending" | "error" => {
+        if (!projectData.lineageGraph || projectData.lineageGraph === "pending") {
+            return "pending" as const;
         }
 
         try {
             setError(null);
+            if (projectData.artifacts === "pending" || projectData.artifacts === "error" || projectData.lineageGraph === "error") {
+                return "error" as const;
+            }
 
             // Use the globally shared lineage graph to get workflow nodes
             return findMainWorkflowPath(projectData.artifacts, projectData.lineageGraph);
@@ -189,7 +221,7 @@ export function useWorkflowNodes(): {
             const error = err instanceof Error ? err : new Error('Workflow nodes computation failed');
             console.error('[useWorkflowNodes] Error:', error);
             setError(error);
-            return [];
+            return "pending" as const;
         }
     }, [projectData.lineageGraph, projectData.artifacts]);
 

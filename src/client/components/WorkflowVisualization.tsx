@@ -201,7 +201,6 @@ const createWorkflowEdges = (workflowNodes: WorkflowNode[]): Edge[] => {
 const WorkflowVisualization: React.FC<WorkflowVisualizationProps> = ({
     width = 300
 }) => {
-    console.log('[WorkflowVisualization] Component rendering');
 
     // Get real workflow data
     const { workflowNodes, isLoading, error } = useWorkflowNodes();
@@ -216,19 +215,20 @@ const WorkflowVisualization: React.FC<WorkflowVisualizationProps> = ({
 
     // Convert workflow nodes to ReactFlow format
     const reactFlowNodes = useMemo(() => {
-        console.log('[WorkflowVisualization] Creating nodes with currentSection:', currentSection);
+        if (workflowNodes === "pending" || workflowNodes === "error") {
+            return [];
+        }
         return workflowNodes.map(workflowNode => {
             const node = createReactFlowNode(workflowNode, currentSection);
-            console.log(`[WorkflowVisualization] Node ${workflowNode.title} (${workflowNode.navigationTarget}):`, {
-                shouldHighlight: workflowNode.navigationTarget && currentSection,
-                workflowNode,
-                currentSection
-            });
+
             return node;
         });
     }, [workflowNodes, currentSection]);
 
     const reactFlowEdges = useMemo(() => {
+        if (workflowNodes === "pending" || workflowNodes === "error") {
+            return [];
+        }
         return createWorkflowEdges(workflowNodes);
     }, [workflowNodes]);
 
@@ -255,6 +255,9 @@ const WorkflowVisualization: React.FC<WorkflowVisualizationProps> = ({
 
     // Handle node clicks for navigation
     const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
+        if (workflowNodes === "pending" || workflowNodes === "error") {
+            return;
+        }
         const workflowNode = workflowNodes.find(wn => wn.id === node.id);
         if (workflowNode?.navigationTarget) {
             // First try to scroll to existing element on current page

@@ -23,20 +23,29 @@ export const ChronicleStageCard: React.FC<ChronicleStageCardProps> = ({
     const [isCreatingTransform, setIsCreatingTransform] = useState(false);
 
     // Resolve lineage for this specific stage
-    const {
-        latestArtifactId,
-        hasLineage,
-        isLoading,
-        error
-    } = useLineageResolution({
+    const resolutionResult = useLineageResolution({
         sourceArtifactId: chroniclesArtifactId,
         path: stagePath,
         options: { enabled: !!chroniclesArtifactId }
     });
 
+    if (resolutionResult === "pending" || resolutionResult === "error") {
+        return null;
+    }
+
+    const {
+        latestArtifactId,
+        hasLineage,
+        isLoading,
+        error
+    } = resolutionResult;
+
     // Get the effective artifact (either original or edited version)
     const effectiveArtifact = useMemo(() => {
         if (!latestArtifactId) return null;
+        if (projectData.artifacts === "pending" || projectData.artifacts === "error") {
+            return null;
+        }
         return projectData.artifacts.find(a => a.id === latestArtifactId);
     }, [latestArtifactId, projectData.artifacts]);
 
@@ -66,6 +75,9 @@ export const ChronicleStageCard: React.FC<ChronicleStageCardProps> = ({
 
     // Determine if the current stage is editable
     const isEditable = useMemo(() => {
+        if (projectData.transformInputs === "pending" || projectData.transformInputs === "error") {
+            return false;
+        }
         if (!effectiveArtifact) return false;
 
         // Only editable if:
@@ -85,6 +97,9 @@ export const ChronicleStageCard: React.FC<ChronicleStageCardProps> = ({
 
     // Check if the stage can be made editable
     const canBecomeEditable = useMemo(() => {
+        if (projectData.transformInputs === "pending" || projectData.transformInputs === "error") {
+            return false;
+        }
         if (!effectiveArtifact) return false;
 
         // Check if the effective artifact has descendants

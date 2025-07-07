@@ -29,6 +29,12 @@ const IdeaCardWrapper: React.FC<{
 
   // Check if this idea has descendants (transforms using it as input)
   const hasEditableDescendants = useMemo(() => {
+    if (projectData.transformInputs === "pending") {
+      return false;
+    }
+    if (projectData.transformInputs === "error") {
+      return false;
+    }
     return projectData.transformInputs.some(input =>
       input.artifact_id === idea.artifactId
     );
@@ -110,6 +116,28 @@ export default function ProjectBrainstormPage() {
       }
     }
 
+    if (collections === "pending") {
+      return {
+        ideas: [],
+        status: 'idle' as const,
+        progress: 0,
+        error: null,
+        isLoading: projectData.isLoading,
+        lastSyncedAt: null
+      }
+    }
+
+    if (collections === "error") {
+      return {
+        ideas: [],
+        status: 'failed' as const,
+        progress: 0,
+        error: projectData.error?.message || null,
+        isLoading: projectData.isLoading,
+        lastSyncedAt: null
+      }
+    }
+
     // Convert brainstorm data to IdeaWithTitle format
     let ideas: IdeaWithTitle[] = []
     let status: 'idle' | 'streaming' | 'completed' | 'failed' = 'completed'
@@ -169,8 +197,15 @@ export default function ProjectBrainstormPage() {
     }
   }, [latestIdeas, projectData])
 
+
+
   // Use the better data source
-  const ideas = latestIdeas.length > 0 ? latestIdeas : fallbackIdeas;
+  const ideas = useMemo(() => {
+    if (latestIdeas === "pending" || latestIdeas === "error" || fallbackIdeas === "pending" || fallbackIdeas === "error") {
+      return [];
+    }
+    return latestIdeas.length > 0 ? latestIdeas : fallbackIdeas;
+  }, [latestIdeas, fallbackIdeas]);
   const isStreaming = status === 'streaming';
   const isConnecting = isLoading && ideas.length === 0;
 
@@ -185,6 +220,7 @@ export default function ProjectBrainstormPage() {
     if (chosenIdea) {
       return;
     }
+
 
     // Find the idea that was clicked
     const clickedIdea = ideas[index];

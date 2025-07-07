@@ -83,6 +83,16 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
 
     // Strict artifact-based checks
     const artifactChecks = useMemo(() => {
+        if (projectData.artifacts === "pending" || projectData.artifacts === "error") {
+            return {
+                hasBrainstormIdeas: false,
+                hasBrainstormInput: false,
+                hasEditableBrainstormIdea: false,
+                hasOutlineSettings: false,
+                hasChronicles: false
+            };
+        }
+
         // Check for brainstorm artifacts
         const hasBrainstormIdeas = ideas.length > 0;
 
@@ -134,6 +144,15 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
             const brainstormHighlighted = shouldHighlightNode('#brainstorm-ideas');
             const brainstormChildren: ProjectTreeNode[] = [];
 
+            if (ideas === "pending" || ideas === "error") {
+                return sections;
+            }
+
+            const artifacts = projectData.artifacts;
+            if (artifacts === "pending" || artifacts === "error") {
+                return sections;
+            }
+
             // Add individual brainstorm ideas as children
             ideas.forEach((idea, index) => {
                 let ideaTitle = `创意 ${index + 1}`;
@@ -141,7 +160,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                 let isEdited = false;
 
                 try {
-                    const artifact = projectData.artifacts.find(a => a.id === idea.artifactId);
+                    const artifact = artifacts.find(a => a.id === idea.artifactId);
                     if (artifact) {
                         const data = JSON.parse(artifact.data);
                         if (idea.artifactPath === '$') {

@@ -33,16 +33,25 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
     mode: overrideMode
 }) => {
     const projectData = useProjectData();
+    const artifacts = projectData.artifacts;
+    const transforms = projectData.transforms;
+    const transformInputs = projectData.transformInputs;
+    const transformOutputs = projectData.transformOutputs;
+    const getArtifactById = projectData.getArtifactById;
 
     // Find the deepest/latest artifact of the specified schema type
     const latestArtifact = useMemo(() => {
+        if (artifacts === "pending" || artifacts === "error" || transformInputs === "pending" || transformInputs === "error" || transformOutputs === "pending" || transformOutputs === "error") {
+            return null;
+        }
+
         if (artifactId) {
             // Use provided artifact ID
-            return projectData.getArtifactById(artifactId);
+            return getArtifactById(artifactId);
         }
 
         // Find all artifacts of the specified schema type
-        const matchingArtifacts = projectData.artifacts.filter(artifact =>
+        const matchingArtifacts = artifacts.filter(artifact =>
             artifact.schema_type === schemaType
         );
 
@@ -52,7 +61,7 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
 
         // For each artifact, check if it has descendants (is used as input to other transforms)
         const artifactsWithDescendantInfo = matchingArtifacts.map(artifact => {
-            const hasDescendants = projectData.transformInputs.some(input =>
+            const hasDescendants = transformInputs.some(input =>
                 input.artifact_id === artifact.id
             );
             return { artifact, hasDescendants };
@@ -74,7 +83,7 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
         return matchingArtifacts[0];
-    }, [schemaType, artifactId, projectData.artifacts, projectData.transformInputs, projectData.getArtifactById]);
+    }, [schemaType, artifactId, artifacts, transformInputs, getArtifactById]);
 
     // Determine the mode based on transform status
     const detectedMode = useMemo(() => {
@@ -84,17 +93,23 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
 
         if (!latestArtifact) {
             // No artifact exists, check if there's a running transform that would produce this type
-            const runningTransforms = projectData.transforms.filter(transform =>
+            if (transforms === "pending" || transforms === "error") {
+                return 'loading';
+            }
+            const runningTransforms = transforms.filter(transform =>
                 transform.status === 'running' || transform.status === 'pending'
             );
 
             // Check if any running transform would produce this schema type
             const hasRunningTransformForType = runningTransforms.some(transform => {
-                const outputs = projectData.transformOutputs.filter(output =>
+                if (transformOutputs === "pending" || transformOutputs === "error") {
+                    return false;
+                }
+                const outputs = transformOutputs.filter(output =>
                     output.transform_id === transform.id
                 );
                 return outputs.some(output => {
-                    const outputArtifact = projectData.getArtifactById(output.artifact_id);
+                    const outputArtifact = getArtifactById(output.artifact_id);
                     return outputArtifact?.schema_type === schemaType;
                 });
             });
@@ -103,8 +118,8 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
                 return 'loading';
             }
 
-            // Check if there are any failed transforms that should have produced this type
-            const failedTransforms = projectData.transforms.filter(transform =>
+
+            const failedTransforms = transforms.filter(transform =>
                 transform.status === 'failed'
             );
 
@@ -127,13 +142,17 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
             return 'normal';
         }
 
+        if (transforms === "pending" || transforms === "error" || transformOutputs === "pending" || transformOutputs === "error") {
+            return 'loading';
+        }
+
         // Artifact exists, check the transform that created it
-        const creatingTransformOutput = projectData.transformOutputs.find(output =>
+        const creatingTransformOutput = transformOutputs.find(output =>
             output.artifact_id === latestArtifact.id
         );
 
         if (creatingTransformOutput) {
-            const creatingTransform = projectData.transforms.find(transform =>
+            const creatingTransform = transforms.find(transform =>
                 transform.id === creatingTransformOutput.transform_id
             );
 
@@ -152,12 +171,16 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
 
         // Check if there are any running transforms that use this artifact as input
         // (indicating an update/edit is in progress)
-        const runningTransformsUsingArtifact = projectData.transforms.filter(transform => {
+        const runningTransformsUsingArtifact = transforms.filter(transform => {
             if (transform.status !== 'running' && transform.status !== 'pending') {
                 return false;
             }
 
-            const inputs = projectData.transformInputs.filter(input =>
+            if (transformInputs === "pending" || transformInputs === "error") {
+                return false;
+            }
+
+            const inputs = transformInputs.filter(input =>
                 input.transform_id === transform.id
             );
             return inputs.some(input => input.artifact_id === latestArtifact.id);
@@ -168,7 +191,7 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
         }
 
         return 'normal';
-    }, [overrideMode, latestArtifact, projectData.transforms, projectData.transformOutputs, projectData.transformInputs, projectData.getArtifactById, schemaType]);
+    }, [overrideMode, latestArtifact, transforms, transformOutputs, transformInputs, getArtifactById, schemaType]);
 
     // Generate section ID
     const finalSectionId = sectionId || `section-${schemaType.replace('_schema', '').replace('_', '-')}`;

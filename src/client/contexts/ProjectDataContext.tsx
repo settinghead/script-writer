@@ -359,16 +359,10 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
     }, [artifacts, localUpdates]);
 
     // Memoized lineage graph computation
-    const lineageGraph = useMemo<LineageGraph>(() => {
+    const lineageGraph = useMemo<LineageGraph | "pending">(() => {
         if (!artifacts || !transforms || !humanTransforms || !transformInputs || !transformOutputs) {
-            return {
-                nodes: new Map(),
-                edges: new Map(),
-                paths: new Map(),
-                rootNodes: new Set()
-            };
+            return "pending" as const;
         }
-
 
 
 
@@ -400,6 +394,9 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
         },
 
         getLatestVersionForPath: (artifactId: string, artifactPath: string) => {
+            if (lineageGraph === "pending") {
+                return null;
+            }
             return getLatestVersionForPath(artifactId, artifactPath, lineageGraph);
         },
 
@@ -430,6 +427,9 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
             if (!artifact) return undefined;
 
             // Add lineage information
+            if (lineageGraph === "pending") {
+                return artifact;
+            }
             const artifactsWithLineage = addLineageToArtifacts([artifact], lineageGraph);
             return artifactsWithLineage[0];
         },

@@ -506,13 +506,13 @@ export interface HumanTransformRequest {
 // Project Data Context interface
 export interface ProjectDataContextType {
     // Data subscriptions
-    artifacts: ElectricArtifact[];
-    transforms: ElectricTransform[];
-    humanTransforms: ElectricHumanTransform[];
-    transformInputs: ElectricTransformInput[];
-    transformOutputs: ElectricTransformOutput[];
-    llmPrompts: ElectricLLMPrompt[];
-    llmTransforms: ElectricLLMTransform[];
+    artifacts: ElectricArtifact[] | "pending" | "error";
+    transforms: ElectricTransform[] | "pending" | "error";
+    humanTransforms: ElectricHumanTransform[] | "pending" | "error";
+    transformInputs: ElectricTransformInput[] | "pending" | "error";
+    transformOutputs: ElectricTransformOutput[] | "pending" | "error";
+    llmPrompts: ElectricLLMPrompt[] | "pending" | "error";
+    llmTransforms: ElectricLLMTransform[] | "pending" | "error";
 
     // Loading states
     isLoading: boolean;
@@ -520,23 +520,23 @@ export interface ProjectDataContextType {
     error: Error | null;
 
     // Lineage graph (globally shared)
-    lineageGraph: LineageGraph;
+    lineageGraph: LineageGraph | "pending" | "error";
 
     // Selectors (memoized)
     // NEW: Collection-aware selectors
-    getBrainstormCollections: () => ElectricArtifact[];
+    getBrainstormCollections: () => ElectricArtifact[] | "pending" | "error";
     getArtifactAtPath: (artifactId: string, artifactPath: string) => any | null;
     getLatestVersionForPath: (artifactId: string, artifactPath: string) => string | null;
 
     // LEGACY: Keep existing selectors for backward compatibility
-    getBrainstormArtifacts: () => ElectricArtifact[];
-    getLineageGraph: () => LineageGraph;
-    getOutlineArtifacts: () => ElectricArtifact[];
+    getBrainstormArtifacts: () => ElectricArtifact[] | "pending" | "error";
+    getLineageGraph: () => LineageGraph | "pending" | "error";
+    getOutlineArtifacts: () => ElectricArtifact[] | "pending" | "error";
     getArtifactById: (id: string) => ElectricArtifactWithLineage | undefined;
     getTransformById: (id: string) => ElectricTransform | undefined;
-    getHumanTransformsForArtifact: (artifactId: string, path?: string) => ElectricHumanTransform[];
-    getTransformInputsForTransform: (transformId: string) => ElectricTransformInput[];
-    getTransformOutputsForTransform: (transformId: string) => ElectricTransformOutput[];
+    getHumanTransformsForArtifact: (artifactId: string, path?: string) => ElectricHumanTransform[] | "pending" | "error";
+    getTransformInputsForTransform: (transformId: string) => ElectricTransformInput[] | "pending" | "error";
+    getTransformOutputsForTransform: (transformId: string) => ElectricTransformOutput[] | "pending" | "error";
 
     // Mutations (TanStack Query + optimistic updates)
     createTransform: UseMutationResult<any, Error, CreateTransformRequest>;
