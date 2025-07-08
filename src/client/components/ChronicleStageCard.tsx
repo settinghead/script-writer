@@ -1,12 +1,165 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { Card, Typography, Space, Tag, List, Collapse, Button, message } from 'antd';
-import { HeartOutlined, TeamOutlined, BulbOutlined, ClockCircleOutlined, ThunderboltOutlined, EditOutlined } from '@ant-design/icons';
+import { Card, Typography, Space, Tag, List, Collapse, Button, message, Form, Input, Select } from 'antd';
+import { HeartOutlined, TeamOutlined, BulbOutlined, ClockCircleOutlined, ThunderboltOutlined, EditOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { ChroniclesStage } from '../../common/schemas/outlineSchemas';
 import { useLineageResolution } from '../transform-artifact-framework/useLineageResolution';
 import { useProjectData } from '../contexts/ProjectDataContext';
 import { EditableText, EditableArray } from './shared/EditableText';
 
 const { Text, Paragraph, Title } = Typography;
+const { TextArea } = Input;
+
+interface EmotionArc {
+    characters: string[];
+    content: string;
+}
+
+interface RelationshipDevelopment {
+    characters: string[];
+    content: string;
+}
+
+interface EditableEmotionArcsProps {
+    value: EmotionArc[];
+    onChange: (value: EmotionArc[]) => void;
+    availableCharacters: string[];
+}
+
+const EditableEmotionArcs: React.FC<EditableEmotionArcsProps> = ({ value, onChange, availableCharacters }) => {
+    const addEmotionArc = () => {
+        onChange([...value, { characters: [], content: '' }]);
+    };
+
+    const removeEmotionArc = (index: number) => {
+        const newValue = value.filter((_, i) => i !== index);
+        onChange(newValue);
+    };
+
+    const updateEmotionArc = (index: number, field: keyof EmotionArc, fieldValue: any) => {
+        const newValue = [...value];
+        newValue[index] = { ...newValue[index], [field]: fieldValue };
+        onChange(newValue);
+    };
+
+    return (
+        <div>
+            {value.map((arc, index) => (
+                <div key={index} style={{ marginBottom: '12px', padding: '12px', border: '1px solid #434343', borderRadius: '6px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <Text strong style={{ color: '#f759ab' }}>情感发展 {index + 1}</Text>
+                        <Button
+                            type="text"
+                            size="small"
+                            icon={<DeleteOutlined />}
+                            onClick={() => removeEmotionArc(index)}
+                            style={{ color: '#ff4d4f' }}
+                        />
+                    </div>
+                    <div style={{ marginBottom: '8px' }}>
+                        <Text style={{ color: '#fff', fontSize: '12px' }}>涉及角色:</Text>
+                        <Select
+                            mode="multiple"
+                            placeholder="选择角色"
+                            value={arc.characters}
+                            onChange={(chars) => updateEmotionArc(index, 'characters', chars)}
+                            style={{ width: '100%', marginTop: '4px' }}
+                            options={availableCharacters.map(char => ({ label: char, value: char }))}
+                        />
+                    </div>
+                    <div>
+                        <Text style={{ color: '#fff', fontSize: '12px' }}>情感发展内容:</Text>
+                        <TextArea
+                            value={arc.content}
+                            onChange={(e) => updateEmotionArc(index, 'content', e.target.value)}
+                            placeholder="描述角色的情感发展变化"
+                            rows={2}
+                            style={{ marginTop: '4px' }}
+                        />
+                    </div>
+                </div>
+            ))}
+            <Button
+                type="dashed"
+                onClick={addEmotionArc}
+                icon={<PlusOutlined />}
+                style={{ width: '100%', marginTop: '8px' }}
+            >
+                添加情感发展
+            </Button>
+        </div>
+    );
+};
+
+interface EditableRelationshipDevelopmentsProps {
+    value: RelationshipDevelopment[];
+    onChange: (value: RelationshipDevelopment[]) => void;
+    availableCharacters: string[];
+}
+
+const EditableRelationshipDevelopments: React.FC<EditableRelationshipDevelopmentsProps> = ({ value, onChange, availableCharacters }) => {
+    const addRelationshipDevelopment = () => {
+        onChange([...value, { characters: [], content: '' }]);
+    };
+
+    const removeRelationshipDevelopment = (index: number) => {
+        const newValue = value.filter((_, i) => i !== index);
+        onChange(newValue);
+    };
+
+    const updateRelationshipDevelopment = (index: number, field: keyof RelationshipDevelopment, fieldValue: any) => {
+        const newValue = [...value];
+        newValue[index] = { ...newValue[index], [field]: fieldValue };
+        onChange(newValue);
+    };
+
+    return (
+        <div>
+            {value.map((rel, index) => (
+                <div key={index} style={{ marginBottom: '12px', padding: '12px', border: '1px solid #434343', borderRadius: '6px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <Text strong style={{ color: '#52c41a' }}>关系发展 {index + 1}</Text>
+                        <Button
+                            type="text"
+                            size="small"
+                            icon={<DeleteOutlined />}
+                            onClick={() => removeRelationshipDevelopment(index)}
+                            style={{ color: '#ff4d4f' }}
+                        />
+                    </div>
+                    <div style={{ marginBottom: '8px' }}>
+                        <Text style={{ color: '#fff', fontSize: '12px' }}>涉及角色:</Text>
+                        <Select
+                            mode="multiple"
+                            placeholder="选择角色"
+                            value={rel.characters}
+                            onChange={(chars) => updateRelationshipDevelopment(index, 'characters', chars)}
+                            style={{ width: '100%', marginTop: '4px' }}
+                            options={availableCharacters.map(char => ({ label: char, value: char }))}
+                        />
+                    </div>
+                    <div>
+                        <Text style={{ color: '#fff', fontSize: '12px' }}>关系发展内容:</Text>
+                        <TextArea
+                            value={rel.content}
+                            onChange={(e) => updateRelationshipDevelopment(index, 'content', e.target.value)}
+                            placeholder="描述角色之间的关系发展变化"
+                            rows={2}
+                            style={{ marginTop: '4px' }}
+                        />
+                    </div>
+                </div>
+            ))}
+            <Button
+                type="dashed"
+                onClick={addRelationshipDevelopment}
+                icon={<PlusOutlined />}
+                style={{ width: '100%', marginTop: '8px' }}
+            >
+                添加关系发展
+            </Button>
+        </div>
+    );
+};
 
 interface ChronicleStageCardProps {
     chroniclesArtifactId: string;
@@ -145,6 +298,37 @@ export const ChronicleStageCard: React.FC<ChronicleStageCardProps> = ({
         });
     }, [chroniclesArtifactId, stagePath, stageIndex, isCreatingTransform, isEditable, projectData.createHumanTransform]);
 
+    // Extract available characters from project data
+    const availableCharacters = useMemo(() => {
+        if (projectData.artifacts === "pending" || projectData.artifacts === "error") {
+            return [];
+        }
+
+        // Look for outline artifacts to extract character names
+        const outlineArtifacts = projectData.artifacts.filter(a =>
+            a.schema_type === 'outline_schema' || a.schema_type === 'outline_input_schema'
+        );
+
+        const characters: string[] = [];
+
+        outlineArtifacts.forEach(artifact => {
+            try {
+                const data = typeof artifact.data === 'string' ? JSON.parse(artifact.data) : artifact.data;
+                if (data.characters && Array.isArray(data.characters)) {
+                    data.characters.forEach((char: any) => {
+                        if (char.name && !characters.includes(char.name)) {
+                            characters.push(char.name);
+                        }
+                    });
+                }
+            } catch (error) {
+                // Ignore parsing errors
+            }
+        });
+
+        return characters;
+    }, [projectData.artifacts]);
+
     // Handle saving individual fields
     const handleSave = useCallback(async (path: string, newValue: any) => {
         if (!effectiveArtifact?.data) {
@@ -219,9 +403,24 @@ export const ChronicleStageCard: React.FC<ChronicleStageCardProps> = ({
                 backgroundColor: '#262626',
                 border: isEditable ? '2px solid #52c41a' : '1px solid #434343',
                 borderRadius: '8px',
-                marginBottom: '16px'
+                marginBottom: '16px',
+                cursor: (!isEditable && !isCreatingTransform && canBecomeEditable) ? 'pointer' : 'default',
+                transition: 'all 0.2s ease'
             }}
             styles={{ body: { padding: '20px' } }}
+            onClick={(!isEditable && !isCreatingTransform && canBecomeEditable) ? handleCreateEditableVersion : undefined}
+            onMouseEnter={(e) => {
+                if (!isEditable && !isCreatingTransform && canBecomeEditable) {
+                    e.currentTarget.style.borderColor = '#1890ff';
+                    e.currentTarget.style.boxShadow = '0 0 8px rgba(24, 144, 255, 0.3)';
+                }
+            }}
+            onMouseLeave={(e) => {
+                if (!isEditable && !isCreatingTransform && canBecomeEditable) {
+                    e.currentTarget.style.borderColor = '#434343';
+                    e.currentTarget.style.boxShadow = 'none';
+                }
+            }}
             title={
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -231,13 +430,21 @@ export const ChronicleStageCard: React.FC<ChronicleStageCardProps> = ({
                         {hasLineage && (
                             <Tag color="green">已编辑</Tag>
                         )}
+                        {(!isEditable && !isCreatingTransform && canBecomeEditable) && (
+                            <Tag color="orange" style={{ fontSize: '12px' }}>
+                                点击编辑
+                            </Tag>
+                        )}
                     </div>
                     {!isEditable && !isCreatingTransform && canBecomeEditable && (
                         <Button
                             type="primary"
                             size="small"
                             icon={<EditOutlined />}
-                            onClick={handleCreateEditableVersion}
+                            onClick={(e) => {
+                                e.stopPropagation(); // Prevent card click when button is clicked
+                                handleCreateEditableVersion();
+                            }}
                             style={{
                                 backgroundColor: '#1890ff',
                                 border: 'none',
@@ -329,25 +536,10 @@ export const ChronicleStageCard: React.FC<ChronicleStageCardProps> = ({
 
                         {isEditable ? (
                             <div style={{ paddingLeft: '20px' }}>
-                                <EditableArray
-                                    value={stageData.emotionArcs?.map(arc =>
-                                        `${arc.characters?.join(', ') || ''}: ${arc.content || ''}`
-                                    ) || []}
-                                    path="emotionArcs"
-                                    placeholder="角色: 情感发展描述"
-                                    isEditable={isEditable}
-                                    mode="textarea"
-                                    onSave={async (path, newValue) => {
-                                        // Convert string array back to emotion arc objects
-                                        const emotionArcs = newValue.map((item: string) => {
-                                            const [charactersStr, content] = item.split(': ');
-                                            return {
-                                                characters: charactersStr ? charactersStr.split(', ') : [],
-                                                content: content || ''
-                                            };
-                                        });
-                                        await handleSave(path, emotionArcs);
-                                    }}
+                                <EditableEmotionArcs
+                                    value={stageData.emotionArcs || []}
+                                    onChange={(newValue) => handleSave('emotionArcs', newValue)}
+                                    availableCharacters={availableCharacters}
                                 />
                             </div>
                         ) : (
@@ -385,25 +577,10 @@ export const ChronicleStageCard: React.FC<ChronicleStageCardProps> = ({
 
                         {isEditable ? (
                             <div style={{ paddingLeft: '20px' }}>
-                                <EditableArray
-                                    value={stageData.relationshipDevelopments?.map(rel =>
-                                        `${rel.characters?.join(', ') || ''}: ${rel.content || ''}`
-                                    ) || []}
-                                    path="relationshipDevelopments"
-                                    placeholder="角色关系: 关系发展描述"
-                                    isEditable={isEditable}
-                                    mode="textarea"
-                                    onSave={async (path, newValue) => {
-                                        // Convert string array back to relationship development objects
-                                        const relationshipDevelopments = newValue.map((item: string) => {
-                                            const [charactersStr, content] = item.split(': ');
-                                            return {
-                                                characters: charactersStr ? charactersStr.split(', ') : [],
-                                                content: content || ''
-                                            };
-                                        });
-                                        await handleSave(path, relationshipDevelopments);
-                                    }}
+                                <EditableRelationshipDevelopments
+                                    value={stageData.relationshipDevelopments || []}
+                                    onChange={(newValue) => handleSave('relationshipDevelopments', newValue)}
+                                    availableCharacters={availableCharacters}
                                 />
                             </div>
                         ) : (
