@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Space, Button } from 'antd';
-import { NodeIndexOutlined, MessageOutlined, FileTextOutlined } from '@ant-design/icons';
+import { NodeIndexOutlined, MessageOutlined, FileTextOutlined, ThunderboltOutlined } from '@ant-design/icons';
 
 interface DebugMenuProps {
     isMobile?: boolean;
@@ -18,6 +18,7 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
     const showRawGraph = searchParams.get('raw-graph') === '1';
     const showRawChat = searchParams.get('raw-chat') === '1';
     const showRawContext = searchParams.get('raw-context') === '1';
+    const showYJSDemo = searchParams.get('yjs-demo') === '1';
 
     // Debug toggle handlers
     const toggleRawGraph = useCallback(() => {
@@ -29,6 +30,7 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
             // Clear other debug views
             newSearchParams.delete('raw-chat');
             newSearchParams.delete('raw-context');
+            newSearchParams.delete('yjs-demo');
         }
         setSearchParams(newSearchParams);
     }, [showRawGraph, searchParams, setSearchParams]);
@@ -42,6 +44,7 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
             // Clear other debug views
             newSearchParams.delete('raw-graph');
             newSearchParams.delete('raw-context');
+            newSearchParams.delete('yjs-demo');
         }
         setSearchParams(newSearchParams);
     }, [showRawChat, searchParams, setSearchParams]);
@@ -55,9 +58,24 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
             // Clear other debug views
             newSearchParams.delete('raw-graph');
             newSearchParams.delete('raw-chat');
+            newSearchParams.delete('yjs-demo');
         }
         setSearchParams(newSearchParams);
     }, [showRawContext, searchParams, setSearchParams]);
+
+    const toggleYJSDemo = useCallback(() => {
+        const newSearchParams = new URLSearchParams(searchParams);
+        if (showYJSDemo) {
+            newSearchParams.delete('yjs-demo');
+        } else {
+            newSearchParams.set('yjs-demo', '1');
+            // Clear other debug views
+            newSearchParams.delete('raw-graph');
+            newSearchParams.delete('raw-chat');
+            newSearchParams.delete('raw-context');
+        }
+        setSearchParams(newSearchParams);
+    }, [showYJSDemo, searchParams, setSearchParams]);
 
     return (
         <Space size={isMobile ? 'small' : 'middle'}>
@@ -98,6 +116,15 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
             >
                 {isMobile ? '' : (showRawChat ? '关闭内部对话' : '打开内部对话')}
             </Button>
+            <Button
+                type="text"
+                icon={<ThunderboltOutlined />}
+                onClick={toggleYJSDemo}
+                style={{ color: showYJSDemo ? '#52c41a' : '#1890ff' }}
+                size={isMobile ? 'small' : 'middle'}
+            >
+                {isMobile ? '' : (showYJSDemo ? '关闭协作测试' : '协作测试')}
+            </Button>
         </Space>
     );
 };
@@ -110,8 +137,10 @@ export const useDebugState = () => {
         showRawGraph: searchParams.get('raw-graph') === '1',
         showRawChat: searchParams.get('raw-chat') === '1',
         showRawContext: searchParams.get('raw-context') === '1',
+        showYJSDemo: searchParams.get('yjs-demo') === '1',
         isDebugMode: searchParams.get('raw-graph') === '1' ||
             searchParams.get('raw-chat') === '1' ||
-            searchParams.get('raw-context') === '1'
+            searchParams.get('raw-context') === '1' ||
+            searchParams.get('yjs-demo') === '1'
     };
 }; 

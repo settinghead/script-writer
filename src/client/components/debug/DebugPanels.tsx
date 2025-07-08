@@ -5,6 +5,7 @@ import { CloseOutlined } from '@ant-design/icons';
 import RawGraphVisualization from '../RawGraphVisualization';
 import RawChatMessages from '../RawChatMessages';
 import RawAgentContext from '../RawAgentContext';
+import { YJSDemo } from './YJSDemo';
 import { useDebugState } from './DebugMenu';
 
 interface DebugPanelsProps {
@@ -12,11 +13,11 @@ interface DebugPanelsProps {
 }
 
 export const DebugPanels: React.FC<DebugPanelsProps> = ({ projectId }) => {
-    const { showRawGraph, showRawChat, showRawContext } = useDebugState();
+    const { showRawGraph, showRawChat, showRawContext, showYJSDemo } = useDebugState();
     const [searchParams, setSearchParams] = useSearchParams();
 
     // Don't render anything if no debug mode is active
-    if (!showRawGraph && !showRawChat && !showRawContext) {
+    if (!showRawGraph && !showRawChat && !showRawContext && !showYJSDemo) {
         return null;
     }
 
@@ -32,6 +33,9 @@ export const DebugPanels: React.FC<DebugPanelsProps> = ({ projectId }) => {
     } else if (showRawContext) {
         debugTitle = '代理上下文';
         debugContent = <RawAgentContext projectId={projectId} />;
+    } else if (showYJSDemo) {
+        debugTitle = 'YJS 协作编辑测试';
+        debugContent = <YJSDemo />;
     }
 
     return (
@@ -73,6 +77,7 @@ export const DebugPanels: React.FC<DebugPanelsProps> = ({ projectId }) => {
                         newSearchParams.delete('raw-graph');
                         newSearchParams.delete('raw-chat');
                         newSearchParams.delete('raw-context');
+                        newSearchParams.delete('yjs-demo');
                         setSearchParams(newSearchParams);
                     }}
                     style={{

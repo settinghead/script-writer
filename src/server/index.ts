@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser';
 import { AuthDatabase } from './database/auth';
 import { createAuthMiddleware } from './middleware/auth';
 import { createAuthRoutes } from './routes/auth';
+import yjsRoutes from './routes/yjsRoutes';
 import { ArtifactRepository } from './transform-artifact-framework/ArtifactRepository.js';
 import { TransformRepository } from './transform-artifact-framework/TransformRepository.js';
 
@@ -64,6 +65,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 // Mount authentication routes
 app.use('/auth', createAuthRoutes(authDB, authMiddleware));
+app.use('/api/yjs', yjsRoutes);
 
 // Mount all API routes
 import { createAPIRoutes } from './routes/apiRoutes';

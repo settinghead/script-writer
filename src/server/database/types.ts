@@ -40,6 +40,24 @@ export interface Artifacts {
   updated_at: Generated<Timestamp>;
 }
 
+export interface ArtifactYjsAwareness {
+  client_id: string;
+  created_at: Generated<Timestamp>;
+  project_id: string;
+  room_id: string;
+  update: Buffer;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface ArtifactYjsDocuments {
+  artifact_id: string;
+  created_at: Generated<Timestamp>;
+  document_state: Buffer;
+  project_id: string;
+  room_id: string;
+  updated_at: Generated<Timestamp>;
+}
+
 export interface AuthProviders {
   created_at: Generated<Timestamp>;
   id: Generated<number>;
@@ -170,6 +188,8 @@ export interface UserSessions {
 }
 
 export interface DB {
+  artifact_yjs_awareness: ArtifactYjsAwareness;
+  artifact_yjs_documents: ArtifactYjsDocuments;
   artifacts: Artifacts;
   auth_providers: AuthProviders;
   chat_messages_display: ChatMessagesDisplay;
