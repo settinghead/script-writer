@@ -204,24 +204,18 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
 
     // Handle saving individual fields
     const handleSave = useCallback(async (path: string, newValue: any) => {
-        console.log(`[OutlineSettingsDisplay] handleSave called with path: ${path}, newValue:`, newValue);
-
         // Always get the current effective artifact ID to avoid stale closures
         const currentArtifactId = effectiveArtifact?.id;
-        console.log(`[OutlineSettingsDisplay] currentArtifactId:`, currentArtifactId);
 
         if (!currentArtifactId) {
-            console.log(`[OutlineSettingsDisplay] No artifact ID, returning early`);
             return;
         }
 
         try {
             // Get the FRESH artifact data from project context to avoid stale closures
             const freshArtifact = projectData.getArtifactById(currentArtifactId);
-            console.log(`[OutlineSettingsDisplay] freshArtifact:`, freshArtifact);
 
             if (!freshArtifact?.data) {
-                console.log(`[OutlineSettingsDisplay] No fresh artifact data, returning early`);
                 return;
             }
 
@@ -230,7 +224,6 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
             if (typeof currentData === 'string') {
                 currentData = JSON.parse(currentData);
             }
-            console.log(`[OutlineSettingsDisplay] currentData before update:`, currentData);
 
             const updatedSettings = { ...currentData };
 
@@ -262,6 +255,30 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                     const newScenes = [...(updatedSettings.setting.key_scenes || [])];
                     newScenes[index] = newValue;
                     updatedSettings.setting.key_scenes = newScenes;
+                } else if (path.startsWith('characters[') && path.includes('].')) {
+                    // Handle nested character field paths like "characters[5].name"
+                    const match = path.match(/characters\[(\d+)\]\.(.+)/);
+                    if (match) {
+                        const [, charIndexStr, fieldName] = match;
+                        const charIndex = parseInt(charIndexStr);
+
+                        if (!updatedSettings.characters) {
+                            updatedSettings.characters = [];
+                        }
+                        const newCharacters = [...updatedSettings.characters];
+
+                        // Ensure character object exists
+                        if (!newCharacters[charIndex]) {
+                            newCharacters[charIndex] = {};
+                        }
+
+                        // Update the specific field
+                        newCharacters[charIndex] = {
+                            ...newCharacters[charIndex],
+                            [fieldName]: newValue
+                        };
+                        updatedSettings.characters = newCharacters;
+                    }
                 }
             } else {
                 // Handle direct array paths like "target_audience.core_themes"
@@ -297,15 +314,10 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                 }
             }
 
-            console.log(`[OutlineSettingsDisplay] updatedSettings after path update:`, updatedSettings);
-            console.log(`[OutlineSettingsDisplay] About to call updateArtifact with artifactId: ${currentArtifactId}`);
-
             await projectData.updateArtifact.mutateAsync({
                 artifactId: currentArtifactId,
                 data: updatedSettings
             });
-
-            console.log(`[OutlineSettingsDisplay] updateArtifact completed successfully`);
 
         } catch (error) {
             console.error(`[OutlineSettingsDisplay] Error in handleSave:`, error);
