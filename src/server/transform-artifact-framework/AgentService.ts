@@ -212,11 +212,14 @@ export class AgentService {
             let currentToolCall: any = null;
 
             for await (const delta of result.fullStream) {
+                console.log(`[DEBUG] Delta type: ${delta.type}`);
                 switch (delta.type) {
                     case 'text-delta':
+                        console.log(`[DEBUG] Text delta: "${delta.textDelta}"`);
                         process.stdout.write(delta.textDelta);
                         accumulatedResponse += delta.textDelta;
                         finalResponse += delta.textDelta;
+                        console.log(`[DEBUG] Accumulated so far (${accumulatedResponse.length} chars): "${accumulatedResponse}"`);
 
                         // Try to parse JSON and update response message in real-time
                         if (responseMessageId && this.chatMessageRepo) {
@@ -298,6 +301,10 @@ export class AgentService {
                                 }
                             );
                         }
+                        break;
+
+                    default:
+                        console.log(`[DEBUG] Unhandled delta type: ${delta.type}`, delta);
                         break;
                 }
             }
