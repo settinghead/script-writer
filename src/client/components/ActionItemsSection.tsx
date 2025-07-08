@@ -1,6 +1,5 @@
 import React, { useMemo, useEffect, useRef } from 'react';
 import { Card, Typography, Space, Alert, Spin } from 'antd';
-import { LoadingOutlined } from '@ant-design/icons';
 import { useProjectData } from '../contexts/ProjectDataContext';
 import { useActionItemsStore } from '../stores/actionItemsStore';
 import { computeUnifiedWorkflowState } from '../utils/actionComputation';
@@ -121,7 +120,7 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
                 {/* Actions on the right */}
                 <div style={{ flexShrink: 0 }}>
                     {actions.length > 0 ? (
-                        <Space direction="vertical" size="large">
+                        <Space direction="vertical">
                             {actions.map((action: any, index: number) => (
                                 <ActionItemRenderer
                                     key={`${action.type}-${index}`}

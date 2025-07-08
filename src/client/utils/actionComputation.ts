@@ -495,7 +495,7 @@ export const computeWorkflowSteps = (
         },
         {
             id: WORKFLOW_STEPS.EPISODE_GENERATION,
-            title: '每集大纲',
+            title: '分集剧本',
             status: 'wait'
         }
     ];
@@ -533,7 +533,7 @@ export const computeWorkflowSteps = (
         },
         {
             id: WORKFLOW_STEPS.EPISODE_GENERATION,
-            title: '每集大纲',
+            title: '分集剧本',
             status: 'wait'
         }
     ];

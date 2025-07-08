@@ -67,30 +67,23 @@ const EpisodeGenerationAction: React.FC<EpisodeGenerationActionProps> = (props) 
     }, [latestChronicles]);
 
     return (
-        <div >
 
 
-            <div style={{ margin: '0 auto', display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-
-
-
-                {/* Generate button */}
-                <div style={{ textAlign: 'center' }}>
-                    <Button
-                        type="primary"
-                        size="large"
-                        loading={isGenerating}
-                        onClick={handleGenerateEpisodes}
-                        style={{
-                            width: '200px',
-                            height: '48px',
-                            fontSize: '16px',
-                            borderRadius: '8px'
-                        }}
-                    >
-                        {isGenerating ? '生成中...' : '生成每集大纲'}
-                    </Button>
-                </div>
+        <div style={{ margin: '0 auto', display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+            {/* Generate button */}
+            <div style={{ textAlign: 'center' }}>
+                <Button
+                    type="primary"
+                    size="large"
+                    loading={isGenerating}
+                    onClick={handleGenerateEpisodes}
+                    style={{
+                        fontSize: '16px',
+                        borderRadius: '8px'
+                    }}
+                >
+                    {isGenerating ? '生成中...' : '生成每集大纲'}
+                </Button>
             </div>
         </div>
     );

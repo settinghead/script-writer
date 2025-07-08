@@ -56,7 +56,6 @@ const ActionItemRenderer: React.FC<ActionItemRendererProps> = ({
                     <WorkflowSteps steps={workflowSteps} inline={true} />
                     <div
                         style={{
-                            marginTop: '16px',
                             opacity: action.enabled ? 1 : 0.6,
                             pointerEvents: action.enabled ? 'auto' : 'none'
                         }}
@@ -79,7 +78,6 @@ const ActionItemRenderer: React.FC<ActionItemRendererProps> = ({
             {workflowSteps.length === 0 && (
                 <div
                     style={{
-                        marginBottom: '16px',
                         opacity: action.enabled ? 1 : 0.6,
                         pointerEvents: action.enabled ? 'auto' : 'none'
                     }}

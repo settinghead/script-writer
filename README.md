@@ -102,7 +102,7 @@ UI Update: Real-time display with edit indicators
 - **Auto-Scroll Functionality** - Smart auto-scroll to bottom when new messages arrive, with user control preservation
 - **Modern Message Layout** - Card-based messages with user/assistant avatars and proper alignment
 - **Scroll Position Tracking** - Monitors user scroll position with floating scroll-to-bottom button
-- **Chinese Localization** - Complete interface in Chinese (觅子智能体)
+- **Chinese Localization** - Complete interface in Chinese (觅光智能体)
 - **Real-time Streaming** - Maintains Electric SQL streaming with smooth loading animations
 - **Keyboard Shortcuts** - Enter to send, Shift+Enter for new lines
 - **Performance Optimized** - Efficient scroll tracking without performance impact

@@ -128,8 +128,8 @@ const ChatMessage: React.FC<{ message: any; isStreaming?: boolean }> = ({ messag
                     flexDirection: isUserMessage ? 'row-reverse' : 'row'
                 }}>
                     <Text strong style={{ color: '#e0e0e0', fontSize: 12 }}>
-                        {message.role === 'user' ? '你' : '觅子'}
-                        {isThinkingMessage && ' (内部处理)'}
+                        {message.role === 'user' ? '你' : '觅光'}
+                        {isThinkingMessage && ' ⚙️'}
                     </Text>
                     <Text type="secondary" style={{ fontSize: 11 }}>
                         <ClockCircleOutlined style={{ marginRight: 4 }} />

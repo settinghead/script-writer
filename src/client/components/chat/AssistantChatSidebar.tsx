@@ -27,7 +27,7 @@ export const AssistantChatSidebar: React.FC<AssistantChatSidebarProps> = ({ proj
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <Cpu style={{ fontSize: '20px', color: '#1890ff' }} />
                     <Title level={4} style={{ color: '#f0f0f0', margin: 0 }}>
-                        觅子智能体
+                        觅光智能体
                     </Title>
                 </div>
 
