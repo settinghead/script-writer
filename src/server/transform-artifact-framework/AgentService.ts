@@ -61,37 +61,28 @@ export class AgentService {
     // Helper function to parse JSON with fallback
     private async tryParseAgentJSON(text: string): Promise<{ humanReadableMessage?: string; parsed: boolean }> {
         try {
-            console.log(`[DEBUG] Trying to parse JSON from text (${text.length} chars): "${text.substring(0, 100)}${text.length > 100 ? '...' : ''}"`);
             // Remove markdown code blocks if present
             let cleanText = text.trim();
             if (cleanText.startsWith('```json')) {
                 cleanText = cleanText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-                console.log(`[DEBUG] Cleaned markdown`);
             }
 
             // Try regular JSON.parse first
             let parsed;
             try {
                 parsed = JSON.parse(cleanText);
-                console.log(`[DEBUG] JSON.parse successful`);
             } catch (jsonError) {
-                console.log(`[DEBUG] JSON.parse failed, trying jsonrepair`);
                 // Fallback to jsonrepair
                 const { jsonrepair } = await import('jsonrepair');
                 const repairedJson = jsonrepair(cleanText);
-                console.log(`[DEBUG] Repaired JSON (${repairedJson.length} chars)`);
                 parsed = JSON.parse(repairedJson);
-                console.log(`[DEBUG] Repaired JSON parsed successfully`);
             }
 
-            const result = {
+            return {
                 humanReadableMessage: parsed.humanReadableMessage,
                 parsed: true
             };
-            console.log(`[DEBUG] Final parsing result - humanReadableMessage: "${result.humanReadableMessage}"`);
-            return result;
         } catch (error) {
-            console.log(`[DEBUG] All JSON parsing failed:`, error instanceof Error ? error.message : String(error));
             return { parsed: false };
         }
     }
@@ -212,8 +203,6 @@ export class AgentService {
                 }
             );
 
-            console.log(`[AgentService] Request type detected: ${agentConfig.requestType}`);
-
             const completePrompt = agentConfig.prompt;
             const toolDefinitions = agentConfig.tools;
 
@@ -273,20 +262,16 @@ export class AgentService {
             let toolResultCount = 0;
 
             for await (const delta of result.fullStream) {
-                console.log(`[DEBUG] Delta type: ${delta.type}`);
                 switch (delta.type) {
                     case 'text-delta':
-                        console.log(`[DEBUG] Text delta: "${delta.textDelta}"`);
                         process.stdout.write(delta.textDelta);
                         accumulatedResponse += delta.textDelta;
                         finalResponse += delta.textDelta;
-                        console.log(`[DEBUG] Accumulated so far (${accumulatedResponse.length} chars): "${accumulatedResponse}"`);
 
                         // Try to parse JSON and update response message in real-time
                         if (responseMessageId && this.chatMessageRepo) {
                             const parseResult = await this.tryParseAgentJSON(accumulatedResponse);
                             if (parseResult.parsed && parseResult.humanReadableMessage) {
-                                console.log(`[DEBUG] Streaming JSON parsed successfully: "${parseResult.humanReadableMessage}"`);
                                 // Successfully parsed JSON, update with human readable message
                                 await this.chatMessageRepo.updateResponseMessage(
                                     responseMessageId,
@@ -399,19 +384,13 @@ export class AgentService {
 
             // Final processing of the response
             if (responseMessageId && this.chatMessageRepo) {
-                console.log(`[DEBUG] Final processing - accumulatedResponse: "${accumulatedResponse}"`);
-                console.log(`[DEBUG] Final processing - finalResponse: "${finalResponse}"`);
-
                 // Try both accumulatedResponse and finalResponse
                 let finalParseResult = await this.tryParseAgentJSON(accumulatedResponse);
                 if (!finalParseResult.parsed && finalResponse !== accumulatedResponse) {
-                    console.log(`[DEBUG] Trying finalResponse instead...`);
                     finalParseResult = await this.tryParseAgentJSON(finalResponse);
                 }
-                console.log(`[DEBUG] Final parse result:`, finalParseResult);
 
                 if (finalParseResult.parsed && finalParseResult.humanReadableMessage) {
-                    console.log(`[DEBUG] Using human readable message: "${finalParseResult.humanReadableMessage}"`);
                     // Successfully parsed JSON, use human readable message
                     await this.chatMessageRepo.updateResponseMessage(
                         responseMessageId,
@@ -426,9 +405,7 @@ export class AgentService {
                         finalParseResult.humanReadableMessage,
                         'completed'
                     );
-                    console.log(`[DEBUG] Final message update completed`);
                 } else {
-                    console.log(`[DEBUG] JSON parsing failed, using fallback: "${accumulatedResponse || finalResponse}"`);
                     // JSON parsing failed, use accumulated text as fallback
                     await this.chatMessageRepo.updateResponseMessage(
                         responseMessageId,
