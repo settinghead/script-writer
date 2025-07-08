@@ -146,7 +146,7 @@ const BrainstormIdeaSelection: React.FC<BaseActionProps> = ({ projectId, onSucce
                             borderColor: selectedIdea === index ? '#1890ff' : '#434343',
                             borderWidth: selectedIdea === index ? 2 : 1
                         }}
-                        bodyStyle={{ padding: '16px' }}
+                        styles={{ body: { padding: '16px' } }}
                         onClick={() => handleIdeaSelect(index)}
                     >
                         <div style={{ position: 'relative' }}>
