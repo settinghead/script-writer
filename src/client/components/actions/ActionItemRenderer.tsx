@@ -3,14 +3,30 @@ import { ActionItem } from '../../utils/actionComputation';
 
 interface ActionItemRendererProps {
     action: ActionItem;
+    projectId: string;
+    onSuccess?: () => void;
+    onError?: (error: Error) => void;
 }
 
-const ActionItemRenderer: React.FC<ActionItemRendererProps> = ({ action }) => {
+const ActionItemRenderer: React.FC<ActionItemRendererProps> = ({
+    action,
+    projectId,
+    onSuccess,
+    onError
+}) => {
     const Component = action.component;
 
     if (!Component) {
         return null;
     }
+
+    // Combine action props with the required BaseActionProps
+    const combinedProps = {
+        ...action.props,
+        projectId,
+        onSuccess,
+        onError
+    };
 
     return (
         <div
@@ -21,7 +37,7 @@ const ActionItemRenderer: React.FC<ActionItemRendererProps> = ({ action }) => {
                 pointerEvents: action.enabled ? 'auto' : 'none'
             }}
         >
-            <Component {...action.props} />
+            <Component {...combinedProps} />
         </div>
     );
 };

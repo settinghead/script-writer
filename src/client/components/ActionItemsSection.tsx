@@ -168,6 +168,15 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
                             <ActionItemRenderer
                                 key={`${action.type}-${index}`}
                                 action={action}
+                                projectId={projectId}
+                                onSuccess={() => {
+                                    console.log('✅ Action completed successfully:', action.type);
+                                    // Optionally refresh project data or show success message
+                                }}
+                                onError={(error: Error) => {
+                                    console.error('❌ Action failed:', action.type, error);
+                                    // Optionally show error message
+                                }}
                             />
                         );
                     })}
