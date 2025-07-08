@@ -1,0 +1,17 @@
+{
+    "mcpServers": {
+        "assistant-ui": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "@assistant-ui/mcp-docs-server"
+            ]
+        },
+        "browsermcp": {
+            "command": "npx",
+            "args": [
+                "@browsermcp/mcp@latest"
+            ]
+        }
+    }
+}
