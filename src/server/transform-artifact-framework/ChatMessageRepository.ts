@@ -363,4 +363,43 @@ export class ChatMessageRepository {
 
         return !!result;
     }
+
+    // Methods for AgentService dual message system
+    async createComputationMessage(projectId: string, content: string): Promise<{ id: string }> {
+        const message = await this.createDisplayMessage(projectId, 'assistant', content, {
+            displayType: 'thinking',
+            status: 'streaming'
+        });
+        return { id: message.id };
+    }
+
+    async createResponseMessage(projectId: string, content: string): Promise<{ id: string }> {
+        const message = await this.createDisplayMessage(projectId, 'assistant', content, {
+            displayType: 'message',
+            status: 'pending'
+        });
+        return { id: message.id };
+    }
+
+    async updateComputationMessage(
+        messageId: string,
+        content: string,
+        status: 'streaming' | 'completed' | 'failed' = 'streaming'
+    ): Promise<void> {
+        await this.updateDisplayMessage(messageId, {
+            content,
+            status
+        });
+    }
+
+    async updateResponseMessage(
+        messageId: string,
+        content: string,
+        status: 'pending' | 'streaming' | 'completed' | 'failed' = 'streaming'
+    ): Promise<void> {
+        await this.updateDisplayMessage(messageId, {
+            content,
+            status
+        });
+    }
 } 
