@@ -27,7 +27,7 @@ export const outlineSettingsTemplate = {
 1.  **剧名 (title)**: 一个极具吸引力、能瞬间抓住眼球的短剧标题，精准概括核心看点。
 2.  **题材类型 (genre)**: 明确的短剧类型
 3.  **目标受众 (target_audience)**: 
-    *   **demographic**: [string] 主要受众群体（如"95-05年女性"、"18-35岁都市白领"、"大学生及刚毕业群体"）
+    *   **demographic**: [string] 主要受众群体
     *   **core_themes**: [string[]] 核心主题，需精准触达目标受众痛点
 4.  **产品卖点 (selling_points)**: 列出3-5个商业化推广的核心卖点，用于营销推广和产品定位。要求：
     *   **紧扣社会热点话题**

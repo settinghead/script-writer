@@ -14,7 +14,6 @@ interface OutlineFormValues {
 }
 
 const OutlineGenerationForm: React.FC<BaseActionProps> = ({ projectId, onSuccess, onError }) => {
-    const [form] = Form.useForm<OutlineFormValues>();
     const [isGenerating, setIsGenerating] = useState(false);
     const projectData = useProjectData();
 
@@ -55,41 +54,68 @@ const OutlineGenerationForm: React.FC<BaseActionProps> = ({ projectId, onSuccess
 
     // Handle outline generation
     const handleGenerateOutline = useCallback(async (values: OutlineFormValues) => {
+        console.log('[OutlineGenerationForm] Starting outline generation with:', {
+            sourceArtifactId,
+            projectId,
+            values,
+            ideaData
+        });
+
         if (!sourceArtifactId) {
+            console.error('[OutlineGenerationForm] No source artifact ID found');
             message.error('未找到选中的创意');
             return;
         }
 
         setIsGenerating(true);
         try {
-            // Call the outline settings generation API
-            const response = await fetch('/api/chat', {
+            const requestBody = {
+                content: `请基于创意生成剧本框架。源创意ID: ${sourceArtifactId}，标题: ${values.title}，要求: ${values.requirements || '无特殊要求'}`,
+                metadata: {
+                    sourceArtifactId,
+                    action: 'outline_generation',
+                    title: values.title,
+                    requirements: values.requirements
+                }
+            };
+
+            console.log('[OutlineGenerationForm] Request body:', JSON.stringify(requestBody, null, 2));
+
+            // Call the chat API to send the outline generation message
+            const response = await fetch(`/api/chat/${projectId}/messages`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': 'Bearer debug-auth-token-script-writer-dev',
                 },
-                body: JSON.stringify({
-                    projectId,
-                    message: `请基于创意生成大纲框架。源创意ID: ${sourceArtifactId}，标题: ${values.title}，要求: ${values.requirements || '无特殊要求'}`
-                })
+                credentials: 'include',
+                body: JSON.stringify(requestBody)
             });
 
+            console.log('[OutlineGenerationForm] Response status:', response.status);
+            console.log('[OutlineGenerationForm] Response headers:', Object.fromEntries(response.headers.entries()));
+
             if (!response.ok) {
-                throw new Error(`Failed to generate outline: ${response.status}`);
+                const errorText = await response.text();
+                console.error('[OutlineGenerationForm] Error response:', errorText);
+                throw new Error(`Failed to generate outline: ${response.status}, body: ${errorText}`);
             }
+
+            const result = await response.json();
+            console.log('[OutlineGenerationForm] Success result:', result);
 
             // The response will be handled by the streaming framework
             message.success('大纲生成已启动');
             onSuccess?.();
         } catch (error) {
-            console.error('Error generating outline:', error);
+            console.error('[OutlineGenerationForm] Error generating outline:', error);
             const errorMessage = `生成大纲失败: ${error instanceof Error ? error.message : '未知错误'}`;
             message.error(errorMessage);
             onError?.(error instanceof Error ? error : new Error(errorMessage));
         } finally {
             setIsGenerating(false);
         }
-    }, [sourceArtifactId, projectId, onSuccess, onError]);
+    }, [sourceArtifactId, projectId, onSuccess, onError, ideaData]);
 
     // Show loading state while chosen idea is loading
     if (chosenIdeaLoading) {

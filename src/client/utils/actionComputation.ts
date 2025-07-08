@@ -105,8 +105,18 @@ export const findLatestOutlineSettings = (projectData: ProjectDataContextType) =
     }
 
     const outlineSettingsArtifacts = projectData.artifacts.filter(artifact =>
-        artifact.schema_type === 'outline_settings_schema'
+        artifact.schema_type === 'outline_settings_schema' || artifact.type === 'outline_settings'
     );
+
+    console.log('[findLatestOutlineSettings] Debug:', {
+        totalArtifacts: projectData.artifacts.length,
+        outlineSettingsCount: outlineSettingsArtifacts.length,
+        allArtifacts: projectData.artifacts.map(a => ({
+            id: a.id.substring(0, 8),
+            type: a.type,
+            schema_type: a.schema_type
+        }))
+    });
 
     if (outlineSettingsArtifacts.length === 0) return null;
 
@@ -161,6 +171,8 @@ export const detectCurrentStage = (projectData: ProjectDataContextType): Workflo
         projectData.artifacts === "pending" || projectData.artifacts === "error" ? [] : projectData.artifacts
     );
 
+
+
     // If we have neither brainstorm input nor brainstorm ideas, we're at initial stage
     if (!brainstormInput && brainstormIdeas.length === 0) {
         return 'initial';
@@ -172,37 +184,48 @@ export const detectCurrentStage = (projectData: ProjectDataContextType): Workflo
     // Check for chosen idea (this works for both AI-generated and manual ideas)
     const chosenIdea = findChosenBrainstormIdea(projectData);
 
+    console.log('[detectCurrentStage] Debug:', {
+        brainstormIdeasCount: brainstormIdeas.length,
+        hasChosenIdea: !!chosenIdea,
+        chosenIdeaId: chosenIdea?.id.substring(0, 8)
+    });
+
     // If we have brainstorm ideas (either from AI generation or manual input)
     if (brainstormIdeas.length > 0) {
-        if (!chosenIdea) {
-            // If we have multiple ideas or need selection, go to selection stage
-            // For manual input, we typically have just one idea and it should be chosen automatically
-            return brainstormIdeas.length > 1 ? 'brainstorm_selection' : 'idea_editing';
-        }
-
-        // Has chosen idea - check for outline settings
+        // Check for outline settings first, regardless of chosen idea status
         const outlineSettings = findLatestOutlineSettings(projectData);
+        console.log('[detectCurrentStage] Outline settings check:', !!outlineSettings);
+
         if (!outlineSettings) {
+            // No outline settings yet
+            if (!chosenIdea) {
+                // If we have multiple ideas or need selection, go to selection stage
+                // For manual input, we typically have just one idea and it should be chosen automatically
+                console.log('[detectCurrentStage] No outline settings, no chosen idea, returning stage based on count:', brainstormIdeas.length);
+                return brainstormIdeas.length > 1 ? 'brainstorm_selection' : 'idea_editing';
+            }
+            // Has chosen idea but no outline settings
             return 'idea_editing';
         }
 
-        // Has outline settings - check if it's a leaf node
-        if (!isLeafNode(outlineSettings.id, transformInputs)) {
-            // Has chronicles - check for chronicles artifact
-            const chronicles = findLatestChronicles(projectData);
-            if (!chronicles) {
-                return 'outline_generation';
-            }
+        // Has outline settings - check for chronicles
+        const chronicles = findLatestChronicles(projectData);
+        console.log('[detectCurrentStage] Chronicles check:', !!chronicles);
 
-            // Has chronicles - check if it's a leaf node
-            if (!isLeafNode(chronicles.id, transformInputs)) {
-                return 'episode_generation';
-            }
+        if (!chronicles) {
+            // No chronicles yet, should generate chronicles
+            console.log('[detectCurrentStage] Has outline settings, no chronicles, returning outline_generation');
+            return 'outline_generation';
+        }
 
+        // Has chronicles - check if it's been used for episode generation
+        if (isLeafNode(chronicles.id, transformInputs)) {
+            // Chronicles hasn't been used yet, should generate episodes
             return 'chronicles_generation';
         }
 
-        return 'outline_generation';
+        // Chronicles has been used, we're in episode generation
+        return 'episode_generation';
     }
 
     // If we only have brainstorm input but no generated ideas yet
@@ -222,6 +245,8 @@ export const computeParamsAndActions = (
 ): ComputedActions => {
     const currentStage = detectCurrentStage(projectData);
     const hasActive = hasActiveTransforms(projectData);
+
+    console.log('[computeParamsAndActions] Stage:', currentStage, 'HasActive:', hasActive);
 
     // If there are active transforms, return minimal state
     if (hasActive) {

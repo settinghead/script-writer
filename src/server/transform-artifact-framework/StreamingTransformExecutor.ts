@@ -333,6 +333,7 @@ export class StreamingTransformExecutor {
 
             } catch (error) {
                 console.error(`[StreamingTransformExecutor] Error executing ${config.templateName} (attempt ${retryCount + 1}):`, error);
+                console.error(`[StreamingTransformExecutor] Error stack:`, error instanceof Error ? error.stack : 'No stack trace');
 
                 retryCount++;
 

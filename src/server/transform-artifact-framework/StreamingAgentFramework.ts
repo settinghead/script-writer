@@ -23,7 +23,18 @@ export function createAgentTool<TInput, TOutput>(
     description: toolDef.description,
     parameters: toolDef.inputSchema as any,
     execute: async (params: TInput, { toolCallId }) => {
-      return await toolDef.execute(params, { toolCallId });
+      console.log(`[createAgentTool] Executing tool '${toolDef.name}' with toolCallId: ${toolCallId}`);
+      console.log(`[createAgentTool] Tool parameters:`, JSON.stringify(params, null, 2));
+
+      try {
+        const result = await toolDef.execute(params, { toolCallId });
+        console.log(`[createAgentTool] Tool '${toolDef.name}' completed successfully:`, result);
+        return result;
+      } catch (error) {
+        console.error(`[createAgentTool] Tool '${toolDef.name}' failed:`, error);
+        console.error(`[createAgentTool] Error stack:`, error instanceof Error ? error.stack : 'No stack trace');
+        throw error;
+      }
     },
   });
 }

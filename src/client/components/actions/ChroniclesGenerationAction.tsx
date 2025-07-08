@@ -93,69 +93,24 @@ const ChroniclesGenerationAction: React.FC<BaseActionProps> = ({ projectId, onSu
     }, [latestOutlineSettings]);
 
     return (
-        <div style={{ padding: '24px' }}>
-            <Title level={4} style={{ marginBottom: '24px', color: '#fff', textAlign: 'center' }}>
-                <HistoryOutlined style={{ marginRight: '8px', color: '#1890ff' }} />
-                生成时间顺序大纲
-            </Title>
 
-            <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-                {/* Show outline settings info */}
-                <div style={{
-                    background: '#2a2a2a',
-                    padding: '16px',
-                    borderRadius: '8px',
-                    marginBottom: '24px',
-                    border: '1px solid #434343'
-                }}>
-                    <Text strong style={{ color: '#fff', display: 'block', marginBottom: '8px' }}>
-                        基于剧本框架:
-                    </Text>
-                    <Text style={{ color: '#ccc', fontSize: '14px' }}>
-                        {outlineData?.title || '剧本框架'}
-                    </Text>
-                    {outlineData?.genre && (
-                        <div style={{ marginTop: '8px' }}>
-                            <Text style={{ color: '#aaa', fontSize: '12px' }}>
-                                类型: {outlineData.genre}
-                            </Text>
-                        </div>
-                    )}
-                    {outlineData?.characters && outlineData.characters.length > 0 && (
-                        <div style={{ marginTop: '8px' }}>
-                            <Text style={{ color: '#aaa', fontSize: '12px' }}>
-                                角色数量: {outlineData.characters.length}
-                            </Text>
-                        </div>
-                    )}
-                </div>
 
-                {/* Action description */}
-                <div style={{ marginBottom: '24px', textAlign: 'center' }}>
-                    <Text style={{ color: '#ccc', fontSize: '14px', lineHeight: '1.6' }}>
-                        将基于现有的剧本框架（人物角色、故事背景、商业定位等）生成详细的时间顺序大纲，
-                        包括历史背景事件、前因后果、主要故事线等按时间顺序排列的完整故事结构。
-                    </Text>
-                </div>
 
-                {/* Generate button */}
-                <div style={{ textAlign: 'center' }}>
-                    <Button
-                        type="primary"
-                        size="large"
-                        loading={isGenerating}
-                        onClick={handleGenerateChronicles}
-                        style={{
-                            width: '200px',
-                            height: '48px',
-                            fontSize: '16px',
-                            borderRadius: '8px'
-                        }}
-                    >
-                        {isGenerating ? '生成中...' : '生成时间顺序大纲'}
-                    </Button>
-                </div>
-            </div>
+        <div style={{ textAlign: 'center' }}>
+            <Button
+                type="primary"
+                size="large"
+                loading={isGenerating}
+                onClick={handleGenerateChronicles}
+                style={{
+                    width: '200px',
+                    height: '48px',
+                    fontSize: '16px',
+                    borderRadius: '8px'
+                }}
+            >
+                {isGenerating ? '生成中...' : '生成时间顺序大纲'}
+            </Button>
         </div>
     );
 };
