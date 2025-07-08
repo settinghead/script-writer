@@ -1,8 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
     isLeafNode,
-    canBecomeEditable,
-    findBrainstormInputArtifact
+    canBecomeEditable
 } from '../actionComputation';
 
 describe('actionComputation', () => {
@@ -46,29 +45,5 @@ describe('actionComputation', () => {
         });
     });
 
-    describe('findBrainstormInputArtifact', () => {
-        it('should find brainstorm input artifact', () => {
-            const artifacts = [
-                { id: 'artifact-1', type: 'other' },
-                { id: 'artifact-2', type: 'brainstorm_tool_input_schema' },
-                { id: 'artifact-3', type: 'another' }
-            ];
-            const result = findBrainstormInputArtifact(artifacts);
-            expect(result?.id).toBe('artifact-2');
-        });
 
-        it('should return null when no brainstorm input artifact exists', () => {
-            const artifacts = [
-                { id: 'artifact-1', type: 'other' },
-                { id: 'artifact-3', type: 'another' }
-            ];
-            const result = findBrainstormInputArtifact(artifacts);
-            expect(result).toBe(null);
-        });
-
-        it('should handle empty artifacts array', () => {
-            const result = findBrainstormInputArtifact([]);
-            expect(result).toBe(null);
-        });
-    });
 }); 

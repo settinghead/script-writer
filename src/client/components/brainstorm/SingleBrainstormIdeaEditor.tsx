@@ -11,10 +11,12 @@ const { Title, Text } = Typography;
 
 interface SingleBrainstormIdeaEditorProps {
     onViewOriginalIdeas?: () => void;
+    isEditable?: boolean; // Global editability state from computation system
 }
 
 export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProps> = ({
-    onViewOriginalIdeas
+    onViewOriginalIdeas,
+    isEditable: globalIsEditable = true // Default to true if not provided
 }) => {
     const { projectId } = useParams<{ projectId: string }>();
     const projectData = useProjectData();
@@ -62,15 +64,16 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
         // Determine editability:
         // - If it's user_input and has no descendants, it's editable
         // - If it's ai_generated and has no descendants, it can become editable
-        const isCurrentlyEditable = latestArtifact.origin_type === 'user_input' && !hasDescendants;
-        const canBecomeMadeEditable = latestArtifact.origin_type === 'ai_generated' && !hasDescendants;
+        // - But global editability (transforms running) overrides everything
+        const isCurrentlyEditable = latestArtifact.origin_type === 'user_input' && !hasDescendants && globalIsEditable;
+        const canBecomeMadeEditable = latestArtifact.origin_type === 'ai_generated' && !hasDescendants && globalIsEditable;
 
         return {
             latestArtifactId: latestArtifact.id,
             isEditable: isCurrentlyEditable,
             canBecomeEditable: canBecomeMadeEditable
         };
-    }, [projectData.artifacts, projectData.transformInputs]);
+    }, [projectData.artifacts, projectData.transformInputs, globalIsEditable]);
 
     // Get the latest artifact data to display title
     const latestArtifact = useMemo(() => {
@@ -119,7 +122,52 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
     let mainPart: React.ReactNode | null = null;
 
     // Render based on current state
-    if (isEditable) {
+    if (!globalIsEditable) {
+        // Disabled mode - transforms are running, show disabled state
+        mainPart = (
+            <div className="single-brainstorm-idea-disabled" style={{ marginBottom: '16px' }}>
+                <Card
+                    style={{
+                        backgroundColor: '#1a1a1a',
+                        border: '1px solid #666',
+                        borderRadius: '6px',
+                        opacity: 0.6,
+                        overflow: 'hidden'
+                    }}
+                    styles={{ body: { padding: '16px', overflow: 'hidden' } }}
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{
+                                width: '4px',
+                                height: '24px',
+                                backgroundColor: '#666',
+                                borderRadius: '2px'
+                            }} />
+                            <div>
+                                <Title level={5} style={{ margin: 0, color: '#666' }}>
+                                    ⏳ {ideaTitle}
+                                </Title>
+                                <Text type="secondary" style={{ fontSize: '12px' }}>
+                                    正在处理中，请稍候...
+                                </Text>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Show read-only data */}
+                    <div style={{ overflow: 'hidden' }}>
+                        <ArtifactEditor
+                            artifactId={latestArtifactId}
+                            fields={BRAINSTORM_IDEA_FIELDS}
+                            statusColor="gray"
+                            forceReadOnly={true}
+                        />
+                    </div>
+                </Card>
+            </div>
+        );
+    } else if (isEditable) {
         // Editable mode - user can edit the artifact
         mainPart = (
             <div className="single-brainstorm-idea-editor" style={{ marginBottom: '24px', position: 'relative' }}>

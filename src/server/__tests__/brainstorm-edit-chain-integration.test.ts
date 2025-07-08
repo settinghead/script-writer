@@ -369,7 +369,7 @@ describe('Brainstorm Edit Chain Integration Test', () => {
         console.log('✅ Step 12: Testing display component computation...');
 
         // Import the display computation functions
-        const { computeDisplayComponents, detectCurrentStage, findChosenBrainstormIdea, findBrainstormIdeaArtifacts } = await import('../../client/utils/actionComputation.js');
+        const { computeDisplayComponents, computeParamsAndActionsFromLineage } = await import('../../client/utils/actionComputation.js');
 
         // Create mock project data context with minimal required properties
         const mockProjectData = {
@@ -378,29 +378,35 @@ describe('Brainstorm Edit Chain Integration Test', () => {
             humanTransforms,
             transformInputs,
             transformOutputs,
+            lineageGraph, // Add the lineage graph that was built earlier
             isLoading: false,
             isError: false,
             error: null
         } as any; // Type cast to avoid missing properties for test
 
-        // Test current stage detection
-        const currentStage = detectCurrentStage(mockProjectData);
-        console.log(`  - Detected current stage: ${currentStage}`);
-        expect(currentStage).toBe('idea_editing'); // Should be in idea editing stage
+        // Test current stage detection using the new lineage-based system
+        const actionResult = computeParamsAndActionsFromLineage(mockProjectData);
+        console.log(`  - Detected current stage: ${actionResult.currentStage}`);
+        expect(actionResult.currentStage).toBe('idea_editing'); // Should be in idea editing stage
 
-        // Test chosen brainstorm idea detection
-        const chosenIdea = findChosenBrainstormIdea(mockProjectData);
+        // Test brainstorm idea artifacts detection
+        const brainstormIdeas = artifacts.filter(a =>
+            a.schema_type === 'brainstorm_item_schema' || a.type === 'brainstorm_item_schema'
+        );
+        console.log(`  - Found ${brainstormIdeas.length} brainstorm ideas`);
+        expect(brainstormIdeas).toHaveLength(4);
+
+        // Test chosen brainstorm idea detection (leaf node without descendants)
+        const chosenIdea = brainstormIdeas.find(idea => {
+            const hasDescendants = transformInputs.some(input => input.artifact_id === idea.id);
+            return !hasDescendants;
+        });
         console.log(`  - Chosen idea: ${chosenIdea?.id || 'none'}`);
         expect(chosenIdea).toBeTruthy();
         expect(chosenIdea?.id).toBe('artifact-4'); // Latest artifact with no descendants
 
-        // Test brainstorm idea artifacts detection
-        const brainstormIdeas = findBrainstormIdeaArtifacts(artifacts);
-        console.log(`  - Found ${brainstormIdeas.length} brainstorm ideas`);
-        expect(brainstormIdeas).toHaveLength(4);
-
         // Test display components computation
-        const displayComponents = computeDisplayComponents(currentStage, false, mockProjectData);
+        const displayComponents = computeDisplayComponents(actionResult.currentStage, false, mockProjectData);
         console.log(`  - Generated ${displayComponents.length} display components`);
 
         // Verify that SingleBrainstormIdeaEditor is included
@@ -434,6 +440,48 @@ describe('Brainstorm Edit Chain Integration Test', () => {
         expect(singleIdeaEditor).toBeDefined();
 
         console.log('✅ Step 12: Display component computation verified');
+
+        // Step 13: Test active transforms disable editability
+        console.log('✅ Step 13: Testing active transforms disable editability...');
+
+        // Create a mock with running transforms
+        const mockProjectDataWithActiveTransforms = {
+            ...mockProjectData,
+            transforms: [
+                ...transforms,
+                {
+                    id: 'active-transform',
+                    type: 'llm',
+                    status: 'running',
+                    created_at: new Date().toISOString(),
+                    project_id: 'test-project',
+                    transform_name: 'test-transform',
+                    user_id: 'test-user',
+                    updated_at: new Date().toISOString()
+                }
+            ]
+        };
+
+        // Test that hasActiveTransforms is correctly detected
+        const activeTransformResult = computeParamsAndActionsFromLineage(mockProjectDataWithActiveTransforms);
+        console.log(`  - hasActiveTransforms: ${activeTransformResult.hasActiveTransforms}`);
+        expect(activeTransformResult.hasActiveTransforms).toBe(true);
+
+        // Test that display components reflect the disabled state
+        const activeTransformComponents = computeDisplayComponents(
+            activeTransformResult.currentStage,
+            activeTransformResult.hasActiveTransforms,
+            mockProjectDataWithActiveTransforms
+        );
+
+        const disabledSingleIdeaEditor = activeTransformComponents.find((component: any) =>
+            component.id === 'single-brainstorm-idea-editor'
+        );
+        expect(disabledSingleIdeaEditor).toBeTruthy();
+        expect(disabledSingleIdeaEditor?.props.isEditable).toBe(false); // Should be disabled
+
+        console.log('  - Component isEditable when transforms active:', disabledSingleIdeaEditor?.props.isEditable);
+        console.log('✅ Step 13: Active transforms correctly disable editability');
 
         // Assert final expectations
         expect(artifacts).toHaveLength(4);

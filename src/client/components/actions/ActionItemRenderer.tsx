@@ -24,12 +24,7 @@ const ActionItemRenderer: React.FC<ActionItemRendererProps> = ({
     stageDescription = '',
     workflowSteps = []
 }) => {
-    console.log('[ActionItemRenderer] Rendering with:', {
-        actionId: action.id,
-        actionType: action.type,
-        workflowStepsCount: workflowSteps.length,
-        hasActiveTransforms
-    });
+
 
     const Component = action.component;
 

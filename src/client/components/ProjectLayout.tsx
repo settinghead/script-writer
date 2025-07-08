@@ -145,9 +145,9 @@ const ProjectLayout: React.FC = () => {
     // Debug: Log when right sidebar is rendered
     useEffect(() => {
         if (!isMobile && rightSidebarVisible) {
-            console.log('[ProjectLayout] Right sidebar is visible, WorkflowVisualization should render');
+
         } else {
-            console.log('[ProjectLayout] Right sidebar hidden:', { isMobile, rightSidebarVisible });
+
         }
     }, [isMobile, rightSidebarVisible]);
 

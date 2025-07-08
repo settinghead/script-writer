@@ -9,6 +9,8 @@ interface UnifiedDisplayRendererProps {
 export const UnifiedDisplayRenderer: React.FC<UnifiedDisplayRendererProps> = ({
     displayComponents
 }) => {
+
+
     return (
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
             {displayComponents.map((displayComponent) => {

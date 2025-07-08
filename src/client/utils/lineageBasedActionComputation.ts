@@ -111,12 +111,7 @@ export function computeActionsFromLineage(
     transformInputs: ElectricTransformInput[],
     transformOutputs: ElectricTransformOutput[]
 ): ComputedActions {
-    console.log('[computeActionsFromLineage] Starting with:', {
-        lineageGraphType: typeof lineageGraph,
-        lineageGraphKeys: typeof lineageGraph === 'object' ? Object.keys(lineageGraph) : 'N/A',
-        artifactsCount: artifacts.length,
-        transformsCount: transforms.length
-    });
+
 
     // 1. Build workflow context from lineage traversal
     const actionContext = buildActionContextFromLineage(
@@ -130,7 +125,6 @@ export function computeActionsFromLineage(
 
     // 2. Determine current stage from workflow nodes
     const currentStage = detectStageFromWorkflowNodes(actionContext.workflowNodes);
-    console.log('[computeActionsFromLineage] Detected stage:', currentStage);
 
     // 3. Complete the action context with current stage
     const completeActionContext: LineageBasedActionContext = {
@@ -140,7 +134,6 @@ export function computeActionsFromLineage(
 
     // 4. Generate actions based on lineage state
     const actions = generateActionsForStage(currentStage, completeActionContext);
-    console.log('[computeActionsFromLineage] Generated actions:', actions.length);
 
     // 4. Get stage description
     const stageDescription = getStageDescription(currentStage);
@@ -173,10 +166,6 @@ function buildActionContextFromLineage(
     );
 
     const workflowNodes = findMainWorkflowPath(artifacts, lineageGraph);
-    console.log('[buildActionContextFromLineage] Found workflow nodes:', {
-        count: workflowNodes.length,
-        nodes: workflowNodes.map(n => ({ type: n.type, artifactId: n.artifactId }))
-    });
 
     // Find chosen idea (leaf brainstorm idea that's ready for next stage)
     let chosenBrainstormIdea = findChosenIdeaFromLineage(effectiveBrainstormIdeas, lineageGraph);
@@ -186,11 +175,7 @@ function buildActionContextFromLineage(
         chosenBrainstormIdea = effectiveBrainstormIdeas[0];
     }
 
-    console.log('[buildActionContextFromLineage] Chosen brainstorm idea:', {
-        hasChosenIdea: !!chosenBrainstormIdea,
-        chosenIdeaId: chosenBrainstormIdea?.artifactId?.substring(0, 8),
-        effectiveIdeasCount: effectiveBrainstormIdeas.length
-    });
+
 
     // Find latest artifacts using lineage resolution
     const latestOutlineSettings = findLatestArtifactByType(
@@ -231,25 +216,24 @@ function buildActionContextFromLineage(
  * Detect current workflow stage from workflow nodes
  */
 function detectStageFromWorkflowNodes(workflowNodes: WorkflowNode[]): WorkflowStage {
-    console.log('[detectStageFromWorkflowNodes] Input:', {
-        workflowNodesCount: workflowNodes.length,
-        workflowNodes: workflowNodes.map(n => ({ type: n.type, artifactId: n.artifactId }))
-    });
-
     // If no workflow nodes, we're at initial stage
     if (workflowNodes.length === 0) {
-        console.log('[detectStageFromWorkflowNodes] No workflow nodes, returning initial');
         return 'initial';
     }
 
     // Find the last (most recent) node in the workflow
     const lastNode = workflowNodes[workflowNodes.length - 1];
-    console.log('[detectStageFromWorkflowNodes] Last node:', { type: lastNode.type, artifactId: lastNode.artifactId });
 
     // Map workflow node types to action stages
+    // For brainstorm_collection, we need to check if there's a chosen idea
+    if (lastNode.type === 'brainstorm_collection') {
+        // Check if we have a chosen idea (this should be passed from context)
+        // For now, let's assume if we have a single brainstorm collection node, we're in idea_editing
+        return 'idea_editing'; // Changed from brainstorm_selection to idea_editing
+    }
+
     const stageMap: Record<string, WorkflowStage> = {
         'brainstorm_input': 'brainstorm_input',
-        'brainstorm_collection': 'brainstorm_selection',
         'brainstorm_idea': 'idea_editing',
         'outline': 'outline_generation',
         'chronicles': 'chronicles_generation',
@@ -257,7 +241,6 @@ function detectStageFromWorkflowNodes(workflowNodes: WorkflowNode[]): WorkflowSt
     };
 
     const detectedStage = stageMap[lastNode.type] || 'initial';
-    console.log('[detectStageFromWorkflowNodes] Detected stage:', detectedStage);
 
     return detectedStage;
 }

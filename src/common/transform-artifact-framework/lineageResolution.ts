@@ -1303,10 +1303,7 @@ export function findMainWorkflowPath(
 ): WorkflowNode[] {
     const workflowNodes: WorkflowNode[] = [];
 
-    console.log('[findMainWorkflowPath] Starting with artifacts:', {
-        artifactCount: artifacts.length,
-        artifactTypes: artifacts.map(a => ({ id: a.id, type: a.type, schemaType: a.schema_type }))
-    });
+
 
     try {
         // Step 1: Find the main outline (only one allowed per project)
@@ -1324,19 +1321,14 @@ export function findMainWorkflowPath(
 
         if (!mainOutline) {
             // No outline yet - show brainstorm collection(s) only
-            console.log('[findMainWorkflowPath] No outline found, creating brainstorm-only workflow');
             return createBrainstormOnlyWorkflow(artifacts);
         }
 
-        console.log('[findMainWorkflowPath] Found main outline:', { id: mainOutline.id, type: mainOutline.type, schemaType: mainOutline.schema_type });
-
         // Step 2: Trace back from outline to find the main path
         const mainPath = traceMainPathFromOutline(mainOutline, graph, artifacts);
-        console.log('[findMainWorkflowPath] Main path artifacts:', mainPath.map(a => ({ id: a.id, type: a.type, schemaType: a.schema_type })));
 
         // Step 3: Convert artifacts to workflow nodes
         const workflowNodes = createWorkflowNodes(mainPath);
-        console.log('[findMainWorkflowPath] Created workflow nodes:', workflowNodes.map(n => ({ id: n.id, type: n.type, title: n.title })));
 
         return workflowNodes;
 
@@ -1445,9 +1437,7 @@ function traceMainPathFromOutline(
     }
 
     // Step 2: Trace forward from outline to find later artifacts (like chronicles)
-    console.log('[traceMainPathFromOutline] Tracing forward from outline:', outlineArtifact.id);
     const forwardPath = traceForwardFromArtifact(outlineArtifact, graph, artifacts, visited);
-    console.log('[traceMainPathFromOutline] Forward path found:', forwardPath.map(a => ({ id: a.id, type: a.type, schemaType: a.schema_type })));
     path.push(...forwardPath);
 
     return path;
@@ -1465,13 +1455,7 @@ function traceForwardFromArtifact(
     const forwardPath: ElectricArtifact[] = [];
     const edges = graph.edges.get(sourceArtifact.id);
 
-    console.log('[traceForwardFromArtifact] Checking edges for artifact:', {
-        artifactId: sourceArtifact.id,
-        artifactType: sourceArtifact.type,
-        hasEdges: !!edges,
-        edgeCount: edges?.length || 0,
-        edges: edges || []
-    });
+
 
     if (!edges || edges.length === 0) {
         return forwardPath;
@@ -1496,12 +1480,7 @@ function traceForwardFromArtifact(
                 nextArtifact.schema_type === 'chronicles_schema' ||
                 nextArtifact.schema_type === 'episode_synopsis_schema';
 
-            console.log('[traceForwardFromArtifact] Evaluating next artifact:', {
-                artifactId: nextArtifactId,
-                artifactType: nextArtifact.type,
-                schemaType: nextArtifact.schema_type,
-                isMainWorkflowArtifact
-            });
+
 
             if (isMainWorkflowArtifact) {
                 forwardPath.push(nextArtifact);

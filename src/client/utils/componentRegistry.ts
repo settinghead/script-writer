@@ -22,7 +22,9 @@ export type ComponentRegistry = typeof COMPONENT_REGISTRY;
 
 // Helper function to get component by ID
 export function getComponentById(id: ComponentId): React.ComponentType<any> {
-    return COMPONENT_REGISTRY[id];
+    const component = COMPONENT_REGISTRY[id];
+
+    return component;
 }
 
 // Validate that all ComponentId values have corresponding components
