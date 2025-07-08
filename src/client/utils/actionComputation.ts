@@ -234,16 +234,16 @@ export const computeParamsAndActions = (
             break;
 
         case 'brainstorm_input':
-            stageDescription = '填写头脑风暴参数';
+            stageDescription = '填写参数并开始头脑风暴';
             const brainstormInput = findBrainstormInputArtifact(
                 projectData.artifacts === "pending" || projectData.artifacts === "error" ? [] : projectData.artifacts
             );
             if (brainstormInput) {
                 actions.push({
-                    id: 'brainstorm_input_form',
-                    type: 'form',
-                    title: '头脑风暴参数',
-                    description: '设置平台、类型等参数',
+                    id: 'brainstorm_start_button',
+                    type: 'button',
+                    title: '开始头脑风暴',
+                    description: '基于上方填写的参数开始生成创意',
                     component: BrainstormInputForm,
                     props: { brainstormArtifact: brainstormInput },
                     enabled: true,

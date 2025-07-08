@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button, Typography, message } from 'antd';
 import { BulbOutlined } from '@ant-design/icons';
 import { BaseActionProps } from './index';
-import { ArtifactEditor } from '../../transform-artifact-framework/ArtifactEditor';
+import { useProjectData } from '../../contexts/ProjectDataContext';
 
 const { Title } = Typography;
 
@@ -16,54 +16,91 @@ const BrainstormInputForm: React.FC<BrainstormInputFormProps> = ({
     onSuccess,
     onError
 }) => {
-    // Field configuration for the brainstorm input form
-    const brainstormFields = [
-        { field: 'platform', component: 'input' as const, placeholder: '目标平台 (如: 抖音, 快手, 小红书)' },
-        { field: 'genre', component: 'input' as const, placeholder: '故事类型 (如: 现代甜宠, 古装复仇)' },
-        { field: 'other_requirements', component: 'textarea' as const, rows: 3, placeholder: '其他要求 (角色设定、情节要求、风格偏好等...)' },
-        { field: 'numberOfIdeas', component: 'input' as const, placeholder: '创意数量 (1-4)' }
-    ];
+    const [isStarting, setIsStarting] = useState(false);
+    const projectData = useProjectData();
 
-    const handleStartBrainstorm = () => {
-        // TODO: Trigger brainstorm agent with the artifact data
-        message.info('即将启动头脑风暴...');
-        // For now, just call onSuccess to indicate the action is available
-        onSuccess?.();
+    const handleStartBrainstorm = async () => {
+        if (isStarting) return;
+
+        try {
+            // Get current artifact data
+            let currentData;
+            try {
+                currentData = typeof brainstormArtifact.data === 'string'
+                    ? JSON.parse(brainstormArtifact.data)
+                    : brainstormArtifact.data;
+            } catch (error) {
+                console.error('Failed to parse artifact data:', error);
+                message.error('无法读取头脑风暴参数');
+                return;
+            }
+
+            // Validate required fields
+            if (!currentData?.genre || !currentData?.genre.trim()) {
+                message.warning('请先在上方填写故事类型');
+                return;
+            }
+
+            if (!currentData?.platform || !currentData?.platform.trim()) {
+                message.warning('请先在上方填写目标平台');
+                return;
+            }
+
+            setIsStarting(true);
+
+            // Trigger brainstorm agent
+            const response = await fetch(`/api/projects/${projectId}/agent`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer debug-auth-token-script-writer-dev'
+                },
+                body: JSON.stringify({
+                    userRequest: `基于artifact ID ${brainstormArtifact?.id} 的头脑风暴参数，生成${currentData.numberOfIdeas || 3}个创意想法。平台：${currentData.platform}，类型：${currentData.genre}${currentData.other_requirements ? `，其他要求：${currentData.other_requirements}` : ''}`,
+                    projectId: projectId
+                })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to start brainstorm');
+            }
+
+            message.success('头脑风暴已开始！请查看聊天面板了解进度。');
+            onSuccess?.();
+        } catch (error) {
+            console.error('Error starting brainstorm:', error);
+            const errorMessage = `启动头脑风暴失败：${error instanceof Error ? error.message : '未知错误'}`;
+            message.error(errorMessage);
+            onError?.(error instanceof Error ? error : new Error(errorMessage));
+        } finally {
+            setIsStarting(false);
+        }
     };
 
     return (
-        <div style={{ padding: '24px' }}>
-            <Title level={4} style={{ marginBottom: '24px', color: '#fff', textAlign: 'center' }}>
-                <BulbOutlined style={{ marginRight: '8px', color: '#1890ff' }} />
-                头脑风暴要求
-            </Title>
+        <div style={{ padding: '16px 0', textAlign: 'center' }}>
 
-            <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-                <ArtifactEditor
-                    artifactId={brainstormArtifact.id}
-                    fields={brainstormFields}
-                    className="brainstorm-input-editor"
-                    onSaveSuccess={() => {
-                        message.success('参数已保存');
-                    }}
-                />
 
-                <div style={{ marginTop: '24px', textAlign: 'center' }}>
-                    <Button
-                        type="primary"
-                        size="large"
-                        style={{
-                            width: '200px',
-                            height: '48px',
-                            fontSize: '16px',
-                            borderRadius: '8px'
-                        }}
-                        onClick={handleStartBrainstorm}
-                    >
-                        开始头脑风暴
-                    </Button>
-                </div>
-            </div>
+
+
+            <Button
+                type="primary"
+                size="large"
+                loading={isStarting}
+                onClick={handleStartBrainstorm}
+                style={{
+                    minWidth: '200px',
+                    height: '48px',
+                    fontSize: '16px',
+                    borderRadius: '8px',
+                    background: 'linear-gradient(135deg, #1890ff, #52c41a)',
+                    border: 'none',
+                    boxShadow: '0 4px 12px rgba(24, 144, 255, 0.3)'
+                }}
+            >
+                {isStarting ? '启动中...' : '开始头脑风暴'}
+            </Button>
         </div>
     );
 };

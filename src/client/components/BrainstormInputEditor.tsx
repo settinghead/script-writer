@@ -421,26 +421,7 @@ export const BrainstormInputEditor: React.FC<BrainstormInputEditorProps> = ({
                         />
                     </div>
 
-                    {/* Generate Button */}
-                    <div style={{ textAlign: 'center', marginTop: '24px' }}>
-                        <Button
-                            type="primary"
-                            size="large"
-                            icon={<BulbOutlined />}
-                            onClick={handleStartBrainstorm}
-                            disabled={!isGenreSelectionComplete()}
-                            style={{
-                                width: '200px',
-                                height: '48px',
-                                fontSize: '16px',
-                                borderRadius: '8px',
-                                background: isGenreSelectionComplete() ? 'linear-gradient(135deg, #1890ff, #40a9ff)' : '#434343',
-                                border: 'none'
-                            }}
-                        >
-                            开始头脑风暴 ({currentData.numberOfIdeas || 3}个创意)
-                        </Button>
-                    </div>
+
                 </div>
             </div>
         </Card>
