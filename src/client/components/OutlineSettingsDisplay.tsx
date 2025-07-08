@@ -292,21 +292,31 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
         }
     }, [effectiveArtifact, projectData]);
 
-    // Loading state
-    if (isLoading) {
-        return (
-            <div style={{ textAlign: 'center', padding: '40px' }}>
-                <Spin size="large" />
-                <div style={{ marginTop: '16px', color: '#8c8c8c' }}>
-                    加载剧本框架...
-                </div>
-            </div>
-        );
-    }
+    // Remove standalone loading state - let the unified workflow system handle this
 
-    // No outline settings available
+    // Show placeholder when no outline settings are available
     if (!outlineSettings) {
-        return null;
+        return (
+            <SectionWrapper
+                schemaType={ArtifactSchemaType.OUTLINE_SETTINGS}
+                title="剧本框架"
+                sectionId="outline-settings"
+                artifactId={effectiveArtifact?.id}
+            >
+                <div style={{
+                    textAlign: 'center',
+                    padding: '40px',
+                    color: '#8c8c8c',
+                    border: '1px dashed #434343',
+                    borderRadius: '8px',
+                    backgroundColor: '#1a1a1a'
+                }}>
+                    <Text style={{ color: '#8c8c8c' }}>
+                        剧本框架将在生成完成后显示
+                    </Text>
+                </div>
+            </SectionWrapper>
+        );
     }
 
     return (
