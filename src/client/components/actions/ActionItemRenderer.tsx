@@ -43,25 +43,15 @@ const ActionItemRenderer: React.FC<ActionItemRendererProps> = ({
 
     return (
         <div className="action-item-renderer">
-            {/* Always show workflow steps when available */}
+            {/* Always show workflow steps when available - full width on top */}
             {workflowSteps.length > 0 && (
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '24px',
-                    marginBottom: '16px',
-                    padding: '12px 16px',
-                    backgroundColor: '#1a1a1a',
-                    borderRadius: '6px',
-                    border: '1px solid #333'
-                }}>
+                <>
                     <WorkflowSteps steps={workflowSteps} inline={true} />
                     <div
                         style={{
+                            marginTop: '16px',
                             opacity: action.enabled ? 1 : 0.6,
-                            pointerEvents: action.enabled ? 'auto' : 'none',
-                            minWidth: '200px',
-                            flexShrink: 0
+                            pointerEvents: action.enabled ? 'auto' : 'none'
                         }}
                     >
                         {isDisabledDueToStreaming && (
@@ -75,7 +65,7 @@ const ActionItemRenderer: React.FC<ActionItemRendererProps> = ({
                         )}
                         <Component {...combinedProps} />
                     </div>
-                </div>
+                </>
             )}
 
             {/* Show action without workflow steps if no steps available */}
