@@ -38,14 +38,16 @@ const EpisodeGenerationAction: React.FC<BaseActionProps> = ({ projectId, onSucce
         setIsGenerating(true);
         try {
             // Call the episode generation API via chat
-            const response = await fetch('/api/chat', {
+            const response = await fetch(`/api/chat/${projectId}/messages`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': 'Bearer debug-auth-token-script-writer-dev'
                 },
+                credentials: 'include',
                 body: JSON.stringify({
-                    projectId,
-                    message: `请基于时间顺序大纲生成分集剧本。源时间顺序大纲ID: ${latestChronicles.id}`
+                    content: `请基于时间顺序大纲生成分集剧本。源时间顺序大纲ID: ${latestChronicles.id}`,
+                    metadata: {}
                 })
             });
 
@@ -93,19 +95,15 @@ const EpisodeGenerationAction: React.FC<BaseActionProps> = ({ projectId, onSucce
     }, [latestChronicles]);
 
     return (
-        <div style={{ padding: '24px' }}>
-            <Title level={4} style={{ marginBottom: '24px', color: '#fff', textAlign: 'center' }}>
-                <PlayCircleOutlined style={{ marginRight: '8px', color: '#1890ff' }} />
-                生成分集剧本
-            </Title>
+        <div >
 
-            <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+
+            <div style={{ margin: '0 auto', display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
                 {/* Show chronicles info */}
                 <div style={{
                     background: '#2a2a2a',
                     padding: '16px',
                     borderRadius: '8px',
-                    marginBottom: '24px',
                     border: '1px solid #434343'
                 }}>
                     <Text strong style={{ color: '#fff', display: 'block', marginBottom: '8px' }}>
@@ -130,13 +128,6 @@ const EpisodeGenerationAction: React.FC<BaseActionProps> = ({ projectId, onSucce
                     )}
                 </div>
 
-                {/* Action description */}
-                <div style={{ marginBottom: '24px', textAlign: 'center' }}>
-                    <Text style={{ color: '#ccc', fontSize: '14px', lineHeight: '1.6' }}>
-                        将基于现有的时间顺序大纲生成具体的分集剧本内容，
-                        包括每集的详细情节、对话、场景描述等完整的剧本格式内容。
-                    </Text>
-                </div>
 
                 {/* Generate button */}
                 <div style={{ textAlign: 'center' }}>

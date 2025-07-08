@@ -38,14 +38,16 @@ const ChroniclesGenerationAction: React.FC<BaseActionProps> = ({ projectId, onSu
         setIsGenerating(true);
         try {
             // Call the chronicles generation API via chat
-            const response = await fetch('/api/chat', {
+            const response = await fetch(`/api/chat/${projectId}/messages`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': 'Bearer debug-auth-token-script-writer-dev'
                 },
+                credentials: 'include',
                 body: JSON.stringify({
-                    projectId,
-                    message: `请基于剧本框架生成时间顺序大纲。源剧本框架ID: ${latestOutlineSettings.id}`
+                    content: `请基于剧本框架生成时间顺序大纲。源剧本框架ID: ${latestOutlineSettings.id}`,
+                    metadata: {}
                 })
             });
 
