@@ -418,7 +418,7 @@ describe('Unified Workflow Computation', () => {
 
             const steps = computeWorkflowSteps('idea_editing', false, projectData);
 
-            expect(steps).toHaveLength(6); // Should use AI path
+            expect(steps).toHaveLength(7); // Should use AI path
             expect(steps[0].title).toBe('创意输入');
             expect(steps[1].title).toBe('头脑风暴');
         });
@@ -441,9 +441,10 @@ describe('Unified Workflow Computation', () => {
             const steps = computeWorkflowSteps('outline_generation', false, projectData);
 
             expect(steps[0].status).toBe('finish'); // 创意编辑 finished
-            expect(steps[1].status).toBe('finish'); // 大纲 current but not active, so 'finish'
-            expect(steps[2].status).toBe('wait'); // 分集概要 waiting
-            expect(steps[3].status).toBe('wait'); // 剧本生成 waiting
+            expect(steps[1].status).toBe('finish'); // 剧本框架 current but not active, so 'finish'
+            expect(steps[2].status).toBe('wait'); // 时间顺序大纲 waiting
+            expect(steps[3].status).toBe('wait'); // 每集大纲 waiting
+            expect(steps[4].status).toBe('wait'); // 分集剧本 waiting
         });
 
         it('should set correct step statuses for AI path', () => {
