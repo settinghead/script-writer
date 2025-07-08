@@ -482,6 +482,256 @@ CREATE TABLE chat_messages (
 );
 ```
 
+## Transform Execution Modes
+
+The framework supports two distinct execution modes for AI-powered content generation and editing, each optimized for different use cases and providing different performance characteristics.
+
+### 1. Full-Object Mode (完整对象模式)
+
+**Use Case**: Creating new content from scratch or complete rewrites
+
+**How It Works**:
+- LLM generates complete new content objects
+- Output artifact starts empty and gets progressively filled during streaming
+- Used for brainstorming, outline generation, chronicles creation
+- Template prompts ask for complete structured responses
+
+**Example Templates**:
+- `brainstorming` - Generates complete story idea collections
+- `outline_settings` - Creates full character and story foundation
+- `chronicles` - Produces complete chronological timelines
+
+**Execution Flow**:
+```typescript
+// Full-object mode - starts with empty structure
+executionMode: { mode: 'full-object' }
+
+// Initial artifact data is empty/minimal
+initialData = this.createInitialArtifactData(outputArtifactType);
+
+// LLM generates complete content
+finalArtifactData = config.transformLLMOutput 
+  ? config.transformLLMOutput(llmOutput, input)
+  : llmOutput;
+```
+
+### 2. Patch Mode (补丁模式)
+
+**Use Case**: Making precise edits to existing content while preserving unchanged parts
+
+**How It Works**:
+- LLM generates JSON Patch operations (RFC 6902 standard)
+- Output artifact starts with a copy of the original content
+- Patches are applied incrementally during streaming
+- Only modified fields change, preserving the rest of the content
+
+**JSON Patch Operations**:
+```json
+{
+  "patches": [
+    {
+      "op": "replace",
+      "path": "/title", 
+      "value": "新标题"
+    },
+    {
+      "op": "replace",
+      "path": "/body",
+      "value": "改进后的故事内容..."
+    }
+  ]
+}
+```
+
+**Example Usage**:
+- `brainstorm_edit` - Precise story idea modifications
+- User requests like "让这些故事更现代一些，加入一些科技元素"
+- Maintains original structure while updating specific fields
+
+**Execution Flow**:
+```typescript
+// Patch mode - starts with original content
+executionMode: { 
+  mode: 'patch', 
+  originalArtifact: sourceContent 
+}
+
+// Initial artifact data is copy of original
+initialData = deepClone(executionMode.originalArtifact);
+
+// Apply patches during streaming
+finalArtifactData = await this.applyPatchesToOriginal(
+  llmOutput, 
+  originalArtifact, 
+  templateName, 
+  retryCount
+);
+```
+
+### 3. Patch Mode Fallback Mechanisms
+
+**Multi-Layer Fallback Strategy**:
+1. **JSON Patch (Primary)** - RFC 6902 standard operations
+2. **Diff Format (Secondary)** - Text-based diff parsing
+3. **Full Regeneration (Tertiary)** - Falls back to full-object mode
+
+**Error Handling**:
+- Invalid patches are caught and logged
+- Failed patch applications trigger automatic retry
+- Multiple retry attempts before falling back to full regeneration
+- Comprehensive error tracking in transform metadata
+
+**Patch Validation**:
+```typescript
+// Validate patch operations
+const patchResults = applyPatch(originalCopy, patches);
+const failedPatches = patchResults.filter(r => r.test === false);
+
+if (failedPatches.length === 0) {
+  // Success - use patched content
+  return originalCopy;
+} else {
+  // Failure - trigger fallback
+  throw new Error(`Failed to apply ${failedPatches.length} JSON patches`);
+}
+```
+
+### 4. Mode Selection Logic
+
+**Automatic Mode Detection**:
+- **Full-Object Mode**: Used by default for generation tools
+- **Patch Mode**: Explicitly enabled for editing tools with `extractSourceArtifacts`
+
+**Template Design**:
+- **Generation Templates**: Prompt for complete content structures
+- **Edit Templates**: Prompt for JSON Patch operations with specific format requirements
+
+**Performance Benefits**:
+- **Patch Mode**: Faster processing, preserves unchanged content, better user experience
+- **Full-Object Mode**: Simpler implementation, complete content control
+- **Streaming Updates**: Both modes support real-time artifact updates during generation
+
+**Metadata Tracking**:
+```typescript
+transformMetadata: {
+  execution_mode: executionMode?.mode || 'full-object',
+  method: 'unified_patch', // or 'full_generation'
+  source_artifact_type: sourceArtifact.type,
+  output_artifact_type: outputArtifactType,
+  retry_count: retryCount,
+  patch_success: boolean
+}
+```
+
+### 5. Template Design Patterns
+
+**Full-Object Templates**:
+Templates designed for complete content generation with structured output schemas.
+
+```typescript
+// Example: brainstorming template
+promptTemplate: `生成${numberOfIdeas}个故事创意...
+请以JSON数组格式生成创意：
+[
+  {"title": "标题1", "body": "完整故事梗概1"},
+  {"title": "标题2", "body": "完整故事梗概2"}
+]`
+
+outputSchema: z.array(BrainstormIdeaSchema)
+```
+
+**Patch Mode Templates**:
+Templates specifically designed to generate JSON Patch operations with explicit format requirements.
+
+```typescript
+// Example: brainstorm_edit template  
+promptTemplate: `基于用户要求改进现有故事创意...
+请以JSON补丁(JSON Patch)格式返回修改操作：
+{
+  "patches": [
+    {
+      "op": "replace",
+      "path": "/title",
+      "value": "改进标题"
+    },
+    {
+      "op": "replace", 
+      "path": "/body",
+      "value": "改进后的完整故事梗概..."
+    }
+  ]
+}`
+
+outputSchema: JsonPatchOperationsSchema
+```
+
+**Key Template Differences**:
+- **Output Format**: Full objects vs. patch operations
+- **Context Handling**: New creation vs. modification of existing content
+- **Prompt Structure**: Generation instructions vs. editing instructions
+- **Schema Validation**: Complete content schemas vs. patch operation schemas
+- **Error Recovery**: Schema validation failures vs. patch application failures
+
+**Template Selection Logic**:
+```typescript
+// Automatic template selection based on tool type
+if (config.extractSourceArtifacts && executionMode?.mode === 'patch') {
+  // Use patch-mode template (e.g., 'brainstorm_edit')
+  templateName = 'brainstorm_edit';
+} else {
+  // Use full-object template (e.g., 'brainstorming')  
+  templateName = 'brainstorming';
+}
+```
+
+### 6. Practical Usage Comparison
+
+**When to Use Full-Object Mode**:
+- ✅ Creating new content from scratch
+- ✅ Complete rewrites or restructuring
+- ✅ Initial brainstorming and ideation
+- ✅ Generating structured data with multiple fields
+- ✅ Complex content that requires full context understanding
+
+**When to Use Patch Mode**:
+- ✅ Making specific edits to existing content
+- ✅ User requests for targeted improvements
+- ✅ Preserving unchanged content structure
+- ✅ Incremental refinements and adjustments
+- ✅ Maintaining content consistency during edits
+
+**Performance Characteristics**:
+
+| Aspect | Full-Object Mode | Patch Mode |
+|--------|------------------|------------|
+| **Processing Speed** | Slower (complete generation) | Faster (targeted changes) |
+| **Content Preservation** | None (complete replacement) | High (unchanged parts preserved) |
+| **LLM Token Usage** | Higher (full content) | Lower (patches only) |
+| **Error Recovery** | Schema validation | Patch application + fallback |
+| **User Experience** | Complete refresh | Incremental updates |
+| **Implementation Complexity** | Simple | Complex (fallback mechanisms) |
+
+**Real-World Examples**:
+
+```typescript
+// Full-Object Mode Example
+// User: "给我生成3个古装甜宠故事"
+// Result: Complete new story collection
+
+// Patch Mode Example  
+// User: "让这些故事更现代一些，加入一些科技元素"
+// Result: Targeted edits preserving story structure
+```
+
+**Development Guidelines**:
+1. **Default to Full-Object** for new content creation tools
+2. **Use Patch Mode** for editing and refinement tools
+3. **Implement Fallback** mechanisms for patch mode reliability
+4. **Test Both Modes** thoroughly with real user scenarios
+5. **Monitor Performance** and adjust based on usage patterns
+
+This dual-mode system provides optimal performance for both content creation and editing workflows, ensuring efficient AI operations while maintaining complete audit trails and user experience quality.
+
 ## Unified Streaming Framework & Caching
 
 **Streaming Framework**: All agent tools use a unified streaming architecture with 90% reduction in boilerplate code and consistent behavior.

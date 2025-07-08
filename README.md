@@ -410,6 +410,28 @@ This dual-computation system ensures that users always see the correct workflow 
 - **Type-Safe Operations** - Zod validation throughout the system
 - **Advanced Caching** - Development-optimized streaming response caching
 
+### Script-Writer Transform Usage
+
+觅光助创 leverages the Transform Artifact Framework's dual-mode execution system for optimal content creation and editing workflows:
+
+**Content Generation (Full-Object Mode)**:
+- **Story Brainstorming** - Generate complete collections of story ideas
+- **Outline Settings** - Create comprehensive character and story foundations  
+- **Chronicles Creation** - Produce complete chronological timelines
+- **Episode Generation** - Generate detailed episode structures
+
+**Content Editing (Patch Mode)**:
+- **Story Refinement** - Make targeted improvements to existing ideas
+- **Character Adjustments** - Modify specific character details
+- **Plot Modifications** - Update story elements while preserving structure
+- **User-Guided Improvements** - Apply specific user feedback efficiently
+
+**Chinese Short Drama Optimization**:
+- **Platform-Specific Templates** - Optimized prompts for 抖音, 快手, 小红书
+- **去脸谱化 Requirements** - Built-in anti-stereotyping in all generation modes
+- **Genre-Specific Patterns** - Specialized templates for 甜宠, 复仇, 霸总 content
+- **Efficient Iteration** - Patch mode enables rapid content refinement
+
 ### Application Architecture
 
 **Frontend (React 19 + TypeScript)**:
