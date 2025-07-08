@@ -480,17 +480,22 @@ export const computeWorkflowSteps = (
         },
         {
             id: WORKFLOW_STEPS.OUTLINE_GENERATION,
-            title: '大纲',
+            title: '剧本框架',
             status: 'wait'
         },
         {
             id: WORKFLOW_STEPS.CHRONICLES_GENERATION,
-            title: '分集概要',
+            title: '时间顺序大纲',
+            status: 'wait'
+        },
+        {
+            id: 'episode_outline',
+            title: '每集大纲',
             status: 'wait'
         },
         {
             id: WORKFLOW_STEPS.EPISODE_GENERATION,
-            title: '剧本生成',
+            title: '每集大纲',
             status: 'wait'
         }
     ];
@@ -513,17 +518,22 @@ export const computeWorkflowSteps = (
         },
         {
             id: WORKFLOW_STEPS.OUTLINE_GENERATION,
-            title: '大纲',
+            title: '剧本框架',
             status: 'wait'
         },
         {
             id: WORKFLOW_STEPS.CHRONICLES_GENERATION,
-            title: '分集概要',
+            title: '时间顺序大纲',
+            status: 'wait'
+        },
+        {
+            id: 'episode_outline',
+            title: '每集大纲',
             status: 'wait'
         },
         {
             id: WORKFLOW_STEPS.EPISODE_GENERATION,
-            title: '剧本生成',
+            title: '每集大纲',
             status: 'wait'
         }
     ];
@@ -539,7 +549,7 @@ export const computeWorkflowSteps = (
         'idea_editing': 0,
         'outline_generation': 1,
         'chronicles_generation': 2,
-        'episode_synopsis_generation': 3
+        'episode_synopsis_generation': 4 // Skip "每集大纲" for now, map to final step
     };
 
     const aiStageToStepMap: Record<WorkflowStage, number> = {
@@ -549,7 +559,7 @@ export const computeWorkflowSteps = (
         'idea_editing': 2,
         'outline_generation': 3,
         'chronicles_generation': 4,
-        'episode_synopsis_generation': 5
+        'episode_synopsis_generation': 6 // Skip "每集大纲" for now, map to final step
     };
 
     const stageToStepMap = isManualPath ? manualStageToStepMap : aiStageToStepMap;

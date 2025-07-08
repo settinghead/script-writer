@@ -419,19 +419,13 @@ export const ChronicleStageCard: React.FC<ChronicleStageCardProps> = ({
                         <Tag color="blue" icon={<ClockCircleOutlined />}>
                             第 {stageIndex + 1} 阶段
                         </Tag>
-                        {hasLineage && (
-                            <Tag color="green">已编辑</Tag>
-                        )}
+
                         {isSourceChroniclesStreaming && (
                             <Tag color="blue" style={{ fontSize: '12px' }}>
                                 生成中...
                             </Tag>
                         )}
-                        {(!isEditable && !isCreatingTransform && canBecomeEditable) && (
-                            <Tag color="orange" style={{ fontSize: '12px' }}>
-                                点击编辑
-                            </Tag>
-                        )}
+
                     </div>
                     {!isEditable && !isCreatingTransform && canBecomeEditable && !isSourceChroniclesStreaming && (
                         <Button

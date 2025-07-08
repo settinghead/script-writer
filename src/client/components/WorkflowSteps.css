@@ -171,8 +171,38 @@
 }
 
 .step-indicator.process {
-    background: #1890ff;
-    border: 2px solid #1890ff;
+    background: transparent;
+    border: 2px solid transparent;
+}
+
+/* Ensure spinner is visible in process state */
+.step-indicator.process .ant-spin {
+    width: 100% !important;
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: transparent !important;
+}
+
+.step-indicator.process .ant-spin-dot {
+    font-size: 12px !important;
+    color: #1890ff !important;
+    background: transparent !important;
+}
+
+.step-indicator.process .ant-spin-dot i {
+    background-color: #1890ff !important;
+}
+
+/* Remove any background from the spinning elements */
+.step-indicator.process .ant-spin-dot .ant-spin-dot-item {
+    background-color: #1890ff !important;
+}
+
+/* Ensure no background on the container */
+.step-indicator.process * {
+    background-color: transparent !important;
 }
 
 .step-indicator.finish {

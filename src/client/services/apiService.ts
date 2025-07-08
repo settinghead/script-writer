@@ -171,7 +171,7 @@ class ApiService {
                 type: 'brainstorm_item_schema',
                 data: {
                     title: '新创意',
-                    body: '请在此输入您的创意内容...'
+                    body: ''
                 }
             })
         });
