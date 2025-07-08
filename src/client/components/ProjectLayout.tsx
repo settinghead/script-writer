@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Outlet, useParams, useNavigate } from 'react-router-dom';
-import { Layout, Typography, Spin, Alert, Space, Button, Card, List, Drawer, Grid, Tabs } from 'antd';
-import { HomeOutlined, ProjectOutlined, ArrowLeftOutlined, EyeOutlined, EyeInvisibleOutlined, MenuOutlined, ApartmentOutlined, UnorderedListOutlined } from '@ant-design/icons';
+import { Layout, Typography, Spin, Alert, Space, Button, Drawer, Grid, Tabs } from 'antd';
+import { HomeOutlined, ProjectOutlined, EyeInvisibleOutlined, ApartmentOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import { useProjectData as useProjectDataHook } from '../hooks/useProjectData';
 import { useProjectData } from '../contexts/ProjectDataContext';
 import { useProjectStore } from '../stores/projectStore';
@@ -10,14 +10,9 @@ import { ChatSidebarWrapper } from './chat/ChatSidebarWrapper';
 import WorkflowVisualization from './WorkflowVisualization';
 import ProjectTreeView from './ProjectTreeView';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import { SingleBrainstormIdeaEditor } from './brainstorm/SingleBrainstormIdeaEditor';
-import ProjectBrainstormPage from '../components/brainstorm/ProjectBrainstormPage';
-import { OutlineSettingsDisplay } from './OutlineSettingsDisplay';
-import { ChroniclesDisplay } from './ChroniclesDisplay';
 import { ActionItemsSection } from './ActionItemsSection';
 import { DebugMenu, DebugPanels } from './debug';
 import { ProjectCreationForm } from './ProjectCreationForm';
-import { BrainstormInputEditor } from './BrainstormInputEditor';
 import { UnifiedDisplayRenderer } from './UnifiedDisplayRenderer';
 import { computeUnifiedWorkflowState } from '../utils/actionComputation';
 
