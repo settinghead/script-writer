@@ -82,7 +82,7 @@ const EpisodeGenerationAction: React.FC<EpisodeGenerationActionProps> = (props) 
                         borderRadius: '8px'
                     }}
                 >
-                    {isGenerating ? '生成中...' : '生成每集大纲'}
+                    {isGenerating ? '生成中...' : '生成每集大纲 ➤'}
                 </Button>
             </div>
         </div>

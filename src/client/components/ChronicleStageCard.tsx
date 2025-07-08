@@ -309,7 +309,6 @@ export const ChronicleStageCard: React.FC<ChronicleStageCardProps> = ({
         }, {
             onSuccess: (response) => {
                 setIsCreatingTransform(false);
-                message.success(`阶段 ${stageIndex + 1} 开始编辑`);
             },
             onError: (error) => {
                 setIsCreatingTransform(false);
