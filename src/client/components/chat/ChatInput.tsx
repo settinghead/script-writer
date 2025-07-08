@@ -80,9 +80,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     };
 
     const getSuggestions = () => [
-        "都不满意，再生成几个",
-        "太老套，创新一点",
-        "每个再长一点",
+
     ];
 
     const handleSuggestionClick = (suggestion: string) => {

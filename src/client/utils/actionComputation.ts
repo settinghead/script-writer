@@ -605,11 +605,7 @@ export const computeDisplayComponents = (
     // Sort by priority
     const sortedComponents = components.sort((a, b) => a.priority - b.priority);
 
-    console.log('[computeDisplayComponents] Final components:', sortedComponents.map(c => ({
-        id: c.id,
-        mode: c.mode,
-        priority: c.priority
-    })));
+
 
     return sortedComponents;
 };
@@ -706,13 +702,7 @@ export const computeUnifiedWorkflowState = (
         parameters
     };
 
-    // Only log when debugging active transforms
-    if (actionResult.hasActiveTransforms) {
-        console.log('[computeUnifiedWorkflowState] Active transforms - Unified result:', {
-            currentStage: parameters.currentStage,
-            steps: result.steps.map(s => ({ title: s.title, status: s.status }))
-        });
-    }
+
 
     return result;
 }; 
