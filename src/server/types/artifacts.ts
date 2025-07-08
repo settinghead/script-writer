@@ -613,13 +613,13 @@ function isOutlineCharacter(data: any): data is OutlineCharacter {
         typeof data.name === 'string' &&
         validTypes.includes(data.type) &&
         typeof data.description === 'string' &&
-        (data.age === undefined || typeof data.age === 'string') &&
-        (data.gender === undefined || typeof data.gender === 'string') &&
-        (data.occupation === undefined || typeof data.occupation === 'string') &&
-        (data.personality_traits === undefined || Array.isArray(data.personality_traits)) &&
-        (data.character_arc === undefined || typeof data.character_arc === 'string') &&
-        (data.relationships === undefined || (typeof data.relationships === 'object' && data.relationships !== null)) &&
-        (data.key_scenes === undefined || Array.isArray(data.key_scenes));
+        typeof data.age === 'string' &&
+        typeof data.gender === 'string' &&
+        typeof data.occupation === 'string' &&
+        Array.isArray(data.personality_traits) &&
+        typeof data.character_arc === 'string' &&
+        (typeof data.relationships === 'object' && data.relationships !== null) &&
+        Array.isArray(data.key_scenes);
 }
 
 function isOutlineSettingV1(data: any): data is OutlineSettingV1 {

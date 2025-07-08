@@ -634,6 +634,17 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                                                     style={{ fontSize: '14px', color: '#fff', width: '100%' }}
                                                 />
                                             </div>
+                                            <div>
+                                                <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>关键场景：</Text>
+                                                <EditableArray
+                                                    value={character.key_scenes || []}
+                                                    path={`characters[${index}].key_scenes`}
+                                                    placeholder="每行一个关键场景..."
+                                                    isEditable={isEditable}
+                                                    onSave={handleSave}
+                                                    mode="textarea"
+                                                />
+                                            </div>
                                         </Space>
                                     </Card>
                                 ))}

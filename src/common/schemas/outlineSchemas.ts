@@ -1,24 +1,9 @@
 import { z } from 'zod';
+import { CharacterSchema } from './streaming';
 
 // ===========================================
 // OUTLINE SETTINGS SCHEMAS
 // ===========================================
-
-// Character details for outline - updated to match LLM prompt format
-export const CharacterDetailSchema = z.object({
-    name: z.string(),
-    type: z.enum(['male_lead', 'female_lead', 'male_second', 'female_second', 'male_supporting', 'female_supporting', 'antagonist', 'other']),
-    description: z.string(),
-    age: z.string(),
-    gender: z.string(),
-    occupation: z.string(),
-    personality_traits: z.array(z.string()),
-    character_arc: z.string(),
-    relationships: z.record(z.string(), z.string()),
-    key_scenes: z.array(z.string())
-});
-
-export type CharacterDetail = z.infer<typeof CharacterDetailSchema>;
 
 // Outline Settings Schemas
 export const OutlineSettingsInputSchema = z.object({
@@ -40,7 +25,7 @@ export const OutlineSettingsOutputSchema = z.object({
         core_setting_summary: z.string(),
         key_scenes: z.array(z.string())
     }),
-    characters: z.array(CharacterDetailSchema)
+    characters: z.array(CharacterSchema)
 });
 
 export type OutlineSettingsInput = z.infer<typeof OutlineSettingsInputSchema>;

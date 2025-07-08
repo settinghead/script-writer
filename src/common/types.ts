@@ -210,21 +210,12 @@ export interface EpisodeGenerationParamsV1 {
     };
 }
 
-export interface OutlineCharacter {
-    name: string;
-    type: 'male_lead' | 'female_lead' | 'male_second' | 'female_second' | 'male_supporting' | 'female_supporting' | 'antagonist' | 'other';
-    description: string;
-    age?: string;        // e.g., "25岁", "30多岁", "中年"
-    gender?: string;     // e.g., "男", "女"
-    occupation?: string; // e.g., "CEO", "学生", "医生"
-    personality_traits?: string[];
-    character_arc?: string;
-    relationships?: { [key: string]: string };
-    key_scenes?: string[];
-}
+// Use the consolidated Character type from streaming.ts
+import type { Character } from './schemas/streaming';
+export type OutlineCharacter = Character;
 
 export interface OutlineCharactersV1 {
-    characters: OutlineCharacter[];
+    characters: Character[];
 }
 
 // ========== STRONGLY TYPED ARTIFACT INTERFACES ==========

@@ -17,13 +17,13 @@ export const CharacterSchema = z.object({
         'other'
     ]),
     description: z.string(),
-    age: z.string().optional(),
-    gender: z.string().optional(),
-    occupation: z.string().optional(),
-    personality_traits: z.array(z.string()).optional(),
-    character_arc: z.string().optional(),
-    relationships: z.record(z.string(), z.string()).optional(),
-    key_scenes: z.array(z.string()).optional()
+    age: z.string(),
+    gender: z.string(),
+    occupation: z.string(),
+    personality_traits: z.array(z.string()),
+    character_arc: z.string(),
+    relationships: z.record(z.string(), z.string()),
+    key_scenes: z.array(z.string())
 });
 
 // ===============================
