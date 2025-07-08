@@ -42,6 +42,10 @@ const createReactFlowNode = (workflowNode: WorkflowNode, currentSection: Current
                 gradient: 'linear-gradient(135deg, #722ed1 0%, #9254de 50%, #b37feb 100%)',
                 shadow: 'rgba(114, 46, 209, 0.3)'
             },
+            chronicles: {
+                gradient: 'linear-gradient(135deg, #faad14 0%, #ffc53d 50%, #ffd666 100%)',
+                shadow: 'rgba(250, 173, 20, 0.3)'
+            },
             episode: {
                 gradient: 'linear-gradient(135deg, #fa541c 0%, #ff7a45 50%, #ffa39e 100%)',
                 shadow: 'rgba(250, 84, 28, 0.3)'
@@ -65,6 +69,10 @@ const createReactFlowNode = (workflowNode: WorkflowNode, currentSection: Current
             outline: {
                 gradient: 'linear-gradient(135deg, #484848 0%, #585858 50%, #686868 100%)',
                 shadow: 'rgba(72, 72, 72, 0.2)'
+            },
+            chronicles: {
+                gradient: 'linear-gradient(135deg, #4a4a4a 0%, #5a5a5a 50%, #6a6a6a 100%)',
+                shadow: 'rgba(74, 74, 74, 0.2)'
             },
             episode: {
                 gradient: 'linear-gradient(135deg, #424242 0%, #525252 50%, #626262 100%)',
@@ -111,6 +119,7 @@ const createReactFlowNode = (workflowNode: WorkflowNode, currentSection: Current
             brainstorm_collection: '💡',
             brainstorm_idea: '📝',
             outline: '📋',
+            chronicles: '📚',
             episode: '🎬',
             script: '📄'
         };

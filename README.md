@@ -98,11 +98,14 @@ UI Update: Real-time display with edit indicators
 - **Edit History Visualization** - Visual indicators (📝 已编辑版本) for modified content
 - **Unified Section Management** - `SectionWrapper` component for consistent section rendering with automatic status detection
 
-**Chat Interface**:
-- **ChatGPT-style Sidebar** - Resizable (250px-600px) with mobile responsive design
-- **Project-Scoped History** - Complete conversation context per project
-- **Event-Driven Messaging** - 6 event types for comprehensive interaction tracking
-- **Message Sanitization** - Two-layer system preventing trade secret exposure
+**Chat Interface with Assistant-UI Integration**:
+- **Auto-Scroll Functionality** - Smart auto-scroll to bottom when new messages arrive, with user control preservation
+- **Modern Message Layout** - Card-based messages with user/assistant avatars and proper alignment
+- **Scroll Position Tracking** - Monitors user scroll position with floating scroll-to-bottom button
+- **Chinese Localization** - Complete interface in Chinese (觅子智能体)
+- **Real-time Streaming** - Maintains Electric SQL streaming with smooth loading animations
+- **Keyboard Shortcuts** - Enter to send, Shift+Enter for new lines
+- **Performance Optimized** - Efficient scroll tracking without performance impact
 
 ### 🎯 Script Writing Workflow
 
@@ -656,3 +659,80 @@ docker compose -f docker-compose.prod.yml up -d
 ## Framework Documentation
 
 For detailed technical documentation about the underlying Transform Artifact Framework, including agent architecture, database schemas, and development patterns, see [TRANSFORM_ARTIFACT_FRAMEWORK.md](./TRANSFORM_ARTIFACT_FRAMEWORK.md).
+
+### Chat Interface Architecture
+
+The application uses a modern assistant-ui based chat interface with the following components:
+
+**Component Structure**:
+```
+ChatSidebarWrapper (Entry Point with Context)
+├── ChatProvider (provides context)
+└── AssistantChatSidebar (Main Interface)
+    ├── Header (with actions and status)
+    ├── BasicThread (Message Display with Auto-Scroll)
+    │   ├── Viewport (scroll tracking)
+    │   ├── Messages (auto-scroll target)
+    │   ├── Scroll Button (when not at bottom)
+    │   └── Input Area (send messages)
+    └── Status/Debug info
+```
+
+**Key Features**:
+- **Smart Auto-Scroll**: Automatically scrolls to bottom when new messages arrive, but only if user was already at the bottom
+- **User Control Preservation**: Users can scroll up to read history without interruption from new messages
+- **Visual Feedback**: Floating scroll-to-bottom button appears when user scrolls up
+- **Performance Optimized**: Efficient scroll position tracking without impacting performance
+- **Backend Compatibility**: Uses existing `/api/chat/:projectId/messages` endpoint with no backend changes required
+
+**Auto-Scroll Implementation**:
+```typescript
+// Smart scrolling logic
+React.useEffect(() => {
+    if (isAtBottom) {
+        scrollToBottom();
+    }
+}, [messages, isLoading, isAtBottom]);
+
+// Scroll position tracking with tolerance
+const handleScroll = () => {
+    if (viewportRef.current) {
+        const { scrollTop, scrollHeight, clientHeight } = viewportRef.current;
+        const atBottom = scrollTop + clientHeight >= scrollHeight - 100; // 100px tolerance
+        setIsAtBottom(atBottom);
+    }
+};
+```
+
+### Testing Framework
+
+**Comprehensive Test Coverage**:
+- **Unit Tests** - Complete test suite for action computation and lineage resolution
+- **Integration Tests** - End-to-end workflow validation with cached LLM responses
+- **Cache-Based Testing** - Realistic AI functionality testing with actual cached responses
+- **Data-Driven Testing** - Tests based on real production database patterns
+
+**Action Computation Tests**:
+- ✅ **21 test scenarios** covering all workflow stages and edge cases
+- ✅ **Real data patterns** from production project lineage analysis
+- ✅ **Stage detection logic** validation for workflow progression
+- ✅ **Active transform handling** for streaming states
+- ✅ **Error handling** for malformed data and edge cases
+
+**Test Execution**:
+```bash
+# Run all tests
+npm test
+
+# Run specific test suites
+npm run test -- --grep "action computation"
+npm run test -- --grep "lineage resolution"
+
+# Run tests with coverage
+npm run test:coverage
+
+# Run tests in watch mode
+npm run test:watch
+```
+
+All tests use project-based access control patterns and validate the complete workflow from brainstorming through episode generation.
