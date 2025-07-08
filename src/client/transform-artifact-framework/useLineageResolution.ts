@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo } from 'react';
 import { useProjectData } from '../contexts/ProjectDataContext';
 import {
     findLatestArtifact,
@@ -57,6 +57,7 @@ export function useLineageResolution(
         }
 
         try {
+            setError(null);
             setIsProcessing(true);
 
             // Resolve the latest artifact for the given path using the shared graph
@@ -124,44 +125,23 @@ export function useEffectiveBrainstormIdeas(): {
 } {
     const projectData = useProjectData();
     const [error, setError] = useState<Error | null>(null);
-    const prevDataRef = useRef<any>(null);
-    const prevResultRef = useRef<EffectiveBrainstormIdea[] | "pending" | "error" | null>(null);
 
     const ideas = useMemo((): EffectiveBrainstormIdea[] | "pending" | "error" => {
         if (projectData.isLoading) {
             return [];
         }
 
-        // Check if data has actually changed to prevent unnecessary computation
-        const currentData = {
-            artifacts: projectData.artifacts,
-            transforms: projectData.transforms,
-            humanTransforms: projectData.humanTransforms,
-            transformInputs: projectData.transformInputs,
-            transformOutputs: projectData.transformOutputs
-        };
-
-        const dataChanged = JSON.stringify(currentData) !== JSON.stringify(prevDataRef.current);
-        if (!dataChanged && prevResultRef.current) {
-            return prevResultRef.current;
-        }
-
         try {
+            setError(null);
             if (projectData.artifacts === "pending" || projectData.transforms === "pending" || projectData.humanTransforms === "pending" || projectData.transformInputs === "pending" || projectData.transformOutputs === "pending") {
-                const result = "pending" as const;
-                prevDataRef.current = currentData;
-                prevResultRef.current = result;
-                return result;
+                return "pending" as const;
             }
             if (projectData.artifacts === "error" || projectData.transforms === "error" || projectData.humanTransforms === "error" || projectData.transformInputs === "error" || projectData.transformOutputs === "error") {
-                const result = "error" as const;
-                prevDataRef.current = currentData;
-                prevResultRef.current = result;
-                return result;
+                return "error" as const;
             }
 
             // Use the pure function to extract effective brainstorm ideas
-            const result = extractEffectiveBrainstormIdeas(
+            return extractEffectiveBrainstormIdeas(
                 projectData.artifacts,
                 projectData.transforms,
                 projectData.humanTransforms,
@@ -169,27 +149,13 @@ export function useEffectiveBrainstormIdeas(): {
                 projectData.transformOutputs
             );
 
-            prevDataRef.current = currentData;
-            prevResultRef.current = result;
-            return result;
-
         } catch (err) {
             const error = err instanceof Error ? err : new Error('Effective brainstorm ideas resolution failed');
             console.error('[useEffectiveBrainstormIdeas] Error:', error);
             setError(error);
-            const result: EffectiveBrainstormIdea[] = [];
-            prevDataRef.current = currentData;
-            prevResultRef.current = result;
-            return result;
+            return [];
         }
-    }, [
-        projectData.isLoading,
-        projectData.artifacts?.length,
-        projectData.transforms?.length,
-        projectData.humanTransforms?.length,
-        projectData.transformInputs?.length,
-        projectData.transformOutputs?.length
-    ]);
+    }, [projectData.isLoading, projectData.artifacts, projectData.transforms, projectData.humanTransforms, projectData.transformInputs, projectData.transformOutputs]);
 
     return {
         ideas,
@@ -223,7 +189,7 @@ export function useLatestBrainstormIdeas(): IdeaWithTitle[] | "pending" | "error
 
         // Use the pure function to convert EffectiveBrainstormIdea[] to IdeaWithTitle[]
         return convertEffectiveIdeasToIdeaWithTitle(ideas, projectData.artifacts);
-    }, [ideas, isLoading, error, projectData.artifacts?.length]);
+    }, [ideas, isLoading, error, projectData.artifacts]);
 }
 
 /**
@@ -244,6 +210,7 @@ export function useWorkflowNodes(): {
         }
 
         try {
+            setError(null);
             if (projectData.artifacts === "pending" || projectData.artifacts === "error" || projectData.lineageGraph === "error") {
                 return "error" as const;
             }
@@ -257,7 +224,7 @@ export function useWorkflowNodes(): {
             setError(error);
             return "pending" as const;
         }
-    }, [projectData.lineageGraph, projectData.artifacts?.length]);
+    }, [projectData.lineageGraph, projectData.artifacts]);
 
     return {
         workflowNodes,
@@ -284,6 +251,8 @@ export function useProjectInitialMode(): {
         }
 
         try {
+            setError(null);
+
             // Check if there are any artifacts in the project
             const hasArtifacts = projectData.artifacts && projectData.artifacts.length > 0;
 
@@ -296,7 +265,7 @@ export function useProjectInitialMode(): {
             setError(error);
             return false; // Default to false on error
         }
-    }, [projectData.isLoading, projectData.artifacts?.length]);
+    }, [projectData.isLoading, projectData.artifacts]);
 
     return {
         isInitialMode,

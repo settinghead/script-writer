@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { persist } from 'zustand/middleware';
 
 // Type definitions for form data
@@ -107,6 +107,10 @@ interface PersistedState {
 export const useActionItemsStore = (projectId?: string) => {
     const store = useActionItemsStoreInternal();
 
+    // Use refs to prevent circular dependencies
+    const isInitializedRef = useRef(false);
+    const isSyncingToLocalStorageRef = useRef(false);
+
     // Use localStorage for persistence if projectId is provided
     const storageKey = projectId ? `action-items-state-${projectId}` : null;
     const [persistedState, setPersistedState] = useLocalStorage<PersistedState>(
@@ -120,9 +124,11 @@ export const useActionItemsStore = (projectId?: string) => {
         }
     );
 
-    // Sync store with localStorage on mount
+    // Initialize store from localStorage only once
     useEffect(() => {
-        if (storageKey && persistedState) {
+        if (storageKey && persistedState && !isInitializedRef.current) {
+            isInitializedRef.current = true;
+
             // Load persisted state into store
             if (persistedState.selectedBrainstormIdea) {
                 store.setSelectedBrainstormIdea(persistedState.selectedBrainstormIdea);
@@ -135,18 +141,26 @@ export const useActionItemsStore = (projectId?: string) => {
                 });
             }
         }
-    }, [storageKey, persistedState, store]);
+    }, [storageKey]); // Only depend on storageKey, not persistedState or store
 
-    // Sync store changes to localStorage
+    // Sync store changes to localStorage (but prevent circular updates)
     useEffect(() => {
-        if (storageKey) {
+        if (storageKey && isInitializedRef.current && !isSyncingToLocalStorageRef.current) {
+            isSyncingToLocalStorageRef.current = true;
+
             const stateToSave = {
                 selectedBrainstormIdea: store.selectedBrainstormIdea,
                 formData: store.formData,
             };
+
             setPersistedState(stateToSave);
+
+            // Reset the flag after a brief delay to allow the update to complete
+            setTimeout(() => {
+                isSyncingToLocalStorageRef.current = false;
+            }, 100);
         }
-    }, [storageKey, store.selectedBrainstormIdea, store.formData, setPersistedState]);
+    }, [storageKey, store.selectedBrainstormIdea, store.formData]); // Remove setPersistedState from deps
 
     return store;
 };
