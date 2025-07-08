@@ -71,34 +71,7 @@ const EpisodeGenerationAction: React.FC<EpisodeGenerationActionProps> = (props) 
 
 
             <div style={{ margin: '0 auto', display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-                {/* Show chronicles info */}
-                <div style={{
-                    background: '#2a2a2a',
-                    padding: '16px',
-                    borderRadius: '8px',
-                    border: '1px solid #434343'
-                }}>
-                    <Text strong style={{ color: '#fff', display: 'block', marginBottom: '8px' }}>
-                        基于时间顺序大纲:
-                    </Text>
-                    <Text style={{ color: '#ccc', fontSize: '14px' }}>
-                        {chroniclesData?.title || '时间顺序大纲'}
-                    </Text>
-                    {chroniclesData?.stages && chroniclesData.stages.length > 0 && (
-                        <div style={{ marginTop: '8px' }}>
-                            <Text style={{ color: '#aaa', fontSize: '12px' }}>
-                                阶段数量: {chroniclesData.stages.length}
-                            </Text>
-                        </div>
-                    )}
-                    {chroniclesData?.totalEpisodes && (
-                        <div style={{ marginTop: '8px' }}>
-                            <Text style={{ color: '#aaa', fontSize: '12px' }}>
-                                预计集数: {chroniclesData.totalEpisodes}
-                            </Text>
-                        </div>
-                    )}
-                </div>
+
 
 
                 {/* Generate button */}
