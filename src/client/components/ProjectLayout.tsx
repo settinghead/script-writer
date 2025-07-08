@@ -39,6 +39,17 @@ const ProjectContentRenderer: React.FC<{ projectId: string }> = ({ projectId }) 
         );
     }, [projectData.artifacts]);
 
+    // Check if project has brainstorm collections/results
+    const hasBrainstormResults = useMemo(() => {
+        if (!Array.isArray(projectData.artifacts) || projectData.artifacts.length === 0) {
+            return false;
+        }
+
+        // Look for brainstorm collections or brainstorm ideas
+        const collections = projectData.getBrainstormCollections();
+        return collections.length > 0;
+    }, [projectData.artifacts, projectData.getBrainstormCollections]);
+
     // Show creation form if no brainstorm input exists
     if (!hasBrainstormInput) {
         return (
@@ -61,8 +72,9 @@ const ProjectContentRenderer: React.FC<{ projectId: string }> = ({ projectId }) 
             {/* Brainstorm Input Editor - shows when artifact exists and is leaf node */}
             <BrainstormInputEditor projectId={projectId} />
 
+            {/* Brainstorm Results - only show when there are actual results */}
+            {hasBrainstormResults && <ProjectBrainstormPage />}
 
-            <ProjectBrainstormPage />
             <SingleBrainstormIdeaEditor
                 onViewOriginalIdeas={() => {
                     // Scroll to the brainstorm ideas section
