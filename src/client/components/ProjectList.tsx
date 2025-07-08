@@ -127,7 +127,6 @@ const ProjectsList: React.FC = () => {
         onSuccess: (project: any) => {
             message.success('项目已创建！');
             queryClient.invalidateQueries({ queryKey: ['user-projects'] });
-            // Navigate to the new project where ProjectCreationForm will appear
             navigate(`/projects/${project.id}`);
         },
         onError: (error: any) => {
