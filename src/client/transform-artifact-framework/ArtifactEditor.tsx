@@ -108,16 +108,16 @@ const ReadOnlyView: React.FC<ReadOnlyViewProps> = ({
                 )}
             </div>
 
-            <div className="mt-3 p-3 bg-gray-800 rounded">
+            <div className="mt-3 p-3 bg-gray-800 rounded overflow-hidden">
                 {fields.length > 0 && fragment.data && typeof fragment.data === 'object' ? (
                     <div className="space-y-3">
                         {fields.map(({ field }) => (
                             fragment.data[field] && (
-                                <div key={field}>
+                                <div key={field} className="overflow-hidden">
                                     <div className="text-xs text-gray-500 mb-1 capitalize">
                                         {field === 'title' ? '标题' : field === 'body' ? '内容' : field}
                                     </div>
-                                    <div className="text-sm text-gray-300 whitespace-pre-wrap">
+                                    <div className="text-sm text-gray-300 text-wrap-anywhere">
                                         {fragment.data[field]}
                                     </div>
                                 </div>
@@ -125,7 +125,7 @@ const ReadOnlyView: React.FC<ReadOnlyViewProps> = ({
                         ))}
                     </div>
                 ) : (
-                    <div className="text-sm text-gray-300">
+                    <div className="text-sm text-gray-300 text-wrap-anywhere overflow-hidden">
                         {JSON.stringify(fragment.data, null, 2)}
                     </div>
                 )}

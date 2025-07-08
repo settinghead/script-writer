@@ -115,9 +115,10 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                         backgroundColor: '#1a1a1a',
                         border: '1px solid #555',
                         borderRadius: '6px',
-                        opacity: 0.7
+                        opacity: 0.7,
+                        overflow: 'hidden'
                     }}
-                    styles={{ body: { padding: '16px' } }}
+                    styles={{ body: { padding: '16px', overflow: 'hidden' } }}
                 >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -141,7 +142,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
 
                     {/* Show preview data */}
                     {previewArtifactId && (
-                        <div style={{ marginTop: '16px' }}>
+                        <div style={{ marginTop: '16px', overflow: 'hidden' }}>
                             <ArtifactEditor
                                 artifactId={previewArtifactId}
                                 fields={BRAINSTORM_IDEA_FIELDS}
@@ -188,9 +189,10 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                         border: '1px solid #52c41a',
                         borderRadius: '8px',
                         opacity: isCreatingHumanTransform ? 0.7 : 1,
-                        pointerEvents: isCreatingHumanTransform ? 'none' : 'auto'
+                        pointerEvents: isCreatingHumanTransform ? 'none' : 'auto',
+                        overflow: 'hidden'
                     }}
-                    styles={{ body: { padding: '24px' } }}
+                    styles={{ body: { padding: '24px', overflow: 'hidden' } }}
                 >
                     {/* Header */}
                     <div style={{ marginBottom: '24px' }}>
@@ -215,7 +217,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
 
                     {/* Artifact Editor */}
                     {editableArtifactId && (
-                        <div style={{ marginBottom: '24px' }}>
+                        <div style={{ marginBottom: '24px', overflow: 'hidden' }}>
                             <ArtifactEditor
                                 artifactId={editableArtifactId}
                                 fields={BRAINSTORM_IDEA_FIELDS}

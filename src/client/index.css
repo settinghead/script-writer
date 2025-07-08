@@ -343,3 +343,24 @@ body {
 .pulsing-card {
   animation: pulse-background 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
+
+/* Text wrapping utilities for long strings */
+.text-wrap-anywhere {
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  /* More aggressive breaking for URLs and long words */
+  hyphens: auto;
+  white-space: pre-wrap;
+  /* Preserve whitespace but allow wrapping */
+  max-width: 100%;
+  overflow-x: hidden;
+  /* Prevent horizontal overflow */
+}
+
+.text-wrap-normal {
+  word-wrap: normal;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
+}
