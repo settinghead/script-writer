@@ -126,6 +126,8 @@ src/
 - Follow patterns documented in TRANSFORM_ARTIFACT_FRAMEWORK.md
 - Test with actual cached LLM responses for realistic validation
 - All tests should use project-based access control patterns
+- **ALWAYS use `npm test -- --run`** instead of `npm test` to avoid interactive watch mode that waits for key presses
+- The `--run` flag ensures tests execute once and exit, essential for automated testing and CI/CD
 
 ### 16. Debugging & Analytics
 - If a new flow is constructed or modified, test by creating a Node.js testing script that executes transforms
