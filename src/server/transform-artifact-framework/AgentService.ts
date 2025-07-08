@@ -269,6 +269,8 @@ export class AgentService {
             console.log('\n\n--- Agent Stream & Final Output ---');
             let finalResponse = '';
             let currentToolCall: any = null;
+            let toolCallCount = 0;
+            let toolResultCount = 0;
 
             for await (const delta of result.fullStream) {
                 console.log(`[DEBUG] Delta type: ${delta.type}`);
@@ -305,6 +307,7 @@ export class AgentService {
                     case 'tool-call':
                         console.log(`\n[Agent Action] Starting tool call to '${delta.toolName}' with ID '${delta.toolCallId}'`);
                         currentToolCall = delta;
+                        toolCallCount++;
 
                         // Update computation message to show processing phase
                         if (computationMessageId && this.chatMessageRepo) {
@@ -334,6 +337,7 @@ export class AgentService {
 
                     case 'tool-result':
                         console.log(`\n[Agent Action] Received result for tool call '${delta.toolCallId}'`);
+                        toolResultCount++;
 
                         // Update computation message to show generation phase
                         if (computationMessageId && this.chatMessageRepo) {
@@ -360,6 +364,30 @@ export class AgentService {
                                 }
                             );
                         }
+                        break;
+
+                    case 'step-finish':
+                        console.log(`\n[Agent Step] Step completed with reason: ${delta.finishReason}`);
+                        // These are completion events for agent reasoning/tool-calling steps
+                        // They're informational and don't require specific handling
+                        break;
+
+                    case 'step-start':
+                        console.log(`\n[Agent Step] Step started`);
+                        // These are start events for agent reasoning/tool-calling steps
+                        // They're informational and don't require specific handling
+                        break;
+
+                    case 'error':
+                        console.log(`\n[Agent Error] Error occurred:`, (delta as any).error?.message || 'Unknown error');
+                        // Error events during agent processing
+                        // The error will be handled by the outer try-catch
+                        break;
+
+                    case 'finish':
+                        console.log(`\n[Agent Finish] Agent completed with reason: ${delta.finishReason}`);
+                        // Final completion event for the entire agent execution
+                        // This is informational as the result is handled elsewhere
                         break;
 
                     default:
@@ -430,17 +458,12 @@ export class AgentService {
             }
 
             const finishReason = await result.finishReason;
-            const toolCalls = await result.toolCalls;
-            const toolCallsMade = toolCalls.length;
-            const toolResults = await result.toolResults;
-            const toolResultsReceived = toolResults.length;
 
-            // Log summary
+            // Log summary using our tracked counts
             console.log(`\n--- Agent Execution Summary ---`);
             console.log(`Finish Reason: ${finishReason}`);
-            console.log(`\nTool Calls Made: ${toolCallsMade}`);
-            console.log(`\nTool Results Received by Agent: ${toolResultsReceived}`);
-            console.log(JSON.stringify(toolResults, null, 2));
+            console.log(`\nTool Calls Made: ${toolCallCount}`);
+            console.log(`\nTool Results Received by Agent: ${toolResultCount}`);
 
             console.log(`[AgentService] General agent completed for project ${projectId}.`);
 
