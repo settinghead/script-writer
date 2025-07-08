@@ -27,15 +27,19 @@ const { useBreakpoint } = Grid;
 const ProjectContentRenderer: React.FC<{ projectId: string }> = ({ projectId }) => {
     const projectData = useProjectData();
 
-    // Check if project has brainstorm input artifacts
+    // Check if project has brainstorm input artifacts or brainstorm ideas
     const hasBrainstormInput = useMemo(() => {
         if (!Array.isArray(projectData.artifacts) || projectData.artifacts.length === 0) {
             return false;
         }
 
-        // Look for brainstorm_tool_input_schema artifacts
+        // Look for brainstorm_tool_input_schema artifacts OR brainstorm idea artifacts
         return projectData.artifacts.some((artifact: any) =>
-            artifact.type === 'brainstorm_tool_input_schema'
+            artifact.type === 'brainstorm_tool_input_schema' ||
+            artifact.schema_type === 'brainstorm_item_schema' ||
+            artifact.type === 'brainstorm_item_schema' ||
+            artifact.schema_type === 'brainstorm_idea' ||
+            artifact.type === 'brainstorm_idea'
         );
     }, [projectData.artifacts]);
 

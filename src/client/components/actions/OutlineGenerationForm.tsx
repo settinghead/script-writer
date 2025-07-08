@@ -3,7 +3,7 @@ import { Button, Typography, Form, Input, InputNumber, Select, message } from 'a
 import { FileTextOutlined } from '@ant-design/icons';
 import { BaseActionProps } from './index';
 import { useProjectData } from '../../contexts/ProjectDataContext';
-import { useChosenBrainstormIdea } from '../../hooks/useChosenBrainstormIdea';
+import { findChosenBrainstormIdea } from '../../utils/actionComputation';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -17,14 +17,20 @@ const OutlineGenerationForm: React.FC<BaseActionProps> = ({ projectId, onSuccess
     const [form] = Form.useForm<OutlineFormValues>();
     const [isGenerating, setIsGenerating] = useState(false);
     const projectData = useProjectData();
-    const { chosenIdea, isLoading: chosenIdeaLoading } = useChosenBrainstormIdea();
+
+    // Use the action computation function to find chosen brainstorm idea
+    const chosenIdea = useMemo(() => {
+        return findChosenBrainstormIdea(projectData);
+    }, [projectData]);
+
+    const chosenIdeaLoading = projectData.isLoading;
 
     // Get the chosen brainstorm idea artifact and data
     const { sourceArtifactId, ideaData } = useMemo(() => {
         if (!chosenIdea) return { sourceArtifactId: null, ideaData: null };
 
-        // Use the editable artifact ID if available, otherwise use the original artifact ID
-        const artifactId = chosenIdea.editableArtifactId || chosenIdea.originalArtifactId;
+        // The findChosenBrainstormIdea function returns the artifact directly
+        const artifactId = chosenIdea.id;
 
         // Get the artifact data
         const artifact = projectData.getArtifactById(artifactId);
@@ -64,7 +70,7 @@ const OutlineGenerationForm: React.FC<BaseActionProps> = ({ projectId, onSuccess
                 },
                 body: JSON.stringify({
                     projectId,
-                    message: `请基于创意生成大纲设置。源创意ID: ${sourceArtifactId}，标题: ${values.title}，要求: ${values.requirements || '无特殊要求'}`
+                    message: `请基于创意生成大纲框架。源创意ID: ${sourceArtifactId}，标题: ${values.title}，要求: ${values.requirements || '无特殊要求'}`
                 })
             });
 
@@ -107,7 +113,7 @@ const OutlineGenerationForm: React.FC<BaseActionProps> = ({ projectId, onSuccess
         <div style={{ padding: '24px' }}>
             <Title level={4} style={{ marginBottom: '24px', color: '#fff', textAlign: 'center' }}>
                 <FileTextOutlined style={{ marginRight: '8px', color: '#1890ff' }} />
-                生成大纲设置
+                生成大纲框架
             </Title>
 
             <div style={{ maxWidth: '600px', margin: '0 auto' }}>
@@ -147,39 +153,8 @@ const OutlineGenerationForm: React.FC<BaseActionProps> = ({ projectId, onSuccess
                         requirements: ''
                     }}
                 >
-                    <Form.Item
-                        label={<Text style={{ color: '#fff' }}>大纲标题</Text>}
-                        name="title"
-                        rules={[
-                            { required: true, message: '请输入大纲标题' },
-                            { min: 2, message: '标题至少2个字符' },
-                            { max: 50, message: '标题不能超过50个字符' }
-                        ]}
-                    >
-                        <Input
-                            placeholder="输入大纲标题"
-                            style={{
-                                background: '#1a1a1a',
-                                borderColor: '#434343',
-                                color: '#fff'
-                            }}
-                        />
-                    </Form.Item>
 
-                    <Form.Item
-                        label={<Text style={{ color: '#fff' }}>特殊要求</Text>}
-                        name="requirements"
-                    >
-                        <TextArea
-                            placeholder="描述对大纲的特殊要求，比如特定的情节设置、角色关系、风格偏好等..."
-                            rows={4}
-                            style={{
-                                background: '#1a1a1a',
-                                borderColor: '#434343',
-                                color: '#fff'
-                            }}
-                        />
-                    </Form.Item>
+
 
                     <Form.Item style={{ marginTop: '32px', textAlign: 'center' }}>
                         <Button
@@ -194,7 +169,7 @@ const OutlineGenerationForm: React.FC<BaseActionProps> = ({ projectId, onSuccess
                                 borderRadius: '8px'
                             }}
                         >
-                            {isGenerating ? '生成中...' : '生成大纲设置'}
+                            {isGenerating ? '生成中...' : '生成大纲框架'}
                         </Button>
                     </Form.Item>
                 </Form>

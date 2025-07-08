@@ -680,12 +680,7 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                             </Space>
                         </div>
 
-                        {/* Note about chronicles generation */}
-                        <div style={{ textAlign: 'center', padding: '16px', backgroundColor: '#0a0a0a', borderRadius: '6px' }}>
-                            <Text type="secondary" style={{ fontSize: '14px' }}>
-                                编辑完成后，请使用下方的操作面板生成时间顺序大纲
-                            </Text>
-                        </div>
+
                     </Space>
                 </Card>
             </div>

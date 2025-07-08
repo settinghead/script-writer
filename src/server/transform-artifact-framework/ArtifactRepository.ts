@@ -464,6 +464,7 @@ export class ArtifactRepository {
     private mapTypeToSchemaType(type: string): string {
         const typeMapping: Record<string, string> = {
             'brainstorm_idea': 'brainstorm_idea_schema',
+            'brainstorm_item_schema': 'brainstorm_item_schema', // Direct mapping for new schema type
             'brainstorm_idea_collection': 'brainstorm_collection_schema',
             'user_input': 'user_input_schema',
             'chronological_outline_input': 'chronological_outline_input',

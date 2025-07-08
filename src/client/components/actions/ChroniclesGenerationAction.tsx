@@ -31,7 +31,7 @@ const ChroniclesGenerationAction: React.FC<BaseActionProps> = ({ projectId, onSu
     // Handle chronicles generation
     const handleGenerateChronicles = useCallback(async () => {
         if (!latestOutlineSettings) {
-            message.error('未找到大纲设置');
+            message.error('未找到大纲框架');
             return;
         }
 
@@ -45,7 +45,7 @@ const ChroniclesGenerationAction: React.FC<BaseActionProps> = ({ projectId, onSu
                 },
                 body: JSON.stringify({
                     projectId,
-                    message: `请基于大纲设置生成时间顺序大纲。源大纲设置ID: ${latestOutlineSettings.id}`
+                    message: `请基于大纲框架生成时间顺序大纲。源大纲框架ID: ${latestOutlineSettings.id}`
                 })
             });
 
@@ -70,8 +70,8 @@ const ChroniclesGenerationAction: React.FC<BaseActionProps> = ({ projectId, onSu
     if (!latestOutlineSettings) {
         return (
             <Alert
-                message="需要先生成大纲设置"
-                description="请先完成大纲设置，然后再生成时间顺序大纲"
+                message="需要先生成大纲框架"
+                description="请先完成大纲框架，然后再生成时间顺序大纲"
                 type="warning"
                 showIcon
                 style={{ margin: '16px 0' }}
@@ -109,10 +109,10 @@ const ChroniclesGenerationAction: React.FC<BaseActionProps> = ({ projectId, onSu
                     border: '1px solid #434343'
                 }}>
                     <Text strong style={{ color: '#fff', display: 'block', marginBottom: '8px' }}>
-                        基于大纲设置:
+                        基于大纲框架:
                     </Text>
                     <Text style={{ color: '#ccc', fontSize: '14px' }}>
-                        {outlineData?.title || '大纲设置'}
+                        {outlineData?.title || '大纲框架'}
                     </Text>
                     {outlineData?.genre && (
                         <div style={{ marginTop: '8px' }}>
@@ -133,7 +133,7 @@ const ChroniclesGenerationAction: React.FC<BaseActionProps> = ({ projectId, onSu
                 {/* Action description */}
                 <div style={{ marginBottom: '24px', textAlign: 'center' }}>
                     <Text style={{ color: '#ccc', fontSize: '14px', lineHeight: '1.6' }}>
-                        将基于现有的大纲设置（人物角色、故事背景、商业定位等）生成详细的时间顺序大纲，
+                        将基于现有的大纲框架（人物角色、故事背景、商业定位等）生成详细的时间顺序大纲，
                         包括历史背景事件、前因后果、主要故事线等按时间顺序排列的完整故事结构。
                     </Text>
                 </div>

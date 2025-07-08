@@ -20,7 +20,6 @@ export const FIELD_CONFIGS = {
 
     // Configuration for outline artifacts
     OUTLINE: [
-        { field: 'title', component: 'input' as const, maxLength: 50, placeholder: '大纲标题...' },
         { field: 'synopsis', component: 'textarea' as const, rows: 4, placeholder: '故事梗概...' },
         { field: 'characters', component: 'textarea' as const, rows: 6, placeholder: '角色设定...' }
     ] as FieldConfig[],

@@ -55,7 +55,8 @@ export const canBecomeEditable = (artifact: any, transformInputs: any[]): boolea
 export const findBrainstormInputArtifact = (artifacts: any[]) => {
     if (!Array.isArray(artifacts)) return null;
     return artifacts.find(artifact =>
-        artifact.type === 'brainstorm_tool_input_schema'
+        artifact.type === 'brainstorm_tool_input_schema' ||
+        artifact.schema_type === 'brainstorm_tool_input_schema'
     ) || null;
 };
 
@@ -63,7 +64,8 @@ export const findBrainstormInputArtifact = (artifacts: any[]) => {
 export const findBrainstormIdeaArtifacts = (artifacts: any[]) => {
     if (!Array.isArray(artifacts)) return [];
     return artifacts.filter(artifact =>
-        (artifact.schema_type === 'brainstorm_idea' || artifact.type === 'brainstorm_idea') &&
+        (artifact.schema_type === 'brainstorm_item_schema' || artifact.type === 'brainstorm_item_schema' ||
+            artifact.schema_type === 'brainstorm_idea' || artifact.type === 'brainstorm_idea') &&
         artifact.origin_type === 'user_input'
     );
 };
@@ -154,19 +156,28 @@ export const detectCurrentStage = (projectData: ProjectDataContextType): Workflo
         projectData.artifacts === "pending" || projectData.artifacts === "error" ? [] : projectData.artifacts
     );
 
-    if (!brainstormInput) {
+    // Also check for brainstorm idea artifacts (manual input case)
+    const brainstormIdeas = findBrainstormIdeaArtifacts(
+        projectData.artifacts === "pending" || projectData.artifacts === "error" ? [] : projectData.artifacts
+    );
+
+    // If we have neither brainstorm input nor brainstorm ideas, we're at initial stage
+    if (!brainstormInput && brainstormIdeas.length === 0) {
         return 'initial';
     }
 
-    // Check if brainstorm input has been used (has descendants)
     const transformInputs = projectData.transformInputs === "pending" || projectData.transformInputs === "error"
         ? [] : projectData.transformInputs;
 
-    if (!isLeafNode(brainstormInput.id, transformInputs)) {
-        // Has generated ideas - check for chosen idea
-        const chosenIdea = findChosenBrainstormIdea(projectData);
+    // Check for chosen idea (this works for both AI-generated and manual ideas)
+    const chosenIdea = findChosenBrainstormIdea(projectData);
+
+    // If we have brainstorm ideas (either from AI generation or manual input)
+    if (brainstormIdeas.length > 0) {
         if (!chosenIdea) {
-            return 'brainstorm_selection';
+            // If we have multiple ideas or need selection, go to selection stage
+            // For manual input, we typically have just one idea and it should be chosen automatically
+            return brainstormIdeas.length > 1 ? 'brainstorm_selection' : 'idea_editing';
         }
 
         // Has chosen idea - check for outline settings
@@ -194,6 +205,13 @@ export const detectCurrentStage = (projectData: ProjectDataContextType): Workflo
         return 'outline_generation';
     }
 
+    // If we only have brainstorm input but no generated ideas yet
+    if (brainstormInput && !isLeafNode(brainstormInput.id, transformInputs)) {
+        // Brainstorm input has been used to generate ideas
+        return 'brainstorm_selection';
+    }
+
+    // We have brainstorm input but it hasn't been used yet
     return 'brainstorm_input';
 };
 

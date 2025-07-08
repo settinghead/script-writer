@@ -34,7 +34,8 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
 
         // Get all brainstorm idea artifacts that are user_input type
         const brainstormIdeaArtifacts = projectData.artifacts.filter(artifact =>
-            (artifact.schema_type === 'brainstorm_idea' || artifact.type === 'brainstorm_idea') &&
+            (artifact.schema_type === 'brainstorm_item_schema' || artifact.type === 'brainstorm_item_schema' ||
+                artifact.schema_type === 'brainstorm_idea' || artifact.type === 'brainstorm_idea') &&
             artifact.origin_type === 'user_input'
         );
 
@@ -244,12 +245,6 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                         </div>
                     )}
 
-                    {/* Note about outline generation */}
-                    <div style={{ textAlign: 'center', padding: '16px', backgroundColor: '#0a0a0a', borderRadius: '6px' }}>
-                        <Text type="secondary" style={{ fontSize: '14px' }}>
-                            编辑完成后，请使用下方的操作面板生成剧本框架
-                        </Text>
-                    </div>
                 </Card>
             </div>
         );
