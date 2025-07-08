@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { List, Empty, Spin, Typography, Tag, Avatar, Card, Space } from 'antd';
-import { UserOutlined, RobotOutlined, MessageOutlined, EditOutlined, PlayCircleOutlined, ClockCircleOutlined, ExclamationCircleOutlined, SendOutlined, ArrowDownOutlined } from '@ant-design/icons';
+import { UserOutlined, MessageOutlined, EditOutlined, PlayCircleOutlined, ClockCircleOutlined, ExclamationCircleOutlined, SendOutlined, ArrowDownOutlined } from '@ant-design/icons';
+import { Cpu } from 'iconoir-react';
 import { useChatMessages } from '../../hooks/useChatMessages';
 import { useProjectChatRuntime } from '../../hooks/useProjectChatRuntime';
 import { ChatInput } from './ChatInput';
@@ -26,7 +27,7 @@ const ChatMessage: React.FC<{ message: any; isStreaming?: boolean }> = ({ messag
             case 'user':
                 return <UserOutlined />;
             case 'assistant':
-                return <RobotOutlined />;
+                return <Cpu />;
             default:
                 return <UserOutlined />;
         }
@@ -254,7 +255,7 @@ export const BasicThread: React.FC<BasicThreadProps> = ({ projectId }) => {
 
                 {isLoading && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 0' }}>
-                        <RobotOutlined style={{ fontSize: 20, color: '#10b981' }} />
+                        <Cpu style={{ fontSize: 20, color: '#10b981' }} />
                         <Spin size="small" />
                         <span style={{ color: '#888' }}>AI正在思考...</span>
                     </div>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Layout, Typography, Badge, Button, Tooltip } from 'antd';
-import { RobotOutlined, DeleteOutlined, SettingOutlined } from '@ant-design/icons';
+import { Cpu, Trash, Settings } from 'iconoir-react';
 import { useChatMessages } from '../../hooks/useChatMessages';
 import { useProjectInitialMode } from '../../transform-artifact-framework/useLineageResolution';
 import { useProjectChatRuntime } from '../../hooks/useProjectChatRuntime';
@@ -35,7 +35,7 @@ export const AssistantChatSidebar: React.FC<AssistantChatSidebarProps> = ({ proj
                 justifyContent: 'space-between'
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <RobotOutlined style={{ fontSize: '20px', color: '#1890ff' }} />
+                    <Cpu style={{ fontSize: '20px', color: '#1890ff' }} />
                     <Title level={4} style={{ color: '#f0f0f0', margin: 0 }}>
                         觅子智能体
                     </Title>
@@ -46,7 +46,7 @@ export const AssistantChatSidebar: React.FC<AssistantChatSidebarProps> = ({ proj
                     <Tooltip title="清空对话">
                         <Button
                             type="text"
-                            icon={<DeleteOutlined />}
+                            icon={<Trash />}
                             onClick={handleClearChat}
                             style={{ color: '#8c8c8c' }}
                         />
@@ -54,7 +54,7 @@ export const AssistantChatSidebar: React.FC<AssistantChatSidebarProps> = ({ proj
                     <Tooltip title="设置">
                         <Button
                             type="text"
-                            icon={<SettingOutlined />}
+                            icon={<Settings />}
                             style={{ color: '#8c8c8c' }}
                         />
                     </Tooltip>
