@@ -99,7 +99,6 @@ export class StreamingTransformExecutor {
             try {
                 // 1. Input validation against schema
                 const validatedInput = config.inputSchema.parse(input);
-                console.log(`[StreamingTransformExecutor] Input validated for template ${config.templateName} (attempt ${retryCount + 1}/${maxRetries + 1})`);
 
                 // 2. Create transform for this execution (or update existing one on retry)
                 if (!transformId) {
@@ -137,7 +136,6 @@ export class StreamingTransformExecutor {
                     // 3a. Link source artifacts if specified by the tool
                     if (config.extractSourceArtifacts) {
                         const sourceArtifacts = config.extractSourceArtifacts(validatedInput);
-                        console.log(`[StreamingTransformExecutor] Linking ${sourceArtifacts.length} source artifacts for ${config.templateName}`);
                         transformInputs.push(...sourceArtifacts);
                     }
 
@@ -179,7 +177,6 @@ export class StreamingTransformExecutor {
                         'ai_generated'
                     );
                     outputArtifactId = outputArtifact.id;
-                    console.log(`[StreamingTransformExecutor] Created output artifact ${outputArtifactId} for ${config.templateName}`);
                 }
 
                 // 5. Template rendering
@@ -200,8 +197,6 @@ export class StreamingTransformExecutor {
                     ], projectId);
                 }
 
-                console.log(`[StreamingTransformExecutor] Starting LLM streaming for ${config.templateName} (attempt ${retryCount + 1})...`);
-
                 // 7. Execute streaming with internal retry (this handles LLM-level retries)
                 const stream = await this.executeStreamingWithRetry({
                     prompt: finalPrompt,
@@ -219,16 +214,9 @@ export class StreamingTransformExecutor {
                 let updateCount = 0;
                 let lastData: TOutput | null = null;
 
-                console.log(`[StreamingTransformExecutor] Starting to process stream for ${config.templateName}...`);
                 for await (const partialData of stream) {
                     chunkCount++;
                     lastData = partialData as TOutput;
-
-                    // Log every few chunks to track progress
-                    if (chunkCount <= 5 || chunkCount % 10 === 0) {
-                        const dataPreview = JSON.stringify(partialData).substring(0, 200);
-                        console.log(`[StreamingTransformExecutor] Chunk ${chunkCount}: ${dataPreview}${JSON.stringify(partialData).length > 200 ? '...' : ''}`);
-                    }
 
                     // Update artifact every N chunks or if this is the final chunk
                     if (chunkCount % updateIntervalChunks === 0) {
@@ -248,7 +236,6 @@ export class StreamingTransformExecutor {
                                     retry_count: retryCount
                                 }
                             );
-                            console.log(`[StreamingTransformExecutor] Updated artifact (update #${updateCount}, attempt ${retryCount + 1})`);
 
                             // Link output artifact to transform eagerly on first update
                             if (!outputLinked) {
@@ -257,7 +244,6 @@ export class StreamingTransformExecutor {
                                         { artifactId: outputArtifactId, outputRole: 'generated_output' }
                                     ], projectId);
                                     outputLinked = true;
-                                    console.log(`[StreamingTransformExecutor] Eagerly linked output artifact ${outputArtifactId} to transform`);
                                 } catch (linkError) {
                                     console.warn(`[StreamingTransformExecutor] Failed to link output artifact during streaming:`, linkError);
                                     // Don't throw - we'll retry at completion
@@ -270,31 +256,16 @@ export class StreamingTransformExecutor {
                 }
 
                 // 9. Final validation and artifact update
-                console.log(`[StreamingTransformExecutor] Stream processing completed for ${config.templateName}`);
-                console.log(`[StreamingTransformExecutor] Total chunks processed: ${chunkCount}`);
-                console.log(`[StreamingTransformExecutor] LastData is null/undefined: ${!lastData}`);
-
                 if (!lastData) {
-                    console.error(`[StreamingTransformExecutor] CRITICAL: No data received from streaming for ${config.templateName}`);
-                    console.error(`[StreamingTransformExecutor] Chunks processed: ${chunkCount}`);
-                    console.error(`[StreamingTransformExecutor] Stream appeared to complete but lastData is: ${lastData}`);
                     throw new Error('No data received from streaming');
                 }
 
-                const lastDataPreview = JSON.stringify(lastData).substring(0, 300);
-                console.log(`[StreamingTransformExecutor] Final data preview: ${lastDataPreview}${JSON.stringify(lastData).length > 300 ? '...' : ''}`);
-                console.log(`[StreamingTransformExecutor] Final data size: ${JSON.stringify(lastData).length} characters`);
-
                 // **CRITICAL: Strict schema validation here**
-                console.log(`[StreamingTransformExecutor] Starting schema validation for ${config.templateName}...`);
                 let finalValidatedData: TOutput;
                 try {
                     finalValidatedData = config.outputSchema.parse(lastData);
-                    console.log(`[StreamingTransformExecutor] Schema validation PASSED for ${config.templateName}`);
                 } catch (validationError) {
                     console.error(`[StreamingTransformExecutor] Schema validation FAILED for ${config.templateName}:`, validationError);
-                    console.error(`[StreamingTransformExecutor] Data that failed validation:`, JSON.stringify(lastData, null, 2).substring(0, 500));
-                    console.error(`[StreamingTransformExecutor] Validation error details:`, validationError instanceof Error ? validationError.message : String(validationError));
                     throw new Error(`Schema validation failed: ${validationError instanceof Error ? validationError.message : String(validationError)}`);
                 }
 
@@ -320,7 +291,6 @@ export class StreamingTransformExecutor {
                     await transformRepo.addTransformOutputs(transformId, [
                         { artifactId: outputArtifactId, outputRole: 'generated_output' }
                     ], projectId);
-                    console.log(`[StreamingTransformExecutor] Linked output artifact ${outputArtifactId} to transform at completion`);
                 }
 
                 // 11. Store LLM metadata (simplified - we don't have detailed usage from streaming)
@@ -346,8 +316,6 @@ export class StreamingTransformExecutor {
                     }
                 });
 
-                console.log(`[StreamingTransformExecutor] Successfully completed ${config.templateName} with artifact ${outputArtifactId} (attempt ${retryCount + 1})`);
-
                 return {
                     outputArtifactId,
                     finishReason: 'stop'
@@ -355,7 +323,6 @@ export class StreamingTransformExecutor {
 
             } catch (error) {
                 console.error(`[StreamingTransformExecutor] Error executing ${config.templateName} (attempt ${retryCount + 1}):`, error);
-                console.error(`[StreamingTransformExecutor] Error stack:`, error instanceof Error ? error.stack : 'No stack trace');
 
                 retryCount++;
 
@@ -458,34 +425,18 @@ export class StreamingTransformExecutor {
             maxTokens
         };
 
-        console.log(`[StreamingTransformExecutor] Calling LLM service for ${templateName} with options:`, {
-            prompt: `${prompt.substring(0, 100)}... (${prompt.length} chars)`,
-            enableCaching,
-            seed,
-            temperature,
-            topP,
-            maxTokens
-        });
-
         try {
             const stream = await service.streamObject(streamOptions);
-            console.log(`[StreamingTransformExecutor] LLM service call successful for ${templateName}`);
             return stream;
         } catch (error) {
             console.warn(`[StreamingTransformExecutor] First attempt failed for ${templateName}, retrying...`, error);
-            console.warn(`[StreamingTransformExecutor] Error type:`, typeof error);
-            console.warn(`[StreamingTransformExecutor] Error message:`, error instanceof Error ? error.message : String(error));
 
             // Single retry with the same service
             try {
-                console.log(`[StreamingTransformExecutor] Retrying LLM service call for ${templateName}...`);
                 const retryStream = await service.streamObject(streamOptions);
-                console.log(`[StreamingTransformExecutor] Retry successful for ${templateName}`);
                 return retryStream;
             } catch (retryError) {
                 console.error(`[StreamingTransformExecutor] Retry failed for ${templateName}:`, retryError);
-                console.error(`[StreamingTransformExecutor] Retry error type:`, typeof retryError);
-                console.error(`[StreamingTransformExecutor] Retry error message:`, retryError instanceof Error ? retryError.message : String(retryError));
                 throw retryError;
             }
         }
