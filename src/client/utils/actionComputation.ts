@@ -513,7 +513,8 @@ export const computeDisplayComponents = (
                     mode: 'readonly',
                     props: {
                         idea: chosenIdea,
-                        isEditable: false
+                        isEditable: false,
+                        currentStage: currentStage
                     },
                     priority: 2
                 });
