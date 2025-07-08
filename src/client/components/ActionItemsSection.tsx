@@ -140,23 +140,8 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
             }}
             styles={{ body: { padding: '24px' } }}
         >
-            {/* Header */}
-            <div style={{ marginBottom: '24px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                    <div style={{
-                        width: '6px',
-                        height: '32px',
-                        backgroundColor: '#52c41a',
-                        borderRadius: '3px'
-                    }} />
-                    <Title level={4} style={{ margin: 0, color: '#52c41a' }}>
-                        🎯 操作面板
-                    </Title>
-                </div>
-                <Text type="secondary" style={{ fontSize: '14px' }}>
-                    当前阶段：{currentStage} - {stageDescription}
-                </Text>
-            </div>
+            {/* Hader */}
+
 
             {/* Loading overlay for active transforms */}
             {hasActiveTransforms && (
@@ -199,6 +184,12 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
                     }}
                 />
             )}
+
+            <div >
+                <Text type="secondary" style={{ fontSize: '14px' }}>
+                    当前阶段：{currentStage} - {stageDescription}
+                </Text>
+            </div>
         </Card>
     );
 }; 

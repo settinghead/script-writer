@@ -18,6 +18,7 @@ const BrainstormCreationActions: React.FC<BaseActionProps> = ({ projectId, onSuc
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': 'Bearer debug-auth-token-script-writer-dev'
                 },
                 body: JSON.stringify({
                     projectId,
