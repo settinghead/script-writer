@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Button, Typography, message } from 'antd';
-import { BulbOutlined } from '@ant-design/icons';
+import { Button, Typography, message, Space } from 'antd';
+import { BulbOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { BaseActionProps } from './index';
 import { useProjectData } from '../../contexts/ProjectDataContext';
 
@@ -17,6 +17,7 @@ const BrainstormInputForm: React.FC<BrainstormInputFormProps> = ({
     onError
 }) => {
     const [isStarting, setIsStarting] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
     const projectData = useProjectData();
 
     const handleStartBrainstorm = async () => {
@@ -78,29 +79,79 @@ const BrainstormInputForm: React.FC<BrainstormInputFormProps> = ({
         }
     };
 
+    const handleGoBack = async () => {
+        if (isDeleting) return;
+
+        try {
+            setIsDeleting(true);
+
+            // Delete the brainstorm input artifact
+            const response = await fetch(`/api/artifacts/${brainstormArtifact.id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': 'Bearer debug-auth-token-script-writer-dev'
+                }
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to delete brainstorm input');
+            }
+
+            message.success('已返回到项目创建选择');
+            onSuccess?.(); // This will trigger a re-render and return to initial state
+        } catch (error) {
+            console.error('Error deleting brainstorm input:', error);
+            const errorMessage = `返回失败：${error instanceof Error ? error.message : '未知错误'}`;
+            message.error(errorMessage);
+            onError?.(error instanceof Error ? error : new Error(errorMessage));
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
     return (
         <div style={{ padding: '16px 0', textAlign: 'center' }}>
+            <div style={{ marginBottom: '16px' }}>
+                <Typography.Text type="secondary" style={{ fontSize: '14px' }}>
+                    请确保上方的参数已填写完整，然后点击下方按钮开始生成创意
+                </Typography.Text>
+            </div>
 
+            <Space size="large">
+                <Button
+                    icon={<ArrowLeftOutlined />}
+                    size="large"
+                    loading={isDeleting}
+                    onClick={handleGoBack}
+                    style={{
+                        minWidth: '120px',
+                        height: '48px',
+                        fontSize: '16px',
+                        borderRadius: '8px'
+                    }}
+                >
+                    {isDeleting ? '返回中...' : '返回'}
+                </Button>
 
-
-
-            <Button
-                type="primary"
-                size="large"
-                loading={isStarting}
-                onClick={handleStartBrainstorm}
-                style={{
-                    minWidth: '200px',
-                    height: '48px',
-                    fontSize: '16px',
-                    borderRadius: '8px',
-                    background: 'linear-gradient(135deg, #1890ff, #52c41a)',
-                    border: 'none',
-                    boxShadow: '0 4px 12px rgba(24, 144, 255, 0.3)'
-                }}
-            >
-                {isStarting ? '启动中...' : '开始头脑风暴'}
-            </Button>
+                <Button
+                    type="primary"
+                    size="large"
+                    loading={isStarting}
+                    onClick={handleStartBrainstorm}
+                    style={{
+                        minWidth: '200px',
+                        height: '48px',
+                        fontSize: '16px',
+                        borderRadius: '8px',
+                        background: 'linear-gradient(135deg, #1890ff, #52c41a)',
+                        border: 'none',
+                        boxShadow: '0 4px 12px rgba(24, 144, 255, 0.3)'
+                    }}
+                >
+                    {isStarting ? '启动中...' : '开始头脑风暴'}
+                </Button>
+            </Space>
         </div>
     );
 };
