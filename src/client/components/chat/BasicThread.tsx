@@ -138,33 +138,36 @@ const ChatMessage: React.FC<{ message: any; isStreaming?: boolean }> = ({ messag
                     {getStatusTag()}
                 </div>
 
-                <Card
-                    size="small"
-                    style={getMessageStyle()}
-                    styles={{
-                        body: {
-                            padding: '10px 10px',
-                            color: isUserMessage ? 'white' : '#e0e0e0',
-                            // Slightly different opacity for thinking messages
-                            opacity: isThinkingMessage ? 0.9 : 1
-                        }
-                    }}
-                >
-                    <Paragraph
-                        style={{
-                            margin: 0,
-                            color: 'inherit',
-                            lineHeight: 1.5,
-                            whiteSpace: 'pre-wrap',
-                            fontSize: isThinkingMessage ? '13px' : '14px'
+                {/* Only show message bubble if not completed thinking message */}
+                {!(isThinkingMessage && message.status === 'completed') && (
+                    <Card
+                        size="small"
+                        style={getMessageStyle()}
+                        styles={{
+                            body: {
+                                padding: '10px 10px',
+                                color: isUserMessage ? 'white' : '#e0e0e0',
+                                // Slightly different opacity for thinking messages
+                                opacity: isThinkingMessage ? 0.9 : 1
+                            }
                         }}
                     >
-                        {processedMessage.content}
-                        {(message.status === 'streaming' || processedMessage.showSpinner || isStreaming) && (
-                            <Spin size="small" style={{ marginLeft: 8 }} />
-                        )}
-                    </Paragraph>
-                </Card>
+                        <Paragraph
+                            style={{
+                                margin: 0,
+                                color: 'inherit',
+                                lineHeight: 1.5,
+                                whiteSpace: 'pre-wrap',
+                                fontSize: isThinkingMessage ? '13px' : '14px'
+                            }}
+                        >
+                            {processedMessage.content}
+                            {(message.status === 'streaming' || processedMessage.showSpinner || isStreaming) && (
+                                <Spin size="small" style={{ marginLeft: 8 }} />
+                            )}
+                        </Paragraph>
+                    </Card>
+                )}
             </div>
         </div>
     );
