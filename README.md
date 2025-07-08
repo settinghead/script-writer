@@ -324,18 +324,21 @@ export const OutlineSettingsOutputSchema = z.object({
     location: z.string(),
     social_context: z.string()
   }),
-  characters: z.array(CharacterDetailSchema)
+  characters: z.array(CharacterSchema)
 });
 
-export const CharacterDetailSchema = z.object({
+export const CharacterSchema = z.object({
   name: z.string(),
   type: z.enum(['male_lead', 'female_lead', 'male_second', 'female_second', 
                 'male_supporting', 'female_supporting', 'antagonist', 'other']),
+  description: z.string(),
   age: z.string(),
+  gender: z.string(),
   occupation: z.string(),
-  personality: z.string(),
-  appearance: z.string(),
-  background: z.string()
+  personality_traits: z.array(z.string()),
+  character_arc: z.string(),
+  relationships: z.record(z.string(), z.string()),
+  key_scenes: z.array(z.string())
 });
 ```
 
