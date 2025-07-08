@@ -7,6 +7,7 @@ import { ReasoningIndicator, SectionWrapper, ArtifactSchemaType } from '../share
 import { useProjectData } from '../../contexts/ProjectDataContext';
 import { useLatestBrainstormIdeas } from '../../transform-artifact-framework/useLineageResolution';
 import { useChosenBrainstormIdea } from '../../hooks/useChosenBrainstormIdea';
+import { useActionItemsStore } from '../../stores/actionItemsStore';
 import { BrainstormIdeaEditor } from './BrainstormIdeaEditor';
 
 const { Text } = Typography;
@@ -66,7 +67,6 @@ const IdeaCardWrapper: React.FC<{
 export default function ProjectBrainstormPage() {
   const { projectId } = useParams<{ projectId: string }>()
   const navigate = useNavigate()
-  const [selectedIdea, setSelectedIdea] = useState<number | null>(null);
   const [ideaOutlines, setIdeaOutlines] = useState<Record<string, any[]>>({});
 
   if (!projectId) {
@@ -82,6 +82,9 @@ export default function ProjectBrainstormPage() {
 
   // Check for chosen brainstorm idea
   const { chosenIdea, isLoading: chosenIdeaLoading } = useChosenBrainstormIdea();
+
+  // Use action items store for selection
+  const store = useActionItemsStore(projectId);
 
   // Extract brainstorm data using the new collection-based approach as fallback
   const { ideas: fallbackIdeas, status, progress, error, isLoading, lastSyncedAt } = useMemo(() => {
@@ -208,7 +211,7 @@ export default function ProjectBrainstormPage() {
   // Determine if we should show collapsed view
   const isCollapsedView = chosenIdea && !chosenIdeaLoading;
 
-  // Handle idea card click - create human transform to start editing
+  // Handle idea card click - store selection in action items store
   const handleIdeaClick = useCallback((collectionId: string, index: number) => {
     // Don't handle clicks if we already have a chosen idea
     if (chosenIdea) {
@@ -222,56 +225,28 @@ export default function ProjectBrainstormPage() {
       return;
     }
 
-    // Determine the correct transform parameters based on artifact type
-    let transformName: string;
-    let sourceArtifactId: string;
-    let derivationPath: string;
-
-    if (clickedIdea.artifactPath === '$') {
-      // This is a standalone brainstorm idea (derived from collection or original)
-      // Use the idea artifact itself as the source
-      transformName = 'edit_brainstorm_idea';
-      sourceArtifactId = clickedIdea.artifactId;
-      derivationPath = '$';
-    } else {
-      // This is an item within a collection (original collection item)
-      // Use the collection as source with the specific path
-      transformName = 'edit_brainstorm_collection_idea';
-      sourceArtifactId = clickedIdea.originalArtifactId || clickedIdea.artifactId;
-      derivationPath = clickedIdea.artifactPath;
-    }
-
-    console.log('[ProjectBrainstormPage] Creating human transform:', {
-      transformName,
-      sourceArtifactId,
-      derivationPath,
+    console.log('[ProjectBrainstormPage] Selecting idea:', {
+      index,
       clickedIdea
     });
 
-    // Create human transform to start editing
-    projectData.createHumanTransform.mutate({
-      transformName,
-      sourceArtifactId,
-      derivationPath,
-      fieldUpdates: {} // Start with empty updates
-    }, {
-      onSuccess: (response) => {
-        console.log('Human transform created successfully, editing will begin automatically');
-      },
-      onError: (error) => {
-        console.error('Failed to create human transform:', error);
-      }
+    // Store selection in action items store
+    store.setSelectedBrainstormIdea({
+      artifactId: clickedIdea.artifactId,
+      originalArtifactId: clickedIdea.originalArtifactId || clickedIdea.artifactId,
+      artifactPath: clickedIdea.artifactPath,
+      index: index
     });
-
-    // Set selected idea for visual feedback during transition
-    setSelectedIdea(index);
-  }, [chosenIdea, ideas, projectData.createHumanTransform]);
+  }, [chosenIdea, ideas, store]);
 
   // Handle stop streaming
   const handleStop = useCallback(() => {
     // TODO: Implement stop streaming logic
     console.log('Stop brainstorm streaming');
   }, []);
+
+  // Determine selected idea index for visual feedback
+  const selectedIdea = store.selectedBrainstormIdea?.index ?? null;
 
   // Show loading state during initial sync
   if (isConnecting) {
@@ -315,8 +290,6 @@ export default function ProjectBrainstormPage() {
           {/* Header */}
           <div className="mb-8">
             <div className="flex items-center justify-between">
-
-
               {/* Status indicator */}
               <div className="flex items-center gap-4">
                 {isStreaming && (
@@ -342,7 +315,6 @@ export default function ProjectBrainstormPage() {
               {/* Header with controls */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-
                   {isStreaming && (
                     <div className="flex items-center gap-2">
                       <ReasoningIndicator isVisible={false} />
@@ -367,6 +339,18 @@ export default function ProjectBrainstormPage() {
                   )}
                 </div>
               </div>
+
+              {/* Selection instruction */}
+              {!chosenIdea && (
+                <div className="text-center py-4">
+                  <Text className="text-gray-400">
+                    {store.selectedBrainstormIdea
+                      ? `已选择创意 ${store.selectedBrainstormIdea.index + 1}，请使用下方的操作面板确认选择`
+                      : '点击选择一个创意想法继续开发'
+                    }
+                  </Text>
+                </div>
+              )}
 
               {/* Ideas grid - responsive layout based on collapsed state */}
               <div className={isCollapsedView
@@ -394,15 +378,12 @@ export default function ProjectBrainstormPage() {
                   </Text>
                 </div>
               )}
-
-
             </div>
           ) : status === 'idle' ? (
             <div className="text-center py-12">
               <p className="text-gray-400 mb-6">
                 还没有头脑风暴结果，稍等一下可能就会有
               </p>
-
             </div>
           ) : (
             <div className="text-center py-12">

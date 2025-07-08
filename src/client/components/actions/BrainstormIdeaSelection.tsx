@@ -1,39 +1,25 @@
-import React, { useState, useCallback, useMemo } from 'react';
-import { Button, Typography, Card, Spin, Alert, message } from 'antd';
+import React, { useState, useCallback } from 'react';
+import { Button, Typography, Alert, message } from 'antd';
 import { CheckOutlined, EditOutlined } from '@ant-design/icons';
 import { BaseActionProps } from './index';
 import { useProjectData } from '../../contexts/ProjectDataContext';
-import { useLatestBrainstormIdeas } from '../../transform-artifact-framework/useLineageResolution';
+import { useActionItemsStore } from '../../stores/actionItemsStore';
 
 const { Text, Title } = Typography;
 
 const BrainstormIdeaSelection: React.FC<BaseActionProps> = ({ projectId, onSuccess, onError }) => {
-    const [selectedIdea, setSelectedIdea] = useState<number | null>(null);
     const [isCreatingTransform, setIsCreatingTransform] = useState(false);
     const projectData = useProjectData();
-    const latestIdeas = useLatestBrainstormIdeas();
+    const store = useActionItemsStore(projectId);
 
-    // Process ideas for display
-    const ideas = useMemo(() => {
-        if (latestIdeas === "pending" || latestIdeas === "error") {
-            return [];
-        }
-        return latestIdeas;
-    }, [latestIdeas]);
-
-    // Handle idea selection and creation of human transform
-    const handleIdeaSelect = useCallback(async (index: number) => {
-        if (isCreatingTransform) return;
-
-        const clickedIdea = ideas[index];
-        if (!clickedIdea || !clickedIdea.artifactId || !clickedIdea.artifactPath) {
-            console.warn('Invalid idea selected:', clickedIdea);
-            message.error('无效的创意选择');
+    // Handle confirm selection and create human transform
+    const handleConfirmSelection = useCallback(async () => {
+        if (!store.selectedBrainstormIdea || isCreatingTransform) {
             return;
         }
 
+        const selectedIdea = store.selectedBrainstormIdea;
         setIsCreatingTransform(true);
-        setSelectedIdea(index);
 
         try {
             // Determine the correct transform parameters based on artifact type
@@ -41,23 +27,23 @@ const BrainstormIdeaSelection: React.FC<BaseActionProps> = ({ projectId, onSucce
             let sourceArtifactId: string;
             let derivationPath: string;
 
-            if (clickedIdea.artifactPath === '$') {
+            if (selectedIdea.artifactPath === '$') {
                 // This is a standalone brainstorm idea (derived from collection or original)
                 transformName = 'edit_brainstorm_idea';
-                sourceArtifactId = clickedIdea.artifactId;
+                sourceArtifactId = selectedIdea.artifactId;
                 derivationPath = '$';
             } else {
                 // This is an item within a collection (original collection item)
                 transformName = 'edit_brainstorm_collection_idea';
-                sourceArtifactId = clickedIdea.originalArtifactId || clickedIdea.artifactId;
-                derivationPath = clickedIdea.artifactPath;
+                sourceArtifactId = selectedIdea.originalArtifactId || selectedIdea.artifactId;
+                derivationPath = selectedIdea.artifactPath;
             }
 
             console.log('[BrainstormIdeaSelection] Creating human transform:', {
                 transformName,
                 sourceArtifactId,
                 derivationPath,
-                clickedIdea
+                selectedIdea
             });
 
             // Create human transform to start editing
@@ -70,140 +56,95 @@ const BrainstormIdeaSelection: React.FC<BaseActionProps> = ({ projectId, onSucce
                 }, {
                     onSuccess: (response) => {
                         console.log('Human transform created successfully');
-                        message.success('创意已选择，可以开始编辑');
+                        message.success('创意已确认，可以开始编辑');
                         onSuccess?.();
                         resolve(response);
                     },
                     onError: (error) => {
                         console.error('Failed to create human transform:', error);
-                        message.error('选择创意失败');
+                        message.error('确认创意失败');
                         onError?.(error instanceof Error ? error : new Error('Failed to create human transform'));
                         reject(error);
                     }
                 });
             });
         } catch (error) {
-            console.error('Error selecting idea:', error);
+            console.error('Error confirming selection:', error);
         } finally {
             setIsCreatingTransform(false);
         }
-    }, [ideas, projectData.createHumanTransform, onSuccess, onError, isCreatingTransform]);
+    }, [store.selectedBrainstormIdea, projectData.createHumanTransform, onSuccess, onError, isCreatingTransform]);
 
-    // Show loading state
-    if (latestIdeas === "pending" || projectData.isLoading) {
-        return (
-            <div style={{ textAlign: 'center', padding: '24px' }}>
-                <Spin size="large" />
-                <div style={{ marginTop: '16px' }}>
-                    <Text type="secondary">加载创意想法...</Text>
-                </div>
-            </div>
-        );
-    }
-
-    // Show error state
-    if (latestIdeas === "error" || projectData.error) {
+    // Show error state if no selection
+    if (!store.selectedBrainstormIdea) {
         return (
             <Alert
-                message="加载创意想法失败"
-                description={typeof projectData.error === 'string' ? projectData.error : '无法获取创意想法'}
-                type="error"
+                message="请选择一个创意"
+                description="请在上方的创意列表中选择一个想法继续开发"
+                type="info"
                 showIcon
                 style={{ margin: '16px 0' }}
             />
         );
     }
 
-    // Show empty state
-    if (ideas.length === 0) {
-        return (
-            <div style={{ textAlign: 'center', padding: '24px' }}>
-                <Text type="secondary">暂无创意想法可选择</Text>
-            </div>
-        );
-    }
-
     return (
-        <div style={{ padding: '16px 0' }}>
-            <Title level={4} style={{ marginBottom: '16px', color: '#fff', textAlign: 'center' }}>
+        <div style={{ padding: '16px 0', textAlign: 'center' }}>
+            <Title level={4} style={{ marginBottom: '16px', color: '#fff' }}>
                 <EditOutlined style={{ marginRight: '8px', color: '#1890ff' }} />
-                选择一个创意继续开发
+                确认选择的创意
             </Title>
 
             <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-                gap: '16px',
-                maxWidth: '1200px',
-                margin: '0 auto'
+                background: '#2a2a2a',
+                border: '2px solid #1890ff',
+                borderRadius: '8px',
+                padding: '16px',
+                marginBottom: '16px',
+                maxWidth: '600px',
+                margin: '0 auto 16px'
             }}>
-                {ideas.map((idea, index) => (
-                    <Card
-                        key={`${idea.artifactId}-${index}`}
-                        hoverable
-                        style={{
-                            background: '#2a2a2a',
-                            borderColor: selectedIdea === index ? '#1890ff' : '#434343',
-                            borderWidth: selectedIdea === index ? 2 : 1
-                        }}
-                        bodyStyle={{ padding: '16px' }}
-                        onClick={() => handleIdeaSelect(index)}
-                    >
-                        <div style={{ position: 'relative' }}>
-                            {/* Selection indicator */}
-                            {selectedIdea === index && (
-                                <div style={{
-                                    position: 'absolute',
-                                    top: -8,
-                                    right: -8,
-                                    background: '#1890ff',
-                                    borderRadius: '50%',
-                                    width: 24,
-                                    height: 24,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center'
-                                }}>
-                                    <CheckOutlined style={{ color: '#fff', fontSize: 12 }} />
-                                </div>
-                            )}
+                <div style={{ marginBottom: '8px' }}>
+                    <Text strong style={{ color: '#fff', fontSize: '16px' }}>
+                        创意 {store.selectedBrainstormIdea.index + 1}
+                    </Text>
+                </div>
+                <div style={{ marginBottom: '16px' }}>
+                    <Text style={{ color: '#ccc', fontSize: '14px' }}>
+                        已选择的创意，点击下方按钮确认并开始编辑
+                    </Text>
+                </div>
 
-                            {/* Idea content */}
-                            <div style={{ marginBottom: '12px' }}>
-                                <Text strong style={{ color: '#fff', fontSize: '16px' }}>
-                                    {idea.title || `创意 ${index + 1}`}
-                                </Text>
-                            </div>
-
-                            <div style={{ marginBottom: '12px' }}>
-                                <Text style={{ color: '#ccc', fontSize: '14px', lineHeight: '1.5' }}>
-                                    {idea.body || '内容加载中...'}
-                                </Text>
-                            </div>
-
-                            {/* Action button */}
-                            <Button
-                                type={selectedIdea === index ? 'primary' : 'default'}
-                                size="small"
-                                loading={isCreatingTransform && selectedIdea === index}
-                                style={{
-                                    width: '100%',
-                                    marginTop: '8px'
-                                }}
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleIdeaSelect(index);
-                                }}
-                            >
-                                {isCreatingTransform && selectedIdea === index ? '选择中...' : '选择此创意'}
-                            </Button>
-                        </div>
-                    </Card>
-                ))}
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    color: '#1890ff'
+                }}>
+                    <CheckOutlined />
+                    <Text style={{ color: '#1890ff', fontWeight: 'bold' }}>
+                        已选择
+                    </Text>
+                </div>
             </div>
 
+            <Button
+                type="primary"
+                size="large"
+                loading={isCreatingTransform}
+                onClick={handleConfirmSelection}
+                style={{
+                    minWidth: '200px',
+                    height: '48px',
+                    fontSize: '16px'
+                }}
+            >
+                {isCreatingTransform ? '确认中...' : '确认选择并开始编辑'}
+            </Button>
+
             {isCreatingTransform && (
-                <div style={{ textAlign: 'center', marginTop: '16px' }}>
+                <div style={{ marginTop: '16px' }}>
                     <Text type="secondary">正在准备编辑界面...</Text>
                 </div>
             )}
