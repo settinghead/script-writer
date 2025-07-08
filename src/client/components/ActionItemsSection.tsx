@@ -165,6 +165,8 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
                                 key={`${action.type}-${index}`}
                                 action={action}
                                 projectId={projectId}
+                                hasActiveTransforms={hasActiveTransforms}
+                                stageDescription={stageDescription}
                                 onSuccess={() => {
                                     console.log('✅ Action completed successfully:', action.type);
                                     // Optionally refresh project data or show success message

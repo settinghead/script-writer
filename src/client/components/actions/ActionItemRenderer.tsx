@@ -1,4 +1,5 @@
 import React from 'react';
+import { Alert } from 'antd';
 import { ActionItem } from '../../utils/actionComputation';
 
 interface ActionItemRendererProps {
@@ -6,13 +7,18 @@ interface ActionItemRendererProps {
     projectId: string;
     onSuccess?: () => void;
     onError?: (error: Error) => void;
+    // Add optional props to help determine if streaming is in progress
+    hasActiveTransforms?: boolean;
+    stageDescription?: string;
 }
 
 const ActionItemRenderer: React.FC<ActionItemRendererProps> = ({
     action,
     projectId,
     onSuccess,
-    onError
+    onError,
+    hasActiveTransforms = false,
+    stageDescription = ''
 }) => {
     const Component = action.component;
 
@@ -28,6 +34,9 @@ const ActionItemRenderer: React.FC<ActionItemRendererProps> = ({
         onError
     };
 
+    // Check if the action is disabled due to streaming/generation in progress
+    const isDisabledDueToStreaming = !action.enabled && hasActiveTransforms;
+
     return (
         <div
             className="action-item-renderer"
@@ -37,6 +46,15 @@ const ActionItemRenderer: React.FC<ActionItemRendererProps> = ({
                 pointerEvents: action.enabled ? 'auto' : 'none'
             }}
         >
+            {isDisabledDueToStreaming && (
+                <Alert
+                    message="生成进行中"
+                    description="当前内容正在生成，生成完成后您可以进行编辑操作"
+                    type="info"
+                    showIcon
+                    style={{ marginBottom: '12px' }}
+                />
+            )}
             <Component {...combinedProps} />
         </div>
     );

@@ -193,6 +193,16 @@ export const ChronicleStageCard: React.FC<ChronicleStageCardProps> = ({
         error
     } = resolutionResult;
 
+    // Check if the source chronicles artifact is currently being generated
+    const isSourceChroniclesStreaming = useMemo(() => {
+        if (!chroniclesArtifactId || projectData.artifacts === "pending" || projectData.artifacts === "error") {
+            return false;
+        }
+
+        const chroniclesArtifact = projectData.artifacts.find(a => a.id === chroniclesArtifactId);
+        return chroniclesArtifact?.streaming_status === 'streaming';
+    }, [chroniclesArtifactId, projectData.artifacts]);
+
     // Get the effective artifact (either original or edited version)
     const effectiveArtifact = useMemo(() => {
         if (!latestArtifactId) return null;
@@ -235,6 +245,11 @@ export const ChronicleStageCard: React.FC<ChronicleStageCardProps> = ({
         }
         if (!effectiveArtifact) return false;
 
+        // Don't allow editing if the source chronicles is still being generated
+        if (isSourceChroniclesStreaming) {
+            return false;
+        }
+
         // Only editable if:
         // 1. The effective artifact is a user_input type (meaning it was created by human transform)
         // 2. The effective artifact is a chronicle_stage_schema (individual stage, not full chronicles)
@@ -248,7 +263,7 @@ export const ChronicleStageCard: React.FC<ChronicleStageCardProps> = ({
         const result = isUserInput && isStageArtifact && !hasDescendants;
 
         return result;
-    }, [effectiveArtifact, projectData.transformInputs, stageIndex]);
+    }, [effectiveArtifact, projectData.transformInputs, stageIndex, isSourceChroniclesStreaming]);
 
     // Check if the stage can be made editable
     const canBecomeEditable = useMemo(() => {
@@ -256,6 +271,11 @@ export const ChronicleStageCard: React.FC<ChronicleStageCardProps> = ({
             return false;
         }
         if (!effectiveArtifact) return false;
+
+        // Don't allow editing if the source chronicles is still being generated
+        if (isSourceChroniclesStreaming) {
+            return false;
+        }
 
         // A stage can become editable if:
         // 1. It's not already editable, AND
@@ -274,7 +294,7 @@ export const ChronicleStageCard: React.FC<ChronicleStageCardProps> = ({
         }
 
         return false;
-    }, [effectiveArtifact]);
+    }, [effectiveArtifact, isSourceChroniclesStreaming]);
 
     // Handle creating an editable version of this stage
     const handleCreateEditableVersion = useCallback(() => {
@@ -376,19 +396,19 @@ export const ChronicleStageCard: React.FC<ChronicleStageCardProps> = ({
                 border: isEditable ? '2px solid #52c41a' : '1px solid #434343',
                 borderRadius: '8px',
                 marginBottom: '16px',
-                cursor: (!isEditable && !isCreatingTransform && canBecomeEditable) ? 'pointer' : 'default',
+                cursor: (!isEditable && !isCreatingTransform && canBecomeEditable && !isSourceChroniclesStreaming) ? 'pointer' : 'default',
                 transition: 'all 0.2s ease'
             }}
             styles={{ body: { padding: '20px' } }}
-            onClick={(!isEditable && !isCreatingTransform && canBecomeEditable) ? handleCreateEditableVersion : undefined}
+            onClick={(!isEditable && !isCreatingTransform && canBecomeEditable && !isSourceChroniclesStreaming) ? handleCreateEditableVersion : undefined}
             onMouseEnter={(e) => {
-                if (!isEditable && !isCreatingTransform && canBecomeEditable) {
+                if (!isEditable && !isCreatingTransform && canBecomeEditable && !isSourceChroniclesStreaming) {
                     e.currentTarget.style.borderColor = '#1890ff';
                     e.currentTarget.style.boxShadow = '0 0 8px rgba(24, 144, 255, 0.3)';
                 }
             }}
             onMouseLeave={(e) => {
-                if (!isEditable && !isCreatingTransform && canBecomeEditable) {
+                if (!isEditable && !isCreatingTransform && canBecomeEditable && !isSourceChroniclesStreaming) {
                     e.currentTarget.style.borderColor = '#434343';
                     e.currentTarget.style.boxShadow = 'none';
                 }
@@ -402,13 +422,18 @@ export const ChronicleStageCard: React.FC<ChronicleStageCardProps> = ({
                         {hasLineage && (
                             <Tag color="green">已编辑</Tag>
                         )}
+                        {isSourceChroniclesStreaming && (
+                            <Tag color="blue" style={{ fontSize: '12px' }}>
+                                生成中...
+                            </Tag>
+                        )}
                         {(!isEditable && !isCreatingTransform && canBecomeEditable) && (
                             <Tag color="orange" style={{ fontSize: '12px' }}>
                                 点击编辑
                             </Tag>
                         )}
                     </div>
-                    {!isEditable && !isCreatingTransform && canBecomeEditable && (
+                    {!isEditable && !isCreatingTransform && canBecomeEditable && !isSourceChroniclesStreaming && (
                         <Button
                             type="primary"
                             size="small"
