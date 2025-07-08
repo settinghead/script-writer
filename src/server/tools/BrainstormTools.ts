@@ -3,18 +3,21 @@ import { TransformRepository } from '../transform-artifact-framework/TransformRe
 import { ArtifactRepository } from '../transform-artifact-framework/ArtifactRepository';
 import {
     executeStreamingTransform,
-    StreamingTransformConfig
+    StreamingTransformConfig,
+    StreamingExecutionMode
 } from '../transform-artifact-framework/StreamingTransformExecutor';
 
 import {
     BrainstormEditInputSchema,
     BrainstormEditInput,
     BrainstormEditOutputSchema,
-    BrainstormEditOutput
+    BrainstormEditOutput,
+    JsonPatchOperation
 } from '../../common/schemas/transforms';
 import { extractDataAtPath } from '../services/transform-instantiations/pathTransforms';
 import type { StreamingToolDefinition } from '../transform-artifact-framework/StreamingAgentFramework';
 import { z } from 'zod';
+import { applyPatch, deepClone, Operation } from 'fast-json-patch';
 
 const BrainstormEditToolResultSchema = z.object({
     outputArtifactId: z.string(),
@@ -33,6 +36,7 @@ const BrainstormToolResultSchema = z.object({
     outputArtifactId: z.string(),
     finishReason: z.string()
 });
+
 type BrainstormEditToolResult = z.infer<typeof BrainstormEditToolResultSchema>;
 
 /**
@@ -99,6 +103,21 @@ async function extractSourceIdeaData(
             targetPlatform = sourceArtifact.metadata.platform || 'unknown';
             storyGenre = sourceArtifact.metadata.genre || 'unknown';
         }
+    } else if (sourceArtifact.type === 'brainstorm_item_schema') {
+        // Schema-based brainstorm item artifact (new schema system)
+        if (!sourceData.title || !sourceData.body) {
+            throw new Error('Invalid brainstorm_item_schema artifact');
+        }
+
+        originalIdea = {
+            title: sourceData.title,
+            body: sourceData.body
+        };
+
+        if (sourceArtifact.metadata) {
+            targetPlatform = sourceArtifact.metadata.platform || 'unknown';
+            storyGenre = sourceArtifact.metadata.genre || 'unknown';
+        }
     } else if (sourceArtifact.type === 'user_input') {
         // User-edited artifact - extract from derived data
         let derivedData = sourceArtifact.metadata?.derived_data;
@@ -135,7 +154,10 @@ async function extractSourceIdeaData(
 }
 
 /**
- * Factory function that creates a brainstorm edit tool definition using the new streaming framework
+ * Factory function that creates a JSON patch-based brainstorm edit tool definition
+ * This tool asks the LLM to generate JSON patches instead of complete new ideas,
+ * and applies them with retry logic if the patches fail to apply.
+ * Falls back to regular editing if JSON patch approach fails.
  */
 export function createBrainstormEditToolDefinition(
     transformRepo: TransformRepository,
@@ -152,20 +174,33 @@ export function createBrainstormEditToolDefinition(
 ): StreamingToolDefinition<BrainstormEditInput, BrainstormEditToolResult> {
     return {
         name: 'edit_brainstorm_idea',
-        description: '编辑和改进现有故事创意。适用场景：用户对现有创意有具体的修改要求或改进建议。重要：必须使用项目背景信息中显示的完整ID作为sourceArtifactId参数。支持各种编辑类型：内容扩展（"每个再长一点"、"详细一些"）、风格调整（"太老套，创新一点"、"更有趣一些"）、情节修改（"改成现代背景"、"加入悬疑元素"）、结构调整（"重新安排情节"、"调整人物关系"）、其他改进（"更符合年轻人口味"、"增加商业价值"）等。',
+        description: '使用JSON补丁方式编辑和改进现有故事创意。适用场景：用户对现有创意有具体的修改要求或改进建议。使用JSON Patch格式进行精确修改，只改变需要改变的部分，提高效率和准确性。重要：必须使用项目背景信息中显示的完整ID作为sourceArtifactId参数。支持各种编辑类型：内容扩展、风格调整、情节修改、结构调整等。',
         inputSchema: BrainstormEditInputSchema,
         outputSchema: BrainstormEditToolResultSchema,
         execute: async (params: BrainstormEditInput, { toolCallId }): Promise<BrainstormEditToolResult> => {
-            console.log(`[BrainstormEditTool] Starting streaming edit for artifact ${params.sourceArtifactId}`);
+            console.log(`[BrainstormEditTool] Starting unified patch edit for artifact ${params.sourceArtifactId}`);
 
-            // Extract source idea data for context - this must be done first
+            // Extract source idea data for context
             const { originalIdea, targetPlatform, storyGenre } = await extractSourceIdeaData(params, artifactRepo, userId);
 
-            // Create config with extracted data
-            const config: StreamingTransformConfig<BrainstormEditInput, BrainstormEditOutput> = {
+            // Determine output artifact type based on source artifact type
+            const sourceArtifact = await artifactRepo.getArtifact(params.sourceArtifactId);
+            if (!sourceArtifact) {
+                throw new Error('Source artifact not found');
+            }
+
+            let outputArtifactType: string;
+            if (sourceArtifact.type === 'brainstorm_item_schema') {
+                outputArtifactType = 'brainstorm_item_schema'; // Use new schema type
+            } else {
+                outputArtifactType = 'brainstorm_idea'; // Legacy type
+            }
+
+            // Create config for unified patch generation using existing edit template
+            const config: StreamingTransformConfig<BrainstormEditInput, any> = {
                 templateName: 'brainstorm_edit',
                 inputSchema: BrainstormEditInputSchema,
-                outputSchema: BrainstormEditOutputSchema,
+                outputSchema: z.any(), // JSON patch output schema
                 prepareTemplateVariables: (input) => ({
                     originalTitle: originalIdea.title,
                     originalBody: originalIdea.body,
@@ -174,49 +209,70 @@ export function createBrainstormEditToolDefinition(
                     editRequirements: input.editRequirements,
                     agentInstructions: input.agentInstructions || '请根据用户要求进行适当的改进和优化。'
                 }),
-                // NEW: Extract source artifact for proper lineage
                 extractSourceArtifacts: (input) => [{
                     artifactId: input.sourceArtifactId,
                     inputRole: 'source'
                 }]
             };
 
-            const result = await executeStreamingTransform({
-                config,
-                input: params,
-                projectId,
-                userId,
-                transformRepo,
-                artifactRepo,
-                outputArtifactType: 'brainstorm_idea',
-                transformMetadata: {
-                    toolName: 'edit_brainstorm_idea',
-                    source_artifact_id: params.sourceArtifactId,
-                    idea_index: params.ideaIndex,
-                    edit_requirements: params.editRequirements,
-                    original_idea: originalIdea,
-                    platform: targetPlatform,
-                    genre: storyGenre
-                },
-                // Pass caching options from factory
-                enableCaching: cachingOptions?.enableCaching,
-                seed: cachingOptions?.seed,
-                temperature: cachingOptions?.temperature,
-                topP: cachingOptions?.topP,
-                maxTokens: cachingOptions?.maxTokens
-            });
+            try {
+                // Execute the streaming transform with patch mode
+                const result = await executeStreamingTransform({
+                    config,
+                    input: params,
+                    projectId,
+                    userId,
+                    transformRepo,
+                    artifactRepo,
+                    outputArtifactType,
+                    executionMode: {
+                        mode: 'patch',
+                        originalArtifact: originalIdea
+                    },
+                    transformMetadata: {
+                        toolName: 'edit_brainstorm_idea',
+                        source_artifact_id: params.sourceArtifactId,
+                        idea_index: params.ideaIndex,
+                        edit_requirements: params.editRequirements,
+                        original_idea: originalIdea,
+                        platform: targetPlatform,
+                        genre: storyGenre,
+                        method: 'unified_patch',
+                        source_artifact_type: sourceArtifact.type,
+                        output_artifact_type: outputArtifactType
+                    },
+                    enableCaching: cachingOptions?.enableCaching,
+                    seed: cachingOptions?.seed,
+                    temperature: cachingOptions?.temperature,
+                    topP: cachingOptions?.topP,
+                    maxTokens: cachingOptions?.maxTokens
+                });
 
-            console.log(`[BrainstormEditTool] Successfully completed streaming edit with artifact ${result.outputArtifactId}`);
+                // Get the final artifact to extract the edited idea
+                const finalArtifact = await artifactRepo.getArtifact(result.outputArtifactId);
+                const editedIdea = finalArtifact?.data || originalIdea;
 
-            return {
-                outputArtifactId: result.outputArtifactId,
-                finishReason: result.finishReason,
-                originalIdea,
-                editedIdea: undefined // Will be populated by the actual artifact data
-            };
+                console.log(`[BrainstormEditTool] Successfully completed unified patch edit with artifact ${result.outputArtifactId}`);
+
+                return {
+                    outputArtifactId: result.outputArtifactId,
+                    finishReason: result.finishReason,
+                    originalIdea,
+                    editedIdea: {
+                        title: editedIdea.title || originalIdea.title,
+                        body: editedIdea.body || originalIdea.body
+                    }
+                };
+
+            } catch (error) {
+                console.error(`[BrainstormEditTool] Unified patch edit failed:`, error);
+                throw new Error(`Brainstorm edit failed: ${error instanceof Error ? error.message : String(error)}`);
+            }
         }
     };
 }
+
+
 
 // Tool execution result type - now returns single collection artifact ID
 interface BrainstormToolResult {

@@ -88,7 +88,19 @@ function artifactToContextString(artifact: ElectricArtifact, maxLength: number =
                     stageParts.push(`关系发展: ${data.relationshipDevelopments.length}个`);
                 }
                 return stageParts.join('; ');
-
+            case 'brainstorm_item_schema':
+            case 'brainstorm_idea':
+                const itemParts = [];
+                if (data.title) itemParts.push(`标题: "${data.title}"`);
+                if (data.content) {
+                    const content = data.content.toString();
+                    itemParts.push(`内容: ${content.length > maxLength ? content.substring(0, maxLength) + '...' : content}`);
+                }
+                if (data.body) {
+                    const body = data.body.toString();
+                    itemParts.push(`内容: ${body.length > maxLength ? body.substring(0, maxLength) + '...' : body}`);
+                }
+                return itemParts.join('; ');
             default:
                 // For unknown types, try to extract meaningful fields
                 if (data.title) return `标题: "${data.title}"`;

@@ -99,6 +99,30 @@ export const BrainstormEditOutputSchema = z.object({
 
 export type BrainstormEditOutput = z.infer<typeof BrainstormEditOutputSchema>;
 
+// JSON Patch operation schema (RFC 6902)
+export const JsonPatchOperationSchema = z.object({
+  op: z.enum(['add', 'remove', 'replace', 'move', 'copy', 'test']).describe('JSON Patch操作类型'),
+  path: z.string().describe('要修改的JSON路径，如/title或/body'),
+  value: z.any().optional().describe('新的值（用于add、replace、copy操作）'),
+  from: z.string().optional().describe('源路径（用于move、copy操作）')
+});
+
+export type JsonPatchOperation = z.infer<typeof JsonPatchOperationSchema>;
+
+// JSON Patch array schema
+export const JsonPatchArraySchema = z.array(JsonPatchOperationSchema);
+export type JsonPatchArray = z.infer<typeof JsonPatchArraySchema>;
+
+// Input schema for JSON patch-based brainstorm editing
+export const BrainstormEditJsonPatchInputSchema = BrainstormEditInputSchema; // Same input as regular edit
+
+export type BrainstormEditJsonPatchInput = z.infer<typeof BrainstormEditJsonPatchInputSchema>;
+
+// Output schema for JSON patch-based brainstorm editing
+export const BrainstormEditJsonPatchOutputSchema = JsonPatchArraySchema;
+
+export type BrainstormEditJsonPatchOutput = z.infer<typeof BrainstormEditJsonPatchOutputSchema>;
+
 // Transform registry
 export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinition> = {
   // Brainstorm input creation transform

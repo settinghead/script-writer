@@ -257,21 +257,32 @@ function createFallbackStreamText(options?: { onToolCall?: (toolName: string, ar
 }
 
 /**
- * Fallback mock for brainstorm edit (returns single idea object)
+ * Fallback mock for brainstorm edit (returns patches in the format expected by StreamingTransformExecutor)
  */
 function createFallbackBrainstormEditObject() {
-    const mockEditedIdea = {
-        title: "误爱成宠（升级版）",
-        body: "现代都市背景下，林氏科技集团总裁林慕琛利用先进的AI系统误将普通程序员夏栀识别为富家千金。这个技术错误引发了一段充满现代科技色彩的爱恋故事，保持原有的情感核心，但融入了现代科技背景。"
+    // Return patches that the StreamingTransformExecutor can apply
+    const mockPatches = {
+        patches: [
+            {
+                op: "replace",
+                path: "/title",
+                value: "误爱成宠（升级版）"
+            },
+            {
+                op: "replace",
+                path: "/body",
+                value: "现代都市背景下，林氏科技集团总裁林慕琛利用先进的AI系统误将普通程序员夏栀识别为富家千金。这个技术错误引发了一段充满现代科技色彩的爱恋故事，保持原有的情感核心，但融入了现代科技背景。"
+            }
+        ]
     };
 
     return {
         partialObjectStream: createAsyncIterator([
-            { title: "误爱成宠（升级版）" },
-            mockEditedIdea
+            { patches: mockPatches.patches.slice(0, 1) },
+            mockPatches
         ]),
-        object: Promise.resolve(mockEditedIdea),
-        baseStream: createMockBaseStream(mockEditedIdea)
+        object: Promise.resolve(mockPatches),
+        baseStream: createMockBaseStream(mockPatches)
     };
 }
 

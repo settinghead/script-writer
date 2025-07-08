@@ -4,6 +4,7 @@ import { LLMService } from './LLMService';
 import { CachedLLMService, getCachedLLMService } from './CachedLLMService';
 import { TransformRepository } from './TransformRepository';
 import { ArtifactRepository } from './ArtifactRepository';
+import { applyPatch, deepClone, Operation } from 'fast-json-patch';
 
 /**
  * Configuration for a streaming transform - minimal interface that tools provide
@@ -24,6 +25,13 @@ export interface StreamingTransformConfig<TInput, TOutput> {
 }
 
 /**
+ * Execution mode for streaming transforms
+ */
+export type StreamingExecutionMode =
+    | { mode: 'full-object' }
+    | { mode: 'patch', originalArtifact: any };
+
+/**
  * Parameters for executing a streaming transform
  */
 export interface StreamingTransformParams<TInput, TOutput> {
@@ -42,6 +50,8 @@ export interface StreamingTransformParams<TInput, TOutput> {
     temperature?: number;  // LLM temperature
     topP?: number;  // LLM top-p sampling
     maxTokens?: number;  // LLM max tokens
+    // NEW: Execution mode for patch vs full-object generation
+    executionMode?: StreamingExecutionMode;
 }
 
 /**
@@ -86,7 +96,8 @@ export class StreamingTransformExecutor {
             seed,
             temperature,
             topP,
-            maxTokens
+            maxTokens,
+            executionMode
         } = params;
 
         let transformId: string | null = null;
@@ -161,7 +172,15 @@ export class StreamingTransformExecutor {
 
                 // 4. Create initial output artifact in streaming state (only on first attempt)
                 if (!outputArtifactId) {
-                    const initialData = this.createInitialArtifactData(outputArtifactType, transformMetadata);
+                    let initialData: any;
+                    if (executionMode?.mode === 'patch') {
+                        // In patch mode, start with the original artifact data
+                        initialData = deepClone(executionMode.originalArtifact);
+                    } else {
+                        // In full-object mode, use empty structure
+                        initialData = this.createInitialArtifactData(outputArtifactType, transformMetadata);
+                    }
+
                     const outputArtifact = await artifactRepo.createArtifact(
                         projectId,
                         outputArtifactType,
@@ -171,6 +190,7 @@ export class StreamingTransformExecutor {
                             started_at: new Date().toISOString(),
                             template_name: config.templateName,
                             retry_count: retryCount,
+                            execution_mode: executionMode?.mode || 'full-object',
                             ...transformMetadata
                         },
                         'streaming',
@@ -221,10 +241,27 @@ export class StreamingTransformExecutor {
                     // Update artifact every N chunks or if this is the final chunk
                     if (chunkCount % updateIntervalChunks === 0) {
                         try {
-                            // Transform LLM output to final artifact format if needed
-                            const artifactData = config.transformLLMOutput
-                                ? config.transformLLMOutput(partialData as TOutput, validatedInput)
-                                : partialData;
+                            let artifactData: any;
+                            if (executionMode?.mode === 'patch') {
+                                // In patch mode, try to apply partial patches (may fail, that's ok)
+                                try {
+                                    artifactData = await this.applyPatchesToOriginal(
+                                        partialData as TOutput,
+                                        executionMode.originalArtifact,
+                                        config.templateName,
+                                        retryCount
+                                    );
+                                } catch (patchError) {
+                                    // If partial patch fails, keep original data and continue
+                                    console.warn(`[StreamingTransformExecutor] Partial patch failed at chunk ${chunkCount}, continuing...`);
+                                    artifactData = executionMode.originalArtifact;
+                                }
+                            } else {
+                                // Transform LLM output to final artifact format if needed
+                                artifactData = config.transformLLMOutput
+                                    ? config.transformLLMOutput(partialData as TOutput, validatedInput)
+                                    : partialData;
+                            }
 
                             await artifactRepo.updateArtifact(
                                 outputArtifactId,
@@ -233,7 +270,8 @@ export class StreamingTransformExecutor {
                                     chunk_count: chunkCount,
                                     last_updated: new Date().toISOString(),
                                     update_count: ++updateCount,
-                                    retry_count: retryCount
+                                    retry_count: retryCount,
+                                    execution_mode: executionMode?.mode || 'full-object'
                                 }
                             );
 
@@ -269,10 +307,22 @@ export class StreamingTransformExecutor {
                     throw new Error(`Schema validation failed: ${validationError instanceof Error ? validationError.message : String(validationError)}`);
                 }
 
-                // Transform LLM output to final artifact format if needed
-                const finalArtifactData = config.transformLLMOutput
-                    ? config.transformLLMOutput(finalValidatedData, validatedInput)
-                    : finalValidatedData;
+                // Handle patch mode vs full-object mode
+                let finalArtifactData: any;
+                if (executionMode?.mode === 'patch') {
+                    // Apply patches to original artifact
+                    finalArtifactData = await this.applyPatchesToOriginal(
+                        finalValidatedData,
+                        executionMode.originalArtifact,
+                        config.templateName,
+                        retryCount
+                    );
+                } else {
+                    // Transform LLM output to final artifact format if needed (full-object mode)
+                    finalArtifactData = config.transformLLMOutput
+                        ? config.transformLLMOutput(finalValidatedData, validatedInput)
+                        : finalValidatedData;
+                }
 
                 await artifactRepo.updateArtifact(
                     outputArtifactId,
@@ -380,6 +430,137 @@ export class StreamingTransformExecutor {
 
         // This should never be reached due to the throw in the retry exhaustion case
         throw new Error('Unexpected end of retry loop');
+    }
+
+    /**
+     * Apply patches to original artifact with retry fallback mechanisms
+     */
+    private async applyPatchesToOriginal<TOutput>(
+        llmOutput: TOutput,
+        originalArtifact: any,
+        templateName: string,
+        retryCount: number
+    ): Promise<any> {
+        try {
+            // First, try JSON Patch format
+            const patches = this.extractJsonPatches(llmOutput);
+            if (patches && patches.length > 0) {
+                console.log(`[StreamingTransformExecutor] Applying ${patches.length} JSON patches for ${templateName}`);
+
+                const originalCopy = deepClone(originalArtifact);
+                const patchResults = applyPatch(originalCopy, patches);
+
+                // Check if all patches applied successfully
+                const failedPatches = patchResults.filter(r => r.test === false);
+                if (failedPatches.length === 0) {
+                    console.log(`[StreamingTransformExecutor] Successfully applied all JSON patches`);
+                    return originalCopy;
+                } else {
+                    throw new Error(`Failed to apply ${failedPatches.length} JSON patches`);
+                }
+            }
+
+            // If no valid JSON patches, try diff format (fallback)
+            const diffText = this.extractDiffText(llmOutput);
+            if (diffText) {
+                console.log(`[StreamingTransformExecutor] Attempting diff format fallback for ${templateName}`);
+                return this.applyDiffFormat(originalArtifact, diffText);
+            }
+
+            throw new Error('No valid patches or diff found in LLM output');
+
+        } catch (error) {
+            console.error(`[StreamingTransformExecutor] Patch application failed for ${templateName} (attempt ${retryCount + 1}):`, error);
+            throw error;
+        }
+    }
+
+    /**
+     * Extract JSON patches from LLM output
+     */
+    private extractJsonPatches(llmOutput: any): Operation[] | null {
+        try {
+            // Handle different possible formats
+            if (Array.isArray(llmOutput)) {
+                return llmOutput as Operation[];
+            }
+
+            if (llmOutput.patches && Array.isArray(llmOutput.patches)) {
+                return llmOutput.patches as Operation[];
+            }
+
+            if (llmOutput.data && Array.isArray(llmOutput.data)) {
+                return llmOutput.data as Operation[];
+            }
+
+            return null;
+        } catch (error) {
+            console.warn(`[StreamingTransformExecutor] Failed to extract JSON patches:`, error);
+            return null;
+        }
+    }
+
+    /**
+     * Extract diff text from LLM output for fallback
+     */
+    private extractDiffText(llmOutput: any): string | null {
+        try {
+            if (typeof llmOutput === 'string') {
+                return llmOutput;
+            }
+
+            if (llmOutput.diff && typeof llmOutput.diff === 'string') {
+                return llmOutput.diff;
+            }
+
+            if (llmOutput.text && typeof llmOutput.text === 'string') {
+                return llmOutput.text;
+            }
+
+            return null;
+        } catch (error) {
+            console.warn(`[StreamingTransformExecutor] Failed to extract diff text:`, error);
+            return null;
+        }
+    }
+
+    /**
+     * Apply diff format patches (fallback mechanism)
+     */
+    private applyDiffFormat(originalArtifact: any, diffText: string): any {
+        // This is a simplified diff parser - in production you might want a more robust solution
+        try {
+            const originalJson = JSON.stringify(originalArtifact, null, 2);
+
+            // Look for @@ diff markers and apply simple text replacements
+            const lines = diffText.split('\n');
+            let modifiedJson = originalJson;
+
+            for (const line of lines) {
+                if (line.startsWith('-') && !line.startsWith('---')) {
+                    // Remove line
+                    const removeText = line.substring(1).trim();
+                    modifiedJson = modifiedJson.replace(removeText, '');
+                } else if (line.startsWith('+') && !line.startsWith('+++')) {
+                    // Add line - this is simplified, real diff would need context
+                    const addText = line.substring(1).trim();
+                    // Simple heuristic: if it looks like a JSON property, try to merge it
+                    if (addText.includes(':') && addText.includes('"')) {
+                        // This is a very basic approach - production would need proper diff parsing
+                        console.warn(`[StreamingTransformExecutor] Diff fallback is basic - line: ${addText}`);
+                    }
+                }
+            }
+
+            try {
+                return JSON.parse(modifiedJson);
+            } catch (parseError) {
+                throw new Error(`Failed to parse modified JSON from diff: ${parseError}`);
+            }
+
+        } catch (error) {
+            throw new Error(`Diff format application failed: ${error instanceof Error ? error.message : String(error)}`);
+        }
     }
 
     /**
