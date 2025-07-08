@@ -194,11 +194,7 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
                 />
             )}
 
-            <div >
-                <Text type="secondary" style={{ fontSize: '14px' }}>
-                    当前阶段：{currentStage} - {stageDescription}
-                </Text>
-            </div>
+
         </Card>
     );
 }; 

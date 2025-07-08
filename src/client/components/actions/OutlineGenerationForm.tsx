@@ -110,70 +110,23 @@ const OutlineGenerationForm: React.FC<BaseActionProps> = ({ projectId, onSuccess
     }
 
     return (
-        <div style={{ padding: '24px' }}>
-            <Title level={4} style={{ marginBottom: '24px', color: '#fff', textAlign: 'center' }}>
-                <FileTextOutlined style={{ marginRight: '8px', color: '#1890ff' }} />
-                生成大纲框架
-            </Title>
-
-            <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-                {/* Show selected idea info */}
-                <div style={{
-                    background: '#2a2a2a',
-                    padding: '16px',
-                    borderRadius: '8px',
-                    marginBottom: '24px',
-                    border: '1px solid #434343'
-                }}>
-                    <Text strong style={{ color: '#fff', display: 'block', marginBottom: '8px' }}>
-                        选中的创意:
-                    </Text>
-                    <Text style={{ color: '#ccc', fontSize: '14px' }}>
-                        {ideaData?.title || '创意标题'}
-                    </Text>
-                    {ideaData?.body && (
-                        <div style={{ marginTop: '8px' }}>
-                            <Text style={{ color: '#aaa', fontSize: '12px', lineHeight: '1.4' }}>
-                                {ideaData.body.length > 200
-                                    ? `${ideaData.body.substring(0, 200)}...`
-                                    : ideaData.body
-                                }
-                            </Text>
-                        </div>
-                    )}
-                </div>
-
-                {/* Outline generation form */}
-                <Form
-                    form={form}
-                    layout="vertical"
-                    onFinish={handleGenerateOutline}
-                    initialValues={{
-                        title: ideaData?.title || '',
-                        requirements: ''
-                    }}
-                >
-
-
-
-                    <Form.Item style={{ marginTop: '32px', textAlign: 'center' }}>
-                        <Button
-                            type="primary"
-                            htmlType="submit"
-                            size="large"
-                            loading={isGenerating}
-                            style={{
-                                width: '200px',
-                                height: '48px',
-                                fontSize: '16px',
-                                borderRadius: '8px'
-                            }}
-                        >
-                            {isGenerating ? '生成中...' : '生成大纲框架'}
-                        </Button>
-                    </Form.Item>
-                </Form>
-            </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', justifyContent: 'center' }}>
+            {/* Generate button */}
+            <Button
+                type="primary"
+                onClick={() => handleGenerateOutline({ title: ideaData?.title || '', requirements: '' })}
+                loading={isGenerating}
+                disabled={isGenerating}
+                icon={<FileTextOutlined />}
+                style={{
+                    background: '#1890ff',
+                    borderColor: '#1890ff',
+                    minWidth: '140px',
+                    height: '40px'
+                }}
+            >
+                {isGenerating ? '生成中...' : '生成大纲框架'}
+            </Button>
         </div>
     );
 };
