@@ -488,12 +488,13 @@ const ProjectLayout: React.FC = () => {
                                 overflow: 'hidden'
                             }}>
                                 {/* Scrollable Content Container */}
-                                <div style={{
-                                    flex: 1,
-                                    overflowY: 'auto',
-                                    padding: '12px',
-                                    paddingBottom: '24px'
-                                }}>
+                                <div
+                                    className="content-area-inset"
+                                    style={{
+                                        flex: 1,
+                                        overflowY: 'auto',
+                                    }}
+                                >
                                     <ProjectContentRenderer projectId={projectId!} />
                                     <Outlet />
                                 </div>
