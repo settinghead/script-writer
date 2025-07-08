@@ -34,7 +34,7 @@ const BrainstormCreationActions: React.FC<BaseActionProps> = ({ projectId, onSuc
             }
 
             const newArtifact = await response.json();
-            message.success('头脑风暴输入已创建！');
+            message.success('头脑风暴表单已创建！');
             onSuccess?.();
         } catch (error) {
             console.error('Error creating brainstorm input:', error);

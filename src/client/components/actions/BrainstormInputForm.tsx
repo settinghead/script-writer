@@ -98,7 +98,6 @@ const BrainstormInputForm: React.FC<BrainstormInputFormProps> = ({
                 throw new Error(error.error || 'Failed to delete brainstorm input');
             }
 
-            message.success('已返回到项目创建选择');
             onSuccess?.(); // This will trigger a re-render and return to initial state
         } catch (error) {
             console.error('Error deleting brainstorm input:', error);

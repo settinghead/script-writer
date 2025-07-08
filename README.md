@@ -104,6 +104,77 @@ UI Update: Real-time display with edit indicators
 - **Event-Driven Messaging** - 6 event types for comprehensive interaction tracking
 - **Message Sanitization** - Two-layer system preventing trade secret exposure
 
+### 🎯 Centralized Action Items System
+
+The application implements a sophisticated centralized action system that separates content editing from workflow actions, providing a clean and intuitive user experience.
+
+**Design Philosophy**:
+- **Main Area for Editing** - The primary content area in `ProjectLayout` is dedicated to editing and viewing content, especially large text fields and complex data structures
+- **Bottom Actions for Workflow** - All workflow actions (buttons, forms, parameters) are centralized in the bottom `ActionItemsSection` for consistent user experience
+- **Linear Progression** - Actions follow strict linear workflow progression based on artifact lineage and project state
+- **Smart State Management** - Actions automatically appear/disappear based on current project state and available artifacts
+
+**Action Items Architecture**:
+
+**Centralized Action Management**:
+- **ActionItemsSection Component** - Sticky bottom section that displays all available actions
+- **Action Computation Logic** - `computeParamsAndActions()` function analyzes project state and determines available actions
+- **Global State Management** - `useActionItemsStore()` with localStorage persistence for form data and selections
+- **Linear Workflow Detection** - Automatic stage detection from `initial` → `brainstorm_input` → `brainstorm_selection` → `idea_editing` → `outline_generation` → `chronicles_generation` → `episode_generation`
+
+**Action Components**:
+- **BrainstormCreationActions** - Project creation buttons (brainstorm/manual creation)
+- **BrainstormInputForm** - Simple "开始头脑风暴" button with parameter validation
+- **BrainstormIdeaSelection** - Confirm button for selected brainstorm ideas
+- **OutlineGenerationForm** - Outline settings generation with episode/platform parameters
+- **ChroniclesGenerationAction** - One-click chronicles generation from outline settings
+- **EpisodeGenerationAction** - Final episode script generation from chronicles
+
+**Workflow Stage Management**:
+```typescript
+interface WorkflowStage {
+  'initial'              // No brainstorm input → Show creation buttons
+  'brainstorm_input'     // Has input artifact (leaf) → Show brainstorm form
+  'brainstorm_selection' // Has generated ideas, no chosen → Show selection
+  'idea_editing'         // Has chosen idea (leaf) → Show outline form
+  'outline_generation'   // Has outline settings (leaf) → Show chronicles
+  'chronicles_generation' // Has chronicles (leaf) → Show episode generation
+  'episode_generation'   // Has episodes → Show script generation
+}
+```
+
+**Smart Action Logic**:
+- **Leaf Node Detection** - Actions only appear when artifacts are "leaf nodes" (no descendants in transform chain)
+- **Dependency Validation** - Each action validates required predecessor artifacts exist
+- **Loading State Management** - Actions hide during active transforms to prevent conflicts
+- **Error State Handling** - Failed transforms show retry options and error messages
+
+**Form Data Persistence**:
+- **Auto-Save Drafts** - All form data automatically saved to localStorage with project scoping
+- **Selection State** - Brainstorm idea selections persist across page refreshes
+- **Form Validation** - Real-time validation with helpful error messages
+- **Optimistic Updates** - Form submissions use optimistic state management
+
+**Benefits**:
+- **Consistent UX** - All actions follow the same visual and behavioral patterns
+- **Reduced Cognitive Load** - Users always know where to find actions (bottom of screen)
+- **Preserved Editing** - Main content area remains focused on editing and viewing
+- **Workflow Guidance** - Clear progression through linear workflow stages
+- **State Persistence** - No lost form data or selections during navigation
+
+**Example Action Flow**:
+```
+1. User opens new project → ActionItemsSection shows creation buttons
+2. User clicks "创建头脑风暴" → Creates brainstorm input artifact
+3. Main area shows brainstorm parameters form → User fills parameters
+4. ActionItemsSection shows "开始头脑风暴" button → User clicks to generate
+5. Ideas appear in main area → User selects preferred idea
+6. ActionItemsSection shows "Continue with Selected Idea" → User confirms
+7. Main area shows chosen idea editing → ActionItemsSection shows outline form
+8. User fills outline parameters → Clicks "生成剧本框架"
+9. Process continues through chronicles → episodes → scripts
+```
+
 ### 📊 Content Management
 
 **Project-Based Organization**:
@@ -497,6 +568,78 @@ POST /api/artifacts/outline-artifact-id/human-transform
 4. **Add UI Components** - Create React components with Ant Design
 5. **Integrate SectionWrapper** - Use `SectionWrapper` for consistent section management
 6. **Test Integration** - Add cache-based tests for AI functionality
+
+### Adding New Action Items
+
+When adding new workflow actions, follow the centralized action items pattern:
+
+**Step 1: Update Action Computation Logic**
+```typescript
+// In src/client/utils/actionComputation.ts
+export const computeParamsAndActions = (projectData: ProjectDataContextType): ComputedActions => {
+  // Add new stage detection logic
+  if (hasNewContentType && isLeafNode(newArtifact)) {
+    return {
+      actions: [{
+        id: 'new-action',
+        type: 'button',
+        title: '新操作',
+        component: NewActionComponent,
+        props: { /* action-specific props */ },
+        enabled: true,
+        priority: 5
+      }],
+      currentStage: 'new_stage',
+      hasActiveTransforms: false
+    };
+  }
+};
+```
+
+**Step 2: Create Action Component**
+```typescript
+// In src/client/components/actions/NewActionComponent.tsx
+interface NewActionProps extends BaseActionProps {
+  // Action-specific props
+}
+
+export const NewActionComponent: React.FC<NewActionProps> = ({ 
+  projectId, onSuccess, onError, ...props 
+}) => {
+  // Keep action components focused on:
+  // - Immediate parameters (not large text editing)
+  // - Action buttons and forms
+  // - Validation and submission logic
+  
+  return (
+    <Space>
+      <Button type="primary" onClick={handleAction}>
+        执行新操作
+      </Button>
+    </Space>
+  );
+};
+```
+
+**Step 3: Register Action Component**
+```typescript
+// In src/client/components/actions/index.ts
+export { NewActionComponent } from './NewActionComponent';
+
+// Update ActionItemRenderer to handle new action type
+```
+
+**Action Component Guidelines**:
+- **Keep Actions Small** - Action components should focus on buttons, forms, and immediate parameters
+- **Avoid Large Text Editing** - Large text fields belong in the main content area, not action items
+- **Use BaseActionProps** - All action components must extend `BaseActionProps` interface
+- **Validate Prerequisites** - Check for required artifacts before enabling actions
+- **Handle Loading States** - Show loading indicators during action execution
+- **Provide Clear Feedback** - Use success/error callbacks for user feedback
+
+**Main Area vs Action Items**:
+- **Main Area**: Large text editing, complex data structures, detailed content viewing
+- **Action Items**: Workflow buttons, parameter forms, immediate action controls
 
 ### SectionWrapper Integration Pattern
 
