@@ -126,8 +126,9 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
     let mainPart: React.ReactNode | null = null;
 
     // Render based on current state
-    if (!globalIsEditable) {
-        // Disabled mode - transforms are running, show disabled state
+    if (!globalIsEditable && currentStage === 'idea_editing' && (isEditable || canBecomeEditable)) {
+        // Disabled mode - transforms are running AND we're in editing stage AND the artifact would normally be editable
+        // Only show disabled state if we're in the editing stage and the artifact would be interactive
         mainPart = (
             <div className="single-brainstorm-idea-disabled" style={{ marginBottom: '16px' }}>
                 <Card
@@ -344,7 +345,18 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
             </div>
         );
     } else {
-        // Read-only mode - artifact has descendants and cannot be edited
+        // Read-only mode - determine reason for read-only status
+        let readOnlyReason = '已生成后续内容，无法编辑';
+        if (currentStage !== 'idea_editing') {
+            // Different messages for different stages
+            const stageMessages: Record<string, string> = {
+                'outline_generation': '已进入剧本框架阶段，创意已确定',
+                'chronicles_generation': '已进入时间顺序大纲阶段，创意已确定',
+                'episode_synopsis_generation': '已进入分集剧本阶段，创意已确定'
+            };
+            readOnlyReason = stageMessages[currentStage] || '当前阶段不可编辑创意';
+        }
+
         mainPart = (
             <div className="single-brainstorm-idea-readonly" style={{ marginBottom: '16px' }}>
                 <Card
@@ -370,7 +382,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                                     📖 {ideaTitle}
                                 </Title>
                                 <Text type="secondary" style={{ fontSize: '12px' }}>
-                                    已生成后续内容，无法编辑
+                                    {readOnlyReason}
                                 </Text>
                             </div>
                         </div>

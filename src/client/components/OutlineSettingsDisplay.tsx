@@ -204,19 +204,33 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
 
     // Handle saving individual fields
     const handleSave = useCallback(async (path: string, newValue: any) => {
-        // Always get the current effective artifact to avoid stale closures
-        const currentArtifact = effectiveArtifact;
+        console.log(`[OutlineSettingsDisplay] handleSave called with path: ${path}, newValue:`, newValue);
 
-        if (!currentArtifact?.data) {
+        // Always get the current effective artifact ID to avoid stale closures
+        const currentArtifactId = effectiveArtifact?.id;
+        console.log(`[OutlineSettingsDisplay] currentArtifactId:`, currentArtifactId);
+
+        if (!currentArtifactId) {
+            console.log(`[OutlineSettingsDisplay] No artifact ID, returning early`);
             return;
         }
 
         try {
+            // Get the FRESH artifact data from project context to avoid stale closures
+            const freshArtifact = projectData.getArtifactById(currentArtifactId);
+            console.log(`[OutlineSettingsDisplay] freshArtifact:`, freshArtifact);
+
+            if (!freshArtifact?.data) {
+                console.log(`[OutlineSettingsDisplay] No fresh artifact data, returning early`);
+                return;
+            }
+
             // Parse current data fresh to avoid stale state
-            let currentData: any = currentArtifact.data;
+            let currentData: any = freshArtifact.data;
             if (typeof currentData === 'string') {
                 currentData = JSON.parse(currentData);
             }
+            console.log(`[OutlineSettingsDisplay] currentData before update:`, currentData);
 
             const updatedSettings = { ...currentData };
 
@@ -283,12 +297,18 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                 }
             }
 
+            console.log(`[OutlineSettingsDisplay] updatedSettings after path update:`, updatedSettings);
+            console.log(`[OutlineSettingsDisplay] About to call updateArtifact with artifactId: ${currentArtifactId}`);
+
             await projectData.updateArtifact.mutateAsync({
-                artifactId: currentArtifact.id,
+                artifactId: currentArtifactId,
                 data: updatedSettings
             });
 
+            console.log(`[OutlineSettingsDisplay] updateArtifact completed successfully`);
+
         } catch (error) {
+            console.error(`[OutlineSettingsDisplay] Error in handleSave:`, error);
         }
     }, [effectiveArtifact, projectData]);
 

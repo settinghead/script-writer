@@ -72,23 +72,31 @@ export const EditableText: React.FC<EditableTextProps> = ({
 
     // Save function that handles concurrent edits properly
     const saveValue = useCallback(async (valueToSave: string) => {
+        console.log(`[EditableText] saveValue called with path: ${path}, valueToSave: "${valueToSave}"`);
+        console.log(`[EditableText] lastSavedValueRef.current: "${lastSavedValueRef.current}"`);
+
         if (!onSaveRef.current || valueToSave === lastSavedValueRef.current) {
+            console.log(`[EditableText] Skipping save - no onSave or value unchanged`);
             return;
         }
 
         // If already saving, queue this value
         if (savingRef.current) {
+            console.log(`[EditableText] Already saving, queueing value: "${valueToSave}"`);
             pendingSaveRef.current = valueToSave;
             return;
         }
 
+        console.log(`[EditableText] Starting save process for path: ${path}`);
         savingRef.current = true;
         setIsSaving(true);
         setSaveError(null);
         setShowSavedState(false);
 
         try {
+            console.log(`[EditableText] Calling onSave with path: ${path}, value: "${valueToSave}"`);
             await onSaveRef.current(path, valueToSave);
+            console.log(`[EditableText] Save completed successfully for path: ${path}`);
             lastSavedValueRef.current = valueToSave;
             setHasUnsavedChanges(false);
             setShowSavedState(true);
