@@ -135,28 +135,15 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
         <Card
             style={{
                 backgroundColor: '#1a1a1a',
-                border: '1px solid #52c41a',
-                marginTop: '24px'
             }}
-            styles={{ body: { padding: '24px' } }}
+
         >
             {/* Hader */}
 
 
             {/* Loading overlay for active transforms */}
             {hasActiveTransforms && (
-                <div style={{
-                    marginBottom: '16px',
-                    padding: '12px',
-                    backgroundColor: '#0a0a0a',
-                    borderRadius: '6px',
-                    border: '1px solid #1890ff'
-                }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Spin indicator={<LoadingOutlined style={{ fontSize: 16 }} spin />} />
-                        <Text style={{ color: '#1890ff' }}>正在处理中...</Text>
-                    </div>
-                </div>
+                <Spin indicator={<LoadingOutlined style={{ fontSize: 16 }} spin />} />
             )}
 
             {/* Actions */}
@@ -182,16 +169,7 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
                     })}
                 </Space>
             ) : (
-                <Alert
-                    message="暂无可用操作"
-                    description="当前项目状态下没有可执行的操作。"
-                    type="info"
-                    showIcon
-                    style={{
-                        backgroundColor: '#0a0a0a',
-                        borderColor: '#434343'
-                    }}
-                />
+                <></>
             )}
 
 
