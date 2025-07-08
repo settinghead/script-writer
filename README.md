@@ -104,76 +104,30 @@ UI Update: Real-time display with edit indicators
 - **Event-Driven Messaging** - 6 event types for comprehensive interaction tracking
 - **Message Sanitization** - Two-layer system preventing trade secret exposure
 
-### 🎯 Centralized Action Items System
+### 🎯 Script Writing Workflow
 
-The application implements a sophisticated centralized action system that separates content editing from workflow actions, providing a clean and intuitive user experience.
+觅光助创 implements a sophisticated linear workflow system specifically designed for Chinese short drama creation, with intelligent action management that guides users through the complete script development process.
 
-**Design Philosophy**:
-- **Main Area for Editing** - The primary content area in `ProjectLayout` is dedicated to editing and viewing content, especially large text fields and complex data structures
-- **Bottom Actions for Workflow** - All workflow actions (buttons, forms, parameters) are centralized in the bottom `ActionItemsSection` for consistent user experience
-- **Linear Progression** - Actions follow strict linear workflow progression based on artifact lineage and project state
-- **Smart State Management** - Actions automatically appear/disappear based on current project state and available artifacts
+**Script Writing Stages**:
+1. **灵感生成 (Brainstorm)** - Generate initial story concepts with platform-specific optimization
+2. **创意选择 (Idea Selection)** - Select and refine the most promising story idea
+3. **剧本框架 (Outline Settings)** - Develop characters, setting, and commercial elements
+4. **时间顺序大纲 (Chronicles)** - Create chronological story progression
+5. **分集规划 (Episode Planning)** - Break story into episode structure
+6. **剧本创作 (Script Writing)** - Generate detailed scripts with dialogue
 
-**Action Items Architecture**:
+**Workflow Features**:
+- **Linear Progression** - Each stage builds on previous work with intelligent dependency tracking
+- **Smart Actions** - Bottom action panel shows only relevant next steps based on current progress
+- **Persistent State** - Form data and selections automatically saved across sessions
+- **Visual Feedback** - Clear indicators of current stage and completion status
+- **Flexible Editing** - Main content area dedicated to editing and viewing, actions separated to bottom panel
 
-**Centralized Action Management**:
-- **ActionItemsSection Component** - Sticky bottom section that displays all available actions
-- **Action Computation Logic** - `computeParamsAndActions()` function analyzes project state and determines available actions
-- **Global State Management** - `useActionItemsStore()` with localStorage persistence for form data and selections
-- **Linear Workflow Detection** - Automatic stage detection from `initial` → `brainstorm_input` → `brainstorm_selection` → `idea_editing` → `outline_generation` → `chronicles_generation` → `episode_generation`
-
-**Action Components**:
-- **BrainstormCreationActions** - Project creation buttons (brainstorm/manual creation)
-- **BrainstormInputForm** - Simple "开始头脑风暴" button with parameter validation
-- **BrainstormIdeaSelection** - Confirm button for selected brainstorm ideas
-- **OutlineGenerationForm** - Outline settings generation with episode/platform parameters
-- **ChroniclesGenerationAction** - One-click chronicles generation from outline settings
-- **EpisodeGenerationAction** - Final episode script generation from chronicles
-
-**Workflow Stage Management**:
-```typescript
-interface WorkflowStage {
-  'initial'              // No brainstorm input → Show creation buttons
-  'brainstorm_input'     // Has input artifact (leaf) → Show brainstorm form
-  'brainstorm_selection' // Has generated ideas, no chosen → Show selection
-  'idea_editing'         // Has chosen idea (leaf) → Show outline form
-  'outline_generation'   // Has outline settings (leaf) → Show chronicles
-  'chronicles_generation' // Has chronicles (leaf) → Show episode generation
-  'episode_generation'   // Has episodes → Show script generation
-}
-```
-
-**Smart Action Logic**:
-- **Leaf Node Detection** - Actions only appear when artifacts are "leaf nodes" (no descendants in transform chain)
-- **Dependency Validation** - Each action validates required predecessor artifacts exist
-- **Loading State Management** - Actions hide during active transforms to prevent conflicts
-- **Error State Handling** - Failed transforms show retry options and error messages
-
-**Form Data Persistence**:
-- **Auto-Save Drafts** - All form data automatically saved to localStorage with project scoping
-- **Selection State** - Brainstorm idea selections persist across page refreshes
-- **Form Validation** - Real-time validation with helpful error messages
-- **Optimistic Updates** - Form submissions use optimistic state management
-
-**Benefits**:
-- **Consistent UX** - All actions follow the same visual and behavioral patterns
-- **Reduced Cognitive Load** - Users always know where to find actions (bottom of screen)
-- **Preserved Editing** - Main content area remains focused on editing and viewing
-- **Workflow Guidance** - Clear progression through linear workflow stages
-- **State Persistence** - No lost form data or selections during navigation
-
-**Example Action Flow**:
-```
-1. User opens new project → ActionItemsSection shows creation buttons
-2. User clicks "创建头脑风暴" → Creates brainstorm input artifact
-3. Main area shows brainstorm parameters form → User fills parameters
-4. ActionItemsSection shows "开始头脑风暴" button → User clicks to generate
-5. Ideas appear in main area → User selects preferred idea
-6. ActionItemsSection shows "Continue with Selected Idea" → User confirms
-7. Main area shows chosen idea editing → ActionItemsSection shows outline form
-8. User fills outline parameters → Clicks "生成剧本框架"
-9. Process continues through chronicles → episodes → scripts
-```
+**Chinese Drama Specialization**:
+- **Platform Optimization** - Tailored for 抖音, 快手, 小红书 content requirements
+- **去脸谱化 Content** - Built-in emphasis on modern, non-stereotypical characters and plots
+- **Genre Templates** - Specialized prompts for 现代甜宠, 古装甜宠, 复仇爽文, 霸总文
+- **Commercial Elements** - Integrated 卖点 (selling points) and 爽点 (satisfaction points) tracking
 
 ### 📊 Content Management
 
@@ -221,79 +175,27 @@ interface WorkflowStage {
 - **Artifact System** - Immutable content with edit lineage
 - **Transform Tracking** - Complete audit trail of all modifications
 
-### SectionWrapper Architecture
+### Script Writing UI Components
 
-The application uses a unified `SectionWrapper` component that provides consistent section rendering with intelligent status detection across all major content areas.
+觅光助创 uses specialized UI components designed for Chinese short drama script creation, built on the Transform Artifact Framework's editing capabilities.
 
-**Component Features**:
-- **Automatic Artifact Resolution** - Finds the latest/deepest artifact in lineage chains
-- **Smart Status Detection** - Automatically detects loading/failed/normal states based on transform status
-- **Lineage Chain Support** - Handles AI-generated → human-edited artifact flows seamlessly
-- **Type-Safe Schema Types** - Uses TypeScript enums for artifact schema type safety
+**Unified Section Management**:
+- **SectionWrapper** - Consistent section rendering with automatic status detection for all content areas
+- **Automatic Artifact Resolution** - Finds latest versions in editing chains (AI-generated → human-edited)
+- **Smart Status Detection** - Loading/failed/normal states based on transform status
+- **Visual Indicators** - Clear feedback for editing states and completion status
 
-**Usage Pattern**:
-```typescript
-<SectionWrapper
-  schemaType={ArtifactSchemaType.BRAINSTORM_COLLECTION}
-  title="头脑风暴"
-  sectionId="brainstorm-ideas"
-  artifactId={specificArtifactId} // Optional: for precise artifact targeting
->
-  {/* Section content */}
-</SectionWrapper>
-```
+**Specialized Editing Components**:
+- **BrainstormIdeaEditor** - Multi-idea editing with selection and refinement capabilities
+- **OutlineSettingsDisplay** - Character development, story foundation, and commercial elements
+- **ChroniclesDisplay** - Chronological story timeline with stage-level editing
+- **ChronicleStageCard** - Individual stage editing with emotion arcs and relationship developments
 
-**Implemented Sections**:
-- **ProjectBrainstormPage** - `BRAINSTORM_COLLECTION` with automatic artifact resolution
-- **SingleBrainstormIdeaEditor** - `BRAINSTORM_ITEM` with specific artifact targeting
-- **OutlineSettingsDisplay** - `OUTLINE_SETTINGS` with effective artifact detection
-- **ChroniclesDisplay** - `CHRONICLES` with automatic latest artifact resolution
-- **ChronicleStageCard** - `CHRONICLE_STAGE` with individual stage editing support
-
-**Status Detection Logic**:
-- **Loading State** - When transforms are running/pending that produce or modify the artifact
-- **Failed State** - When transforms have failed, with red color scheme and warning indicators
-- **Normal State** - When artifacts exist and are successfully created/edited
-
-**Benefits**:
-- **Consistent UX** - All sections follow the same visual and behavioral patterns
-- **Reduced Boilerplate** - No need to manually implement TextDivider and status logic
-- **Automatic Updates** - Status changes are reflected immediately across all sections
-- **Lineage Awareness** - Automatically handles complex artifact inheritance chains
-
-### Optimistic State Implementation
-
-Following the [Electric SQL write guide patterns](https://electric-sql.com/docs/guides/writes), the application implements sophisticated optimistic state management:
-
-**Concurrent Edit Handling**:
-- **Queue-Based Saves** - Pending edits are queued during active saves to prevent data loss
-- **Recursive Processing** - Queued values are automatically processed after current saves complete
-- **No Lost Edits** - Latest user input is preserved even during rapid typing
-
-**Smart State Synchronization**:
-- **Edit Preservation** - Local edits are protected during optimistic state updates
-- **Fresh Data Fetching** - Save operations always use current artifact data to prevent stale closures
-- **Conditional Prop Syncing** - Props only update local state when not actively saving
-
-**Race Condition Prevention**:
-```typescript
-// Example: Concurrent edit handling with queueing
-if (savingRef.current) {
-    pendingSaveRef.current = valueToSave; // Queue latest value
-    return;
-}
-
-// After save completes, process any queued values
-if (pendingSaveRef.current && pendingSaveRef.current !== valueToSave) {
-    const queuedValue = pendingSaveRef.current;
-    setTimeout(() => saveValue(queuedValue), 0); // Save queued value
-}
-```
-
-**Benefits**:
-- **Seamless UX** - Users can type continuously without interruption
-- **Data Integrity** - No edits are lost during network operations
-- **Real-time Collaboration** - Multiple users can edit simultaneously without conflicts
+**Content-Specific Features**:
+- **Chinese Text Optimization** - Proper handling of Chinese character input and display
+- **Platform-Aware Forms** - Input validation for different social media platforms
+- **Genre-Specific Templates** - Pre-configured forms for different drama types
+- **Auto-Save System** - Debounced saving with edit preservation during rapid typing
 
 ### Script-Specific Schemas
 
@@ -569,124 +471,101 @@ POST /api/artifacts/outline-artifact-id/human-transform
 5. **Integrate SectionWrapper** - Use `SectionWrapper` for consistent section management
 6. **Test Integration** - Add cache-based tests for AI functionality
 
-### Adding New Action Items
+### Adding New Script Content Types
 
-When adding new workflow actions, follow the centralized action items pattern:
+When adding new content types to the script writing workflow:
 
-**Step 1: Update Action Computation Logic**
+**Step 1: Define Content Schema**
 ```typescript
-// In src/client/utils/actionComputation.ts
-export const computeParamsAndActions = (projectData: ProjectDataContextType): ComputedActions => {
-  // Add new stage detection logic
-  if (hasNewContentType && isLeafNode(newArtifact)) {
-    return {
-      actions: [{
-        id: 'new-action',
-        type: 'button',
-        title: '新操作',
-        component: NewActionComponent,
-        props: { /* action-specific props */ },
-        enabled: true,
-        priority: 5
-      }],
-      currentStage: 'new_stage',
-      hasActiveTransforms: false
-    };
-  }
-};
+// In src/common/schemas/artifacts.ts
+export const NewContentSchema = z.object({
+  title: z.string(),
+  content: z.string(),
+  platform: z.enum(['douyin', 'kuaishou', 'xiaohongshu']),
+  genre: z.string(),
+  target_audience: z.string()
+});
 ```
 
-**Step 2: Create Action Component**
+**Step 2: Create Template**
 ```typescript
-// In src/client/components/actions/NewActionComponent.tsx
-interface NewActionProps extends BaseActionProps {
-  // Action-specific props
-}
+// In src/server/services/templates/
+export const newContentTemplate = `
+Generate Chinese short drama content following 去脸谱化 principles:
+1. Avoid stereotypical characters and plots
+2. Include modern, diverse perspectives
+3. Platform: {{platform}}
+4. Genre: {{genre}}
+5. Target Audience: {{target_audience}}
 
-export const NewActionComponent: React.FC<NewActionProps> = ({ 
-  projectId, onSuccess, onError, ...props 
+Content Requirements:
+{{requirements}}
+`;
+```
+
+**Step 3: Add Action Component**
+```typescript
+// In src/client/components/actions/
+export const NewContentAction: React.FC<BaseActionProps> = ({ 
+  projectId, onSuccess, onError 
 }) => {
-  // Keep action components focused on:
-  // - Immediate parameters (not large text editing)
-  // - Action buttons and forms
-  // - Validation and submission logic
-  
   return (
-    <Space>
-      <Button type="primary" onClick={handleAction}>
-        执行新操作
-      </Button>
-    </Space>
+    <Form onFinish={handleGenerate}>
+      <Form.Item name="platform" rules={[{ required: true }]}>
+        <Select placeholder="选择平台">
+          <Option value="douyin">抖音</Option>
+          <Option value="kuaishou">快手</Option>
+          <Option value="xiaohongshu">小红书</Option>
+        </Select>
+      </Form.Item>
+      <Form.Item>
+        <Button type="primary" htmlType="submit">
+          生成内容
+        </Button>
+      </Form.Item>
+    </Form>
   );
 };
 ```
 
-**Step 3: Register Action Component**
+**Step 4: Update Workflow Logic**
 ```typescript
-// In src/client/components/actions/index.ts
-export { NewActionComponent } from './NewActionComponent';
-
-// Update ActionItemRenderer to handle new action type
-```
-
-**Action Component Guidelines**:
-- **Keep Actions Small** - Action components should focus on buttons, forms, and immediate parameters
-- **Avoid Large Text Editing** - Large text fields belong in the main content area, not action items
-- **Use BaseActionProps** - All action components must extend `BaseActionProps` interface
-- **Validate Prerequisites** - Check for required artifacts before enabling actions
-- **Handle Loading States** - Show loading indicators during action execution
-- **Provide Clear Feedback** - Use success/error callbacks for user feedback
-
-**Main Area vs Action Items**:
-- **Main Area**: Large text editing, complex data structures, detailed content viewing
-- **Action Items**: Workflow buttons, parameter forms, immediate action controls
-
-### SectionWrapper Integration Pattern
-
-When creating new content sections, follow this established pattern:
-
-**Step 1: Add Schema Type**
-```typescript
-// In src/client/components/shared/SectionWrapper.tsx
-export enum ArtifactSchemaType {
-  // ... existing types
-  NEW_CONTENT = 'new_content_schema'
+// In src/client/utils/actionComputation.ts
+// Add new stage detection for the content type
+if (hasNewContentPrerequisites && isLeafNode(prerequisiteArtifact)) {
+  return {
+    actions: [{
+      id: 'generate-new-content',
+      type: 'form',
+      title: '生成新内容',
+      component: NewContentAction,
+      enabled: true,
+      priority: 6
+    }],
+    currentStage: 'new_content_generation',
+    hasActiveTransforms: false
+  };
 }
 ```
 
-**Step 2: Replace TextDivider Usage**
-```typescript
-// Before:
-<>
-  <TextDivider title="Section Title" id="section-id" mode="normal" />
-  <div id="section-id">
-    {/* content */}
-  </div>
-</>
+### Chinese Drama Content Guidelines
 
-// After:
-<SectionWrapper
-  schemaType={ArtifactSchemaType.NEW_CONTENT}
-  title="Section Title"
-  sectionId="section-id"
-  artifactId={specificArtifactId} // Optional: for precise targeting
->
-  {/* content */}
-</SectionWrapper>
-```
+**去脸谱化 (De-stereotyping) Requirements**:
+- All new content types must include explicit anti-stereotyping instructions
+- Character development should challenge traditional archetypes
+- Plot elements should avoid predictable tropes
+- Include diverse backgrounds and modern perspectives
 
-**Step 3: Update Imports**
-```typescript
-// Remove TextDivider import
-import { SectionWrapper, ArtifactSchemaType } from './shared';
-```
+**Platform-Specific Optimization**:
+- **抖音 (Douyin)**: Fast-paced, hook-heavy content (15-60 seconds)
+- **快手 (Kuaishou)**: Authentic, relatable stories (1-3 minutes)  
+- **小红书 (RedBook)**: Lifestyle-integrated narratives (30-90 seconds)
 
-**Common Patterns Established**:
-- **Automatic Status Detection** - All sections automatically show loading/failed/normal states
-- **Consistent Visual Design** - Unified TextDivider styling with red failed state
-- **Artifact Lineage Support** - Handles AI-generated → human-edited chains
-- **Type Safety** - Schema types enforced through TypeScript enums
-- **Flexible Targeting** - Can use automatic resolution or specific artifact IDs
+**Genre Templates Available**:
+- **现代甜宠** - Contemporary romance with sugar-sweet moments
+- **古装甜宠** - Historical romance with modern sensibilities
+- **复仇爽文** - Revenge narratives with satisfying payoffs
+- **霸总文** - CEO romance with power dynamics
 
 ### Custom Prompt Development
 

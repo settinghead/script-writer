@@ -549,6 +549,40 @@ export const useProjectData = (projectId: string) => {
 };
 ```
 
+### Optimistic State Implementation
+
+Following the [Electric SQL write guide patterns](https://electric-sql.com/docs/guides/writes), the framework supports sophisticated optimistic state management for real-time collaborative applications:
+
+**Concurrent Edit Handling**:
+- **Queue-Based Saves** - Pending edits are queued during active saves to prevent data loss
+- **Recursive Processing** - Queued values are automatically processed after current saves complete
+- **No Lost Edits** - Latest user input is preserved even during rapid typing
+
+**Smart State Synchronization**:
+- **Edit Preservation** - Local edits are protected during optimistic state updates
+- **Fresh Data Fetching** - Save operations always use current artifact data to prevent stale closures
+- **Conditional Prop Syncing** - Props only update local state when not actively saving
+
+**Race Condition Prevention**:
+```typescript
+// Example: Concurrent edit handling with queueing
+if (savingRef.current) {
+    pendingSaveRef.current = valueToSave; // Queue latest value
+    return;
+}
+
+// After save completes, process any queued values
+if (pendingSaveRef.current && pendingSaveRef.current !== valueToSave) {
+    const queuedValue = pendingSaveRef.current;
+    setTimeout(() => saveValue(queuedValue), 0); // Save queued value
+}
+```
+
+**Benefits**:
+- **Seamless UX** - Users can type continuously without interruption
+- **Data Integrity** - No edits are lost during network operations
+- **Real-time Collaboration** - Multiple users can edit simultaneously without conflicts
+
 ## Schema System
 
 ### Zod Schema Definitions
@@ -1441,6 +1475,201 @@ const ProjectWorkspace: React.FC<{ projectId: string }> = ({ projectId }) => {
 ```
 
 These examples demonstrate the complete integration of the Transform Artifact Framework's frontend components, showing how lineage resolution, project data management, and artifact editing work together to provide a seamless user experience while maintaining the immutable artifact → transform → artifact paradigm.
+
+## Centralized Action Items System
+
+The framework supports a sophisticated centralized action system that separates content editing from workflow actions, providing a clean and intuitive user experience for applications with complex linear workflows.
+
+### Design Philosophy
+
+**Main Area for Editing** - The primary content area is dedicated to editing and viewing content, especially large text fields and complex data structures
+
+**Bottom Actions for Workflow** - All workflow actions (buttons, forms, parameters) are centralized in a bottom section for consistent user experience
+
+**Linear Progression** - Actions follow strict linear workflow progression based on artifact lineage and project state
+
+**Smart State Management** - Actions automatically appear/disappear based on current project state and available artifacts
+
+### Action Items Architecture
+
+**Centralized Action Management**:
+- **ActionItemsSection Component** - Sticky bottom section that displays all available actions
+- **Action Computation Logic** - `computeParamsAndActions()` function analyzes project state and determines available actions
+- **Global State Management** - Action store with localStorage persistence for form data and selections
+- **Linear Workflow Detection** - Automatic stage detection based on artifact lineage analysis
+
+**Action Components Pattern**:
+```typescript
+// Base interface for all action components
+interface BaseActionProps {
+  projectId: string;
+  onSuccess: (result: any) => void;
+  onError: (error: Error) => void;
+}
+
+// Action item definition
+interface ActionItem {
+  id: string;
+  type: 'form' | 'button' | 'selection';
+  title: string;
+  description?: string;
+  component: React.ComponentType<BaseActionProps>;
+  props: Record<string, any>;
+  enabled: boolean;
+  priority: number;
+}
+
+// Computed actions result
+interface ComputedActions {
+  actions: ActionItem[];
+  currentStage: string;
+  hasActiveTransforms: boolean;
+}
+```
+
+**Smart Action Logic**:
+- **Leaf Node Detection** - Actions only appear when artifacts are "leaf nodes" (no descendants in transform chain)
+- **Dependency Validation** - Each action validates required predecessor artifacts exist
+- **Loading State Management** - Actions hide during active transforms to prevent conflicts
+- **Error State Handling** - Failed transforms show retry options and error messages
+
+**Form Data Persistence**:
+- **Auto-Save Drafts** - All form data automatically saved to localStorage with project scoping
+- **Selection State** - User selections persist across page refreshes
+- **Form Validation** - Real-time validation with helpful error messages
+- **Optimistic Updates** - Form submissions use optimistic state management
+
+### Implementation Pattern
+
+**Action Computation Function**:
+```typescript
+export const computeParamsAndActions = (projectData: ProjectDataContextType): ComputedActions => {
+  const currentStage = detectCurrentStage(projectData);
+  const hasActiveTransforms = checkActiveTransforms(projectData);
+  
+  if (hasActiveTransforms) {
+    return { actions: [], currentStage, hasActiveTransforms: true };
+  }
+  
+  const actions = generateActionsForStage(currentStage, projectData);
+  return { actions, currentStage, hasActiveTransforms: false };
+};
+
+// Stage detection based on artifact lineage
+const detectCurrentStage = (projectData: ProjectDataContextType): string => {
+  // Analyze artifact lineage to determine current workflow stage
+  const leafArtifacts = findLeafArtifacts(projectData.artifacts, projectData.transformInputs);
+  const artifactTypes = leafArtifacts.map(a => a.schema_type);
+  
+  // Return appropriate stage based on available artifacts
+  if (artifactTypes.includes('final_output_schema')) return 'completed';
+  if (artifactTypes.includes('processed_content_schema')) return 'processing';
+  if (artifactTypes.includes('user_input_schema')) return 'input_ready';
+  return 'initial';
+};
+```
+
+**Action Component Example**:
+```typescript
+export const ExampleActionComponent: React.FC<BaseActionProps> = ({ 
+  projectId, onSuccess, onError 
+}) => {
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({});
+
+  const handleAction = async () => {
+    setLoading(true);
+    try {
+      const result = await executeAction(projectId, formData);
+      onSuccess(result);
+    } catch (error) {
+      onError(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Space>
+      <Form onFinish={handleAction}>
+        <Form.Item name="parameter" rules={[{ required: true }]}>
+          <Input placeholder="Enter parameter" />
+        </Form.Item>
+        <Form.Item>
+          <Button type="primary" htmlType="submit" loading={loading}>
+            Execute Action
+          </Button>
+        </Form.Item>
+      </Form>
+    </Space>
+  );
+};
+```
+
+**ActionItemsSection Component**:
+```typescript
+export const ActionItemsSection: React.FC<{ projectId: string }> = ({ projectId }) => {
+  const projectData = useProjectData();
+  const actionItemsStore = useActionItemsStore();
+  
+  const { actions, currentStage, hasActiveTransforms } = useMemo(() => 
+    computeParamsAndActions(projectData),
+    [projectData]
+  );
+  
+  if (hasActiveTransforms) {
+    return (
+      <div className="action-items-loading">
+        <Spin /> Processing...
+      </div>
+    );
+  }
+  
+  return (
+    <div className="action-items-section">
+      <div className="current-stage">
+        Current Stage: {currentStage}
+      </div>
+      {actions.map(action => (
+        <ActionItemRenderer 
+          key={action.id} 
+          action={action}
+          projectId={projectId}
+          onSuccess={(result) => {
+            message.success('Action completed successfully');
+          }}
+          onError={(error) => {
+            message.error(`Action failed: ${error.message}`);
+          }}
+        />
+      ))}
+    </div>
+  );
+};
+```
+
+### Benefits
+
+- **Consistent UX** - All actions follow the same visual and behavioral patterns
+- **Reduced Cognitive Load** - Users always know where to find actions (bottom of screen)
+- **Preserved Editing** - Main content area remains focused on editing and viewing
+- **Workflow Guidance** - Clear progression through linear workflow stages
+- **State Persistence** - No lost form data or selections during navigation
+- **Framework Agnostic** - Can be adapted to any workflow with artifact lineage
+
+### Development Guidelines
+
+**Action Component Guidelines**:
+- **Keep Actions Small** - Action components should focus on buttons, forms, and immediate parameters
+- **Avoid Large Text Editing** - Large text fields belong in the main content area, not action items
+- **Use BaseActionProps** - All action components must extend `BaseActionProps` interface
+- **Validate Prerequisites** - Check for required artifacts before enabling actions
+- **Handle Loading States** - Show loading indicators during action execution
+- **Provide Clear Feedback** - Use success/error callbacks for user feedback
+
+**Main Area vs Action Items**:
+- **Main Area**: Large text editing, complex data structures, detailed content viewing
+- **Action Items**: Workflow buttons, parameter forms, immediate action controls
 
 ## Summary
 
