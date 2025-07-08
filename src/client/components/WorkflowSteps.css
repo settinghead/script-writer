@@ -1,0 +1,257 @@
+.workflow-steps .ant-steps-item-title {
+    color: #fff !important;
+}
+
+.workflow-steps .ant-steps-item-description {
+    color: #888 !important;
+}
+
+.workflow-steps .ant-steps-item-icon {
+    background-color: #333 !important;
+    border-color: #555 !important;
+}
+
+.workflow-steps .ant-steps-item-finish .ant-steps-item-icon {
+    background-color: #52c41a !important;
+    border-color: #52c41a !important;
+}
+
+.workflow-steps .ant-steps-item-process .ant-steps-item-icon {
+    background-color: #1890ff !important;
+    border-color: #1890ff !important;
+}
+
+.workflow-steps .ant-steps-item-error .ant-steps-item-icon {
+    background-color: #ff4d4f !important;
+    border-color: #ff4d4f !important;
+}
+
+/* Remove step numbers */
+.workflow-steps .ant-steps-item-icon .ant-steps-icon {
+    display: none;
+}
+
+/* Make dots bigger and properly aligned */
+.workflow-steps .ant-steps-item-icon {
+    width: 12px !important;
+    height: 12px !important;
+    margin-inline-start: 0 !important;
+    margin-inline-end: 0 !important;
+    border-radius: 50% !important;
+    border: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-width: 12px !important;
+    flex-shrink: 0 !important;
+    line-height: 1 !important;
+}
+
+/* Inline styling for workflow steps in action renderer */
+.workflow-steps-container.inline {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.workflow-steps-container.inline .workflow-steps {
+    flex: 1;
+}
+
+.workflow-steps-container.inline .ant-steps {
+    align-items: center !important;
+}
+
+.workflow-steps-container.inline .ant-steps-item {
+    padding-inline-start: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    flex-direction: column !important;
+    min-height: 48px !important;
+    text-align: center !important;
+    position: relative !important;
+}
+
+.workflow-steps-container.inline .ant-steps-item-container {
+    display: flex !important;
+    align-items: center !important;
+    flex-direction: column !important;
+    min-height: 48px !important;
+}
+
+.workflow-steps-container.inline .ant-steps-item-content {
+    margin-inline-start: 0 !important;
+    margin-top: 8px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: auto !important;
+}
+
+.workflow-steps-container.inline .ant-steps-item-title {
+    font-size: 12px !important;
+    margin-bottom: 0 !important;
+    line-height: 1.3 !important;
+    white-space: nowrap !important;
+    font-weight: 500 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: auto !important;
+    text-align: center !important;
+}
+
+.workflow-steps-container.inline .ant-steps-item-description {
+    display: none !important;
+}
+
+.workflow-steps-container.inline .ant-steps-item-tail {
+    position: absolute !important;
+    width: 32px !important;
+    height: 1px !important;
+    top: 6px !important;
+    left: calc(100% + 12px) !important;
+    background: #434343 !important;
+    z-index: 1 !important;
+}
+
+.workflow-steps-container.inline .ant-steps-item-tail::after {
+    content: '' !important;
+    position: absolute !important;
+    width: 100% !important;
+    height: 1px !important;
+    background: #434343 !important;
+    top: 0 !important;
+    left: 0 !important;
+}
+
+/* Hide tail for last item */
+.workflow-steps-container.inline .ant-steps-item:last-child .ant-steps-item-tail {
+    display: none !important;
+}
+
+.custom-workflow-steps {
+    display: flex;
+    align-items: flex-start;
+    width: 100%;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    position: relative;
+}
+
+.workflow-step-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    /* Allow text to wrap */
+}
+
+/* Step indicator (dot/spinner) */
+.step-indicator {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 8px;
+    position: relative;
+    z-index: 2;
+}
+
+.step-indicator.wait {
+    background: #333;
+    border: 2px solid #555;
+}
+
+.step-indicator.process {
+    background: #1890ff;
+    border: 2px solid #1890ff;
+}
+
+.step-indicator.finish {
+    background: #52c41a;
+    border: 2px solid #52c41a;
+}
+
+.step-indicator.error {
+    background: #ff4d4f;
+    border: 2px solid #ff4d4f;
+}
+
+.step-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.step-indicator.wait .step-dot {
+    background: #666;
+}
+
+.step-indicator.finish .step-dot {
+    background: white;
+}
+
+.step-indicator.error .step-dot {
+    background: white;
+}
+
+/* Step label */
+.step-label {
+    font-size: 12px;
+    color: #fff;
+    text-align: center;
+    line-height: 1.3;
+    font-weight: 500;
+    word-break: break-word;
+    width: 100%;
+}
+
+/* Connection line between steps */
+.step-connector-line {
+    flex: 0 0 auto;
+    width: 40px;
+    height: 2px;
+    background: #333;
+    margin-top: 10px;
+    /* Align with step indicator center */
+    z-index: 1;
+}
+
+.step-connector-line.completed {
+    background: #52c41a;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .custom-workflow-steps {
+        padding: 12px 16px;
+    }
+
+    .step-label {
+        font-size: 11px;
+    }
+
+    .step-indicator {
+        width: 16px;
+        height: 16px;
+    }
+
+    .step-dot {
+        width: 6px;
+        height: 6px;
+    }
+
+    .step-connector-line {
+        width: 30px;
+        margin-top: 8px;
+    }
+}

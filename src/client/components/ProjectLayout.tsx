@@ -18,6 +18,8 @@ import { ActionItemsSection } from './ActionItemsSection';
 import { DebugMenu, DebugPanels } from './debug';
 import { ProjectCreationForm } from './ProjectCreationForm';
 import { BrainstormInputEditor } from './BrainstormInputEditor';
+import { UnifiedDisplayRenderer } from './UnifiedDisplayRenderer';
+import { computeUnifiedWorkflowState } from '../utils/actionComputation';
 
 const { Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -27,6 +29,7 @@ const { useBreakpoint } = Grid;
 const ProjectContentRenderer: React.FC<{ projectId: string }> = ({ projectId }) => {
     const projectData = useProjectData();
 
+    // ALL HOOKS MUST BE CALLED BEFORE ANY EARLY RETURNS
     // Check if project has brainstorm input artifacts or brainstorm ideas
     const hasBrainstormInput = useMemo(() => {
         if (!Array.isArray(projectData.artifacts) || projectData.artifacts.length === 0) {
@@ -55,6 +58,17 @@ const ProjectContentRenderer: React.FC<{ projectId: string }> = ({ projectId }) 
         return collections.length > 0;
     }, [projectData.artifacts, projectData.getBrainstormCollections]);
 
+    // Compute unified workflow state - ALWAYS call this hook
+    const workflowState = useMemo(() => {
+        if (projectData.isLoading || projectData.isError) {
+            return null;
+        }
+
+        return computeUnifiedWorkflowState(projectData, projectId);
+    }, [projectData, projectId]);
+
+    // NOW we can do conditional rendering after all hooks are called
+
     // Show creation form if no brainstorm input exists
     if (!hasBrainstormInput) {
         return (
@@ -71,31 +85,35 @@ const ProjectContentRenderer: React.FC<{ projectId: string }> = ({ projectId }) 
         );
     }
 
-    // Show normal project content
+    // Show loading state
+    if (projectData.isLoading || !workflowState) {
+        return (
+            <div style={{ padding: '24px 0', textAlign: 'center' }}>
+                <Spin size="large" />
+                <div style={{ marginTop: '16px' }}>
+                    <Text type="secondary">加载项目数据...</Text>
+                </div>
+            </div>
+        );
+    }
+
+    // Show error state
+    if (projectData.isError) {
+        return (
+            <div style={{ padding: '24px 0' }}>
+                <Alert
+                    message="加载失败"
+                    description="无法加载项目数据，请刷新页面重试"
+                    type="error"
+                    showIcon
+                />
+            </div>
+        );
+    }
+
+    // Render using unified system
     return (
-        <>
-            {/* Brainstorm Input Editor - shows when artifact exists and is leaf node */}
-            <BrainstormInputEditor projectId={projectId} />
-
-            {/* Brainstorm Results - only show when there are actual results */}
-            {hasBrainstormResults && <ProjectBrainstormPage />}
-
-            <SingleBrainstormIdeaEditor
-                onViewOriginalIdeas={() => {
-                    // Scroll to the brainstorm ideas section
-                    const brainstormSection = document.getElementById('brainstorm-ideas');
-                    if (brainstormSection) {
-                        brainstormSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }
-                }}
-            />
-            <OutlineSettingsDisplay />
-
-            <ChroniclesDisplay />
-
-            {/* Legacy Support - Show old outline display for backward compatibility */}
-            {/* Legacy outline display removed - replaced by outline settings + chronicles */}
-        </>
+        <UnifiedDisplayRenderer displayComponents={workflowState.displayComponents} />
     );
 };
 

@@ -111,6 +111,162 @@ UI Update: Real-time display with edit indicators
 
 觅光助创 implements a sophisticated dual-path workflow system specifically designed for Chinese short drama creation, with intelligent action management that guides users through the complete script development process.
 
+## Unified Display and Action Computation System
+
+The application features a centralized, data-driven approach to UI rendering and workflow management that replaces scattered component logic with a unified computation system.
+
+### Core Architecture
+
+**Unified Workflow State**:
+The system computes four essential elements for every workflow state:
+- **Steps** - Workflow progress with proper states (normal, loading, error)
+- **Display Components** - What components to render and in what modes
+- **Actions** - Available workflow actions based on current state
+- **Parameters** - Context data for components and actions
+
+**Type-Safe Component Management**:
+```typescript
+// Named component IDs for switch-case reference
+type ComponentId = 
+  | 'project-creation-form'
+  | 'brainstorm-input-editor' 
+  | 'project-brainstorm-page'
+  | 'single-brainstorm-idea-editor'
+  | 'outline-settings-display'
+  | 'chronicles-display';
+
+// Discriminated union modes (no optional parameters)
+type ComponentMode = 
+  | { type: 'hidden' }
+  | { type: 'readonly' }
+  | { type: 'editable' }
+  | { type: 'collapsed' }
+  | { type: 'loading' }
+  | { type: 'error'; message: string };
+```
+
+**Workflow Steps Integration**:
+- **Ant Design Steps Component** - Replaces existing spinners throughout the application
+- **Dark Theme Styling** - Consistent with application theme
+- **Proper Status Handling** - Wait, process, finish, error states
+- **Stage-Based Progress** - Visual workflow progression indicators
+
+### Component Registry System
+
+**Centralized Component Management**:
+```typescript
+// Component registry with type safety
+export const componentRegistry: Record<ComponentId, React.ComponentType<any>> = {
+  'project-creation-form': ProjectCreationForm,
+  'brainstorm-input-editor': BrainstormInputEditor,
+  'project-brainstorm-page': ProjectBrainstormPage,
+  'single-brainstorm-idea-editor': SingleBrainstormIdeaEditor,
+  'outline-settings-display': OutlineSettingsDisplay,
+  'chronicles-display': ChroniclesDisplay
+};
+
+// Type-safe component resolution
+export function getComponent(id: ComponentId): React.ComponentType<any> {
+  const Component = componentRegistry[id];
+  if (!Component) {
+    throw new Error(`Component not found: ${id}`);
+  }
+  return Component;
+}
+```
+
+### Unified Display Renderer
+
+**Automatic Component Rendering**:
+```typescript
+export const UnifiedDisplayRenderer: React.FC<{
+  displayComponents: DisplayComponent[]
+}> = ({ displayComponents }) => {
+  return (
+    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+      {displayComponents.map((displayComponent) => {
+        const Component = displayComponent.component;
+        
+        // Skip hidden components
+        if (displayComponent.mode === 'hidden') {
+          return null;
+        }
+        
+        return (
+          <div key={displayComponent.id}>
+            <Component {...displayComponent.props} />
+          </div>
+        );
+      })}
+    </Space>
+  );
+};
+```
+
+### Enhanced Action Computation
+
+**Unified State Computation**:
+```typescript
+export function computeUnifiedWorkflowState(
+  projectData: ProjectData, 
+  projectId: string
+): UnifiedWorkflowState {
+  // Get base computation from existing system
+  const baseResult = computeParamsAndActionsFromLineage(projectData);
+  
+  return {
+    steps: computeWorkflowSteps(baseResult.currentStage, baseResult.hasActiveTransforms),
+    displayComponents: computeDisplayComponents(projectData, baseResult),
+    actions: baseResult.actions,
+    parameters: computeWorkflowParameters(projectData, baseResult)
+  };
+}
+```
+
+**Component Mode Logic**:
+- **hasActiveTransforms** determines readonly vs editable modes
+- **Priority-based ordering** (1, 2, 3...) for consistent component sequence
+- **Artifact existence** determines component visibility
+- **Stage progression** determines which components show
+
+### Integration Benefits
+
+**Centralized Logic**:
+- **Single Source of Truth** - All display logic computed in one place
+- **Consistent Behavior** - Same logic across all workflow states
+- **Easy Testing** - Pre-computed props enable comprehensive testing
+- **Performance Optimized** - Efficient computation with minimal re-renders
+
+**Developer Experience**:
+- **Type Safety** - Strong TypeScript types prevent runtime errors
+- **Maintainability** - Changes to workflow logic happen in one place
+- **Debuggability** - Clear component hierarchy and state computation
+- **Extensibility** - Easy to add new components and workflow states
+
+**User Experience**:
+- **Consistent UI** - Uniform component behavior across all stages
+- **Clear Progress** - Visual workflow steps show current position
+- **Intuitive Flow** - Components appear/disappear based on workflow logic
+- **Responsive Design** - Ant Design components with proper spacing
+
+### Technical Implementation
+
+**Files Created/Modified**:
+- `src/client/utils/workflowTypes.ts` - Type definitions for unified system
+- `src/client/utils/componentRegistry.ts` - Centralized component mapping
+- `src/client/components/WorkflowSteps.tsx` - Ant Design steps component
+- `src/client/components/UnifiedDisplayRenderer.tsx` - Automatic component rendering
+- `src/client/utils/actionComputation.ts` - Enhanced with unified computation
+- `src/client/components/ProjectLayout.tsx` - Integrated unified renderer
+
+**Testing Coverage**:
+- **16 new tests** for unified workflow computation
+- **All existing tests pass** (78 total tests)
+- **Comprehensive scenarios** covering all workflow states
+- **Edge case handling** for malformed data and error states
+
+This unified system provides a solid foundation for the Chinese short drama script-writer application's workflow management, ensuring consistent behavior and easy maintenance as the application grows.
+
 ## Dual-Path Workflow System
 
 The application supports two distinct paths for script creation, each optimized for different creative approaches:

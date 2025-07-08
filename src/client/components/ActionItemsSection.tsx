@@ -3,7 +3,7 @@ import { Card, Typography, Space, Alert, Spin } from 'antd';
 import { LoadingOutlined } from '@ant-design/icons';
 import { useProjectData } from '../contexts/ProjectDataContext';
 import { useActionItemsStore } from '../stores/actionItemsStore';
-import { computeParamsAndActionsFromLineage } from '../utils/actionComputation';
+import { computeUnifiedWorkflowState } from '../utils/actionComputation';
 import ActionItemRenderer from './actions/ActionItemRenderer';
 
 const { Text, Title } = Typography;
@@ -87,13 +87,13 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
 
         console.log('🔄 Data changed, recomputing...');
 
-        const result = computeParamsAndActionsFromLineage(projectData);
+        const result = computeUnifiedWorkflowState(projectData, projectId);
 
         prevProjectDataRef.current = projectData;
         prevComputationResultRef.current = result;
 
         console.log('✅ Computation complete:', {
-            currentStage: result.currentStage,
+            currentStage: result.parameters.currentStage,
             actionsCount: result.actions.length
         });
 
@@ -127,14 +127,14 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
         );
     }
 
-    const { currentStage, stageDescription, actions } = computationResult;
+    const { steps, displayComponents, actions, parameters } = computationResult;
 
     // Check for active transforms
     const hasActiveTransforms = Array.isArray(projectData.transforms) &&
         projectData.transforms.some((t: any) => t.status === 'running' || t.status === 'pending');
 
     console.log('🚀 Rendering ActionItemsSection with:', {
-        currentStage,
+        currentStage: parameters.currentStage,
         actionsCount: actions.length,
         hasActiveTransforms,
         actionDetails: actions.map((a: any) => ({ id: a.id, title: a.title, type: a.type, component: a.component?.name }))
@@ -166,7 +166,7 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
                                 action={action}
                                 projectId={projectId}
                                 hasActiveTransforms={hasActiveTransforms}
-                                stageDescription={stageDescription}
+                                workflowSteps={steps}
                                 onSuccess={() => {
                                     console.log('✅ Action completed successfully:', action.type);
                                     // Optionally refresh project data or show success message
