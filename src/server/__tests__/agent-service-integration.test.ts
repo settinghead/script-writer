@@ -61,7 +61,15 @@ describe('AgentService Integration', () => {
             createAgentThinkingMessage: vi.fn(),
             createRawMessage: vi.fn(),
             getDisplayMessages: vi.fn(),
-            updateMessage: vi.fn()
+            updateMessage: vi.fn(),
+            // New methods for streaming computation and response messages
+            createComputationMessage: vi.fn(),
+            updateComputationMessage: vi.fn(),
+            createResponseMessage: vi.fn(),
+            updateResponseMessage: vi.fn(),
+            finishAgentThinking: vi.fn(),
+            addAgentResponse: vi.fn(),
+            addAgentError: vi.fn()
         };
 
         // Setup AgentService
@@ -124,6 +132,14 @@ describe('AgentService Integration', () => {
         mockChatMessageRepo.createAgentThinkingMessage.mockResolvedValue({ id: 'thinking-msg-1' });
         mockChatMessageRepo.createRawMessage.mockResolvedValue({ id: 'raw-msg-1' });
         mockChatMessageRepo.getDisplayMessages.mockResolvedValue([]);
+        // Mock new methods
+        mockChatMessageRepo.createComputationMessage.mockResolvedValue({ id: 'computation-msg-1' });
+        mockChatMessageRepo.updateComputationMessage.mockResolvedValue(undefined);
+        mockChatMessageRepo.createResponseMessage.mockResolvedValue({ id: 'response-msg-1' });
+        mockChatMessageRepo.updateResponseMessage.mockResolvedValue(undefined);
+        mockChatMessageRepo.finishAgentThinking.mockResolvedValue({ id: 'thinking-msg-1' });
+        mockChatMessageRepo.addAgentResponse.mockResolvedValue({ id: 'response-msg-1' });
+        mockChatMessageRepo.addAgentError.mockResolvedValue({ id: 'error-msg-1' });
     });
 
     it('should handle brainstorm generation with natural language request', async () => {

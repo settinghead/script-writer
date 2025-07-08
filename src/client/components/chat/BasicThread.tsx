@@ -53,13 +53,45 @@ const ChatMessage: React.FC<{ message: any; isStreaming?: boolean }> = ({ messag
         if (message.status === 'failed') {
             return <Tag color="error" icon={<ExclamationCircleOutlined />}>失败</Tag>;
         }
-        if (processedMessage.showSpinner || isStreaming) {
-            return <Tag color="processing" icon={<Spin size="small" />}>思考中...</Tag>;
+
+        // Handle computation/thinking messages
+        if (message.display_type === 'thinking') {
+            if (message.status === 'streaming') {
+                return <Tag color="processing" icon={<Spin size="small" />}>计算中</Tag>;
+            }
+            if (message.status === 'completed') {
+                return <Tag color="success">完成</Tag>;
+            }
         }
+
+        // Handle regular response messages
+        if (message.status === 'streaming' || processedMessage.showSpinner || isStreaming) {
+            return <Tag color="processing" icon={<Spin size="small" />}>回复中...</Tag>;
+        }
+
         return null;
     };
 
+    const getMessageStyle = () => {
+        const isUserMessage = message.role === 'user';
+        let backgroundColor = isUserMessage ? '#4f46e5' : '#2a2a2a';
+
+        // Different styling for computation/thinking messages
+        if (message.display_type === 'thinking') {
+            backgroundColor = '#1f2937'; // Darker background for computation messages
+        }
+
+        return {
+            background: backgroundColor,
+            border: 'none',
+            borderRadius: 10,
+            maxWidth: '100%',
+            wordBreak: 'break-word' as const
+        };
+    };
+
     const isUserMessage = message.role === 'user';
+    const isThinkingMessage = message.display_type === 'thinking';
 
     return (
         <div style={{
@@ -73,7 +105,9 @@ const ChatMessage: React.FC<{ message: any; isStreaming?: boolean }> = ({ messag
                 icon={getAvatarIcon()}
                 style={{
                     backgroundColor: getAvatarColor(),
-                    flexShrink: 0
+                    flexShrink: 0,
+                    // Slightly different styling for thinking messages
+                    opacity: isThinkingMessage ? 0.8 : 1
                 }}
                 size="default"
             />
@@ -95,6 +129,7 @@ const ChatMessage: React.FC<{ message: any; isStreaming?: boolean }> = ({ messag
                 }}>
                     <Text strong style={{ color: '#e0e0e0', fontSize: 12 }}>
                         {message.role === 'user' ? '你' : '觅子'}
+                        {isThinkingMessage && ' (内部处理)'}
                     </Text>
                     <Text type="secondary" style={{ fontSize: 11 }}>
                         <ClockCircleOutlined style={{ marginRight: 4 }} />
@@ -105,17 +140,13 @@ const ChatMessage: React.FC<{ message: any; isStreaming?: boolean }> = ({ messag
 
                 <Card
                     size="small"
-                    style={{
-                        background: isUserMessage ? '#4f46e5' : '#2a2a2a',
-                        border: 'none',
-                        borderRadius: 10,
-                        maxWidth: '100%',
-                        wordBreak: 'break-word'
-                    }}
+                    style={getMessageStyle()}
                     styles={{
                         body: {
                             padding: '10px 10px',
-                            color: isUserMessage ? 'white' : '#e0e0e0'
+                            color: isUserMessage ? 'white' : '#e0e0e0',
+                            // Slightly different opacity for thinking messages
+                            opacity: isThinkingMessage ? 0.9 : 1
                         }
                     }}
                 >
@@ -124,11 +155,12 @@ const ChatMessage: React.FC<{ message: any; isStreaming?: boolean }> = ({ messag
                             margin: 0,
                             color: 'inherit',
                             lineHeight: 1.5,
-                            whiteSpace: 'pre-wrap'
+                            whiteSpace: 'pre-wrap',
+                            fontSize: isThinkingMessage ? '13px' : '14px'
                         }}
                     >
                         {processedMessage.content}
-                        {(processedMessage.showSpinner || isStreaming) && (
+                        {(message.status === 'streaming' || processedMessage.showSpinner || isStreaming) && (
                             <Spin size="small" style={{ marginLeft: 8 }} />
                         )}
                     </Paragraph>

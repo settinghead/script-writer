@@ -273,6 +273,45 @@ export class ChatMessageRepository {
         return this.appendEventToMessage(messageId, errorEvent);
     }
 
+    // New methods for streaming computation and response messages
+    async createComputationMessage(projectId: string, initialContent: string = "🔄 正在思考..."): Promise<ChatMessageDisplay> {
+        return this.createDisplayMessage(
+            projectId,
+            'assistant',
+            initialContent,
+            {
+                displayType: 'thinking',
+                status: 'streaming'
+            }
+        );
+    }
+
+    async updateComputationMessage(messageId: string, content: string, status: 'streaming' | 'completed' | 'failed' = 'streaming'): Promise<void> {
+        await this.updateDisplayMessage(messageId, {
+            content,
+            status
+        });
+    }
+
+    async createResponseMessage(projectId: string, initialContent: string = ""): Promise<ChatMessageDisplay> {
+        return this.createDisplayMessage(
+            projectId,
+            'assistant',
+            initialContent,
+            {
+                displayType: 'message',
+                status: 'streaming'
+            }
+        );
+    }
+
+    async updateResponseMessage(messageId: string, content: string, status: 'streaming' | 'completed' | 'failed' = 'streaming'): Promise<void> {
+        await this.updateDisplayMessage(messageId, {
+            content,
+            status
+        });
+    }
+
     // Message sanitization helper
     async sanitizeAndCreateDisplayMessage(rawMessage: ChatMessageRaw): Promise<ChatMessageDisplay> {
         let sanitizedContent = rawMessage.content;

@@ -1,9 +1,7 @@
 import React from 'react';
 import { Layout, Typography, Badge, Button, Tooltip } from 'antd';
 import { Cpu, Trash, Settings } from 'iconoir-react';
-import { useChatMessages } from '../../hooks/useChatMessages';
-import { useProjectInitialMode } from '../../transform-artifact-framework/useLineageResolution';
-import { useProjectChatRuntime } from '../../hooks/useProjectChatRuntime';
+
 import { BasicThread } from './BasicThread';
 import './chat.css';
 
@@ -15,14 +13,6 @@ interface AssistantChatSidebarProps {
 }
 
 export const AssistantChatSidebar: React.FC<AssistantChatSidebarProps> = ({ projectId }) => {
-    const { messages, isLoading, error } = useChatMessages(projectId);
-    const { isInitialMode } = useProjectInitialMode();
-    const runtime = useProjectChatRuntime(projectId);
-
-    const handleClearChat = async () => {
-        // TODO: Implement clear chat functionality
-        console.log('Clear chat clicked');
-    };
 
     return (
         <Layout style={{ height: '100%', background: '#1a1a1a' }}>
@@ -39,25 +29,10 @@ export const AssistantChatSidebar: React.FC<AssistantChatSidebarProps> = ({ proj
                     <Title level={4} style={{ color: '#f0f0f0', margin: 0 }}>
                         觅子智能体
                     </Title>
-                    <Badge status="success" text="在线" />
                 </div>
 
                 <div style={{ display: 'flex', gap: '8px' }}>
-                    <Tooltip title="清空对话">
-                        <Button
-                            type="text"
-                            icon={<Trash />}
-                            onClick={handleClearChat}
-                            style={{ color: '#8c8c8c' }}
-                        />
-                    </Tooltip>
-                    <Tooltip title="设置">
-                        <Button
-                            type="text"
-                            icon={<Settings />}
-                            style={{ color: '#8c8c8c' }}
-                        />
-                    </Tooltip>
+                    {/* Future: Add status indicators, clear chat button, etc. */}
                 </div>
             </Header>
 
@@ -68,10 +43,8 @@ export const AssistantChatSidebar: React.FC<AssistantChatSidebarProps> = ({ proj
                 display: 'flex',
                 flexDirection: 'column'
             }}>
-                {/* Assistant-UI style Thread component */}
+                {/* Assistant-UI style Thread component with enhanced message handling */}
                 <BasicThread projectId={projectId} />
-
-
             </Content>
         </Layout>
     );

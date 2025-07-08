@@ -29,6 +29,72 @@ export class AgentService {
         this.chatMessageRepo = chatMessageRepo;
     }
 
+    // Helper function to generate computation state indicators
+    private generateComputationIndicator(phase: string, content?: string): string {
+        const icons = ['🔄', '⚡', '🎯', '✨', '🔍', '💡', '🚀', '⭐'];
+        const hash = this.simpleHash(content || phase);
+        const icon = icons[hash % icons.length];
+
+        const phases = {
+            'thinking': '正在思考您的请求',
+            'analyzing': '正在分析项目状态',
+            'processing': '正在处理相关内容',
+            'generating': '正在生成创作内容',
+            'completing': '正在完成最后步骤',
+            'error': '❌ 处理过程中遇到问题'
+        };
+
+        return `${icon} ${phases[phase as keyof typeof phases] || '正在进行相关计算'}...`;
+    }
+
+    // Simple hash function for consistent but varied indicators
+    private simpleHash(str: string): number {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            const char = str.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash; // Convert to 32bit integer
+        }
+        return Math.abs(hash);
+    }
+
+    // Helper function to parse JSON with fallback
+    private async tryParseAgentJSON(text: string): Promise<{ humanReadableMessage?: string; parsed: boolean }> {
+        try {
+            // Remove markdown code blocks if present
+            let cleanText = text.trim();
+            if (cleanText.startsWith('```json')) {
+                cleanText = cleanText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+            } else if (cleanText.startsWith('```')) {
+                cleanText = cleanText.replace(/^```\s*/, '').replace(/\s*```$/, '');
+            }
+
+            // Try direct JSON parse first
+            try {
+                const parsed = JSON.parse(cleanText);
+                if (parsed.humanReadableMessage) {
+                    return { humanReadableMessage: parsed.humanReadableMessage, parsed: true };
+                }
+            } catch (e) {
+                // Try jsonrepair as fallback
+                try {
+                    const { jsonrepair } = await import('jsonrepair');
+                    const repaired = jsonrepair(cleanText);
+                    const parsed = JSON.parse(repaired);
+                    if (parsed.humanReadableMessage) {
+                        return { humanReadableMessage: parsed.humanReadableMessage, parsed: true };
+                    }
+                } catch (e2) {
+                    // Parsing failed, return original text
+                }
+            }
+        } catch (error) {
+            // All parsing attempts failed
+        }
+
+        return { parsed: false };
+    }
+
     /**
      * General agent method that can handle various types of requests including brainstorm editing
      */
@@ -48,8 +114,9 @@ export class AgentService {
             maxTokens?: number;
         } = { createChatMessages: true }
     ) {
-        let thinkingMessageId: string | undefined;
-        let thinkingStartTime: string | undefined;
+        let computationMessageId: string | undefined;
+        let responseMessageId: string | undefined;
+        let accumulatedResponse = '';
 
         try {
             // Handle chat messages based on options
@@ -57,17 +124,16 @@ export class AgentService {
                 // Create user message event (only if not called from ChatService)
                 await this.chatMessageRepo.createUserMessage(projectId, request.userRequest);
 
-                // Start agent thinking
-                const thinkingInfo = await this.chatMessageRepo.createAgentThinkingMessage(
+                // Create computation message for internal processing
+                const computationMessage = await this.chatMessageRepo.createComputationMessage(
                     projectId,
-                    '分析您的请求并开始创作'
+                    this.generateComputationIndicator('thinking')
                 );
-                thinkingMessageId = thinkingInfo.messageId;
-                thinkingStartTime = thinkingInfo.startTime;
-            } else if (options.existingThinkingMessageId && options.existingThinkingStartTime) {
-                // Use existing thinking message from ChatService
-                thinkingMessageId = options.existingThinkingMessageId;
-                thinkingStartTime = options.existingThinkingStartTime;
+                computationMessageId = computationMessage.id;
+
+                // Create response message for agent's actual response
+                const responseMessage = await this.chatMessageRepo.createResponseMessage(projectId, '');
+                responseMessageId = responseMessage.id;
             }
 
             // 1. Build agent configuration using new abstraction
@@ -90,6 +156,14 @@ export class AgentService {
 
             const completePrompt = agentConfig.prompt;
             const toolDefinitions = agentConfig.tools;
+
+            // Update computation message to show analysis phase
+            if (computationMessageId && this.chatMessageRepo) {
+                await this.chatMessageRepo.updateComputationMessage(
+                    computationMessageId,
+                    this.generateComputationIndicator('analyzing', request.userRequest)
+                );
+            }
 
             // 4. Save user request as raw message
             if (this.chatMessageRepo) {
@@ -140,11 +214,41 @@ export class AgentService {
                 switch (delta.type) {
                     case 'text-delta':
                         process.stdout.write(delta.textDelta);
+                        accumulatedResponse += delta.textDelta;
                         finalResponse += delta.textDelta;
+
+                        // Try to parse JSON and update response message in real-time
+                        if (responseMessageId && this.chatMessageRepo) {
+                            const parseResult = await this.tryParseAgentJSON(accumulatedResponse);
+                            if (parseResult.parsed && parseResult.humanReadableMessage) {
+                                // Successfully parsed JSON, update with human readable message
+                                await this.chatMessageRepo.updateResponseMessage(
+                                    responseMessageId,
+                                    parseResult.humanReadableMessage,
+                                    'streaming'
+                                );
+                            } else {
+                                // JSON not complete yet, show accumulated text
+                                await this.chatMessageRepo.updateResponseMessage(
+                                    responseMessageId,
+                                    accumulatedResponse,
+                                    'streaming'
+                                );
+                            }
+                        }
                         break;
+
                     case 'tool-call':
                         console.log(`\n[Agent Action] Starting tool call to '${delta.toolName}' with ID '${delta.toolCallId}'`);
                         currentToolCall = delta;
+
+                        // Update computation message to show processing phase
+                        if (computationMessageId && this.chatMessageRepo) {
+                            await this.chatMessageRepo.updateComputationMessage(
+                                computationMessageId,
+                                this.generateComputationIndicator('processing', delta.toolName)
+                            );
+                        }
 
                         // Save tool call as raw message
                         if (this.chatMessageRepo && projectId) {
@@ -163,8 +267,17 @@ export class AgentService {
                             );
                         }
                         break;
+
                     case 'tool-result':
                         console.log(`\n[Agent Action] Received result for tool call '${delta.toolCallId}'`);
+
+                        // Update computation message to show generation phase
+                        if (computationMessageId && this.chatMessageRepo) {
+                            await this.chatMessageRepo.updateComputationMessage(
+                                computationMessageId,
+                                this.generateComputationIndicator('generating', currentToolCall?.toolName)
+                            );
+                        }
 
                         // Save tool result as raw message
                         if (this.chatMessageRepo && projectId && currentToolCall) {
@@ -187,6 +300,35 @@ export class AgentService {
                 }
             }
             console.log('\n-----------------------------------');
+
+            // Final processing of the response
+            if (responseMessageId && this.chatMessageRepo) {
+                const finalParseResult = await this.tryParseAgentJSON(accumulatedResponse);
+                if (finalParseResult.parsed && finalParseResult.humanReadableMessage) {
+                    // Successfully parsed JSON, use human readable message
+                    await this.chatMessageRepo.updateResponseMessage(
+                        responseMessageId,
+                        finalParseResult.humanReadableMessage,
+                        'completed'
+                    );
+                } else {
+                    // JSON parsing failed, use accumulated text as fallback
+                    await this.chatMessageRepo.updateResponseMessage(
+                        responseMessageId,
+                        accumulatedResponse || '我已完成您的请求。',
+                        'completed'
+                    );
+                }
+            }
+
+            // Complete computation message
+            if (computationMessageId && this.chatMessageRepo) {
+                await this.chatMessageRepo.updateComputationMessage(
+                    computationMessageId,
+                    this.generateComputationIndicator('completing'),
+                    'completed'
+                );
+            }
 
             // Save final assistant response as raw message
             if (this.chatMessageRepo && projectId && finalResponse.trim()) {
@@ -211,46 +353,28 @@ export class AgentService {
             console.log(`\nTool Results Received by Agent: ${toolResultsReceived}`);
             console.log(JSON.stringify(toolResults, null, 2));
 
-            const agentResult = {
-                finishReason,
-                toolCalls,
-                toolResults
-            };
-
-            // 3. Log successful completion
-            if (this.chatMessageRepo && thinkingMessageId && thinkingStartTime) {
-                // Finish thinking
-                await this.chatMessageRepo.finishAgentThinking(
-                    thinkingMessageId,
-                    '分析您的请求并开始创作',
-                    thinkingStartTime
-                );
-
-                // Add success response based on what was done
-                let responseMessage = '我已成功处理您的请求！';
-                if (agentResult.toolResults.some((r: any) => r.toolName === 'generate_brainstorm_ideas')) {
-                    responseMessage = '我已成功为您的项目生成了创意故事想法！您可以在头脑风暴结果中查看它们。';
-                } else if (agentResult.toolResults.some((r: any) => r.toolName === 'edit_brainstorm_idea')) {
-                    responseMessage = '我已成功根据您的要求改进了故事创意！您可以查看更新后的想法。';
-                } else if (agentResult.toolResults.some((r: any) => r.toolName === 'generate_outline_settings')) {
-                    responseMessage = '我已成功为您的项目生成了剧本框架！您可以在剧本框架部分查看详细的角色、背景和商业定位信息。';
-                } else if (agentResult.toolResults.some((r: any) => r.toolName === 'generate_chronicles')) {
-                    responseMessage = '我已成功为您的项目生成了时间顺序大纲！您可以在时间顺序大纲部分查看按时间顺序的故事发展阶段。';
-                } else if (agentResult.toolResults.some((r: any) => r.toolName === 'generate_outline')) {
-                    responseMessage = '我已成功为您的项目生成了完整大纲！您可以在大纲部分查看详细的故事结构和发展脉络。';
-                }
-
-                await this.chatMessageRepo.addAgentResponse(
-                    thinkingMessageId,
-                    responseMessage
-                );
-            }
-
             console.log(`[AgentService] General agent completed for project ${projectId}.`);
 
         } catch (error) {
             console.error("\n--- Agent Flow Failed ---");
             console.error(`[AgentService] General agent failed for project ${projectId}:`, error);
+
+            // Update messages with error state
+            if (computationMessageId && this.chatMessageRepo) {
+                await this.chatMessageRepo.updateComputationMessage(
+                    computationMessageId,
+                    this.generateComputationIndicator('error'),
+                    'failed'
+                );
+            }
+
+            if (responseMessageId && this.chatMessageRepo) {
+                await this.chatMessageRepo.updateResponseMessage(
+                    responseMessageId,
+                    '抱歉，处理您的请求时遇到了问题。请重试，如果问题持续存在，请联系支持。',
+                    'failed'
+                );
+            }
 
             // Save error as raw message
             if (this.chatMessageRepo && projectId) {
@@ -262,18 +386,7 @@ export class AgentService {
                 );
             }
 
-            // Log error to chat
-            if (this.chatMessageRepo && thinkingMessageId) {
-                await this.chatMessageRepo.addAgentError(
-                    thinkingMessageId,
-                    '处理您的请求时遇到错误。请重试，如果问题持续存在，请联系支持。'
-                );
-            }
-
             throw error;
         }
     }
-
-
-
 } 
