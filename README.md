@@ -398,6 +398,34 @@ npm run dev
 - `POST /api/chat/:projectId/messages` - Send user message to agent
 - `GET /api/chat/:projectId/messages` - Get chat history (Electric SQL)
 
+** The chat API endpoint is `/api/chat/:projectId/messages`, NOT `/api/chat`. Always include the projectId in the URL path.
+
+**Chat API Request Format**:
+```typescript
+// ✅ Correct format
+fetch(`/api/chat/${projectId}/messages`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer debug-auth-token-script-writer-dev'
+  },
+  credentials: 'include',
+  body: JSON.stringify({
+    content: "Your message content here",
+    metadata: {}
+  })
+});
+
+// ❌ Wrong format (missing projectId in URL)
+fetch('/api/chat', {
+  method: 'POST',
+  body: JSON.stringify({
+    projectId: projectId,  // Wrong - projectId should be in URL path
+    message: "content"     // Wrong - should be 'content' not 'message'
+  })
+});
+```
+
 ### Content Management
 - `POST /api/artifacts/:id/human-transform` - Execute human edit transform (supports chronicle stage editing, field edits, etc.)
 - `GET /api/artifacts` - List artifacts with filtering
