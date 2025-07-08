@@ -114,7 +114,32 @@ function createStreamObjectFromCache(cachedResponse: CachedResponse) {
 
     return {
         partialObjectStream: createAsyncIteratorFromChunks(chunks),
-        object: Promise.resolve(cachedResponse.metadata.finalResult)
+        object: Promise.resolve(cachedResponse.metadata.finalResult),
+        baseStream: createBaseStreamFromChunks(chunks, cachedResponse.metadata.finalResult)
+    };
+}
+
+/**
+ * Create base stream from cached chunks (for StreamProxy compatibility)
+ */
+async function* createBaseStreamFromChunks(chunks: any[], finalResult: any) {
+    // Emit object-delta chunks for partial updates
+    for (const chunk of chunks) {
+        yield {
+            type: 'object-delta',
+            object: chunk.data
+        };
+    }
+
+    // Emit final object
+    yield {
+        type: 'object',
+        object: finalResult
+    };
+
+    // Emit finish event
+    yield {
+        type: 'finish'
     };
 }
 
@@ -176,7 +201,30 @@ function createFallbackStreamObject() {
             [{ title: "误爱成宠" }],
             mockBrainstormData
         ]),
-        object: Promise.resolve(mockBrainstormData)
+        object: Promise.resolve(mockBrainstormData),
+        baseStream: createMockBaseStream(mockBrainstormData)
+    };
+}
+
+/**
+ * Create mock base stream for fallback objects
+ */
+async function* createMockBaseStream(finalResult: any) {
+    // Emit partial object first
+    yield {
+        type: 'object-delta',
+        object: Array.isArray(finalResult) ? [finalResult[0]] : finalResult
+    };
+
+    // Emit final object
+    yield {
+        type: 'object',
+        object: finalResult
+    };
+
+    // Emit finish event
+    yield {
+        type: 'finish'
     };
 }
 
@@ -222,7 +270,8 @@ function createFallbackBrainstormEditObject() {
             { title: "误爱成宠（升级版）" },
             mockEditedIdea
         ]),
-        object: Promise.resolve(mockEditedIdea)
+        object: Promise.resolve(mockEditedIdea),
+        baseStream: createMockBaseStream(mockEditedIdea)
     };
 }
 
@@ -294,7 +343,8 @@ function createFallbackChroniclesObject() {
             { stages: mockChroniclesData.stages.slice(0, 1) },
             mockChroniclesData
         ]),
-        object: Promise.resolve(mockChroniclesData)
+        object: Promise.resolve(mockChroniclesData),
+        baseStream: createMockBaseStream(mockChroniclesData)
     };
 }
 
@@ -319,7 +369,7 @@ function createFallbackOutlineObject() {
             {
                 name: "林慕琛",
                 type: "male_lead",
-                description: "霸道深情的集团总裁，外表冷酷内心温暖",
+                description: "林氏集团总裁，外表冷酷内心温暖",
                 age: "30岁",
                 gender: "男",
                 occupation: "集团总裁",
@@ -329,12 +379,12 @@ function createFallbackOutlineObject() {
                     "夏栀": "误会中产生的爱情关系",
                     "母亲": "传统家庭压力来源"
                 },
-                key_scenes: ["总裁办公室初遇", "误会澄清", "深情告白"]
+                key_scenes: ["总裁办公室对峙", "餐厅告白", "公司救场"]
             },
             {
                 name: "夏栀",
                 type: "female_lead",
-                description: "善良坚强的普通职员，在误会中展现真实自我",
+                description: "普通职员，坚强独立有原则",
                 age: "25岁",
                 gender: "女",
                 occupation: "公司职员",
@@ -344,8 +394,14 @@ function createFallbackOutlineObject() {
                     "林慕琛": "误会中发展的真挚感情",
                     "同事": "职场友谊支撑"
                 },
-                key_scenes: ["职场挫折", "身份误会", "勇敢表白"]
+                key_scenes: ["初次见面", "工作合作", "身份揭露"]
             }
+        ],
+        synopsis_stages: [
+            "第1-8集：女主入职遇到男主，因误会开始特殊关系",
+            "第9-16集：在误会中两人感情逐渐升温",
+            "第17-24集：真相揭露，关系面临考验",
+            "第25-30集：化解误会，走向幸福结局"
         ]
     };
 
@@ -354,7 +410,8 @@ function createFallbackOutlineObject() {
             { title: "误爱成宠" },
             mockOutlineSettingsData
         ]),
-        object: Promise.resolve(mockOutlineSettingsData)
+        object: Promise.resolve(mockOutlineSettingsData),
+        baseStream: createMockBaseStream(mockOutlineSettingsData)
     };
 }
 

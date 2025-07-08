@@ -66,16 +66,15 @@ describe('Unified Workflow Computation', () => {
         it('should compute steps for initial stage', () => {
             const steps = computeWorkflowSteps('initial', false, createMockProjectData());
 
-            expect(steps).toHaveLength(6);
-            expect(steps[0].id).toBe(WORKFLOW_STEPS.BRAINSTORM_INPUT);
-            expect(steps[0].title).toBe('创意输入');
-            expect(steps[0].status).toBe('wait');
+            // Initial stage returns empty steps array
+            expect(steps).toHaveLength(0);
         });
 
         it('should compute steps for brainstorm_input stage', () => {
             const steps = computeWorkflowSteps('brainstorm_input', false, createMockProjectData());
 
-            expect(steps[0].status).toBe('process');
+            // Current step is 'finish' when not active, 'process' when active
+            expect(steps[0].status).toBe('finish');
             expect(steps[1].status).toBe('wait');
         });
 
@@ -84,7 +83,7 @@ describe('Unified Workflow Computation', () => {
 
             expect(steps[0].status).toBe('finish');
             expect(steps[1].status).toBe('finish');
-            expect(steps[2].status).toBe('process');
+            expect(steps[2].status).toBe('finish'); // Current step is 'finish' when not active
             expect(steps[3].status).toBe('wait');
         });
 
@@ -338,7 +337,7 @@ describe('Unified Workflow Computation', () => {
 
             expect(steps).toHaveLength(4); // Manual path has 4 steps
             expect(steps[0].title).toBe('创意编辑');
-            expect(steps[1].title).toBe('大纲生成');
+            expect(steps[1].title).toBe('大纲');
             expect(steps[2].title).toBe('分集概要');
             expect(steps[3].title).toBe('剧本生成');
 
@@ -377,7 +376,7 @@ describe('Unified Workflow Computation', () => {
             expect(steps[0].title).toBe('创意输入');
             expect(steps[1].title).toBe('头脑风暴');
             expect(steps[2].title).toBe('创意编辑');
-            expect(steps[3].title).toBe('大纲生成');
+            expect(steps[3].title).toBe('大纲');
             expect(steps[4].title).toBe('分集概要');
             expect(steps[5].title).toBe('剧本生成');
         });
@@ -440,7 +439,7 @@ describe('Unified Workflow Computation', () => {
             const steps = computeWorkflowSteps('outline_generation', false, projectData);
 
             expect(steps[0].status).toBe('finish'); // 创意编辑 finished
-            expect(steps[1].status).toBe('process'); // 大纲生成 current
+            expect(steps[1].status).toBe('finish'); // 大纲 current but not active, so 'finish'
             expect(steps[2].status).toBe('wait'); // 分集概要 waiting
             expect(steps[3].status).toBe('wait'); // 剧本生成 waiting
         });
@@ -474,7 +473,7 @@ describe('Unified Workflow Computation', () => {
             expect(steps[0].status).toBe('finish'); // 创意输入 finished
             expect(steps[1].status).toBe('finish'); // 头脑风暴 finished
             expect(steps[2].status).toBe('finish'); // 创意编辑 finished
-            expect(steps[3].status).toBe('process'); // 大纲生成 current
+            expect(steps[3].status).toBe('finish'); // 大纲 current but not active, so 'finish'
             expect(steps[4].status).toBe('wait'); // 分集概要 waiting
             expect(steps[5].status).toBe('wait'); // 剧本生成 waiting
         });

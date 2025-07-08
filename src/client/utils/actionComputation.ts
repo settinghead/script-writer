@@ -105,15 +105,7 @@ export const findLatestOutlineSettings = (projectData: ProjectDataContextType) =
         artifact.schema_type === 'outline_settings_schema' || artifact.type === 'outline_settings'
     );
 
-    console.log('[findLatestOutlineSettings] Debug:', {
-        totalArtifacts: projectData.artifacts.length,
-        outlineSettingsCount: outlineSettingsArtifacts.length,
-        allArtifacts: projectData.artifacts.map(a => ({
-            id: a.id.substring(0, 8),
-            type: a.type,
-            schema_type: a.schema_type
-        }))
-    });
+
 
     if (outlineSettingsArtifacts.length === 0) return null;
 
@@ -158,7 +150,6 @@ export const hasActiveTransforms = (projectData: ProjectDataContextType): boolea
 
 // Detect current workflow stage
 export const detectCurrentStage = (projectData: ProjectDataContextType): WorkflowStage => {
-    console.log('[detectCurrentStage] Starting stage detection...');
     // Check for brainstorm input artifact
     const brainstormInput = findBrainstormInputArtifact(
         projectData.artifacts === "pending" || projectData.artifacts === "error" ? [] : projectData.artifacts
@@ -173,7 +164,6 @@ export const detectCurrentStage = (projectData: ProjectDataContextType): Workflo
 
     // If we have neither brainstorm input nor brainstorm ideas, we're at initial stage
     if (!brainstormInput && brainstormIdeas.length === 0) {
-        console.log('[detectCurrentStage] No brainstorm input or ideas, returning initial');
         return 'initial';
     }
 
@@ -183,17 +173,10 @@ export const detectCurrentStage = (projectData: ProjectDataContextType): Workflo
     // Check for chosen idea (this works for both AI-generated and manual ideas)
     const chosenIdea = findChosenBrainstormIdea(projectData);
 
-    console.log('[detectCurrentStage] Debug:', {
-        brainstormIdeasCount: brainstormIdeas.length,
-        hasChosenIdea: !!chosenIdea,
-        chosenIdeaId: chosenIdea?.id.substring(0, 8)
-    });
-
     // If we have brainstorm ideas (either from AI generation or manual input)
     if (brainstormIdeas.length > 0) {
         // Check for outline settings first, regardless of chosen idea status
         const outlineSettings = findLatestOutlineSettings(projectData);
-        console.log('[detectCurrentStage] Outline settings check:', !!outlineSettings);
 
         if (!outlineSettings) {
             // No outline settings yet
@@ -204,7 +187,6 @@ export const detectCurrentStage = (projectData: ProjectDataContextType): Workflo
                 (brainstormIdeas[0].schema_type === 'brainstorm_item_schema' || brainstormIdeas[0].type === 'brainstorm_item_schema');
 
             if (isSingleManualEntry) {
-                console.log('[detectCurrentStage] Single manual entry detected, returning idea_editing');
                 return 'idea_editing';
             }
 
@@ -213,13 +195,11 @@ export const detectCurrentStage = (projectData: ProjectDataContextType): Workflo
                 brainstormIdeas.some(idea => idea.origin_type === 'ai_generated');
 
             if (hasMultipleAIIdeas) {
-                console.log('[detectCurrentStage] Multiple AI-generated ideas detected, returning brainstorm_selection');
                 return 'brainstorm_selection';
             }
 
             // For other cases (single AI idea or multiple manual ideas), check if one is chosen
             if (!chosenIdea) {
-                console.log('[detectCurrentStage] No chosen idea, returning brainstorm_selection for multiple ideas or idea_editing for single');
                 return brainstormIdeas.length > 1 ? 'brainstorm_selection' : 'idea_editing';
             }
 
@@ -229,11 +209,9 @@ export const detectCurrentStage = (projectData: ProjectDataContextType): Workflo
 
         // Has outline settings - check for chronicles
         const chronicles = findLatestChronicles(projectData);
-        console.log('[detectCurrentStage] Chronicles check:', !!chronicles);
 
         if (!chronicles) {
             // No chronicles yet, should generate chronicles
-            console.log('[detectCurrentStage] Has outline settings, no chronicles, returning outline_generation');
             return 'outline_generation';
         }
 
@@ -278,12 +256,6 @@ export const detectCurrentStage = (projectData: ProjectDataContextType): Workflo
 export const computeParamsAndActionsFromLineage = (
     projectData: ProjectDataContextType
 ): ComputedActions => {
-    console.log('[computeParamsAndActionsFromLineage] Starting computation');
-    console.log('[computeParamsAndActionsFromLineage] Project data summary:', {
-        lineageGraph: typeof projectData.lineageGraph,
-        artifacts: Array.isArray(projectData.artifacts) ? projectData.artifacts.length : projectData.artifacts,
-        transforms: Array.isArray(projectData.transforms) ? projectData.transforms.length : projectData.transforms
-    });
 
     // Check if any data is still loading
     if (projectData.artifacts === "pending" ||
@@ -291,7 +263,6 @@ export const computeParamsAndActionsFromLineage = (
         projectData.humanTransforms === "pending" ||
         projectData.transformInputs === "pending" ||
         projectData.transformOutputs === "pending") {
-        console.log('[computeParamsAndActionsFromLineage] Some data still loading, returning initial state');
         return {
             actions: [],
             currentStage: 'initial',
@@ -302,7 +273,6 @@ export const computeParamsAndActionsFromLineage = (
 
     // If lineage graph is pending but artifacts are loaded, fall back to legacy computation
     if (projectData.lineageGraph === "pending") {
-        console.log('[computeParamsAndActionsFromLineage] Lineage graph pending, falling back to legacy computation');
         return computeParamsAndActions(projectData);
     }
 
@@ -321,12 +291,6 @@ export const computeParamsAndActionsFromLineage = (
     }
 
     // Use the new lineage-based computation
-    console.log('[computeParamsAndActionsFromLineage] Calling computeActionsFromLineage with:', {
-        lineageGraph: typeof projectData.lineageGraph,
-        artifacts: projectData.artifacts.length,
-        transforms: projectData.transforms.length
-    });
-
     const lineageResult = computeActionsFromLineage(
         projectData.lineageGraph,
         projectData.artifacts,
@@ -335,12 +299,6 @@ export const computeParamsAndActionsFromLineage = (
         projectData.transformInputs,
         projectData.transformOutputs
     );
-
-    console.log('[computeParamsAndActionsFromLineage] Lineage result:', {
-        actionsCount: lineageResult.actions.length,
-        currentStage: lineageResult.actionContext.currentStage,
-        hasActiveTransforms: lineageResult.actionContext.hasActiveTransforms
-    });
 
     // Convert to the expected format for backward compatibility
     const result = {
@@ -522,7 +480,7 @@ export const computeWorkflowSteps = (
         },
         {
             id: WORKFLOW_STEPS.OUTLINE_GENERATION,
-            title: '大纲生成',
+            title: '大纲',
             status: 'wait'
         },
         {
@@ -555,7 +513,7 @@ export const computeWorkflowSteps = (
         },
         {
             id: WORKFLOW_STEPS.OUTLINE_GENERATION,
-            title: '大纲生成',
+            title: '大纲',
             status: 'wait'
         },
         {
@@ -603,21 +561,19 @@ export const computeWorkflowSteps = (
             step.status = 'finish';
         } else if (index === currentStepIndex) {
             if (hasActiveTransforms) {
-                step.status = 'process';
+                step.status = 'process'; // Show loading spinner
             } else {
-                step.status = 'process';
+                step.status = 'finish'; // Current step is completed
             }
         } else {
             step.status = 'wait';
         }
     });
 
-    console.log('[computeWorkflowSteps] Returning steps:', {
-        stepsCount: steps.length,
-        currentStepIndex,
-        isManualPath,
-        steps: steps.map(s => ({ id: s.id, title: s.title, status: s.status }))
-    });
+    // Only log when debugging active transforms
+    if (hasActiveTransforms) {
+        console.log('[computeWorkflowSteps] Active transforms - Steps:', steps.map(s => ({ title: s.title, status: s.status })));
+    }
 
     return steps;
 };
@@ -1016,7 +972,6 @@ export const computeUnifiedWorkflowState = (
     projectId: string,
     selectedBrainstormIdea?: SelectedBrainstormIdea | null
 ): UnifiedWorkflowState => {
-    console.log('[computeUnifiedWorkflowState] Starting unified computation');
 
     // First compute actions using existing logic
     const actionResult = computeParamsAndActionsFromLineage(projectData);
@@ -1045,13 +1000,13 @@ export const computeUnifiedWorkflowState = (
         parameters
     };
 
-    console.log('[computeUnifiedWorkflowState] Unified result:', {
-        stepsCount: result.steps.length,
-        componentsCount: result.displayComponents.length,
-        actionsCount: result.actions.length,
-        currentStage: parameters.currentStage,
-        steps: result.steps.map(s => ({ id: s.id, title: s.title, status: s.status }))
-    });
+    // Only log when debugging active transforms
+    if (actionResult.hasActiveTransforms) {
+        console.log('[computeUnifiedWorkflowState] Active transforms - Unified result:', {
+            currentStage: parameters.currentStage,
+            steps: result.steps.map(s => ({ title: s.title, status: s.status }))
+        });
+    }
 
     return result;
 }; 

@@ -292,9 +292,7 @@ const ProjectLayout: React.FC = () => {
                             <Button onClick={handleGoBack}>
                                 返回首页
                             </Button>
-                            <Button type="primary" onClick={() => window.location.reload()}>
-                                重新加载
-                            </Button>
+
                         </Space>
                     </div>
                 </Content>

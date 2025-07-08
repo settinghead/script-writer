@@ -29,8 +29,7 @@ const deleteTransform = async (transformId: string) => {
         const result = await response.json();
         message.success(result.message || 'Transform deleted successfully');
 
-        // Refresh the page to update the graph
-        window.location.reload();
+
     } catch (error: any) {
         console.error('Error deleting transform:', error);
         message.error(`Failed to delete transform: ${error.message}`);
@@ -56,8 +55,6 @@ const deleteArtifact = async (artifactId: string) => {
         const result = await response.json();
         message.success(result.message || 'Artifact deleted successfully');
 
-        // Refresh the page to update the graph
-        window.location.reload();
     } catch (error: any) {
         console.error('Error deleting artifact:', error);
         message.error(`Failed to delete artifact: ${error.message}`);
