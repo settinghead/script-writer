@@ -12,11 +12,13 @@ const { Title, Text } = Typography;
 interface SingleBrainstormIdeaEditorProps {
     onViewOriginalIdeas?: () => void;
     isEditable?: boolean; // Global editability state from computation system
+    currentStage?: string; // Current workflow stage
 }
 
 export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProps> = ({
     onViewOriginalIdeas,
-    isEditable: globalIsEditable = true // Default to true if not provided
+    isEditable: globalIsEditable = true, // Default to true if not provided
+    currentStage = 'idea_editing' // Default to idea_editing stage
 }) => {
     const { projectId } = useParams<{ projectId: string }>();
     const projectData = useProjectData();
@@ -62,18 +64,20 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
         );
 
         // Determine editability:
+        // - Only editable in 'idea_editing' stage
         // - If it's user_input and has no descendants, it's editable
         // - If it's ai_generated and has no descendants, it can become editable
-        // - But global editability (transforms running) overrides everything
-        const isCurrentlyEditable = latestArtifact.origin_type === 'user_input' && !hasDescendants && globalIsEditable;
-        const canBecomeMadeEditable = latestArtifact.origin_type === 'ai_generated' && !hasDescendants && globalIsEditable;
+        // - But global editability (transforms running) and stage both override everything
+        const isInEditingStage = currentStage === 'idea_editing';
+        const isCurrentlyEditable = latestArtifact.origin_type === 'user_input' && !hasDescendants && globalIsEditable && isInEditingStage;
+        const canBecomeMadeEditable = latestArtifact.origin_type === 'ai_generated' && !hasDescendants && globalIsEditable && isInEditingStage;
 
         return {
             latestArtifactId: latestArtifact.id,
             isEditable: isCurrentlyEditable,
             canBecomeEditable: canBecomeMadeEditable
         };
-    }, [projectData.artifacts, projectData.transformInputs, globalIsEditable]);
+    }, [projectData.artifacts, projectData.transformInputs, globalIsEditable, currentStage]);
 
     // Get the latest artifact data to display title
     const latestArtifact = useMemo(() => {
