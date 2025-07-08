@@ -212,12 +212,6 @@ def main():
     print("🔧 DSPy 模块检查工具演示")
     print("=" * 50)
     
-    # Create a test request
-    test_request = BrainstormRequest(
-        genre="甜宠",
-        platform="抖音",
-        requirements_section="浪漫甜蜜的爱情故事"
-    )
     
     # Create baseline module
     baseline_module = BrainstormModule()
