@@ -181,6 +181,14 @@ export const detectCurrentStage = (projectData: ProjectDataContextType): Workflo
         if (!outlineSettings) {
             // No outline settings yet
 
+            // First check if we have a chosen idea (leaf node) - this takes priority
+            if (chosenIdea) {
+                // Has a chosen idea but no outline settings - we're in editing stage
+                return 'idea_editing';
+            }
+
+            // No chosen idea yet - determine if we need selection or editing
+
             // Check if we have a single manually entered idea
             const isSingleManualEntry = brainstormIdeas.length === 1 &&
                 brainstormIdeas[0].origin_type === 'user_input' &&
@@ -190,20 +198,12 @@ export const detectCurrentStage = (projectData: ProjectDataContextType): Workflo
                 return 'idea_editing';
             }
 
-            // Check if we have multiple AI-generated ideas
-            const hasMultipleAIIdeas = brainstormIdeas.length > 1 &&
-                brainstormIdeas.some(idea => idea.origin_type === 'ai_generated');
-
-            if (hasMultipleAIIdeas) {
+            // Check if we have multiple ideas (AI-generated or manual)
+            if (brainstormIdeas.length > 1) {
                 return 'brainstorm_selection';
             }
 
-            // For other cases (single AI idea or multiple manual ideas), check if one is chosen
-            if (!chosenIdea) {
-                return brainstormIdeas.length > 1 ? 'brainstorm_selection' : 'idea_editing';
-            }
-
-            // Has chosen idea but no outline settings
+            // Single idea case (AI-generated)
             return 'idea_editing';
         }
 
@@ -627,6 +627,7 @@ export const computeDisplayComponents = (
     const components: DisplayComponent[] = [];
 
     if (projectData.artifacts === "pending" || projectData.artifacts === "error") {
+        console.log('[computeDisplayComponents] Artifacts pending/error, returning empty components');
         return components;
     }
 
@@ -635,6 +636,18 @@ export const computeDisplayComponents = (
     const chosenIdea = findChosenBrainstormIdea(projectData);
     const outlineSettings = findLatestOutlineSettings(projectData);
     const chronicles = findLatestChronicles(projectData);
+
+    console.log('[computeDisplayComponents] Debug info:', {
+        currentStage,
+        hasActiveTransforms,
+        artifactsCount: projectData.artifacts.length,
+        brainstormInputExists: !!brainstormInput,
+        brainstormIdeasCount: brainstormIdeas.length,
+        chosenIdeaExists: !!chosenIdea,
+        chosenIdeaId: chosenIdea?.id,
+        outlineSettingsExists: !!outlineSettings,
+        chroniclesExists: !!chronicles
+    });
 
     switch (currentStage) {
         case 'initial':
@@ -710,22 +723,7 @@ export const computeDisplayComponents = (
                 });
             }
 
-            // Show collapsed brainstorm ideas
-            if (brainstormIdeas.length > 1) {
-                components.push({
-                    id: 'project-brainstorm-page',
-                    component: getComponentById('project-brainstorm-page'),
-                    mode: 'collapsed',
-                    props: {
-                        ideas: brainstormIdeas,
-                        selectionMode: false,
-                        collapsed: true
-                    },
-                    priority: 2
-                });
-            }
-
-            // Show chosen idea editor
+            // Show chosen idea editor (if we have one)
             if (chosenIdea) {
                 components.push({
                     id: 'single-brainstorm-idea-editor',
@@ -735,8 +733,25 @@ export const computeDisplayComponents = (
                         idea: chosenIdea,
                         isEditable: !hasActiveTransforms
                     },
-                    priority: 3
+                    priority: 2
                 });
+            } else {
+                // No chosen idea yet - show brainstorm collection for selection
+                // This should only happen if detectCurrentStage logic is incorrect
+                console.warn('[computeDisplayComponents] idea_editing stage but no chosenIdea found');
+                if (brainstormIdeas.length > 0) {
+                    components.push({
+                        id: 'project-brainstorm-page',
+                        component: getComponentById('project-brainstorm-page'),
+                        mode: hasActiveTransforms ? 'readonly' : 'editable',
+                        props: {
+                            ideas: brainstormIdeas,
+                            selectionMode: true,
+                            isLoading: hasActiveTransforms
+                        },
+                        priority: 2
+                    });
+                }
             }
             break;
 
@@ -755,19 +770,7 @@ export const computeDisplayComponents = (
                 });
             }
 
-            if (brainstormIdeas.length > 1) {
-                components.push({
-                    id: 'project-brainstorm-page',
-                    component: getComponentById('project-brainstorm-page'),
-                    mode: 'collapsed',
-                    props: {
-                        ideas: brainstormIdeas,
-                        collapsed: true
-                    },
-                    priority: 2
-                });
-            }
-
+            // Only show chosen idea editor (not the collection)
             if (chosenIdea) {
                 components.push({
                     id: 'single-brainstorm-idea-editor',
@@ -777,7 +780,7 @@ export const computeDisplayComponents = (
                         idea: chosenIdea,
                         isEditable: false
                     },
-                    priority: 3
+                    priority: 2
                 });
             }
 
@@ -811,19 +814,7 @@ export const computeDisplayComponents = (
                 });
             }
 
-            if (brainstormIdeas.length > 1) {
-                components.push({
-                    id: 'project-brainstorm-page',
-                    component: getComponentById('project-brainstorm-page'),
-                    mode: 'collapsed',
-                    props: {
-                        ideas: brainstormIdeas,
-                        collapsed: true
-                    },
-                    priority: 2
-                });
-            }
-
+            // Only show chosen idea editor (not the collection)
             if (chosenIdea) {
                 components.push({
                     id: 'single-brainstorm-idea-editor',
@@ -833,7 +824,7 @@ export const computeDisplayComponents = (
                         idea: chosenIdea,
                         isEditable: false
                     },
-                    priority: 3
+                    priority: 2
                 });
             }
 
@@ -880,19 +871,7 @@ export const computeDisplayComponents = (
                 });
             }
 
-            if (brainstormIdeas.length > 1) {
-                components.push({
-                    id: 'project-brainstorm-page',
-                    component: getComponentById('project-brainstorm-page'),
-                    mode: 'collapsed',
-                    props: {
-                        ideas: brainstormIdeas,
-                        collapsed: true
-                    },
-                    priority: 2
-                });
-            }
-
+            // Only show chosen idea editor (not the collection)
             if (chosenIdea) {
                 components.push({
                     id: 'single-brainstorm-idea-editor',
@@ -902,7 +881,7 @@ export const computeDisplayComponents = (
                         idea: chosenIdea,
                         isEditable: false
                     },
-                    priority: 3
+                    priority: 2
                 });
             }
 

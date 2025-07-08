@@ -145,7 +145,8 @@ describe('actionComputation', () => {
     describe('Scenario 1b: AI brainstorm collection (AI Brainstorm Path)', () => {
         beforeEach(() => {
             // AI brainstorm workflow: brainstorm_input → AI generates multiple brainstorm_item_schema → user must select one idea
-            // For this test, we simulate having multiple AI-generated ideas that need selection
+            // Updated: With our new logic, if there are multiple AI ideas and none are chosen, 
+            // the latest one automatically becomes the "chosen" idea and we go to idea_editing stage
             mockProjectData.artifacts = [
                 createMockArtifact('brainstorm-input-1', 'brainstorm_input_schema', 'user_input', '2024-01-01T09:00:00Z'),
                 createMockArtifact('brainstorm-idea-1', 'brainstorm_item_schema', 'ai_generated', '2024-01-01T10:00:00Z'),
@@ -166,17 +167,17 @@ describe('actionComputation', () => {
             mockProjectData.humanTransforms = [];
         });
 
-        it('should detect brainstorm_selection stage', () => {
+        it('should detect idea_editing stage (latest AI idea auto-chosen)', () => {
             const { currentStage } = computeParamsAndActions(mockProjectData);
-            expect(currentStage).toBe('brainstorm_selection');
+            expect(currentStage).toBe('idea_editing');
         });
 
-        it('should generate brainstorm idea selection action', () => {
+        it('should generate outline generation action', () => {
             const { actions } = computeParamsAndActions(mockProjectData);
 
             expect(actions.length).toBeGreaterThan(0);
-            expect(actions[0].id).toBe('brainstorm_idea_selection');
-            expect(actions[0].title).toBe('选择创意');
+            expect(actions[0].id).toBe('outline_generation');
+            expect(actions[0].title).toBe('生成大纲');
         });
 
         it('should not have active transforms', () => {

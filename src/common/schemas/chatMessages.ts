@@ -73,6 +73,11 @@ export function createEventMessage(events: ChatEvent[]): string {
 }
 
 export function parseEventMessage(content: string): ChatEvent[] {
+    // Handle empty content
+    if (!content || content.trim().length === 0) {
+        return [];
+    }
+
     try {
         const parsed = JSON.parse(content);
         if (Array.isArray(parsed)) {
@@ -80,7 +85,8 @@ export function parseEventMessage(content: string): ChatEvent[] {
         }
         return [ChatEventSchema.parse(parsed)];
     } catch (error) {
-        console.error('Failed to parse chat event message:', error);
+        // If JSON parsing fails, this is likely plain text content
+        // Return empty array so the fallback logic in processChatMessage works
         return [];
     }
 }

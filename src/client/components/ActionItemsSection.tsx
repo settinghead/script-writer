@@ -139,7 +139,7 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
                         </Space>
                     ) : (
                         <div style={{ textAlign: 'center', padding: '24px', color: '#666' }}>
-                            <Text type="secondary">生成中...</Text>
+                            <Text type="secondary">生成中(完成后可编辑)...</Text>
                         </div>
                     )}
                 </div>

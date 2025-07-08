@@ -254,10 +254,26 @@
     margin-top: 10px;
     /* Align with step indicator center */
     z-index: 1;
+    position: relative;
 }
 
 .step-connector-line.completed {
     background: #52c41a;
+}
+
+/* Add arrow to completed connector lines */
+.step-connector-line.completed::after {
+    content: '';
+    position: absolute;
+    right: -1px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-left: 6px solid #52c41a;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    z-index: 2;
 }
 
 /* Responsive adjustments */
@@ -283,5 +299,12 @@
     .step-connector-line {
         width: 30px;
         margin-top: 8px;
+    }
+
+    /* Smaller arrows on mobile */
+    .step-connector-line.completed::after {
+        border-left: 5px solid #52c41a;
+        border-top: 3px solid transparent;
+        border-bottom: 3px solid transparent;
     }
 }

@@ -1,17 +1,17 @@
 // Define types locally to avoid path issues
 interface LLMTemplate {
-    id: string;
-    name: string;
-    promptTemplate: string;
-    outputFormat: string;
-    responseWrapper?: string;
-    variables: string[];
+  id: string;
+  name: string;
+  promptTemplate: string;
+  outputFormat: string;
+  responseWrapper?: string;
+  variables: string[];
 }
 
 export const brainstormEditTemplate: LLMTemplate = {
-    id: 'brainstormEdit',
-    name: 'Brainstorm Idea Editing',
-    promptTemplate: `你是一位专门从事中国社交媒体平台短视频内容的创意总监。你的任务是根据用户要求改进现有的故事创意。
+  id: 'brainstormEdit',
+  name: 'Brainstorm Idea Editing',
+  promptTemplate: `你是一位专门从事中国社交媒体平台短视频内容的创意总监。你的任务是根据用户要求改进现有的故事创意。
 
 **重要原则：**
 1. 遵循去脸谱化原则，避免刻板印象和陈词滥调
@@ -46,9 +46,10 @@ export const brainstormEditTemplate: LLMTemplate = {
 - 始终融入当代流行元素和网络文化
 
 **输出要求：**
-请以JSON格式返回改进后的故事，包含：
-- title：改进后的标题（3-7个汉字）
-- body：改进后的完整故事梗概（200字左右）
+请以JSON补丁(JSON Patch)格式返回对原故事的修改操作。使用RFC 6902标准的JSON Patch格式，包含一个patches数组，每个补丁操作包含：
+- op: 操作类型（"replace"表示替换）
+- path: 要修改的字段路径（如"/title"或"/body"）
+- value: 新的值
 
 确保改进后的故事：
 ✓ 响应了用户的具体要求
@@ -59,19 +60,29 @@ export const brainstormEditTemplate: LLMTemplate = {
 
 **示例格式：**
 {
-  "title": "改进标题",
-  "body": "改进后的完整故事梗概，包含清晰的情节发展、人物刻画和情感线索，确保故事引人入胜且符合平台特色..."
+  "patches": [
+    {
+      "op": "replace",
+      "path": "/title",
+      "value": "改进标题"
+    },
+    {
+      "op": "replace", 
+      "path": "/body",
+      "value": "改进后的完整故事梗概，包含清晰的情节发展、人物刻画和情感线索，确保故事引人入胜且符合平台特色..."
+    }
+  ]
 }
 
-**重要：只输出纯JSON，不要任何解释、说明、或其他文本。不要在JSON前后添加任何内容。**`,
-    outputFormat: 'json',
-    responseWrapper: '```json',
-    variables: [
-        'params.originalTitle',
-        'params.originalBody',
-        'params.targetPlatform',
-        'params.storyGenre',
-        'params.editRequirements',
-        'params.agentInstructions'
-    ]
+**重要：只输出纯JSON补丁格式，不要任何解释、说明、或其他文本。不要在JSON前后添加任何内容。**`,
+  outputFormat: 'json',
+  responseWrapper: '```json',
+  variables: [
+    'params.originalTitle',
+    'params.originalBody',
+    'params.targetPlatform',
+    'params.storyGenre',
+    'params.editRequirements',
+    'params.agentInstructions'
+  ]
 }; 
