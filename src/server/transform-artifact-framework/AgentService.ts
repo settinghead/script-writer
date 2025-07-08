@@ -97,6 +97,65 @@ export class AgentService {
     }
 
     /**
+     * Generate user-friendly error messages based on error type and content
+     */
+    private generateUserFriendlyErrorMessage(error: any): string {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorString = String(error);
+
+        // Content filtering errors
+        if (errorMessage.includes('inappropriate content') ||
+            errorMessage.includes('data_inspection_failed') ||
+            errorString.includes('data_inspection_failed')) {
+            return '抱歉，您的内容可能包含了不适宜的信息，无法处理。请尝试修改您的创意内容，避免使用可能被误判的词汇（如"街头霸王"等可能与暴力相关的词汇），然后重新提交。';
+        }
+
+        // API rate limiting
+        if (errorMessage.includes('rate limit') || errorMessage.includes('too many requests')) {
+            return '请求过于频繁，请稍后再试。我们正在努力为您处理请求。';
+        }
+
+        // Network/connection errors
+        if (errorMessage.includes('network') || errorMessage.includes('connection') ||
+            errorMessage.includes('timeout') || errorMessage.includes('ECONNRESET')) {
+            return '网络连接出现问题，请检查您的网络连接后重试。如果问题持续存在，请稍后再试。';
+        }
+
+        // Authentication errors
+        if (errorMessage.includes('authentication') || errorMessage.includes('unauthorized') ||
+            errorMessage.includes('invalid token')) {
+            return '身份验证失败，请刷新页面后重试。如果问题持续存在，请联系支持。';
+        }
+
+        // Model/API service errors
+        if (errorMessage.includes('model') || errorMessage.includes('service unavailable') ||
+            errorMessage.includes('internal server error')) {
+            return 'AI服务暂时不可用，请稍后重试。我们正在努力恢复服务。';
+        }
+
+        // Quota/billing errors
+        if (errorMessage.includes('quota') || errorMessage.includes('billing') ||
+            errorMessage.includes('insufficient funds')) {
+            return '服务配额已用完，请联系管理员或稍后重试。';
+        }
+
+        // Streaming/data processing errors
+        if (errorMessage.includes('No data received from streaming') ||
+            errorMessage.includes('stream') || errorMessage.includes('ReadableStream')) {
+            return '数据流处理出现问题，请重试。如果问题持续存在，可能是服务器正在维护。';
+        }
+
+        // Schema validation errors
+        if (errorMessage.includes('schema') || errorMessage.includes('validation') ||
+            errorMessage.includes('parse')) {
+            return '数据格式验证失败，请重试。如果问题持续存在，请联系技术支持。';
+        }
+
+        // Default fallback message
+        return '抱歉，处理您的请求时遇到了问题。请重试，如果问题持续存在，请联系支持。';
+    }
+
+    /**
      * General agent method that can handle various types of requests including brainstorm editing
      */
     public async runGeneralAgent(
@@ -389,6 +448,9 @@ export class AgentService {
             console.error("\n--- Agent Flow Failed ---");
             console.error(`[AgentService] General agent failed for project ${projectId}:`, error);
 
+            // Generate user-friendly error message based on error type
+            const userFriendlyMessage = this.generateUserFriendlyErrorMessage(error);
+
             // Update messages with error state
             if (computationMessageId && this.chatMessageRepo) {
                 await this.chatMessageRepo.updateComputationMessage(
@@ -401,7 +463,7 @@ export class AgentService {
             if (responseMessageId && this.chatMessageRepo) {
                 await this.chatMessageRepo.updateResponseMessage(
                     responseMessageId,
-                    '抱歉，处理您的请求时遇到了问题。请重试，如果问题持续存在，请联系支持。',
+                    userFriendlyMessage,
                     'failed'
                 );
             }

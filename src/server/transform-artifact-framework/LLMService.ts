@@ -217,6 +217,7 @@ export class LLMService {
 
         } else {
             const standardModel = await getLLMModel({ modelName: modelName });
+
             const stream = await streamObject({
                 model: standardModel,
                 schema: schema as any,
@@ -225,7 +226,12 @@ export class LLMService {
                     content: prompt
                 }]
             });
-            return stream.partialObjectStream;
+
+            // Use StreamProxy to solve the ReadableStream locked issue
+            const { createStreamObjectProxy } = await import('./StreamProxy.js');
+            const proxy = createStreamObjectProxy(stream);
+
+            return proxy.createAsyncIterable();
         }
     }
 } 
