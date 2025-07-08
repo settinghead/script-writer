@@ -2,31 +2,20 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { Button, Typography, Alert, message } from 'antd';
 import { PlayCircleOutlined } from '@ant-design/icons';
 import { BaseActionProps } from './index';
-import { useProjectData } from '../../contexts/ProjectDataContext';
+import { ActionComponentProps } from '../../utils/lineageBasedActionComputation';
+import { apiService } from '../../services/apiService';
 
 const { Title, Text } = Typography;
 
-const EpisodeGenerationAction: React.FC<BaseActionProps> = ({ projectId, onSuccess, onError }) => {
+// Support both old BaseActionProps and new ActionComponentProps
+type EpisodeGenerationActionProps = BaseActionProps | ActionComponentProps;
+
+const EpisodeGenerationAction: React.FC<EpisodeGenerationActionProps> = (props) => {
+    const { projectId, onSuccess, onError } = props;
     const [isGenerating, setIsGenerating] = useState(false);
-    const projectData = useProjectData();
 
-    // Find the latest chronicles artifact
-    const latestChronicles = useMemo(() => {
-        if (!Array.isArray(projectData.artifacts)) return null;
-
-        const chroniclesArtifacts = projectData.artifacts.filter((artifact: any) =>
-            artifact.schema_type === 'chronicles_schema' || artifact.type === 'chronicles'
-        );
-
-        if (chroniclesArtifacts.length === 0) return null;
-
-        // Sort by creation time and get the latest
-        chroniclesArtifacts.sort((a: any, b: any) =>
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
-
-        return chroniclesArtifacts[0];
-    }, [projectData.artifacts]);
+    // Get chronicles from props (new way) or null (old way)
+    const latestChronicles = 'artifacts' in props ? props.artifacts.chronicles : null;
 
     // Handle episode generation
     const handleGenerateEpisodes = useCallback(async () => {
@@ -37,25 +26,8 @@ const EpisodeGenerationAction: React.FC<BaseActionProps> = ({ projectId, onSucce
 
         setIsGenerating(true);
         try {
-            // Call the episode generation API via chat
-            const response = await fetch(`/api/chat/${projectId}/messages`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer debug-auth-token-script-writer-dev'
-                },
-                credentials: 'include',
-                body: JSON.stringify({
-                    content: `请基于时间顺序大纲生成分集剧本。源时间顺序大纲ID: ${latestChronicles.id}`,
-                    metadata: {}
-                })
-            });
+            await apiService.generateEpisodesFromChronicles(projectId, latestChronicles.id);
 
-            if (!response.ok) {
-                throw new Error(`Failed to generate episodes: ${response.status}`);
-            }
-
-            // The response will be handled by the streaming framework
             message.success('分集剧本生成已启动');
             onSuccess?.();
         } catch (error) {

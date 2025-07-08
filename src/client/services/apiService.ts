@@ -131,6 +131,120 @@ class ApiService {
         }
         return response.json();
     }
+
+    // ============================================================================
+    // Action-specific API methods (for action components)
+    // ============================================================================
+
+    async createBrainstormInput(projectId: string): Promise<any> {
+        const response = await fetch(`${this.baseUrl}/artifacts`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer debug-auth-token-script-writer-dev'
+            },
+            body: JSON.stringify({
+                projectId,
+                type: 'brainstorm_tool_input_schema',
+                data: {
+                    initialInput: true // Explicitly mark as initial input to bypass validation
+                }
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to create brainstorm input: ${response.status}`);
+        }
+
+        return response.json();
+    }
+
+    async createManualBrainstormIdea(projectId: string): Promise<any> {
+        const response = await fetch(`${this.baseUrl}/artifacts`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer debug-auth-token-script-writer-dev'
+            },
+            body: JSON.stringify({
+                projectId,
+                type: 'brainstorm_item_schema',
+                data: {
+                    title: '新创意',
+                    body: '请在此输入您的创意内容...'
+                }
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to create manual brainstorm idea: ${response.status}`);
+        }
+
+        return response.json();
+    }
+
+    async deleteBrainstormInput(artifactId: string): Promise<void> {
+        const response = await fetch(`${this.baseUrl}/artifacts/${artifactId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': 'Bearer debug-auth-token-script-writer-dev'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to delete brainstorm input: ${response.status}`);
+        }
+    }
+
+    async sendChatMessage(projectId: string, content: string, metadata: any = {}): Promise<any> {
+        const response = await fetch(`${this.baseUrl}/chat/${projectId}/messages`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer debug-auth-token-script-writer-dev'
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                content,
+                metadata
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to send chat message: ${response.status}`);
+        }
+
+        return response.json();
+    }
+
+    async generateOutlineFromIdea(projectId: string, ideaArtifactId: string, title: string, requirements: string = ''): Promise<any> {
+        const content = `请基于创意生成剧本框架。源创意ID: ${ideaArtifactId}，标题: ${title}，要求: ${requirements || '无特殊要求'}`;
+
+        return this.sendChatMessage(projectId, content, {
+            sourceArtifactId: ideaArtifactId,
+            action: 'outline_generation',
+            title,
+            requirements
+        });
+    }
+
+    async generateChroniclesFromOutline(projectId: string, outlineArtifactId: string): Promise<any> {
+        const content = `请基于剧本框架生成时间顺序大纲。源剧本框架ID: ${outlineArtifactId}`;
+
+        return this.sendChatMessage(projectId, content, {
+            sourceArtifactId: outlineArtifactId,
+            action: 'chronicles_generation'
+        });
+    }
+
+    async generateEpisodesFromChronicles(projectId: string, chroniclesArtifactId: string): Promise<any> {
+        const content = `请基于时间顺序大纲生成剧本。源时间顺序大纲ID: ${chroniclesArtifactId}`;
+
+        return this.sendChatMessage(projectId, content, {
+            sourceArtifactId: chroniclesArtifactId,
+            action: 'episode_generation'
+        });
+    }
 }
 
 export const apiService = new ApiService(); 

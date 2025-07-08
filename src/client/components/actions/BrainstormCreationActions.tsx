@@ -2,10 +2,16 @@ import React, { useState, useCallback } from 'react';
 import { Button, Space, Typography, message } from 'antd';
 import { BulbOutlined, EditOutlined } from '@ant-design/icons';
 import { BaseActionProps } from './index';
+import { ActionComponentProps } from '../../utils/lineageBasedActionComputation';
+import { apiService } from '../../services/apiService';
 
 const { Text } = Typography;
 
-const BrainstormCreationActions: React.FC<BaseActionProps> = ({ projectId, onSuccess, onError }) => {
+// Support both old BaseActionProps and new ActionComponentProps for backward compatibility
+type BrainstormCreationActionsProps = BaseActionProps | ActionComponentProps;
+
+const BrainstormCreationActions: React.FC<BrainstormCreationActionsProps> = (props) => {
+    const { projectId, onSuccess, onError } = props;
     const [isCreating, setIsCreating] = useState(false);
     const [isCreatingManual, setIsCreatingManual] = useState(false);
 
@@ -14,27 +20,7 @@ const BrainstormCreationActions: React.FC<BaseActionProps> = ({ projectId, onSuc
 
         setIsCreating(true);
         try {
-            // Create empty brainstorm input artifact
-            const response = await fetch('/api/artifacts', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer debug-auth-token-script-writer-dev'
-                },
-                body: JSON.stringify({
-                    projectId,
-                    type: 'brainstorm_tool_input_schema',
-                    data: {
-                        initialInput: true // Explicitly mark as initial input to bypass validation
-                    }
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error(`Failed to create brainstorm input: ${response.status}`);
-            }
-
-            const newArtifact = await response.json();
+            await apiService.createBrainstormInput(projectId);
             message.success('头脑风暴表单已创建！');
             onSuccess?.();
         } catch (error) {
@@ -52,28 +38,7 @@ const BrainstormCreationActions: React.FC<BaseActionProps> = ({ projectId, onSuc
 
         setIsCreatingManual(true);
         try {
-            // Create empty brainstorm idea artifact directly
-            const response = await fetch('/api/artifacts', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer debug-auth-token-script-writer-dev'
-                },
-                body: JSON.stringify({
-                    projectId,
-                    type: 'brainstorm_item_schema',
-                    data: {
-                        title: '新创意',
-                        body: '请在此输入您的创意内容...'
-                    }
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error(`Failed to create manual brainstorm idea: ${response.status}`);
-            }
-
-            const newArtifact = await response.json();
+            await apiService.createManualBrainstormIdea(projectId);
             message.success('手动创意已创建！');
             onSuccess?.();
         } catch (error) {

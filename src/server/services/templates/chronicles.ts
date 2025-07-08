@@ -139,11 +139,11 @@ export const chroniclesTemplate = {
       ],
       "relationshipDevelopments": [
         {
-          "characters": ["[string] 角色名1", "[string] 角色名2"],
-          "content": "[string] 该时序阶段中角色关系的发展变化描述"
+          "characters": ["[string] 角色名1", "[string] 角色名2", ...],
+          "content": "[string] 该时序阶段中，两个或多个角色关系的发展变化描述，描述角色之间的互动、情感变化、关系发展等"
         }
       ],
-      "insights": ["[string] 该阶段揭示的关键信息1（必须是具体事实，如'X是Y的身份'、'X做了Y事件'）", "[string] 关键信息2"]
+      "insights": ["[string] 该阶段揭示的关键信息1（必须是具体事实，如'X是Y的身份'、'X做了Y事件'、'X与Y有Z关系'、'发生了Z'）", "[string] 关键信息2"]
     }
   ]
 }

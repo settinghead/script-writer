@@ -3,7 +3,7 @@ import { Card, Typography, Space, Alert, Spin } from 'antd';
 import { LoadingOutlined } from '@ant-design/icons';
 import { useProjectData } from '../contexts/ProjectDataContext';
 import { useActionItemsStore } from '../stores/actionItemsStore';
-import { computeParamsAndActions } from '../utils/actionComputation';
+import { computeParamsAndActionsFromLineage } from '../utils/actionComputation';
 import ActionItemRenderer from './actions/ActionItemRenderer';
 
 const { Text, Title } = Typography;
@@ -45,6 +45,13 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
     // Stable computation with minimal dependencies
     const computationResult = useMemo(() => {
         console.log('🧮 Computing actions and params...');
+        console.log('📊 Project data state:', {
+            isLoading: projectData.isLoading,
+            artifactsType: typeof projectData.artifacts,
+            artifactsLength: Array.isArray(projectData.artifacts) ? projectData.artifacts.length : 'N/A',
+            transformsType: typeof projectData.transforms,
+            transformsLength: Array.isArray(projectData.transforms) ? projectData.transforms.length : 'N/A'
+        });
 
         if (projectData.isLoading) {
             console.log('⏳ Project data is loading, skipping computation');
@@ -79,7 +86,8 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
         }
 
         console.log('🔄 Data changed, recomputing...');
-        const result = computeParamsAndActions(projectData);
+
+        const result = computeParamsAndActionsFromLineage(projectData);
 
         prevProjectDataRef.current = projectData;
         prevComputationResultRef.current = result;
@@ -128,7 +136,8 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
     console.log('🚀 Rendering ActionItemsSection with:', {
         currentStage,
         actionsCount: actions.length,
-        hasActiveTransforms
+        hasActiveTransforms,
+        actionDetails: actions.map((a: any) => ({ id: a.id, title: a.title, type: a.type, component: a.component?.name }))
     });
 
     return (

@@ -2,31 +2,20 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { Button, Typography, Alert, message } from 'antd';
 import { HistoryOutlined } from '@ant-design/icons';
 import { BaseActionProps } from './index';
-import { useProjectData } from '../../contexts/ProjectDataContext';
+import { ActionComponentProps } from '../../utils/lineageBasedActionComputation';
+import { apiService } from '../../services/apiService';
 
 const { Title, Text } = Typography;
 
-const ChroniclesGenerationAction: React.FC<BaseActionProps> = ({ projectId, onSuccess, onError }) => {
+// Support both old BaseActionProps and new ActionComponentProps
+type ChroniclesGenerationActionProps = BaseActionProps | ActionComponentProps;
+
+const ChroniclesGenerationAction: React.FC<ChroniclesGenerationActionProps> = (props) => {
+    const { projectId, onSuccess, onError } = props;
     const [isGenerating, setIsGenerating] = useState(false);
-    const projectData = useProjectData();
 
-    // Find the latest outline settings artifact
-    const latestOutlineSettings = useMemo(() => {
-        if (!Array.isArray(projectData.artifacts)) return null;
-
-        const outlineSettingsArtifacts = projectData.artifacts.filter((artifact: any) =>
-            artifact.schema_type === 'outline_settings_schema' || artifact.type === 'outline_settings'
-        );
-
-        if (outlineSettingsArtifacts.length === 0) return null;
-
-        // Sort by creation time and get the latest
-        outlineSettingsArtifacts.sort((a: any, b: any) =>
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
-
-        return outlineSettingsArtifacts[0];
-    }, [projectData.artifacts]);
+    // Get outline settings from props (new way) or null (old way)
+    const latestOutlineSettings = 'artifacts' in props ? props.artifacts.outlineSettings : null;
 
     // Handle chronicles generation
     const handleGenerateChronicles = useCallback(async () => {
@@ -37,25 +26,8 @@ const ChroniclesGenerationAction: React.FC<BaseActionProps> = ({ projectId, onSu
 
         setIsGenerating(true);
         try {
-            // Call the chronicles generation API via chat
-            const response = await fetch(`/api/chat/${projectId}/messages`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer debug-auth-token-script-writer-dev'
-                },
-                credentials: 'include',
-                body: JSON.stringify({
-                    content: `请基于剧本框架生成时间顺序大纲。源剧本框架ID: ${latestOutlineSettings.id}`,
-                    metadata: {}
-                })
-            });
+            await apiService.generateChroniclesFromOutline(projectId, latestOutlineSettings.id);
 
-            if (!response.ok) {
-                throw new Error(`Failed to generate chronicles: ${response.status}`);
-            }
-
-            // The response will be handled by the streaming framework
             message.success('时间顺序大纲生成已启动');
             onSuccess?.();
         } catch (error) {

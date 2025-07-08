@@ -1,6 +1,12 @@
 import React from 'react';
 import { ProjectDataContextType } from '../../common/types';
 import { SelectedBrainstormIdea } from '../stores/actionItemsStore';
+import {
+    computeActionsFromLineage,
+    type ComputedActions as LineageComputedActions,
+    type ActionItem,
+    type WorkflowStage
+} from './lineageBasedActionComputation';
 
 // Import action components
 import BrainstormCreationActions from '../components/actions/BrainstormCreationActions';
@@ -10,27 +16,8 @@ import OutlineGenerationForm from '../components/actions/OutlineGenerationForm';
 import ChroniclesGenerationAction from '../components/actions/ChroniclesGenerationAction';
 import EpisodeGenerationAction from '../components/actions/EpisodeGenerationAction';
 
-// Workflow stages
-export type WorkflowStage =
-    | 'initial'
-    | 'brainstorm_input'
-    | 'brainstorm_selection'
-    | 'idea_editing'
-    | 'outline_generation'
-    | 'chronicles_generation'
-    | 'episode_generation';
-
-// Action item definition
-export interface ActionItem {
-    id: string;
-    type: 'form' | 'button' | 'selection';
-    title: string;
-    description?: string;
-    component: React.ComponentType<any>;
-    props: Record<string, any>;
-    enabled: boolean;
-    priority: number; // For ordering (lower = higher priority)
-}
+// Re-export types from lineageBasedActionComputation for backward compatibility
+export type { WorkflowStage, ActionItem } from './lineageBasedActionComputation';
 
 // Result of action computation
 export interface ComputedActions {
@@ -64,9 +51,9 @@ export const findBrainstormInputArtifact = (artifacts: any[]) => {
 export const findBrainstormIdeaArtifacts = (artifacts: any[]) => {
     if (!Array.isArray(artifacts)) return [];
     return artifacts.filter(artifact =>
-        (artifact.schema_type === 'brainstorm_item_schema' || artifact.type === 'brainstorm_item_schema' ||
-            artifact.schema_type === 'brainstorm_idea' || artifact.type === 'brainstorm_idea') &&
-        artifact.origin_type === 'user_input'
+        artifact.schema_type === 'brainstorm_item_schema' || artifact.type === 'brainstorm_item_schema' ||
+        artifact.schema_type === 'brainstorm_idea' || artifact.type === 'brainstorm_idea' ||
+        artifact.schema_type === 'brainstorm_collection_schema' || artifact.type === 'brainstorm_collection_schema'
     );
 };
 
@@ -198,12 +185,32 @@ export const detectCurrentStage = (projectData: ProjectDataContextType): Workflo
 
         if (!outlineSettings) {
             // No outline settings yet
+
+            // Check if we have a single manually entered idea
+            const isSingleManualEntry = brainstormIdeas.length === 1 &&
+                brainstormIdeas[0].origin_type === 'user_input' &&
+                (brainstormIdeas[0].schema_type === 'brainstorm_item_schema' || brainstormIdeas[0].type === 'brainstorm_item_schema');
+
+            if (isSingleManualEntry) {
+                console.log('[detectCurrentStage] Single manual entry detected, returning idea_editing');
+                return 'idea_editing';
+            }
+
+            // Check if we have multiple AI-generated ideas
+            const hasMultipleAIIdeas = brainstormIdeas.length > 1 &&
+                brainstormIdeas.some(idea => idea.origin_type === 'ai_generated');
+
+            if (hasMultipleAIIdeas) {
+                console.log('[detectCurrentStage] Multiple AI-generated ideas detected, returning brainstorm_selection');
+                return 'brainstorm_selection';
+            }
+
+            // For other cases (single AI idea or multiple manual ideas), check if one is chosen
             if (!chosenIdea) {
-                // If we have multiple ideas or need selection, go to selection stage
-                // For manual input, we typically have just one idea and it should be chosen automatically
-                console.log('[detectCurrentStage] No outline settings, no chosen idea, returning stage based on count:', brainstormIdeas.length);
+                console.log('[detectCurrentStage] No chosen idea, returning brainstorm_selection for multiple ideas or idea_editing for single');
                 return brainstormIdeas.length > 1 ? 'brainstorm_selection' : 'idea_editing';
             }
+
             // Has chosen idea but no outline settings
             return 'idea_editing';
         }
@@ -218,14 +225,28 @@ export const detectCurrentStage = (projectData: ProjectDataContextType): Workflo
             return 'outline_generation';
         }
 
-        // Has chronicles - check if it's been used for episode generation
-        if (isLeafNode(chronicles.id, transformInputs)) {
-            // Chronicles hasn't been used yet, should generate episodes
+        // Has chronicles - check if it's been used for LLM episode generation
+        // We need to distinguish between human transforms (chronicle stage editing) 
+        // and LLM transforms (episode generation)
+        const chroniclesHasLLMTransforms = transformInputs.some(input => {
+            if (input.artifact_id === chronicles.id) {
+                const transform = (projectData.transforms === "pending" || projectData.transforms === "error")
+                    ? [] : projectData.transforms;
+                const relatedTransform = Array.isArray(transform)
+                    ? transform.find(t => t.id === input.transform_id)
+                    : null;
+                return relatedTransform?.type === 'llm';
+            }
+            return false;
+        });
+
+        if (!chroniclesHasLLMTransforms) {
+            // Chronicles hasn't been used for LLM episode generation yet, should generate episodes
             return 'chronicles_generation';
         }
 
-        // Chronicles has been used, we're in episode generation
-        return 'episode_generation';
+        // Chronicles has been used for LLM episode generation, we're in episode generation
+        return 'episode_synopsis_generation';
     }
 
     // If we only have brainstorm input but no generated ideas yet
@@ -238,7 +259,95 @@ export const detectCurrentStage = (projectData: ProjectDataContextType): Workflo
     return 'brainstorm_input';
 };
 
-// Main function to compute available actions
+/**
+ * NEW: Lineage-based action computation (preferred method)
+ * Uses lineage graph traversal for robust state detection
+ */
+export const computeParamsAndActionsFromLineage = (
+    projectData: ProjectDataContextType
+): ComputedActions => {
+    console.log('[computeParamsAndActionsFromLineage] Starting computation');
+    console.log('[computeParamsAndActionsFromLineage] Project data summary:', {
+        lineageGraph: typeof projectData.lineageGraph,
+        artifacts: Array.isArray(projectData.artifacts) ? projectData.artifacts.length : projectData.artifacts,
+        transforms: Array.isArray(projectData.transforms) ? projectData.transforms.length : projectData.transforms
+    });
+
+    // Check if any data is still loading
+    if (projectData.artifacts === "pending" ||
+        projectData.transforms === "pending" ||
+        projectData.humanTransforms === "pending" ||
+        projectData.transformInputs === "pending" ||
+        projectData.transformOutputs === "pending") {
+        console.log('[computeParamsAndActionsFromLineage] Some data still loading, returning initial state');
+        return {
+            actions: [],
+            currentStage: 'initial',
+            hasActiveTransforms: false,
+            stageDescription: '加载中...'
+        };
+    }
+
+    // If lineage graph is pending but artifacts are loaded, fall back to legacy computation
+    if (projectData.lineageGraph === "pending") {
+        console.log('[computeParamsAndActionsFromLineage] Lineage graph pending, falling back to legacy computation');
+        return computeParamsAndActions(projectData);
+    }
+
+    if (projectData.lineageGraph === "error" ||
+        projectData.artifacts === "error" ||
+        projectData.transforms === "error" ||
+        projectData.humanTransforms === "error" ||
+        projectData.transformInputs === "error" ||
+        projectData.transformOutputs === "error") {
+        return {
+            actions: [],
+            currentStage: 'initial',
+            hasActiveTransforms: false,
+            stageDescription: '加载失败'
+        };
+    }
+
+    // Use the new lineage-based computation
+    console.log('[computeParamsAndActionsFromLineage] Calling computeActionsFromLineage with:', {
+        lineageGraph: typeof projectData.lineageGraph,
+        artifacts: projectData.artifacts.length,
+        transforms: projectData.transforms.length
+    });
+
+    const lineageResult = computeActionsFromLineage(
+        projectData.lineageGraph,
+        projectData.artifacts,
+        projectData.transforms,
+        projectData.humanTransforms,
+        projectData.transformInputs,
+        projectData.transformOutputs
+    );
+
+    console.log('[computeParamsAndActionsFromLineage] Lineage result:', {
+        actionsCount: lineageResult.actions.length,
+        currentStage: lineageResult.actionContext.currentStage,
+        hasActiveTransforms: lineageResult.actionContext.hasActiveTransforms
+    });
+
+    // Convert to the expected format for backward compatibility
+    const result = {
+        actions: lineageResult.actions,
+        currentStage: lineageResult.actionContext.currentStage,
+        hasActiveTransforms: lineageResult.actionContext.hasActiveTransforms,
+        stageDescription: lineageResult.stageDescription
+    };
+
+    // If lineage-based computation failed to generate actions, fall back to legacy computation
+    if (result.actions.length === 0 && result.currentStage === 'initial') {
+        console.log('[computeParamsAndActionsFromLineage] Lineage computation returned empty, falling back to legacy');
+        return computeParamsAndActions(projectData);
+    }
+
+    return result;
+};
+
+// LEGACY: Original artifact-based computation (for backward compatibility)
 export const computeParamsAndActions = (
     projectData: ProjectDataContextType,
     selectedBrainstormIdea?: SelectedBrainstormIdea | null
@@ -340,7 +449,7 @@ export const computeParamsAndActions = (
         case 'chronicles_generation':
             stageDescription = '生成分集概要';
             actions.push({
-                id: 'episode_generation',
+                id: 'episode_synopsis_generation',
                 type: 'button',
                 title: '生成剧本',
                 description: '基于分集概要生成具体剧本',
@@ -351,7 +460,7 @@ export const computeParamsAndActions = (
             });
             break;
 
-        case 'episode_generation':
+        case 'episode_synopsis_generation':
             stageDescription = '生成剧本内容';
             // No more actions at this stage
             break;

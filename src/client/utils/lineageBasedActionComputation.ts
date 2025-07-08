@@ -172,13 +172,6 @@ function buildActionContextFromLineage(
         transformOutputs
     );
 
-    console.log('[buildActionContextFromLineage] Debug effective brainstorm ideas extraction:', {
-        inputArtifactsCount: artifacts.length,
-        inputArtifacts: artifacts.map(a => ({ id: a.id.substring(0, 8), type: a.type, schema_type: a.schema_type, origin_type: a.origin_type })),
-        outputEffectiveIdeasCount: effectiveBrainstormIdeas.length,
-        outputEffectiveIdeas: effectiveBrainstormIdeas.map(idea => ({ artifactId: idea.artifactId.substring(0, 8), artifactPath: idea.artifactPath, isFromCollection: idea.isFromCollection }))
-    });
-
     const workflowNodes = findMainWorkflowPath(artifacts, lineageGraph);
     console.log('[buildActionContextFromLineage] Found workflow nodes:', {
         count: workflowNodes.length,
@@ -190,7 +183,6 @@ function buildActionContextFromLineage(
 
     // For single ideas in idea_editing stage, automatically treat the single idea as chosen
     if (!chosenBrainstormIdea && effectiveBrainstormIdeas.length === 1) {
-        console.log('[buildActionContextFromLineage] Auto-choosing single effective brainstorm idea');
         chosenBrainstormIdea = effectiveBrainstormIdeas[0];
     }
 

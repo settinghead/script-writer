@@ -439,11 +439,11 @@ export function validateArtifactData(type: string, typeVersion: string, data: an
             return isOutlineSynopsisStagesV1(data);
         case 'outline_synopsis_stage:v1':
             return isOutlineSynopsisStageV1(data);
-        case 'episode_generation_session:v1':
+        case 'episode_synopsis_generation_session:v1':
             return isEpisodeGenerationSessionV1(data);
         case 'episode_synopsis:v1':
             return isEpisodeSynopsisV1(data);
-        case 'episode_generation_params:v1':
+        case 'episode_synopsis_generation_params:v1':
             return isEpisodeGenerationParamsV1(data);
         case 'script_generation_job_params:v1':
             return isScriptGenerationJobParamsV1(data);

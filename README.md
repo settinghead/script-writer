@@ -109,28 +109,124 @@ UI Update: Real-time display with edit indicators
 
 ### 🎯 Script Writing Workflow
 
-觅光助创 implements a sophisticated linear workflow system specifically designed for Chinese short drama creation, with intelligent action management that guides users through the complete script development process.
+觅光助创 implements a sophisticated dual-path workflow system specifically designed for Chinese short drama creation, with intelligent action management that guides users through the complete script development process.
 
-**Script Writing Stages**:
-1. **灵感生成 (Brainstorm)** - Generate initial story concepts with platform-specific optimization
-2. **创意选择 (Idea Selection)** - Select and refine the most promising story idea
-3. **剧本框架 (Outline Settings)** - Develop characters, setting, and commercial elements
-4. **时间顺序大纲 (Chronicles)** - Create chronological story progression
+## Dual-Path Workflow System
+
+The application supports two distinct paths for script creation, each optimized for different creative approaches:
+
+### Path 1: Manual Entry Path (手动输入路径)
+**User Flow**: Manual idea entry → Edit → Generate outline settings → Generate chronicles → Generate episodes → Generate scripts
+
+**Stages**:
+1. **手动创意输入 (Manual Idea Entry)** - User manually enters a single story concept
+2. **创意编辑 (Idea Editing)** - Refine and develop the manually entered idea
+3. **剧本框架生成 (Outline Settings Generation)** - Generate characters, setting, and commercial elements
+4. **时间顺序大纲生成 (Chronicles Generation)** - Create chronological story progression
 5. **分集规划 (Episode Planning)** - Break story into episode structure
 6. **剧本创作 (Script Writing)** - Generate detailed scripts with dialogue
 
-**Workflow Features**:
-- **Linear Progression** - Each stage builds on previous work with intelligent dependency tracking
-- **Smart Actions** - Bottom action panel shows only relevant next steps based on current progress
-- **Persistent State** - Form data and selections automatically saved across sessions
-- **Visual Feedback** - Clear indicators of current stage and completion status
-- **Flexible Editing** - Main content area dedicated to editing and viewing, actions separated to bottom panel
+**Key Features**:
+- **Direct Control** - Users have full control over the initial story concept
+- **Immediate Editing** - Single ideas automatically proceed to editing stage
+- **Streamlined Flow** - No selection step required, faster progression
 
-**Chinese Drama Specialization**:
-- **Platform Optimization** - Tailored for 抖音, 快手, 小红书 content requirements
-- **去脸谱化 Content** - Built-in emphasis on modern, non-stereotypical characters and plots
-- **Genre Templates** - Specialized prompts for 现代甜宠, 古装甜宠, 复仇爽文, 霸总文
-- **Commercial Elements** - Integrated 卖点 (selling points) and 爽点 (satisfaction points) tracking
+### Path 2: AI Brainstorm Path (AI头脑风暴路径)
+**User Flow**: Brainstorm input → AI generates multiple ideas → Select best idea → Edit → Generate outline settings → Generate chronicles → Generate episodes → Generate scripts
+
+**Stages**:
+1. **头脑风暴输入 (Brainstorm Input)** - User provides creative brief and requirements
+2. **AI创意生成 (AI Idea Generation)** - AI generates multiple story concepts based on input
+3. **创意选择 (Idea Selection)** - User selects the most promising idea from AI-generated options
+4. **创意编辑 (Idea Editing)** - Refine and develop the selected idea
+5. **剧本框架生成 (Outline Settings Generation)** - Generate characters, setting, and commercial elements
+6. **时间顺序大纲生成 (Chronicles Generation)** - Create chronological story progression
+7. **分集规划 (Episode Planning)** - Break story into episode structure
+8. **剧本创作 (Script Writing)** - Generate detailed scripts with dialogue
+
+**Key Features**:
+- **AI-Powered Ideation** - Multiple creative options generated automatically
+- **Choice and Comparison** - Users can compare different story directions
+- **Platform-Specific Optimization** - AI considers platform requirements (抖音, 快手, 小红书)
+
+## Advanced Action Computation System
+
+觅光助创 uses a sophisticated dual-computation system for intelligent workflow management:
+
+### Lineage-Based Action Computation (Primary)
+**Modern Approach**: Uses artifact lineage graphs to determine current workflow state and available actions.
+
+**Key Features**:
+- **Artifact Lineage Analysis** - Traces relationships between all project artifacts
+- **Workflow Node Detection** - Automatically identifies current position in workflow
+- **Smart Path Resolution** - Finds the main workflow path through complex artifact relationships
+- **Auto-Selection Logic** - Automatically treats single effective ideas as "chosen" for streamlined progression
+
+**Technical Implementation**:
+```typescript
+// Lineage-based computation flow
+const lineageGraph = buildLineageGraph(artifacts, transforms, ...);
+const workflowNodes = findMainWorkflowPath(artifacts, lineageGraph);
+const currentStage = detectStageFromWorkflowNodes(workflowNodes);
+const actions = computeActionsFromLineage(currentStage, context);
+```
+
+### Legacy Action Computation (Fallback)
+**Fallback System**: Traditional artifact-based computation used when lineage graph is unavailable.
+
+**Key Features**:
+- **Artifact Type Detection** - Analyzes artifact types to determine workflow stage
+- **Stage Detection Logic** - Uses rule-based logic to identify current stage
+- **Robust Fallback** - Ensures system continues working during lineage computation delays
+- **Backward Compatibility** - Maintains compatibility with existing project data
+
+**Automatic Fallback Logic**:
+```typescript
+// Fallback mechanism
+if (projectData.lineageGraph === "pending") {
+    console.log('[computeParamsAndActionsFromLineage] Lineage graph pending, falling back to legacy computation');
+    return computeParamsAndActions(projectData);
+}
+```
+
+### Workflow Stage Detection
+
+**Supported Stages**:
+- `initial` - Empty project, show creation options
+- `brainstorm_input` - Brainstorm input created, ready for AI generation
+- `brainstorm_selection` - Multiple AI ideas generated, user must select one
+- `idea_editing` - Single idea available (manual or selected), ready for editing
+- `outline_generation` - Idea finalized, ready for outline settings generation
+- `chronicles_generation` - Outline settings complete, ready for chronicles
+- `episode_generation` - Chronicles complete, ready for episode planning
+
+**Smart Action Generation**:
+- **Context-Aware Actions** - Only shows relevant next steps based on current stage
+- **Prerequisite Validation** - Ensures all required artifacts exist before enabling actions
+- **Active Transform Handling** - Disables actions during streaming/processing states
+- **Priority Ordering** - Actions displayed in logical workflow order
+
+**Dual-Path Support**:
+- **Manual Entry Detection** - Automatically identifies single `brainstorm_item_schema` with `user_input` origin
+- **AI Collection Handling** - Recognizes `brainstorm_collection_schema` from AI generation
+- **Workflow Node Mapping** - Creates appropriate workflow nodes for each path type
+- **Stage Progression Logic** - Handles different progression patterns for each path
+
+### Error Handling and Resilience
+
+**Robust Computation**:
+- **Graceful Degradation** - Falls back to legacy computation when lineage analysis fails
+- **Data Validation** - Validates artifact structure before processing
+- **Edge Case Handling** - Handles malformed data, missing artifacts, and concurrent edits
+- **Debug Logging** - Comprehensive logging for troubleshooting workflow issues
+
+**Production Reliability**:
+- **Comprehensive Testing** - 30+ test scenarios covering all workflow combinations
+- **Real-World Data Patterns** - Tests based on actual production database patterns
+- **Performance Optimization** - Efficient computation with minimal database queries
+- **Consistent User Experience** - Seamless switching between computation methods
+
+This dual-computation system ensures that users always see the correct workflow actions regardless of system state, while providing the most advanced lineage-based computation when available.
 
 ### 📊 Content Management
 

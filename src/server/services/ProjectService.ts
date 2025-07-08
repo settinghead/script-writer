@@ -48,7 +48,7 @@ export class ProjectService {
                     const artifactCounts = {
                         ideations: artifacts.filter(a => a.type === 'ideation_session').length,
                         outlines: artifacts.filter(a => a.type === 'outline_session').length,
-                        episodes: artifacts.filter(a => a.type === 'episode_generation_session').length,
+                        episodes: artifacts.filter(a => a.type === 'episode_synopsis_generation_session').length,
                         scripts: artifacts.filter(a => a.type === 'episode_script').length,
                     };
 

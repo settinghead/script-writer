@@ -992,15 +992,17 @@ export function findEffectiveBrainstormIdeas(
 
             const artifact = artifactMap.get((node as LineageNodeArtifact).artifactId);
             const isBrainstormType = artifact && (
-                artifact.schema_type === 'brainstorm_idea_schema' || artifact.schema_type === 'brainstorm_collection_schema' ||
-                artifact.type === 'brainstorm_idea' || artifact.type === 'brainstorm_idea_collection'
+                artifact.schema_type === 'brainstorm_idea_schema' || artifact.schema_type === 'brainstorm_collection_schema' || artifact.schema_type === 'brainstorm_item_schema' ||
+                artifact.type === 'brainstorm_idea' || artifact.type === 'brainstorm_idea_collection' || artifact.type === 'brainstorm_item_schema'
             );
 
             // Include all brainstorm types regardless of leaf status
             // - brainstorm_idea: only if leaf (final versions)
+            // - brainstorm_item_schema: only if leaf (manually entered ideas)
             // - brainstorm_idea_collection: always (may have unconsumed ideas)
             const shouldInclude = isBrainstormType && (
                 ((artifact.schema_type === 'brainstorm_idea_schema' || artifact.type === 'brainstorm_idea') && node.isLeaf) ||
+                ((artifact.schema_type === 'brainstorm_item_schema' || artifact.type === 'brainstorm_item_schema') && node.isLeaf) ||
                 (artifact.schema_type === 'brainstorm_collection_schema' || artifact.type === 'brainstorm_idea_collection')
             );
 
@@ -1021,7 +1023,8 @@ export function findEffectiveBrainstormIdeas(
             const collectionIdeas = extractCollectionIdeas(artifact, consumedPaths);
             results.push(...collectionIdeas);
 
-        } else if (artifact.schema_type === 'brainstorm_idea_schema' || artifact.type === 'brainstorm_idea') {
+        } else if (artifact.schema_type === 'brainstorm_idea_schema' || artifact.type === 'brainstorm_idea' ||
+            artifact.schema_type === 'brainstorm_item_schema' || artifact.type === 'brainstorm_item_schema') {
             // Step 2b: Standalone idea leaf - check if it originated from a collection
             const originInfo = traceToCollectionOrigin(artifactId, graph, artifactMap);
 
@@ -1195,7 +1198,7 @@ export interface IdeaWithTitle {
 
 export interface WorkflowNode {
     id: string;
-    type: 'brainstorm_collection' | 'brainstorm_idea' | 'outline' | 'episode' | 'script';
+    type: 'brainstorm_collection' | 'brainstorm_idea' | 'outline' | 'chronicles' | 'episode' | 'script';
     title: string;
     artifactId: string;
     position: { x: number; y: number };
@@ -1300,12 +1303,19 @@ export function findMainWorkflowPath(
 ): WorkflowNode[] {
     const workflowNodes: WorkflowNode[] = [];
 
+    console.log('[findMainWorkflowPath] Starting with artifacts:', {
+        artifactCount: artifacts.length,
+        artifactTypes: artifacts.map(a => ({ id: a.id, type: a.type, schemaType: a.schema_type }))
+    });
+
     try {
         // Step 1: Find the main outline (only one allowed per project)
         const outlineArtifacts = artifacts.filter(a =>
             a.schema_type === 'outline_schema' ||
+            a.schema_type === 'outline_settings_schema' ||
             a.type === 'outline_response' ||
-            a.type === 'outline'
+            a.type === 'outline' ||
+            a.type === 'outline_settings'
         );
 
         // Sort by creation date to get the latest/main outline
@@ -1314,14 +1324,21 @@ export function findMainWorkflowPath(
 
         if (!mainOutline) {
             // No outline yet - show brainstorm collection(s) only
+            console.log('[findMainWorkflowPath] No outline found, creating brainstorm-only workflow');
             return createBrainstormOnlyWorkflow(artifacts);
         }
 
+        console.log('[findMainWorkflowPath] Found main outline:', { id: mainOutline.id, type: mainOutline.type, schemaType: mainOutline.schema_type });
+
         // Step 2: Trace back from outline to find the main path
         const mainPath = traceMainPathFromOutline(mainOutline, graph, artifacts);
+        console.log('[findMainWorkflowPath] Main path artifacts:', mainPath.map(a => ({ id: a.id, type: a.type, schemaType: a.schema_type })));
 
         // Step 3: Convert artifacts to workflow nodes
-        return createWorkflowNodes(mainPath);
+        const workflowNodes = createWorkflowNodes(mainPath);
+        console.log('[findMainWorkflowPath] Created workflow nodes:', workflowNodes.map(n => ({ id: n.id, type: n.type, title: n.title })));
+
+        return workflowNodes;
 
     } catch (error) {
         console.error('[findMainWorkflowPath] Error:', error);
@@ -1336,7 +1353,9 @@ export function findMainWorkflowPath(
 function createBrainstormOnlyWorkflow(artifacts: ElectricArtifact[]): WorkflowNode[] {
     const brainstormCollections = artifacts.filter(a =>
         a.schema_type === 'brainstorm_collection_schema' ||
-        a.type === 'brainstorm_idea_collection'
+        a.schema_type === 'brainstorm_item_schema' ||
+        a.type === 'brainstorm_idea_collection' ||
+        a.type === 'brainstorm_item_schema'
     );
 
     if (brainstormCollections.length === 0) {
@@ -1347,15 +1366,34 @@ function createBrainstormOnlyWorkflow(artifacts: ElectricArtifact[]): WorkflowNo
     const latestCollection = brainstormCollections
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
 
+    // Determine workflow node type based on artifact type
+    // For manually entered single ideas (brainstorm_item_schema), create brainstorm_idea node
+    // For AI-generated collections (brainstorm_collection_schema), create brainstorm_collection node
+    let nodeType: WorkflowNode['type'];
+    let title: string;
+    let navigationTarget: string;
+
+    if (latestCollection.schema_type === 'brainstorm_item_schema' && latestCollection.origin_type === 'user_input') {
+        // Single manually entered idea
+        nodeType = 'brainstorm_idea';
+        title = '选中创意';
+        navigationTarget = '#ideation-edit';
+    } else {
+        // AI-generated collection or other types
+        nodeType = 'brainstorm_collection';
+        title = '创意构思';
+        navigationTarget = '#brainstorm-ideas';
+    }
+
     return [{
         id: `workflow-node-${latestCollection.id}`,
-        type: 'brainstorm_collection',
-        title: '创意构思',
+        type: nodeType,
+        title: title,
         artifactId: latestCollection.id,
         position: { x: 90, y: 50 },
         isMain: true,
         isActive: true,
-        navigationTarget: '#brainstorm-ideas',
+        navigationTarget: navigationTarget,
         createdAt: latestCollection.created_at,
         status: latestCollection.streaming_status === 'streaming' ? 'processing' : 'completed',
         schemaType: latestCollection.schema_type // NEW: Include schema_type for display
@@ -1378,7 +1416,7 @@ function traceMainPathFromOutline(
         return path;
     }
 
-    // Trace back through source transforms
+    // Step 1: Trace back through source transforms to find earlier artifacts
     let currentNode = outlineNode as LineageNodeArtifact;
     const visited = new Set<string>([outlineArtifact.id]);
 
@@ -1406,7 +1444,80 @@ function traceMainPathFromOutline(
         }
     }
 
+    // Step 2: Trace forward from outline to find later artifacts (like chronicles)
+    console.log('[traceMainPathFromOutline] Tracing forward from outline:', outlineArtifact.id);
+    const forwardPath = traceForwardFromArtifact(outlineArtifact, graph, artifacts, visited);
+    console.log('[traceMainPathFromOutline] Forward path found:', forwardPath.map(a => ({ id: a.id, type: a.type, schemaType: a.schema_type })));
+    path.push(...forwardPath);
+
     return path;
+}
+
+/**
+ * Trace forward from an artifact to find artifacts that were created from it
+ */
+function traceForwardFromArtifact(
+    sourceArtifact: ElectricArtifact,
+    graph: LineageGraph,
+    artifacts: ElectricArtifact[],
+    visited: Set<string>
+): ElectricArtifact[] {
+    const forwardPath: ElectricArtifact[] = [];
+    const edges = graph.edges.get(sourceArtifact.id);
+
+    console.log('[traceForwardFromArtifact] Checking edges for artifact:', {
+        artifactId: sourceArtifact.id,
+        artifactType: sourceArtifact.type,
+        hasEdges: !!edges,
+        edgeCount: edges?.length || 0,
+        edges: edges || []
+    });
+
+    if (!edges || edges.length === 0) {
+        return forwardPath;
+    }
+
+    // Find the most relevant next artifact (usually the latest one)
+    // Only follow main workflow artifacts, not individual edits
+    for (const nextArtifactId of edges) {
+        if (visited.has(nextArtifactId)) {
+            continue; // Avoid cycles
+        }
+
+        const nextArtifact = artifacts.find(a => a.id === nextArtifactId);
+        if (nextArtifact) {
+            // Only include main workflow artifacts, not individual stage edits
+            const isMainWorkflowArtifact =
+                nextArtifact.schema_type === 'brainstorm_collection_schema' ||
+                nextArtifact.schema_type === 'brainstorm_item_schema' ||
+                nextArtifact.schema_type === 'brainstorm_idea_schema' ||
+                nextArtifact.schema_type === 'outline_schema' ||
+                nextArtifact.schema_type === 'outline_settings_schema' ||
+                nextArtifact.schema_type === 'chronicles_schema' ||
+                nextArtifact.schema_type === 'episode_synopsis_schema';
+
+            console.log('[traceForwardFromArtifact] Evaluating next artifact:', {
+                artifactId: nextArtifactId,
+                artifactType: nextArtifact.type,
+                schemaType: nextArtifact.schema_type,
+                isMainWorkflowArtifact
+            });
+
+            if (isMainWorkflowArtifact) {
+                forwardPath.push(nextArtifact);
+                visited.add(nextArtifactId);
+
+                // Recursively trace forward from this artifact
+                const furtherPath = traceForwardFromArtifact(nextArtifact, graph, artifacts, visited);
+                forwardPath.push(...furtherPath);
+
+                // For now, only follow the first path to avoid complexity
+                break;
+            }
+        }
+    }
+
+    return forwardPath;
 }
 
 /**
@@ -1441,11 +1552,15 @@ function createWorkflowNodeFromArtifact(
     let navigationTarget: string;
 
     // Determine node type and properties based on artifact
-    if (artifact.schema_type === 'brainstorm_collection_schema' || artifact.type === 'brainstorm_idea_collection') {
+    if (artifact.schema_type === 'brainstorm_collection_schema' ||
+        artifact.type === 'brainstorm_idea_collection') {
         nodeType = 'brainstorm_collection';
         title = '创意构思';
         navigationTarget = '#brainstorm-ideas';
-    } else if (artifact.schema_type === 'brainstorm_idea_schema' || artifact.type === 'brainstorm_idea') {
+    } else if (artifact.schema_type === 'brainstorm_item_schema' ||
+        artifact.type === 'brainstorm_item_schema' ||
+        artifact.schema_type === 'brainstorm_idea_schema' ||
+        artifact.type === 'brainstorm_idea') {
         nodeType = 'brainstorm_idea';
 
         // Try to extract title from data
@@ -1457,7 +1572,11 @@ function createWorkflowNodeFromArtifact(
         }
 
         navigationTarget = '#selected-idea';
-    } else if (artifact.schema_type === 'outline_schema' || artifact.type === 'outline_response' || artifact.type === 'outline') {
+    } else if (artifact.schema_type === 'outline_schema' ||
+        artifact.schema_type === 'outline_settings_schema' ||
+        artifact.type === 'outline_response' ||
+        artifact.type === 'outline' ||
+        artifact.type === 'outline_settings') {
         nodeType = 'outline';
 
         // Try to extract title from outline data
@@ -1469,6 +1588,10 @@ function createWorkflowNodeFromArtifact(
         }
 
         navigationTarget = '#story-outline';
+    } else if (artifact.schema_type === 'chronicles_schema' || artifact.type === 'chronicles') {
+        nodeType = 'chronicles';
+        title = '分集概要';
+        navigationTarget = '#chronicles';
     } else {
         // Unknown artifact type
         return null;

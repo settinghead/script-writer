@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Button, Typography, message, Space } from 'antd';
 import { BulbOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { BaseActionProps } from './index';
-import { useProjectData } from '../../contexts/ProjectDataContext';
+import { ActionComponentProps } from '../../utils/lineageBasedActionComputation';
+import { apiService } from '../../services/apiService';
 
 const { Title } = Typography;
 
@@ -10,18 +11,22 @@ interface BrainstormInputFormProps extends BaseActionProps {
     brainstormArtifact: any;
 }
 
-const BrainstormInputForm: React.FC<BrainstormInputFormProps> = ({
-    projectId,
-    brainstormArtifact,
-    onSuccess,
-    onError
-}) => {
+// Support both old props and new ActionComponentProps
+type BrainstormInputFormPropsUnion = BrainstormInputFormProps | (ActionComponentProps & { brainstormArtifact?: any });
+
+const BrainstormInputForm: React.FC<BrainstormInputFormPropsUnion> = (props) => {
+    const { projectId, onSuccess, onError } = props;
+
+    // Get brainstormArtifact from either old props or new artifacts structure
+    const brainstormArtifact = 'brainstormArtifact' in props
+        ? props.brainstormArtifact
+        : ('artifacts' in props ? props.artifacts.brainstormInput : null);
+
     const [isStarting, setIsStarting] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
-    const projectData = useProjectData();
 
     const handleStartBrainstorm = async () => {
-        if (isStarting) return;
+        if (isStarting || !brainstormArtifact) return;
 
         try {
             // Get current artifact data
@@ -49,23 +54,13 @@ const BrainstormInputForm: React.FC<BrainstormInputFormProps> = ({
 
             setIsStarting(true);
 
-            // Trigger brainstorm agent
-            const response = await fetch(`/api/projects/${projectId}/agent`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer debug-auth-token-script-writer-dev'
-                },
-                body: JSON.stringify({
-                    userRequest: `基于artifact ID ${brainstormArtifact?.id} 的头脑风暴参数，生成${currentData.numberOfIdeas || 3}个创意想法。平台：${currentData.platform}，类型：${currentData.genre}${currentData.other_requirements ? `，其他要求：${currentData.other_requirements}` : ''}`,
-                    projectId: projectId
-                })
-            });
+            // Use apiService to send chat message
+            const userRequest = `基于artifact ID ${brainstormArtifact.id} 的头脑风暴参数，生成${currentData.numberOfIdeas || 3}个创意想法。平台：${currentData.platform}，类型：${currentData.genre}${currentData.other_requirements ? `，其他要求：${currentData.other_requirements}` : ''}`;
 
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || 'Failed to start brainstorm');
-            }
+            await apiService.sendChatMessage(projectId, userRequest, {
+                action: 'start_brainstorm',
+                artifactId: brainstormArtifact.id
+            });
 
             message.success('头脑风暴已开始！请查看聊天面板了解进度。');
             onSuccess?.();
@@ -80,23 +75,13 @@ const BrainstormInputForm: React.FC<BrainstormInputFormProps> = ({
     };
 
     const handleGoBack = async () => {
-        if (isDeleting) return;
+        if (isDeleting || !brainstormArtifact) return;
 
         try {
             setIsDeleting(true);
 
-            // Delete the brainstorm input artifact
-            const response = await fetch(`/api/artifacts/${brainstormArtifact.id}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': 'Bearer debug-auth-token-script-writer-dev'
-                }
-            });
-
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || 'Failed to delete brainstorm input');
-            }
+            // Use apiService to delete the brainstorm input artifact
+            await apiService.deleteBrainstormInput(brainstormArtifact.id);
 
             onSuccess?.(); // This will trigger a re-render and return to initial state
         } catch (error) {

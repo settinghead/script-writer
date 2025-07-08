@@ -51,6 +51,7 @@ const ProjectContentRenderer: React.FC<{ projectId: string }> = ({ projectId }) 
 
         // Look for brainstorm collections or brainstorm ideas
         const collections = projectData.getBrainstormCollections();
+
         return collections.length > 0;
     }, [projectData.artifacts, projectData.getBrainstormCollections]);
 
