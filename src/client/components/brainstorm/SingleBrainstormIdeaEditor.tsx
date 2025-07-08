@@ -136,17 +136,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                                 </Text>
                             </div>
                         </div>
-                        {onViewOriginalIdeas && (
-                            <Button
-                                type="text"
-                                size="small"
-                                icon={<EyeOutlined />}
-                                onClick={onViewOriginalIdeas}
-                                style={{ color: '#1890ff' }}
-                            >
-                                查看所有创意
-                            </Button>
-                        )}
+
                     </div>
 
                     {/* Show preview data */}
@@ -219,17 +209,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                                 </div>
                             </div>
 
-                            {onViewOriginalIdeas && (
-                                <Button
-                                    type="text"
-                                    icon={<EyeOutlined />}
-                                    onClick={onViewOriginalIdeas}
-                                    style={{ color: '#1890ff' }}
-                                    disabled={isCreatingHumanTransform}
-                                >
-                                    查看所有创意
-                                </Button>
-                            )}
+
                         </div>
                     </div>
 

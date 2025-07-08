@@ -94,7 +94,7 @@ const OutlineGenerationForm: React.FC<BaseActionProps> = ({ projectId, onSuccess
     // Show loading state while chosen idea is loading
     if (chosenIdeaLoading) {
         return (
-            <div style={{ textAlign: 'center', padding: '24px' }}>
+            <div style={{ textAlign: 'center', }}>
                 <Text type="secondary">加载选中的创意...</Text>
             </div>
         );
@@ -103,8 +103,8 @@ const OutlineGenerationForm: React.FC<BaseActionProps> = ({ projectId, onSuccess
     // Show error if no chosen idea found
     if (!chosenIdea || !sourceArtifactId) {
         return (
-            <div style={{ textAlign: 'center', padding: '24px' }}>
-                <Text type="secondary">请先选择一个创意</Text>
+            <div style={{ textAlign: 'center', }}>
+                <Text type="secondary">Nothing to do</Text>
             </div>
         );
     }
@@ -125,7 +125,7 @@ const OutlineGenerationForm: React.FC<BaseActionProps> = ({ projectId, onSuccess
                     height: '40px'
                 }}
             >
-                {isGenerating ? '生成中...' : '生成大纲框架'}
+                {isGenerating ? '生成中...' : '生成剧本框架'}
             </Button>
         </div>
     );
