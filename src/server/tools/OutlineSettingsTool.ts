@@ -71,8 +71,12 @@ export function createOutlineSettingsToolDefinition(
 
             // Extract source content - flexible approach that works with any artifact
             console.log(`[OutlineSettingsTool] Processing artifact type: ${sourceArtifact.type}, schema_type: ${sourceArtifact.schema_type}`);
-            console.log(`[OutlineSettingsTool] Source artifact data:`, JSON.stringify(sourceArtifact.data, null, 2));
-            console.log(`[OutlineSettingsTool] Source artifact metadata:`, JSON.stringify(sourceArtifact.metadata, null, 2));
+            console.log(`[OutlineSettingsTool] Source artifact data:`, typeof sourceArtifact.data === 'object' ?
+                `{${Object.keys(sourceArtifact.data || {}).join(', ')}} (${JSON.stringify(sourceArtifact.data).length} chars)` :
+                sourceArtifact.data);
+            console.log(`[OutlineSettingsTool] Source artifact metadata:`, typeof sourceArtifact.metadata === 'object' ?
+                `{${Object.keys(sourceArtifact.metadata || {}).join(', ')}} (${JSON.stringify(sourceArtifact.metadata).length} chars)` :
+                sourceArtifact.metadata);
 
             // Create a comprehensive source content by combining all available information
             let sourceContent = '';
@@ -128,7 +132,14 @@ export function createOutlineSettingsToolDefinition(
                         requirements: input.requirements || '无特殊要求'
                     };
 
-                    console.log(`[OutlineSettingsTool] Prepared template variables:`, JSON.stringify(templateVars, null, 2));
+                    console.log(`[OutlineSettingsTool] Prepared template variables:`, {
+                        userInput: `${templateVars.userInput.substring(0, 200)}... (${templateVars.userInput.length} chars total)`,
+                        totalEpisodes: templateVars.totalEpisodes,
+                        episodeInfo: templateVars.episodeInfo,
+                        platform: templateVars.platform,
+                        genre: templateVars.genre,
+                        requirements: templateVars.requirements
+                    });
                     return templateVars;
                 },
                 // Extract source artifact for proper lineage
