@@ -1487,4 +1487,54 @@ function createWorkflowNodeFromArtifact(
         status: artifact.streaming_status === 'streaming' ? 'processing' : 'completed',
         schemaType: artifact.schema_type // NEW: Include schema_type for display
     };
+}
+
+/**
+ * Find parent artifacts of a specific schema type by traversing the lineage graph backwards
+ */
+export function findParentArtifactsBySchemaType(
+    sourceArtifactId: string,
+    targetSchemaType: string,
+    graph: LineageGraph,
+    artifacts: ElectricArtifact[]
+): ElectricArtifact[] {
+    const results: ElectricArtifact[] = [];
+    const artifactMap = new Map(artifacts.map(a => [a.id, a]));
+    const visited = new Set<string>();
+
+    function traverseBackwards(artifactId: string) {
+        if (visited.has(artifactId)) {
+            return;
+        }
+        visited.add(artifactId);
+
+        const node = graph.nodes.get(artifactId);
+        if (!node || node.type !== 'artifact') {
+            return;
+        }
+
+        const artifact = artifactMap.get(artifactId);
+        if (!artifact) {
+            return;
+        }
+
+        // Check if this artifact matches the target schema type
+        if (artifact.schema_type === targetSchemaType) {
+            results.push(artifact);
+        }
+
+        // Traverse backwards through source transforms
+        const artifactNode = node as LineageNodeArtifact;
+        if (artifactNode.sourceTransform !== 'none') {
+            const sourceTransform = artifactNode.sourceTransform;
+
+            // Recursively check all source artifacts
+            for (const sourceArtifact of sourceTransform.sourceArtifacts) {
+                traverseBackwards(sourceArtifact.artifactId);
+            }
+        }
+    }
+
+    traverseBackwards(sourceArtifactId);
+    return results;
 } 

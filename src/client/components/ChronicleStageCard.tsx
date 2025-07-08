@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { Card, Typography, Space, Tag, List, Collapse, Button, message, Form, Input, Select } from 'antd';
 import { HeartOutlined, TeamOutlined, BulbOutlined, ClockCircleOutlined, ThunderboltOutlined, EditOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { ChroniclesStage } from '../../common/schemas/outlineSchemas';
-import { useLineageResolution } from '../transform-artifact-framework/useLineageResolution';
+import { useLineageResolution, useCharactersFromLineage } from '../transform-artifact-framework/useLineageResolution';
 import { useProjectData } from '../contexts/ProjectDataContext';
 import { EditableText, EditableArray } from './shared/EditableText';
 
@@ -298,36 +298,8 @@ export const ChronicleStageCard: React.FC<ChronicleStageCardProps> = ({
         });
     }, [chroniclesArtifactId, stagePath, stageIndex, isCreatingTransform, isEditable, projectData.createHumanTransform]);
 
-    // Extract available characters from project data
-    const availableCharacters = useMemo(() => {
-        if (projectData.artifacts === "pending" || projectData.artifacts === "error") {
-            return [];
-        }
-
-        // Look for outline artifacts to extract character names
-        const outlineArtifacts = projectData.artifacts.filter(a =>
-            a.schema_type === 'outline_schema' || a.schema_type === 'outline_input_schema'
-        );
-
-        const characters: string[] = [];
-
-        outlineArtifacts.forEach(artifact => {
-            try {
-                const data = typeof artifact.data === 'string' ? JSON.parse(artifact.data) : artifact.data;
-                if (data.characters && Array.isArray(data.characters)) {
-                    data.characters.forEach((char: any) => {
-                        if (char.name && !characters.includes(char.name)) {
-                            characters.push(char.name);
-                        }
-                    });
-                }
-            } catch (error) {
-                // Ignore parsing errors
-            }
-        });
-
-        return characters;
-    }, [projectData.artifacts]);
+    // Extract available characters from lineage graph
+    const { characters: availableCharacters } = useCharactersFromLineage(chroniclesArtifactId);
 
     // Handle saving individual fields
     const handleSave = useCallback(async (path: string, newValue: any) => {

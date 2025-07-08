@@ -5,6 +5,7 @@ import {
     extractEffectiveBrainstormIdeas,
     convertEffectiveIdeasToIdeaWithTitle,
     findMainWorkflowPath,
+    findParentArtifactsBySchemaType,
     type LineageNode,
     type LineageResolutionResult,
     type EffectiveBrainstormIdea,
@@ -269,6 +270,97 @@ export function useProjectInitialMode(): {
 
     return {
         isInitialMode,
+        isLoading: projectData.isLoading,
+        error: projectData.error || error
+    };
+}
+
+/**
+ * Hook to find characters from outline artifacts in the lineage graph
+ * This searches backwards from the given artifact to find outline artifacts and extract character data
+ */
+export function useCharactersFromLineage(sourceArtifactId: string | null): {
+    characters: string[];
+    isLoading: boolean;
+    error: Error | null;
+} {
+    const projectData = useProjectData();
+    const [error, setError] = useState<Error | null>(null);
+
+    const characters = useMemo((): string[] => {
+        if (!sourceArtifactId || !projectData.lineageGraph) {
+            return [];
+        }
+
+        try {
+            setError(null);
+
+            if (projectData.lineageGraph === "pending" || projectData.artifacts === "pending") {
+                return [];
+            }
+
+            if (projectData.lineageGraph === "error" || projectData.artifacts === "error") {
+                return [];
+            }
+
+            // Find parent outline artifacts using lineage graph
+            const outlineArtifacts = findParentArtifactsBySchemaType(
+                sourceArtifactId,
+                'outline_schema',
+                projectData.lineageGraph,
+                projectData.artifacts
+            );
+
+            // Also check for outline_input_schema (human-transformed outlines)
+            const outlineInputArtifacts = findParentArtifactsBySchemaType(
+                sourceArtifactId,
+                'outline_input_schema',
+                projectData.lineageGraph,
+                projectData.artifacts
+            );
+
+            // Also check for outline_settings_schema (outline settings)
+            const outlineSettingsArtifacts = findParentArtifactsBySchemaType(
+                sourceArtifactId,
+                'outline_settings_schema',
+                projectData.lineageGraph,
+                projectData.artifacts
+            );
+
+            // Combine all types of outline artifacts
+            const allOutlineArtifacts = [...outlineArtifacts, ...outlineInputArtifacts, ...outlineSettingsArtifacts];
+
+            // Extract character names from all found outline artifacts
+            const characterNames: string[] = [];
+
+            for (const artifact of allOutlineArtifacts) {
+                try {
+                    const data = typeof artifact.data === 'string' ? JSON.parse(artifact.data) : artifact.data;
+                    if (data.characters && Array.isArray(data.characters)) {
+                        data.characters.forEach((char: any) => {
+                            if (char.name && !characterNames.includes(char.name)) {
+                                characterNames.push(char.name);
+                            }
+                        });
+                    }
+                } catch (parseError) {
+                    // Ignore parsing errors for individual artifacts
+                    console.warn('Failed to parse outline artifact data:', parseError);
+                }
+            }
+
+            return characterNames;
+
+        } catch (err) {
+            const error = err instanceof Error ? err : new Error('Failed to extract characters from lineage');
+            console.error('[useCharactersFromLineage] Error:', error);
+            setError(error);
+            return [];
+        }
+    }, [sourceArtifactId, projectData.lineageGraph, projectData.artifacts]);
+
+    return {
+        characters,
         isLoading: projectData.isLoading,
         error: projectData.error || error
     };
