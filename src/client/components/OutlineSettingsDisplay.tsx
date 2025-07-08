@@ -7,7 +7,7 @@ import { useProjectData } from '../contexts/ProjectDataContext';
 import { EditableText, EditableArray } from './shared/EditableText';
 import { SectionWrapper, ArtifactSchemaType } from './shared';
 
-const { Text } = Typography;
+const { Text, Title } = Typography;
 
 interface OutlineSettingsDisplayProps {
 }
@@ -117,7 +117,7 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
             input.artifact_id === effectiveArtifact.id
         );
 
-        return !hasDescendants;
+        return !hasDescendants && effectiveArtifact.origin_type === 'ai_generated';
     }, [effectiveArtifact, projectData.transformInputs]);
 
     // Check if the artifact comes from a failed transform
@@ -192,15 +192,6 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
             }
         });
     }, [rootOutlineArtifact, isCreatingTransform, isEditable, projectData.createHumanTransform]);
-
-    // Utility function to get editable props with failed transform handling
-    const getEditableProps = useCallback((isLocalEditable: boolean = true) => ({
-        isEditable: isEditable && !isFromFailedTransform && isLocalEditable,
-        style: {
-            opacity: isFromFailedTransform ? 0.7 : 1,
-            color: isFromFailedTransform ? '#ff4d4f' : '#fff'
-        }
-    }), [isEditable, isFromFailedTransform]);
 
     // Handle saving individual fields
     const handleSave = useCallback(async (path: string, newValue: any) => {
@@ -324,8 +315,6 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
         }
     }, [effectiveArtifact, projectData]);
 
-    // Remove standalone loading state - let the unified workflow system handle this
-
     // Show placeholder when no outline settings are available
     if (!outlineSettings) {
         return (
@@ -351,6 +340,180 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
         );
     }
 
+    // Determine the rendering mode
+    let mainContent: React.ReactNode;
+
+    if (isEditable) {
+        // Editable mode - green border, user can edit
+        mainContent = (
+            <Card
+                style={{
+                    backgroundColor: '#1a1a1a',
+                    border: '2px solid #52c41a',
+                    borderRadius: '8px',
+                    opacity: isFromFailedTransform ? 0.7 : 1
+                }}
+                styles={{ body: { padding: '24px' } }}
+            >
+                {/* Header */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{
+                            width: '6px',
+                            height: '32px',
+                            backgroundColor: '#52c41a',
+                            borderRadius: '3px'
+                        }} />
+                        <div>
+                            <Title level={4} style={{ margin: 0, color: '#52c41a' }}>
+                                ✏️ 编辑剧本框架
+                            </Title>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Content sections */}
+                {renderOutlineContent(outlineSettings, isEditable, handleSave)}
+            </Card>
+        );
+    } else if (canBecomeEditable) {
+        // Click-to-edit mode - blue border, can become editable
+        mainContent = (
+            <Card
+                style={{
+                    backgroundColor: '#1a1a1a',
+                    border: '1px solid #1890ff',
+                    borderRadius: '8px',
+                    cursor: isCreatingTransform ? 'default' : 'pointer',
+                    transition: 'all 0.2s ease',
+                    opacity: isCreatingTransform ? 0.7 : 1,
+                    pointerEvents: isCreatingTransform ? 'none' : 'auto'
+                }}
+                styles={{ body: { padding: '24px' } }}
+                onClick={!isCreatingTransform ? handleCreateEditableVersion : undefined}
+                onMouseEnter={(e) => {
+                    if (!isCreatingTransform) {
+                        e.currentTarget.style.borderColor = '#40a9ff';
+                        e.currentTarget.style.boxShadow = '0 0 8px rgba(24, 144, 255, 0.3)';
+                    }
+                }}
+                onMouseLeave={(e) => {
+                    if (!isCreatingTransform) {
+                        e.currentTarget.style.borderColor = '#1890ff';
+                        e.currentTarget.style.boxShadow = 'none';
+                    }
+                }}
+            >
+                {/* Header */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{
+                            width: '6px',
+                            height: '32px',
+                            backgroundColor: '#1890ff',
+                            borderRadius: '3px'
+                        }} />
+                        <div>
+                            <Title level={4} style={{ margin: 0, color: '#1890ff' }}>
+                                🤖 剧本框架
+                            </Title>
+                            <Text type="secondary" style={{ fontSize: '12px' }}>
+                                AI生成 • 点击编辑
+                            </Text>
+                        </div>
+                    </div>
+
+                    {!isCreatingTransform && (
+                        <Button
+                            type="primary"
+                            size="small"
+                            icon={<EditOutlined />}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleCreateEditableVersion();
+                            }}
+                            style={{
+                                backgroundColor: '#1890ff',
+                                border: 'none',
+                                borderRadius: '4px'
+                            }}
+                        >
+                            编辑框架
+                        </Button>
+                    )}
+                </div>
+
+                {/* Content sections - read-only */}
+                {renderOutlineContent(outlineSettings, false, handleSave)}
+
+                {/* Loading overlay */}
+                {isCreatingTransform && (
+                    <div style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 10,
+                        borderRadius: '8px'
+                    }}>
+                        <Spin
+                            indicator={<LoadingOutlined style={{ fontSize: 32, color: '#1890ff' }} spin />}
+                            tip="创建编辑版本中..."
+                        >
+                            <div style={{ padding: '40px' }} />
+                        </Spin>
+                    </div>
+                )}
+            </Card>
+        );
+    } else {
+        // Read-only mode - gray border, cannot be edited
+        let readOnlyReason = '已生成后续内容，无法编辑';
+        if (isFromFailedTransform) {
+            readOnlyReason = '生成失败，无法编辑';
+        }
+
+        mainContent = (
+            <Card
+                style={{
+                    backgroundColor: '#1a1a1a',
+                    border: '1px solid #555',
+                    borderRadius: '8px',
+                    opacity: 0.7
+                }}
+                styles={{ body: { padding: '24px' } }}
+            >
+                {/* Header */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{
+                            width: '6px',
+                            height: '32px',
+                            backgroundColor: '#555',
+                            borderRadius: '3px'
+                        }} />
+                        <div>
+                            <Title level={4} style={{ margin: 0, color: '#888' }}>
+                                📖 剧本框架
+                            </Title>
+                            <Text type="secondary" style={{ fontSize: '12px' }}>
+                                {readOnlyReason}
+                            </Text>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Content sections - read-only */}
+                {renderOutlineContent(outlineSettings, false, handleSave)}
+            </Card>
+        );
+    }
+
     return (
         <SectionWrapper
             schemaType={ArtifactSchemaType.OUTLINE_SETTINGS}
@@ -358,9 +521,9 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
             sectionId="outline-settings"
             artifactId={effectiveArtifact?.id}
         >
-            <div style={{ marginTop: '24px' }}>
-                {/* Loading overlay */}
-                {isCreatingTransform && (
+            <div style={{ marginTop: '24px', position: 'relative' }}>
+                {/* Loading overlay for creating transform */}
+                {isCreatingTransform && !canBecomeEditable && (
                     <div style={{
                         position: 'fixed',
                         top: 0,
@@ -382,362 +545,323 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                     </div>
                 )}
 
-                <Card
-                    style={{
-                        backgroundColor: '#1a1a1a',
-                        border: isEditable ? '1px solid #52c41a' : '1px solid #434343',
-                        borderRadius: '8px',
-                        opacity: isFromFailedTransform ? 0.7 : 1
-                    }}
-                    styles={{ body: { padding: '24px' } }}
-                >
-                    {/* Header */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <div style={{
-                                width: '6px',
-                                height: '32px',
-                                backgroundColor: isEditable ? '#52c41a' : '#434343',
-                                borderRadius: '3px'
-                            }} />
-                            <div>
-                                <Text strong style={{
-                                    fontSize: '18px',
-                                    color: isEditable ? '#52c41a' : '#fff',
-                                    display: 'block'
-                                }}>
-                                    {isEditable ? '📝 编辑剧本框架' : '📖 剧本框架'}
-                                </Text>
-
-                            </div>
-                        </div>
-
-                        {!isEditable && canBecomeEditable && !isFromFailedTransform && (
-                            <Button
-                                type="primary"
-                                icon={<EditOutlined />}
-                                onClick={handleCreateEditableVersion}
-                                loading={isCreatingTransform}
-                                size="small"
-                                style={{
-                                    backgroundColor: '#1890ff',
-                                    borderColor: '#1890ff'
-                                }}
-                            >
-                                开始编辑
-                            </Button>
-                        )}
-                    </div>
-
-                    {/* Basic Information */}
-                    <Space direction="vertical" size="large" style={{ width: '100%' }}>
-                        <div>
-                            <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
-                                📊 基本信息
-                            </Text>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
-                                <div>
-                                    <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>剧本标题：</Text>
-                                    <EditableText
-                                        value={outlineSettings.title || ''}
-                                        path="title"
-                                        placeholder="剧本标题"
-                                        isEditable={isEditable}
-                                        onSave={handleSave}
-                                        style={{ fontSize: '14px', color: '#fff' }}
-                                    />
-                                </div>
-                                <div>
-                                    <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>剧本类型：</Text>
-                                    <EditableText
-                                        value={outlineSettings.genre || ''}
-                                        path="genre"
-                                        placeholder="剧本类型"
-                                        isEditable={isEditable}
-                                        onSave={handleSave}
-                                        style={{ fontSize: '14px', color: '#fff' }}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Target Audience */}
-                        <div>
-                            <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
-                                <UserOutlined style={{ marginRight: '8px' }} />
-                                目标观众
-                            </Text>
-                            <div>
-                                <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>目标群体：</Text>
-                                <EditableText
-                                    value={outlineSettings.target_audience?.demographic || ''}
-                                    path="target_audience.demographic"
-                                    placeholder="目标群体"
-                                    isEditable={isEditable}
-                                    onSave={handleSave}
-                                    style={{ fontSize: '14px', color: '#fff' }}
-                                />
-                            </div>
-                            <div style={{ marginTop: '12px' }}>
-                                <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>核心主题：</Text>
-                                <EditableArray
-                                    value={outlineSettings.target_audience?.core_themes || []}
-                                    path="target_audience.core_themes"
-                                    placeholder="每行一个主题..."
-                                    isEditable={isEditable}
-                                    onSave={handleSave}
-                                    mode="textarea"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Selling Points */}
-                        <div>
-                            <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
-                                <HeartOutlined style={{ marginRight: '8px' }} />
-                                卖点
-                            </Text>
-                            <EditableArray
-                                value={outlineSettings.selling_points || []}
-                                path="selling_points"
-                                placeholder="每行一个卖点..."
-                                isEditable={isEditable}
-                                onSave={handleSave}
-                                mode="textarea"
-                            />
-                        </div>
-
-                        {/* Satisfaction Points */}
-                        <div>
-                            <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
-                                <StarOutlined style={{ marginRight: '8px' }} />
-                                爽点
-                            </Text>
-                            <EditableArray
-                                value={outlineSettings.satisfaction_points || []}
-                                path="satisfaction_points"
-                                placeholder="每行一个爽点..."
-                                isEditable={isEditable}
-                                onSave={handleSave}
-                                mode="textarea"
-                            />
-                        </div>
-
-                        {/* Setting */}
-                        <div>
-                            <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
-                                <EnvironmentOutlined style={{ marginRight: '8px' }} />
-                                故事设定
-                            </Text>
-                            <div style={{ marginBottom: '12px' }}>
-                                <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>核心设定：</Text>
-                                <EditableText
-                                    value={outlineSettings.setting?.core_setting_summary || ''}
-                                    path="setting.core_setting_summary"
-                                    placeholder="核心设定"
-                                    multiline={true}
-                                    rows={3}
-                                    isEditable={isEditable}
-                                    onSave={handleSave}
-                                    style={{ fontSize: '14px', color: '#fff', width: '100%' }}
-                                />
-                            </div>
-                            <div>
-                                <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>关键场景：</Text>
-                                <EditableArray
-                                    value={outlineSettings.setting?.key_scenes || []}
-                                    path="setting.key_scenes"
-                                    placeholder="每行一个关键场景..."
-                                    isEditable={isEditable}
-                                    onSave={handleSave}
-                                    mode="textarea"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Characters */}
-                        <div>
-                            <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
-                                <TeamOutlined style={{ marginRight: '8px' }} />
-                                角色设定
-                            </Text>
-                            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                                {(outlineSettings.characters || []).map((character: any, index: number) => (
-                                    <Card
-                                        key={index}
-                                        size="small"
-                                        style={{
-                                            backgroundColor: '#262626',
-                                            border: '1px solid #434343'
-                                        }}
-                                        styles={{ body: { padding: '16px' } }}
-                                        extra={
-                                            isEditable && (
-                                                <Button
-                                                    type="text"
-                                                    icon={<CloseOutlined />}
-                                                    size="small"
-                                                    onClick={() => {
-                                                        const updatedCharacters = outlineSettings.characters.filter((_: any, i: number) => i !== index);
-                                                        handleSave('characters', updatedCharacters);
-                                                    }}
-                                                    style={{ color: '#ff4d4f' }}
-                                                />
-                                            )
-                                        }
-                                    >
-                                        <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                                <Text strong style={{ fontSize: '14px', color: '#fff' }}>姓名：</Text>
-                                                <EditableText
-                                                    value={character.name || ''}
-                                                    path={`characters[${index}].name`}
-                                                    placeholder="角色姓名"
-                                                    isEditable={isEditable}
-                                                    onSave={handleSave}
-                                                    style={{ fontSize: '14px', color: '#fff' }}
-                                                />
-                                            </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                                <Text strong style={{ fontSize: '14px', color: '#fff' }}>类型：</Text>
-                                                <EditableText
-                                                    value={getCharacterTypeLabel(character.type) || ''}
-                                                    path={`characters[${index}].type`}
-                                                    placeholder="类型"
-                                                    isEditable={isEditable}
-                                                    onSave={handleSave}
-                                                    style={{
-                                                        fontSize: '14px',
-                                                        padding: '4px 12px',
-                                                        borderRadius: '12px',
-                                                        backgroundColor: isEditable ? 'rgba(24, 144, 255, 0.1)' : getCharacterTypeColor(character.type),
-                                                        border: isEditable ? '1px solid #1890ff' : 'none',
-                                                        color: '#fff'
-                                                    }}
-                                                />
-                                            </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <Text strong style={{ fontSize: '14px', color: '#fff', whiteSpace: 'nowrap' }}>基本信息：</Text>
-                                                <EditableText
-                                                    value={[character.age, character.gender, character.occupation].filter(Boolean).join(' • ') || ''}
-                                                    path={`characters[${index}].description_summary`}
-                                                    placeholder="年龄 • 性别 • 职业"
-                                                    isEditable={isEditable}
-                                                    onSave={async (path, value) => {
-                                                        // Parse the combined string back to individual fields
-                                                        const parts = value.split(' • ').map(p => p.trim());
-                                                        const updatedCharacter = { ...character };
-                                                        updatedCharacter.age = parts[0] || '';
-                                                        updatedCharacter.gender = parts[1] || '';
-                                                        updatedCharacter.occupation = parts[2] || '';
-                                                        const updatedCharacters = [...outlineSettings.characters];
-                                                        updatedCharacters[index] = updatedCharacter;
-                                                        return handleSave('characters', updatedCharacters);
-                                                    }}
-                                                    style={{ fontSize: '14px', color: '#fff', flex: 1 }}
-                                                />
-                                            </div>
-                                            <div>
-                                                <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>角色描述：</Text>
-                                                <EditableText
-                                                    value={character.description || ''}
-                                                    path={`characters[${index}].description`}
-                                                    placeholder="角色描述"
-                                                    multiline={true}
-                                                    rows={2}
-                                                    isEditable={isEditable}
-                                                    onSave={handleSave}
-                                                    style={{ fontSize: '14px', color: '#fff', width: '100%' }}
-                                                />
-                                            </div>
-                                            <div>
-                                                <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>性格特点：</Text>
-                                                <EditableArray
-                                                    value={character.personality_traits || []}
-                                                    path={`characters[${index}].personality_traits`}
-                                                    placeholder="每行一个性格特点..."
-                                                    isEditable={isEditable}
-                                                    onSave={handleSave}
-                                                    mode="textarea"
-                                                />
-                                            </div>
-                                            <div>
-                                                <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>成长轨迹：</Text>
-                                                <EditableText
-                                                    value={character.character_arc || ''}
-                                                    path={`characters[${index}].character_arc`}
-                                                    placeholder="成长轨迹"
-                                                    multiline={true}
-                                                    rows={2}
-                                                    isEditable={isEditable}
-                                                    onSave={handleSave}
-                                                    style={{ fontSize: '14px', color: '#fff', width: '100%' }}
-                                                />
-                                            </div>
-                                            <div>
-                                                <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>关键场景：</Text>
-                                                <EditableArray
-                                                    value={character.key_scenes || []}
-                                                    path={`characters[${index}].key_scenes`}
-                                                    placeholder="每行一个关键场景..."
-                                                    isEditable={isEditable}
-                                                    onSave={handleSave}
-                                                    mode="textarea"
-                                                />
-                                            </div>
-                                        </Space>
-                                    </Card>
-                                ))}
-                                {isEditable && (
-                                    <Card
-                                        size="small"
-                                        style={{
-                                            backgroundColor: 'transparent',
-                                            border: '2px dashed #434343',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            minHeight: '120px',
-                                            cursor: 'pointer'
-                                        }}
-                                        bodyStyle={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            flexDirection: 'column',
-                                            padding: '24px'
-                                        }}
-                                        onClick={() => {
-                                            const newCharacter = {
-                                                name: '新角色',
-                                                type: 'other',
-                                                description: '',
-                                                age: '',
-                                                gender: '',
-                                                occupation: '',
-                                                personality_traits: [],
-                                                character_arc: '',
-                                                relationships: {},
-                                                key_scenes: []
-                                            };
-                                            const currentCharacters = outlineSettings.characters || [];
-                                            handleSave('characters', [...currentCharacters, newCharacter]);
-                                        }}
-                                    >
-                                        <PlusOutlined style={{ fontSize: '24px', color: '#8c8c8c', marginBottom: '8px' }} />
-                                        <Text style={{ color: '#8c8c8c' }}>添加新角色</Text>
-                                    </Card>
-                                )}
-                            </Space>
-                        </div>
-
-
-                    </Space>
-                </Card>
+                {mainContent}
             </div>
         </SectionWrapper>
     );
 };
+
+// Helper function to render outline content (extracted to reduce duplication)
+function renderOutlineContent(
+    outlineSettings: OutlineSettingsOutput,
+    isEditable: boolean,
+    handleSave: (path: string, newValue: any) => Promise<void>
+) {
+    return (
+        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            {/* Basic Information */}
+            <div>
+                <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
+                    📊 基本信息
+                </Text>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+                    <div>
+                        <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>剧本标题：</Text>
+                        <EditableText
+                            value={outlineSettings.title || ''}
+                            path="title"
+                            placeholder="剧本标题"
+                            isEditable={isEditable}
+                            onSave={handleSave}
+                            style={{ fontSize: '14px', color: '#fff' }}
+                        />
+                    </div>
+                    <div>
+                        <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>剧本类型：</Text>
+                        <EditableText
+                            value={outlineSettings.genre || ''}
+                            path="genre"
+                            placeholder="剧本类型"
+                            isEditable={isEditable}
+                            onSave={handleSave}
+                            style={{ fontSize: '14px', color: '#fff' }}
+                        />
+                    </div>
+                </div>
+            </div>
+
+            {/* Target Audience */}
+            <div>
+                <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
+                    <UserOutlined style={{ marginRight: '8px' }} />
+                    目标观众
+                </Text>
+                <div>
+                    <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>目标群体：</Text>
+                    <EditableText
+                        value={outlineSettings.target_audience?.demographic || ''}
+                        path="target_audience.demographic"
+                        placeholder="目标群体"
+                        isEditable={isEditable}
+                        onSave={handleSave}
+                        style={{ fontSize: '14px', color: '#fff' }}
+                    />
+                </div>
+                <div style={{ marginTop: '12px' }}>
+                    <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>核心主题：</Text>
+                    <EditableArray
+                        value={outlineSettings.target_audience?.core_themes || []}
+                        path="target_audience.core_themes"
+                        placeholder="每行一个主题..."
+                        isEditable={isEditable}
+                        onSave={handleSave}
+                        mode="textarea"
+                    />
+                </div>
+            </div>
+
+            {/* Selling Points */}
+            <div>
+                <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
+                    <HeartOutlined style={{ marginRight: '8px' }} />
+                    卖点
+                </Text>
+                <EditableArray
+                    value={outlineSettings.selling_points || []}
+                    path="selling_points"
+                    placeholder="每行一个卖点..."
+                    isEditable={isEditable}
+                    onSave={handleSave}
+                    mode="textarea"
+                />
+            </div>
+
+            {/* Satisfaction Points */}
+            <div>
+                <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
+                    <StarOutlined style={{ marginRight: '8px' }} />
+                    爽点
+                </Text>
+                <EditableArray
+                    value={outlineSettings.satisfaction_points || []}
+                    path="satisfaction_points"
+                    placeholder="每行一个爽点..."
+                    isEditable={isEditable}
+                    onSave={handleSave}
+                    mode="textarea"
+                />
+            </div>
+
+            {/* Setting */}
+            <div>
+                <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
+                    <EnvironmentOutlined style={{ marginRight: '8px' }} />
+                    故事设定
+                </Text>
+                <div style={{ marginBottom: '12px' }}>
+                    <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>核心设定：</Text>
+                    <EditableText
+                        value={outlineSettings.setting?.core_setting_summary || ''}
+                        path="setting.core_setting_summary"
+                        placeholder="核心设定"
+                        multiline={true}
+                        rows={3}
+                        isEditable={isEditable}
+                        onSave={handleSave}
+                        style={{ fontSize: '14px', color: '#fff', width: '100%' }}
+                    />
+                </div>
+                <div>
+                    <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>关键场景：</Text>
+                    <EditableArray
+                        value={outlineSettings.setting?.key_scenes || []}
+                        path="setting.key_scenes"
+                        placeholder="每行一个关键场景..."
+                        isEditable={isEditable}
+                        onSave={handleSave}
+                        mode="textarea"
+                    />
+                </div>
+            </div>
+
+            {/* Characters */}
+            <div>
+                <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
+                    <TeamOutlined style={{ marginRight: '8px' }} />
+                    角色设定
+                </Text>
+                <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                    {(outlineSettings.characters || []).map((character: any, index: number) => (
+                        <Card
+                            key={index}
+                            size="small"
+                            style={{
+                                backgroundColor: '#262626',
+                                border: '1px solid #434343'
+                            }}
+                            styles={{ body: { padding: '16px' } }}
+                            extra={
+                                isEditable && (
+                                    <Button
+                                        type="text"
+                                        icon={<CloseOutlined />}
+                                        size="small"
+                                        onClick={() => {
+                                            const updatedCharacters = outlineSettings.characters.filter((_: any, i: number) => i !== index);
+                                            handleSave('characters', updatedCharacters);
+                                        }}
+                                        style={{ color: '#ff4d4f' }}
+                                    />
+                                )
+                            }
+                        >
+                            <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    <Text strong style={{ fontSize: '14px', color: '#fff' }}>姓名：</Text>
+                                    <EditableText
+                                        value={character.name || ''}
+                                        path={`characters[${index}].name`}
+                                        placeholder="角色姓名"
+                                        isEditable={isEditable}
+                                        onSave={handleSave}
+                                        style={{ fontSize: '14px', color: '#fff' }}
+                                    />
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    <Text strong style={{ fontSize: '14px', color: '#fff' }}>类型：</Text>
+                                    <EditableText
+                                        value={getCharacterTypeLabel(character.type) || ''}
+                                        path={`characters[${index}].type`}
+                                        placeholder="类型"
+                                        isEditable={isEditable}
+                                        onSave={handleSave}
+                                        style={{
+                                            fontSize: '14px',
+                                            padding: '4px 12px',
+                                            borderRadius: '12px',
+                                            backgroundColor: isEditable ? 'rgba(24, 144, 255, 0.1)' : getCharacterTypeColor(character.type),
+                                            border: isEditable ? '1px solid #1890ff' : 'none',
+                                            color: '#fff'
+                                        }}
+                                    />
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Text strong style={{ fontSize: '14px', color: '#fff', whiteSpace: 'nowrap' }}>基本信息：</Text>
+                                    <EditableText
+                                        value={[character.age, character.gender, character.occupation].filter(Boolean).join(' • ') || ''}
+                                        path={`characters[${index}].description_summary`}
+                                        placeholder="年龄 • 性别 • 职业"
+                                        isEditable={isEditable}
+                                        onSave={async (path, value) => {
+                                            // Parse the combined string back to individual fields
+                                            const parts = value.split(' • ').map(p => p.trim());
+                                            const updatedCharacter = { ...character };
+                                            updatedCharacter.age = parts[0] || '';
+                                            updatedCharacter.gender = parts[1] || '';
+                                            updatedCharacter.occupation = parts[2] || '';
+                                            const updatedCharacters = [...outlineSettings.characters];
+                                            updatedCharacters[index] = updatedCharacter;
+                                            return handleSave('characters', updatedCharacters);
+                                        }}
+                                        style={{ fontSize: '14px', color: '#fff', flex: 1 }}
+                                    />
+                                </div>
+                                <div>
+                                    <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>角色描述：</Text>
+                                    <EditableText
+                                        value={character.description || ''}
+                                        path={`characters[${index}].description`}
+                                        placeholder="角色描述"
+                                        multiline={true}
+                                        rows={2}
+                                        isEditable={isEditable}
+                                        onSave={handleSave}
+                                        style={{ fontSize: '14px', color: '#fff', width: '100%' }}
+                                    />
+                                </div>
+                                <div>
+                                    <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>性格特点：</Text>
+                                    <EditableArray
+                                        value={character.personality_traits || []}
+                                        path={`characters[${index}].personality_traits`}
+                                        placeholder="每行一个性格特点..."
+                                        isEditable={isEditable}
+                                        onSave={handleSave}
+                                        mode="textarea"
+                                    />
+                                </div>
+                                <div>
+                                    <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>成长轨迹：</Text>
+                                    <EditableText
+                                        value={character.character_arc || ''}
+                                        path={`characters[${index}].character_arc`}
+                                        placeholder="成长轨迹"
+                                        multiline={true}
+                                        rows={2}
+                                        isEditable={isEditable}
+                                        onSave={handleSave}
+                                        style={{ fontSize: '14px', color: '#fff', width: '100%' }}
+                                    />
+                                </div>
+                                <div>
+                                    <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>关键场景：</Text>
+                                    <EditableArray
+                                        value={character.key_scenes || []}
+                                        path={`characters[${index}].key_scenes`}
+                                        placeholder="每行一个关键场景..."
+                                        isEditable={isEditable}
+                                        onSave={handleSave}
+                                        mode="textarea"
+                                    />
+                                </div>
+                            </Space>
+                        </Card>
+                    ))}
+                    {isEditable && (
+                        <Card
+                            size="small"
+                            style={{
+                                backgroundColor: 'transparent',
+                                border: '2px dashed #434343',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                minHeight: '120px',
+                                cursor: 'pointer'
+                            }}
+                            bodyStyle={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexDirection: 'column',
+                                padding: '24px'
+                            }}
+                            onClick={() => {
+                                const newCharacter = {
+                                    name: '新角色',
+                                    type: 'other',
+                                    description: '',
+                                    age: '',
+                                    gender: '',
+                                    occupation: '',
+                                    personality_traits: [],
+                                    character_arc: '',
+                                    relationships: {},
+                                    key_scenes: []
+                                };
+                                const currentCharacters = outlineSettings.characters || [];
+                                handleSave('characters', [...currentCharacters, newCharacter]);
+                            }}
+                        >
+                            <PlusOutlined style={{ fontSize: '24px', color: '#8c8c8c', marginBottom: '8px' }} />
+                            <Text style={{ color: '#8c8c8c' }}>添加新角色</Text>
+                        </Card>
+                    )}
+                </Space>
+            </div>
+        </Space>
+    );
+}
 
 // Helper functions
 const getCharacterTypeColor = (type: string): string => {

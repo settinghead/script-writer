@@ -182,9 +182,8 @@ export class AgentService {
                 );
                 computationMessageId = computationMessage.id;
 
-                // Create response message for agent's actual response
-                const responseMessage = await this.chatMessageRepo.createResponseMessage(projectId, '');
-                responseMessageId = responseMessage.id;
+                // Note: Response message will be created when we have actual content
+                responseMessageId = undefined;
             }
 
             // 1. Build agent configuration using new abstraction
@@ -267,6 +266,12 @@ export class AgentService {
                         process.stdout.write(delta.textDelta);
                         accumulatedResponse += delta.textDelta;
                         finalResponse += delta.textDelta;
+
+                        // Create response message on first content if not already created
+                        if (!responseMessageId && options.createChatMessages && this.chatMessageRepo && accumulatedResponse.trim()) {
+                            const responseMessage = await this.chatMessageRepo.createResponseMessage(projectId, accumulatedResponse);
+                            responseMessageId = responseMessage.id;
+                        }
 
                         // Try to parse JSON and update response message in real-time
                         if (responseMessageId && this.chatMessageRepo) {
@@ -383,35 +388,45 @@ export class AgentService {
             console.log('\n-----------------------------------');
 
             // Final processing of the response
-            if (responseMessageId && this.chatMessageRepo) {
-                // Try both accumulatedResponse and finalResponse
-                let finalParseResult = await this.tryParseAgentJSON(accumulatedResponse);
-                if (!finalParseResult.parsed && finalResponse !== accumulatedResponse) {
-                    finalParseResult = await this.tryParseAgentJSON(finalResponse);
+            if (options.createChatMessages && this.chatMessageRepo) {
+                // Create response message if it wasn't created during streaming (e.g., tool-only responses)
+                if (!responseMessageId) {
+                    const defaultMessage = toolCallCount > 0 ? '我已完成您的请求。' : '收到您的请求，正在处理中...';
+                    const responseMessage = await this.chatMessageRepo.createResponseMessage(projectId, defaultMessage);
+                    responseMessageId = responseMessage.id;
                 }
 
-                if (finalParseResult.parsed && finalParseResult.humanReadableMessage) {
-                    // Successfully parsed JSON, use human readable message
-                    await this.chatMessageRepo.updateResponseMessage(
-                        responseMessageId,
-                        finalParseResult.humanReadableMessage,
-                        'completed'
-                    );
+                if (responseMessageId) {
+                    // Try both accumulatedResponse and finalResponse
+                    let finalParseResult = await this.tryParseAgentJSON(accumulatedResponse);
+                    if (!finalParseResult.parsed && finalResponse !== accumulatedResponse) {
+                        finalParseResult = await this.tryParseAgentJSON(finalResponse);
+                    }
 
-                    // Add a small delay and force another update to ensure it's persisted
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                    await this.chatMessageRepo.updateResponseMessage(
-                        responseMessageId,
-                        finalParseResult.humanReadableMessage,
-                        'completed'
-                    );
-                } else {
-                    // JSON parsing failed, use accumulated text as fallback
-                    await this.chatMessageRepo.updateResponseMessage(
-                        responseMessageId,
-                        accumulatedResponse || finalResponse || '我已完成您的请求。',
-                        'completed'
-                    );
+                    if (finalParseResult.parsed && finalParseResult.humanReadableMessage) {
+                        // Successfully parsed JSON, use human readable message
+                        await this.chatMessageRepo.updateResponseMessage(
+                            responseMessageId,
+                            finalParseResult.humanReadableMessage,
+                            'completed'
+                        );
+
+                        // Add a small delay and force another update to ensure it's persisted
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        await this.chatMessageRepo.updateResponseMessage(
+                            responseMessageId,
+                            finalParseResult.humanReadableMessage,
+                            'completed'
+                        );
+                    } else {
+                        // JSON parsing failed, use accumulated text as fallback
+                        const fallbackMessage = accumulatedResponse || finalResponse || (toolCallCount > 0 ? '我已完成您的请求。' : '收到您的请求。');
+                        await this.chatMessageRepo.updateResponseMessage(
+                            responseMessageId,
+                            fallbackMessage,
+                            'completed'
+                        );
+                    }
                 }
             }
 
@@ -460,12 +475,18 @@ export class AgentService {
                 );
             }
 
-            if (responseMessageId && this.chatMessageRepo) {
-                await this.chatMessageRepo.updateResponseMessage(
-                    responseMessageId,
-                    userFriendlyMessage,
-                    'failed'
-                );
+            if (options.createChatMessages && this.chatMessageRepo) {
+                // Create response message if it wasn't created yet
+                if (!responseMessageId) {
+                    const responseMessage = await this.chatMessageRepo.createResponseMessage(projectId, userFriendlyMessage);
+                    responseMessageId = responseMessage.id;
+                } else {
+                    await this.chatMessageRepo.updateResponseMessage(
+                        responseMessageId,
+                        userFriendlyMessage,
+                        'failed'
+                    );
+                }
             }
 
             // Save error as raw message
