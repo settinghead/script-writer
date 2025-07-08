@@ -1,115 +1,161 @@
-import React, { useMemo } from 'react';
-import { useParams } from 'react-router-dom';
-import { Typography, Spin, Alert } from 'antd';
+import React, { useMemo, useEffect, useRef } from 'react';
+import { Card, Typography, Space, Alert, Spin } from 'antd';
 import { LoadingOutlined } from '@ant-design/icons';
 import { useProjectData } from '../contexts/ProjectDataContext';
 import { useActionItemsStore } from '../stores/actionItemsStore';
 import { computeParamsAndActions } from '../utils/actionComputation';
-import { ActionItemRenderer } from './actions';
+import ActionItemRenderer from './actions/ActionItemRenderer';
 
-const { Text } = Typography;
+const { Text, Title } = Typography;
 
-const ActionItemsSection: React.FC = () => {
-    const { projectId } = useParams<{ projectId: string }>();
+interface ActionItemsSectionProps {
+    projectId: string;
+}
+
+export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectId }) => {
     const projectData = useProjectData();
-    const actionItemsStore = useActionItemsStore(projectId);
+    const store = useActionItemsStore(projectId);
 
-    // Compute available actions
-    const { actions, currentStage, hasActiveTransforms, stageDescription } = useMemo(() =>
-        computeParamsAndActions(projectData, actionItemsStore.selectedBrainstormIdea),
-        [projectData, actionItemsStore.selectedBrainstormIdea]
-    );
+    // Use refs to track previous values to prevent unnecessary re-renders
+    const prevProjectDataRef = useRef(projectData);
+    const prevComputationResultRef = useRef<any>(null);
 
-    // Show loading state during active transforms
-    if (hasActiveTransforms) {
+    // Stable computation with minimal dependencies
+    const computationResult = useMemo(() => {
+        if (projectData.isLoading) {
+            return null;
+        }
+
+        if (!Array.isArray(projectData.artifacts) || !Array.isArray(projectData.transforms)) {
+            return null;
+        }
+
+        // Check if data has actually changed
+        const currentData = {
+            artifacts: projectData.artifacts,
+            transforms: projectData.transforms,
+            transformInputs: projectData.transformInputs,
+            transformOutputs: projectData.transformOutputs,
+            humanTransforms: projectData.humanTransforms
+        };
+
+        // Simple deep equality check for arrays
+        const dataChanged =
+            JSON.stringify(currentData.artifacts) !== JSON.stringify(prevProjectDataRef.current.artifacts) ||
+            JSON.stringify(currentData.transforms) !== JSON.stringify(prevProjectDataRef.current.transforms) ||
+            JSON.stringify(currentData.transformInputs) !== JSON.stringify(prevProjectDataRef.current.transformInputs) ||
+            JSON.stringify(currentData.transformOutputs) !== JSON.stringify(prevProjectDataRef.current.transformOutputs) ||
+            JSON.stringify(currentData.humanTransforms) !== JSON.stringify(prevProjectDataRef.current.humanTransforms);
+
+        if (!dataChanged && prevComputationResultRef.current) {
+            return prevComputationResultRef.current;
+        }
+
+        const result = computeParamsAndActions(projectData);
+
+        prevProjectDataRef.current = projectData;
+        prevComputationResultRef.current = result;
+
+        return result;
+    }, [
+        projectData.isLoading,
+        projectData.artifacts?.length,
+        projectData.transforms?.length,
+        projectData.transformInputs?.length,
+        projectData.transformOutputs?.length,
+        projectData.humanTransforms?.length
+    ]);
+
+    if (projectData.isLoading || !computationResult) {
         return (
-            <div style={{
-                background: '#1a1a1a',
-                borderTop: '1px solid #333',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '16px 12px',
-                flexShrink: 0
-            }}>
-                <Spin
-                    indicator={<LoadingOutlined style={{ fontSize: 18, color: '#1890ff' }} spin />}
-                    size="small"
-                />
-                <Text type="secondary" style={{ marginLeft: '12px', fontSize: '14px' }}>
-                    {stageDescription}
-                </Text>
-            </div>
+            <Card
+                style={{
+                    backgroundColor: '#1a1a1a',
+                    border: '1px solid #434343',
+                    marginTop: '24px'
+                }}
+            >
+                <div style={{ textAlign: 'center', padding: '24px' }}>
+                    <Spin size="large" />
+                    <div style={{ marginTop: '16px' }}>
+                        <Text type="secondary">分析项目状态...</Text>
+                    </div>
+                </div>
+            </Card>
         );
     }
 
-    // Show error state if project data failed to load
-    if (projectData.artifacts === "error" || projectData.transforms === "error") {
-        return (
-            <div style={{
-                background: '#1a1a1a',
-                borderTop: '1px solid #333',
-                padding: '16px 12px',
-                flexShrink: 0
-            }}>
-                <Alert
-                    message="加载项目数据时出错"
-                    type="error"
-                    showIcon
-                />
-            </div>
-        );
-    }
+    const { currentStage, stageDescription, actions } = computationResult;
 
-    // Show placeholder if no actions available
-    if (actions.length === 0) {
-        return (
-            <div style={{
-                background: '#1a1a1a',
-                borderTop: '1px solid #333',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '16px 12px',
-                flexShrink: 0
-            }}>
-                <Text type="secondary" style={{ fontSize: '14px' }}>
-                    {stageDescription || '暂无可用操作'}
-                </Text>
-            </div>
-        );
-    }
+    // Check for active transforms
+    const hasActiveTransforms = Array.isArray(projectData.transforms) &&
+        projectData.transforms.some((t: any) => t.status === 'running' || t.status === 'pending');
 
-    // Render actions in priority order
     return (
-        <div style={{
-            background: '#1a1a1a',
-            borderTop: '1px solid #333',
-            padding: '16px 12px',
-            flexShrink: 0
-        }}>
-            {/* Stage description */}
-            <div style={{ marginBottom: '12px' }}>
-                <Text type="secondary" style={{ fontSize: '12px', textTransform: 'uppercase' }}>
-                    当前阶段: {currentStage}
-                </Text>
-                <br />
-                <Text style={{ fontSize: '14px', color: '#fff' }}>
-                    {stageDescription}
+        <Card
+            style={{
+                backgroundColor: '#1a1a1a',
+                border: '1px solid #52c41a',
+                marginTop: '24px'
+            }}
+            styles={{ body: { padding: '24px' } }}
+        >
+            {/* Header */}
+            <div style={{ marginBottom: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                    <div style={{
+                        width: '6px',
+                        height: '32px',
+                        backgroundColor: '#52c41a',
+                        borderRadius: '3px'
+                    }} />
+                    <Title level={4} style={{ margin: 0, color: '#52c41a' }}>
+                        🎯 操作面板
+                    </Title>
+                </div>
+                <Text type="secondary" style={{ fontSize: '14px' }}>
+                    当前阶段：{currentStage} - {stageDescription}
                 </Text>
             </div>
 
-            {/* Action items */}
-            <div className="action-items-list">
-                {actions
-                    .sort((a, b) => a.priority - b.priority)
-                    .map(action => (
-                        <ActionItemRenderer key={action.id} action={action} />
-                    ))
-                }
-            </div>
-        </div>
+            {/* Loading overlay for active transforms */}
+            {hasActiveTransforms && (
+                <div style={{
+                    marginBottom: '16px',
+                    padding: '12px',
+                    backgroundColor: '#0a0a0a',
+                    borderRadius: '6px',
+                    border: '1px solid #1890ff'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Spin indicator={<LoadingOutlined style={{ fontSize: 16 }} spin />} />
+                        <Text style={{ color: '#1890ff' }}>正在处理中...</Text>
+                    </div>
+                </div>
+            )}
+
+            {/* Actions */}
+            {actions.length > 0 ? (
+                <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                    {actions.map((action: any, index: number) => (
+                        <ActionItemRenderer
+                            key={`${action.type}-${index}`}
+                            action={action}
+                        />
+                    ))}
+                </Space>
+            ) : (
+                <Alert
+                    message="暂无可用操作"
+                    description="当前项目状态下没有可执行的操作。"
+                    type="info"
+                    showIcon
+                    style={{
+                        backgroundColor: '#0a0a0a',
+                        borderColor: '#434343'
+                    }}
+                />
+            )}
+        </Card>
     );
-};
-
-export default ActionItemsSection; 
+}; 

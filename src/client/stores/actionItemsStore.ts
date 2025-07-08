@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { useEffect } from 'react';
+import { persist } from 'zustand/middleware';
 
 // Type definitions for form data
 interface BrainstormParams {
@@ -46,37 +47,52 @@ interface ActionItemsState {
 }
 
 // Create the store
-const useActionItemsStoreInternal = create<ActionItemsState>((set) => ({
-    selectedBrainstormIdea: null,
-    formData: {
-        brainstormParams: null,
-        outlineGenerationParams: null,
-    },
+const useActionItemsStoreInternal = create<ActionItemsState>()(
+    persist(
+        (set, get) => {
+            return {
+                selectedBrainstormIdea: null,
+                formData: {
+                    brainstormParams: null,
+                    outlineGenerationParams: null,
+                },
 
-    setSelectedBrainstormIdea: (idea) => set({ selectedBrainstormIdea: idea }),
+                setSelectedBrainstormIdea: (idea) => {
+                    const currentState = get();
+                    if (currentState.selectedBrainstormIdea === idea) {
+                        return;
+                    }
+                    set({ selectedBrainstormIdea: idea });
+                },
 
-    updateFormData: (key, data) => set((state) => ({
-        formData: {
-            ...state.formData,
-            [key]: data,
+                updateFormData: (key, data) => set((state) => ({
+                    formData: {
+                        ...state.formData,
+                        [key]: data,
+                    },
+                })),
+
+                clearFormData: (key) => set((state) => ({
+                    formData: {
+                        ...state.formData,
+                        [key]: null,
+                    },
+                })),
+
+                resetStore: () => set({
+                    selectedBrainstormIdea: null,
+                    formData: {
+                        brainstormParams: null,
+                        outlineGenerationParams: null,
+                    },
+                }),
+            };
         },
-    })),
-
-    clearFormData: (key) => set((state) => ({
-        formData: {
-            ...state.formData,
-            [key]: null,
-        },
-    })),
-
-    resetStore: () => set({
-        selectedBrainstormIdea: null,
-        formData: {
-            brainstormParams: null,
-            outlineGenerationParams: null,
-        },
-    }),
-}));
+        {
+            name: 'action-items-store',
+        }
+    )
+);
 
 // Type for persisted state
 interface PersistedState {

@@ -14,7 +14,7 @@ import { SingleBrainstormIdeaEditor } from './brainstorm/SingleBrainstormIdeaEdi
 import ProjectBrainstormPage from '../components/brainstorm/ProjectBrainstormPage';
 import { OutlineSettingsDisplay } from './OutlineSettingsDisplay';
 import { ChroniclesDisplay } from './ChroniclesDisplay';
-import ActionItemsSection from './ActionItemsSection';
+import { ActionItemsSection } from './ActionItemsSection';
 import { DebugMenu, DebugPanels } from './debug';
 import { ProjectCreationForm } from './ProjectCreationForm';
 import { BrainstormInputEditor } from './BrainstormInputEditor';
@@ -482,7 +482,7 @@ const ProjectLayout: React.FC = () => {
                                 </div>
 
                                 {/* Sticky Action Items Section */}
-                                <ActionItemsSection />
+                                <ActionItemsSection projectId={projectId!} />
                             </div>
 
                             {/* Debug Panels Overlay */}
