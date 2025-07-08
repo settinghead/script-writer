@@ -335,11 +335,12 @@ describe('Unified Workflow Computation', () => {
 
             const steps = computeWorkflowSteps('idea_editing', false, projectData);
 
-            expect(steps).toHaveLength(4); // Manual path has 4 steps
+            expect(steps).toHaveLength(5); // Manual path has 5 steps
             expect(steps[0].title).toBe('创意编辑');
-            expect(steps[1].title).toBe('大纲');
-            expect(steps[2].title).toBe('分集概要');
-            expect(steps[3].title).toBe('剧本生成');
+            expect(steps[1].title).toBe('剧本框架');
+            expect(steps[2].title).toBe('时间顺序大纲');
+            expect(steps[3].title).toBe('每集大纲');
+            expect(steps[4].title).toBe('分集剧本');
 
             // Should not include brainstorm input or generation steps
             expect(steps.some(step => step.title === '创意输入')).toBe(false);
@@ -372,13 +373,14 @@ describe('Unified Workflow Computation', () => {
 
             const steps = computeWorkflowSteps('idea_editing', false, projectData);
 
-            expect(steps).toHaveLength(6); // AI path has 6 steps
+            expect(steps).toHaveLength(7); // AI path has 7 steps
             expect(steps[0].title).toBe('创意输入');
             expect(steps[1].title).toBe('头脑风暴');
             expect(steps[2].title).toBe('创意编辑');
-            expect(steps[3].title).toBe('大纲');
-            expect(steps[4].title).toBe('分集概要');
-            expect(steps[5].title).toBe('剧本生成');
+            expect(steps[3].title).toBe('剧本框架');
+            expect(steps[4].title).toBe('时间顺序大纲');
+            expect(steps[5].title).toBe('每集大纲');
+            expect(steps[6].title).toBe('分集剧本');
         });
 
         it('should prefer AI path when both manual and AI ideas exist', () => {
