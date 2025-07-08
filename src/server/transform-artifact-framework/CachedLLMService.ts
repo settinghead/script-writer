@@ -120,12 +120,15 @@ export class CachedLLMService {
 
         // If caching is disabled, use original service directly
         if (!this.enableCaching) {
-            return this.llmService.streamObject({
+            console.log(`[CachedLLMService] Caching disabled, calling LLMService directly for streamObject`);
+            const stream = await this.llmService.streamObject({
                 prompt,
                 schema,
                 onReasoningStart,
                 onReasoningEnd
             });
+            console.log(`[CachedLLMService] LLMService.streamObject returned stream:`, typeof stream);
+            return stream;
         }
 
         // Generate cache key including model information

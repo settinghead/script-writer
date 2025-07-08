@@ -376,9 +376,7 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                                 }}>
                                     {isEditable ? '📝 编辑剧本框架' : '📖 剧本框架'}
                                 </Text>
-                                <Text type="secondary" style={{ fontSize: '12px' }}>
-                                    {isFromFailedTransform ? '生成失败' : isEditable ? '可编辑' : '只读'}
-                                </Text>
+
                             </div>
                         </div>
 

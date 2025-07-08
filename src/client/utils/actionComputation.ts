@@ -158,6 +158,7 @@ export const hasActiveTransforms = (projectData: ProjectDataContextType): boolea
 
 // Detect current workflow stage
 export const detectCurrentStage = (projectData: ProjectDataContextType): WorkflowStage => {
+    console.log('[detectCurrentStage] Starting stage detection...');
     // Check for brainstorm input artifact
     const brainstormInput = findBrainstormInputArtifact(
         projectData.artifacts === "pending" || projectData.artifacts === "error" ? [] : projectData.artifacts
@@ -172,6 +173,7 @@ export const detectCurrentStage = (projectData: ProjectDataContextType): Workflo
 
     // If we have neither brainstorm input nor brainstorm ideas, we're at initial stage
     if (!brainstormInput && brainstormIdeas.length === 0) {
+        console.log('[detectCurrentStage] No brainstorm input or ideas, returning initial');
         return 'initial';
     }
 
@@ -496,6 +498,18 @@ export const computeWorkflowSteps = (
     hasActiveTransforms: boolean,
     projectData: ProjectDataContextType
 ): WorkflowStep[] => {
+    console.log('[computeWorkflowSteps] Called with:', {
+        currentStage,
+        hasActiveTransforms,
+        artifactsLength: projectData.artifacts === "pending" || projectData.artifacts === "error" ? 0 : projectData.artifacts.length
+    });
+
+    // Return empty array if currentStage is initial - no workflow steps to show
+    if (currentStage === 'initial') {
+        console.log('[computeWorkflowSteps] Initial stage, returning empty steps');
+        return [];
+    }
+
     // Detect workflow path based on project data
     const isManualPath = detectIsManualPath(projectData);
 
@@ -596,6 +610,13 @@ export const computeWorkflowSteps = (
         } else {
             step.status = 'wait';
         }
+    });
+
+    console.log('[computeWorkflowSteps] Returning steps:', {
+        stepsCount: steps.length,
+        currentStepIndex,
+        isManualPath,
+        steps: steps.map(s => ({ id: s.id, title: s.title, status: s.status }))
     });
 
     return steps;
@@ -1028,7 +1049,8 @@ export const computeUnifiedWorkflowState = (
         stepsCount: result.steps.length,
         componentsCount: result.displayComponents.length,
         actionsCount: result.actions.length,
-        currentStage: parameters.currentStage
+        currentStage: parameters.currentStage,
+        steps: result.steps.map(s => ({ id: s.id, title: s.title, status: s.status }))
     });
 
     return result;

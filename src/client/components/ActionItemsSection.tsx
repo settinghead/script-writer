@@ -150,10 +150,7 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
             {/* Hader */}
 
 
-            {/* Loading overlay for active transforms */}
-            {hasActiveTransforms && (
-                <Spin indicator={<LoadingOutlined style={{ fontSize: 16 }} spin />} />
-            )}
+            {/* Loading state is now handled by workflow steps */}
 
             {/* Actions */}
             {actions.length > 0 ? (

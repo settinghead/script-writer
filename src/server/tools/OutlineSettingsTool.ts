@@ -157,28 +157,51 @@ export function createOutlineSettingsToolDefinition(
                 enableCaching: cachingOptions?.enableCaching
             });
 
-            const result = await executeStreamingTransform({
-                config,
-                input: params,
-                projectId,
-                userId,
-                transformRepo,
-                artifactRepo,
-                outputArtifactType: 'outline_settings',
-                transformMetadata: {
-                    toolName: 'generate_outline_settings',
-                    source_artifact_id: params.sourceArtifactId,
-                    source_idea_title: displayTitle,
-                    title: params.title,
-                    requirements: params.requirements
-                },
-                // Pass caching options from factory
-                enableCaching: cachingOptions?.enableCaching,
-                seed: cachingOptions?.seed,
-                temperature: cachingOptions?.temperature,
-                topP: cachingOptions?.topP,
-                maxTokens: cachingOptions?.maxTokens
-            });
+            console.log(`[OutlineSettingsTool] About to call executeStreamingTransform with parameters:`);
+            console.log(`[OutlineSettingsTool] - templateName: ${config.templateName}`);
+            console.log(`[OutlineSettingsTool] - outputArtifactType: outline_settings`);
+            console.log(`[OutlineSettingsTool] - projectId: ${projectId}`);
+            console.log(`[OutlineSettingsTool] - userId: ${userId}`);
+            console.log(`[OutlineSettingsTool] - enableCaching: ${cachingOptions?.enableCaching}`);
+            console.log(`[OutlineSettingsTool] - maxTokens: ${cachingOptions?.maxTokens || 'undefined'}`);
+            console.log(`[OutlineSettingsTool] - temperature: ${cachingOptions?.temperature || 'undefined'}`);
+
+            let result;
+            try {
+                result = await executeStreamingTransform({
+                    config,
+                    input: params,
+                    projectId,
+                    userId,
+                    transformRepo,
+                    artifactRepo,
+                    outputArtifactType: 'outline_settings',
+                    transformMetadata: {
+                        toolName: 'generate_outline_settings',
+                        source_artifact_id: params.sourceArtifactId,
+                        source_idea_title: displayTitle,
+                        title: params.title,
+                        requirements: params.requirements
+                    },
+                    // Pass caching options from factory
+                    enableCaching: cachingOptions?.enableCaching,
+                    seed: cachingOptions?.seed,
+                    temperature: cachingOptions?.temperature,
+                    topP: cachingOptions?.topP,
+                    maxTokens: cachingOptions?.maxTokens || 4000  // Set default max tokens to prevent truncation
+                });
+                console.log(`[OutlineSettingsTool] executeStreamingTransform completed successfully`);
+                console.log(`[OutlineSettingsTool] Result:`, {
+                    outputArtifactId: result.outputArtifactId,
+                    finishReason: result.finishReason
+                });
+            } catch (error) {
+                console.error(`[OutlineSettingsTool] executeStreamingTransform failed:`, error);
+                console.error(`[OutlineSettingsTool] Error type:`, typeof error);
+                console.error(`[OutlineSettingsTool] Error message:`, error instanceof Error ? error.message : String(error));
+                console.error(`[OutlineSettingsTool] Error stack:`, error instanceof Error ? error.stack : 'No stack trace');
+                throw error;
+            }
 
             console.log(`[OutlineSettingsTool] Successfully completed streaming outline settings generation with artifact ${result.outputArtifactId}`);
 
