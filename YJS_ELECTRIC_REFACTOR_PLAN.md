@@ -784,6 +784,7 @@ const YJSPerformanceMonitor = {
 **Week 3-4:** Simple text field migration (titles, descriptions)
 **Week 5-6:** Complex object migration (arrays, nested objects)
 **Week 7-8:** Full migration and legacy cleanup
+**Week 9:** Documentation updates (README.md, TRANSFORM_ARTIFACT_FRAMEWORK.md)
 
 ### 2. Feature Flags
 
@@ -844,3 +845,396 @@ const YJS_FEATURE_FLAGS = {
 - **Mitigation:** Priority-based conflict resolution, user edit protection
 
 This comprehensive plan addresses all overlooked aspects while maintaining the DRY principle and ensuring seamless integration with the existing Transform Framework. 
+
+## Additional Critical Components Discovered
+
+### 1. **Streaming Field Components** (`src/client/components/shared/streaming/fieldComponents.tsx`)
+
+**Components requiring YJS integration:**
+- `EditableTextListField` - Auto-saving text arrays with debounced updates
+- `EditableCharacterArrayField` - Complex character object arrays
+- `EditableSynopsisStagesField` - Nested story stage objects with key points
+
+**YJS Integration Strategy:**
+```typescript
+// Convert streaming field components to YJS
+const YJSEditableTextListField = ({ artifactId, field, ...props }) => {
+  const { doc, provider } = useYJSArtifact(artifactId);
+  const yArray = doc.getArray(field);
+  
+  // Convert Y.Array to local state for rendering
+  const [localItems, setLocalItems] = useState<string[]>([]);
+  
+  useEffect(() => {
+    const updateLocalItems = () => {
+      setLocalItems(yArray.toArray());
+    };
+    
+    yArray.observe(updateLocalItems);
+    updateLocalItems(); // Initial sync
+    
+    return () => yArray.unobserve(updateLocalItems);
+  }, [yArray]);
+  
+  const handleItemChange = (index: number, value: string) => {
+    yArray.delete(index, 1);
+    yArray.insert(index, [value]);
+  };
+  
+  return (
+    <div>
+      {localItems.map((item, index) => (
+        <YJSEditableText
+          key={index}
+          value={item}
+          onChange={(value) => handleItemChange(index, value)}
+          {...props}
+        />
+      ))}
+    </div>
+  );
+};
+```
+
+### 2. **Core Editable Components** (`src/client/components/shared/EditableText.tsx`)
+
+**Critical components:**
+- `EditableText` - Basic text editing with debounced saves
+- `EditableArray` - Array editing with both `list` and `textarea` modes
+
+**YJS Integration Challenges:**
+- Complex state management for concurrent editing
+- Debounced save conflicts with real-time updates
+- Mode switching between list and textarea
+
+**Solution:**
+```typescript
+const YJSEditableText = ({ artifactId, field, multiline = false, ...props }) => {
+  const { doc, provider } = useYJSArtifact(artifactId);
+  const yText = multiline ? doc.getText(field) : doc.getMap('content');
+  
+  // For multiline: use Y.Text for collaborative text editing
+  // For single line: use Y.Map with field-based updates
+  
+  if (multiline) {
+    return <YJSTextEditor yText={yText} {...props} />;
+  } else {
+    return <YJSFieldEditor yMap={yText} field={field} {...props} />;
+  }
+};
+
+const YJSEditableArray = ({ artifactId, field, mode = 'list', ...props }) => {
+  const { doc } = useYJSArtifact(artifactId);
+  const yArray = doc.getArray(field);
+  
+  if (mode === 'textarea') {
+    // Convert array to text for textarea editing
+    const yText = doc.getText(`${field}_text`);
+    
+    // Sync between Y.Array and Y.Text
+    useEffect(() => {
+      const syncArrayToText = () => {
+        const arrayContent = yArray.toArray().join('\n');
+        yText.delete(0, yText.length);
+        yText.insert(0, arrayContent);
+      };
+      
+      const syncTextToArray = () => {
+        const textContent = yText.toString();
+        const newArray = textContent.split('\n').filter(line => line.trim());
+        yArray.delete(0, yArray.length);
+        yArray.insert(0, newArray);
+      };
+      
+      // Set up bidirectional sync
+      yArray.observe(syncArrayToText);
+      yText.observe(syncTextToArray);
+      
+      return () => {
+        yArray.unobserve(syncArrayToText);
+        yText.unobserve(syncTextToArray);
+      };
+    }, [yArray, yText]);
+    
+    return <YJSTextEditor yText={yText} {...props} />;
+  } else {
+    return <YJSArrayEditor yArray={yArray} {...props} />;
+  }
+};
+```
+
+### 3. **Transform Framework Components**
+
+**Components requiring special handling:**
+- `EditableField.tsx` - Low-level field editing with focus management
+- `EditableTextField.tsx` - Text field editor with validation
+- `ArtifactEditor.tsx` - High-level artifact editing orchestration
+
+**Integration Strategy:**
+```typescript
+// Extend ArtifactEditor to support YJS
+const YJSArtifactEditor = ({ artifactId, fields, ...props }) => {
+  const { doc, provider, isConnected } = useYJSArtifact(artifactId);
+  
+  // Fallback to legacy editor if YJS fails
+  if (!isConnected) {
+    return <LegacyArtifactEditor artifactId={artifactId} fields={fields} {...props} />;
+  }
+  
+  return (
+    <div>
+      {fields.map(field => (
+        <YJSEditableField
+          key={field.field}
+          artifactId={artifactId}
+          field={field.field}
+          component={field.component}
+          {...field}
+        />
+      ))}
+    </div>
+  );
+};
+```
+
+### 4. **Chat and Real-time Components**
+
+**Components affected:**
+- `BasicThread.tsx` - Chat interface with real-time messaging
+- `ChatContext.tsx` - Electric SQL chat message subscriptions
+- `ChatInput.tsx` - Chat input with typewriter effects
+
+**YJS Integration Notes:**
+- Chat messages should remain in Electric SQL (not YJS) for audit trail
+- Only artifact edits within chat context need YJS
+- Maintain existing Electric SQL subscriptions for chat
+
+### 5. **Workflow and Visualization Components**
+
+**Components requiring updates:**
+- `WorkflowVisualization.tsx` - Real-time workflow state visualization
+- `RawGraphVisualization.tsx` - Artifact lineage graph with delete actions
+
+**Integration Strategy:**
+```typescript
+// Update visualization to show YJS collaboration status
+const YJSWorkflowVisualization = ({ ...props }) => {
+  const collaborationStatus = useYJSCollaborationStatus();
+  
+  return (
+    <div>
+      <LegacyWorkflowVisualization {...props} />
+      <CollaborationIndicator status={collaborationStatus} />
+    </div>
+  );
+};
+```
+
+### 6. **Component-Specific Migration Plan**
+
+**Priority 1 (Simple Text Fields):**
+- `BrainstormInputEditor` text fields
+- `OutlineSettingsDisplay` basic fields
+- `ChronicleStageCard` descriptions
+
+**Priority 2 (Complex Objects):**
+- `EditableTextListField` arrays
+- `EditableCharacterArrayField` objects
+- `EditableSynopsisStagesField` nested structures
+
+**Priority 3 (Advanced Features):**
+- `EditableArray` textarea mode
+- Cross-component synchronization
+- Conflict resolution UI
+
+### 7. **Testing Strategy for All Components**
+
+```typescript
+// Component-specific YJS tests
+describe('YJS Component Integration', () => {
+  describe('EditableText', () => {
+    it('should sync text changes across clients', async () => {
+      // Test basic text synchronization
+    });
+    
+    it('should handle concurrent editing', async () => {
+      // Test conflict resolution
+    });
+  });
+  
+  describe('EditableArray', () => {
+    it('should sync array changes in list mode', async () => {
+      // Test array item synchronization
+    });
+    
+    it('should sync array changes in textarea mode', async () => {
+      // Test textarea to array conversion
+    });
+  });
+  
+  describe('StreamingFieldComponents', () => {
+    it('should prioritize user edits over AI streaming', async () => {
+      // Test streaming vs collaborative editing
+    });
+  });
+});
+```
+
+### 8. **Performance Considerations**
+
+**Component-specific optimizations:**
+- **EditableText**: Debounce YJS updates to prevent excessive network traffic
+- **EditableArray**: Use Y.Array operations instead of full array replacement
+- **StreamingComponents**: Implement conflict resolution hierarchy (user > AI)
+- **Visualization**: Throttle real-time updates to prevent UI lag
+
+This comprehensive analysis covers all critical components that require YJS integration, ensuring no component is overlooked in the migration process.
+
+### Phase 6: Documentation Updates
+
+#### 6.1 README.md Updates
+
+**Add YJS Integration Section**:
+```markdown
+## Real-time Collaboration with YJS
+
+觅光助创 supports real-time collaborative editing powered by YJS (Yjs) + Electric SQL:
+
+### Features
+- **Live Collaborative Editing** - Multiple users can edit artifacts simultaneously
+- **Conflict-Free Synchronization** - CRDT-based conflict resolution
+- **Cursor Presence** - See other users' cursors and selections
+- **Offline Support** - Continue editing offline, sync when reconnected
+
+### Usage
+```typescript
+// Enable YJS for artifact editing
+const { doc, provider, isConnected } = useYJSArtifact(artifactId);
+
+// Edit text collaboratively
+const yText = doc.getText('content');
+yText.insert(0, 'Hello collaborative world!');
+```
+
+### Configuration
+Set `ENABLE_YJS_COLLABORATION=true` in environment variables to enable real-time collaboration features.
+```
+
+**Update Architecture Section**:
+```markdown
+### Real-time Collaboration Architecture
+
+**YJS + Electric SQL Integration**:
+- **YJS Documents** - CRDT-based collaborative data structures
+- **Electric SQL Sync** - Persistent storage with real-time updates
+- **Hybrid State** - YJS for editing, Electric SQL for audit trails
+- **Conflict Resolution** - Automatic merge with user edit priority
+```
+
+#### 6.2 TRANSFORM_ARTIFACT_FRAMEWORK.md Updates
+
+**Add YJS Integration Section**:
+```markdown
+## YJS Integration for Real-time Collaboration
+
+The Transform Artifact Framework integrates YJS (Yjs) for real-time collaborative editing while maintaining the immutable artifact → transform → artifact paradigm.
+
+### Architecture Integration
+
+**Hybrid Approach**:
+- **Artifacts remain immutable** - YJS operates on temporary collaborative documents
+- **Transform creation** - Collaborative changes trigger artifact updates via transforms
+- **Audit trail preservation** - All changes tracked through transform system
+- **Conflict resolution** - YJS handles real-time conflicts, transforms handle persistence
+
+### YJS Document Structure
+
+```typescript
+// YJS document mirrors artifact structure
+const doc = new Y.Doc();
+const yMap = doc.getMap('content');
+const yText = doc.getText('description');
+const yArray = doc.getArray('items');
+
+// Sync with artifact data
+yMap.set('title', artifact.data.title);
+yText.insert(0, artifact.data.description);
+```
+
+### Collaborative Transform Pattern
+
+```typescript
+// YJS changes trigger transform creation
+yText.observe((event) => {
+  if (event.transaction.local) {
+    // Local change - create human transform
+    createHumanTransform({
+      sourceArtifactId: artifact.id,
+      changes: extractChanges(event),
+      collaborativeSession: doc.guid
+    });
+  }
+});
+```
+
+### Benefits for Framework Applications
+
+- **Real-time UX** - Immediate visual feedback during collaboration
+- **Preserved Immutability** - Artifact history remains complete
+- **Scalable Collaboration** - Support for multiple simultaneous editors
+- **Framework Compatibility** - Works with existing transform patterns
+```
+
+**Update Frontend Integration Section**:
+```markdown
+### YJS-Enhanced Frontend Components
+
+**Collaborative Artifact Editor**:
+```typescript
+const CollaborativeArtifactEditor = ({ artifactId, field }) => {
+  const { doc, provider, isConnected } = useYJSArtifact(artifactId);
+  const yText = doc.getText(field);
+  
+  return (
+    <YJSTextEditor
+      yText={yText}
+      placeholder="Start typing..."
+      onSave={(content) => {
+        // Create transform when collaboration session ends
+        createHumanTransform({
+          sourceArtifactId: artifactId,
+          fieldUpdates: { [field]: content }
+        });
+      }}
+    />
+  );
+};
+```
+```
+
+#### 6.3 Implementation Documentation
+
+**Add YJS Setup Guide**:
+```markdown
+## Setting Up YJS Collaboration
+
+### Prerequisites
+- PostgreSQL with YJS tables
+- Electric SQL running
+- YJS packages installed
+
+### Installation
+```bash
+npm install yjs @electric-sql/y-electric y-websocket
+```
+
+### Configuration
+```typescript
+// Enable YJS in environment
+ENABLE_YJS_COLLABORATION=true
+YJS_WEBSOCKET_URL=ws://localhost:1234
+```
+
+### Usage Examples
+[Include comprehensive examples for different artifact types]
+``` 
