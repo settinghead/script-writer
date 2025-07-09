@@ -506,10 +506,11 @@ export const computeDisplayComponents = (
             // Show outline settings
             if (outlineSettings) {
                 // Determine if the outline settings artifact is actually editable
+                // Only user_input artifacts should be editable, not ai_generated ones
                 const isOutlineLeafNode = isLeafNode(outlineSettings.id, transformInputs);
                 const isOutlineEditable = !hasActiveTransforms &&
                     isOutlineLeafNode &&
-                    (outlineSettings.origin_type === 'user_input' || outlineSettings.origin_type === 'ai_generated');
+                    outlineSettings.origin_type === 'user_input'; // Only user_input, not ai_generated
 
                 components.push({
                     id: 'outline-settings-display',

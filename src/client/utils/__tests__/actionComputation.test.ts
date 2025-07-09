@@ -271,9 +271,10 @@ describe('actionComputation', () => {
                 expect(outlineComponent?.props?.isEditable).toBe(true);
                 console.log(`[Test] ✅ Human leaf node is editable`);
             } else {
-                // If leaf is AI edit (ai_generated), it should be click-to-edit (not directly editable)
-                expect(outlineComponent?.props?.isEditable).toBe(true); // Still editable because it's a leaf node
-                console.log(`[Test] ✅ AI leaf node is editable (click-to-edit)`);
+                // If leaf is AI edit (ai_generated), it should NOT be directly editable
+                // Only user_input artifacts are editable, not ai_generated ones
+                expect(outlineComponent?.props?.isEditable).toBe(false);
+                console.log(`[Test] ✅ AI leaf node is NOT editable (only user_input artifacts are editable)`);
             }
 
             // Verify that all non-leaf artifacts would not be editable

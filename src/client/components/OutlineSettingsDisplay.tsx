@@ -1,7 +1,6 @@
-import React, { useMemo, useState, useCallback, useEffect, useRef } from 'react';
-import { Card, Typography, Tag, Space, Button, message, Spin, Divider } from 'antd';
-import { UserOutlined, HeartOutlined, StarOutlined, EnvironmentOutlined, TeamOutlined, EditOutlined, LoadingOutlined, PlusOutlined, CloseOutlined } from '@ant-design/icons';
-import { useParams } from 'react-router-dom';
+import React, { useMemo, useState, useCallback } from 'react';
+import { Card, Typography, Tag, Space, Button, Spin } from 'antd';
+import { UserOutlined, HeartOutlined, StarOutlined, EnvironmentOutlined, TeamOutlined, LoadingOutlined, PlusOutlined, CloseOutlined } from '@ant-design/icons';
 import { OutlineSettingsOutput } from '../../common/schemas/outlineSchemas';
 import { useProjectData } from '../contexts/ProjectDataContext';
 import { YJSArtifactProvider, useYJSArtifactContext } from '../contexts/YJSArtifactContext';
@@ -18,33 +17,37 @@ interface OutlineSettingsDisplayProps {
 
 // YJS-enabled editable form component
 const EditableOutlineForm: React.FC = () => {
-    const { getField, setField, isLoading, artifact } = useYJSArtifactContext();
+    const { getField, setField, artifact } = useYJSArtifactContext();
 
     // Get current values from YJS context
     const outlineSettings = useMemo(() => {
         try {
             const data = artifact?.data;
-            console.log('[EditableOutlineForm] YJS artifact data:', {
-                artifactId: artifact?.id,
-                dataType: typeof data,
-                dataLength: typeof data === 'string' ? data.length : 'not string',
-                rawData: data
-            });
-
             if (typeof data === 'string') {
-                const parsed = JSON.parse(data) as OutlineSettingsOutput;
-                console.log('[EditableOutlineForm] Parsed YJS data:', parsed);
-                return parsed;
+                return JSON.parse(data) as OutlineSettingsOutput;
             }
-
-            const result = data as OutlineSettingsOutput || {};
-            console.log('[EditableOutlineForm] Direct YJS data:', result);
-            return result;
+            return data as OutlineSettingsOutput || {};
         } catch (error) {
             console.warn('Failed to parse outline settings data:', error);
             return {};
         }
     }, [artifact?.data]);
+
+    // Ensure characters is always an array
+    const characters = useMemo(() => {
+        // Try to get characters from YJS first, then fallback to parsed data
+        const yjsChars = getField('characters');
+        if (Array.isArray(yjsChars)) {
+            return yjsChars;
+        }
+
+        // Fallback to parsed outline settings
+        const chars = (outlineSettings as any)?.characters;
+        if (Array.isArray(chars)) {
+            return chars;
+        }
+        return [];
+    }, [getField, (outlineSettings as any)?.characters]);
 
     // Handle adding a new character
     const handleAddCharacter = useCallback(() => {
@@ -185,7 +188,7 @@ const EditableOutlineForm: React.FC = () => {
                     </Button>
                 </div>
                 <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                    {((outlineSettings as any).characters || []).map((character: any, index: number) => (
+                    {characters.map((character: any, index: number) => (
                         <Card
                             key={index}
                             size="small"
@@ -270,7 +273,7 @@ const EditableOutlineForm: React.FC = () => {
                         </Card>
                     ))}
 
-                    {(!(outlineSettings as any).characters || (outlineSettings as any).characters.length === 0) && (
+                    {characters.length === 0 && (
                         <Card
                             size="small"
                             style={{
@@ -298,26 +301,16 @@ const ReadOnlyOutlineDisplay: React.FC<{ artifactId: string }> = ({ artifactId }
     const artifact = projectData.getArtifactById(artifactId);
     const outlineSettings = useMemo(() => {
         if (!artifact?.data) {
-            console.log('[ReadOnlyOutlineDisplay] No artifact data:', { artifactId, artifact });
             return null;
         }
         try {
             const data = typeof artifact.data === 'string' ? JSON.parse(artifact.data) : artifact.data;
-            console.log('[ReadOnlyOutlineDisplay] Parsed data:', {
-                artifactId,
-                dataType: typeof artifact.data,
-                dataLength: typeof artifact.data === 'string' ? artifact.data.length : 'not string',
-                parsedData: data,
-                hasTitle: !!data?.title,
-                hasCharacters: !!data?.characters,
-                charactersLength: data?.characters?.length || 0
-            });
             return data as OutlineSettingsOutput;
         } catch (error) {
             console.warn('Failed to parse outline settings data:', error);
             return null;
         }
-    }, [artifact?.data, artifactId]);
+    }, [artifact?.data]);
 
     if (!outlineSettings) {
         return (
@@ -365,7 +358,7 @@ const ReadOnlyOutlineDisplay: React.FC<{ artifactId: string }> = ({ artifactId }
                             </Text>
                         </div>
                     )}
-                    {outlineSettings.target_audience?.core_themes?.length > 0 && (
+                    {Array.isArray(outlineSettings.target_audience?.core_themes) && outlineSettings.target_audience.core_themes.length > 0 && (
                         <div>
                             <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>核心主题：</Text>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
@@ -379,7 +372,7 @@ const ReadOnlyOutlineDisplay: React.FC<{ artifactId: string }> = ({ artifactId }
             )}
 
             {/* Selling Points */}
-            {outlineSettings.selling_points?.length > 0 && (
+            {Array.isArray(outlineSettings.selling_points) && outlineSettings.selling_points.length > 0 && (
                 <div>
                     <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
                         <HeartOutlined style={{ marginRight: '8px' }} />
@@ -394,7 +387,7 @@ const ReadOnlyOutlineDisplay: React.FC<{ artifactId: string }> = ({ artifactId }
             )}
 
             {/* Satisfaction Points */}
-            {outlineSettings.satisfaction_points?.length > 0 && (
+            {Array.isArray(outlineSettings.satisfaction_points) && outlineSettings.satisfaction_points.length > 0 && (
                 <div>
                     <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
                         <StarOutlined style={{ marginRight: '8px' }} />
@@ -409,7 +402,7 @@ const ReadOnlyOutlineDisplay: React.FC<{ artifactId: string }> = ({ artifactId }
             )}
 
             {/* Setting */}
-            {(outlineSettings.setting?.core_setting_summary || outlineSettings.setting?.key_scenes?.length) && (
+            {(outlineSettings.setting?.core_setting_summary || (Array.isArray(outlineSettings.setting?.key_scenes) && outlineSettings.setting.key_scenes.length > 0)) && (
                 <div>
                     <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
                         <EnvironmentOutlined style={{ marginRight: '8px' }} />
@@ -423,7 +416,7 @@ const ReadOnlyOutlineDisplay: React.FC<{ artifactId: string }> = ({ artifactId }
                             </Text>
                         </div>
                     )}
-                    {outlineSettings.setting?.key_scenes?.length > 0 && (
+                    {Array.isArray(outlineSettings.setting?.key_scenes) && outlineSettings.setting.key_scenes.length > 0 && (
                         <div>
                             <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>关键场景：</Text>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
@@ -437,7 +430,7 @@ const ReadOnlyOutlineDisplay: React.FC<{ artifactId: string }> = ({ artifactId }
             )}
 
             {/* Characters */}
-            {outlineSettings.characters?.length > 0 && (
+            {Array.isArray(outlineSettings.characters) && outlineSettings.characters.length > 0 && (
                 <div>
                     <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
                         <TeamOutlined style={{ marginRight: '8px' }} />
@@ -475,7 +468,7 @@ const ReadOnlyOutlineDisplay: React.FC<{ artifactId: string }> = ({ artifactId }
                                             {character.description}
                                         </Text>
                                     )}
-                                    {character.personality_traits?.length > 0 && (
+                                    {Array.isArray(character.personality_traits) && character.personality_traits.length > 0 && (
                                         <div>
                                             <Text strong style={{ fontSize: '12px', color: '#999' }}>性格特点：</Text>
                                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
@@ -493,7 +486,7 @@ const ReadOnlyOutlineDisplay: React.FC<{ artifactId: string }> = ({ artifactId }
                                             </Text>
                                         </div>
                                     )}
-                                    {character.key_scenes?.length > 0 && (
+                                    {Array.isArray(character.key_scenes) && character.key_scenes.length > 0 && (
                                         <div>
                                             <Text strong style={{ fontSize: '12px', color: '#999' }}>关键场景：</Text>
                                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
@@ -518,23 +511,12 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
     isEditable: propsIsEditable,
     mode: propsMode
 }) => {
-    const { projectId } = useParams<{ projectId: string }>();
     const projectData = useProjectData();
-    const [isCreatingTransform, setIsCreatingTransform] = useState(false);
-
-
 
     // If we have props from actionComputation, use them directly
     if (propsOutlineSettings) {
         const isEditable = propsIsEditable ?? false;
         const effectiveArtifact = propsOutlineSettings;
-
-        console.log('[OutlineSettingsDisplay] Using props-based artifact:', {
-            artifactId: effectiveArtifact.id,
-            origin_type: effectiveArtifact.origin_type,
-            isEditable,
-            mode: propsMode
-        });
 
         let mainContent: React.ReactNode = null;
 
@@ -624,407 +606,19 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
         );
     }
 
-    // Fallback to old logic if no props provided (for backward compatibility)
-    // TODO: Remove this once all usage is migrated to props-based approach
-    const fallbackIsLoading = projectData.isLoading;
-
-    // Find the root outline settings artifact
-    const rootOutlineArtifact = useMemo(() => {
-        if (!Array.isArray(projectData.artifacts)) return null;
-
-        // Find the original outline settings artifact
-        const outlineArtifacts = projectData.artifacts.filter(artifact =>
-            artifact.schema_type === 'outline_settings_schema'
-        );
-
-        console.log('[OutlineSettingsDisplay] All outline settings artifacts:', {
-            count: outlineArtifacts.length,
-            artifacts: outlineArtifacts.map(a => ({
-                id: a.id,
-                origin_type: a.origin_type,
-                created_at: a.created_at,
-                schema_type: a.schema_type
-            }))
-        });
-
-        if (outlineArtifacts.length === 0) return null;
-
-        // Sort by creation time and return the first one
-        outlineArtifacts.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-        const rootArtifact = outlineArtifacts[0];
-
-        console.log('[OutlineSettingsDisplay] Selected root artifact:', {
-            id: rootArtifact.id,
-            origin_type: rootArtifact.origin_type,
-            created_at: rootArtifact.created_at
-        });
-
-        return rootArtifact;
-    }, [projectData.artifacts]);
-
-    // Find the latest editable version (if any)
-    const latestOutlineSettingsArtifact = useMemo(() => {
-        if (!rootOutlineArtifact) return null;
-
-        console.log('[OutlineSettingsDisplay] Finding latest outline settings artifact:', {
-            rootOutlineArtifact: rootOutlineArtifact.id,
-            humanTransformsCount: Array.isArray(projectData.humanTransforms) ? projectData.humanTransforms.length : 'not array',
-            transformInputsCount: Array.isArray(projectData.transformInputs) ? projectData.transformInputs.length : 'not array',
-            transformOutputsCount: Array.isArray(projectData.transformOutputs) ? projectData.transformOutputs.length : 'not array'
-        });
-
-        // Check if there's a human transform for this artifact
-        if (!Array.isArray(projectData.humanTransforms) ||
-            !Array.isArray(projectData.transformInputs) ||
-            !Array.isArray(projectData.transformOutputs)) {
-            console.log('[OutlineSettingsDisplay] Data not ready, returning root artifact');
-            return rootOutlineArtifact;
-        }
-
-        // Find human transforms that use this artifact as input
-        const relevantTransforms = projectData.humanTransforms.filter((transform: any) => {
-            return projectData.transformInputs.some((input: any) =>
-                input.transform_id === transform.id && input.artifact_id === rootOutlineArtifact.id
-            );
-        });
-
-        console.log('[OutlineSettingsDisplay] Found relevant transforms:', {
-            count: relevantTransforms.length,
-            transforms: relevantTransforms.map(t => ({ id: t.id, created_at: t.created_at }))
-        });
-
-        if (relevantTransforms.length === 0) {
-            console.log('[OutlineSettingsDisplay] No relevant transforms, returning root artifact');
-            return rootOutlineArtifact;
-        }
-
-        // Get the latest transform by creation time
-        relevantTransforms.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-        const latestTransform = relevantTransforms[0];
-
-        console.log('[OutlineSettingsDisplay] Latest transform:', latestTransform.id);
-
-        // Find the output artifact for this transform
-        const outputRecord = projectData.transformOutputs.find((output: any) =>
-            output.transform_id === latestTransform.id
-        );
-
-        console.log('[OutlineSettingsDisplay] Output record:', outputRecord);
-
-        if (outputRecord) {
-            const editedArtifact = projectData.getArtifactById(outputRecord.artifact_id);
-            console.log('[OutlineSettingsDisplay] Edited artifact:', {
-                id: editedArtifact?.id,
-                schema_type: editedArtifact?.schema_type,
-                origin_type: editedArtifact?.origin_type
-            });
-
-            // Verify it's still an outline settings artifact
-            if (editedArtifact?.schema_type === 'outline_settings_schema') {
-                console.log('[OutlineSettingsDisplay] Returning edited artifact');
-                return editedArtifact;
-            }
-        }
-
-        // Fallback to original
-        console.log('[OutlineSettingsDisplay] Fallback to root artifact');
-        return rootOutlineArtifact;
-    }, [rootOutlineArtifact, projectData.humanTransforms, projectData.transformInputs, projectData.transformOutputs, projectData.getArtifactById]);
-
-    const isLoading = projectData.isLoading;
-
-    // Use the latest outline settings artifact as the effective artifact
-    const effectiveArtifact = latestOutlineSettingsArtifact;
-
-    // Determine if the current artifact is editable
-    const isEditable = useMemo(() => {
-        if (!effectiveArtifact) return false;
-
-        // Check if it's a user_input type (editable) and is a leaf node (no descendants)
-        const isUserInput = effectiveArtifact.origin_type === 'user_input';
-        if (!Array.isArray(projectData.transformInputs)) return isUserInput;
-
-        const hasDescendants = projectData.transformInputs.some((input: any) =>
-            input.artifact_id === effectiveArtifact.id
-        );
-
-        console.log(`[OutlineSettingsDisplay] isEditable check for ${effectiveArtifact.id}:`, {
-            origin_type: effectiveArtifact.origin_type,
-            isUserInput,
-            hasDescendants,
-            transformInputsCount: projectData.transformInputs.length,
-            relevantInputs: projectData.transformInputs.filter((input: any) => input.artifact_id === effectiveArtifact.id),
-            finalResult: isUserInput && !hasDescendants
-        });
-
-        return isUserInput && !hasDescendants;
-    }, [effectiveArtifact, projectData.transformInputs]);
-
-    // Check if the current artifact can be made editable (i.e., it's a leaf node)
-    const canBecomeEditable = useMemo(() => {
-        if (!effectiveArtifact) return false;
-
-        // Check if the effective artifact has descendants
-        if (!Array.isArray(projectData.transformInputs)) return true;
-
-        const hasDescendants = projectData.transformInputs.some((input: any) =>
-            input.artifact_id === effectiveArtifact.id
-        );
-
-        console.log(`[OutlineSettingsDisplay] canBecomeEditable check for ${effectiveArtifact.id}:`, {
-            origin_type: effectiveArtifact.origin_type,
-            hasDescendants,
-            transformInputsCount: projectData.transformInputs.length,
-            relevantInputs: projectData.transformInputs.filter((input: any) => input.artifact_id === effectiveArtifact.id),
-            finalResult: !hasDescendants && effectiveArtifact.origin_type === 'ai_generated'
-        });
-
-        return !hasDescendants && effectiveArtifact.origin_type === 'ai_generated';
-    }, [effectiveArtifact, projectData.transformInputs]);
-
-    // Handle creating an editable version
-    const handleCreateEditableVersion = useCallback(() => {
-        if (!effectiveArtifact || isCreatingTransform || isEditable) return;
-
-        setIsCreatingTransform(true);
-        projectData.createHumanTransform.mutate({
-            transformName: 'edit_outline_settings',
-            sourceArtifactId: effectiveArtifact.id,
-            derivationPath: '$',
-            fieldUpdates: {}
-        }, {
-            onSuccess: (response) => {
-                setIsCreatingTransform(false);
-                message.success('创建编辑版本成功');
-            },
-            onError: (error) => {
-                setIsCreatingTransform(false);
-                console.error('Failed to create editable version:', error);
-                message.error(`创建编辑版本失败: ${error.message}`);
-            }
-        });
-    }, [effectiveArtifact, isCreatingTransform, isEditable, projectData.createHumanTransform]);
-
-    // Loading state
-    if (isLoading || !effectiveArtifact) {
-        return (
-            <SectionWrapper
-                schemaType={ArtifactSchemaType.OUTLINE_SETTINGS}
-                title="剧本框架"
-                sectionId="outline-settings"
-                artifactId={effectiveArtifact?.id}
-            >
-                <div style={{ padding: '40px', textAlign: 'center' }}>
-                    <Spin size="large" />
-                    <div style={{ marginTop: '16px' }}>
-                        <Text style={{ color: '#666' }}>加载剧本框架中...</Text>
-                    </div>
-                </div>
-            </SectionWrapper>
-        );
-    }
-
-    let mainContent: React.ReactNode = null;
-
-    if (isEditable) {
-        // Editable mode - green border, user can edit with YJS
-        mainContent = (
-            <Card
-                style={{
-                    backgroundColor: '#1a1a1a',
-                    border: '2px solid #52c41a',
-                    borderRadius: '8px'
-                }}
-                styles={{ body: { padding: '24px' } }}
-            >
-                {/* Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div style={{
-                            width: '6px',
-                            height: '32px',
-                            backgroundColor: '#52c41a',
-                            borderRadius: '3px'
-                        }} />
-                        <div>
-                            <Title level={4} style={{ margin: 0, color: '#52c41a' }}>
-                                ✏️ 编辑剧本框架
-                            </Title>
-                        </div>
-                    </div>
-                </div>
-
-                {/* YJS-enabled form */}
-                <YJSArtifactProvider artifactId={effectiveArtifact.id} enableCollaboration={true}>
-                    <EditableOutlineForm />
-                </YJSArtifactProvider>
-            </Card>
-        );
-    } else if (canBecomeEditable) {
-        // Click-to-edit mode - blue border, can become editable
-        mainContent = (
-            <Card
-                style={{
-                    backgroundColor: '#1a1a1a',
-                    border: '1px solid #1890ff',
-                    borderRadius: '8px',
-                    cursor: isCreatingTransform ? 'default' : 'pointer',
-                    transition: 'all 0.2s ease',
-                    opacity: isCreatingTransform ? 0.7 : 1,
-                    pointerEvents: isCreatingTransform ? 'none' : 'auto'
-                }}
-                styles={{ body: { padding: '24px' } }}
-                onClick={!isCreatingTransform ? handleCreateEditableVersion : undefined}
-                onMouseEnter={(e) => {
-                    if (!isCreatingTransform) {
-                        e.currentTarget.style.borderColor = '#40a9ff';
-                        e.currentTarget.style.boxShadow = '0 0 8px rgba(24, 144, 255, 0.3)';
-                    }
-                }}
-                onMouseLeave={(e) => {
-                    if (!isCreatingTransform) {
-                        e.currentTarget.style.borderColor = '#1890ff';
-                        e.currentTarget.style.boxShadow = 'none';
-                    }
-                }}
-            >
-                {/* Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div style={{
-                            width: '6px',
-                            height: '32px',
-                            backgroundColor: '#1890ff',
-                            borderRadius: '3px'
-                        }} />
-                        <div>
-                            <Title level={4} style={{ margin: 0, color: '#1890ff' }}>
-                                🤖 剧本框架
-                            </Title>
-                            <Text type="secondary" style={{ fontSize: '12px' }}>
-                                AI生成 • 点击编辑
-                            </Text>
-                        </div>
-                    </div>
-
-                    {!isCreatingTransform && (
-                        <Button
-                            type="primary"
-                            size="small"
-                            icon={<EditOutlined />}
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                handleCreateEditableVersion();
-                            }}
-                            style={{
-                                backgroundColor: '#1890ff',
-                                border: 'none',
-                                borderRadius: '4px'
-                            }}
-                        >
-                            编辑框架
-                        </Button>
-                    )}
-                </div>
-
-                {/* Content sections - read-only */}
-                <ReadOnlyOutlineDisplay artifactId={effectiveArtifact.id} />
-
-                {/* Loading overlay */}
-                {isCreatingTransform && (
-                    <div style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        backgroundColor: 'rgba(0, 0, 0, 0.6)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        zIndex: 10,
-                        borderRadius: '8px'
-                    }}>
-                        <Spin
-                            indicator={<LoadingOutlined style={{ fontSize: 32, color: '#1890ff' }} spin />}
-                            tip="创建编辑版本中..."
-                        >
-                            <div style={{ padding: '40px' }} />
-                        </Spin>
-                    </div>
-                )}
-            </Card>
-        );
-    } else {
-        // Read-only mode - artifact has descendants
-        mainContent = (
-            <Card
-                style={{
-                    backgroundColor: '#1a1a1a',
-                    border: '1px solid #555',
-                    borderRadius: '6px',
-                    opacity: 0.7
-                }}
-                styles={{ body: { padding: '24px' } }}
-            >
-                {/* Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div style={{
-                            width: '6px',
-                            height: '32px',
-                            backgroundColor: '#555',
-                            borderRadius: '3px'
-                        }} />
-                        <div>
-                            <Title level={4} style={{ margin: 0, color: '#888' }}>
-                                📖 剧本框架
-                            </Title>
-                            <Text type="secondary" style={{ fontSize: '12px' }}>
-                                已被后续步骤使用，不可编辑
-                            </Text>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Content sections - read-only */}
-                <ReadOnlyOutlineDisplay artifactId={effectiveArtifact.id} />
-            </Card>
-        );
-    }
-
+    // Fallback: No props provided - show loading or empty state
     return (
         <SectionWrapper
             schemaType={ArtifactSchemaType.OUTLINE_SETTINGS}
             title="剧本框架"
             sectionId="outline-settings"
-            artifactId={effectiveArtifact?.id}
+            artifactId={undefined}
         >
-            <div style={{ marginTop: '24px', position: 'relative' }}>
-                {/* Loading overlay for creating transform */}
-                {isCreatingTransform && !canBecomeEditable && (
-                    <div style={{
-                        position: 'fixed',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        backgroundColor: 'rgba(0, 0, 0, 0.6)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        zIndex: 1000
-                    }}>
-                        <Spin
-                            indicator={<LoadingOutlined style={{ fontSize: 32, color: '#52c41a' }} spin />}
-                            tip="创建编辑版本中..."
-                        >
-                            <div style={{ padding: '40px' }} />
-                        </Spin>
-                    </div>
-                )}
-
-                {mainContent}
+            <div style={{ padding: '40px', textAlign: 'center' }}>
+                <Spin size="large" />
+                <div style={{ marginTop: '16px' }}>
+                    <Text style={{ color: '#666' }}>加载剧本框架中...</Text>
+                </div>
             </div>
         </SectionWrapper>
     );
