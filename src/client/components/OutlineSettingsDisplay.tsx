@@ -1,11 +1,13 @@
 import React, { useMemo, useState, useCallback } from 'react';
-import { Card, Typography, Tag, Space, Button, Spin } from 'antd';
-import { UserOutlined, HeartOutlined, StarOutlined, EnvironmentOutlined, TeamOutlined, LoadingOutlined, PlusOutlined, CloseOutlined } from '@ant-design/icons';
+import { Card, Typography, Tag, Space, Button, Spin, message } from 'antd';
+import { UserOutlined, HeartOutlined, StarOutlined, EnvironmentOutlined, TeamOutlined, LoadingOutlined, PlusOutlined, CloseOutlined, EditOutlined } from '@ant-design/icons';
 import { OutlineSettingsOutput } from '../../common/schemas/outlineSchemas';
 import { useProjectData } from '../contexts/ProjectDataContext';
 import { YJSArtifactProvider, useYJSArtifactContext } from '../contexts/YJSArtifactContext';
 import { YJSTextField, YJSTextAreaField, YJSArrayField } from './shared/YJSField';
 import { SectionWrapper, ArtifactSchemaType } from './shared';
+import { canBecomeEditable } from '../utils/actionComputation';
+import { apiService } from '../services/apiService';
 
 const { Text, Title } = Typography;
 
@@ -26,10 +28,13 @@ const EditableOutlineForm: React.FC = () => {
             if (typeof data === 'string') {
                 return JSON.parse(data) as OutlineSettingsOutput;
             }
-            return data as OutlineSettingsOutput || {};
+            if (data && typeof data === 'object') {
+                return data as OutlineSettingsOutput;
+            }
+            return {} as OutlineSettingsOutput;
         } catch (error) {
             console.warn('Failed to parse outline settings data:', error);
-            return {};
+            return {} as OutlineSettingsOutput;
         }
     }, [artifact?.data]);
 
@@ -297,212 +302,138 @@ const EditableOutlineForm: React.FC = () => {
 // Read-only display component
 const ReadOnlyOutlineDisplay: React.FC<{ artifactId: string }> = ({ artifactId }) => {
     const projectData = useProjectData();
+    const [isCreatingTransform, setIsCreatingTransform] = useState(false);
 
     const artifact = projectData.getArtifactById(artifactId);
+
+    // Get current values from YJS context
     const outlineSettings = useMemo(() => {
-        if (!artifact?.data) {
-            return null;
-        }
         try {
-            const data = typeof artifact.data === 'string' ? JSON.parse(artifact.data) : artifact.data;
-            return data as OutlineSettingsOutput;
+            const data = artifact?.data;
+            if (typeof data === 'string') {
+                return JSON.parse(data) as OutlineSettingsOutput;
+            }
+            if (data && typeof data === 'object') {
+                return data as OutlineSettingsOutput;
+            }
+            return {} as OutlineSettingsOutput;
         } catch (error) {
             console.warn('Failed to parse outline settings data:', error);
-            return null;
+            return {} as OutlineSettingsOutput;
         }
     }, [artifact?.data]);
 
-    if (!outlineSettings) {
+    // Check if this artifact can become editable
+    const canEdit = useMemo(() => {
+        if (!artifact || !Array.isArray(projectData.transformInputs)) return false;
+        return canBecomeEditable(artifact, projectData.transformInputs);
+    }, [artifact, projectData.transformInputs]);
+
+    if (!artifact) {
         return (
-            <div style={{ padding: '16px', textAlign: 'center' }}>
-                <Text style={{ color: '#666' }}>加载中...</Text>
+            <div style={{ padding: '20px', textAlign: 'center' }}>
+                <Spin size="large" />
+                <div style={{ marginTop: '16px' }}>
+                    <Text style={{ color: '#666' }}>加载剧本框架中...</Text>
+                </div>
             </div>
         );
     }
 
+    const handleCreateEditableVersion = useCallback(async () => {
+        if (!canEdit || isCreatingTransform) return;
+
+        setIsCreatingTransform(true);
+        try {
+            // Create a human transform to make this artifact editable
+            const response = await fetch(`/api/artifacts/${artifact.id}/human-transform`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer debug-auth-token-script-writer-dev`
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    transformName: 'edit_outline_settings',
+                    derivationPath: '$', // Root path indicator as per the transform definition
+                    fieldUpdates: {} // Start with empty updates, user will edit after
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const result = await response.json();
+            message.success('已创建可编辑版本');
+
+            // The page should automatically refresh to show the new editable version
+            // due to Electric SQL reactivity
+        } catch (error) {
+            console.error('Failed to create editable version:', error);
+            message.error('创建可编辑版本失败');
+        } finally {
+            setIsCreatingTransform(false);
+        }
+    }, [artifact.id, canEdit, isCreatingTransform]);
+
     return (
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
-            {/* Basic Information */}
-            <div>
-                <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
-                    📊 基本信息
-                </Text>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+        <Card
+            onClick={canEdit && !isCreatingTransform ? handleCreateEditableVersion : undefined}
+            style={{
+                backgroundColor: '#1a1a1a',
+                border: '1px solid #555',
+                borderRadius: '6px',
+                opacity: 0.7,
+                cursor: (canEdit && !isCreatingTransform) ? 'pointer' : 'default',
+                transition: 'all 0.2s ease'
+            }}
+            styles={{ body: { padding: '24px' } }}
+            onMouseEnter={(e) => {
+                if (canEdit && !isCreatingTransform) {
+                    e.currentTarget.style.opacity = '0.9';
+                    e.currentTarget.style.borderColor = '#52c41a';
+                }
+            }}
+            onMouseLeave={(e) => {
+                if (canEdit && !isCreatingTransform) {
+                    e.currentTarget.style.opacity = '0.7';
+                    e.currentTarget.style.borderColor = '#555';
+                }
+            }}
+        >
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{
+                        width: '6px',
+                        height: '32px',
+                        backgroundColor: '#555',
+                        borderRadius: '3px'
+                    }} />
                     <div>
-                        <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>剧本标题：</Text>
-                        <Text style={{ fontSize: '14px', color: '#d9d9d9' }}>
-                            {outlineSettings.title || '未设置'}
-                        </Text>
-                    </div>
-                    <div>
-                        <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>剧本类型：</Text>
-                        <Text style={{ fontSize: '14px', color: '#d9d9d9' }}>
-                            {outlineSettings.genre || '未设置'}
+                        <Title level={4} style={{ margin: 0, color: '#888' }}>
+                            📖 剧本框架
+                        </Title>
+                        <Text type="secondary" style={{ fontSize: '12px' }}>
+                            {canEdit ? (isCreatingTransform ? '创建编辑版本中...' : '点击编辑') : '只读模式'}
                         </Text>
                     </div>
                 </div>
+                {canEdit && !isCreatingTransform && (
+                    <EditOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
+                )}
+                {isCreatingTransform && (
+                    <LoadingOutlined style={{ color: '#1890ff', fontSize: '16px' }} />
+                )}
             </div>
 
-            {/* Target Audience */}
-            {(outlineSettings.target_audience?.demographic || outlineSettings.target_audience?.core_themes?.length) && (
-                <div>
-                    <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
-                        <UserOutlined style={{ marginRight: '8px' }} />
-                        目标观众
-                    </Text>
-                    {outlineSettings.target_audience?.demographic && (
-                        <div style={{ marginBottom: '8px' }}>
-                            <Text strong style={{ fontSize: '14px', color: '#fff' }}>目标群体：</Text>
-                            <Text style={{ fontSize: '14px', color: '#d9d9d9', marginLeft: '8px' }}>
-                                {outlineSettings.target_audience.demographic}
-                            </Text>
-                        </div>
-                    )}
-                    {Array.isArray(outlineSettings.target_audience?.core_themes) && outlineSettings.target_audience.core_themes.length > 0 && (
-                        <div>
-                            <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>核心主题：</Text>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                                {outlineSettings.target_audience.core_themes.map((theme: string, index: number) => (
-                                    <Tag key={index} color="blue">{theme}</Tag>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {/* Selling Points */}
-            {Array.isArray(outlineSettings.selling_points) && outlineSettings.selling_points.length > 0 && (
-                <div>
-                    <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
-                        <HeartOutlined style={{ marginRight: '8px' }} />
-                        卖点
-                    </Text>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                        {outlineSettings.selling_points.map((point: string, index: number) => (
-                            <Tag key={index} color="red">{point}</Tag>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* Satisfaction Points */}
-            {Array.isArray(outlineSettings.satisfaction_points) && outlineSettings.satisfaction_points.length > 0 && (
-                <div>
-                    <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
-                        <StarOutlined style={{ marginRight: '8px' }} />
-                        爽点
-                    </Text>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                        {outlineSettings.satisfaction_points.map((point: string, index: number) => (
-                            <Tag key={index} color="gold">{point}</Tag>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* Setting */}
-            {(outlineSettings.setting?.core_setting_summary || (Array.isArray(outlineSettings.setting?.key_scenes) && outlineSettings.setting.key_scenes.length > 0)) && (
-                <div>
-                    <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
-                        <EnvironmentOutlined style={{ marginRight: '8px' }} />
-                        故事设定
-                    </Text>
-                    {outlineSettings.setting?.core_setting_summary && (
-                        <div style={{ marginBottom: '8px' }}>
-                            <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>核心设定：</Text>
-                            <Text style={{ fontSize: '14px', color: '#d9d9d9', lineHeight: '1.5' }}>
-                                {outlineSettings.setting.core_setting_summary}
-                            </Text>
-                        </div>
-                    )}
-                    {Array.isArray(outlineSettings.setting?.key_scenes) && outlineSettings.setting.key_scenes.length > 0 && (
-                        <div>
-                            <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>关键场景：</Text>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                                {outlineSettings.setting.key_scenes.map((scene: string, index: number) => (
-                                    <Tag key={index} color="green">{scene}</Tag>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {/* Characters */}
-            {Array.isArray(outlineSettings.characters) && outlineSettings.characters.length > 0 && (
-                <div>
-                    <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
-                        <TeamOutlined style={{ marginRight: '8px' }} />
-                        角色设定
-                    </Text>
-                    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                        {outlineSettings.characters.map((character: any, index: number) => (
-                            <Card
-                                key={index}
-                                size="small"
-                                style={{
-                                    backgroundColor: '#262626',
-                                    border: '1px solid #434343'
-                                }}
-                                styles={{ body: { padding: '16px' } }}
-                            >
-                                <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                        <Text strong style={{ fontSize: '14px', color: '#fff' }}>
-                                            {character.name || `角色 ${index + 1}`}
-                                        </Text>
-                                        {character.type && (
-                                            <Tag color="blue">{character.type}</Tag>
-                                        )}
-                                    </div>
-                                    {(character.age || character.gender || character.occupation) && (
-                                        <div style={{ display: 'flex', gap: '8px' }}>
-                                            {character.age && <Tag>{character.age}</Tag>}
-                                            {character.gender && <Tag>{character.gender}</Tag>}
-                                            {character.occupation && <Tag>{character.occupation}</Tag>}
-                                        </div>
-                                    )}
-                                    {character.description && (
-                                        <Text style={{ fontSize: '13px', color: '#d9d9d9', lineHeight: '1.5' }}>
-                                            {character.description}
-                                        </Text>
-                                    )}
-                                    {Array.isArray(character.personality_traits) && character.personality_traits.length > 0 && (
-                                        <div>
-                                            <Text strong style={{ fontSize: '12px', color: '#999' }}>性格特点：</Text>
-                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
-                                                {character.personality_traits.map((trait: string, traitIndex: number) => (
-                                                    <Tag key={traitIndex} color="purple">{trait}</Tag>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                    {character.character_arc && (
-                                        <div>
-                                            <Text strong style={{ fontSize: '12px', color: '#999' }}>成长轨迹：</Text>
-                                            <Text style={{ fontSize: '12px', color: '#ccc', display: 'block', marginTop: '2px' }}>
-                                                {character.character_arc}
-                                            </Text>
-                                        </div>
-                                    )}
-                                    {Array.isArray(character.key_scenes) && character.key_scenes.length > 0 && (
-                                        <div>
-                                            <Text strong style={{ fontSize: '12px', color: '#999' }}>关键场景：</Text>
-                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
-                                                {character.key_scenes.map((scene: string, sceneIndex: number) => (
-                                                    <Tag key={sceneIndex} color="orange">{scene}</Tag>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                </Space>
-                            </Card>
-                        ))}
-                    </Space>
-                </div>
-            )}
-        </Space>
+            {/* Content sections - read-only */}
+            <YJSArtifactProvider artifactId={artifactId} enableCollaboration={false}>
+                <EditableOutlineForm />
+            </YJSArtifactProvider>
+        </Card>
     );
 };
 
