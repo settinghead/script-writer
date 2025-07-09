@@ -309,41 +309,86 @@ export const computeDisplayComponents = (
         return components;
     }
 
-    // Use simple artifact filtering instead of legacy functions
-    const brainstormInput = projectData.artifacts.find(a =>
+    // Check if lineage graph is available
+    if (projectData.lineageGraph === "pending" || projectData.lineageGraph === "error") {
+        return components;
+    }
+
+    // Use lineage graph to find canonical artifacts
+    const lineageGraph = projectData.lineageGraph;
+    const transformInputs = projectData.transformInputs === "pending" || projectData.transformInputs === "error"
+        ? [] : projectData.transformInputs;
+
+    // Cast artifacts to proper type after checking it's not pending/error
+    const artifacts = projectData.artifacts as any[];
+
+    // Find canonical brainstorm artifacts using lineage graph
+    const canonicalBrainstormArtifacts = Array.from(lineageGraph.nodes.values())
+        .filter(node => {
+            if (node.type !== 'artifact') return false;
+            const lineageArtifactNode = node as any; // Cast to access artifactId
+            const artifact = artifacts.find((a: any) => a.id === lineageArtifactNode.artifactId);
+            return artifact && (
+                artifact.schema_type === 'brainstorm_tool_input_schema' ||
+                artifact.type === 'brainstorm_tool_input_schema' ||
+                artifact.schema_type === 'brainstorm_item_schema' ||
+                artifact.type === 'brainstorm_item_schema' ||
+                artifact.schema_type === 'brainstorm_idea_schema' ||
+                artifact.type === 'brainstorm_idea' ||
+                artifact.schema_type === 'brainstorm_collection_schema' ||
+                artifact.type === 'brainstorm_collection_schema'
+            );
+        })
+        .map(node => {
+            const lineageArtifactNode = node as any; // Cast to access artifactId
+            return artifacts.find((a: any) => a.id === lineageArtifactNode.artifactId);
+        })
+        .filter(artifact => artifact != null);
+
+    const brainstormInput = canonicalBrainstormArtifacts.find((a: any) =>
         a.schema_type === 'brainstorm_tool_input_schema' || a.type === 'brainstorm_tool_input_schema'
     );
 
-    const brainstormIdeas = projectData.artifacts.filter(a =>
+    const brainstormIdeas = canonicalBrainstormArtifacts.filter((a: any) =>
         a.schema_type === 'brainstorm_item_schema' || a.type === 'brainstorm_item_schema' ||
-        a.schema_type === 'brainstorm_idea' || a.type === 'brainstorm_idea' ||
+        a.schema_type === 'brainstorm_idea_schema' || a.type === 'brainstorm_idea' ||
         a.schema_type === 'brainstorm_collection_schema' || a.type === 'brainstorm_collection_schema'
     );
 
-    // Find chosen idea (leaf node without descendants)
-    const transformInputs = projectData.transformInputs === "pending" || projectData.transformInputs === "error"
-        ? [] : projectData.transformInputs;
-    const chosenIdea = brainstormIdeas.find(idea => {
-        const hasDescendants = transformInputs.some(input => input.artifact_id === idea.id);
-        return !hasDescendants;
+    // Find chosen idea (leaf node without descendants) using lineage graph
+    const chosenIdea = brainstormIdeas.find((idea: any) => {
+        const lineageNode = lineageGraph.nodes.get(idea.id);
+        return lineageNode && lineageNode.isLeaf;
     });
 
-    // Find outline settings - prioritize leaf nodes (user_input artifacts without descendants)
-    const allOutlineSettings = projectData.artifacts.filter(a =>
-        a.schema_type === 'outline_settings_schema' || a.type === 'outline_settings'
-    );
+    // Find canonical outline settings using lineage graph - this is the key fix!
+    const canonicalOutlineArtifacts = Array.from(lineageGraph.nodes.values())
+        .filter(node => {
+            if (node.type !== 'artifact') return false;
+            const lineageArtifactNode = node as any; // Cast to access artifactId
+            const artifact = artifacts.find((a: any) => a.id === lineageArtifactNode.artifactId);
+            return artifact && (
+                artifact.schema_type === 'outline_settings_schema' ||
+                artifact.type === 'outline_settings'
+            );
+        })
+        .map(node => {
+            const lineageArtifactNode = node as any; // Cast to access artifactId
+            return artifacts.find((a: any) => a.id === lineageArtifactNode.artifactId);
+        })
+        .filter(artifact => artifact != null);
 
     let outlineSettings = null;
-    if (allOutlineSettings.length > 0) {
-        // Find leaf nodes (artifacts without descendants)
-        const leafOutlineSettings = allOutlineSettings.filter(artifact => {
-            const hasDescendants = transformInputs.some(input => input.artifact_id === artifact.id);
-            return !hasDescendants;
+    if (canonicalOutlineArtifacts.length > 0) {
+        // Find leaf nodes (artifacts without descendants) from canonical set
+        const leafOutlineSettings = canonicalOutlineArtifacts.filter((artifact: any) => {
+            const lineageNode = lineageGraph.nodes.get(artifact.id);
+            return lineageNode && lineageNode.isLeaf;
         });
 
         if (leafOutlineSettings.length > 0) {
             // Prioritize user_input artifacts, then by most recent
-            leafOutlineSettings.sort((a, b) => {
+            leafOutlineSettings.sort((a: any, b: any) => {
                 // First priority: user_input origin type
                 if (a.origin_type === 'user_input' && b.origin_type !== 'user_input') return -1;
                 if (b.origin_type === 'user_input' && a.origin_type !== 'user_input') return 1;
@@ -352,18 +397,25 @@ export const computeDisplayComponents = (
             });
             outlineSettings = leafOutlineSettings[0];
         } else {
-            // Fallback to most recent if no leaf nodes found
-            allOutlineSettings.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-            outlineSettings = allOutlineSettings[0];
+            // Fallback to most recent from canonical set if no leaf nodes found
+            canonicalOutlineArtifacts.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+            outlineSettings = canonicalOutlineArtifacts[0];
         }
     }
 
-
-
-    const chronicles = projectData.artifacts.find(a =>
-        a.schema_type === 'chronicles_schema'
-    );
-
+    // Find canonical chronicles using lineage graph
+    const canonicalChronicles = Array.from(lineageGraph.nodes.values())
+        .filter(node => {
+            if (node.type !== 'artifact') return false;
+            const lineageArtifactNode = node as any; // Cast to access artifactId
+            const artifact = artifacts.find((a: any) => a.id === lineageArtifactNode.artifactId);
+            return artifact && artifact.schema_type === 'chronicles_schema';
+        })
+        .map(node => {
+            const lineageArtifactNode = node as any; // Cast to access artifactId
+            return artifacts.find((a: any) => a.id === lineageArtifactNode.artifactId);
+        })
+        .filter(artifact => artifact != null)[0]; // Take the first (should be only one)
 
 
     switch (currentStage) {
@@ -569,13 +621,13 @@ export const computeDisplayComponents = (
             }
 
             // Show chronicles
-            if (chronicles) {
+            if (canonicalChronicles) {
                 components.push({
                     id: 'chronicles-display',
                     component: getComponentById('chronicles-display'),
                     mode: hasActiveTransforms ? 'readonly' : 'editable',
                     props: {
-                        chronicles,
+                        chronicles: canonicalChronicles,
                         isEditable: !hasActiveTransforms
                     },
                     priority: 5
@@ -626,13 +678,13 @@ export const computeDisplayComponents = (
                 });
             }
 
-            if (chronicles) {
+            if (canonicalChronicles) {
                 components.push({
                     id: 'chronicles-display',
                     component: getComponentById('chronicles-display'),
                     mode: 'readonly',
                     props: {
-                        chronicles,
+                        chronicles: canonicalChronicles,
                         isEditable: false
                     },
                     priority: 5
@@ -667,39 +719,81 @@ export const computeWorkflowParameters = (
         };
     }
 
+    // Check if lineage graph is available
+    if (projectData.lineageGraph === "pending" || projectData.lineageGraph === "error") {
+        return {
+            projectId,
+            currentStage: 'initial',
+            hasActiveTransforms: false,
+            effectiveBrainstormIdeas: [],
+            chosenBrainstormIdea: null,
+            latestOutlineSettings: null,
+            latestChronicles: null,
+            brainstormInput: null
+        };
+    }
+
     // Use the lineage-based computation for current stage and active transforms
     const actionResult = computeParamsAndActionsFromLineage(projectData);
 
-    // Simple artifact filtering
-    const brainstormIdeas = projectData.artifacts.filter(a =>
-        a.schema_type === 'brainstorm_item_schema' || a.type === 'brainstorm_item_schema' ||
-        a.schema_type === 'brainstorm_idea' || a.type === 'brainstorm_idea' ||
-        a.schema_type === 'brainstorm_collection_schema' || a.type === 'brainstorm_collection_schema'
-    );
+    // Use lineage graph to find canonical artifacts
+    const lineageGraph = projectData.lineageGraph;
+    const artifacts = projectData.artifacts as any[];
 
-    const transformInputs = projectData.transformInputs === "pending" || projectData.transformInputs === "error"
-        ? [] : projectData.transformInputs;
-    const chosenIdea = brainstormIdeas.find(idea => {
-        const hasDescendants = transformInputs.some(input => input.artifact_id === idea.id);
-        return !hasDescendants;
+    // Find canonical brainstorm artifacts using lineage graph
+    const canonicalBrainstormArtifacts = Array.from(lineageGraph.nodes.values())
+        .filter(node => {
+            if (node.type !== 'artifact') return false;
+            const lineageArtifactNode = node as any;
+            const artifact = artifacts.find((a: any) => a.id === lineageArtifactNode.artifactId);
+            return artifact && (
+                artifact.schema_type === 'brainstorm_item_schema' ||
+                artifact.type === 'brainstorm_item_schema' ||
+                artifact.schema_type === 'brainstorm_idea_schema' ||
+                artifact.type === 'brainstorm_idea' ||
+                artifact.schema_type === 'brainstorm_collection_schema' ||
+                artifact.type === 'brainstorm_collection_schema'
+            );
+        })
+        .map(node => {
+            const lineageArtifactNode = node as any;
+            return artifacts.find((a: any) => a.id === lineageArtifactNode.artifactId);
+        })
+        .filter(artifact => artifact != null);
+
+    const chosenIdea = canonicalBrainstormArtifacts.find((idea: any) => {
+        const lineageNode = lineageGraph.nodes.get(idea.id);
+        return lineageNode && lineageNode.isLeaf;
     });
 
-    // Find outline settings - prioritize leaf nodes (user_input artifacts without descendants)
-    const allOutlineSettings = projectData.artifacts.filter(a =>
-        a.schema_type === 'outline_settings_schema' || a.type === 'outline_settings'
-    );
+    // Find canonical outline settings using lineage graph
+    const canonicalOutlineArtifacts = Array.from(lineageGraph.nodes.values())
+        .filter(node => {
+            if (node.type !== 'artifact') return false;
+            const lineageArtifactNode = node as any;
+            const artifact = artifacts.find((a: any) => a.id === lineageArtifactNode.artifactId);
+            return artifact && (
+                artifact.schema_type === 'outline_settings_schema' ||
+                artifact.type === 'outline_settings'
+            );
+        })
+        .map(node => {
+            const lineageArtifactNode = node as any;
+            return artifacts.find((a: any) => a.id === lineageArtifactNode.artifactId);
+        })
+        .filter(artifact => artifact != null);
 
     let outlineSettings = null;
-    if (allOutlineSettings.length > 0) {
-        // Find leaf nodes (artifacts without descendants)
-        const leafOutlineSettings = allOutlineSettings.filter(artifact => {
-            const hasDescendants = transformInputs.some(input => input.artifact_id === artifact.id);
-            return !hasDescendants;
+    if (canonicalOutlineArtifacts.length > 0) {
+        // Find leaf nodes from canonical set
+        const leafOutlineSettings = canonicalOutlineArtifacts.filter((artifact: any) => {
+            const lineageNode = lineageGraph.nodes.get(artifact.id);
+            return lineageNode && lineageNode.isLeaf;
         });
 
         if (leafOutlineSettings.length > 0) {
             // Prioritize user_input artifacts, then by most recent
-            leafOutlineSettings.sort((a, b) => {
+            leafOutlineSettings.sort((a: any, b: any) => {
                 // First priority: user_input origin type
                 if (a.origin_type === 'user_input' && b.origin_type !== 'user_input') return -1;
                 if (b.origin_type === 'user_input' && a.origin_type !== 'user_input') return 1;
@@ -708,9 +802,9 @@ export const computeWorkflowParameters = (
             });
             outlineSettings = leafOutlineSettings[0];
         } else {
-            // Fallback to most recent if no leaf nodes found
-            allOutlineSettings.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-            outlineSettings = allOutlineSettings[0];
+            // Fallback to most recent from canonical set if no leaf nodes found
+            canonicalOutlineArtifacts.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+            outlineSettings = canonicalOutlineArtifacts[0];
         }
     }
 
@@ -718,13 +812,13 @@ export const computeWorkflowParameters = (
         projectId,
         currentStage: actionResult.currentStage,
         hasActiveTransforms: actionResult.hasActiveTransforms,
-        effectiveBrainstormIdeas: brainstormIdeas,
+        effectiveBrainstormIdeas: canonicalBrainstormArtifacts,
         chosenBrainstormIdea: chosenIdea,
         latestOutlineSettings: outlineSettings,
-        latestChronicles: projectData.artifacts.find(a =>
+        latestChronicles: artifacts.find((a: any) =>
             a.schema_type === 'chronicles_schema'
         ) || null,
-        brainstormInput: projectData.artifacts.find(a =>
+        brainstormInput: artifacts.find((a: any) =>
             a.schema_type === 'brainstorm_tool_input_schema' || a.type === 'brainstorm_tool_input_schema'
         ) || null
     };

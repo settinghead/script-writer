@@ -1,23 +1,58 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
-    computeUnifiedWorkflowState,
     computeWorkflowSteps,
     computeDisplayComponents,
-    computeWorkflowParameters
+    computeWorkflowParameters,
+    computeUnifiedWorkflowState
 } from '../actionComputation';
 import { ProjectDataContextType } from '../../../common/types';
+import { LineageGraph } from '../../../common/transform-artifact-framework/lineageResolution';
 import { WORKFLOW_STEPS } from '../workflowTypes';
 
 // Mock the lineage-based computation
 vi.mock('../lineageBasedActionComputation', () => ({
-    computeActionsFromLineage: vi.fn(() => ({
-        actions: [],
-        actionContext: {
-            currentStage: 'initial',
-            hasActiveTransforms: false
-        },
-        stageDescription: '开始创建项目'
-    }))
+    computeActionsFromLineage: vi.fn((lineageGraph, artifacts) => {
+        // Determine current stage based on artifacts
+        let currentStage = 'initial';
+
+        if (artifacts && Array.isArray(artifacts)) {
+            const hasBrainstormInput = artifacts.some(a =>
+                a.type === 'brainstorm_tool_input_schema' ||
+                a.schema_type === 'brainstorm_tool_input_schema'
+            );
+            const hasBrainstormIdeas = artifacts.some(a =>
+                a.schema_type === 'brainstorm_item_schema' ||
+                a.type === 'brainstorm_item_schema'
+            );
+            const hasOutlineSettings = artifacts.some(a =>
+                a.schema_type === 'outline_settings_schema' ||
+                a.type === 'outline_settings'
+            );
+            const hasChronicles = artifacts.some(a =>
+                a.schema_type === 'chronicles_schema' ||
+                a.type === 'chronicles'
+            );
+
+            if (hasChronicles) {
+                currentStage = 'chronicles_generation';
+            } else if (hasOutlineSettings) {
+                currentStage = 'outline_generation';
+            } else if (hasBrainstormIdeas) {
+                currentStage = 'idea_editing';
+            } else if (hasBrainstormInput) {
+                currentStage = 'brainstorm_input';
+            }
+        }
+
+        return {
+            actions: [],
+            actionContext: {
+                currentStage,
+                hasActiveTransforms: false
+            },
+            stageDescription: '开始创建项目'
+        };
+    })
 }));
 
 // Mock project data helper
@@ -32,12 +67,22 @@ const createMockProjectData = (overrides: Partial<ProjectDataContextType> = {}):
     isLoading: false,
     isError: false,
     error: null,
-    lineageGraph: "pending",
+    lineageGraph: {
+        nodes: new Map(),
+        edges: new Map(),
+        paths: new Map(),
+        rootNodes: new Set()
+    },
     getBrainstormCollections: () => [],
     getArtifactAtPath: () => null,
     getLatestVersionForPath: () => null,
     getBrainstormArtifacts: () => [],
-    getLineageGraph: () => "pending",
+    getLineageGraph: () => ({
+        nodes: new Map(),
+        edges: new Map(),
+        paths: new Map(),
+        rootNodes: new Set()
+    }),
     getOutlineArtifacts: () => [],
     getArtifactById: () => undefined,
     getTransformById: () => undefined,
@@ -139,7 +184,26 @@ describe('Unified Workflow Computation', () => {
                     type: 'brainstorm_tool_input_schema',
                     data: '{"platform": "douyin", "requirements": "test"}',
                     created_at: '2024-01-01T00:00:00Z'
-                }] as any
+                }] as any,
+                lineageGraph: {
+                    nodes: new Map([
+                        ['brainstorm-input-1', {
+                            type: 'artifact' as const,
+                            artifactId: 'brainstorm-input-1',
+                            isLeaf: true,
+                            depth: 0,
+                            artifactType: 'brainstorm_tool_input_schema',
+                            sourceTransform: 'none',
+                            schemaType: 'brainstorm_tool_input_schema',
+                            originType: 'user_input',
+                            artifact: { id: 'brainstorm-input-1' } as any,
+                            createdAt: '2024-01-01T00:00:00Z'
+                        }]
+                    ]),
+                    edges: new Map(),
+                    paths: new Map(),
+                    rootNodes: new Set(['brainstorm-input-1'])
+                }
             });
 
             const components = computeDisplayComponents('brainstorm_input', false, mockProjectData);
@@ -165,7 +229,38 @@ describe('Unified Workflow Computation', () => {
                         data: '{"title": "Test Idea", "body": "Test body"}',
                         created_at: '2024-01-01T00:00:00Z'
                     }
-                ] as any
+                ] as any,
+                lineageGraph: {
+                    nodes: new Map([
+                        ['brainstorm-input-1', {
+                            type: 'artifact' as const,
+                            artifactId: 'brainstorm-input-1',
+                            isLeaf: false,
+                            depth: 0,
+                            artifactType: 'brainstorm_tool_input_schema',
+                            sourceTransform: 'none',
+                            schemaType: 'brainstorm_tool_input_schema',
+                            originType: 'user_input',
+                            artifact: { id: 'brainstorm-input-1' } as any,
+                            createdAt: '2024-01-01T00:00:00Z'
+                        }],
+                        ['brainstorm-ideas-1', {
+                            type: 'artifact' as const,
+                            artifactId: 'brainstorm-ideas-1',
+                            isLeaf: true,
+                            depth: 1,
+                            artifactType: 'brainstorm_item_schema',
+                            sourceTransform: 'none',
+                            schemaType: 'brainstorm_item_schema',
+                            originType: 'ai_generated',
+                            artifact: { id: 'brainstorm-ideas-1' } as any,
+                            createdAt: '2024-01-01T00:00:00Z'
+                        }]
+                    ]),
+                    edges: new Map(),
+                    paths: new Map(),
+                    rootNodes: new Set(['brainstorm-input-1'])
+                }
             });
 
             const components = computeDisplayComponents('brainstorm_selection', false, mockProjectData);
@@ -193,7 +288,38 @@ describe('Unified Workflow Computation', () => {
                         created_at: '2024-01-01T00:00:00Z'
                     }
                 ] as any,
-                transformInputs: [] as any
+                transformInputs: [] as any,
+                lineageGraph: {
+                    nodes: new Map([
+                        ['brainstorm-input-1', {
+                            type: 'artifact' as const,
+                            artifactId: 'brainstorm-input-1',
+                            isLeaf: false,
+                            depth: 0,
+                            artifactType: 'brainstorm_tool_input_schema',
+                            sourceTransform: 'none',
+                            schemaType: 'brainstorm_tool_input_schema',
+                            originType: 'user_input',
+                            artifact: { id: 'brainstorm-input-1' } as any,
+                            createdAt: '2024-01-01T00:00:00Z'
+                        }],
+                        ['brainstorm-ideas-1', {
+                            type: 'artifact' as const,
+                            artifactId: 'brainstorm-ideas-1',
+                            isLeaf: true,
+                            depth: 1,
+                            artifactType: 'brainstorm_item_schema',
+                            sourceTransform: 'none',
+                            schemaType: 'brainstorm_item_schema',
+                            originType: 'ai_generated',
+                            artifact: { id: 'brainstorm-ideas-1' } as any,
+                            createdAt: '2024-01-01T00:00:00Z'
+                        }]
+                    ]),
+                    edges: new Map(),
+                    paths: new Map(),
+                    rootNodes: new Set(['brainstorm-input-1'])
+                }
             });
 
             const components = computeDisplayComponents('idea_editing', false, mockProjectData);
@@ -212,7 +338,26 @@ describe('Unified Workflow Computation', () => {
                     type: 'brainstorm_tool_input_schema',
                     data: '{"platform": "douyin", "requirements": "test"}',
                     created_at: '2024-01-01T00:00:00Z'
-                }] as any
+                }] as any,
+                lineageGraph: {
+                    nodes: new Map([
+                        ['brainstorm-input-1', {
+                            type: 'artifact' as const,
+                            artifactId: 'brainstorm-input-1',
+                            isLeaf: true,
+                            depth: 0,
+                            artifactType: 'brainstorm_tool_input_schema',
+                            sourceTransform: 'none',
+                            schemaType: 'brainstorm_tool_input_schema',
+                            originType: 'user_input',
+                            artifact: { id: 'brainstorm-input-1' } as any,
+                            createdAt: '2024-01-01T00:00:00Z'
+                        }]
+                    ]),
+                    edges: new Map(),
+                    paths: new Map(),
+                    rootNodes: new Set(['brainstorm-input-1'])
+                }
             });
 
             const components = computeDisplayComponents('brainstorm_input', true, mockProjectData);
@@ -236,7 +381,38 @@ describe('Unified Workflow Computation', () => {
                         data: '{"title": "Test Idea", "body": "Test body"}',
                         created_at: '2024-01-01T00:00:00Z'
                     }
-                ] as any
+                ] as any,
+                lineageGraph: {
+                    nodes: new Map([
+                        ['brainstorm-input-1', {
+                            type: 'artifact' as const,
+                            artifactId: 'brainstorm-input-1',
+                            isLeaf: false,
+                            depth: 0,
+                            artifactType: 'brainstorm_tool_input_schema',
+                            sourceTransform: 'none',
+                            schemaType: 'brainstorm_tool_input_schema',
+                            originType: 'user_input',
+                            artifact: { id: 'brainstorm-input-1' } as any,
+                            createdAt: '2024-01-01T00:00:00Z'
+                        }],
+                        ['brainstorm-ideas-1', {
+                            type: 'artifact' as const,
+                            artifactId: 'brainstorm-ideas-1',
+                            isLeaf: true,
+                            depth: 1,
+                            artifactType: 'brainstorm_item_schema',
+                            sourceTransform: 'none',
+                            schemaType: 'brainstorm_item_schema',
+                            originType: 'ai_generated',
+                            artifact: { id: 'brainstorm-ideas-1' } as any,
+                            createdAt: '2024-01-01T00:00:00Z'
+                        }]
+                    ]),
+                    edges: new Map(),
+                    paths: new Map(),
+                    rootNodes: new Set(['brainstorm-input-1'])
+                }
             });
 
             const components = computeDisplayComponents('brainstorm_selection', false, mockProjectData);
@@ -310,15 +486,47 @@ describe('Unified Workflow Computation', () => {
                         created_at: '2024-01-01T00:00:00Z'
                     }
                 ] as any,
-                transformInputs: [] as any
+                transformInputs: [] as any,
+                lineageGraph: {
+                    nodes: new Map([
+                        ['brainstorm-input-1', {
+                            type: 'artifact' as const,
+                            artifactId: 'brainstorm-input-1',
+                            isLeaf: false,
+                            depth: 0,
+                            artifactType: 'brainstorm_tool_input_schema',
+                            sourceTransform: 'none',
+                            schemaType: 'brainstorm_tool_input_schema',
+                            originType: 'user_input',
+                            artifact: { id: 'brainstorm-input-1' } as any,
+                            createdAt: '2024-01-01T00:00:00Z'
+                        }],
+                        ['brainstorm-ideas-1', {
+                            type: 'artifact' as const,
+                            artifactId: 'brainstorm-ideas-1',
+                            isLeaf: true,
+                            depth: 1,
+                            artifactType: 'brainstorm_item_schema',
+                            sourceTransform: 'none',
+                            schemaType: 'brainstorm_item_schema',
+                            originType: 'ai_generated',
+                            artifact: { id: 'brainstorm-ideas-1' } as any,
+                            createdAt: '2024-01-01T00:00:00Z'
+                        }]
+                    ]),
+                    edges: new Map(),
+                    paths: new Map(),
+                    rootNodes: new Set(['brainstorm-input-1'])
+                }
             });
 
             const state = computeUnifiedWorkflowState(mockProjectData, 'test-project');
 
             expect(state.steps).toHaveLength(7); // AI path: 创意输入 → 头脑风暴 → 创意编辑 → 剧本框架 → 时间顺序大纲 → 每集大纲 → 分集剧本
             expect(state.displayComponents).toHaveLength(2); // brainstorm-input-editor + single-brainstorm-idea-editor
-            expect(Array.isArray(state.actions)).toBe(true); // Actions are computed by existing system
-            expect(state.parameters.projectId).toBe('test-project');
+            expect(Array.isArray(state.actions)).toBe(true); // Actions are computed
+            expect(state.parameters.currentStage).toBe('idea_editing');
+            expect(state.parameters.hasActiveTransforms).toBe(false);
         });
 
         it('should handle different workflow stages', () => {
@@ -337,7 +545,37 @@ describe('Unified Workflow Computation', () => {
                         created_at: '2024-01-01T00:00:00Z'
                     }
                 ] as any,
-                transformInputs: [] as any
+                lineageGraph: {
+                    nodes: new Map([
+                        ['brainstorm-input-1', {
+                            type: 'artifact' as const,
+                            artifactId: 'brainstorm-input-1',
+                            isLeaf: false,
+                            depth: 0,
+                            artifactType: 'brainstorm_tool_input_schema',
+                            sourceTransform: 'none',
+                            schemaType: 'brainstorm_tool_input_schema',
+                            originType: 'user_input',
+                            artifact: { id: 'brainstorm-input-1' } as any,
+                            createdAt: '2024-01-01T00:00:00Z'
+                        }],
+                        ['brainstorm-ideas-1', {
+                            type: 'artifact' as const,
+                            artifactId: 'brainstorm-ideas-1',
+                            isLeaf: true,
+                            depth: 1,
+                            artifactType: 'brainstorm_item_schema',
+                            sourceTransform: 'none',
+                            schemaType: 'brainstorm_item_schema',
+                            originType: 'ai_generated',
+                            artifact: { id: 'brainstorm-ideas-1' } as any,
+                            createdAt: '2024-01-01T00:00:00Z'
+                        }]
+                    ]),
+                    edges: new Map(),
+                    paths: new Map(),
+                    rootNodes: new Set(['brainstorm-input-1'])
+                }
             });
 
             const state = computeUnifiedWorkflowState(mockProjectData, 'test-project');

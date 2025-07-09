@@ -3,5 +3,8 @@ export { ReasoningIndicator } from './ReasoningIndicator';
 export { SectionWrapper, ArtifactSchemaType } from './SectionWrapper';
 export { YJSEditableText } from './YJSEditableText';
 export { YJSTextField, YJSTextAreaField, YJSArrayField } from './YJSField';
+export { ReadOnlyArtifactDisplay } from './ReadOnlyArtifactDisplay';
+export { ArtifactDisplayWrapper } from './ArtifactDisplayWrapper';
+export { EditableOutlineForm } from './EditableOutlineForm';
 export * from './streaming';
 export * from './fieldConfigs'; 

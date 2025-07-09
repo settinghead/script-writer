@@ -418,19 +418,35 @@ function findLatestArtifactByType(
 
     if (candidateArtifacts.length === 0) return null;
 
-    // Find the deepest (most recent) one using lineage
-    let latestArtifact = candidateArtifacts[0];
-    let maxDepth = 0;
-
-    for (const artifact of candidateArtifacts) {
+    // Filter to only include artifacts that are in the lineage graph (canonical artifacts)
+    const canonicalArtifacts = candidateArtifacts.filter(artifact => {
         const node = lineageGraph.nodes.get(artifact.id);
-        if (node && node.depth > maxDepth) {
-            maxDepth = node.depth;
-            latestArtifact = artifact;
-        }
-    }
+        return node != null;
+    });
 
-    return latestArtifact;
+    if (canonicalArtifacts.length === 0) return null;
+
+    // Find leaf nodes (artifacts without descendants) from canonical set
+    const leafArtifacts = canonicalArtifacts.filter(artifact => {
+        const node = lineageGraph.nodes.get(artifact.id);
+        return node && node.isLeaf;
+    });
+
+    if (leafArtifacts.length > 0) {
+        // Prioritize user_input artifacts, then by most recent
+        leafArtifacts.sort((a, b) => {
+            // First priority: user_input origin type
+            if (a.origin_type === 'user_input' && b.origin_type !== 'user_input') return -1;
+            if (b.origin_type === 'user_input' && a.origin_type !== 'user_input') return 1;
+            // Second priority: most recent
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
+        return leafArtifacts[0];
+    } else {
+        // Fallback to most recent from canonical set if no leaf nodes found
+        canonicalArtifacts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        return canonicalArtifacts[0];
+    }
 }
 
 /**
