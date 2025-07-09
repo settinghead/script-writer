@@ -22,34 +22,35 @@ export const YJSTextField: React.FC<YJSFieldProps> = ({
 }) => {
     const { getField, setField, isLoading, isConnected, isCollaborative } = useYJSArtifactContext();
 
-    // Local value state for immediate UI updates
+    // Initialize local value with empty string, will be set properly in useEffect
     const [localValue, setLocalValue] = useState('');
     const inputRef = useRef<any>(null);
+    const initializedRef = useRef(false);
 
-    // Get current value from context
-    const currentValue = getField(path) || '';
-    const currentValueRef = useRef(currentValue);
-
-    // Update ref when currentValue changes
+    // Initialize when component mounts and data is available
     useEffect(() => {
-        currentValueRef.current = currentValue;
-    }, [currentValue]);
+        if (!initializedRef.current) {
+            // Small delay to ensure YJS context is ready
+            const timer = setTimeout(() => {
+                const currentValue = getField(path) || '';
+                setLocalValue(currentValue);
+                initializedRef.current = true;
+            }, 100);
+
+            return () => clearTimeout(timer);
+        }
+    }, []); // Empty dependency array - only run once on mount
 
     // Debounced save function - use useCallback to prevent recreation
     const debouncedSave = useDebouncedCallback(
         React.useCallback((value: string) => {
-            // Don't save if value is undefined, null, or hasn't actually changed
+            // Don't save if value is undefined, null
             if (value === undefined || value === null) {
                 return;
             }
 
-            const normalizedCurrentValue = currentValueRef.current || '';
-            const normalizedNewValue = value || '';
-
-            if (normalizedNewValue !== normalizedCurrentValue) {
-                setField(path, value);
-            }
-        }, [setField, path]), // Remove currentValue from dependencies
+            setField(path, value);
+        }, [setField, path]),
         300
     );
 
@@ -63,9 +64,7 @@ export const YJSTextField: React.FC<YJSFieldProps> = ({
     // Handle blur (save final value)
     const handleBlur = () => {
         // Final save on blur
-        if (localValue !== currentValueRef.current) {
-            setField(path, localValue);
-        }
+        setField(path, localValue);
     };
 
     // Handle key press
@@ -74,14 +73,11 @@ export const YJSTextField: React.FC<YJSFieldProps> = ({
             handleBlur();
         }
         if (e.key === 'Escape') {
-            setLocalValue(currentValueRef.current || '');
+            // Reset to current YJS value on escape
+            const currentYJSValue = getField(path) || '';
+            setLocalValue(currentYJSValue);
         }
     };
-
-    // Update local value when context value changes
-    useEffect(() => {
-        setLocalValue(currentValue || '');
-    }, [currentValue]);
 
     const effectiveDisabled = disabled || isLoading;
 
@@ -116,34 +112,36 @@ export const YJSTextAreaField: React.FC<YJSTextAreaFieldProps> = ({
 }) => {
     const { getField, setField, isLoading, isConnected, isCollaborative } = useYJSArtifactContext();
 
-    // Local value state for immediate UI updates
+    // Initialize local value with empty string, will be set properly in useEffect
     const [localValue, setLocalValue] = useState('');
     const textAreaRef = useRef<any>(null);
+    const initializedRef = useRef(false);
 
-    // Get current value from context
-    const currentValue = getField(path) || '';
-    const currentValueRef = useRef(currentValue);
-
-    // Update ref when currentValue changes
+    // Initialize when component mounts and data is available
     useEffect(() => {
-        currentValueRef.current = currentValue;
-    }, [currentValue]);
+        if (!initializedRef.current) {
+            // Small delay to ensure YJS context is ready
+            const timer = setTimeout(() => {
+                const currentValue = getField(path) || '';
+                console.log(`[YJSTextAreaField] Initializing path: ${path}, value:`, currentValue);
+                setLocalValue(currentValue);
+                initializedRef.current = true;
+            }, 100);
+
+            return () => clearTimeout(timer);
+        }
+    }, []); // Empty dependency array - only run once on mount
 
     // Debounced save function - use useCallback to prevent recreation
     const debouncedSave = useDebouncedCallback(
         React.useCallback((value: string) => {
-            // Don't save if value is undefined, null, or hasn't actually changed
+            // Don't save if value is undefined, null
             if (value === undefined || value === null) {
                 return;
             }
 
-            const normalizedCurrentValue = currentValueRef.current || '';
-            const normalizedNewValue = value || '';
-
-            if (normalizedNewValue !== normalizedCurrentValue) {
-                setField(path, value);
-            }
-        }, [setField, path]), // Remove currentValue from dependencies
+            setField(path, value);
+        }, [setField, path]),
         300
     );
 
@@ -157,22 +155,17 @@ export const YJSTextAreaField: React.FC<YJSTextAreaFieldProps> = ({
     // Handle blur (save final value)
     const handleBlur = () => {
         // Final save on blur
-        if (localValue !== currentValueRef.current) {
-            setField(path, localValue);
-        }
+        setField(path, localValue);
     };
 
     // Handle key press
     const handleKeyPress = (e: React.KeyboardEvent) => {
         if (e.key === 'Escape') {
-            setLocalValue(currentValueRef.current || '');
+            // Reset to current YJS value on escape
+            const currentYJSValue = getField(path) || '';
+            setLocalValue(currentYJSValue);
         }
     };
-
-    // Update local value when context value changes
-    useEffect(() => {
-        setLocalValue(currentValue || '');
-    }, [currentValue]);
 
     const effectiveDisabled = disabled || isLoading;
 
