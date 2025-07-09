@@ -4,7 +4,7 @@ import { ArtifactRepository } from '../transform-artifact-framework/ArtifactRepo
 
 type Database = typeof db;
 
-// YJS types (loaded dynamically when enabled)
+// YJS types (will be loaded dynamically)
 type YDoc = any;
 type YMap = any;
 type YArray = any;
@@ -24,7 +24,6 @@ export interface YJSAwarenessUpdate {
     room_id: string;
     project_id: string;
     update: Buffer;
-    artifact_id: string; // Add this field that was missing
     created_at?: Date | string;
     updated_at: Date | string;
 }
@@ -40,7 +39,7 @@ export class YJSService {
     ) { }
 
     /**
-     * Initialize YJS library
+     * Initialize YJS module (dynamic import)
      */
     private async initializeYJS(): Promise<void> {
         if (!this.Y) {
@@ -48,6 +47,9 @@ export class YJSService {
         }
     }
 
+    /**
+     * Get or create YJS document for an artifact
+     */
     async getOrCreateDocument(artifactId: string, projectId: string): Promise<YDoc> {
         await this.initializeYJS();
 
@@ -82,7 +84,7 @@ export class YJSService {
     }
 
     /**
-     * Initialize YJS document from artifact data
+     * Initialize YJS document with artifact data
      */
     private async initializeDocumentFromArtifact(
         doc: YDoc,
@@ -112,7 +114,7 @@ export class YJSService {
     }
 
     /**
-     * Populate YJS structure from plain object
+     * Recursively populate YJS structures from object data
      */
     private populateYJSFromObject(yParent: YMap | YArray, data: any): void {
         if (typeof data === 'string') {
@@ -178,7 +180,7 @@ export class YJSService {
     }
 
     /**
-     * Convert YJS structure to plain object
+     * Convert YJS document back to plain object
      */
     convertYJSToObject(yStructure: YMap | YArray | YText): any {
         if (yStructure instanceof this.Y.Text) {
@@ -272,7 +274,7 @@ export class YJSService {
                 .where('room_id', '=', roomId)
                 .executeTakeFirst();
 
-            return result as YJSDocumentState | null;
+            return result || null;
         } catch (error) {
             console.error('Failed to load YJS document state:', error);
             return null;
@@ -286,7 +288,6 @@ export class YJSService {
         clientId: string,
         roomId: string,
         projectId: string,
-        artifactId: string,
         update: Buffer
     ): Promise<void> {
         try {
@@ -297,9 +298,7 @@ export class YJSService {
                     client_id: clientId,
                     room_id: roomId,
                     project_id: projectId,
-                    artifact_id: artifactId,
                     update: update,
-                    created_at: now,
                     updated_at: now
                 })
                 .onConflict((oc) => oc
@@ -325,7 +324,7 @@ export class YJSService {
                 .where('room_id', '=', roomId)
                 .execute();
 
-            return results as YJSAwarenessUpdate[];
+            return results;
         } catch (error) {
             console.error('Failed to get awareness updates:', error);
             return [];

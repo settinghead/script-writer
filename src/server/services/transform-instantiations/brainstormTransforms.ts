@@ -5,7 +5,6 @@ import {
   OutlineSettingsOutputSchema,
   ChroniclesInputSchema,
   ChroniclesOutputSchema,
-  ChroniclesStageSchema
 } from '../../../common/schemas/outlineSchemas';
 
 // Get the schemas from the registry
