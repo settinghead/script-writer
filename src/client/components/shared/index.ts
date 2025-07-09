@@ -6,5 +6,8 @@ export { YJSTextField, YJSTextAreaField, YJSArrayField } from './YJSField';
 export { ReadOnlyArtifactDisplay } from './ReadOnlyArtifactDisplay';
 export { ArtifactDisplayWrapper } from './ArtifactDisplayWrapper';
 export { EditableOutlineForm } from './EditableOutlineForm';
+export { EditableChronicleStageForm } from './EditableChronicleStageForm';
+export { ChronicleStageWrapper } from './ChronicleStageWrapper';
+export * from './YJSComplexFields';
 export * from './streaming';
 export * from './fieldConfigs'; 

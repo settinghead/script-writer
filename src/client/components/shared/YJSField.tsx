@@ -22,32 +22,34 @@ export const YJSTextField: React.FC<YJSFieldProps> = ({
 }) => {
     const { getField, setField, isLoading, isConnected, isCollaborative } = useYJSArtifactContext();
 
-
     // Local value state for immediate UI updates
     const [localValue, setLocalValue] = useState('');
     const inputRef = useRef<any>(null);
 
     // Get current value from context
     const currentValue = getField(path) || '';
+    const currentValueRef = useRef(currentValue);
 
+    // Update ref when currentValue changes
+    useEffect(() => {
+        currentValueRef.current = currentValue;
+    }, [currentValue]);
 
     // Debounced save function - use useCallback to prevent recreation
     const debouncedSave = useDebouncedCallback(
         React.useCallback((value: string) => {
-
             // Don't save if value is undefined, null, or hasn't actually changed
             if (value === undefined || value === null) {
                 return;
             }
 
-            const normalizedCurrentValue = currentValue || '';
+            const normalizedCurrentValue = currentValueRef.current || '';
             const normalizedNewValue = value || '';
 
             if (normalizedNewValue !== normalizedCurrentValue) {
                 setField(path, value);
-            } else {
             }
-        }, [setField, path, currentValue]),
+        }, [setField, path]), // Remove currentValue from dependencies
         300
     );
 
@@ -61,7 +63,7 @@ export const YJSTextField: React.FC<YJSFieldProps> = ({
     // Handle blur (save final value)
     const handleBlur = () => {
         // Final save on blur
-        if (localValue !== currentValue) {
+        if (localValue !== currentValueRef.current) {
             setField(path, localValue);
         }
     };
@@ -72,7 +74,7 @@ export const YJSTextField: React.FC<YJSFieldProps> = ({
             handleBlur();
         }
         if (e.key === 'Escape') {
-            setLocalValue(currentValue || '');
+            setLocalValue(currentValueRef.current || '');
         }
     };
 
@@ -114,32 +116,34 @@ export const YJSTextAreaField: React.FC<YJSTextAreaFieldProps> = ({
 }) => {
     const { getField, setField, isLoading, isConnected, isCollaborative } = useYJSArtifactContext();
 
-
     // Local value state for immediate UI updates
     const [localValue, setLocalValue] = useState('');
     const textAreaRef = useRef<any>(null);
 
     // Get current value from context
     const currentValue = getField(path) || '';
+    const currentValueRef = useRef(currentValue);
 
+    // Update ref when currentValue changes
+    useEffect(() => {
+        currentValueRef.current = currentValue;
+    }, [currentValue]);
 
     // Debounced save function - use useCallback to prevent recreation
     const debouncedSave = useDebouncedCallback(
         React.useCallback((value: string) => {
-
             // Don't save if value is undefined, null, or hasn't actually changed
             if (value === undefined || value === null) {
                 return;
             }
 
-            const normalizedCurrentValue = currentValue || '';
+            const normalizedCurrentValue = currentValueRef.current || '';
             const normalizedNewValue = value || '';
 
             if (normalizedNewValue !== normalizedCurrentValue) {
                 setField(path, value);
-            } else {
             }
-        }, [setField, path, currentValue]),
+        }, [setField, path]), // Remove currentValue from dependencies
         300
     );
 
@@ -153,7 +157,7 @@ export const YJSTextAreaField: React.FC<YJSTextAreaFieldProps> = ({
     // Handle blur (save final value)
     const handleBlur = () => {
         // Final save on blur
-        if (localValue !== currentValue) {
+        if (localValue !== currentValueRef.current) {
             setField(path, localValue);
         }
     };
@@ -161,7 +165,7 @@ export const YJSTextAreaField: React.FC<YJSTextAreaFieldProps> = ({
     // Handle key press
     const handleKeyPress = (e: React.KeyboardEvent) => {
         if (e.key === 'Escape') {
-            setLocalValue(currentValue || '');
+            setLocalValue(currentValueRef.current || '');
         }
     };
 
@@ -203,14 +207,18 @@ export const YJSArrayField: React.FC<YJSArrayFieldProps> = ({
 }) => {
     const { getField, setField, isLoading, isConnected, isCollaborative } = useYJSArtifactContext();
 
-
     // Local value state for immediate UI updates
     const [localValue, setLocalValue] = useState('');
     const textAreaRef = useRef<any>(null);
 
     // Get current value from context
     const currentArray = getField(path) || [];
+    const currentArrayRef = useRef(currentArray);
 
+    // Update ref when currentArray changes
+    useEffect(() => {
+        currentArrayRef.current = currentArray;
+    }, [currentArray]);
 
     // Convert array to textarea format (one item per line)
     const arrayToTextarea = (arr: string[] | null | undefined): string => {
@@ -232,18 +240,16 @@ export const YJSArrayField: React.FC<YJSArrayFieldProps> = ({
     // Debounced save function
     const debouncedSave = useDebouncedCallback(
         React.useCallback((value: string) => {
-
             const newArray = textareaToArray(value);
-            const currentArrayNormalized = Array.isArray(currentArray) ? currentArray : [];
+            const currentArrayNormalized = Array.isArray(currentArrayRef.current) ? currentArrayRef.current : [];
 
             // Compare arrays
             const arraysEqual = JSON.stringify(newArray) === JSON.stringify(currentArrayNormalized);
 
             if (!arraysEqual) {
                 setField(path, newArray);
-            } else {
             }
-        }, [setField, path, currentArray]),
+        }, [setField, path]), // Remove currentArray from dependencies
         300
     );
 
@@ -258,7 +264,7 @@ export const YJSArrayField: React.FC<YJSArrayFieldProps> = ({
     const handleBlur = () => {
         // Final save on blur
         const finalArray = textareaToArray(localValue);
-        if (JSON.stringify(finalArray) !== JSON.stringify(currentArray)) {
+        if (JSON.stringify(finalArray) !== JSON.stringify(currentArrayRef.current)) {
             setField(path, finalArray);
         }
     };

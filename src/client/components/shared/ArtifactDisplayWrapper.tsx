@@ -16,6 +16,8 @@ interface ArtifactDisplayWrapperProps {
     editableComponent: React.ComponentType<any>;
     schemaType: string;
     enableClickToEdit?: boolean;
+    onClickToEdit?: () => Promise<void>;
+    clickToEditLoading?: boolean;
 }
 
 /**
@@ -30,7 +32,9 @@ export const ArtifactDisplayWrapper: React.FC<ArtifactDisplayWrapperProps> = ({
     icon,
     editableComponent: EditableComponent,
     schemaType,
-    enableClickToEdit = true
+    enableClickToEdit = true,
+    onClickToEdit,
+    clickToEditLoading = false
 }) => {
     const projectData = useProjectData();
     const [isCreatingTransform, setIsCreatingTransform] = useState(false);
@@ -43,6 +47,13 @@ export const ArtifactDisplayWrapper: React.FC<ArtifactDisplayWrapperProps> = ({
 
     // Handle creating an editable version
     const handleCreateEditableVersion = useCallback(async () => {
+        // If custom click handler is provided, use it
+        if (onClickToEdit) {
+            await onClickToEdit();
+            return;
+        }
+
+        // Default behavior
         if (!canEdit || isCreatingTransform || !artifact) return;
 
         setIsCreatingTransform(true);
@@ -74,7 +85,13 @@ export const ArtifactDisplayWrapper: React.FC<ArtifactDisplayWrapperProps> = ({
         } finally {
             setIsCreatingTransform(false);
         }
-    }, [artifact, canEdit, isCreatingTransform, schemaType]);
+    }, [artifact, canEdit, isCreatingTransform, schemaType, onClickToEdit]);
+
+    // Determine effective loading state
+    const effectiveLoading = clickToEditLoading || isCreatingTransform;
+
+    // Determine if click-to-edit is available
+    const clickToEditAvailable = enableClickToEdit && (onClickToEdit || canEdit);
 
     if (!artifact) {
         return (
@@ -125,24 +142,24 @@ export const ArtifactDisplayWrapper: React.FC<ArtifactDisplayWrapperProps> = ({
         // Read-only mode
         return (
             <Card
-                onClick={enableClickToEdit && canEdit && !isCreatingTransform ? handleCreateEditableVersion : undefined}
+                onClick={clickToEditAvailable && !effectiveLoading ? handleCreateEditableVersion : undefined}
                 style={{
                     backgroundColor: '#1a1a1a',
                     border: '1px solid #555',
                     borderRadius: '6px',
                     opacity: 0.7,
-                    cursor: (enableClickToEdit && canEdit && !isCreatingTransform) ? 'pointer' : 'default',
+                    cursor: (clickToEditAvailable && !effectiveLoading) ? 'pointer' : 'default',
                     transition: 'all 0.2s ease'
                 }}
                 styles={{ body: { padding: '24px' } }}
                 onMouseEnter={(e) => {
-                    if (enableClickToEdit && canEdit && !isCreatingTransform) {
+                    if (clickToEditAvailable && !effectiveLoading) {
                         e.currentTarget.style.opacity = '0.9';
                         e.currentTarget.style.borderColor = '#52c41a';
                     }
                 }}
                 onMouseLeave={(e) => {
-                    if (enableClickToEdit && canEdit && !isCreatingTransform) {
+                    if (clickToEditAvailable && !effectiveLoading) {
                         e.currentTarget.style.opacity = '0.7';
                         e.currentTarget.style.borderColor = '#555';
                     }
@@ -162,17 +179,17 @@ export const ArtifactDisplayWrapper: React.FC<ArtifactDisplayWrapperProps> = ({
                                 {icon} {title}
                             </Title>
                             <Text type="secondary" style={{ fontSize: '12px' }}>
-                                {enableClickToEdit && canEdit ?
-                                    (isCreatingTransform ? '创建编辑版本中...' : '点击编辑') :
+                                {clickToEditAvailable ?
+                                    (effectiveLoading ? '创建编辑版本中...' : '点击编辑') :
                                     '只读模式'
                                 }
                             </Text>
                         </div>
                     </div>
-                    {enableClickToEdit && canEdit && !isCreatingTransform && (
+                    {clickToEditAvailable && !effectiveLoading && (
                         <EditOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
                     )}
-                    {isCreatingTransform && (
+                    {effectiveLoading && (
                         <LoadingOutlined style={{ color: '#1890ff', fontSize: '16px' }} />
                     )}
                 </div>

@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Typography, Space, Card, Tag } from 'antd';
-import { UserOutlined, HeartOutlined, StarOutlined, EnvironmentOutlined, TeamOutlined } from '@ant-design/icons';
+import { UserOutlined, HeartOutlined, StarOutlined, EnvironmentOutlined, TeamOutlined, ThunderboltOutlined, BulbOutlined } from '@ant-design/icons';
+import { ReadOnlyEmotionArcs, ReadOnlyRelationshipDevelopments, ReadOnlyInsights } from './YJSComplexFields';
 
 const { Text } = Typography;
 
@@ -64,6 +65,61 @@ export const ReadOnlyArtifactDisplay: React.FC<ReadOnlyArtifactDisplayProps> = (
             </Text>
         );
     };
+
+    // Render chronicle stage specific layout
+    if (schemaType === 'chronicle_stage_schema') {
+        return (
+            <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                {/* Stage Title */}
+                <div>
+                    {renderTextField(parsedData.title, '未设置阶段标题')}
+                </div>
+
+                {/* Stage Synopsis */}
+                <div>
+                    {renderMultilineText(parsedData.stageSynopsis, '未设置阶段概述')}
+                </div>
+
+                {/* Core Event */}
+                <div>
+                    <Space align="center" style={{ marginBottom: '8px' }}>
+                        <ThunderboltOutlined style={{ color: '#faad14' }} />
+                        <Text strong style={{ color: '#faad14' }}>核心事件</Text>
+                    </Space>
+                    <div style={{ paddingLeft: '20px' }}>
+                        {renderMultilineText(parsedData.event, '未设置核心事件')}
+                    </div>
+                </div>
+
+                {/* Emotion Arcs */}
+                <div>
+                    <Space align="center" style={{ marginBottom: '8px' }}>
+                        <HeartOutlined style={{ color: '#f759ab' }} />
+                        <Text strong style={{ color: '#f759ab' }}>情感发展</Text>
+                    </Space>
+                    <ReadOnlyEmotionArcs emotionArcs={parsedData.emotionArcs || []} />
+                </div>
+
+                {/* Relationship Developments */}
+                <div>
+                    <Space align="center" style={{ marginBottom: '8px' }}>
+                        <TeamOutlined style={{ color: '#52c41a' }} />
+                        <Text strong style={{ color: '#52c41a' }}>关系发展</Text>
+                    </Space>
+                    <ReadOnlyRelationshipDevelopments relationshipDevelopments={parsedData.relationshipDevelopments || []} />
+                </div>
+
+                {/* Key Insights */}
+                <div>
+                    <Space align="center" style={{ marginBottom: '8px' }}>
+                        <BulbOutlined style={{ color: '#fadb14' }} />
+                        <Text strong style={{ color: '#fadb14' }}>关键洞察</Text>
+                    </Space>
+                    <ReadOnlyInsights insights={parsedData.insights || []} />
+                </div>
+            </Space>
+        );
+    }
 
     // Render outline settings specific layout
     if (schemaType === 'outline_settings_schema') {
