@@ -352,11 +352,15 @@ export const YJSArtifactProvider: React.FC<YJSArtifactProviderProps> = ({
                     updatedValue: updatedRootValue
                 });
 
-                yjsUpdateField(rootKey, updatedRootValue);
+                yjsUpdateField(rootKey, updatedRootValue).catch(error => {
+                    console.error(`[YJSArtifactProvider] Error updating nested field ${rootKey}:`, error);
+                });
             } else {
                 // Direct field update
                 console.log(`[YJSArtifactProvider] Direct update for field: ${path}`);
-                yjsUpdateField(path, value);
+                yjsUpdateField(path, value).catch(error => {
+                    console.error(`[YJSArtifactProvider] Error updating field ${path}:`, error);
+                });
             }
         } else if (!isCollaborative) {
             console.log(`[YJSArtifactProvider] Non-collaborative mode - TODO: implement direct artifact update`);
@@ -392,7 +396,9 @@ export const YJSArtifactProvider: React.FC<YJSArtifactProviderProps> = ({
 
                     // Apply all root updates
                     Object.entries(rootUpdates).forEach(([rootKey, rootValue]) => {
-                        yjsUpdateField(rootKey, rootValue);
+                        yjsUpdateField(rootKey, rootValue).catch(error => {
+                            console.error(`[YJSArtifactProvider] Error updating root field ${rootKey}:`, error);
+                        });
                     });
                 } else {
                 }

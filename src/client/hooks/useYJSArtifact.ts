@@ -45,8 +45,8 @@ export interface YJSArtifactHook {
     artifact: any;
 
     // Update methods
-    updateField: (field: string, value: any) => void;
-    updateFields: (updates: Record<string, any>) => void;
+    updateField: (field: string, value: any) => Promise<void>;
+    updateFields: (updates: Record<string, any>) => Promise<void>;
 
     // Utility methods
     syncToArtifact: () => Promise<void>;
@@ -568,31 +568,75 @@ export const useYJSArtifact = (
     }, [artifactId, enableCollaboration]);
 
     // Update field in YJS document
-    const updateField = useCallback((field: string, value: any) => {
+    const updateField = useCallback(async (field: string, value: any) => {
         if (!docRef.current || !enableCollaborationRef.current) {
             console.warn(`[useYJSArtifact] Cannot update field - no doc or collaboration disabled`);
             return;
         }
 
         try {
+            // Import YJS module dynamically to access classes
+            const Y = await import('yjs');
             const yMap = yMapRef.current;
 
+            console.log(`[useYJSArtifact] Updating field: ${field} with value:`, value);
+
+            // Handle array index paths like "emotionArcs[0]"
+            const arrayIndexMatch = field.match(/^(.+)\[(\d+)\]$/);
+            if (arrayIndexMatch) {
+                const [, arrayName, indexStr] = arrayIndexMatch;
+                const index = parseInt(indexStr, 10);
+
+                console.log(`[useYJSArtifact] Array index update: ${arrayName}[${index}]`);
+
+                // Get or create the YJS array
+                let yArray = yMap?.get(arrayName);
+                if (!yArray) {
+                    yArray = new Y.Array();
+                    yMap?.set(arrayName, yArray);
+                }
+
+                // Ensure the array has enough elements
+                while (yArray.length <= index) {
+                    yArray.push(['']);
+                }
+
+                // Update the specific array element
+                if (typeof value === 'string') {
+                    const yText = new Y.Text();
+                    yText.insert(0, value);
+                    yArray.delete(index, 1);
+                    yArray.insert(index, [yText]);
+                } else if (typeof value === 'object' && value !== null) {
+                    // For objects, store as JSON string
+                    yArray.delete(index, 1);
+                    yArray.insert(index, [JSON.stringify(value)]);
+                } else {
+                    yArray.delete(index, 1);
+                    yArray.insert(index, [value]);
+                }
+
+                console.log(`[useYJSArtifact] Array updated: ${arrayName}[${index}] = `, value);
+                return;
+            }
+
+            // Handle regular field updates
             if (typeof value === 'string') {
-                const yText = yMap?.get(field) || new (docRef.current?.constructor as any).Text();
+                const yText = yMap?.get(field) || new Y.Text();
                 if (!yMap?.has(field)) {
                     yMap?.set(field, yText);
                 }
                 yText.delete(0, yText.length);
                 yText.insert(0, value);
             } else if (Array.isArray(value)) {
-                const yArray = yMap?.get(field) || new (docRef.current?.constructor as any).Array();
+                const yArray = yMap?.get(field) || new Y.Array();
                 if (!yMap?.has(field)) {
                     yMap?.set(field, yArray);
                 }
                 yArray.delete(0, yArray.length);
                 value.forEach((item: any) => {
                     if (typeof item === 'string') {
-                        const yText = new (docRef.current?.constructor as any).Text();
+                        const yText = new Y.Text();
                         yText.insert(0, item);
                         yArray.push([yText]);
                     } else if (typeof item === 'object' && item !== null) {
@@ -604,7 +648,7 @@ export const useYJSArtifact = (
                 });
             } else if (typeof value === 'object' && value !== null) {
                 // For objects, store as JSON string in YText (same as initialization)
-                const yText = yMap?.get(field) || new (docRef.current?.constructor as any).Text();
+                const yText = yMap?.get(field) || new Y.Text();
                 if (!yMap?.has(field)) {
                     yMap?.set(field, yText);
                 }
@@ -621,10 +665,10 @@ export const useYJSArtifact = (
     }, [artifactId]);
 
     // Update multiple fields
-    const updateFields = useCallback((updates: Record<string, any>) => {
-        Object.entries(updates).forEach(([field, value]) => {
-            updateField(field, value);
-        });
+    const updateFields = useCallback(async (updates: Record<string, any>) => {
+        await Promise.all(
+            Object.entries(updates).map(([field, value]) => updateField(field, value))
+        );
     }, [updateField]);
 
     // Sync to artifact (now handled automatically by backend)
