@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Outlet, useParams, useNavigate } from 'react-router-dom';
 import { Layout, Typography, Spin, Alert, Space, Button, Drawer, Grid, Tabs } from 'antd';
 import { HomeOutlined, ProjectOutlined, EyeInvisibleOutlined, ApartmentOutlined, UnorderedListOutlined } from '@ant-design/icons';
-import { useProjectData as useProjectDataHook } from '../hooks/useProjectData';
 import { useProjectData } from '../contexts/ProjectDataContext';
 import { useProjectStore } from '../stores/projectStore';
 import { ProjectDataProvider } from '../contexts/ProjectDataContext';
@@ -137,8 +136,6 @@ const ProjectLayout: React.FC = () => {
     const project = useProjectStore(useMemo(() => (state: any) => state.projects[projectId!] || emptyProject, [projectId, emptyProject]));
     const { name, loading, error } = project;
 
-    // Fetch project data using our main hook
-    useProjectDataHook(projectId!);
 
     // We'll add the empty project detection inside the ProjectDataProvider
 

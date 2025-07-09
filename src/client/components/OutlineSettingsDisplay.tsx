@@ -4,7 +4,8 @@ import { UserOutlined, HeartOutlined, StarOutlined, EnvironmentOutlined, TeamOut
 import { useParams } from 'react-router-dom';
 import { OutlineSettingsOutput } from '../../common/schemas/outlineSchemas';
 import { useProjectData } from '../contexts/ProjectDataContext';
-import { EditableText, EditableArray } from './shared/EditableText';
+import { YJSArtifactProvider, useYJSArtifactContext } from '../contexts/YJSArtifactContext';
+import { YJSTextField, YJSTextAreaField, YJSArrayField } from './shared/YJSField';
 import { SectionWrapper, ArtifactSchemaType } from './shared';
 
 const { Text, Title } = Typography;
@@ -12,66 +13,529 @@ const { Text, Title } = Typography;
 interface OutlineSettingsDisplayProps {
 }
 
-export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
-}) => {
+// YJS-enabled editable form component
+const EditableOutlineForm: React.FC = () => {
+    const { getField, setField, isLoading, artifact } = useYJSArtifactContext();
+
+    // Get current values from YJS context
+    const outlineSettings = useMemo(() => {
+        try {
+            const data = artifact?.data;
+            if (typeof data === 'string') {
+                return JSON.parse(data) as OutlineSettingsOutput;
+            }
+            return data as OutlineSettingsOutput || {};
+        } catch (error) {
+            console.warn('Failed to parse outline settings data:', error);
+            return {};
+        }
+    }, [artifact?.data]);
+
+    // Handle adding a new character
+    const handleAddCharacter = useCallback(() => {
+        const currentCharacters = getField('characters') || [];
+        const newCharacter = {
+            name: '',
+            type: 'supporting',
+            age: '',
+            gender: '',
+            occupation: '',
+            description: '',
+            personality_traits: [],
+            character_arc: '',
+            key_scenes: []
+        };
+        setField('characters', [...currentCharacters, newCharacter]);
+    }, [getField, setField]);
+
+    // Handle removing a character
+    const handleRemoveCharacter = useCallback((index: number) => {
+        const currentCharacters = getField('characters') || [];
+        const updatedCharacters = currentCharacters.filter((_: any, i: number) => i !== index);
+        setField('characters', updatedCharacters);
+    }, [getField, setField]);
+
+    return (
+        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            {/* Basic Information */}
+            <div>
+                <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
+                    📊 基本信息
+                </Text>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+                    <div>
+                        <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>剧本标题：</Text>
+                        <YJSTextField
+                            path="title"
+                            placeholder="剧本标题"
+                        />
+                    </div>
+                    <div>
+                        <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>剧本类型：</Text>
+                        <YJSTextField
+                            path="genre"
+                            placeholder="剧本类型"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            {/* Target Audience */}
+            <div>
+                <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
+                    <UserOutlined style={{ marginRight: '8px' }} />
+                    目标观众
+                </Text>
+                <div>
+                    <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>目标群体：</Text>
+                    <YJSTextField
+                        path="target_audience.demographic"
+                        placeholder="目标群体"
+                    />
+                </div>
+                <div style={{ marginTop: '12px' }}>
+                    <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>核心主题：</Text>
+                    <YJSArrayField
+                        path="target_audience.core_themes"
+                        placeholder="每行一个主题..."
+                    />
+                </div>
+            </div>
+
+            {/* Selling Points */}
+            <div>
+                <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
+                    <HeartOutlined style={{ marginRight: '8px' }} />
+                    卖点
+                </Text>
+                <YJSArrayField
+                    path="selling_points"
+                    placeholder="每行一个卖点..."
+                />
+            </div>
+
+            {/* Satisfaction Points */}
+            <div>
+                <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
+                    <StarOutlined style={{ marginRight: '8px' }} />
+                    爽点
+                </Text>
+                <YJSArrayField
+                    path="satisfaction_points"
+                    placeholder="每行一个爽点..."
+                />
+            </div>
+
+            {/* Setting */}
+            <div>
+                <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
+                    <EnvironmentOutlined style={{ marginRight: '8px' }} />
+                    故事设定
+                </Text>
+                <div style={{ marginBottom: '12px' }}>
+                    <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>核心设定：</Text>
+                    <YJSTextAreaField
+                        path="setting.core_setting_summary"
+                        placeholder="核心设定"
+                        rows={3}
+                    />
+                </div>
+                <div>
+                    <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>关键场景：</Text>
+                    <YJSArrayField
+                        path="setting.key_scenes"
+                        placeholder="每行一个关键场景..."
+                    />
+                </div>
+            </div>
+
+            {/* Characters */}
+            <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <Text strong style={{ fontSize: '16px', color: '#fff' }}>
+                        <TeamOutlined style={{ marginRight: '8px' }} />
+                        角色设定
+                    </Text>
+                    <Button
+                        type="dashed"
+                        icon={<PlusOutlined />}
+                        onClick={handleAddCharacter}
+                        size="small"
+                        style={{
+                            borderColor: '#52c41a',
+                            color: '#52c41a'
+                        }}
+                    >
+                        添加角色
+                    </Button>
+                </div>
+                <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                    {(outlineSettings.characters || []).map((character: any, index: number) => (
+                        <Card
+                            key={index}
+                            size="small"
+                            style={{
+                                backgroundColor: '#262626',
+                                border: '1px solid #434343'
+                            }}
+                            styles={{ body: { padding: '16px' } }}
+                            extra={
+                                <Button
+                                    type="text"
+                                    icon={<CloseOutlined />}
+                                    size="small"
+                                    onClick={() => handleRemoveCharacter(index)}
+                                    style={{ color: '#ff4d4f' }}
+                                />
+                            }
+                        >
+                            <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    <Text strong style={{ fontSize: '14px', color: '#fff' }}>姓名：</Text>
+                                    <YJSTextField
+                                        path={`characters.${index}.name`}
+                                        placeholder="角色姓名"
+                                    />
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    <Text strong style={{ fontSize: '14px', color: '#fff' }}>类型：</Text>
+                                    <YJSTextField
+                                        path={`characters.${index}.type`}
+                                        placeholder="角色类型"
+                                    />
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Text strong style={{ fontSize: '14px', color: '#fff', whiteSpace: 'nowrap' }}>基本信息：</Text>
+                                    <div style={{ display: 'flex', gap: '8px', flex: 1 }}>
+                                        <YJSTextField
+                                            path={`characters.${index}.age`}
+                                            placeholder="年龄"
+                                        />
+                                        <YJSTextField
+                                            path={`characters.${index}.gender`}
+                                            placeholder="性别"
+                                        />
+                                        <YJSTextField
+                                            path={`characters.${index}.occupation`}
+                                            placeholder="职业"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>角色描述：</Text>
+                                    <YJSTextAreaField
+                                        path={`characters.${index}.description`}
+                                        placeholder="角色描述"
+                                        rows={2}
+                                    />
+                                </div>
+                                <div>
+                                    <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>性格特点：</Text>
+                                    <YJSArrayField
+                                        path={`characters.${index}.personality_traits`}
+                                        placeholder="每行一个性格特点..."
+                                    />
+                                </div>
+                                <div>
+                                    <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>成长轨迹：</Text>
+                                    <YJSTextAreaField
+                                        path={`characters.${index}.character_arc`}
+                                        placeholder="成长轨迹"
+                                        rows={2}
+                                    />
+                                </div>
+                                <div>
+                                    <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>关键场景：</Text>
+                                    <YJSArrayField
+                                        path={`characters.${index}.key_scenes`}
+                                        placeholder="每行一个关键场景..."
+                                    />
+                                </div>
+                            </Space>
+                        </Card>
+                    ))}
+
+                    {(!outlineSettings.characters || outlineSettings.characters.length === 0) && (
+                        <Card
+                            size="small"
+                            style={{
+                                backgroundColor: '#1a1a1a',
+                                border: '1px dashed #434343',
+                                textAlign: 'center'
+                            }}
+                            styles={{ body: { padding: '24px' } }}
+                        >
+                            <Text style={{ color: '#666', fontSize: '14px' }}>
+                                暂无角色，点击上方"添加角色"按钮开始创建
+                            </Text>
+                        </Card>
+                    )}
+                </Space>
+            </div>
+        </Space>
+    );
+};
+
+// Read-only display component
+const ReadOnlyOutlineDisplay: React.FC<{ artifactId: string }> = ({ artifactId }) => {
     const projectData = useProjectData();
+
+    const artifact = projectData.getArtifactById(artifactId);
+    const outlineSettings = useMemo(() => {
+        if (!artifact?.data) return null;
+        try {
+            const data = typeof artifact.data === 'string' ? JSON.parse(artifact.data) : artifact.data;
+            return data as OutlineSettingsOutput;
+        } catch (error) {
+            console.warn('Failed to parse outline settings data:', error);
+            return null;
+        }
+    }, [artifact?.data]);
+
+    if (!outlineSettings) {
+        return (
+            <div style={{ padding: '16px', textAlign: 'center' }}>
+                <Text style={{ color: '#666' }}>加载中...</Text>
+            </div>
+        );
+    }
+
+    return (
+        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            {/* Basic Information */}
+            <div>
+                <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
+                    📊 基本信息
+                </Text>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+                    <div>
+                        <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>剧本标题：</Text>
+                        <Text style={{ fontSize: '14px', color: '#d9d9d9' }}>
+                            {outlineSettings.title || '未设置'}
+                        </Text>
+                    </div>
+                    <div>
+                        <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>剧本类型：</Text>
+                        <Text style={{ fontSize: '14px', color: '#d9d9d9' }}>
+                            {outlineSettings.genre || '未设置'}
+                        </Text>
+                    </div>
+                </div>
+            </div>
+
+            {/* Target Audience */}
+            {(outlineSettings.target_audience?.demographic || outlineSettings.target_audience?.core_themes?.length) && (
+                <div>
+                    <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
+                        <UserOutlined style={{ marginRight: '8px' }} />
+                        目标观众
+                    </Text>
+                    {outlineSettings.target_audience?.demographic && (
+                        <div style={{ marginBottom: '8px' }}>
+                            <Text strong style={{ fontSize: '14px', color: '#fff' }}>目标群体：</Text>
+                            <Text style={{ fontSize: '14px', color: '#d9d9d9', marginLeft: '8px' }}>
+                                {outlineSettings.target_audience.demographic}
+                            </Text>
+                        </div>
+                    )}
+                    {outlineSettings.target_audience?.core_themes?.length > 0 && (
+                        <div>
+                            <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>核心主题：</Text>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                {outlineSettings.target_audience.core_themes.map((theme: string, index: number) => (
+                                    <Tag key={index} color="blue">{theme}</Tag>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Selling Points */}
+            {outlineSettings.selling_points?.length > 0 && (
+                <div>
+                    <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
+                        <HeartOutlined style={{ marginRight: '8px' }} />
+                        卖点
+                    </Text>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                        {outlineSettings.selling_points.map((point: string, index: number) => (
+                            <Tag key={index} color="red">{point}</Tag>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Satisfaction Points */}
+            {outlineSettings.satisfaction_points?.length > 0 && (
+                <div>
+                    <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
+                        <StarOutlined style={{ marginRight: '8px' }} />
+                        爽点
+                    </Text>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                        {outlineSettings.satisfaction_points.map((point: string, index: number) => (
+                            <Tag key={index} color="gold">{point}</Tag>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Setting */}
+            {(outlineSettings.setting?.core_setting_summary || outlineSettings.setting?.key_scenes?.length) && (
+                <div>
+                    <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
+                        <EnvironmentOutlined style={{ marginRight: '8px' }} />
+                        故事设定
+                    </Text>
+                    {outlineSettings.setting?.core_setting_summary && (
+                        <div style={{ marginBottom: '8px' }}>
+                            <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>核心设定：</Text>
+                            <Text style={{ fontSize: '14px', color: '#d9d9d9', lineHeight: '1.5' }}>
+                                {outlineSettings.setting.core_setting_summary}
+                            </Text>
+                        </div>
+                    )}
+                    {outlineSettings.setting?.key_scenes?.length > 0 && (
+                        <div>
+                            <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>关键场景：</Text>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                {outlineSettings.setting.key_scenes.map((scene: string, index: number) => (
+                                    <Tag key={index} color="green">{scene}</Tag>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Characters */}
+            {outlineSettings.characters?.length > 0 && (
+                <div>
+                    <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
+                        <TeamOutlined style={{ marginRight: '8px' }} />
+                        角色设定
+                    </Text>
+                    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                        {outlineSettings.characters.map((character: any, index: number) => (
+                            <Card
+                                key={index}
+                                size="small"
+                                style={{
+                                    backgroundColor: '#262626',
+                                    border: '1px solid #434343'
+                                }}
+                                styles={{ body: { padding: '16px' } }}
+                            >
+                                <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        <Text strong style={{ fontSize: '14px', color: '#fff' }}>
+                                            {character.name || `角色 ${index + 1}`}
+                                        </Text>
+                                        {character.type && (
+                                            <Tag color="blue">{character.type}</Tag>
+                                        )}
+                                    </div>
+                                    {(character.age || character.gender || character.occupation) && (
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            {character.age && <Tag>{character.age}</Tag>}
+                                            {character.gender && <Tag>{character.gender}</Tag>}
+                                            {character.occupation && <Tag>{character.occupation}</Tag>}
+                                        </div>
+                                    )}
+                                    {character.description && (
+                                        <Text style={{ fontSize: '13px', color: '#d9d9d9', lineHeight: '1.5' }}>
+                                            {character.description}
+                                        </Text>
+                                    )}
+                                    {character.personality_traits?.length > 0 && (
+                                        <div>
+                                            <Text strong style={{ fontSize: '12px', color: '#999' }}>性格特点：</Text>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
+                                                {character.personality_traits.map((trait: string, traitIndex: number) => (
+                                                    <Tag key={traitIndex} size="small" color="purple">{trait}</Tag>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {character.character_arc && (
+                                        <div>
+                                            <Text strong style={{ fontSize: '12px', color: '#999' }}>成长轨迹：</Text>
+                                            <Text style={{ fontSize: '12px', color: '#ccc', display: 'block', marginTop: '2px' }}>
+                                                {character.character_arc}
+                                            </Text>
+                                        </div>
+                                    )}
+                                    {character.key_scenes?.length > 0 && (
+                                        <div>
+                                            <Text strong style={{ fontSize: '12px', color: '#999' }}>关键场景：</Text>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
+                                                {character.key_scenes.map((scene: string, sceneIndex: number) => (
+                                                    <Tag key={sceneIndex} size="small" color="orange">{scene}</Tag>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </Space>
+                            </Card>
+                        ))}
+                    </Space>
+                </div>
+            )}
+        </Space>
+    );
+};
+
+export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = () => {
     const { projectId } = useParams<{ projectId: string }>();
+    const projectData = useProjectData();
     const [isCreatingTransform, setIsCreatingTransform] = useState(false);
 
-    // Get outline settings artifacts
-    const outlineSettingsArtifacts = useMemo(() => {
-        if (!Array.isArray(projectData.artifacts)) return [];
-        const filtered = projectData.artifacts.filter((artifact: any) =>
-            artifact.schema_type === 'outline_settings_schema' || artifact.type === 'outline_settings'
+    // Find the root outline settings artifact
+    const rootOutlineArtifact = useMemo(() => {
+        if (!Array.isArray(projectData.artifacts)) return null;
+
+        // Find the original outline settings artifact
+        const outlineArtifacts = projectData.artifacts.filter(artifact =>
+            artifact.schema_type === 'outline_settings_schema'
         );
 
-        if (filtered.length === 0) {
-            return [];
-        }
+        if (outlineArtifacts.length === 0) return null;
 
-        return filtered;
+        // Sort by creation time and return the first one
+        outlineArtifacts.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        return outlineArtifacts[0];
     }, [projectData.artifacts]);
 
-    // Find the ROOT outline settings artifact (AI-generated) for lineage resolution
-    const rootOutlineArtifact = useMemo(() => {
-        const aiGenerated = outlineSettingsArtifacts.find((artifact: any) =>
-            artifact.origin_type === 'ai_generated'
-        );
-        return aiGenerated || outlineSettingsArtifacts[0];
-    }, [outlineSettingsArtifacts]);
-
-    // Find the latest version of the outline settings artifact (not its descendants)
+    // Find the latest editable version (if any)
     const latestOutlineSettingsArtifact = useMemo(() => {
         if (!rootOutlineArtifact) return null;
 
-        // Look for human transforms that edit this outline settings artifact
-        if (!Array.isArray(projectData.humanTransforms)) return rootOutlineArtifact;
-        if (!Array.isArray(projectData.transformInputs)) return rootOutlineArtifact;
-
-        const humanEditTransforms = projectData.humanTransforms.filter((ht: any) => {
-            // Find transform inputs for this human transform
-            if (!Array.isArray(projectData.transformInputs)) return false;
-            const inputs = projectData.transformInputs.filter((ti: any) => ti.transform_id === ht.transform_id);
-            // Check if any input references our root outline artifact
-            return inputs.some((input: any) => input.artifact_id === rootOutlineArtifact.id);
-        });
-
-        if (humanEditTransforms.length === 0) {
-            // No edits, use the original artifact
+        // Check if there's a human transform for this artifact
+        if (!Array.isArray(projectData.humanTransforms) ||
+            !Array.isArray(projectData.transformInputs) ||
+            !Array.isArray(projectData.transformOutputs)) {
             return rootOutlineArtifact;
         }
 
-        // Find the latest human edit transform
-        const latestEditTransform = humanEditTransforms.sort((a: any, b: any) => {
-            const dateA = new Date(a.created_at || 0).getTime();
-            const dateB = new Date(b.created_at || 0).getTime();
-            return dateB - dateA;
-        })[0];
+        // Find human transforms that use this artifact as input
+        const relevantTransforms = projectData.humanTransforms.filter((transform: any) => {
+            return projectData.transformInputs.some((input: any) =>
+                input.transform_id === transform.id && input.artifact_id === rootOutlineArtifact.id
+            );
+        });
 
-        // Find the output artifact of this transform
-        if (!Array.isArray(projectData.transformOutputs)) return null;
-        const outputRecord = projectData.transformOutputs.find((to: any) =>
-            to.transform_id === latestEditTransform.transform_id
+        if (relevantTransforms.length === 0) {
+            return rootOutlineArtifact;
+        }
+
+        // Get the latest transform by creation time
+        relevantTransforms.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        const latestTransform = relevantTransforms[0];
+
+        // Find the output artifact for this transform
+        const outputRecord = projectData.transformOutputs.find((output: any) =>
+            output.transform_id === latestTransform.id
         );
 
         if (outputRecord) {
@@ -120,203 +584,31 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
         return !hasDescendants && effectiveArtifact.origin_type === 'ai_generated';
     }, [effectiveArtifact, projectData.transformInputs]);
 
-    // Check if the artifact comes from a failed transform
-    const isFromFailedTransform = useMemo(() => {
-        if (!effectiveArtifact) return false;
-
-        // Find the transform that created this artifact
-        if (!Array.isArray(projectData.transformOutputs)) return false;
-        const outputRecord = projectData.transformOutputs.find((output: any) =>
-            output.artifact_id === effectiveArtifact.id
-        );
-
-        if (outputRecord) {
-            if (!Array.isArray(projectData.transforms)) return false;
-            const transform = projectData.transforms.find((t: any) => t.id === outputRecord.transform_id);
-            return transform?.status === 'failed';
-        }
-
-        return false;
-    }, [effectiveArtifact, projectData.transformOutputs, projectData.transforms]);
-
-    // Parse outline settings data from the effective artifact
-    const outlineSettings = useMemo(() => {
-        if (!effectiveArtifact?.data) {
-            return null;
-        }
-
-        if (effectiveArtifact.schema_type !== 'outline_settings_schema') {
-            return null;
-        }
-
-        try {
-            let data: any = effectiveArtifact.data;
-
-            // Handle string data (parse as JSON)
-            if (typeof data === 'string') {
-                data = JSON.parse(data);
-            }
-
-            return data as OutlineSettingsOutput;
-        } catch (error) {
-            return null;
-        }
-    }, [effectiveArtifact]);
-
-    // Use ref for outlineSettings to prevent stale closures
-    const outlineSettingsRef = useRef(outlineSettings);
-
-    // Update the ref when settings change
-    useEffect(() => {
-        outlineSettingsRef.current = outlineSettings;
-    }, [outlineSettings]);
-
-    // Handle click to create human transform (only once)
+    // Handle creating an editable version
     const handleCreateEditableVersion = useCallback(() => {
-        if (!rootOutlineArtifact || isCreatingTransform || isEditable) return;
+        if (!effectiveArtifact || isCreatingTransform || isEditable) return;
 
         setIsCreatingTransform(true);
         projectData.createHumanTransform.mutate({
             transformName: 'edit_outline_settings',
-            sourceArtifactId: rootOutlineArtifact.id,
+            sourceArtifactId: effectiveArtifact.id,
             derivationPath: '$',
             fieldUpdates: {}
         }, {
             onSuccess: (response) => {
                 setIsCreatingTransform(false);
-                message.success('开始编辑剧本框架');
+                message.success('创建编辑版本成功');
             },
             onError: (error) => {
                 setIsCreatingTransform(false);
+                console.error('Failed to create editable version:', error);
                 message.error(`创建编辑版本失败: ${error.message}`);
             }
         });
-    }, [rootOutlineArtifact, isCreatingTransform, isEditable, projectData.createHumanTransform]);
+    }, [effectiveArtifact, isCreatingTransform, isEditable, projectData.createHumanTransform]);
 
-    // Handle saving individual fields
-    const handleSave = useCallback(async (path: string, newValue: any) => {
-        // Always get the current effective artifact ID to avoid stale closures
-        const currentArtifactId = effectiveArtifact?.id;
-
-        if (!currentArtifactId) {
-            return;
-        }
-
-        try {
-            // Get the FRESH artifact data from project context to avoid stale closures
-            const freshArtifact = projectData.getArtifactById(currentArtifactId);
-
-            if (!freshArtifact?.data) {
-                return;
-            }
-
-            // Parse current data fresh to avoid stale state
-            let currentData: any = freshArtifact.data;
-            if (typeof currentData === 'string') {
-                currentData = JSON.parse(currentData);
-            }
-
-            const updatedSettings = { ...currentData };
-
-            // Handle array index paths like "target_audience.core_themes[0]"
-            if (path.includes('[') && path.includes(']')) {
-                const [basePath, indexStr] = path.split('[');
-                const index = parseInt(indexStr.replace(']', ''));
-
-                // Handle different array paths
-                if (basePath === 'target_audience.core_themes') {
-                    if (!updatedSettings.target_audience?.core_themes) {
-                        updatedSettings.target_audience = { ...updatedSettings.target_audience, core_themes: [] };
-                    }
-                    const newThemes = [...(updatedSettings.target_audience.core_themes || [])];
-                    newThemes[index] = newValue;
-                    updatedSettings.target_audience.core_themes = newThemes;
-                } else if (basePath === 'selling_points') {
-                    const newPoints = [...(updatedSettings.selling_points || [])];
-                    newPoints[index] = newValue;
-                    updatedSettings.selling_points = newPoints;
-                } else if (basePath === 'satisfaction_points') {
-                    const newPoints = [...(updatedSettings.satisfaction_points || [])];
-                    newPoints[index] = newValue;
-                    updatedSettings.satisfaction_points = newPoints;
-                } else if (basePath === 'setting.key_scenes') {
-                    if (!updatedSettings.setting?.key_scenes) {
-                        updatedSettings.setting = { ...updatedSettings.setting, key_scenes: [] };
-                    }
-                    const newScenes = [...(updatedSettings.setting.key_scenes || [])];
-                    newScenes[index] = newValue;
-                    updatedSettings.setting.key_scenes = newScenes;
-                } else if (path.startsWith('characters[') && path.includes('].')) {
-                    // Handle nested character field paths like "characters[5].name"
-                    const match = path.match(/characters\[(\d+)\]\.(.+)/);
-                    if (match) {
-                        const [, charIndexStr, fieldName] = match;
-                        const charIndex = parseInt(charIndexStr);
-
-                        if (!updatedSettings.characters) {
-                            updatedSettings.characters = [];
-                        }
-                        const newCharacters = [...updatedSettings.characters];
-
-                        // Ensure character object exists
-                        if (!newCharacters[charIndex]) {
-                            newCharacters[charIndex] = {};
-                        }
-
-                        // Update the specific field
-                        newCharacters[charIndex] = {
-                            ...newCharacters[charIndex],
-                            [fieldName]: newValue
-                        };
-                        updatedSettings.characters = newCharacters;
-                    }
-                }
-            } else {
-                // Handle direct array paths like "target_audience.core_themes"
-                if (path === 'target_audience.core_themes') {
-                    updatedSettings.target_audience = {
-                        ...updatedSettings.target_audience,
-                        core_themes: Array.isArray(newValue) ? newValue : []
-                    };
-                } else if (path === 'selling_points') {
-                    updatedSettings.selling_points = Array.isArray(newValue) ? newValue : [];
-                } else if (path === 'satisfaction_points') {
-                    updatedSettings.satisfaction_points = Array.isArray(newValue) ? newValue : [];
-                } else if (path === 'setting.key_scenes') {
-                    updatedSettings.setting = {
-                        ...updatedSettings.setting,
-                        key_scenes: Array.isArray(newValue) ? newValue : []
-                    };
-                } else {
-                    // Handle other paths using the existing logic
-                    const pathParts = path.split('.');
-                    let current: any = updatedSettings;
-
-                    for (let i = 0; i < pathParts.length - 1; i++) {
-                        const part = pathParts[i];
-                        if (!(part in current)) {
-                            current[part] = {};
-                        }
-                        current = current[part];
-                    }
-
-                    const lastPart = pathParts[pathParts.length - 1];
-                    current[lastPart] = newValue;
-                }
-            }
-
-            await projectData.updateArtifact.mutateAsync({
-                artifactId: currentArtifactId,
-                data: updatedSettings
-            });
-
-        } catch (error) {
-            console.error(`[OutlineSettingsDisplay] Error in handleSave:`, error);
-        }
-    }, [effectiveArtifact, projectData]);
-
-    // Show placeholder when no outline settings are available
-    if (!outlineSettings) {
+    // Loading state
+    if (isLoading || !effectiveArtifact) {
         return (
             <SectionWrapper
                 schemaType={ArtifactSchemaType.OUTLINE_SETTINGS}
@@ -324,34 +616,26 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                 sectionId="outline-settings"
                 artifactId={effectiveArtifact?.id}
             >
-                <div style={{
-                    textAlign: 'center',
-                    padding: '40px',
-                    color: '#8c8c8c',
-                    border: '1px dashed #434343',
-                    borderRadius: '8px',
-                    backgroundColor: '#1a1a1a'
-                }}>
-                    <Text style={{ color: '#8c8c8c' }}>
-                        剧本框架将在生成完成后显示
-                    </Text>
+                <div style={{ padding: '40px', textAlign: 'center' }}>
+                    <Spin size="large" />
+                    <div style={{ marginTop: '16px' }}>
+                        <Text style={{ color: '#666' }}>加载剧本框架中...</Text>
+                    </div>
                 </div>
             </SectionWrapper>
         );
     }
 
-    // Determine the rendering mode
-    let mainContent: React.ReactNode;
+    let mainContent: React.ReactNode = null;
 
     if (isEditable) {
-        // Editable mode - green border, user can edit
+        // Editable mode - green border, user can edit with YJS
         mainContent = (
             <Card
                 style={{
                     backgroundColor: '#1a1a1a',
                     border: '2px solid #52c41a',
-                    borderRadius: '8px',
-                    opacity: isFromFailedTransform ? 0.7 : 1
+                    borderRadius: '8px'
                 }}
                 styles={{ body: { padding: '24px' } }}
             >
@@ -372,8 +656,10 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                     </div>
                 </div>
 
-                {/* Content sections */}
-                {renderOutlineContent(outlineSettings, isEditable, handleSave)}
+                {/* YJS-enabled form */}
+                <YJSArtifactProvider artifactId={effectiveArtifact.id} enableCollaboration={true}>
+                    <EditableOutlineForm />
+                </YJSArtifactProvider>
             </Card>
         );
     } else if (canBecomeEditable) {
@@ -444,7 +730,7 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                 </div>
 
                 {/* Content sections - read-only */}
-                {renderOutlineContent(outlineSettings, false, handleSave)}
+                <ReadOnlyOutlineDisplay artifactId={effectiveArtifact.id} />
 
                 {/* Loading overlay */}
                 {isCreatingTransform && (
@@ -472,18 +758,13 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
             </Card>
         );
     } else {
-        // Read-only mode - gray border, cannot be edited
-        let readOnlyReason = '已生成后续内容，无法编辑';
-        if (isFromFailedTransform) {
-            readOnlyReason = '生成失败，无法编辑';
-        }
-
+        // Read-only mode - artifact has descendants
         mainContent = (
             <Card
                 style={{
                     backgroundColor: '#1a1a1a',
                     border: '1px solid #555',
-                    borderRadius: '8px',
+                    borderRadius: '6px',
                     opacity: 0.7
                 }}
                 styles={{ body: { padding: '24px' } }}
@@ -502,14 +783,14 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                                 📖 剧本框架
                             </Title>
                             <Text type="secondary" style={{ fontSize: '12px' }}>
-                                {readOnlyReason}
+                                已被后续步骤使用，不可编辑
                             </Text>
                         </div>
                     </div>
                 </div>
 
                 {/* Content sections - read-only */}
-                {renderOutlineContent(outlineSettings, false, handleSave)}
+                <ReadOnlyOutlineDisplay artifactId={effectiveArtifact.id} />
             </Card>
         );
     }
@@ -549,342 +830,4 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
             </div>
         </SectionWrapper>
     );
-};
-
-// Helper function to render outline content (extracted to reduce duplication)
-function renderOutlineContent(
-    outlineSettings: OutlineSettingsOutput,
-    isEditable: boolean,
-    handleSave: (path: string, newValue: any) => Promise<void>
-) {
-    return (
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
-            {/* Basic Information */}
-            <div>
-                <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
-                    📊 基本信息
-                </Text>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
-                    <div>
-                        <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>剧本标题：</Text>
-                        <EditableText
-                            value={outlineSettings.title || ''}
-                            path="title"
-                            placeholder="剧本标题"
-                            isEditable={isEditable}
-                            onSave={handleSave}
-                            style={{ fontSize: '14px', color: '#fff' }}
-                        />
-                    </div>
-                    <div>
-                        <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>剧本类型：</Text>
-                        <EditableText
-                            value={outlineSettings.genre || ''}
-                            path="genre"
-                            placeholder="剧本类型"
-                            isEditable={isEditable}
-                            onSave={handleSave}
-                            style={{ fontSize: '14px', color: '#fff' }}
-                        />
-                    </div>
-                </div>
-            </div>
-
-            {/* Target Audience */}
-            <div>
-                <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
-                    <UserOutlined style={{ marginRight: '8px' }} />
-                    目标观众
-                </Text>
-                <div>
-                    <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>目标群体：</Text>
-                    <EditableText
-                        value={outlineSettings.target_audience?.demographic || ''}
-                        path="target_audience.demographic"
-                        placeholder="目标群体"
-                        isEditable={isEditable}
-                        onSave={handleSave}
-                        style={{ fontSize: '14px', color: '#fff' }}
-                    />
-                </div>
-                <div style={{ marginTop: '12px' }}>
-                    <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>核心主题：</Text>
-                    <EditableArray
-                        value={outlineSettings.target_audience?.core_themes || []}
-                        path="target_audience.core_themes"
-                        placeholder="每行一个主题..."
-                        isEditable={isEditable}
-                        onSave={handleSave}
-                        mode="textarea"
-                    />
-                </div>
-            </div>
-
-            {/* Selling Points */}
-            <div>
-                <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
-                    <HeartOutlined style={{ marginRight: '8px' }} />
-                    卖点
-                </Text>
-                <EditableArray
-                    value={outlineSettings.selling_points || []}
-                    path="selling_points"
-                    placeholder="每行一个卖点..."
-                    isEditable={isEditable}
-                    onSave={handleSave}
-                    mode="textarea"
-                />
-            </div>
-
-            {/* Satisfaction Points */}
-            <div>
-                <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
-                    <StarOutlined style={{ marginRight: '8px' }} />
-                    爽点
-                </Text>
-                <EditableArray
-                    value={outlineSettings.satisfaction_points || []}
-                    path="satisfaction_points"
-                    placeholder="每行一个爽点..."
-                    isEditable={isEditable}
-                    onSave={handleSave}
-                    mode="textarea"
-                />
-            </div>
-
-            {/* Setting */}
-            <div>
-                <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
-                    <EnvironmentOutlined style={{ marginRight: '8px' }} />
-                    故事设定
-                </Text>
-                <div style={{ marginBottom: '12px' }}>
-                    <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>核心设定：</Text>
-                    <EditableText
-                        value={outlineSettings.setting?.core_setting_summary || ''}
-                        path="setting.core_setting_summary"
-                        placeholder="核心设定"
-                        multiline={true}
-                        rows={3}
-                        isEditable={isEditable}
-                        onSave={handleSave}
-                        style={{ fontSize: '14px', color: '#fff', width: '100%' }}
-                    />
-                </div>
-                <div>
-                    <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>关键场景：</Text>
-                    <EditableArray
-                        value={outlineSettings.setting?.key_scenes || []}
-                        path="setting.key_scenes"
-                        placeholder="每行一个关键场景..."
-                        isEditable={isEditable}
-                        onSave={handleSave}
-                        mode="textarea"
-                    />
-                </div>
-            </div>
-
-            {/* Characters */}
-            <div>
-                <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
-                    <TeamOutlined style={{ marginRight: '8px' }} />
-                    角色设定
-                </Text>
-                <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                    {(outlineSettings.characters || []).map((character: any, index: number) => (
-                        <Card
-                            key={index}
-                            size="small"
-                            style={{
-                                backgroundColor: '#262626',
-                                border: '1px solid #434343'
-                            }}
-                            styles={{ body: { padding: '16px' } }}
-                            extra={
-                                isEditable && (
-                                    <Button
-                                        type="text"
-                                        icon={<CloseOutlined />}
-                                        size="small"
-                                        onClick={() => {
-                                            const updatedCharacters = outlineSettings.characters.filter((_: any, i: number) => i !== index);
-                                            handleSave('characters', updatedCharacters);
-                                        }}
-                                        style={{ color: '#ff4d4f' }}
-                                    />
-                                )
-                            }
-                        >
-                            <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                    <Text strong style={{ fontSize: '14px', color: '#fff' }}>姓名：</Text>
-                                    <EditableText
-                                        value={character.name || ''}
-                                        path={`characters[${index}].name`}
-                                        placeholder="角色姓名"
-                                        isEditable={isEditable}
-                                        onSave={handleSave}
-                                        style={{ fontSize: '14px', color: '#fff' }}
-                                    />
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                    <Text strong style={{ fontSize: '14px', color: '#fff' }}>类型：</Text>
-                                    <EditableText
-                                        value={getCharacterTypeLabel(character.type) || ''}
-                                        path={`characters[${index}].type`}
-                                        placeholder="类型"
-                                        isEditable={isEditable}
-                                        onSave={handleSave}
-                                        style={{
-                                            fontSize: '14px',
-                                            padding: '4px 12px',
-                                            borderRadius: '12px',
-                                            backgroundColor: isEditable ? 'rgba(24, 144, 255, 0.1)' : getCharacterTypeColor(character.type),
-                                            border: isEditable ? '1px solid #1890ff' : 'none',
-                                            color: '#fff'
-                                        }}
-                                    />
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <Text strong style={{ fontSize: '14px', color: '#fff', whiteSpace: 'nowrap' }}>基本信息：</Text>
-                                    <EditableText
-                                        value={[character.age, character.gender, character.occupation].filter(Boolean).join(' • ') || ''}
-                                        path={`characters[${index}].description_summary`}
-                                        placeholder="年龄 • 性别 • 职业"
-                                        isEditable={isEditable}
-                                        onSave={async (path, value) => {
-                                            // Parse the combined string back to individual fields
-                                            const parts = value.split(' • ').map(p => p.trim());
-                                            const updatedCharacter = { ...character };
-                                            updatedCharacter.age = parts[0] || '';
-                                            updatedCharacter.gender = parts[1] || '';
-                                            updatedCharacter.occupation = parts[2] || '';
-                                            const updatedCharacters = [...outlineSettings.characters];
-                                            updatedCharacters[index] = updatedCharacter;
-                                            return handleSave('characters', updatedCharacters);
-                                        }}
-                                        style={{ fontSize: '14px', color: '#fff', flex: 1 }}
-                                    />
-                                </div>
-                                <div>
-                                    <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>角色描述：</Text>
-                                    <EditableText
-                                        value={character.description || ''}
-                                        path={`characters[${index}].description`}
-                                        placeholder="角色描述"
-                                        multiline={true}
-                                        rows={2}
-                                        isEditable={isEditable}
-                                        onSave={handleSave}
-                                        style={{ fontSize: '14px', color: '#fff', width: '100%' }}
-                                    />
-                                </div>
-                                <div>
-                                    <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>性格特点：</Text>
-                                    <EditableArray
-                                        value={character.personality_traits || []}
-                                        path={`characters[${index}].personality_traits`}
-                                        placeholder="每行一个性格特点..."
-                                        isEditable={isEditable}
-                                        onSave={handleSave}
-                                        mode="textarea"
-                                    />
-                                </div>
-                                <div>
-                                    <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>成长轨迹：</Text>
-                                    <EditableText
-                                        value={character.character_arc || ''}
-                                        path={`characters[${index}].character_arc`}
-                                        placeholder="成长轨迹"
-                                        multiline={true}
-                                        rows={2}
-                                        isEditable={isEditable}
-                                        onSave={handleSave}
-                                        style={{ fontSize: '14px', color: '#fff', width: '100%' }}
-                                    />
-                                </div>
-                                <div>
-                                    <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>关键场景：</Text>
-                                    <EditableArray
-                                        value={character.key_scenes || []}
-                                        path={`characters[${index}].key_scenes`}
-                                        placeholder="每行一个关键场景..."
-                                        isEditable={isEditable}
-                                        onSave={handleSave}
-                                        mode="textarea"
-                                    />
-                                </div>
-                            </Space>
-                        </Card>
-                    ))}
-                    {isEditable && (
-                        <Card
-                            size="small"
-                            style={{
-                                backgroundColor: 'transparent',
-                                border: '2px dashed #434343',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                minHeight: '120px',
-                                cursor: 'pointer'
-                            }}
-                            bodyStyle={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                flexDirection: 'column',
-                                padding: '24px'
-                            }}
-                            onClick={() => {
-                                const newCharacter = {
-                                    name: '新角色',
-                                    type: 'other',
-                                    description: '',
-                                    age: '',
-                                    gender: '',
-                                    occupation: '',
-                                    personality_traits: [],
-                                    character_arc: '',
-                                    relationships: {},
-                                    key_scenes: []
-                                };
-                                const currentCharacters = outlineSettings.characters || [];
-                                handleSave('characters', [...currentCharacters, newCharacter]);
-                            }}
-                        >
-                            <PlusOutlined style={{ fontSize: '24px', color: '#8c8c8c', marginBottom: '8px' }} />
-                            <Text style={{ color: '#8c8c8c' }}>添加新角色</Text>
-                        </Card>
-                    )}
-                </Space>
-            </div>
-        </Space>
-    );
-}
-
-// Helper functions
-const getCharacterTypeColor = (type: string): string => {
-    switch (type) {
-        case 'male_lead': return 'blue';
-        case 'female_lead': return 'pink';
-        case 'male_second': return 'cyan';
-        case 'female_second': return 'magenta';
-        case 'antagonist': return 'red';
-        default: return 'default';
-    }
-};
-
-const getCharacterTypeLabel = (type: string): string => {
-    const labels: Record<string, string> = {
-        'male_lead': '男主',
-        'female_lead': '女主',
-        'male_second': '男二',
-        'female_second': '女二',
-        'male_supporting': '男配',
-        'female_supporting': '女配',
-        'antagonist': '反派',
-        'other': '其他'
-    };
-    return labels[type] || type;
 }; 

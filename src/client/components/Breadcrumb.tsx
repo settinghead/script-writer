@@ -3,7 +3,6 @@ import { Breadcrumb as AntBreadcrumb } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { HomeOutlined, BulbOutlined, MessageOutlined, EditOutlined, HistoryOutlined, FileTextOutlined, PlayCircleOutlined, ProjectOutlined } from '@ant-design/icons';
 import { useProjectStore } from '../stores/projectStore';
-import { useProjectData } from '../hooks/useProjectData';
 
 interface BreadcrumbItem {
     title: string;
@@ -19,10 +18,6 @@ const Breadcrumb: React.FC<HTMLAttributes<HTMLDivElement>> = (props) => {
     // Extract project ID from URL
     const pathParts = location.pathname.split('/');
     const projectId = pathParts[1] === 'projects' && pathParts[2] ? pathParts[2] : null;
-
-    // Always call the hook, but with conditional enabling
-    // This ensures hooks are called in the same order every render
-    const { isLoading, error } = useProjectData(projectId || '');
 
     // Get project title from store
     const projectTitle = useProjectStore(state =>

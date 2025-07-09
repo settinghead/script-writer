@@ -3,8 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button, Typography, Card, Spin } from 'antd';
 import { EyeOutlined, LoadingOutlined, EditOutlined } from '@ant-design/icons';
 import { useProjectData } from '../../contexts/ProjectDataContext';
-import { ArtifactEditor } from '../../transform-artifact-framework/ArtifactEditor';
-import { BRAINSTORM_IDEA_FIELDS } from '../shared/MIGUANG_APP_FIELDS';
+import { YJSArtifactProvider, useYJSArtifactContext } from '../../contexts/YJSArtifactContext';
+import { YJSTextField, YJSTextAreaField } from '../shared/YJSField';
 import { SectionWrapper, ArtifactSchemaType } from '../shared';
 
 const { Title, Text } = Typography;
@@ -14,6 +14,85 @@ interface SingleBrainstormIdeaEditorProps {
     isEditable?: boolean; // Global editability state from computation system
     currentStage?: string; // Current workflow stage
 }
+
+// YJS-enabled editable form component
+const EditableBrainstormForm: React.FC = () => {
+    const { getField, setField, isLoading, artifact } = useYJSArtifactContext();
+
+    // Get current values from YJS context
+    const title = getField('title') || '';
+    const body = getField('body') || '';
+
+    return (
+        <div style={{ overflow: 'hidden' }}>
+            <div style={{ marginBottom: '16px' }}>
+                <Text style={{ color: '#d9d9d9', marginBottom: '8px', display: 'block', fontWeight: 500 }}>
+                    创意标题
+                </Text>
+                <YJSTextField
+                    path="title"
+                    placeholder="输入创意标题..."
+                />
+            </div>
+
+            <div>
+                <Text style={{ color: '#d9d9d9', marginBottom: '8px', display: 'block', fontWeight: 500 }}>
+                    创意内容
+                </Text>
+                <YJSTextAreaField
+                    path="body"
+                    placeholder="详细描述你的创意想法..."
+                    rows={6}
+                />
+            </div>
+        </div>
+    );
+};
+
+// Read-only display component
+const ReadOnlyBrainstormDisplay: React.FC<{ artifactId: string }> = ({ artifactId }) => {
+    const projectData = useProjectData();
+
+    const artifact = projectData.getArtifactById(artifactId);
+    const artifactData = useMemo(() => {
+        if (!artifact?.data) return null;
+        try {
+            return typeof artifact.data === 'string' ? JSON.parse(artifact.data) : artifact.data;
+        } catch (error) {
+            console.warn('Failed to parse artifact data:', error);
+            return null;
+        }
+    }, [artifact?.data]);
+
+    if (!artifactData) {
+        return (
+            <div style={{ padding: '16px', textAlign: 'center' }}>
+                <Text style={{ color: '#666' }}>加载中...</Text>
+            </div>
+        );
+    }
+
+    return (
+        <div style={{ overflow: 'hidden' }}>
+            {artifactData.title && (
+                <div style={{ marginBottom: '12px' }}>
+                    <div style={{ color: '#999', fontSize: '12px', marginBottom: '4px' }}>标题</div>
+                    <div style={{ color: '#d9d9d9', fontSize: '14px', fontWeight: 500 }}>
+                        {artifactData.title}
+                    </div>
+                </div>
+            )}
+            {artifactData.body && (
+                <div>
+                    <div style={{ color: '#999', fontSize: '12px', marginBottom: '4px' }}>内容</div>
+                    <div style={{ color: '#d9d9d9', fontSize: '13px', lineHeight: '1.5' }}>
+                        {artifactData.body}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
 
 export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProps> = ({
     onViewOriginalIdeas,
@@ -161,19 +240,12 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                     </div>
 
                     {/* Show read-only data */}
-                    <div style={{ overflow: 'hidden' }}>
-                        <ArtifactEditor
-                            artifactId={latestArtifactId}
-                            fields={BRAINSTORM_IDEA_FIELDS}
-                            statusColor="gray"
-                            forceReadOnly={true}
-                        />
-                    </div>
+                    <ReadOnlyBrainstormDisplay artifactId={latestArtifactId} />
                 </Card>
             </div>
         );
     } else if (isEditable) {
-        // Editable mode - user can edit the artifact
+        // Editable mode - user can edit the artifact with YJS
         mainPart = (
             <div className="single-brainstorm-idea-editor" style={{ marginBottom: '24px', position: 'relative' }}>
                 {/* Loading overlay for normal mode */}
@@ -230,14 +302,11 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                         </div>
                     </div>
 
-                    {/* Artifact Editor */}
+                    {/* YJS-enabled form */}
                     <div style={{ marginBottom: '24px', overflow: 'hidden' }}>
-                        <ArtifactEditor
-                            artifactId={latestArtifactId}
-                            fields={BRAINSTORM_IDEA_FIELDS}
-                            statusColor="green"
-                            forceReadOnly={false}
-                        />
+                        <YJSArtifactProvider artifactId={latestArtifactId} enableCollaboration={true}>
+                            <EditableBrainstormForm />
+                        </YJSArtifactProvider>
                     </div>
                 </Card>
             </div>
@@ -309,14 +378,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                     </div>
 
                     {/* Show read-only preview */}
-                    <div style={{ overflow: 'hidden' }}>
-                        <ArtifactEditor
-                            artifactId={latestArtifactId}
-                            fields={BRAINSTORM_IDEA_FIELDS}
-                            statusColor="blue"
-                            forceReadOnly={true}
-                        />
-                    </div>
+                    <ReadOnlyBrainstormDisplay artifactId={latestArtifactId} />
 
                     {/* Loading overlay */}
                     {isCreatingHumanTransform && (
@@ -345,17 +407,10 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
             </div>
         );
     } else {
-        // Read-only mode - determine reason for read-only status
-        let readOnlyReason = '已生成后续内容，无法编辑';
-        if (currentStage !== 'idea_editing') {
-            // Different messages for different stages
-            const stageMessages: Record<string, string> = {
-                'outline_generation': '已进入剧本框架阶段，创意已确定',
-                'chronicles_generation': '已进入时间顺序大纲阶段，创意已确定',
-                'episode_synopsis_generation': '已进入分集剧本阶段，创意已确定'
-            };
-            readOnlyReason = stageMessages[currentStage] || '当前阶段不可编辑创意';
-        }
+        // Read-only mode - artifact has descendants or is in wrong stage
+        const readOnlyReason = currentStage !== 'idea_editing'
+            ? '当前阶段不可编辑'
+            : '已被后续步骤使用，不可编辑';
 
         mainPart = (
             <div className="single-brainstorm-idea-readonly" style={{ marginBottom: '16px' }}>
@@ -389,14 +444,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                     </div>
 
                     {/* Show read-only data */}
-                    <div style={{ overflow: 'hidden' }}>
-                        <ArtifactEditor
-                            artifactId={latestArtifactId}
-                            fields={BRAINSTORM_IDEA_FIELDS}
-                            statusColor="gray"
-                            forceReadOnly={true}
-                        />
-                    </div>
+                    <ReadOnlyBrainstormDisplay artifactId={latestArtifactId} />
                 </Card>
             </div>
         );

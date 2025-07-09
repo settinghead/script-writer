@@ -194,7 +194,13 @@ export class AuthMiddleware {
     // Get the test user for debug authentication
     private async getTestUser(): Promise<User | null> {
         try {
-            // Return the first available test user, or create a default one
+            // First try to get the xiyang user specifically
+            const xiyangUser = await this.authDB.getUserByUsername('xiyang');
+            if (xiyangUser) {
+                return xiyangUser;
+            }
+
+            // Fallback to the first available test user
             const testUsers = await this.authDB.getTestUsers();
             if (testUsers.length > 0) {
                 return testUsers[0];

@@ -1,6 +1,17 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useProjectData } from '../contexts/ProjectDataContext';
 import { createElectricConfigWithDebugAuth } from '../../common/config/electric';
+
+// Global registry to track YJS document initialization state
+const globalYJSRegistry = new Map<string, {
+    isInitialized: boolean;
+    isInitializing: boolean;
+    doc: any | null;
+    provider: any | null;
+    awareness: any | null;
+    collaborativeData: any | null;
+    callbacks: Set<(data: any) => void>;
+}>();
 
 // Types (will be loaded dynamically)
 type YDoc = any;
@@ -58,60 +69,113 @@ export const useYJSArtifact = (
         syncIntervalMs = 5000,
     } = options;
 
-    // State
+    console.log(`[useYJSArtifact] Hook called for artifact ${artifactId}, enableCollaboration: ${enableCollaboration}`);
+
+    // State management
     const [doc, setDoc] = useState<YDoc | null>(null);
     const [provider, setProvider] = useState<ElectricProvider | null>(null);
-    const [awareness, setAwareness] = useState<Awareness | null>(null);
     const [isConnected, setIsConnected] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [collaborativeData, setCollaborativeData] = useState<any>(null);
-    const [docLoaded, setDocLoaded] = useState(false);
+    const [awareness, setAwareness] = useState<Awareness | null>(null);
+
+    // Refs for accessing current values in callbacks
+    const cleanupRef = useRef<(() => void) | null>(null);
+    const callbackRef = useRef<((data: any) => void) | null>(null);
+    const docRef = useRef<YDoc | null>(null);
+    const enableCollaborationRef = useRef(enableCollaboration);
+
+    // Update refs when values change
+    useEffect(() => {
+        docRef.current = doc;
+    }, [doc]);
+
+    useEffect(() => {
+        enableCollaborationRef.current = enableCollaboration;
+    }, [enableCollaboration]);
 
     // Refs for cleanup
     const projectData = useProjectData();
     const syncTimerRef = useRef<NodeJS.Timeout | null>(null);
-    const cleanupRef = useRef<(() => void) | null>(null);
     const providerRef = useRef<ElectricProvider | null>(null);
     const databaseProviderRef = useRef<IndexeddbPersistence | null>(null);
     const resumeStateProviderRef = useRef<LocalStorageResumeStateProvider | null>(null);
-    const isInitializedRef = useRef<boolean>(false);
-    const collaborativeDataRef = useRef<any>(null);
-    const currentArtifactIdRef = useRef<string | null>(null);
 
     // Get artifact from project data
     const artifact = projectData.artifacts && Array.isArray(projectData.artifacts)
         ? projectData.artifacts.find((a: any) => a.id === artifactId)
         : null;
 
+    // Debug logging for artifact state
+    useEffect(() => {
+        console.log(`[useYJSArtifact] Artifact state for ${artifactId}:`, {
+            hasArtifact: !!artifact,
+            artifactData: artifact?.data,
+            projectDataState: projectData.artifacts === "pending" ? "pending" : "loaded"
+        });
+    }, [artifactId, artifact, projectData.artifacts]);
+
     // Initialize YJS document and Electric provider (following Electric YJS example pattern)
     useEffect(() => {
         if (!artifactId || !enableCollaboration) {
+            console.log(`[useYJSArtifact] Skipping initialization: artifactId=${artifactId}, enableCollaboration=${enableCollaboration}`);
             setIsLoading(false);
             return;
         }
 
         // Don't initialize if we don't have artifact yet, but don't block on artifact data changes
         if (!artifact) {
+            console.log(`[useYJSArtifact] Waiting for artifact data for ${artifactId}`);
             return;
         }
 
-        // Reset if artifact ID changed
-        if (currentArtifactIdRef.current !== artifactId) {
-            isInitializedRef.current = false;
-            collaborativeDataRef.current = null;
-            currentArtifactIdRef.current = artifactId;
+        // Check global registry
+        let registryEntry = globalYJSRegistry.get(artifactId);
+        if (!registryEntry) {
+            registryEntry = {
+                isInitialized: false,
+                isInitializing: false,
+                doc: null,
+                provider: null,
+                awareness: null,
+                collaborativeData: null,
+                callbacks: new Set()
+            };
+            globalYJSRegistry.set(artifactId, registryEntry);
         }
 
-        // Only initialize once per artifact ID to prevent state conflicts
-        if (isInitializedRef.current) {
+        // Set up callback for data updates
+        callbackRef.current = (data: any) => {
+            console.log(`[useYJSArtifact] Received data update for ${artifactId}:`, data);
+            setCollaborativeData(data);
+        };
+        registryEntry.callbacks.add(callbackRef.current);
+
+        // If already initialized, use existing data
+        if (registryEntry.isInitialized) {
+            console.log(`[useYJSArtifact] Already initialized for ${artifactId}, using existing data`);
+            setDoc(registryEntry.doc);
+            setProvider(registryEntry.provider);
+            setAwareness(registryEntry.awareness);
+            setCollaborativeData(registryEntry.collaborativeData);
+            setIsLoading(false);
             return;
         }
 
+        // If currently initializing, wait for completion
+        if (registryEntry.isInitializing) {
+            console.log(`[useYJSArtifact] Already initializing for ${artifactId}, waiting...`);
+            return;
+        }
+
+        // Start initialization
+        registryEntry.isInitializing = true;
         let cleanup: (() => void) | null = null;
 
         const initializeYJS = async () => {
             try {
+                console.log(`[useYJSArtifact] Starting YJS initialization for ${artifactId}`);
                 setIsLoading(true);
                 setError(null);
 
@@ -123,6 +187,8 @@ export const useYJSArtifact = (
                     import('y-indexeddb'),
                     import('lib0/decoding')
                 ]);
+
+                console.log(`[useYJSArtifact] YJS modules loaded for ${artifactId}`);
 
                 // Set up parser function (same as Electric YJS example)
                 parseToDecoder = {
@@ -139,6 +205,7 @@ export const useYJSArtifact = (
 
                 // Create YJS document (same pattern as Electric YJS example)
                 const yjsDoc = new Y.Doc();
+                console.log(`[useYJSArtifact] YJS document created for ${artifactId}`);
 
                 // Create awareness (same pattern as Electric YJS example)
                 const awarenessInstance = new Awareness(yjsDoc);
@@ -150,6 +217,8 @@ export const useYJSArtifact = (
                     colorLight: '#1890ff33',
                 });
 
+                console.log(`[useYJSArtifact] Awareness created for ${artifactId}`);
+
                 // Create IndexedDB persistence (same pattern as Electric YJS example)
                 const databaseProvider = new IndexeddbPersistence(`artifact-${artifactId}`, yjsDoc);
                 databaseProviderRef.current = databaseProvider;
@@ -158,24 +227,30 @@ export const useYJSArtifact = (
                 const resumeStateProvider = new LocalStorageResumeStateProvider(`artifact-${artifactId}`);
                 resumeStateProviderRef.current = resumeStateProvider;
 
+                console.log(`[useYJSArtifact] Persistence providers created for ${artifactId}`);
+
                 // Wait for persistence to load (same pattern as Electric YJS example)
                 await new Promise<void>((resolve) => {
                     databaseProvider.once('synced', () => {
-                        setDocLoaded(true);
+                        console.log(`[useYJSArtifact] IndexedDB synced for ${artifactId}`);
                         resolve();
                     });
                 });
 
                 // Initialize document with artifact data if empty
                 const yMap = yjsDoc.getMap('content');
+                console.log(`[useYJSArtifact] YJS map size: ${yMap.size} for ${artifactId}`);
+
                 if (yMap.size === 0 && artifact.data) {
+                    console.log(`[useYJSArtifact] Initializing YJS document with artifact data for ${artifactId}`);
 
                     let artifactData: any = artifact.data;
                     if (typeof artifactData === 'string') {
                         try {
                             artifactData = JSON.parse(artifactData);
+                            console.log(`[useYJSArtifact] Parsed artifact data:`, artifactData);
                         } catch (err) {
-                            console.error('Failed to parse artifact data:', err);
+                            console.error(`[useYJSArtifact] Failed to parse artifact data:`, err);
                             artifactData = {} as any;
                         }
                     }
@@ -183,6 +258,7 @@ export const useYJSArtifact = (
                     // Populate YJS document (simplified approach)
                     if (artifactData && typeof artifactData === 'object' && !Array.isArray(artifactData)) {
                         Object.entries(artifactData as Record<string, any>).forEach(([key, value]) => {
+                            console.log(`[useYJSArtifact] Setting YJS field ${key} = ${JSON.stringify(value)}`);
                             if (typeof value === 'string') {
                                 const yText = new Y.Text();
                                 yText.insert(0, value);
@@ -204,36 +280,38 @@ export const useYJSArtifact = (
                             }
                         });
                     }
+                    console.log(`[useYJSArtifact] YJS document initialized with ${yMap.size} fields`);
                 }
 
-                // Get Electric config (use our existing proxy endpoint)
+                // Set up Electric provider (same pattern as Electric YJS example)
                 const electricConfig = createElectricConfigWithDebugAuth();
-                const room = `artifact-${artifactId}`;
 
                 // Set up Electric provider options (exact pattern from Electric YJS example)
                 const electricOptions = {
                     doc: yjsDoc,
                     documentUpdates: {
                         shape: {
-                            url: electricConfig.url, // Use our proxy endpoint
+                            url: electricConfig.url,
                             params: {
                                 table: 'artifact_yjs_documents',
                                 where: `artifact_id = '${artifactId}'`,
                             },
-                            parser: parseToDecoder,
+                            headers: electricConfig.headers || {},
                         },
+                        parser: parseToDecoder,
                         sendUrl: new URL(`/api/yjs/update?artifact_id=${artifactId}`, window.location.origin),
                         getUpdateFromRow: (row: any) => row.update,
                     },
                     awarenessUpdates: {
                         shape: {
-                            url: electricConfig.url, // Use our proxy endpoint
+                            url: electricConfig.url,
                             params: {
                                 table: 'artifact_yjs_awareness',
                                 where: `artifact_id = '${artifactId}'`,
                             },
-                            parser: parseToDecoder,
+                            headers: electricConfig.headers || {},
                         },
+                        parser: parseToDecoder,
                         sendUrl: new URL(`/api/yjs/update?artifact_id=${artifactId}&client_id=${yjsDoc.clientID}`, window.location.origin),
                         protocol: awarenessInstance,
                         getUpdateFromRow: (row: any) => row.update,
@@ -245,190 +323,223 @@ export const useYJSArtifact = (
                 const electricProvider = new ElectricProvider(electricOptions);
                 providerRef.current = electricProvider;
 
+                console.log(`[useYJSArtifact] Electric provider created for ${artifactId}`);
+
                 // Subscribe to resume state changes (same pattern as Electric YJS example)
                 const resumeStateUnsubscribe = resumeStateProvider.subscribeToResumeState(electricProvider);
 
-                // Set up event handlers (same pattern as Electric YJS example)
+                // Store references in registry
+                const currentRegistry = globalYJSRegistry.get(artifactId)!;
+                currentRegistry.doc = yjsDoc;
+                currentRegistry.provider = electricProvider;
+                currentRegistry.awareness = awarenessInstance;
+
+                // Store references in component state
+                setDoc(yjsDoc);
+                setProvider(electricProvider);
+                setAwareness(awarenessInstance);
+
+                // Set up connection status handler
                 const statusHandler = ({ status }: { status: 'connected' | 'disconnected' | 'connecting' }) => {
+                    console.log(`[useYJSArtifact] Connection status changed to ${status} for ${artifactId}`);
                     setIsConnected(status === 'connected');
                 };
 
                 electricProvider.on('status', statusHandler);
 
-                electricProvider.on('synced', (synced: boolean) => {
-                });
-
-                // Set up document change listener for local data updates
+                // Set up data update handler
                 const updateCollaborativeData = () => {
-                    const result: any = {};
+                    console.log(`[useYJSArtifact] YJS data updated for ${artifactId}`);
+                    const yMap = yjsDoc.getMap('content');
+                    const data: any = {};
+
+                    // Convert YJS data to regular object
                     yMap.forEach((value: any, key: string) => {
                         if (value && typeof value.toString === 'function') {
-                            result[key] = value.toString();
+                            // Handle YText
+                            data[key] = value.toString();
                         } else if (value && typeof value.toArray === 'function') {
-                            result[key] = value.toArray().map((item: any) => {
+                            // Handle YArray
+                            data[key] = value.toArray().map((item: any) => {
                                 if (item && typeof item.toString === 'function') {
                                     return item.toString();
                                 }
                                 return item;
                             });
                         } else {
-                            result[key] = value;
+                            // Handle regular values
+                            data[key] = value;
                         }
                     });
-                    collaborativeDataRef.current = result;
-                    setCollaborativeData(result);
+
+                    console.log(`[useYJSArtifact] Converted YJS data:`, data);
+
+                    // Update registry
+                    currentRegistry.collaborativeData = data;
+
+                    // Notify all callbacks
+                    currentRegistry.callbacks.forEach(callback => {
+                        try {
+                            callback(data);
+                        } catch (err) {
+                            console.error(`[useYJSArtifact] Error in callback:`, err);
+                        }
+                    });
                 };
 
+                // Set up YJS document observer
                 yMap.observe(updateCollaborativeData);
-                updateCollaborativeData(); // Initial update
 
-                // NOTE: Electric provider handles syncing automatically
-                // No periodic sync needed - this was causing infinite loops
+                // Initial data update
+                updateCollaborativeData();
 
-                // Set state
-                setDoc(yjsDoc);
-                setProvider(electricProvider);
-                setAwareness(awarenessInstance);
-                setIsLoading(false);
-
-                // Mark as initialized to prevent re-initialization
-                isInitializedRef.current = true;
-
-                // Setup cleanup (same pattern as Electric YJS example)
+                // Set up cleanup
                 cleanup = () => {
-
-                    yMap.unobserve(updateCollaborativeData);
+                    console.log(`[useYJSArtifact] Cleaning up YJS for ${artifactId}`);
                     electricProvider.off('status', statusHandler);
+                    yMap.unobserve(updateCollaborativeData);
                     electricProvider.destroy();
                     resumeStateUnsubscribe();
                     databaseProvider.destroy();
+                    yjsDoc.destroy();
 
-                    setDoc(null);
-                    setProvider(null);
-                    setAwareness(null);
-                    setIsConnected(false);
-                    setCollaborativeData(null);
-                    setDocLoaded(false);
-
-                    // Reset initialization flag for potential re-initialization
-                    isInitializedRef.current = false;
-                    collaborativeDataRef.current = null;
+                    // Clean up registry
+                    globalYJSRegistry.delete(artifactId);
                 };
 
                 cleanupRef.current = cleanup;
+                currentRegistry.isInitialized = true;
+                currentRegistry.isInitializing = false;
+                setIsLoading(false);
+
+                console.log(`[useYJSArtifact] YJS initialization complete for ${artifactId}`);
 
             } catch (err) {
-                console.error('Failed to initialize YJS:', err);
-                setError(err instanceof Error ? err.message : 'Failed to initialize collaboration');
+                console.error(`[useYJSArtifact] Error initializing YJS for ${artifactId}:`, err);
+                setError(err instanceof Error ? err.message : 'Failed to initialize YJS');
                 setIsLoading(false);
+
+                // Reset registry state on error
+                const currentRegistry = globalYJSRegistry.get(artifactId);
+                if (currentRegistry) {
+                    currentRegistry.isInitializing = false;
+                }
             }
         };
 
         initializeYJS();
 
         return () => {
-            if (cleanupRef.current) {
-                cleanupRef.current();
+            if (cleanup) {
+                cleanup();
+            }
+
+            // Remove callback from registry
+            const currentRegistry = globalYJSRegistry.get(artifactId);
+            if (currentRegistry && callbackRef.current) {
+                currentRegistry.callbacks.delete(callbackRef.current);
             }
         };
-    }, [artifactId, enableCollaboration]); // Removed artifact and syncIntervalMs to prevent re-initialization loops
+    }, [artifactId, enableCollaboration]);
 
     // Update field in YJS document
     const updateField = useCallback((field: string, value: any) => {
-        if (!doc || !docLoaded) {
+        console.log(`[useYJSArtifact] updateField called: ${field} = ${JSON.stringify(value)} for ${artifactId}`);
+
+        if (!docRef.current || !enableCollaborationRef.current) {
+            console.log(`[useYJSArtifact] Cannot update field - no doc or collaboration disabled`);
             return;
         }
 
-        // Don't update with undefined or null values
-        if (value === undefined || value === null) {
-            return;
-        }
+        try {
+            const yMap = docRef.current.getMap('content');
+            console.log(`[useYJSArtifact] Current YJS map size: ${yMap.size}`);
 
-        const yMap = doc.getMap('content');
-
-        doc.transact(() => {
             if (typeof value === 'string') {
-                let yText = yMap.get(field);
-                if (!yText || typeof yText.toString !== 'function') {
-                    // Import Y dynamically to get the Text constructor
-                    import('yjs').then(Y => {
-                        yText = new Y.Text();
-                        yText.insert(0, value);
-                        yMap.set(field, yText);
-                    });
-                } else {
-                    yText.delete(0, yText.length);
-                    yText.insert(0, value);
+                const yText = yMap.get(field) || new (docRef.current.constructor as any).Text();
+                if (!yMap.has(field)) {
+                    yMap.set(field, yText);
                 }
+                yText.delete(0, yText.length);
+                yText.insert(0, value);
+                console.log(`[useYJSArtifact] Updated YText field ${field} with: ${value}`);
             } else if (Array.isArray(value)) {
-                import('yjs').then(Y => {
-                    let yArray = yMap.get(field);
-                    if (!yArray || typeof yArray.toArray !== 'function') {
-                        yArray = new Y.Array();
-                        yMap.set(field, yArray);
+                const yArray = yMap.get(field) || new (docRef.current.constructor as any).Array();
+                if (!yMap.has(field)) {
+                    yMap.set(field, yArray);
+                }
+                yArray.delete(0, yArray.length);
+                value.forEach((item: any) => {
+                    if (typeof item === 'string') {
+                        const yText = new (docRef.current.constructor as any).Text();
+                        yText.insert(0, item);
+                        yArray.push([yText]);
+                    } else {
+                        yArray.push([item]);
                     }
-                    yArray.delete(0, yArray.length);
-                    value.forEach((item) => {
-                        if (typeof item === 'string') {
-                            const yText = new Y.Text();
-                            yText.insert(0, item);
-                            yArray.push([yText]);
-                        } else {
-                            yArray.push([item]);
-                        }
-                    });
                 });
+                console.log(`[useYJSArtifact] Updated YArray field ${field} with: ${JSON.stringify(value)}`);
             } else {
                 yMap.set(field, value);
+                console.log(`[useYJSArtifact] Updated direct field ${field} with: ${JSON.stringify(value)}`);
             }
-        });
-    }, [doc, docLoaded]);
+        } catch (err) {
+            console.error(`[useYJSArtifact] Error updating field ${field}:`, err);
+        }
+    }, [artifactId]);
 
     // Update multiple fields
     const updateFields = useCallback((updates: Record<string, any>) => {
+        console.log(`[useYJSArtifact] updateFields called with:`, updates);
         Object.entries(updates).forEach(([field, value]) => {
             updateField(field, value);
         });
     }, [updateField]);
 
-    // Manual sync method (not needed with Electric provider, but kept for compatibility)
+    // Sync to artifact (placeholder)
     const syncToArtifact = useCallback(async () => {
-        // Electric provider handles syncing automatically
-    }, []);
+        console.log(`[useYJSArtifact] syncToArtifact called for ${artifactId}`);
+        // Implementation would sync YJS data back to artifact
+    }, [artifactId]);
 
-    // Cleanup method
+    // Cleanup function
     const cleanup = useCallback(() => {
+        console.log(`[useYJSArtifact] Manual cleanup called for ${artifactId}`);
         if (cleanupRef.current) {
             cleanupRef.current();
         }
-    }, []);
+    }, [artifactId]);
+
+    // Determine data source
+    const data = enableCollaboration ? collaborativeData : artifact?.data;
+
+    // Debug logging for final state
+    useEffect(() => {
+        console.log(`[useYJSArtifact] Final state for ${artifactId}:`, {
+            enableCollaboration,
+            isLoading,
+            isConnected,
+            error,
+            hasDoc: !!doc,
+            hasProvider: !!provider,
+            dataSource: enableCollaboration ? 'collaborative' : 'artifact',
+            data
+        });
+    }, [artifactId, enableCollaboration, isLoading, isConnected, error, doc, provider, data]);
 
     return {
-        // YJS document and provider
         doc,
         provider,
-
-        // Connection state
         isConnected,
         isLoading,
         error,
-
-        // Data access (prioritize collaborative data when YJS is active and has data)
-        data: (enableCollaboration && docLoaded && (collaborativeData || collaborativeDataRef.current))
-            ? (collaborativeData || collaborativeDataRef.current)
-            : artifact?.data,
+        data,
         artifact,
-
-        // Update methods
         updateField,
         updateFields,
-
-        // Utility methods
         syncToArtifact,
         cleanup,
-
-        // Collaboration features
-        isCollaborative: enableCollaboration && !!provider && docLoaded,
+        isCollaborative: enableCollaboration,
         awareness,
     };
 };
