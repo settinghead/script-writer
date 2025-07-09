@@ -2,6 +2,7 @@
 
 import { ArtifactRepository } from '../transform-artifact-framework/ArtifactRepository';
 import { ProjectRepository } from '../transform-artifact-framework/ProjectRepository';
+import { db } from '../database/connection';
 
 const TEST_PROJECT_ID = 'c4516b01-9485-4646-bf29-30f86558cef9';
 const TEST_USER_ID = 'test-user-1';
@@ -11,11 +12,11 @@ async function testYJSFix() {
 
     try {
         // Initialize repositories
-        const artifactRepo = new ArtifactRepository();
-        const projectRepo = new ProjectRepository();
+        const artifactRepo = new ArtifactRepository(db);
+        const projectRepo = new ProjectRepository(db);
 
         // Verify project exists
-        const project = await projectRepo.getProjectById(TEST_PROJECT_ID);
+        const project = await projectRepo.getProject(TEST_PROJECT_ID);
         if (!project) {
             console.error('❌ Test project not found');
             return;
@@ -24,25 +25,27 @@ async function testYJSFix() {
         console.log('✅ Project found:', project.name);
 
         // Create a test brainstorm artifact
-        const testArtifact = await artifactRepo.createArtifact({
-            project_id: TEST_PROJECT_ID,
-            type: 'brainstorm_item_schema',
-            schema_type: 'brainstorm_item_schema',
-            origin_type: 'ai_generated',
-            data: JSON.stringify({
+        const testArtifact = await artifactRepo.createArtifact(
+            TEST_PROJECT_ID,
+            'brainstorm_item_schema',
+            {
                 title: '测试YJS创意',
                 body: '这是一个测试YJS协作编辑功能的创意内容。'
-            }),
-            metadata: {
+            },
+            'v1',
+            {
                 test: true,
                 purpose: 'yjs-fix-test'
-            }
-        });
+            },
+            'completed',
+            'ai_generated'
+        );
 
         console.log('✅ Test artifact created:', testArtifact.id);
 
         // Test the artifact can be retrieved
-        const retrievedArtifact = await artifactRepo.getArtifactById(testArtifact.id);
+        const retrievedArtifacts = await artifactRepo.getArtifactsByIds([testArtifact.id]);
+        const retrievedArtifact = retrievedArtifacts[0];
         if (!retrievedArtifact) {
             console.error('❌ Failed to retrieve test artifact');
             return;

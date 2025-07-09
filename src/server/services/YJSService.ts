@@ -15,17 +15,18 @@ export interface YJSDocumentState {
     project_id: string;
     artifact_id: string;
     document_state: Buffer;
-    created_at: Date | string;
-    updated_at: Date | string;
+    created_at: Date | string | null;
+    updated_at: Date | string | null;
 }
 
 export interface YJSAwarenessUpdate {
     client_id: string;
     room_id: string;
     project_id: string;
+    artifact_id: string;
     update: Buffer;
-    created_at?: Date | string;
-    updated_at: Date | string;
+    created_at?: Date | string | null;
+    updated_at: Date | string | null;
 }
 
 export class YJSService {
@@ -288,6 +289,7 @@ export class YJSService {
         clientId: string,
         roomId: string,
         projectId: string,
+        artifactId: string,
         update: Buffer
     ): Promise<void> {
         try {
@@ -298,6 +300,7 @@ export class YJSService {
                     client_id: clientId,
                     room_id: roomId,
                     project_id: projectId,
+                    artifact_id: artifactId,
                     update: update,
                     updated_at: now
                 })

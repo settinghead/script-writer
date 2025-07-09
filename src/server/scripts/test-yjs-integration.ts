@@ -92,6 +92,7 @@ async function testYJSIntegration() {
             'test-client-1',
             `artifact-${testArtifact.id}`,
             testProjectId,
+            testArtifact.id,
             testUpdate
         );
 

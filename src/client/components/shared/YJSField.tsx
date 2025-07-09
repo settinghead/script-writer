@@ -24,8 +24,7 @@ export const YJSTextField: React.FC<YJSFieldProps> = ({
 
     console.log(`[YJSTextField] Rendering field ${path}:`, { isLoading, isConnected, isCollaborative, disabled });
 
-    // Local editing state
-    const [isEditing, setIsEditing] = useState(false);
+    // Local value state for immediate UI updates
     const [localValue, setLocalValue] = useState('');
     const inputRef = useRef<any>(null);
 
@@ -58,17 +57,6 @@ export const YJSTextField: React.FC<YJSFieldProps> = ({
         300
     );
 
-    // Initialize local value when entering edit mode
-    const handleEditStart = () => {
-        console.log(`[YJSTextField] Starting edit for ${path}, current value: ${JSON.stringify(currentValue)}`);
-        setLocalValue(currentValue || '');
-        setIsEditing(true);
-        // Focus input after state update
-        setTimeout(() => {
-            inputRef.current?.focus();
-        }, 0);
-    };
-
     // Handle input changes
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newValue = e.target.value;
@@ -77,10 +65,9 @@ export const YJSTextField: React.FC<YJSFieldProps> = ({
         debouncedSave(newValue);
     };
 
-    // Handle blur (exit editing)
+    // Handle blur (save final value)
     const handleBlur = () => {
         console.log(`[YJSTextField] Blur for ${path}, final value: ${JSON.stringify(localValue)}`);
-        setIsEditing(false);
         // Final save on blur
         if (localValue !== currentValue) {
             console.log(`[YJSTextField] Final save on blur for ${path}: ${JSON.stringify(localValue)}`);
@@ -97,58 +84,30 @@ export const YJSTextField: React.FC<YJSFieldProps> = ({
         if (e.key === 'Escape') {
             console.log(`[YJSTextField] Escape pressed for ${path}, reverting`);
             setLocalValue(currentValue || '');
-            setIsEditing(false);
         }
     };
 
-    // Update local value when context value changes (but only when not editing)
+    // Update local value when context value changes
     useEffect(() => {
-        if (!isEditing) {
-            console.log(`[YJSTextField] Context value changed for ${path}: ${JSON.stringify(currentValue)}`);
-            setLocalValue(currentValue || '');
-        }
-    }, [currentValue, isEditing]);
+        console.log(`[YJSTextField] Context value changed for ${path}: ${JSON.stringify(currentValue)}`);
+        setLocalValue(currentValue || '');
+    }, [currentValue]);
 
-    const effectiveDisabled = disabled || isLoading || !isConnected;
+    const effectiveDisabled = disabled || isLoading;
     console.log(`[YJSTextField] Field ${path} disabled state: ${effectiveDisabled} (disabled: ${disabled}, isLoading: ${isLoading}, isConnected: ${isConnected})`);
 
-    if (isEditing) {
-        return (
-            <Input
-                ref={inputRef}
-                value={localValue}
-                onChange={handleChange}
-                onBlur={handleBlur}
-                onKeyDown={handleKeyPress}
-                placeholder={placeholder}
-                disabled={effectiveDisabled}
-                className={className}
-                style={{ minWidth: '200px' }}
-            />
-        );
-    }
-
     return (
-        <Text
-            onClick={effectiveDisabled ? undefined : handleEditStart}
-            style={{
-                cursor: effectiveDisabled ? 'default' : 'pointer',
-                minHeight: '22px',
-                display: 'inline-block',
-                padding: '4px 8px',
-                border: '1px solid transparent',
-                borderRadius: '6px',
-                minWidth: '200px',
-                backgroundColor: 'transparent' // Ensure transparent background for dark theme
-            }}
+        <Input
+            ref={inputRef}
+            value={localValue}
+            onChange={handleChange}
+            onBlur={handleBlur}
+            onKeyDown={handleKeyPress}
+            placeholder={placeholder}
+            disabled={effectiveDisabled}
             className={className}
-        >
-            {currentValue || (
-                <span style={{ color: '#999', fontStyle: 'italic' }}>
-                    {placeholder || '点击编辑...'}
-                </span>
-            )}
-        </Text>
+            style={{ minWidth: '200px' }}
+        />
     );
 };
 
@@ -170,8 +129,7 @@ export const YJSTextAreaField: React.FC<YJSTextAreaFieldProps> = ({
 
     console.log(`[YJSTextAreaField] Rendering field ${path}:`, { isLoading, isConnected, isCollaborative, disabled });
 
-    // Local editing state
-    const [isEditing, setIsEditing] = useState(false);
+    // Local value state for immediate UI updates
     const [localValue, setLocalValue] = useState('');
     const textAreaRef = useRef<any>(null);
 
@@ -201,19 +159,8 @@ export const YJSTextAreaField: React.FC<YJSTextAreaFieldProps> = ({
                 console.log(`[YJSTextAreaField] Skipping save - no change for ${path}`);
             }
         }, [setField, path, currentValue]),
-        500
+        300
     );
-
-    // Initialize local value when entering edit mode
-    const handleEditStart = () => {
-        console.log(`[YJSTextAreaField] Starting edit for ${path}, current value: ${JSON.stringify(currentValue)}`);
-        setLocalValue(currentValue || '');
-        setIsEditing(true);
-        // Focus textarea after state update
-        setTimeout(() => {
-            textAreaRef.current?.focus();
-        }, 0);
-    };
 
     // Handle input changes
     const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -223,10 +170,9 @@ export const YJSTextAreaField: React.FC<YJSTextAreaFieldProps> = ({
         debouncedSave(newValue);
     };
 
-    // Handle blur (exit editing)
+    // Handle blur (save final value)
     const handleBlur = () => {
         console.log(`[YJSTextAreaField] Blur for ${path}, final value: ${JSON.stringify(localValue)}`);
-        setIsEditing(false);
         // Final save on blur
         if (localValue !== currentValue) {
             console.log(`[YJSTextAreaField] Final save on blur for ${path}: ${JSON.stringify(localValue)}`);
@@ -239,61 +185,32 @@ export const YJSTextAreaField: React.FC<YJSTextAreaFieldProps> = ({
         if (e.key === 'Escape') {
             console.log(`[YJSTextAreaField] Escape pressed for ${path}, reverting`);
             setLocalValue(currentValue || '');
-            setIsEditing(false);
         }
-        // Note: For textarea, we don't save on Enter since it's used for new lines
     };
 
-    // Update local value when context value changes (but only when not editing)
+    // Update local value when context value changes
     useEffect(() => {
-        if (!isEditing) {
-            console.log(`[YJSTextAreaField] Context value changed for ${path}: ${JSON.stringify(currentValue)}`);
-            setLocalValue(currentValue || '');
-        }
-    }, [currentValue, isEditing]);
+        console.log(`[YJSTextAreaField] Context value changed for ${path}: ${JSON.stringify(currentValue)}`);
+        setLocalValue(currentValue || '');
+    }, [currentValue]);
 
-    const effectiveDisabled = disabled || isLoading || !isConnected;
+    const effectiveDisabled = disabled || isLoading;
     console.log(`[YJSTextAreaField] Field ${path} disabled state: ${effectiveDisabled} (disabled: ${disabled}, isLoading: ${isLoading}, isConnected: ${isConnected})`);
 
-    if (isEditing) {
-        return (
-            <Input.TextArea
-                ref={textAreaRef}
-                value={localValue}
-                onChange={handleChange}
-                onBlur={handleBlur}
-                onKeyDown={handleKeyPress}
-                placeholder={placeholder}
-                disabled={effectiveDisabled}
-                rows={rows}
-                autoSize={autoSize}
-                className={className}
-                style={{ minWidth: '200px' }}
-            />
-        );
-    }
-
     return (
-        <div
-            onClick={effectiveDisabled ? undefined : handleEditStart}
-            style={{
-                cursor: effectiveDisabled ? 'default' : 'pointer',
-                minHeight: rows ? `${rows * 22}px` : '66px',
-                padding: '8px 12px',
-                border: '1px solid transparent',
-                borderRadius: '6px',
-                minWidth: '200px',
-                backgroundColor: 'transparent',
-                whiteSpace: 'pre-wrap'
-            }}
+        <Input.TextArea
+            ref={textAreaRef}
+            value={localValue}
+            onChange={handleChange}
+            onBlur={handleBlur}
+            onKeyDown={handleKeyPress}
+            placeholder={placeholder}
+            disabled={effectiveDisabled}
             className={className}
-        >
-            {currentValue || (
-                <span style={{ color: '#999', fontStyle: 'italic' }}>
-                    {placeholder || '点击编辑...'}
-                </span>
-            )}
-        </div>
+            rows={rows}
+            autoSize={autoSize}
+            style={{ minWidth: '200px' }}
+        />
     );
 };
 
@@ -313,8 +230,7 @@ export const YJSArrayField: React.FC<YJSArrayFieldProps> = ({
 
     console.log(`[YJSArrayField] Rendering field ${path}:`, { isLoading, isConnected, isCollaborative, disabled });
 
-    // Local editing state
-    const [isEditing, setIsEditing] = useState(false);
+    // Local value state for immediate UI updates
     const [localValue, setLocalValue] = useState('');
     const textAreaRef = useRef<any>(null);
 
@@ -358,19 +274,8 @@ export const YJSArrayField: React.FC<YJSArrayFieldProps> = ({
                 console.log(`[YJSArrayField] Skipping save - no change for ${path}`);
             }
         }, [setField, path, currentArray]),
-        500
+        300
     );
-
-    // Initialize local value when entering edit mode
-    const handleEditStart = () => {
-        console.log(`[YJSArrayField] Starting edit for ${path}, current value: ${JSON.stringify(currentValue)}`);
-        setLocalValue(currentValue);
-        setIsEditing(true);
-        // Focus textarea after state update
-        setTimeout(() => {
-            textAreaRef.current?.focus();
-        }, 0);
-    };
 
     // Handle input changes
     const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -380,10 +285,9 @@ export const YJSArrayField: React.FC<YJSArrayFieldProps> = ({
         debouncedSave(newValue);
     };
 
-    // Handle blur (exit editing)
+    // Handle blur (save final value)
     const handleBlur = () => {
         console.log(`[YJSArrayField] Blur for ${path}, final value: ${JSON.stringify(localValue)}`);
-        setIsEditing(false);
         // Final save on blur
         const finalArray = textareaToArray(localValue);
         if (JSON.stringify(finalArray) !== JSON.stringify(currentArray)) {
@@ -397,60 +301,32 @@ export const YJSArrayField: React.FC<YJSArrayFieldProps> = ({
         if (e.key === 'Escape') {
             console.log(`[YJSArrayField] Escape pressed for ${path}, reverting`);
             setLocalValue(currentValue);
-            setIsEditing(false);
         }
     };
 
-    // Update local value when context value changes (but only when not editing)
+    // Update local value when context value changes
     useEffect(() => {
-        if (!isEditing) {
-            const newValue = arrayToTextarea(currentArray);
-            console.log(`[YJSArrayField] Context value changed for ${path}: ${JSON.stringify(newValue)}`);
-            setLocalValue(newValue);
-        }
-    }, [currentArray, isEditing]);
+        const newValue = arrayToTextarea(currentArray);
+        console.log(`[YJSArrayField] Context value changed for ${path}: ${JSON.stringify(newValue)}`);
+        setLocalValue(newValue);
+    }, [currentArray]);
 
-    const effectiveDisabled = disabled || isLoading || !isConnected;
+    const effectiveDisabled = disabled || isLoading;
     console.log(`[YJSArrayField] Field ${path} disabled state: ${effectiveDisabled} (disabled: ${disabled}, isLoading: ${isLoading}, isConnected: ${isConnected})`);
 
-    if (isEditing) {
-        return (
-            <Input.TextArea
-                ref={textAreaRef}
-                value={localValue}
-                onChange={handleChange}
-                onBlur={handleBlur}
-                onKeyDown={handleKeyPress}
-                placeholder={placeholder || '每行一个项目...'}
-                disabled={effectiveDisabled}
-                rows={4}
-                autoSize={{ minRows: 4, maxRows: 10 }}
-                className={className}
-                style={{ minWidth: '200px' }}
-            />
-        );
-    }
-
     return (
-        <div
-            onClick={effectiveDisabled ? undefined : handleEditStart}
-            style={{
-                cursor: effectiveDisabled ? 'default' : 'pointer',
-                minHeight: '88px',
-                padding: '8px 12px',
-                border: '1px solid transparent',
-                borderRadius: '6px',
-                minWidth: '200px',
-                backgroundColor: 'transparent',
-                whiteSpace: 'pre-wrap'
-            }}
+        <Input.TextArea
+            ref={textAreaRef}
+            value={localValue}
+            onChange={handleChange}
+            onBlur={handleBlur}
+            onKeyDown={handleKeyPress}
+            placeholder={placeholder || '每行一个项目...'}
+            disabled={effectiveDisabled}
+            rows={4}
+            autoSize={{ minRows: 4, maxRows: 10 }}
             className={className}
-        >
-            {currentValue || (
-                <span style={{ color: '#999', fontStyle: 'italic' }}>
-                    {placeholder || '点击编辑...'}
-                </span>
-            )}
-        </div>
+            style={{ minWidth: '200px' }}
+        />
     );
 }; 

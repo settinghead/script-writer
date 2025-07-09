@@ -2,17 +2,19 @@
 
 import { ProjectRepository } from '../transform-artifact-framework/ProjectRepository';
 import { ArtifactRepository } from '../transform-artifact-framework/ArtifactRepository';
+import { db } from '../database/connection';
 
 async function checkArtifact() {
-    const projectRepo = new ProjectRepository();
-    const artifactRepo = new ArtifactRepository();
+    const projectRepo = new ProjectRepository(db);
+    const artifactRepo = new ArtifactRepository(db);
 
     const artifactId = '88fd2ddf-22e7-4c61-882c-dd334d867fad';
 
     try {
         // Check if artifact exists
         console.log(`🔍 Checking artifact ${artifactId}...`);
-        const artifact = await artifactRepo.getArtifactById(artifactId);
+        const artifacts = await artifactRepo.getArtifactsByIds([artifactId]);
+        const artifact = artifacts[0];
 
         if (!artifact) {
             console.log('❌ Artifact not found');
@@ -29,7 +31,7 @@ async function checkArtifact() {
 
         // Check if this project exists
         console.log(`🔍 Checking project ${artifact.project_id}...`);
-        const project = await projectRepo.getProjectById(artifact.project_id);
+        const project = await projectRepo.getProject(artifact.project_id);
 
         if (!project) {
             console.log('❌ Project not found');
