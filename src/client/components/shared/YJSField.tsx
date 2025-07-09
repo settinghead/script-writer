@@ -14,7 +14,7 @@ export interface YJSFieldProps {
 }
 
 // YJS Text Field Component
-export const YJSTextField: React.FC<YJSFieldProps> = ({
+export const YJSTextField: React.FC<YJSFieldProps> = React.memo(({
     path,
     placeholder,
     disabled = false,
@@ -30,14 +30,10 @@ export const YJSTextField: React.FC<YJSFieldProps> = ({
     // Initialize when component mounts and data is available
     useEffect(() => {
         if (!initializedRef.current) {
-            // Small delay to ensure YJS context is ready
-            const timer = setTimeout(() => {
-                const currentValue = getField(path) || '';
-                setLocalValue(currentValue);
-                initializedRef.current = true;
-            }, 100);
-
-            return () => clearTimeout(timer);
+            // Initialize immediately without delay to prevent flashing
+            const currentValue = getField(path) || '';
+            setLocalValue(currentValue);
+            initializedRef.current = true;
         }
     }, []); // Empty dependency array - only run once on mount
 
@@ -94,7 +90,7 @@ export const YJSTextField: React.FC<YJSFieldProps> = ({
             style={{ minWidth: '200px' }}
         />
     );
-};
+});
 
 // YJS TextArea Field Component
 export interface YJSTextAreaFieldProps extends YJSFieldProps {
@@ -102,7 +98,7 @@ export interface YJSTextAreaFieldProps extends YJSFieldProps {
     autoSize?: boolean | { minRows?: number; maxRows?: number };
 }
 
-export const YJSTextAreaField: React.FC<YJSTextAreaFieldProps> = ({
+export const YJSTextAreaField: React.FC<YJSTextAreaFieldProps> = React.memo(({
     path,
     placeholder,
     disabled = false,
@@ -120,15 +116,10 @@ export const YJSTextAreaField: React.FC<YJSTextAreaFieldProps> = ({
     // Initialize when component mounts and data is available
     useEffect(() => {
         if (!initializedRef.current) {
-            // Small delay to ensure YJS context is ready
-            const timer = setTimeout(() => {
-                const currentValue = getField(path) || '';
-                console.log(`[YJSTextAreaField] Initializing path: ${path}, value:`, currentValue);
-                setLocalValue(currentValue);
-                initializedRef.current = true;
-            }, 100);
-
-            return () => clearTimeout(timer);
+            // Initialize immediately without delay to prevent flashing
+            const currentValue = getField(path) || '';
+            setLocalValue(currentValue);
+            initializedRef.current = true;
         }
     }, []); // Empty dependency array - only run once on mount
 
@@ -184,14 +175,14 @@ export const YJSTextAreaField: React.FC<YJSTextAreaFieldProps> = ({
             style={{ minWidth: '200px' }}
         />
     );
-};
+});
 
 // YJS Array Field Component
 export interface YJSArrayFieldProps extends YJSFieldProps {
     itemPlaceholder?: string;
 }
 
-export const YJSArrayField: React.FC<YJSArrayFieldProps> = ({
+export const YJSArrayField: React.FC<YJSArrayFieldProps> = React.memo(({
     path,
     placeholder,
     disabled = false,
@@ -292,4 +283,4 @@ export const YJSArrayField: React.FC<YJSArrayFieldProps> = ({
             style={{ minWidth: '200px' }}
         />
     );
-}; 
+}); 

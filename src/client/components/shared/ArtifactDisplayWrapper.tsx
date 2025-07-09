@@ -18,6 +18,9 @@ interface ArtifactDisplayWrapperProps {
     enableClickToEdit?: boolean;
     onClickToEdit?: () => Promise<void>;
     clickToEditLoading?: boolean;
+    // NEW: Support for hierarchical context
+    parentArtifactId?: string;
+    artifactPath?: string;
 }
 
 /**
@@ -34,7 +37,9 @@ export const ArtifactDisplayWrapper: React.FC<ArtifactDisplayWrapperProps> = ({
     schemaType,
     enableClickToEdit = true,
     onClickToEdit,
-    clickToEditLoading = false
+    clickToEditLoading = false,
+    parentArtifactId,
+    artifactPath
 }) => {
     const projectData = useProjectData();
     const [isCreatingTransform, setIsCreatingTransform] = useState(false);
@@ -133,7 +138,11 @@ export const ArtifactDisplayWrapper: React.FC<ArtifactDisplayWrapperProps> = ({
                 </div>
 
                 {/* YJS-enabled form */}
-                <YJSArtifactProvider artifactId={artifact.id} enableCollaboration={true}>
+                <YJSArtifactProvider
+                    artifactId={parentArtifactId || artifact.id}
+                    enableCollaboration={true}
+                    basePath={parentArtifactId ? artifactPath : undefined}
+                >
                     <EditableComponent />
                 </YJSArtifactProvider>
             </Card>

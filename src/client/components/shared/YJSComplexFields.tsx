@@ -25,7 +25,7 @@ interface YJSMultiSelectProps {
     disabled?: boolean;
 }
 
-export const YJSMultiSelect: React.FC<YJSMultiSelectProps> = ({
+export const YJSMultiSelect: React.FC<YJSMultiSelectProps> = React.memo(({
     path,
     options,
     placeholder = "选择选项",
@@ -35,17 +35,7 @@ export const YJSMultiSelect: React.FC<YJSMultiSelectProps> = ({
 
     const currentValue = getField(path) || [];
 
-    console.log('[YJSMultiSelect] Debug info:', {
-        path,
-        currentValue,
-        options,
-        optionsLength: options?.length,
-        isLoading,
-        disabled
-    });
-
     const handleChange = useCallback((newValue: string[]) => {
-        console.log('[YJSMultiSelect] handleChange:', { path, newValue });
         setField(path, newValue);
     }, [path, setField]);
 
@@ -60,7 +50,7 @@ export const YJSMultiSelect: React.FC<YJSMultiSelectProps> = ({
             options={options}
         />
     );
-};
+});
 
 // Single emotion arc editor using atomic JSON paths
 interface YJSEmotionArcProps {
@@ -70,7 +60,7 @@ interface YJSEmotionArcProps {
     showRemoveButton?: boolean;
 }
 
-export const YJSEmotionArc: React.FC<YJSEmotionArcProps> = ({
+export const YJSEmotionArc: React.FC<YJSEmotionArcProps> = React.memo(({
     basePath,
     availableCharacters,
     onRemove,
@@ -128,7 +118,7 @@ export const YJSEmotionArc: React.FC<YJSEmotionArcProps> = ({
             </div>
         </div>
     );
-};
+});
 
 // Single relationship development editor using atomic JSON paths
 interface YJSRelationshipDevelopmentProps {
@@ -138,7 +128,7 @@ interface YJSRelationshipDevelopmentProps {
     showRemoveButton?: boolean;
 }
 
-export const YJSRelationshipDevelopment: React.FC<YJSRelationshipDevelopmentProps> = ({
+export const YJSRelationshipDevelopment: React.FC<YJSRelationshipDevelopmentProps> = React.memo(({
     basePath,
     availableCharacters,
     onRemove,
@@ -196,7 +186,7 @@ export const YJSRelationshipDevelopment: React.FC<YJSRelationshipDevelopmentProp
             </div>
         </div>
     );
-};
+});
 
 // Array manager for emotion arcs
 interface YJSEmotionArcsArrayProps {
@@ -204,39 +194,91 @@ interface YJSEmotionArcsArrayProps {
     availableCharacters: string[];
 }
 
-export const YJSEmotionArcsArray: React.FC<YJSEmotionArcsArrayProps> = ({
+export const YJSEmotionArcsArray: React.FC<YJSEmotionArcsArrayProps> = React.memo(({
     basePath,
     availableCharacters
 }) => {
-    const { getField, setField } = useYJSArtifactContext();
+    const { getField, setField, isLoading } = useYJSArtifactContext();
 
     const currentArray = getField(basePath) || [];
 
-    console.log('[YJSEmotionArcsArray] Debug info:', {
-        basePath,
-        currentArray,
-        currentArrayLength: currentArray?.length,
-        availableCharacters,
-        availableCharactersLength: availableCharacters?.length,
-        currentArrayType: typeof currentArray,
-        isArray: Array.isArray(currentArray)
-    });
-
+    // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
     const addEmotionArc = useCallback(() => {
         const newArc = {
             characters: [],
             content: ''
         };
         const updatedArray = [...currentArray, newArc];
-        console.log('[YJSEmotionArcsArray] Adding emotion arc:', { newArc, updatedArray });
         setField(basePath, updatedArray);
     }, [basePath, currentArray, setField]);
 
     const removeEmotionArc = useCallback((index: number) => {
         const updatedArray = currentArray.filter((_: any, i: number) => i !== index);
-        console.log('[YJSEmotionArcsArray] Removing emotion arc:', { index, updatedArray });
         setField(basePath, updatedArray);
     }, [basePath, currentArray, setField]);
+
+    // Memoize the rendered emotion arcs to prevent unnecessary re-renders
+    const renderedEmotionArcs = useMemo(() => {
+        return Array.isArray(currentArray) && currentArray.length > 0 ? (
+            currentArray.map((arc: EmotionArc, index: number) => (
+                <YJSEmotionArc
+                    key={`${basePath}[${index}]`}
+                    basePath={`${basePath}[${index}]`}
+                    availableCharacters={availableCharacters}
+                    onRemove={() => removeEmotionArc(index)}
+                    showRemoveButton={currentArray.length > 1}
+                />
+            ))
+        ) : (
+            <div style={{
+                padding: '20px',
+                textAlign: 'center',
+                border: '1px dashed #434343',
+                borderRadius: '6px',
+                backgroundColor: '#0d0d0d'
+            }}>
+                <Text style={{ color: '#666', fontSize: '14px' }}>
+                    暂无情感发展，点击"添加情感发展"开始创建
+                </Text>
+            </div>
+        );
+    }, [currentArray, basePath, availableCharacters, removeEmotionArc]);
+
+    // If still loading, show loading state (AFTER all hooks)
+    if (isLoading) {
+        return (
+            <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <Space align="center">
+                        <HeartOutlined style={{ color: '#f759ab' }} />
+                        <Text strong style={{ color: '#f759ab' }}>情感发展</Text>
+                    </Space>
+                    <Button
+                        type="dashed"
+                        size="small"
+                        icon={<PlusOutlined />}
+                        disabled
+                        style={{ borderColor: '#f759ab', color: '#f759ab' }}
+                    >
+                        加载中...
+                    </Button>
+                </div>
+                <div style={{ paddingLeft: '20px' }}>
+                    <div style={{
+                        padding: '20px',
+                        textAlign: 'center',
+                        border: '1px dashed #434343',
+                        borderRadius: '6px',
+                        backgroundColor: '#0d0d0d'
+                    }}>
+                        <Text style={{ color: '#666', fontSize: '14px' }}>
+                            加载中...
+                        </Text>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div>
@@ -257,33 +299,11 @@ export const YJSEmotionArcsArray: React.FC<YJSEmotionArcsArrayProps> = ({
             </div>
 
             <div style={{ paddingLeft: '20px' }}>
-                {currentArray.map((arc: EmotionArc, index: number) => (
-                    <YJSEmotionArc
-                        key={index}
-                        basePath={`${basePath}[${index}]`}
-                        availableCharacters={availableCharacters}
-                        onRemove={() => removeEmotionArc(index)}
-                        showRemoveButton={currentArray.length > 1}
-                    />
-                ))}
-
-                {currentArray.length === 0 && (
-                    <div style={{
-                        padding: '20px',
-                        textAlign: 'center',
-                        border: '1px dashed #434343',
-                        borderRadius: '6px',
-                        backgroundColor: '#0d0d0d'
-                    }}>
-                        <Text style={{ color: '#666', fontSize: '14px' }}>
-                            暂无情感发展，点击"添加情感发展"开始创建
-                        </Text>
-                    </div>
-                )}
+                {renderedEmotionArcs}
             </div>
         </div>
     );
-};
+});
 
 // Array manager for relationship developments
 interface YJSRelationshipDevelopmentsArrayProps {
@@ -291,14 +311,15 @@ interface YJSRelationshipDevelopmentsArrayProps {
     availableCharacters: string[];
 }
 
-export const YJSRelationshipDevelopmentsArray: React.FC<YJSRelationshipDevelopmentsArrayProps> = ({
+export const YJSRelationshipDevelopmentsArray: React.FC<YJSRelationshipDevelopmentsArrayProps> = React.memo(({
     basePath,
     availableCharacters
 }) => {
-    const { getField, setField } = useYJSArtifactContext();
+    const { getField, setField, isLoading } = useYJSArtifactContext();
 
     const relationshipDevelopments = getField(basePath) || [];
 
+    // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
     const addRelationshipDevelopment = useCallback(() => {
         const newDevelopment: RelationshipDevelopment = { characters: [], content: '' };
         const updatedDevelopments = [...relationshipDevelopments, newDevelopment];
@@ -309,6 +330,44 @@ export const YJSRelationshipDevelopmentsArray: React.FC<YJSRelationshipDevelopme
         const updatedDevelopments = relationshipDevelopments.filter((_: any, i: number) => i !== index);
         setField(basePath, updatedDevelopments);
     }, [basePath, relationshipDevelopments, setField]);
+
+    // If still loading, show loading state (AFTER all hooks)
+    if (isLoading) {
+        return (
+            <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <Space align="center">
+                        <TeamOutlined style={{ color: '#52c41a' }} />
+                        <Text strong style={{ color: '#52c41a' }}>关系发展</Text>
+                    </Space>
+                    <Button
+                        type="dashed"
+                        size="small"
+                        icon={<PlusOutlined />}
+                        disabled
+                        style={{ borderColor: '#52c41a', color: '#52c41a' }}
+                    >
+                        加载中...
+                    </Button>
+                </div>
+                <div style={{ paddingLeft: '20px' }}>
+                    <div style={{
+                        padding: '20px',
+                        textAlign: 'center',
+                        border: '1px dashed #434343',
+                        borderRadius: '6px',
+                        backgroundColor: '#0d0d0d'
+                    }}>
+                        <Text style={{ color: '#666', fontSize: '14px' }}>
+                            加载中...
+                        </Text>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+
 
     return (
         <div>
@@ -329,17 +388,17 @@ export const YJSRelationshipDevelopmentsArray: React.FC<YJSRelationshipDevelopme
             </div>
 
             <div style={{ paddingLeft: '20px' }}>
-                {relationshipDevelopments.map((development: RelationshipDevelopment, index: number) => (
-                    <YJSRelationshipDevelopment
-                        key={index}
-                        basePath={`${basePath}[${index}]`}
-                        availableCharacters={availableCharacters}
-                        onRemove={() => removeRelationshipDevelopment(index)}
-                        showRemoveButton={relationshipDevelopments.length > 1}
-                    />
-                ))}
-
-                {relationshipDevelopments.length === 0 && (
+                {Array.isArray(relationshipDevelopments) && relationshipDevelopments.length > 0 ? (
+                    relationshipDevelopments.map((development: RelationshipDevelopment, index: number) => (
+                        <YJSRelationshipDevelopment
+                            key={`${basePath}[${index}]`}
+                            basePath={`${basePath}[${index}]`}
+                            availableCharacters={availableCharacters}
+                            onRemove={() => removeRelationshipDevelopment(index)}
+                            showRemoveButton={relationshipDevelopments.length > 1}
+                        />
+                    ))
+                ) : (
                     <div style={{
                         padding: '20px',
                         textAlign: 'center',
@@ -355,7 +414,7 @@ export const YJSRelationshipDevelopmentsArray: React.FC<YJSRelationshipDevelopme
             </div>
         </div>
     );
-};
+});
 
 // Read-only display components for complex structures
 interface ReadOnlyEmotionArcsProps {

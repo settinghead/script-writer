@@ -581,13 +581,13 @@ export const useYJSArtifact = (
 
             console.log(`[useYJSArtifact] Updating field: ${field} with value:`, value);
 
-            // Handle array index paths like "emotionArcs[0]"
-            const arrayIndexMatch = field.match(/^(.+)\[(\d+)\]$/);
+            // Handle array index paths like "emotionArcs[0]" or "emotionArcs[0].characters"
+            const arrayIndexMatch = field.match(/^(.+)\[(\d+)\](.*)$/);
             if (arrayIndexMatch) {
-                const [, arrayName, indexStr] = arrayIndexMatch;
+                const [, arrayName, indexStr, remainingPath] = arrayIndexMatch;
                 const index = parseInt(indexStr, 10);
 
-                console.log(`[useYJSArtifact] Array index update: ${arrayName}[${index}]`);
+                console.log(`[useYJSArtifact] Array index update: ${arrayName}[${index}]${remainingPath}`);
 
                 // Get or create the YJS array
                 let yArray = yMap?.get(arrayName);
@@ -598,25 +598,57 @@ export const useYJSArtifact = (
 
                 // Ensure the array has enough elements
                 while (yArray.length <= index) {
-                    yArray.push(['']);
+                    yArray.push([JSON.stringify({})]);
                 }
 
-                // Update the specific array element
-                if (typeof value === 'string') {
-                    const yText = new Y.Text();
-                    yText.insert(0, value);
-                    yArray.delete(index, 1);
-                    yArray.insert(index, [yText]);
-                } else if (typeof value === 'object' && value !== null) {
-                    // For objects, store as JSON string
-                    yArray.delete(index, 1);
-                    yArray.insert(index, [JSON.stringify(value)]);
+                // Get current array element
+                let currentElement = yArray.get(index);
+                if (typeof currentElement === 'string') {
+                    try {
+                        currentElement = JSON.parse(currentElement);
+                    } catch (e) {
+                        currentElement = {};
+                    }
+                } else if (!currentElement || typeof currentElement !== 'object') {
+                    currentElement = {};
+                }
+
+                // If there's a remaining path (e.g., ".characters"), update nested property
+                if (remainingPath) {
+                    const nestedPath = remainingPath.startsWith('.') ? remainingPath.substring(1) : remainingPath;
+
+                    // Use the same setValueByPath function from context
+                    const setValueByPath = (obj: any, path: string, value: any): any => {
+                        const keys = path.split(/[\.\[\]]/).filter(Boolean);
+                        const result = { ...obj };
+                        let current = result;
+
+                        for (let i = 0; i < keys.length - 1; i++) {
+                            const key = keys[i];
+                            if (!(key in current) || typeof current[key] !== 'object' || current[key] === null) {
+                                current[key] = {};
+                            } else {
+                                current[key] = { ...current[key] };
+                            }
+                            current = current[key];
+                        }
+
+                        const lastKey = keys[keys.length - 1];
+                        current[lastKey] = value;
+                        return result;
+                    };
+
+                    currentElement = setValueByPath(currentElement, nestedPath, value);
                 } else {
-                    yArray.delete(index, 1);
-                    yArray.insert(index, [value]);
+                    // Direct array element update
+                    currentElement = value;
                 }
 
-                console.log(`[useYJSArtifact] Array updated: ${arrayName}[${index}] = `, value);
+                // Update the array element
+                yArray.delete(index, 1);
+                yArray.insert(index, [JSON.stringify(currentElement)]);
+
+                console.log(`[useYJSArtifact] Array updated: ${arrayName}[${index}]${remainingPath} = `, value);
                 return;
             }
 

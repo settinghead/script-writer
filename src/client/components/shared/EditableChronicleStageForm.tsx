@@ -15,9 +15,10 @@ interface EditableChronicleStageFormProps {
  * This component is designed to be used within a YJSArtifactProvider
  * Uses atomic JSON path editing for complex nested structures
  */
-export const EditableChronicleStageForm: React.FC<EditableChronicleStageFormProps> = ({
+export const EditableChronicleStageForm: React.FC<EditableChronicleStageFormProps> = React.memo(({
     availableCharacters
 }) => {
+
     return (
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
             {/* Stage Title */}
@@ -57,20 +58,16 @@ export const EditableChronicleStageForm: React.FC<EditableChronicleStageFormProp
             </div>
 
             {/* Emotion Arcs - Complex nested structure with atomic editing */}
-            <div>
-                <YJSEmotionArcsArray
-                    basePath="emotionArcs"
-                    availableCharacters={availableCharacters}
-                />
-            </div>
+            <YJSEmotionArcsArray
+                basePath="emotionArcs"
+                availableCharacters={availableCharacters}
+            />
 
             {/* Relationship Developments - Complex nested structure with atomic editing */}
-            <div>
-                <YJSRelationshipDevelopmentsArray
-                    basePath="relationshipDevelopments"
-                    availableCharacters={availableCharacters}
-                />
-            </div>
+            <YJSRelationshipDevelopmentsArray
+                basePath="relationshipDevelopments"
+                availableCharacters={availableCharacters}
+            />
 
             {/* Key Insights - Array of strings (textarea mode) */}
             <div>
@@ -88,4 +85,4 @@ export const EditableChronicleStageForm: React.FC<EditableChronicleStageFormProp
             </div>
         </Space>
     );
-}; 
+}); 

@@ -1639,4 +1639,55 @@ export function findParentArtifactsBySchemaType(
 
     traverseBackwards(sourceArtifactId);
     return results;
+}
+
+/**
+ * Check if a specific path within an artifact has been overridden by a human transform
+ */
+export function hasHumanTransformForPath(
+    sourceArtifactId: string,
+    artifactPath: string,
+    graph: LineageGraph
+): { hasTransform: boolean; overrideArtifactId?: string } {
+    // Look for path-specific lineage
+    const pathKey = `${sourceArtifactId}:${artifactPath}`;
+    const pathLineage = graph.paths.get(pathKey);
+
+    if (pathLineage && pathLineage.length > 0) {
+        // Find if there's a human transform in the lineage
+        const humanTransforms = pathLineage.filter(node =>
+            node.type === 'transform' &&
+            (node as LineageNodeTransform).transformType === 'human'
+        );
+
+        if (humanTransforms.length > 0) {
+            // Find the artifact created by the latest human transform
+            const latestHumanTransform = humanTransforms[humanTransforms.length - 1] as LineageNodeTransform;
+
+            // Find the output artifact of this transform
+            const edges = Array.from(graph.edges.entries());
+            for (const [sourceId, targets] of edges) {
+                if (sourceId === sourceArtifactId) {
+                    // Look for artifacts that were created by this transform
+                    for (const targetId of targets) {
+                        const targetNode = graph.nodes.get(targetId);
+                        if (targetNode && targetNode.type === 'artifact') {
+                            const targetArtifactNode = targetNode as LineageNodeArtifact;
+                            if (targetArtifactNode.sourceTransform !== 'none' &&
+                                targetArtifactNode.sourceTransform.transformId === latestHumanTransform.transformId) {
+                                return {
+                                    hasTransform: true,
+                                    overrideArtifactId: targetId
+                                };
+                            }
+                        }
+                    }
+                }
+            }
+
+            return { hasTransform: true };
+        }
+    }
+
+    return { hasTransform: false };
 } 

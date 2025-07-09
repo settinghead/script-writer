@@ -6,6 +6,7 @@ import {
     convertEffectiveIdeasToIdeaWithTitle,
     findMainWorkflowPath,
     findParentArtifactsBySchemaType,
+    hasHumanTransformForPath,
     type LineageNode,
     type LineageResolutionResult,
     type EffectiveBrainstormIdea,
@@ -361,6 +362,69 @@ export function useCharactersFromLineage(sourceArtifactId: string | null): {
 
     return {
         characters,
+        isLoading: projectData.isLoading,
+        error: projectData.error || error
+    };
+}
+
+/**
+ * Hook to check if a specific path has a human transform override
+ */
+export function useStageOverride(
+    chroniclesArtifactId: string | null,
+    stagePath: string | null
+): {
+    hasOverride: boolean;
+    overrideArtifactId: string | null;
+    isLoading: boolean;
+    error: Error | null;
+} {
+    const projectData = useProjectData();
+    const [error, setError] = useState<Error | null>(null);
+
+    const result = useMemo(() => {
+        if (!chroniclesArtifactId || !stagePath || !projectData.lineageGraph) {
+            return {
+                hasOverride: false,
+                overrideArtifactId: null
+            };
+        }
+
+        try {
+            setError(null);
+
+            if (projectData.lineageGraph === "pending" || projectData.lineageGraph === "error") {
+                return {
+                    hasOverride: false,
+                    overrideArtifactId: null
+                };
+            }
+
+            // Check if this stage path has a human transform
+            const transformResult = hasHumanTransformForPath(
+                chroniclesArtifactId,
+                stagePath,
+                projectData.lineageGraph
+            );
+
+            return {
+                hasOverride: transformResult.hasTransform,
+                overrideArtifactId: transformResult.overrideArtifactId || null
+            };
+
+        } catch (err) {
+            const error = err instanceof Error ? err : new Error('Failed to check stage override');
+            console.error('[useStageOverride] Error:', error);
+            setError(error);
+            return {
+                hasOverride: false,
+                overrideArtifactId: null
+            };
+        }
+    }, [chroniclesArtifactId, stagePath, projectData.lineageGraph]);
+
+    return {
+        ...result,
         isLoading: projectData.isLoading,
         error: projectData.error || error
     };
