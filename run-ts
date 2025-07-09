@@ -1,2 +1,10 @@
 #!/bin/bash
-NODE_OPTIONS='-r dotenv/config --experimental-specifier-resolution=node' npx tsx --tsconfig tsconfig.json "$@"
+
+# Check if the -e flag is used
+if [ "$1" = "-e" ]; then
+  # Execute the TypeScript code string passed as the second argument
+  NODE_OPTIONS='-r dotenv/config --experimental-specifier-resolution=node' npx tsx --eval "$2"
+else
+  # Original behavior: execute a TypeScript file
+  NODE_OPTIONS='-r dotenv/config --experimental-specifier-resolution=node' npx tsx --tsconfig tsconfig.json "$@"
+fi
