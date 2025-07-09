@@ -328,9 +328,37 @@ export const computeDisplayComponents = (
         return !hasDescendants;
     });
 
-    const outlineSettings = projectData.artifacts.find(a =>
+    // Find outline settings - prioritize leaf nodes (user_input artifacts without descendants)
+    const allOutlineSettings = projectData.artifacts.filter(a =>
         a.schema_type === 'outline_settings_schema' || a.type === 'outline_settings'
     );
+
+    let outlineSettings = null;
+    if (allOutlineSettings.length > 0) {
+        // Find leaf nodes (artifacts without descendants)
+        const leafOutlineSettings = allOutlineSettings.filter(artifact => {
+            const hasDescendants = transformInputs.some(input => input.artifact_id === artifact.id);
+            return !hasDescendants;
+        });
+
+        if (leafOutlineSettings.length > 0) {
+            // Prioritize user_input artifacts, then by most recent
+            leafOutlineSettings.sort((a, b) => {
+                // First priority: user_input origin type
+                if (a.origin_type === 'user_input' && b.origin_type !== 'user_input') return -1;
+                if (b.origin_type === 'user_input' && a.origin_type !== 'user_input') return 1;
+                // Second priority: most recent
+                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+            });
+            outlineSettings = leafOutlineSettings[0];
+        } else {
+            // Fallback to most recent if no leaf nodes found
+            allOutlineSettings.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+            outlineSettings = allOutlineSettings[0];
+        }
+    }
+
+
 
     const chronicles = projectData.artifacts.find(a =>
         a.schema_type === 'chronicles_schema'
@@ -477,13 +505,19 @@ export const computeDisplayComponents = (
 
             // Show outline settings
             if (outlineSettings) {
+                // Determine if the outline settings artifact is actually editable
+                const isOutlineLeafNode = isLeafNode(outlineSettings.id, transformInputs);
+                const isOutlineEditable = !hasActiveTransforms &&
+                    isOutlineLeafNode &&
+                    (outlineSettings.origin_type === 'user_input' || outlineSettings.origin_type === 'ai_generated');
+
                 components.push({
                     id: 'outline-settings-display',
                     component: getComponentById('outline-settings-display'),
                     mode: hasActiveTransforms ? 'readonly' : 'editable',
                     props: {
                         outlineSettings,
-                        isEditable: !hasActiveTransforms
+                        isEditable: isOutlineEditable
                     },
                     priority: 4
                 });
@@ -609,8 +643,6 @@ export const computeDisplayComponents = (
     // Sort by priority
     const sortedComponents = components.sort((a, b) => a.priority - b.priority);
 
-
-
     return sortedComponents;
 };
 
@@ -651,15 +683,43 @@ export const computeWorkflowParameters = (
         return !hasDescendants;
     });
 
+    // Find outline settings - prioritize leaf nodes (user_input artifacts without descendants)
+    const allOutlineSettings = projectData.artifacts.filter(a =>
+        a.schema_type === 'outline_settings_schema' || a.type === 'outline_settings'
+    );
+
+    let outlineSettings = null;
+    if (allOutlineSettings.length > 0) {
+        // Find leaf nodes (artifacts without descendants)
+        const leafOutlineSettings = allOutlineSettings.filter(artifact => {
+            const hasDescendants = transformInputs.some(input => input.artifact_id === artifact.id);
+            return !hasDescendants;
+        });
+
+        if (leafOutlineSettings.length > 0) {
+            // Prioritize user_input artifacts, then by most recent
+            leafOutlineSettings.sort((a, b) => {
+                // First priority: user_input origin type
+                if (a.origin_type === 'user_input' && b.origin_type !== 'user_input') return -1;
+                if (b.origin_type === 'user_input' && a.origin_type !== 'user_input') return 1;
+                // Second priority: most recent
+                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+            });
+            outlineSettings = leafOutlineSettings[0];
+        } else {
+            // Fallback to most recent if no leaf nodes found
+            allOutlineSettings.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+            outlineSettings = allOutlineSettings[0];
+        }
+    }
+
     return {
         projectId,
         currentStage: actionResult.currentStage,
         hasActiveTransforms: actionResult.hasActiveTransforms,
         effectiveBrainstormIdeas: brainstormIdeas,
         chosenBrainstormIdea: chosenIdea,
-        latestOutlineSettings: projectData.artifacts.find(a =>
-            a.schema_type === 'outline_settings_schema' || a.type === 'outline_settings'
-        ) || null,
+        latestOutlineSettings: outlineSettings,
         latestChronicles: projectData.artifacts.find(a =>
             a.schema_type === 'chronicles_schema'
         ) || null,
