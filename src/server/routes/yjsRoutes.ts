@@ -124,7 +124,22 @@ const syncYJSToArtifact = async (artifactId: string) => {
                 updateCount++;
             } catch (error) {
                 console.error(`[YJS Sync] Failed to apply update ${updateCount + 1} for artifact ${artifactId}:`, error);
-                return; // Stop on first error to avoid corrupted state
+
+                // Check if this is a corruption error
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                if (errorMessage.includes('contentRefs') ||
+                    errorMessage.includes('Invalid typed array length') ||
+                    errorMessage.includes('is not valid JSON') ||
+                    errorMessage.includes('Unexpected token')) {
+                    console.error(`[YJS Sync] Detected corrupted YJS data for artifact ${artifactId}`);
+                    console.error(`[YJS Sync] Consider running: ./run-ts src/server/scripts/clean-corrupted-yjs.ts`);
+                    console.error(`[YJS Sync] Update ${updateCount + 1} will be skipped to prevent further corruption`);
+                    continue; // Skip this corrupted update and try the next one
+                }
+
+                // For other errors, stop processing to avoid corrupted state
+                console.error(`[YJS Sync] Stopping sync due to unrecoverable error`);
+                return;
             }
         }
 
@@ -134,11 +149,35 @@ const syncYJSToArtifact = async (artifactId: string) => {
         // Extract field data
         const extractedData: any = {};
         contentMap.forEach((value: any, key: string) => {
-            if (value && typeof value.toString === 'function') {
-                extractedData[key] = value.toString();
-            } else if (value && typeof value.toArray === 'function') {
-                extractedData[key] = value.toArray();
+            if (value && typeof value.toArray === 'function') {
+                // Handle YJS Arrays first (before toString check)
+                const arrayItems = value.toArray();
+                extractedData[key] = arrayItems.map((item: any) => {
+                    if (item && typeof item.toString === 'function') {
+                        // Handle YText items in arrays
+                        const stringValue = item.toString();
+                        // Try to parse as JSON for object arrays (like characters)
+                        try {
+                            return JSON.parse(stringValue);
+                        } catch {
+                            // If not JSON, return as string (for string arrays like selling_points)
+                            return stringValue;
+                        }
+                    }
+                    return item;
+                });
+            } else if (value && typeof value.toString === 'function') {
+                // Handle YJS Text
+                const stringValue = value.toString();
+                // Try to parse as JSON for nested objects
+                try {
+                    extractedData[key] = JSON.parse(stringValue);
+                } catch {
+                    // If not JSON, return as string
+                    extractedData[key] = stringValue;
+                }
             } else {
+                // Handle primitive values
                 extractedData[key] = value;
             }
         });
@@ -230,6 +269,24 @@ router.put('/update', async (req: any, res: any) => {
             Y.applyUpdate(testDoc, parsedRequest.update);
         } catch (validationError) {
             console.error(`YJS: Update validation failed for artifact ${artifactId}:`, validationError);
+
+            // If validation fails, it might be due to corrupted existing data
+            // Log additional context for debugging
+            console.error(`YJS: Update details - Size: ${parsedRequest.update.length} bytes`);
+            console.error(`YJS: Consider cleaning YJS data for artifact ${artifactId} if errors persist`);
+
+            // Return a more specific error message
+            const errorMessage = validationError instanceof Error ? validationError.message : String(validationError);
+            if (errorMessage.includes('contentRefs') ||
+                errorMessage.includes('Invalid typed array length') ||
+                errorMessage.includes('is not valid JSON') ||
+                errorMessage.includes('Unexpected token')) {
+                return res.status(400).json({
+                    error: 'YJS update validation failed - possible data corruption. Try refreshing the page.',
+                    details: 'The YJS document may contain corrupted data. Please refresh and try again.'
+                });
+            }
+
             return res.status(400).json({ error: 'Invalid YJS update format' });
         }
 

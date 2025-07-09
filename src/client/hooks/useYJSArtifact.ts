@@ -595,6 +595,9 @@ export const useYJSArtifact = (
                         const yText = new (docRef.current?.constructor as any).Text();
                         yText.insert(0, item);
                         yArray.push([yText]);
+                    } else if (typeof item === 'object' && item !== null) {
+                        // For object arrays like characters, store as JSON string (consistent with initialization)
+                        yArray.push([JSON.stringify(item)]);
                     } else {
                         yArray.push([item]);
                     }

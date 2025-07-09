@@ -85,7 +85,7 @@ const EditableOutlineForm: React.FC = () => {
                 <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
                     📊 基本信息
                 </Text>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     <div>
                         <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>剧本标题：</Text>
                         <YJSTextField
@@ -213,31 +213,38 @@ const EditableOutlineForm: React.FC = () => {
                             }
                         >
                             <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                    <Text strong style={{ fontSize: '14px', color: '#fff' }}>姓名：</Text>
+                                <div>
+                                    <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>姓名：</Text>
                                     <YJSTextField
                                         path={`characters.${index}.name`}
                                         placeholder="角色姓名"
                                     />
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                    <Text strong style={{ fontSize: '14px', color: '#fff' }}>类型：</Text>
+                                <div>
+                                    <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>类型：</Text>
                                     <YJSTextField
                                         path={`characters.${index}.type`}
                                         placeholder="角色类型"
                                     />
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <Text strong style={{ fontSize: '14px', color: '#fff', whiteSpace: 'nowrap' }}>基本信息：</Text>
-                                    <div style={{ display: 'flex', gap: '8px', flex: 1 }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>基本信息：</Text>
+                                    <div>
+                                        <Text strong style={{ fontSize: '12px', color: '#aaa', display: 'block', marginBottom: '2px' }}>年龄：</Text>
                                         <YJSTextField
                                             path={`characters.${index}.age`}
                                             placeholder="年龄"
                                         />
+                                    </div>
+                                    <div>
+                                        <Text strong style={{ fontSize: '12px', color: '#aaa', display: 'block', marginBottom: '2px' }}>性别：</Text>
                                         <YJSTextField
                                             path={`characters.${index}.gender`}
                                             placeholder="性别"
                                         />
+                                    </div>
+                                    <div>
+                                        <Text strong style={{ fontSize: '12px', color: '#aaa', display: 'block', marginBottom: '2px' }}>职业：</Text>
                                         <YJSTextField
                                             path={`characters.${index}.occupation`}
                                             placeholder="职业"
