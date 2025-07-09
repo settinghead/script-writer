@@ -217,6 +217,22 @@ class ApiService {
         return response.json();
     }
 
+    async clearChat(projectId: string): Promise<any> {
+        const response = await fetch(`${this.baseUrl}/chat/${projectId}/messages`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': 'Bearer debug-auth-token-script-writer-dev'
+            },
+            credentials: 'include'
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to clear chat: ${response.status}`);
+        }
+
+        return response.json();
+    }
+
     async generateOutlineFromIdea(projectId: string, ideaArtifactId: string, title: string, requirements: string = ''): Promise<any> {
         const content = `请基于创意生成剧本框架。源创意ID: ${ideaArtifactId}，标题: ${title}，要求: ${requirements || '无特殊要求'}`;
 

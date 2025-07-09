@@ -1,8 +1,9 @@
 import React from 'react';
-import { Layout, Typography, Badge, Button, Tooltip } from 'antd';
+import { Layout, Typography, Badge, Button, Tooltip, Modal } from 'antd';
 import { Cpu, Trash, Settings } from 'iconoir-react';
 
 import { BasicThread } from './BasicThread';
+import { useClearChat } from '../../hooks/useChatMessages';
 import './chat.css';
 
 const { Header, Content } = Layout;
@@ -13,6 +14,19 @@ interface AssistantChatSidebarProps {
 }
 
 export const AssistantChatSidebar: React.FC<AssistantChatSidebarProps> = ({ projectId }) => {
+    const clearChatMutation = useClearChat(projectId);
+
+    const handleClearChat = () => {
+        Modal.confirm({
+            title: '确认清空对话',
+            content: '确定要清空所有对话记录吗？此操作无法撤销。',
+            okText: '确认',
+            cancelText: '取消',
+            onOk: () => {
+                clearChatMutation.mutate();
+            },
+        });
+    };
 
     return (
         <Layout style={{ height: '100%', background: '#1a1a1a' }}>
@@ -33,6 +47,15 @@ export const AssistantChatSidebar: React.FC<AssistantChatSidebarProps> = ({ proj
 
                 <div style={{ display: 'flex', gap: '8px' }}>
                     {/* Future: Add status indicators, clear chat button, etc. */}
+                    <Tooltip title="清空对话">
+                        <Button
+                            type="text"
+                            icon={<Trash style={{ fontSize: 18, color: '#1890ff' }} />}
+                            style={{ color: '#1890ff' }}
+                            loading={clearChatMutation.isPending}
+                            onClick={handleClearChat}
+                        />
+                    </Tooltip>
                 </div>
             </Header>
 
