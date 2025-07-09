@@ -16,6 +16,7 @@ import { createArtifactRoutes } from './artifactRoutes';
 import { createTransformRoutes } from './transformRoutes';
 import { createChatRoutes } from './chatRoutes';
 import { createAdminRoutes } from './adminRoutes';
+import yjsRoutes from './yjsRoutes';
 
 export function createAPIRoutes(
     app: Express,
@@ -30,7 +31,7 @@ export function createAPIRoutes(
     chatService: ChatService
 ) {
     // Mount Electric proxy routes (BEFORE other routes to avoid conflicts)
-    app.use('/api/electric', createElectricProxyRoutes(authDB));
+    app.use('/api/electric', createElectricProxyRoutes(authDB, artifactRepo));
 
     // Mount project routes
     app.use('/api/projects', createProjectRoutes(authMiddleware, projectService, agentService));
@@ -43,6 +44,9 @@ export function createAPIRoutes(
 
     // Mount chat routes
     app.use('/api/chat', createChatRoutes(authMiddleware, chatService));
+
+    // Mount YJS routes
+    app.use('/api/yjs', yjsRoutes);
 
     // Mount admin routes (dev-only)
     app.use('/api/admin', createAdminRoutes(transformRepo, artifactRepo));

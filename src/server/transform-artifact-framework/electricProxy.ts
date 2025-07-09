@@ -1,8 +1,9 @@
 import { Router, Request, Response } from 'express';
 import { AuthMiddleware } from '../middleware/auth';
 import { AuthDatabase } from '../database/auth';
+import { ArtifactRepository } from './ArtifactRepository';
 
-export function createElectricProxyRoutes(authDB: AuthDatabase) {
+export function createElectricProxyRoutes(authDB: AuthDatabase, artifactRepo: ArtifactRepository) {
     const router = Router();
     const authMiddleware = new AuthMiddleware(authDB);
 
@@ -33,6 +34,37 @@ export function createElectricProxyRoutes(authDB: AuthDatabase) {
 
             // 1. Get all project IDs the user has access to.
             const allowedProjectIds = await req.authDB!.getProjectIdsForUser(user.id);
+
+            // 2. For YJS tables, validate artifact access before proceeding
+            if (table === 'artifact_yjs_documents' || table === 'artifact_yjs_awareness') {
+                const existingWhere = url.searchParams.get('where');
+                if (!existingWhere) {
+                    res.status(400).json({ error: `YJS table ${table} requires artifact_id filter` });
+                    return;
+                }
+
+                // Extract artifact_id from the where clause
+                const artifactIdMatch = existingWhere.match(/artifact_id\s*=\s*'([^']+)'/);
+                if (!artifactIdMatch) {
+                    res.status(400).json({ error: `YJS table ${table} requires valid artifact_id filter` });
+                    return;
+                }
+
+                const artifactId = artifactIdMatch[1];
+
+                // Check if user has access to this artifact via project membership
+                try {
+                    const hasAccess = await artifactRepo.userHasArtifactAccess(user.id, artifactId);
+                    if (!hasAccess) {
+                        res.status(403).json({ error: 'Access denied to artifact' });
+                        return;
+                    }
+                } catch (error) {
+                    console.error('[Electric Proxy] Error checking artifact access:', error);
+                    res.status(500).json({ error: 'Failed to verify artifact access' });
+                    return;
+                }
+            }
 
             if (allowedProjectIds.length === 0) {
                 // If user has no projects, return an empty result set immediately.
@@ -65,6 +97,19 @@ export function createElectricProxyRoutes(authDB: AuthDatabase) {
                         ? `(${existingWhere}) AND (${userScopedWhere})`
                         : userScopedWhere;
                     break;
+                case 'artifact_yjs_documents':
+                case 'artifact_yjs_awareness':
+                    // For YJS tables, we'll handle authorization at the API level instead
+                    // Electric SQL doesn't support complex subqueries well, so we use simpler filtering
+                    if (existingWhere) {
+                        // Keep the existing where clause (which should include artifact_id filter)
+                        finalWhereClause = existingWhere;
+                    } else {
+                        // If no existing where clause, this is a full table sync which we don't allow
+                        res.status(400).json({ error: `YJS table ${table} requires artifact_id filter` });
+                        return;
+                    }
+                    break;
                 case 'chat_messages_raw':
                     // Allow raw messages for debugging purposes only
                     // In production, this should be restricted further
@@ -93,6 +138,9 @@ export function createElectricProxyRoutes(authDB: AuthDatabase) {
 
             if (!response.ok) {
                 console.error(`[Electric Proxy] Electric request failed: ${response.status} ${response.statusText}`);
+                console.error(`[Electric Proxy] Request URL: ${electricUrl.toString()}`);
+                console.error(`[Electric Proxy] Table: ${table}`);
+                console.error(`[Electric Proxy] Final where clause: ${finalWhereClause}`);
 
                 // Handle specific Electric errors
                 if (response.status === 409) {

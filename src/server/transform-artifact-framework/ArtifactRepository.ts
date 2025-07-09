@@ -172,6 +172,21 @@ export class ArtifactRepository {
         return !!result;
     }
 
+    // Check if user has access to an artifact (via project membership)
+    async userHasArtifactAccess(userId: string, artifactId: string): Promise<boolean> {
+        const artifact = await this.db
+            .selectFrom('artifacts')
+            .select('project_id')
+            .where('id', '=', artifactId)
+            .executeTakeFirst();
+
+        if (!artifact) {
+            return false; // Artifact doesn't exist
+        }
+
+        return this.userHasProjectAccess(userId, artifact.project_id);
+    }
+
     // Get artifacts by type for a specific project
     async getProjectArtifactsByType(projectId: string, type: string, limit: number = 20): Promise<Artifact[]> {
         const rows = await this.db

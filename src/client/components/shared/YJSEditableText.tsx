@@ -32,6 +32,7 @@ export const YJSEditableText: React.FC<YJSEditableTextProps> = ({
     const [isEditing, setIsEditing] = useState(false);
     const [localValue, setLocalValue] = useState('');
     const inputRef = useRef<any>(null);
+    const lastSavedValueRef = useRef<string>('');
 
     // Use YJS hook for collaborative editing
     const {
@@ -50,15 +51,24 @@ export const YJSEditableText: React.FC<YJSEditableTextProps> = ({
     // Update local value when current value changes
     useEffect(() => {
         if (!isEditing) {
-            setLocalValue(currentValue);
+            // For collaborative mode, prefer the YJS data or last saved value
+            const valueToUse = isCollaborative ?
+                (data?.[field] || lastSavedValueRef.current || externalValue || '') :
+                currentValue;
+            setLocalValue(valueToUse);
         }
-    }, [currentValue, isEditing]);
+    }, [currentValue, isEditing, isCollaborative, data, field, externalValue]);
 
     // Handle edit start
     const handleEditStart = () => {
         if (disabled) return;
         setIsEditing(true);
-        setLocalValue(currentValue);
+
+        // Use the most current value for editing
+        const valueToEdit = isCollaborative ?
+            (data?.[field] || lastSavedValueRef.current || externalValue || '') :
+            currentValue;
+        setLocalValue(valueToEdit);
 
         // Focus input after state update
         setTimeout(() => {
@@ -69,16 +79,22 @@ export const YJSEditableText: React.FC<YJSEditableTextProps> = ({
     // Handle edit save
     const handleSave = () => {
         const trimmedValue = localValue.trim();
+        console.log('YJSEditableText handleSave called:', { field, trimmedValue, isCollaborative });
 
         if (isCollaborative) {
             // Update via YJS for collaborative editing
+            console.log('YJSEditableText: calling updateField for collaborative editing');
             updateField(field, trimmedValue);
+
+            // Remember the value we just saved to prevent reverting
+            lastSavedValueRef.current = trimmedValue;
+            setIsEditing(false);
         } else {
             // Fallback to external save handler
+            console.log('YJSEditableText: calling external onSave handler');
             onSave?.(trimmedValue);
+            setIsEditing(false);
         }
-
-        setIsEditing(false);
     };
 
     // Handle edit cancel
@@ -156,6 +172,11 @@ export const YJSEditableText: React.FC<YJSEditableTextProps> = ({
         }
     }
 
+    // For display mode, use the most up-to-date value
+    const displayValue = isCollaborative ?
+        (data?.[field] || lastSavedValueRef.current || externalValue || '') :
+        currentValue;
+
     // Render display text when not editing
     return (
         <div
@@ -177,9 +198,9 @@ export const YJSEditableText: React.FC<YJSEditableTextProps> = ({
             onClick={handleEditStart}
             onDoubleClick={handleEditStart}
         >
-            {currentValue ? (
+            {displayValue ? (
                 <Text style={{ wordBreak: 'break-word' }}>
-                    {currentValue}
+                    {displayValue}
                 </Text>
             ) : (
                 <Text type="secondary" style={{ fontStyle: 'italic' }}>

@@ -128,6 +128,9 @@ src/
 - All tests should use project-based access control patterns
 - **ALWAYS use `npm test -- --run`** instead of `npm test` to avoid interactive watch mode that waits for key presses
 - The `--run` flag ensures tests execute once and exit, essential for automated testing and CI/CD
+- **ALWAYS use `https://localhost:4610` for testing and accessing the application** - Caddy reverse proxy is always running via start-caddy.sh
+- Never use `http://localhost:4600` directly - always use the HTTPS proxy endpoint
+- For curl commands, use `-k` flag to ignore self-signed certificate issues: `curl -k "https://localhost:4610"`
 
 ### 16. Debugging & Analytics
 - If a new flow is constructed or modified, test by creating a Node.js testing script that executes transforms

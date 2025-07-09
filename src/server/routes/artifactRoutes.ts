@@ -366,6 +366,12 @@ export function createArtifactRoutes(
             const { text, data } = req.body;
             const user = authMiddleware.getCurrentUser(req);
 
+            // DEBUG: Log the incoming request data
+            console.log(`[ARTIFACT UPDATE] ${artifactId}`);
+            console.log('Request body:', JSON.stringify(req.body, null, 2));
+            console.log('Data type:', typeof data);
+            console.log('Data value:', data);
+
             if (!user) {
                 res.status(401).json({ error: 'User not authenticated' });
                 return;

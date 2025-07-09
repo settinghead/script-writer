@@ -332,11 +332,29 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
 
                     if (localUpdate.data) {
                         // Compare the data field specifically
-                        const localData = typeof localUpdate.data === 'string' ? localUpdate.data : JSON.stringify(localUpdate.data);
-                        const electricData = baseArtifact.data;
+                        // Both local and electric data should be compared as objects for accurate comparison
+                        let localData, electricData;
 
-                        if (localData !== electricData) {
-                            electricDataMatches = false;
+                        try {
+                            localData = typeof localUpdate.data === 'string'
+                                ? JSON.parse(localUpdate.data)
+                                : localUpdate.data;
+                            electricData = typeof baseArtifact.data === 'string'
+                                ? JSON.parse(baseArtifact.data)
+                                : baseArtifact.data;
+
+                            // Deep comparison of objects
+                            if (JSON.stringify(localData) !== JSON.stringify(electricData)) {
+                                electricDataMatches = false;
+                            }
+                        } catch (err) {
+                            // If parsing fails, fall back to string comparison
+                            const localDataStr = typeof localUpdate.data === 'string' ? localUpdate.data : JSON.stringify(localUpdate.data);
+                            const electricDataStr = baseArtifact.data;
+
+                            if (localDataStr !== electricDataStr) {
+                                electricDataMatches = false;
+                            }
                         }
                     }
 
@@ -506,8 +524,8 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
         },
         onMutate: (request) => {
             const optimisticUpdate = {
-                ...(request.data && { data: JSON.stringify(request.data) }),
-                ...(request.metadata && { metadata: JSON.stringify(request.metadata) }),
+                ...(request.data && { data: request.data }),
+                ...(request.metadata && { metadata: request.metadata }),
                 updated_at: new Date().toISOString()
             };
             addLocalUpdate(`artifact-${request.artifactId}`, optimisticUpdate);
@@ -585,7 +603,7 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
                 project_id: projectId,
                 type: 'user_input',
                 type_version: 'v1',
-                data: JSON.stringify(request.fieldUpdates),
+                data: request.fieldUpdates,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
             };

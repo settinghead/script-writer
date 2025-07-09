@@ -41,21 +41,23 @@ export interface Artifacts {
 }
 
 export interface ArtifactYjsAwareness {
+  artifact_id: string;
   client_id: string;
-  created_at: Generated<Timestamp>;
-  project_id: string;
+  created_at: Generated<Timestamp | null>;
+  project_id: Generated<string>;
   room_id: string;
   update: Buffer;
-  updated_at: Generated<Timestamp>;
+  updated_at: Generated<Timestamp | null>;
 }
 
 export interface ArtifactYjsDocuments {
   artifact_id: string;
-  created_at: Generated<Timestamp>;
+  created_at: Generated<Timestamp | null>;
   document_state: Buffer;
-  project_id: string;
+  id: Generated<number>;
+  project_id: Generated<string>;
   room_id: string;
-  updated_at: Generated<Timestamp>;
+  updated_at: Generated<Timestamp | null>;
 }
 
 export interface AuthProviders {
