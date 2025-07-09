@@ -61,7 +61,6 @@ export const YJSArtifactProvider: React.FC<YJSArtifactProviderProps> = ({
     enableCollaboration = true,
     children
 }) => {
-    console.log(`[YJSArtifactProvider] Initializing for artifact ${artifactId}, collaboration: ${enableCollaboration}`);
 
     // Use the existing YJS hook
     const {
@@ -75,19 +74,6 @@ export const YJSArtifactProvider: React.FC<YJSArtifactProviderProps> = ({
         artifact
     } = useYJSArtifact(artifactId, { enableCollaboration });
 
-    // Debug logging for YJS hook state
-    useEffect(() => {
-        console.log(`[YJSArtifactProvider] YJS Hook State Update:`, {
-            artifactId,
-            isLoading,
-            isConnected,
-            isCollaborative,
-            error,
-            yjsDataType: typeof yjsData,
-            yjsDataKeys: yjsData && typeof yjsData === 'object' ? Object.keys(yjsData) : 'N/A',
-            yjsData: yjsData
-        });
-    }, [artifactId, isLoading, isConnected, isCollaborative, error, yjsData]);
 
     // Local state for optimistic updates
     const [localData, setLocalData] = useState<any>({});
@@ -102,45 +88,37 @@ export const YJSArtifactProvider: React.FC<YJSArtifactProviderProps> = ({
 
     // Merge YJS data with local optimistic updates
     const mergedData = React.useMemo(() => {
-        console.log(`[YJSArtifactProvider] Merging data for artifact ${artifactId}`);
 
         // Ensure we have a valid base object
         let base = {};
 
         if (yjsData && typeof yjsData === 'object' && !Array.isArray(yjsData)) {
             base = { ...yjsData };
-            console.log(`[YJSArtifactProvider] Using YJS data as base:`, base);
         } else if (typeof yjsData === 'string') {
             try {
                 base = JSON.parse(yjsData);
-                console.log(`[YJSArtifactProvider] Parsed YJS string data:`, base);
             } catch (e) {
-                console.warn(`[YJSArtifactProvider] Failed to parse YJS data as JSON:`, yjsData);
                 base = {};
             }
         } else {
-            console.log(`[YJSArtifactProvider] No valid YJS data, using empty base. YJS data:`, yjsData);
         }
 
         // Apply pending optimistic updates safely
         let merged = { ...base };
         Object.entries(optimisticUpdatesRef.current).forEach(([path, value]) => {
             try {
-                console.log(`[YJSArtifactProvider] Applying optimistic update: ${path} = ${JSON.stringify(value)}`);
                 merged = setValueByPath(merged, path, value);
             } catch (e) {
                 console.error(`[YJSArtifactProvider] Failed to set path ${path}:`, e);
             }
         });
 
-        console.log(`[YJSArtifactProvider] Final merged data:`, merged);
         return merged;
     }, [yjsData, pendingUpdates, artifactId]);
 
     // Update local data when YJS data changes
     useEffect(() => {
         if (yjsData) {
-            console.log(`[YJSArtifactProvider] YJS data changed, updating local data:`, yjsData);
             setLocalData(yjsData);
 
             // Clear optimistic updates that have been confirmed by YJS
@@ -151,7 +129,6 @@ export const YJSArtifactProvider: React.FC<YJSArtifactProviderProps> = ({
 
                 // If YJS has the value we optimistically set, clear the optimistic update
                 if (yjsValue === optimisticValue) {
-                    console.log(`[YJSArtifactProvider] Clearing optimistic update for ${path} (confirmed by YJS)`);
                     delete newOptimisticUpdates[path];
                 }
             });
@@ -164,17 +141,14 @@ export const YJSArtifactProvider: React.FC<YJSArtifactProviderProps> = ({
     // Get field value by path with safe defaults
     const getField = useCallback((path: string): any => {
         const value = getValueByPath(mergedData, path);
-        console.log(`[YJSArtifactProvider] getField(${path}) = ${JSON.stringify(value)}`);
 
         // Return safe defaults for undefined values
         if (value === undefined || value === null) {
             // Check if path suggests an array (common array field names)
             if (path.includes('themes') || path.includes('points') || path.includes('tags') || path.includes('items')) {
-                console.log(`[YJSArtifactProvider] Returning empty array for ${path}`);
                 return [];
             }
             // Default to empty string for other fields
-            console.log(`[YJSArtifactProvider] Returning empty string for ${path}`);
             return '';
         }
 
@@ -183,13 +157,11 @@ export const YJSArtifactProvider: React.FC<YJSArtifactProviderProps> = ({
 
     // Set field value by path with optimistic updates
     const setField = useCallback((path: string, value: any) => {
-        console.log(`[YJSArtifactProvider] setField called: ${path} = ${JSON.stringify(value)}`);
-        console.log(`[YJSArtifactProvider] Current state: isCollaborative=${isCollaborative}, isConnected=${isConnected}`);
-        console.log(`[YJSArtifactProvider] YJS data available:`, !!yjsDataRef.current, typeof yjsDataRef.current, yjsDataRef.current);
+        console.log(`[YJSArtifactProvider] setField called:`, { path, value, hasYjsData: !!yjsDataRef.current });
 
         // Don't save undefined or null values unless explicitly setting them to empty string
         if (value === undefined || value === null) {
-            console.log(`[YJSArtifactProvider] Ignoring undefined/null value for ${path}`);
+            console.log(`[YJSArtifactProvider] Skipping null/undefined value for path: ${path}`);
             return;
         }
 
@@ -199,29 +171,52 @@ export const YJSArtifactProvider: React.FC<YJSArtifactProviderProps> = ({
             [path]: value
         };
         setPendingUpdates({ ...optimisticUpdatesRef.current });
-        console.log(`[YJSArtifactProvider] Applied optimistic update for ${path}`);
 
         // Update via YJS (this will eventually sync back and clear the optimistic update)
-        console.log(`[YJSArtifactProvider] Checking YJS update condition: isCollaborative=${isCollaborative}, hasYjsData=${!!yjsDataRef.current}`);
         if (isCollaborative && yjsDataRef.current) {
-            console.log(`[YJSArtifactProvider] Updating via YJS for ${path}`);
+            console.log(`[YJSArtifactProvider] Updating YJS for path: ${path}`);
 
             // For YJS, we need to update the root-level field
             const rootKey = path.split('.')[0];
-            const currentRootValue = yjsDataRef.current?.[rootKey] || {};
 
             if (path.includes('.')) {
-                // Nested path - update the nested value
-                const updatedRootValue = setValueByPath(currentRootValue, path, value);
-                console.log(`[YJSArtifactProvider] Updating nested path ${path} in root ${rootKey}:`, updatedRootValue);
+                // Nested path - get current root value and update it
+                let currentRootValue = yjsDataRef.current?.[rootKey];
+
+                // If the root value is a string (JSON), parse it first
+                if (typeof currentRootValue === 'string') {
+                    try {
+                        currentRootValue = JSON.parse(currentRootValue);
+                    } catch (e) {
+                        console.warn(`[YJSArtifactProvider] Failed to parse root value for ${rootKey}:`, e);
+                        currentRootValue = {};
+                    }
+                }
+
+                // Ensure we have an object to work with
+                if (!currentRootValue || typeof currentRootValue !== 'object') {
+                    currentRootValue = {};
+                }
+
+                // Update the nested value using the path relative to the root
+                const relativePath = path.substring(rootKey.length + 1); // Remove "rootKey." prefix
+                const updatedRootValue = setValueByPath(currentRootValue, relativePath, value);
+
+                console.log(`[YJSArtifactProvider] Nested update:`, {
+                    rootKey,
+                    relativePath,
+                    originalValue: currentRootValue,
+                    updatedValue: updatedRootValue
+                });
+
                 yjsUpdateField(rootKey, updatedRootValue);
             } else {
                 // Direct field update
-                console.log(`[YJSArtifactProvider] Updating direct field ${path}:`, value);
+                console.log(`[YJSArtifactProvider] Direct update for field: ${path}`);
                 yjsUpdateField(path, value);
             }
         } else if (!isCollaborative) {
-            console.log(`[YJSArtifactProvider] Non-collaborative mode - would update via regular API`);
+            console.log(`[YJSArtifactProvider] Non-collaborative mode - TODO: implement direct artifact update`);
             // TODO: Handle non-collaborative updates
         } else {
             console.warn(`[YJSArtifactProvider] Cannot update - no YJS data available (isCollaborative=${isCollaborative}, hasYjsData=${!!yjsDataRef.current})`);
@@ -230,7 +225,6 @@ export const YJSArtifactProvider: React.FC<YJSArtifactProviderProps> = ({
 
     // Update multiple fields
     const updateFields = useCallback((updates: Record<string, any>) => {
-        console.log(`[YJSArtifactProvider] updateFields called with:`, updates);
 
         setTimeout(() => {
             try {
@@ -242,7 +236,6 @@ export const YJSArtifactProvider: React.FC<YJSArtifactProviderProps> = ({
 
                 // Update via YJS
                 if (isCollaborative) {
-                    console.log(`[YJSArtifactProvider] Batch updating via YJS:`, updates);
 
                     // Group updates by root key for efficient YJS updates
                     const rootUpdates: Record<string, any> = {};
@@ -256,11 +249,9 @@ export const YJSArtifactProvider: React.FC<YJSArtifactProviderProps> = ({
 
                     // Apply all root updates
                     Object.entries(rootUpdates).forEach(([rootKey, rootValue]) => {
-                        console.log(`[YJSArtifactProvider] Batch updating root ${rootKey}:`, rootValue);
                         yjsUpdateField(rootKey, rootValue);
                     });
                 } else {
-                    console.log(`[YJSArtifactProvider] Non-collaborative batch update - would update via regular API`);
                 }
             } catch (error) {
                 console.error(`[YJSArtifactProvider] Error in updateFields:`, error);
@@ -281,14 +272,7 @@ export const YJSArtifactProvider: React.FC<YJSArtifactProviderProps> = ({
         artifact
     };
 
-    console.log(`[YJSArtifactProvider] Providing context value:`, {
-        artifactId,
-        dataKeys: mergedData && typeof mergedData === 'object' ? Object.keys(mergedData) : 'N/A',
-        isLoading,
-        isConnected,
-        isCollaborative,
-        error
-    });
+
 
     return (
         <YJSArtifactContext.Provider value={contextValue}>

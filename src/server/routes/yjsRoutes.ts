@@ -40,8 +40,17 @@ const parseRequest = async (req: express.Request): Promise<ValidRequest | Invali
     // Get update binary from request body
     const arrayBuffer = await new Promise<ArrayBuffer>((resolve, reject) => {
         const chunks: Buffer[] = [];
-        req.on('data', (chunk) => chunks.push(chunk));
-        req.on('end', () => resolve(Buffer.concat(chunks).buffer));
+        req.on('data', (chunk) => {
+            chunks.push(chunk);
+        });
+        req.on('end', () => {
+            const finalBuffer = Buffer.concat(chunks);
+            // Create a new ArrayBuffer with exact size to avoid leftover data
+            const arrayBuffer = new ArrayBuffer(finalBuffer.length);
+            const uint8View = new Uint8Array(arrayBuffer);
+            uint8View.set(finalBuffer);
+            resolve(arrayBuffer);
+        });
         req.on('error', reject);
     });
 
@@ -73,7 +82,7 @@ async function saveUpdate({ artifact_id, update }: Update) {
         throw new Error(`Artifact not found: ${artifact_id}`);
     }
 
-    // Use Kysely insertInto with proper SQL template for bytea
+    // Save the YJS update to artifact_yjs_documents
     await db
         .insertInto('artifact_yjs_documents')
         .values({
@@ -83,7 +92,75 @@ async function saveUpdate({ artifact_id, update }: Update) {
             document_state: Buffer.from(update)
         })
         .execute();
+
+    // Auto-sync YJS document to artifact record
+    await syncYJSToArtifact(artifact_id);
 }
+
+// Helper function to sync YJS document to artifact
+const syncYJSToArtifact = async (artifactId: string) => {
+    try {
+        // Get all YJS updates for this artifact
+        const updates = await db
+            .selectFrom('artifact_yjs_documents')
+            .select(['document_state', 'created_at'])
+            .where('artifact_id', '=', artifactId)
+            .orderBy('created_at', 'asc')
+            .execute();
+
+        if (updates.length === 0) {
+            return;
+        }
+
+        // Create a temporary YJS document and apply all updates
+        const Y = await import('yjs');
+        const tempDoc = new Y.Doc();
+        let updateCount = 0;
+
+        for (const update of updates) {
+            try {
+                const updateData = Buffer.from(update.document_state);
+                Y.applyUpdate(tempDoc, updateData);
+                updateCount++;
+            } catch (error) {
+                console.error(`[YJS Sync] Failed to apply update ${updateCount + 1} for artifact ${artifactId}:`, error);
+                return; // Stop on first error to avoid corrupted state
+            }
+        }
+
+        // Extract data from the YJS document
+        const contentMap = tempDoc.getMap('content');
+
+        // Extract field data
+        const extractedData: any = {};
+        contentMap.forEach((value: any, key: string) => {
+            if (value && typeof value.toString === 'function') {
+                extractedData[key] = value.toString();
+            } else if (value && typeof value.toArray === 'function') {
+                extractedData[key] = value.toArray();
+            } else {
+                extractedData[key] = value;
+            }
+        });
+
+        if (Object.keys(extractedData).length === 0) {
+            return;
+        }
+
+        // Update the artifact in the database
+        await db
+            .updateTable('artifacts')
+            .set({
+                data: JSON.stringify(extractedData),
+                updated_at: new Date().toISOString()
+            })
+            .where('id', '=', artifactId)
+            .execute();
+
+    } catch (error) {
+        console.error(`[YJS Sync] Error syncing YJS to artifact ${artifactId}:`, error);
+    }
+};
 
 // Save awareness update using raw SQL to avoid TypeScript issues
 async function upsertAwarenessUpdate({ artifact_id, client_id, update }: AwarenessUpdate) {
@@ -128,28 +205,101 @@ router.put('/update', async (req: any, res: any) => {
             return res.status(401).json({ error: 'Authentication required' });
         }
 
-        const requestParams = await parseRequest(req);
-        if (!requestParams.isValid) {
-            return res.status(400).json({ error: requestParams.error });
+        const parsedRequest = await parseRequest(req);
+        if (!parsedRequest.isValid) {
+            return res.status(400).json({ error: parsedRequest.error || 'Invalid request' });
         }
 
-        // TODO: Add access control - verify user has access to this artifact
-        // For now, we'll rely on the Electric proxy's project-based filtering
+        const artifactId = parsedRequest.artifact_id;
 
-        if ('client_id' in requestParams) {
-            console.log('YJS: Saving awareness update for artifact:', requestParams.artifact_id, 'client:', requestParams.client_id);
-            await upsertAwarenessUpdate(requestParams);
+        // Validate update size (reasonable limits)
+        if (parsedRequest.update.length > 1024 * 1024) { // 1MB limit
+            console.error(`YJS: Rejecting oversized update (${parsedRequest.update.length} bytes) for artifact ${artifactId}`);
+            return res.status(400).json({ error: 'Update too large' });
+        }
+
+        if (parsedRequest.update.length === 0) {
+            console.error(`YJS: Rejecting empty update for artifact ${artifactId}`);
+            return res.status(400).json({ error: 'Empty update' });
+        }
+
+        // Basic corruption check: validate the update can be applied to a test document
+        try {
+            const Y = await import('yjs');
+            const testDoc = new Y.Doc();
+            Y.applyUpdate(testDoc, parsedRequest.update);
+        } catch (validationError) {
+            console.error(`YJS: Update validation failed for artifact ${artifactId}:`, validationError);
+            return res.status(400).json({ error: 'Invalid YJS update format' });
+        }
+
+        if ('client_id' in parsedRequest) {
+            await upsertAwarenessUpdate(parsedRequest);
         } else {
-            console.log('YJS: Saving document update for artifact:', requestParams.artifact_id);
-            await saveUpdate(requestParams);
+            await saveUpdate(parsedRequest);
         }
 
-        res.json({});
+        res.status(200).json({ success: true });
 
     } catch (error) {
         console.error('YJS: Error handling update:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Load document endpoint - returns the current YJS document state
+router.get('/document/:artifactId', async (req: any, res: any) => {
+    try {
+        const user = authMiddleware.getCurrentUser(req);
+        if (!user) {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
+
+        const artifactId = req.params.artifactId;
+        if (!artifactId) {
+            return res.status(400).json({ error: 'Artifact ID is required' });
+        }
+
+        // Get all document updates for this artifact, ordered by creation time
+        const updates = await db
+            .selectFrom('artifact_yjs_documents')
+            .select('document_state')
+            .where('artifact_id', '=', artifactId)
+            .orderBy('created_at', 'asc')
+            .execute();
+
+        if (updates.length > 0) {
+            // Apply all updates to reconstruct the current document state
+            const Y = await import('yjs');
+            const tempDoc = new Y.Doc();
+
+            // Apply updates in order
+            for (const update of updates) {
+                if (update.document_state) {
+                    try {
+                        const updateArray = new Uint8Array(update.document_state);
+                        Y.applyUpdate(tempDoc, updateArray);
+                    } catch (error) {
+                        console.warn('YJS: Failed to apply update, skipping:', error);
+                    }
+                }
+            }
+
+            // Get the final document state
+            const finalState = Y.encodeStateAsUpdate(tempDoc);
+
+            res.setHeader('Content-Type', 'application/octet-stream');
+            res.send(Buffer.from(finalState));
+        } else {
+            // Return empty buffer if no updates exist
+            res.setHeader('Content-Type', 'application/octet-stream');
+            res.send(Buffer.alloc(0));
+        }
+
+    } catch (error) {
+        console.error('YJS: Error loading document:', error);
         const message = error instanceof Error ? error.message : String(error);
-        res.status(400).json({ error: message });
+        res.status(500).json({ error: message });
     }
 });
 

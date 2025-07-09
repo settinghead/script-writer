@@ -22,7 +22,6 @@ export const YJSTextField: React.FC<YJSFieldProps> = ({
 }) => {
     const { getField, setField, isLoading, isConnected, isCollaborative } = useYJSArtifactContext();
 
-    console.log(`[YJSTextField] Rendering field ${path}:`, { isLoading, isConnected, isCollaborative, disabled });
 
     // Local value state for immediate UI updates
     const [localValue, setLocalValue] = useState('');
@@ -31,16 +30,13 @@ export const YJSTextField: React.FC<YJSFieldProps> = ({
     // Get current value from context
     const currentValue = getField(path) || '';
 
-    console.log(`[YJSTextField] Current value for ${path}: ${JSON.stringify(currentValue)}`);
 
     // Debounced save function - use useCallback to prevent recreation
     const debouncedSave = useDebouncedCallback(
         React.useCallback((value: string) => {
-            console.log(`[YJSTextField] Debounced save called for ${path}: ${JSON.stringify(value)}`);
 
             // Don't save if value is undefined, null, or hasn't actually changed
             if (value === undefined || value === null) {
-                console.log(`[YJSTextField] Skipping save - value is undefined/null`);
                 return;
             }
 
@@ -48,10 +44,8 @@ export const YJSTextField: React.FC<YJSFieldProps> = ({
             const normalizedNewValue = value || '';
 
             if (normalizedNewValue !== normalizedCurrentValue) {
-                console.log(`[YJSTextField] Saving ${path}: "${normalizedCurrentValue}" -> "${normalizedNewValue}"`);
                 setField(path, value);
             } else {
-                console.log(`[YJSTextField] Skipping save - no change for ${path}`);
             }
         }, [setField, path, currentValue]),
         300
@@ -60,17 +54,14 @@ export const YJSTextField: React.FC<YJSFieldProps> = ({
     // Handle input changes
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newValue = e.target.value;
-        console.log(`[YJSTextField] Input change for ${path}: ${JSON.stringify(newValue)}`);
         setLocalValue(newValue);
         debouncedSave(newValue);
     };
 
     // Handle blur (save final value)
     const handleBlur = () => {
-        console.log(`[YJSTextField] Blur for ${path}, final value: ${JSON.stringify(localValue)}`);
         // Final save on blur
         if (localValue !== currentValue) {
-            console.log(`[YJSTextField] Final save on blur for ${path}: ${JSON.stringify(localValue)}`);
             setField(path, localValue);
         }
     };
@@ -78,23 +69,19 @@ export const YJSTextField: React.FC<YJSFieldProps> = ({
     // Handle key press
     const handleKeyPress = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter') {
-            console.log(`[YJSTextField] Enter pressed for ${path}`);
             handleBlur();
         }
         if (e.key === 'Escape') {
-            console.log(`[YJSTextField] Escape pressed for ${path}, reverting`);
             setLocalValue(currentValue || '');
         }
     };
 
     // Update local value when context value changes
     useEffect(() => {
-        console.log(`[YJSTextField] Context value changed for ${path}: ${JSON.stringify(currentValue)}`);
         setLocalValue(currentValue || '');
     }, [currentValue]);
 
     const effectiveDisabled = disabled || isLoading;
-    console.log(`[YJSTextField] Field ${path} disabled state: ${effectiveDisabled} (disabled: ${disabled}, isLoading: ${isLoading}, isConnected: ${isConnected})`);
 
     return (
         <Input
@@ -127,7 +114,6 @@ export const YJSTextAreaField: React.FC<YJSTextAreaFieldProps> = ({
 }) => {
     const { getField, setField, isLoading, isConnected, isCollaborative } = useYJSArtifactContext();
 
-    console.log(`[YJSTextAreaField] Rendering field ${path}:`, { isLoading, isConnected, isCollaborative, disabled });
 
     // Local value state for immediate UI updates
     const [localValue, setLocalValue] = useState('');
@@ -136,16 +122,13 @@ export const YJSTextAreaField: React.FC<YJSTextAreaFieldProps> = ({
     // Get current value from context
     const currentValue = getField(path) || '';
 
-    console.log(`[YJSTextAreaField] Current value for ${path}: ${JSON.stringify(currentValue)}`);
 
     // Debounced save function - use useCallback to prevent recreation
     const debouncedSave = useDebouncedCallback(
         React.useCallback((value: string) => {
-            console.log(`[YJSTextAreaField] Debounced save called for ${path}: ${JSON.stringify(value)}`);
 
             // Don't save if value is undefined, null, or hasn't actually changed
             if (value === undefined || value === null) {
-                console.log(`[YJSTextAreaField] Skipping save - value is undefined/null`);
                 return;
             }
 
@@ -153,10 +136,8 @@ export const YJSTextAreaField: React.FC<YJSTextAreaFieldProps> = ({
             const normalizedNewValue = value || '';
 
             if (normalizedNewValue !== normalizedCurrentValue) {
-                console.log(`[YJSTextAreaField] Saving ${path}: "${normalizedCurrentValue}" -> "${normalizedNewValue}"`);
                 setField(path, value);
             } else {
-                console.log(`[YJSTextAreaField] Skipping save - no change for ${path}`);
             }
         }, [setField, path, currentValue]),
         300
@@ -165,17 +146,14 @@ export const YJSTextAreaField: React.FC<YJSTextAreaFieldProps> = ({
     // Handle input changes
     const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         const newValue = e.target.value;
-        console.log(`[YJSTextAreaField] Input change for ${path}: ${JSON.stringify(newValue)}`);
         setLocalValue(newValue);
         debouncedSave(newValue);
     };
 
     // Handle blur (save final value)
     const handleBlur = () => {
-        console.log(`[YJSTextAreaField] Blur for ${path}, final value: ${JSON.stringify(localValue)}`);
         // Final save on blur
         if (localValue !== currentValue) {
-            console.log(`[YJSTextAreaField] Final save on blur for ${path}: ${JSON.stringify(localValue)}`);
             setField(path, localValue);
         }
     };
@@ -183,19 +161,16 @@ export const YJSTextAreaField: React.FC<YJSTextAreaFieldProps> = ({
     // Handle key press
     const handleKeyPress = (e: React.KeyboardEvent) => {
         if (e.key === 'Escape') {
-            console.log(`[YJSTextAreaField] Escape pressed for ${path}, reverting`);
             setLocalValue(currentValue || '');
         }
     };
 
     // Update local value when context value changes
     useEffect(() => {
-        console.log(`[YJSTextAreaField] Context value changed for ${path}: ${JSON.stringify(currentValue)}`);
         setLocalValue(currentValue || '');
     }, [currentValue]);
 
     const effectiveDisabled = disabled || isLoading;
-    console.log(`[YJSTextAreaField] Field ${path} disabled state: ${effectiveDisabled} (disabled: ${disabled}, isLoading: ${isLoading}, isConnected: ${isConnected})`);
 
     return (
         <Input.TextArea
@@ -228,7 +203,6 @@ export const YJSArrayField: React.FC<YJSArrayFieldProps> = ({
 }) => {
     const { getField, setField, isLoading, isConnected, isCollaborative } = useYJSArtifactContext();
 
-    console.log(`[YJSArrayField] Rendering field ${path}:`, { isLoading, isConnected, isCollaborative, disabled });
 
     // Local value state for immediate UI updates
     const [localValue, setLocalValue] = useState('');
@@ -237,7 +211,6 @@ export const YJSArrayField: React.FC<YJSArrayFieldProps> = ({
     // Get current value from context
     const currentArray = getField(path) || [];
 
-    console.log(`[YJSArrayField] Current array for ${path}:`, currentArray);
 
     // Convert array to textarea format (one item per line)
     const arrayToTextarea = (arr: string[] | null | undefined): string => {
@@ -259,7 +232,6 @@ export const YJSArrayField: React.FC<YJSArrayFieldProps> = ({
     // Debounced save function
     const debouncedSave = useDebouncedCallback(
         React.useCallback((value: string) => {
-            console.log(`[YJSArrayField] Debounced save called for ${path}: ${JSON.stringify(value)}`);
 
             const newArray = textareaToArray(value);
             const currentArrayNormalized = Array.isArray(currentArray) ? currentArray : [];
@@ -268,10 +240,8 @@ export const YJSArrayField: React.FC<YJSArrayFieldProps> = ({
             const arraysEqual = JSON.stringify(newArray) === JSON.stringify(currentArrayNormalized);
 
             if (!arraysEqual) {
-                console.log(`[YJSArrayField] Saving ${path}: ${JSON.stringify(currentArrayNormalized)} -> ${JSON.stringify(newArray)}`);
                 setField(path, newArray);
             } else {
-                console.log(`[YJSArrayField] Skipping save - no change for ${path}`);
             }
         }, [setField, path, currentArray]),
         300
@@ -280,18 +250,15 @@ export const YJSArrayField: React.FC<YJSArrayFieldProps> = ({
     // Handle input changes
     const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         const newValue = e.target.value;
-        console.log(`[YJSArrayField] Input change for ${path}: ${JSON.stringify(newValue)}`);
         setLocalValue(newValue);
         debouncedSave(newValue);
     };
 
     // Handle blur (save final value)
     const handleBlur = () => {
-        console.log(`[YJSArrayField] Blur for ${path}, final value: ${JSON.stringify(localValue)}`);
         // Final save on blur
         const finalArray = textareaToArray(localValue);
         if (JSON.stringify(finalArray) !== JSON.stringify(currentArray)) {
-            console.log(`[YJSArrayField] Final save on blur for ${path}: ${JSON.stringify(finalArray)}`);
             setField(path, finalArray);
         }
     };
@@ -299,7 +266,6 @@ export const YJSArrayField: React.FC<YJSArrayFieldProps> = ({
     // Handle key press
     const handleKeyPress = (e: React.KeyboardEvent) => {
         if (e.key === 'Escape') {
-            console.log(`[YJSArrayField] Escape pressed for ${path}, reverting`);
             setLocalValue(currentValue);
         }
     };
@@ -307,12 +273,10 @@ export const YJSArrayField: React.FC<YJSArrayFieldProps> = ({
     // Update local value when context value changes
     useEffect(() => {
         const newValue = arrayToTextarea(currentArray);
-        console.log(`[YJSArrayField] Context value changed for ${path}: ${JSON.stringify(newValue)}`);
         setLocalValue(newValue);
     }, [currentArray]);
 
     const effectiveDisabled = disabled || isLoading;
-    console.log(`[YJSArrayField] Field ${path} disabled state: ${effectiveDisabled} (disabled: ${disabled}, isLoading: ${isLoading}, isConnected: ${isConnected})`);
 
     return (
         <Input.TextArea

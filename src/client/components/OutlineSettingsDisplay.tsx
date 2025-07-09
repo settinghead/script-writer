@@ -11,6 +11,9 @@ import { SectionWrapper, ArtifactSchemaType } from './shared';
 const { Text, Title } = Typography;
 
 interface OutlineSettingsDisplayProps {
+    outlineSettings?: any; // The artifact to display
+    isEditable?: boolean; // Whether the artifact is editable
+    mode?: 'editable' | 'readonly'; // Display mode
 }
 
 // YJS-enabled editable form component
@@ -21,10 +24,22 @@ const EditableOutlineForm: React.FC = () => {
     const outlineSettings = useMemo(() => {
         try {
             const data = artifact?.data;
+            console.log('[EditableOutlineForm] YJS artifact data:', {
+                artifactId: artifact?.id,
+                dataType: typeof data,
+                dataLength: typeof data === 'string' ? data.length : 'not string',
+                rawData: data
+            });
+
             if (typeof data === 'string') {
-                return JSON.parse(data) as OutlineSettingsOutput;
+                const parsed = JSON.parse(data) as OutlineSettingsOutput;
+                console.log('[EditableOutlineForm] Parsed YJS data:', parsed);
+                return parsed;
             }
-            return data as OutlineSettingsOutput || {};
+
+            const result = data as OutlineSettingsOutput || {};
+            console.log('[EditableOutlineForm] Direct YJS data:', result);
+            return result;
         } catch (error) {
             console.warn('Failed to parse outline settings data:', error);
             return {};
@@ -170,7 +185,7 @@ const EditableOutlineForm: React.FC = () => {
                     </Button>
                 </div>
                 <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                    {(outlineSettings.characters || []).map((character: any, index: number) => (
+                    {((outlineSettings as any).characters || []).map((character: any, index: number) => (
                         <Card
                             key={index}
                             size="small"
@@ -255,7 +270,7 @@ const EditableOutlineForm: React.FC = () => {
                         </Card>
                     ))}
 
-                    {(!outlineSettings.characters || outlineSettings.characters.length === 0) && (
+                    {(!(outlineSettings as any).characters || (outlineSettings as any).characters.length === 0) && (
                         <Card
                             size="small"
                             style={{
@@ -282,15 +297,27 @@ const ReadOnlyOutlineDisplay: React.FC<{ artifactId: string }> = ({ artifactId }
 
     const artifact = projectData.getArtifactById(artifactId);
     const outlineSettings = useMemo(() => {
-        if (!artifact?.data) return null;
+        if (!artifact?.data) {
+            console.log('[ReadOnlyOutlineDisplay] No artifact data:', { artifactId, artifact });
+            return null;
+        }
         try {
             const data = typeof artifact.data === 'string' ? JSON.parse(artifact.data) : artifact.data;
+            console.log('[ReadOnlyOutlineDisplay] Parsed data:', {
+                artifactId,
+                dataType: typeof artifact.data,
+                dataLength: typeof artifact.data === 'string' ? artifact.data.length : 'not string',
+                parsedData: data,
+                hasTitle: !!data?.title,
+                hasCharacters: !!data?.characters,
+                charactersLength: data?.characters?.length || 0
+            });
             return data as OutlineSettingsOutput;
         } catch (error) {
             console.warn('Failed to parse outline settings data:', error);
             return null;
         }
-    }, [artifact?.data]);
+    }, [artifact?.data, artifactId]);
 
     if (!outlineSettings) {
         return (
@@ -453,7 +480,7 @@ const ReadOnlyOutlineDisplay: React.FC<{ artifactId: string }> = ({ artifactId }
                                             <Text strong style={{ fontSize: '12px', color: '#999' }}>性格特点：</Text>
                                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
                                                 {character.personality_traits.map((trait: string, traitIndex: number) => (
-                                                    <Tag key={traitIndex} size="small" color="purple">{trait}</Tag>
+                                                    <Tag key={traitIndex} color="purple">{trait}</Tag>
                                                 ))}
                                             </div>
                                         </div>
@@ -471,7 +498,7 @@ const ReadOnlyOutlineDisplay: React.FC<{ artifactId: string }> = ({ artifactId }
                                             <Text strong style={{ fontSize: '12px', color: '#999' }}>关键场景：</Text>
                                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
                                                 {character.key_scenes.map((scene: string, sceneIndex: number) => (
-                                                    <Tag key={sceneIndex} size="small" color="orange">{scene}</Tag>
+                                                    <Tag key={sceneIndex} color="orange">{scene}</Tag>
                                                 ))}
                                             </div>
                                         </div>
@@ -486,10 +513,120 @@ const ReadOnlyOutlineDisplay: React.FC<{ artifactId: string }> = ({ artifactId }
     );
 };
 
-export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = () => {
+export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
+    outlineSettings: propsOutlineSettings,
+    isEditable: propsIsEditable,
+    mode: propsMode
+}) => {
     const { projectId } = useParams<{ projectId: string }>();
     const projectData = useProjectData();
     const [isCreatingTransform, setIsCreatingTransform] = useState(false);
+
+
+
+    // If we have props from actionComputation, use them directly
+    if (propsOutlineSettings) {
+        const isEditable = propsIsEditable ?? false;
+        const effectiveArtifact = propsOutlineSettings;
+
+        console.log('[OutlineSettingsDisplay] Using props-based artifact:', {
+            artifactId: effectiveArtifact.id,
+            origin_type: effectiveArtifact.origin_type,
+            isEditable,
+            mode: propsMode
+        });
+
+        let mainContent: React.ReactNode = null;
+
+        if (isEditable) {
+            // Editable mode - green border, user can edit with YJS
+            mainContent = (
+                <Card
+                    style={{
+                        backgroundColor: '#1a1a1a',
+                        border: '2px solid #52c41a',
+                        borderRadius: '8px'
+                    }}
+                    styles={{ body: { padding: '24px' } }}
+                >
+                    {/* Header */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{
+                                width: '6px',
+                                height: '32px',
+                                backgroundColor: '#52c41a',
+                                borderRadius: '3px'
+                            }} />
+                            <div>
+                                <Title level={4} style={{ margin: 0, color: '#52c41a' }}>
+                                    ✏️ 编辑剧本框架
+                                </Title>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* YJS-enabled form */}
+                    <YJSArtifactProvider artifactId={effectiveArtifact.id} enableCollaboration={true}>
+                        <EditableOutlineForm />
+                    </YJSArtifactProvider>
+                </Card>
+            );
+        } else {
+            // Read-only mode
+            mainContent = (
+                <Card
+                    style={{
+                        backgroundColor: '#1a1a1a',
+                        border: '1px solid #555',
+                        borderRadius: '6px',
+                        opacity: 0.7
+                    }}
+                    styles={{ body: { padding: '24px' } }}
+                >
+                    {/* Header */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{
+                                width: '6px',
+                                height: '32px',
+                                backgroundColor: '#555',
+                                borderRadius: '3px'
+                            }} />
+                            <div>
+                                <Title level={4} style={{ margin: 0, color: '#888' }}>
+                                    📖 剧本框架
+                                </Title>
+                                <Text type="secondary" style={{ fontSize: '12px' }}>
+                                    只读模式
+                                </Text>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Content sections - read-only */}
+                    <ReadOnlyOutlineDisplay artifactId={effectiveArtifact.id} />
+                </Card>
+            );
+        }
+
+        return (
+            <SectionWrapper
+                schemaType={ArtifactSchemaType.OUTLINE_SETTINGS}
+                title="剧本框架"
+                sectionId="outline-settings"
+                artifactId={effectiveArtifact?.id}
+            >
+                <div style={{ marginTop: '24px', position: 'relative' }}>
+                    {mainContent}
+                </div>
+            </SectionWrapper>
+        );
+    }
+
+    // Fallback to old logic if no props provided (for backward compatibility)
+    // TODO: Remove this once all usage is migrated to props-based approach
+    const fallbackIsLoading = projectData.isLoading;
 
     // Find the root outline settings artifact
     const rootOutlineArtifact = useMemo(() => {
@@ -500,21 +637,47 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = () 
             artifact.schema_type === 'outline_settings_schema'
         );
 
+        console.log('[OutlineSettingsDisplay] All outline settings artifacts:', {
+            count: outlineArtifacts.length,
+            artifacts: outlineArtifacts.map(a => ({
+                id: a.id,
+                origin_type: a.origin_type,
+                created_at: a.created_at,
+                schema_type: a.schema_type
+            }))
+        });
+
         if (outlineArtifacts.length === 0) return null;
 
         // Sort by creation time and return the first one
         outlineArtifacts.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-        return outlineArtifacts[0];
+        const rootArtifact = outlineArtifacts[0];
+
+        console.log('[OutlineSettingsDisplay] Selected root artifact:', {
+            id: rootArtifact.id,
+            origin_type: rootArtifact.origin_type,
+            created_at: rootArtifact.created_at
+        });
+
+        return rootArtifact;
     }, [projectData.artifacts]);
 
     // Find the latest editable version (if any)
     const latestOutlineSettingsArtifact = useMemo(() => {
         if (!rootOutlineArtifact) return null;
 
+        console.log('[OutlineSettingsDisplay] Finding latest outline settings artifact:', {
+            rootOutlineArtifact: rootOutlineArtifact.id,
+            humanTransformsCount: Array.isArray(projectData.humanTransforms) ? projectData.humanTransforms.length : 'not array',
+            transformInputsCount: Array.isArray(projectData.transformInputs) ? projectData.transformInputs.length : 'not array',
+            transformOutputsCount: Array.isArray(projectData.transformOutputs) ? projectData.transformOutputs.length : 'not array'
+        });
+
         // Check if there's a human transform for this artifact
         if (!Array.isArray(projectData.humanTransforms) ||
             !Array.isArray(projectData.transformInputs) ||
             !Array.isArray(projectData.transformOutputs)) {
+            console.log('[OutlineSettingsDisplay] Data not ready, returning root artifact');
             return rootOutlineArtifact;
         }
 
@@ -525,7 +688,13 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = () 
             );
         });
 
+        console.log('[OutlineSettingsDisplay] Found relevant transforms:', {
+            count: relevantTransforms.length,
+            transforms: relevantTransforms.map(t => ({ id: t.id, created_at: t.created_at }))
+        });
+
         if (relevantTransforms.length === 0) {
+            console.log('[OutlineSettingsDisplay] No relevant transforms, returning root artifact');
             return rootOutlineArtifact;
         }
 
@@ -533,20 +702,32 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = () 
         relevantTransforms.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         const latestTransform = relevantTransforms[0];
 
+        console.log('[OutlineSettingsDisplay] Latest transform:', latestTransform.id);
+
         // Find the output artifact for this transform
         const outputRecord = projectData.transformOutputs.find((output: any) =>
             output.transform_id === latestTransform.id
         );
 
+        console.log('[OutlineSettingsDisplay] Output record:', outputRecord);
+
         if (outputRecord) {
             const editedArtifact = projectData.getArtifactById(outputRecord.artifact_id);
+            console.log('[OutlineSettingsDisplay] Edited artifact:', {
+                id: editedArtifact?.id,
+                schema_type: editedArtifact?.schema_type,
+                origin_type: editedArtifact?.origin_type
+            });
+
             // Verify it's still an outline settings artifact
             if (editedArtifact?.schema_type === 'outline_settings_schema') {
+                console.log('[OutlineSettingsDisplay] Returning edited artifact');
                 return editedArtifact;
             }
         }
 
         // Fallback to original
+        console.log('[OutlineSettingsDisplay] Fallback to root artifact');
         return rootOutlineArtifact;
     }, [rootOutlineArtifact, projectData.humanTransforms, projectData.transformInputs, projectData.transformOutputs, projectData.getArtifactById]);
 
@@ -567,6 +748,15 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = () 
             input.artifact_id === effectiveArtifact.id
         );
 
+        console.log(`[OutlineSettingsDisplay] isEditable check for ${effectiveArtifact.id}:`, {
+            origin_type: effectiveArtifact.origin_type,
+            isUserInput,
+            hasDescendants,
+            transformInputsCount: projectData.transformInputs.length,
+            relevantInputs: projectData.transformInputs.filter((input: any) => input.artifact_id === effectiveArtifact.id),
+            finalResult: isUserInput && !hasDescendants
+        });
+
         return isUserInput && !hasDescendants;
     }, [effectiveArtifact, projectData.transformInputs]);
 
@@ -580,6 +770,14 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = () 
         const hasDescendants = projectData.transformInputs.some((input: any) =>
             input.artifact_id === effectiveArtifact.id
         );
+
+        console.log(`[OutlineSettingsDisplay] canBecomeEditable check for ${effectiveArtifact.id}:`, {
+            origin_type: effectiveArtifact.origin_type,
+            hasDescendants,
+            transformInputsCount: projectData.transformInputs.length,
+            relevantInputs: projectData.transformInputs.filter((input: any) => input.artifact_id === effectiveArtifact.id),
+            finalResult: !hasDescendants && effectiveArtifact.origin_type === 'ai_generated'
+        });
 
         return !hasDescendants && effectiveArtifact.origin_type === 'ai_generated';
     }, [effectiveArtifact, projectData.transformInputs]);
