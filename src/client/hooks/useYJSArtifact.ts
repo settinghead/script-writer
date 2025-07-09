@@ -1,52 +1,22 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useProjectData } from '../contexts/ProjectDataContext';
-import { createElectricConfigWithDebugAuth } from '../../common/config/electric';
 
-// Temporarily disable YJS functionality due to Electric SQL data format issues
-const YJS_ENABLED = false;
-
-// Types (will be loaded dynamically)
+// YJS types (loaded dynamically)
 type YDoc = any;
 type YMap = any;
-type YArray = any;
-type YText = any;
-type ElectricProvider = any;
-type Awareness = any;
-type IndexeddbPersistence = any;
-type LocalStorageResumeStateProvider = any;
-
-// Parser function for Electric bytea fields (will be set up dynamically)
-let parseToDecoder: any = null;
-
-type UpdateTableSchema = {
-    update: any; // Will be a decoder from lib0/decoding
-};
 
 export interface YJSArtifactHook {
-    // YJS document and provider
     doc: YDoc | null;
-    provider: ElectricProvider | null;
-
-    // Connection state
+    provider: any | null;
+    awareness: any | null;
     isConnected: boolean;
     isLoading: boolean;
     error: string | null;
-
-    // Data access
     data: any;
-    artifact: any;
-
-    // Update methods
     updateField: (field: string, value: any) => void;
     updateFields: (updates: Record<string, any>) => void;
-
-    // Utility methods
-    syncToArtifact: () => Promise<void>;
-    cleanup: () => void;
-
-    // Collaboration features
+    isInitialized: boolean;
     isCollaborative: boolean;
-    awareness: Awareness | null;
 }
 
 export const useYJSArtifact = (
@@ -59,89 +29,149 @@ export const useYJSArtifact = (
     const { enableCollaboration = false, syncIntervalMs = 5000 } = options;
     const projectData = useProjectData();
 
-    // State for YJS document and provider (disabled for now)
+    // State for YJS document
     const [doc, setDoc] = useState<YDoc | null>(null);
-    const [provider, setProvider] = useState<ElectricProvider | null>(null);
-    const [awareness, setAwareness] = useState<Awareness | null>(null);
-    const [isConnected, setIsConnected] = useState(false);
+    const [data, setData] = useState<any>({});
+    const [isInitialized, setIsInitialized] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [collaborativeData, setCollaborativeData] = useState<any>(null);
-    const [docLoaded, setDocLoaded] = useState(false);
+
+    // Refs to prevent re-initialization loops
+    const isInitializedRef = useRef(false);
+    const cleanupRef = useRef<(() => void) | null>(null);
 
     // Get artifact data from project context
     const artifact = Array.isArray(projectData.artifacts)
         ? projectData.artifacts.find((a: any) => a.id === artifactId)
         : null;
 
-    // Refs for cleanup and state management
-    const cleanupRef = useRef<(() => void) | null>(null);
-    const isInitializedRef = useRef(false);
-    const collaborativeDataRef = useRef<any>(null);
-
-    // Initialize YJS (disabled)
+    // Initialize YJS document
     useEffect(() => {
-        if (!YJS_ENABLED || !enableCollaboration || !artifactId) {
-            setIsLoading(false);
-            setError('YJS functionality is temporarily disabled');
+        if (!artifactId || !enableCollaboration || isInitializedRef.current) {
             return;
         }
 
-        // YJS initialization code is disabled
-        setIsLoading(false);
-        setError('YJS functionality is temporarily disabled');
+        let mounted = true;
+        isInitializedRef.current = true;
 
-    }, [artifactId, enableCollaboration]);
+        const initializeYJS = async () => {
+            try {
+                setIsLoading(true);
+                setError(null);
+                console.log('Initializing YJS for artifact:', artifactId);
 
-    // Update field in YJS document (disabled)
+                // Dynamic import for YJS
+                const Y = await import('yjs');
+
+                if (!mounted) return;
+
+                // Create YJS document
+                const yDoc = new Y.Doc();
+
+                // Initialize with artifact data if available
+                if (artifact?.data) {
+                    const yMap = yDoc.getMap('content');
+                    const artifactData = typeof artifact.data === 'string'
+                        ? JSON.parse(artifact.data)
+                        : artifact.data;
+
+                    // Populate YJS document with artifact data
+                    Object.entries(artifactData).forEach(([key, value]) => {
+                        yMap.set(key, value);
+                    });
+                }
+
+                // Set up data synchronization
+                const updateData = () => {
+                    if (!mounted) return;
+                    const yMap = yDoc.getMap('content');
+                    const newData: any = {};
+                    yMap.forEach((value, key) => {
+                        newData[key] = value;
+                    });
+                    setData(newData);
+                };
+
+                // Listen for document changes
+                yDoc.on('update', updateData);
+
+                // Initial data update
+                updateData();
+
+                if (!mounted) return;
+
+                // Set state
+                setDoc(yDoc);
+                setIsInitialized(true);
+                setIsLoading(false);
+
+                // Set up cleanup
+                cleanupRef.current = () => {
+                    yDoc.off('update', updateData);
+                    yDoc.destroy();
+                };
+
+                console.log('YJS initialized successfully for artifact:', artifactId);
+
+            } catch (error) {
+                console.error('Failed to initialize YJS:', error);
+                if (mounted) {
+                    setIsInitialized(false);
+                    setIsLoading(false);
+                    setError(error instanceof Error ? error.message : 'Failed to initialize YJS');
+                }
+            }
+        };
+
+        initializeYJS();
+
+        return () => {
+            mounted = false;
+            if (cleanupRef.current) {
+                cleanupRef.current();
+                cleanupRef.current = null;
+            }
+            isInitializedRef.current = false;
+        };
+    }, [artifactId, enableCollaboration, artifact?.data]);
+
+    // Update field function
     const updateField = useCallback((field: string, value: any) => {
-        console.log('YJS updateField disabled:', field, value);
-        // YJS update functionality is disabled
-    }, []);
-
-    // Update multiple fields (disabled)
-    const updateFields = useCallback((updates: Record<string, any>) => {
-        console.log('YJS updateFields disabled:', updates);
-        // YJS update functionality is disabled
-    }, []);
-
-    // Manual sync method (disabled)
-    const syncToArtifact = useCallback(async () => {
-        console.log('YJS syncToArtifact disabled');
-        // YJS sync functionality is disabled
-    }, []);
-
-    // Cleanup method
-    const cleanup = useCallback(() => {
-        if (cleanupRef.current) {
-            cleanupRef.current();
+        if (!doc) {
+            console.warn('YJS doc not initialized, cannot update field:', field);
+            return;
         }
-    }, []);
+
+        console.log('Updating YJS field:', field, value);
+        const yMap = doc.getMap('content');
+        yMap.set(field, value);
+    }, [doc]);
+
+    // Update multiple fields function
+    const updateFields = useCallback((updates: Record<string, any>) => {
+        if (!doc) {
+            console.warn('YJS doc not initialized, cannot update fields');
+            return;
+        }
+
+        console.log('Updating YJS fields:', updates);
+        const yMap = doc.getMap('content');
+        Object.entries(updates).forEach(([key, value]) => {
+            yMap.set(key, value);
+        });
+    }, [doc]);
 
     return {
-        // YJS document and provider (disabled)
-        doc: null,
-        provider: null,
-
-        // Connection state
-        isConnected: false,
-        isLoading: false,
-        error: 'YJS functionality is temporarily disabled',
-
-        // Data access (fallback to regular artifact data)
-        data: artifact?.data,
-        artifact,
-
-        // Update methods (disabled)
+        doc,
+        provider: null, // No provider for now
+        awareness: null, // No awareness for now
+        isConnected: true, // Local-only for now
+        isLoading,
+        error,
+        data,
         updateField,
         updateFields,
-
-        // Utility methods
-        syncToArtifact,
-        cleanup,
-
-        // Collaboration features (disabled)
-        isCollaborative: false,
-        awareness: null,
+        isInitialized,
+        isCollaborative: enableCollaboration
     };
 };
