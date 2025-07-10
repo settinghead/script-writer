@@ -2,6 +2,7 @@ import React from 'react';
 import { Typography, Space } from 'antd';
 import { UserOutlined, HeartOutlined, StarOutlined, EnvironmentOutlined, TeamOutlined } from '@ant-design/icons';
 import { YJSTextField, YJSTextAreaField, YJSArrayOfStringField, YJSCharacterArray } from '../../transform-artifact-framework/components/YJSField';
+import { YJSSlateArrayOfStringField } from '../../transform-artifact-framework/components/YJSSlateArrayField';
 
 const { Text } = Typography;
 
@@ -51,7 +52,7 @@ export const EditableOutlineForm: React.FC = () => {
                 </div>
                 <div style={{ marginTop: '12px' }}>
                     <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>核心主题：</Text>
-                    <YJSArrayOfStringField
+                    <YJSSlateArrayOfStringField
                         path="target_audience.core_themes"
                         placeholder="每行一个主题..."
                     />
@@ -64,7 +65,7 @@ export const EditableOutlineForm: React.FC = () => {
                     <HeartOutlined style={{ marginRight: '8px' }} />
                     卖点
                 </Text>
-                <YJSArrayOfStringField
+                <YJSSlateArrayOfStringField
                     path="selling_points"
                     placeholder="每行一个卖点..."
                 />
@@ -76,7 +77,7 @@ export const EditableOutlineForm: React.FC = () => {
                     <StarOutlined style={{ marginRight: '8px' }} />
                     爽点
                 </Text>
-                <YJSArrayOfStringField
+                <YJSSlateArrayOfStringField
                     path="satisfaction_points"
                     placeholder="每行一个爽点..."
                 />
@@ -98,7 +99,7 @@ export const EditableOutlineForm: React.FC = () => {
                 </div>
                 <div>
                     <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>关键场景：</Text>
-                    <YJSArrayOfStringField
+                    <YJSSlateArrayOfStringField
                         path="setting.key_scenes"
                         placeholder="每行一个关键场景..."
                     />
