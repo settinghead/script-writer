@@ -297,12 +297,26 @@ export function buildLineageGraph(
         finalPaths.set(pathKey, finalPath);
     }
 
-    return {
+    const finalGraph = {
         nodes,
         edges,
         paths: finalPaths,
         rootNodes
     };
+
+    // Validate the graph integrity for debugging
+    const validation = validateLineageIntegrity(finalGraph);
+
+    if (!validation.isValid) {
+        console.warn('[buildLineageGraph] Graph integrity issues detected:', validation.errors);
+    }
+    if (validation.warnings.length > 0) {
+        validation.warnings.forEach(warning => console.warn('[buildLineageGraph] Warning:', warning));
+    }
+
+    // TODO: Add orphan filtering in the future when it's more robust
+    // For now, return the complete graph to maintain backward compatibility
+    return finalGraph;
 }
 
 // Helper function to check if an artifact has unprocessed incoming transforms
@@ -756,6 +770,120 @@ function hasCircularReference(
     }
 
     return false;
+}
+
+/**
+ * Filter out orphaned nodes from the lineage graph
+ * Similar to RawGraphVisualization's filtering logic
+ * 
+ * Note: This function is conservative and only removes truly orphaned nodes
+ * to avoid breaking existing functionality. Transform nodes are kept if they
+ * have any connection to the graph.
+ */
+function filterOrphanedNodes(graph: LineageGraph): LineageGraph {
+    const connectedNodes = new Set<string>();
+
+    // Step 1: Start from root nodes and traverse forward
+    const toVisit = [...graph.rootNodes];
+    const visited = new Set<string>();
+
+    while (toVisit.length > 0) {
+        const nodeId = toVisit.pop()!;
+        if (visited.has(nodeId)) continue;
+
+        visited.add(nodeId);
+        connectedNodes.add(nodeId);
+
+        // Add children to visit queue
+        const children = graph.edges.get(nodeId) || [];
+        for (const childId of children) {
+            if (!visited.has(childId)) {
+                toVisit.push(childId);
+            }
+        }
+    }
+
+    // Step 2: Include all nodes that participate in edges (bidirectional connectivity)
+    for (const [sourceId, targets] of graph.edges) {
+        // If either source or any target is connected, include all of them
+        const hasConnectedNode = connectedNodes.has(sourceId) || targets.some(t => connectedNodes.has(t));
+        if (hasConnectedNode) {
+            connectedNodes.add(sourceId);
+            targets.forEach(t => connectedNodes.add(t));
+        }
+    }
+
+    // Step 3: Include all nodes that appear in paths (path-based connectivity)
+    for (const pathNodes of graph.paths.values()) {
+        const hasConnectedNode = pathNodes.some(node => {
+            const nodeId = node.type === 'artifact' ? node.artifactId : node.transformId;
+            return connectedNodes.has(nodeId);
+        });
+        if (hasConnectedNode) {
+            // Include all nodes in this path
+            pathNodes.forEach(node => {
+                const nodeId = node.type === 'artifact' ? node.artifactId : node.transformId;
+                connectedNodes.add(nodeId);
+            });
+        }
+    }
+
+    // Step 4: If the filtering would remove too many nodes, skip filtering
+    // This is a safety check to prevent breaking existing functionality
+    const originalNodeCount = graph.nodes.size;
+    const filteredNodeCount = connectedNodes.size;
+
+    if (filteredNodeCount < originalNodeCount * 0.5) {
+        // If we're removing more than 50% of nodes, something might be wrong
+        // Return the original graph to be safe
+        console.warn(`[filterOrphanedNodes] Filtering would remove ${originalNodeCount - filteredNodeCount} out of ${originalNodeCount} nodes. Skipping filtering for safety.`);
+        return graph;
+    }
+
+    // Step 5: Build clean graph with only connected nodes
+    const cleanNodes = new Map<string, LineageNode>();
+    const cleanEdges = new Map<string, string[]>();
+    const cleanPaths = new Map<string, LineageNode[]>();
+
+    for (const nodeId of connectedNodes) {
+        const node = graph.nodes.get(nodeId);
+        if (node) {
+            cleanNodes.set(nodeId, node);
+        }
+    }
+
+    for (const [sourceId, targets] of graph.edges) {
+        if (connectedNodes.has(sourceId)) {
+            const cleanTargets = targets.filter(targetId => connectedNodes.has(targetId));
+            if (cleanTargets.length > 0) {
+                cleanEdges.set(sourceId, cleanTargets);
+            }
+        }
+    }
+
+    for (const [pathKey, pathNodes] of graph.paths) {
+        const cleanPathNodes = pathNodes.filter(node => {
+            const nodeId = node.type === 'artifact' ? node.artifactId : node.transformId;
+            return connectedNodes.has(nodeId);
+        });
+        if (cleanPathNodes.length > 0) {
+            cleanPaths.set(pathKey, cleanPathNodes);
+        }
+    }
+
+    const cleanRootNodes = new Set<string>();
+    for (const rootId of graph.rootNodes) {
+        if (connectedNodes.has(rootId)) {
+            cleanRootNodes.add(rootId);
+        }
+    }
+
+    return {
+        nodes: cleanNodes,
+        edges: cleanEdges,
+        paths: cleanPaths,
+        rootNodes: cleanRootNodes
+    };
 }
 
 // ============================================================================

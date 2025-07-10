@@ -57,6 +57,15 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
     const { projectId } = useParams<{ projectId: string }>();
     const projectData = useProjectData();
 
+    console.log('[SingleBrainstormIdeaEditor] Rendering with props:', {
+        projectId,
+        currentStage,
+        isEditable: propsIsEditable,
+        mode: propsMode,
+        hasPropsBrainstormIdea: !!propsBrainstormIdea,
+        propsBrainstormIdeaId: propsBrainstormIdea?.id
+    });
+
     // If we have props from actionComputation, use them directly
     if (propsBrainstormIdea) {
         const isEditable = propsIsEditable ?? false;
@@ -86,6 +95,11 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
 
     // Fallback: Find the latest brainstorm idea artifact from project data
     const latestBrainstormIdea = useMemo(() => {
+        console.log('[SingleBrainstormIdeaEditor] Computing latestBrainstormIdea, projectData.artifacts:',
+            projectData.artifacts === "pending" ? "pending" :
+                projectData.artifacts === "error" ? "error" :
+                    Array.isArray(projectData.artifacts) ? `${projectData.artifacts.length} artifacts` : "unknown");
+
         // Check if data is ready
         if (projectData.artifacts === "pending" || projectData.artifacts === "error") {
             return null;
@@ -97,6 +111,12 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
             artifact.schema_type === 'brainstorm_idea' || artifact.type === 'brainstorm_idea'
         );
 
+        console.log('[SingleBrainstormIdeaEditor] Found brainstorm idea artifacts:', brainstormIdeaArtifacts.map(a => ({
+            id: a.id,
+            type: a.type || a.schema_type,
+            origin_type: a.origin_type
+        })));
+
         if (brainstormIdeaArtifacts.length === 0) {
             return null;
         }
@@ -106,7 +126,14 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
 
-        return brainstormIdeaArtifacts[0];
+        const latest = brainstormIdeaArtifacts[0];
+        console.log('[SingleBrainstormIdeaEditor] Latest brainstorm idea:', {
+            id: latest.id,
+            type: latest.type || latest.schema_type,
+            origin_type: latest.origin_type
+        });
+
+        return latest;
     }, [projectData.artifacts]);
 
     // Determine editability for fallback mode

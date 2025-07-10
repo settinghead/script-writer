@@ -723,8 +723,8 @@ describe('Unified Workflow Computation', () => {
 
             // Third component should be SingleBrainstormIdeaEditor with the human-edited idea
             expect(components[2].id).toBe('single-brainstorm-idea-editor');
-            expect(components[2].props.idea).toBeDefined();
-            expect(components[2].props.idea.id).toBe('human-edited-idea-1');
+            expect(components[2].props.brainstormIdea).toBeDefined();
+            expect(components[2].props.brainstormIdea.id).toBe('human-edited-idea-1');
             expect(components[2].props.isEditable).toBe(true); // Should be editable since it's user_input leaf node
         });
 

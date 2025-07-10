@@ -415,8 +415,8 @@ describe('Brainstorm Edit Chain Integration Test', () => {
         );
         expect(singleIdeaEditor).toBeTruthy();
         expect(singleIdeaEditor?.mode).toBe('editable');
-        expect(singleIdeaEditor?.props.idea).toBeTruthy();
-        expect(singleIdeaEditor?.props.idea.id).toBe('artifact-4');
+        expect(singleIdeaEditor?.props.brainstormIdea).toBeTruthy();
+        expect(singleIdeaEditor?.props.brainstormIdea.id).toBe('artifact-4');
 
         // Verify that ProjectBrainstormPage IS included in idea_editing stage (read-only mode)
         const brainstormPage = displayComponents.find((component: any) =>

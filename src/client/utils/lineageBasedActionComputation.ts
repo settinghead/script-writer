@@ -126,25 +126,32 @@ export function computeActionsFromLineage(
     // 2. Determine current stage from workflow nodes
     let currentStage = detectStageFromWorkflowNodes(actionContext.workflowNodes);
 
-    // 3. Override stage detection if we have leaf brainstorm ideas (human-edited ideas)
+    // 3. Override stage detection if we have a chosen idea or leaf brainstorm ideas
     if (currentStage === 'brainstorm_selection') {
-        // Check if we have leaf brainstorm ideas that indicate the user has moved to idea_editing stage
-        const leafBrainstormIdeas = actionContext.leafNodes.filter(nodeId => {
-            const node = lineageGraph.nodes.get(nodeId);
-            if (node?.type !== 'artifact') return false;
-
-            const artifact = artifacts.find(a => a.id === nodeId);
-            return artifact && (
-                artifact.schema_type === 'brainstorm_item_schema' ||
-                artifact.schema_type === 'brainstorm_idea_schema' ||
-                artifact.type === 'brainstorm_item_schema' ||
-                artifact.type === 'brainstorm_idea_schema'
-            );
-        });
-
-        if (leafBrainstormIdeas.length > 0) {
-            // User has created/edited brainstorm ideas, move to idea_editing stage
+        // First check: if we have a chosen idea, move to idea_editing stage
+        if (actionContext.chosenBrainstormIdea) {
+            console.log('[computeActionsFromLineage] Found chosen idea, overriding stage to idea_editing:', actionContext.chosenBrainstormIdea.artifactId);
             currentStage = 'idea_editing';
+        } else {
+            // Second check: if we have leaf brainstorm ideas that indicate the user has moved to idea_editing stage
+            const leafBrainstormIdeas = actionContext.leafNodes.filter(nodeId => {
+                const node = lineageGraph.nodes.get(nodeId);
+                if (node?.type !== 'artifact') return false;
+
+                const artifact = artifacts.find(a => a.id === nodeId);
+                return artifact && (
+                    artifact.schema_type === 'brainstorm_item_schema' ||
+                    artifact.schema_type === 'brainstorm_idea_schema' ||
+                    artifact.type === 'brainstorm_item_schema' ||
+                    artifact.type === 'brainstorm_idea_schema'
+                );
+            });
+
+            if (leafBrainstormIdeas.length > 0) {
+                console.log('[computeActionsFromLineage] Found leaf brainstorm ideas, overriding stage to idea_editing:', leafBrainstormIdeas.length);
+                // User has created/edited brainstorm ideas, move to idea_editing stage
+                currentStage = 'idea_editing';
+            }
         }
     }
 
@@ -486,7 +493,14 @@ function findChosenIdeaFromLineage(
     for (const idea of effectiveBrainstormIdeas) {
         const node = lineageGraph.nodes.get(idea.artifactId);
         if (node && node.isLeaf) {
-            return idea;
+            // CRITICAL FIX: Only consider standalone ideas as "chosen"
+            // Ideas from collections (artifactPath !== '$') should not be auto-chosen
+            // even if the collection is a leaf node - user needs to explicitly select one
+            if (idea.artifactPath === '$') {
+                // This is a standalone brainstorm idea artifact, can be chosen
+                return idea;
+            }
+            // Ideas from collections (artifactPath like '$.ideas[0]') are not auto-chosen
         }
     }
 
