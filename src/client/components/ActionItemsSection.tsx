@@ -93,10 +93,7 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
     const hasActiveTransforms = Array.isArray(projectData.transforms) &&
         projectData.transforms.some((t: any) => t.status === 'running' || t.status === 'pending');
 
-    // Only log when there are active transforms (for debugging spinner issue)
-    if (hasActiveTransforms) {
-        console.log('🔄 Active transforms detected - Steps:', steps?.map((s: any) => ({ title: s.title, status: s.status })));
-    }
+
 
     return (
         <Card

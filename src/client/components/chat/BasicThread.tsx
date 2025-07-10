@@ -6,6 +6,7 @@ import { useChatMessages } from '../../hooks/useChatMessages';
 import { useProjectChatRuntime } from '../../hooks/useProjectChatRuntime';
 import { ChatInput } from './ChatInput';
 import { processChatMessage } from '../../utils/chatEventProcessor';
+import { AppColors } from '../../../common/theme/colors';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -36,11 +37,11 @@ const ChatMessage: React.FC<{ message: any; isStreaming?: boolean }> = ({ messag
     const getAvatarColor = () => {
         switch (message.role) {
             case 'user':
-                return '#4f46e5';
+                return AppColors.human.avatar;
             case 'assistant':
-                return '#10b981';
+                return AppColors.ai.avatar;
             default:
-                return '#666';
+                return AppColors.text.muted;
         }
     };
 
@@ -54,10 +55,15 @@ const ChatMessage: React.FC<{ message: any; isStreaming?: boolean }> = ({ messag
             return <Tag color="error" icon={<ExclamationCircleOutlined />}>失败</Tag>;
         }
 
-        // Handle computation/thinking messages
+        // Handle computation/thinking messages - show content inline with loading indicator
         if (message.display_type === 'thinking') {
             if (message.status === 'streaming') {
-                return <Tag color="processing" icon={<Spin size="small" />}>计算中</Tag>;
+                return (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '12px', color: AppColors.text.secondary }}>
+                        <span>{processedMessage.content}</span>
+                        <Spin size="small" />
+                    </div>
+                );
             }
             if (message.status === 'completed') {
                 return <Tag color="success">完成</Tag>;
@@ -74,19 +80,41 @@ const ChatMessage: React.FC<{ message: any; isStreaming?: boolean }> = ({ messag
 
     const getMessageStyle = () => {
         const isUserMessage = message.role === 'user';
-        let backgroundColor = isUserMessage ? '#4f46e5' : '#2a2a2a';
+        const isAssistantMessage = message.role === 'assistant';
+
+        let backgroundColor;
+        let backgroundImage;
+
+        if (isUserMessage) {
+            // Human messages use regular dark background
+            backgroundColor = AppColors.human.background;
+        } else if (isAssistantMessage) {
+            // Bot messages use darker purple gradient background
+            backgroundColor = AppColors.ai.primary;
+            backgroundImage = AppColors.ai.gradient;
+        } else {
+            backgroundColor = AppColors.human.background;
+        }
 
         // Different styling for computation/thinking messages
         if (message.display_type === 'thinking') {
-            backgroundColor = '#1f2937'; // Darker background for computation messages
+            if (isAssistantMessage) {
+                // Thinking messages for bot use an even darker purple gradient
+                backgroundColor = AppColors.ai.tertiary;
+                backgroundImage = AppColors.ai.gradientDark;
+            } else {
+                backgroundColor = '#1f2937'; // Darker background for computation messages
+            }
         }
 
         return {
             background: backgroundColor,
+            backgroundImage: backgroundImage,
             border: 'none',
             borderRadius: 10,
             maxWidth: '100%',
-            wordBreak: 'break-word' as const
+            wordBreak: 'break-word' as const,
+            boxShadow: isAssistantMessage ? `0 4px 12px ${AppColors.ai.shadow}` : 'none'
         };
     };
 
@@ -138,15 +166,15 @@ const ChatMessage: React.FC<{ message: any; isStreaming?: boolean }> = ({ messag
                     {getStatusTag()}
                 </div>
 
-                {/* Only show message bubble if not completed thinking message */}
-                {!(isThinkingMessage && message.status === 'completed') && (
+                {/* Only show message bubble for non-thinking messages */}
+                {!isThinkingMessage && (
                     <Card
                         size="small"
                         style={getMessageStyle()}
                         styles={{
                             body: {
                                 padding: '10px 10px',
-                                color: isUserMessage ? 'white' : '#e0e0e0',
+                                color: isUserMessage ? AppColors.text.primary : (message.role === 'assistant' ? AppColors.text.white : AppColors.text.primary),
                                 // Slightly different opacity for thinking messages
                                 opacity: isThinkingMessage ? 0.9 : 1
                             }
@@ -290,7 +318,7 @@ export const BasicThread: React.FC<BasicThreadProps> = ({ projectId }) => {
 
                 {isLoading && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 0' }}>
-                        <Cpu style={{ fontSize: 20, color: '#10b981' }} />
+                        <Cpu style={{ fontSize: 20, color: AppColors.ai.primary }} />
                         <Spin size="small" />
                         <span style={{ color: '#888' }}>AI正在思考...</span>
                     </div>
