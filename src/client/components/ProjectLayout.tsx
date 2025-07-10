@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Outlet, useParams, useNavigate } from 'react-router-dom';
 import { Layout, Typography, Spin, Alert, Space, Button, Drawer, Grid, Tabs } from 'antd';
 import { HomeOutlined, ProjectOutlined, EyeInvisibleOutlined, ApartmentOutlined, UnorderedListOutlined } from '@ant-design/icons';
@@ -9,6 +9,7 @@ import { ChatSidebarWrapper } from './chat/ChatSidebarWrapper';
 import WorkflowVisualization from './WorkflowVisualization';
 import ProjectTreeView from './ProjectTreeView';
 import { useLocalStorage } from '../hooks/useLocalStorage';
+import { useScrollPosition } from '../hooks/useScrollPosition';
 import { ActionItemsSection } from './ActionItemsSection';
 import { DebugMenu, DebugPanels } from './debug';
 import { ProjectCreationForm } from './ProjectCreationForm';
@@ -20,8 +21,17 @@ const { Title, Text } = Typography;
 const { useBreakpoint } = Grid;
 
 // Component to render project content conditionally
-const ProjectContentRenderer: React.FC<{ projectId: string }> = ({ projectId }) => {
+const ProjectContentRenderer: React.FC<{ projectId: string; scrollContainerRef: React.RefObject<HTMLDivElement | null> }> = ({ projectId, scrollContainerRef }) => {
     const projectData = useProjectData();
+
+    // Scroll position preservation
+    const { triggerRestore } = useScrollPosition(scrollContainerRef, {
+        key: `project-${projectId}`,
+        restoreDelay: 200,
+        maxRetries: 15,
+        retryInterval: 300,
+        debug: false
+    });
 
     // ALL HOOKS MUST BE CALLED BEFORE ANY EARLY RETURNS
     // Check if project has brainstorm input artifacts or brainstorm ideas
@@ -60,6 +70,18 @@ const ProjectContentRenderer: React.FC<{ projectId: string }> = ({ projectId }) 
 
         return computeUnifiedWorkflowState(projectData, projectId);
     }, [projectData, projectId]);
+
+    // Trigger scroll restoration when async content is loaded
+    useEffect(() => {
+        if (!projectData.isLoading && workflowState && hasBrainstormInput) {
+            // Content is ready, trigger scroll restoration
+            const timer = setTimeout(() => {
+                triggerRestore();
+            }, 500); // Give content time to render
+
+            return () => clearTimeout(timer);
+        }
+    }, [projectData.isLoading, workflowState, hasBrainstormInput, triggerRestore]);
 
     // NOW we can do conditional rendering after all hooks are called
 
@@ -124,6 +146,9 @@ const ProjectLayout: React.FC = () => {
     const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
     const [mobileRightDrawerOpen, setMobileRightDrawerOpen] = useState(false);
     const [activeRightTab, setActiveRightTab] = useLocalStorage('right-sidebar-tab', 'tree');
+
+    // Ref for the main content scroll container
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
 
     // Responsive breakpoints
     const screens = useBreakpoint();
@@ -497,13 +522,14 @@ const ProjectLayout: React.FC = () => {
                             }}>
                                 {/* Scrollable Content Container */}
                                 <div
+                                    ref={scrollContainerRef}
                                     className="content-area-inset"
                                     style={{
                                         flex: 1,
                                         overflowY: 'auto',
                                     }}
                                 >
-                                    <ProjectContentRenderer projectId={projectId!} />
+                                    <ProjectContentRenderer projectId={projectId!} scrollContainerRef={scrollContainerRef} />
                                     <Outlet />
                                 </div>
 

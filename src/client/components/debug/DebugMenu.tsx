@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Space, Button } from 'antd';
-import { NodeIndexOutlined, MessageOutlined, FileTextOutlined, } from '@ant-design/icons';
+import { NodeIndexOutlined, MessageOutlined, FileTextOutlined, VerticalAlignTopOutlined } from '@ant-design/icons';
 
 interface DebugMenuProps {
     isMobile?: boolean;
@@ -18,6 +18,7 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
     const showRawGraph = searchParams.get('raw-graph') === '1';
     const showRawChat = searchParams.get('raw-chat') === '1';
     const showRawContext = searchParams.get('raw-context') === '1';
+    const showScrollDemo = searchParams.get('scroll-demo') === '1';
 
     // Debug toggle handlers
     const toggleRawGraph = useCallback(() => {
@@ -29,6 +30,7 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
             // Clear other debug views
             newSearchParams.delete('raw-chat');
             newSearchParams.delete('raw-context');
+            newSearchParams.delete('scroll-demo');
         }
         setSearchParams(newSearchParams);
     }, [showRawGraph, searchParams, setSearchParams]);
@@ -42,6 +44,7 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
             // Clear other debug views
             newSearchParams.delete('raw-graph');
             newSearchParams.delete('raw-context');
+            newSearchParams.delete('scroll-demo');
         }
         setSearchParams(newSearchParams);
     }, [showRawChat, searchParams, setSearchParams]);
@@ -55,9 +58,24 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
             // Clear other debug views
             newSearchParams.delete('raw-graph');
             newSearchParams.delete('raw-chat');
+            newSearchParams.delete('scroll-demo');
         }
         setSearchParams(newSearchParams);
     }, [showRawContext, searchParams, setSearchParams]);
+
+    const toggleScrollDemo = useCallback(() => {
+        const newSearchParams = new URLSearchParams(searchParams);
+        if (showScrollDemo) {
+            newSearchParams.delete('scroll-demo');
+        } else {
+            newSearchParams.set('scroll-demo', '1');
+            // Clear other debug views
+            newSearchParams.delete('raw-graph');
+            newSearchParams.delete('raw-chat');
+            newSearchParams.delete('raw-context');
+        }
+        setSearchParams(newSearchParams);
+    }, [showScrollDemo, searchParams, setSearchParams]);
 
     return (
         <Space size={isMobile ? 'small' : 'middle'}>
@@ -99,6 +117,16 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
                 {isMobile ? '' : (showRawChat ? '关闭内部对话' : '打开内部对话')}
             </Button>
 
+            <Button
+                type="text"
+                icon={<VerticalAlignTopOutlined />}
+                onClick={toggleScrollDemo}
+                style={{ color: showScrollDemo ? '#52c41a' : '#1890ff' }}
+                size={isMobile ? 'small' : 'middle'}
+            >
+                {isMobile ? '' : (showScrollDemo ? '关闭滚动演示' : '滚动演示')}
+            </Button>
+
         </Space>
     );
 };
@@ -111,8 +139,10 @@ export const useDebugState = () => {
         showRawGraph: searchParams.get('raw-graph') === '1',
         showRawChat: searchParams.get('raw-chat') === '1',
         showRawContext: searchParams.get('raw-context') === '1',
+        showScrollDemo: searchParams.get('scroll-demo') === '1',
         isDebugMode: searchParams.get('raw-graph') === '1' ||
             searchParams.get('raw-chat') === '1' ||
-            searchParams.get('raw-context') === '1'
+            searchParams.get('raw-context') === '1' ||
+            searchParams.get('scroll-demo') === '1'
     };
 }; 
