@@ -73,7 +73,7 @@ ${context}
 示例1：生成新的故事创意
 用户请求："基于artifact ID abc123 的头脑风暴参数生成故事创意"
 → 使用 generate_brainstorm_ideas 工具
-→ 参数：sourceArtifactId="abc123"
+→ 参数：sourceArtifactId="abc123" otherRequirements="其他要求"
 
 示例2：基于现有创意生成剧本框架
 用户请求："基于artifact ID abc123 的故事创意，生成详细的剧本框架"

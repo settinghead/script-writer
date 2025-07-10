@@ -10,14 +10,11 @@ import {
 import {
     BrainstormEditInputSchema,
     BrainstormEditInput,
-    BrainstormEditOutputSchema,
-    BrainstormEditOutput,
-    JsonPatchOperation
+
 } from '../../common/schemas/transforms';
 import { extractDataAtPath } from '../services/transform-instantiations/pathTransforms';
 import type { StreamingToolDefinition } from '../transform-artifact-framework/StreamingAgentFramework';
 import { z } from 'zod';
-import { applyPatch, deepClone, Operation } from 'fast-json-patch';
 
 const BrainstormEditToolResultSchema = z.object({
     outputArtifactId: z.string(),
@@ -416,7 +413,8 @@ export function createBrainstormToolDefinition(
                     genre: extractedParams.genre,
                     platform: extractedParams.platform,
                     numberOfIdeas: extractedParams.numberOfIdeas.toString(),
-                    requirementsSection: buildRequirementsSection(extractedParams)
+                    requirementsSection: buildRequirementsSection(extractedParams),
+                    otherRequirements: params.otherRequirements || ''
                 }),
                 transformLLMOutput: (llmOutput) => transformToCollectionFormat(llmOutput, extractedParams),
                 // Extract source artifact for proper lineage
