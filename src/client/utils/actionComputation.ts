@@ -221,9 +221,11 @@ function computeUnifiedContext(
             artifact.type === 'brainstorm_collection_schema') {
             canonicalBrainstormArtifacts.push(artifact);
         } else if (artifact.schema_type === 'outline_settings_schema' ||
-            artifact.type === 'outline_settings') {
+            artifact.type === 'outline_settings' ||
+            artifact.type === 'outline_settings_schema') {
             canonicalOutlineArtifacts.push(artifact);
-        } else if (artifact.schema_type === 'chronicles_schema') {
+        } else if (artifact.schema_type === 'chronicles_schema' ||
+            artifact.type === 'chronicles_schema') {
             canonicalChroniclesArtifacts.push(artifact);
         }
     }
@@ -239,11 +241,42 @@ function computeUnifiedContext(
         a.schema_type === 'brainstorm_collection_schema' || a.type === 'brainstorm_collection_schema'
     );
 
-    // Find chosen idea (leaf node without descendants) using lineage graph
-    const chosenIdea = brainstormIdeas.find((idea: any) => {
-        const lineageNode = lineageGraph.nodes.get(idea.id);
-        return lineageNode && lineageNode.isLeaf;
-    });
+    // Find chosen idea using lineage graph
+    // For advanced stages, prioritize the most recent brainstorm idea that's been used in the workflow
+    // For earlier stages, prioritize leaf nodes
+    let chosenIdea = null;
+    if (brainstormIdeas.length > 0) {
+        // First try to find a leaf node (for idea_editing stage)
+        const leafIdeas = brainstormIdeas.filter((idea: any) => {
+            const lineageNode = lineageGraph.nodes.get(idea.id);
+            return lineageNode && lineageNode.isLeaf;
+        });
+
+        if (leafIdeas.length > 0) {
+            // Prioritize user_input leaf nodes, then by most recent
+            leafIdeas.sort((a: any, b: any) => {
+                if (a.origin_type === 'user_input' && b.origin_type !== 'user_input') return -1;
+                if (b.origin_type === 'user_input' && a.origin_type !== 'user_input') return 1;
+                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+            });
+            chosenIdea = leafIdeas[0];
+        } else {
+            // Fallback: find the most recent brainstorm_item_schema artifact (for advanced stages)
+            const brainstormItems = brainstormIdeas.filter((idea: any) =>
+                idea.schema_type === 'brainstorm_item_schema' || idea.type === 'brainstorm_item_schema'
+            );
+
+            if (brainstormItems.length > 0) {
+                // Prioritize user_input artifacts, then by most recent
+                brainstormItems.sort((a: any, b: any) => {
+                    if (a.origin_type === 'user_input' && b.origin_type !== 'user_input') return -1;
+                    if (b.origin_type === 'user_input' && a.origin_type !== 'user_input') return 1;
+                    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+                });
+                chosenIdea = brainstormItems[0];
+            }
+        }
+    }
 
     // Process outline settings with priority logic
     let outlineSettings = null;
@@ -443,7 +476,8 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
                     mode: context.hasActiveTransforms ? 'readonly' : 'editable',
                     props: {
                         artifact: context.brainstormInput,
-                        isEditable: !context.hasActiveTransforms
+                        isEditable: !context.hasActiveTransforms,
+                        minimized: false // Always full mode when at brainstorm_input stage
                     },
                     priority: 1
                 });
@@ -453,13 +487,18 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
         case 'brainstorm_selection':
             // Show brainstorm input in readonly mode
             if (context.brainstormInput) {
+                // Check if brainstorm input is at leaf level in lineage graph
+                const brainstormInputNode = context.lineageGraph?.nodes.get(context.brainstormInput.id);
+                const isAtLeafLevel = brainstormInputNode?.isLeaf ?? true;
+
                 components.push({
                     id: 'brainstorm-input-editor',
                     component: getComponentById('brainstorm-input-editor'),
                     mode: 'readonly',
                     props: {
                         artifact: context.brainstormInput,
-                        isEditable: false
+                        isEditable: false,
+                        minimized: !isAtLeafLevel // Minimized when not at leaf level
                     },
                     priority: 1
                 });
@@ -484,15 +523,36 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
         case 'idea_editing':
             // Show brainstorm input in readonly mode
             if (context.brainstormInput) {
+                // Check if brainstorm input is at leaf level in lineage graph
+                const brainstormInputNode = context.lineageGraph?.nodes.get(context.brainstormInput.id);
+                const isAtLeafLevel = brainstormInputNode?.isLeaf ?? true;
+
                 components.push({
                     id: 'brainstorm-input-editor',
                     component: getComponentById('brainstorm-input-editor'),
                     mode: 'readonly',
                     props: {
                         artifact: context.brainstormInput,
-                        isEditable: false
+                        isEditable: false,
+                        minimized: !isAtLeafLevel // Minimized when not at leaf level
                     },
                     priority: 1
+                });
+            }
+
+            // Show brainstorm ideas in readonly mode for reference
+            if (context.brainstormIdeas.length > 0) {
+                components.push({
+                    id: 'project-brainstorm-page',
+                    component: getComponentById('project-brainstorm-page'),
+                    mode: 'readonly',
+                    props: {
+                        ideas: context.brainstormIdeas,
+                        selectionMode: false, // Not in selection mode anymore
+                        isLoading: false,
+                        readOnly: true // Explicitly mark as read-only
+                    },
+                    priority: 2
                 });
             }
 
@@ -507,7 +567,7 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
                         isEditable: !context.hasActiveTransforms,
                         currentStage: context.currentStage
                     },
-                    priority: 2
+                    priority: 3
                 });
             } else {
                 // No chosen idea yet - this should be brainstorm_selection stage instead
@@ -523,7 +583,7 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
                             isEditable: !context.hasActiveTransforms,
                             currentStage: context.currentStage
                         },
-                        priority: 2
+                        priority: 3
                     });
                 }
             }
@@ -532,13 +592,18 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
         case 'outline_generation':
             // Show previous components in readonly/collapsed mode
             if (context.brainstormInput) {
+                // Check if brainstorm input is at leaf level in lineage graph
+                const brainstormInputNode = context.lineageGraph?.nodes.get(context.brainstormInput.id);
+                const isAtLeafLevel = brainstormInputNode?.isLeaf ?? true;
+
                 components.push({
                     id: 'brainstorm-input-editor',
                     component: getComponentById('brainstorm-input-editor'),
                     mode: 'readonly',
                     props: {
                         artifact: context.brainstormInput,
-                        isEditable: false
+                        isEditable: false,
+                        minimized: !isAtLeafLevel // Minimized when not at leaf level
                     },
                     priority: 1
                 });
@@ -583,13 +648,18 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
         case 'chronicles_generation':
             // Show previous components in readonly/collapsed mode
             if (context.brainstormInput) {
+                // Check if brainstorm input is at leaf level in lineage graph
+                const brainstormInputNode = context.lineageGraph?.nodes.get(context.brainstormInput.id);
+                const isAtLeafLevel = brainstormInputNode?.isLeaf ?? true;
+
                 components.push({
                     id: 'brainstorm-input-editor',
                     component: getComponentById('brainstorm-input-editor'),
                     mode: 'readonly',
                     props: {
                         artifact: context.brainstormInput,
-                        isEditable: false
+                        isEditable: false,
+                        minimized: !isAtLeafLevel // Minimized when not at leaf level
                     },
                     priority: 1
                 });
@@ -641,13 +711,18 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
         case 'episode_synopsis_generation':
             // Show all previous components in readonly/collapsed mode
             if (context.brainstormInput) {
+                // Check if brainstorm input is at leaf level in lineage graph
+                const brainstormInputNode = context.lineageGraph?.nodes.get(context.brainstormInput.id);
+                const isAtLeafLevel = brainstormInputNode?.isLeaf ?? true;
+
                 components.push({
                     id: 'brainstorm-input-editor',
                     component: getComponentById('brainstorm-input-editor'),
                     mode: 'readonly',
                     props: {
                         artifact: context.brainstormInput,
-                        isEditable: false
+                        isEditable: false,
+                        minimized: !isAtLeafLevel // Minimized when not at leaf level
                     },
                     priority: 1
                 });

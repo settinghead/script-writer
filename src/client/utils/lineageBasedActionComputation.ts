@@ -126,7 +126,29 @@ export function computeActionsFromLineage(
     // 2. Determine current stage from workflow nodes
     let currentStage = detectStageFromWorkflowNodes(actionContext.workflowNodes);
 
-    // 3. Fallback logic: if no workflow nodes but we have brainstorm input artifact, set to brainstorm_input stage
+    // 3. Override stage detection if we have leaf brainstorm ideas (human-edited ideas)
+    if (currentStage === 'brainstorm_selection') {
+        // Check if we have leaf brainstorm ideas that indicate the user has moved to idea_editing stage
+        const leafBrainstormIdeas = actionContext.leafNodes.filter(nodeId => {
+            const node = lineageGraph.nodes.get(nodeId);
+            if (node?.type !== 'artifact') return false;
+
+            const artifact = artifacts.find(a => a.id === nodeId);
+            return artifact && (
+                artifact.schema_type === 'brainstorm_item_schema' ||
+                artifact.schema_type === 'brainstorm_idea_schema' ||
+                artifact.type === 'brainstorm_item_schema' ||
+                artifact.type === 'brainstorm_idea_schema'
+            );
+        });
+
+        if (leafBrainstormIdeas.length > 0) {
+            // User has created/edited brainstorm ideas, move to idea_editing stage
+            currentStage = 'idea_editing';
+        }
+    }
+
+    // 4. Fallback logic: if no workflow nodes but we have brainstorm input artifact, set to brainstorm_input stage
     if (currentStage === 'initial' && actionContext.brainstormInput) {
         currentStage = 'brainstorm_input';
     }
@@ -220,7 +242,7 @@ function buildActionContextFromLineage(
 /**
  * Detect current workflow stage from workflow nodes
  */
-function detectStageFromWorkflowNodes(workflowNodes: WorkflowNode[]): WorkflowStage {
+export function detectStageFromWorkflowNodes(workflowNodes: WorkflowNode[]): WorkflowStage {
     // If no workflow nodes, we're at initial stage
     if (workflowNodes.length === 0) {
         return 'initial';
@@ -230,11 +252,10 @@ function detectStageFromWorkflowNodes(workflowNodes: WorkflowNode[]): WorkflowSt
     const lastNode = workflowNodes[workflowNodes.length - 1];
 
     // Map workflow node types to action stages
-    // For brainstorm_collection, we need to check if there's a chosen idea
+    // For brainstorm_collection, we should be in brainstorm_selection stage
     if (lastNode.type === 'brainstorm_collection') {
-        // Check if we have a chosen idea (this should be passed from context)
-        // For now, let's assume if we have a single brainstorm collection node, we're in idea_editing
-        return 'idea_editing'; // Changed from brainstorm_selection to idea_editing
+        // When we have a brainstorm collection, the user needs to select one idea
+        return 'brainstorm_selection';
     }
 
     const stageMap: Record<string, WorkflowStage> = {

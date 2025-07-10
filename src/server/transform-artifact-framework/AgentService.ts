@@ -37,7 +37,7 @@ export class AgentService {
 
         const phases = {
             'thinking': '正在思考您的请求',
-            'analyzing': '正在分析项目状态',
+            'analyzing': '计算中...',
             'processing': '正在处理相关内容',
             'generating': '正在生成创作内容',
             'completing': '正在完成最后步骤',

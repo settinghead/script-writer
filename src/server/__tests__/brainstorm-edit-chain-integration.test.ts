@@ -418,11 +418,13 @@ describe('Brainstorm Edit Chain Integration Test', () => {
         expect(singleIdeaEditor?.props.idea).toBeTruthy();
         expect(singleIdeaEditor?.props.idea.id).toBe('artifact-4');
 
-        // Verify that ProjectBrainstormPage is NOT included in idea_editing stage
+        // Verify that ProjectBrainstormPage IS included in idea_editing stage (read-only mode)
         const brainstormPage = displayComponents.find((component: any) =>
             component.id === 'project-brainstorm-page'
         );
-        expect(brainstormPage).toBeFalsy(); // Should not be present when we have a chosen idea
+        expect(brainstormPage).toBeTruthy(); // Should be present in read-only mode
+        expect(brainstormPage?.mode).toBe('readonly');
+        expect(brainstormPage?.props.readOnly).toBe(true);
 
         // Verify other expected components
         const brainstormInputEditor = displayComponents.find((component: any) =>

@@ -1343,7 +1343,7 @@ export function findMainWorkflowPath(
  * Create workflow when only brainstorm data exists (no outline yet)
  */
 function createBrainstormOnlyWorkflow(artifacts: ElectricArtifact[]): WorkflowNode[] {
-    // Look for brainstorm input artifacts first (highest priority)
+    // Look for brainstorm input artifacts
     const brainstormInputs = artifacts.filter(a =>
         a.schema_type === 'brainstorm_tool_input_schema' ||
         a.type === 'brainstorm_tool_input_schema'
@@ -1357,14 +1357,32 @@ function createBrainstormOnlyWorkflow(artifacts: ElectricArtifact[]): WorkflowNo
         a.type === 'brainstorm_item_schema'
     );
 
-    // Priority order: brainstorm_input > brainstorm_collections
+    // FIXED LOGIC: Properly handle the workflow progression
     let primaryArtifact: ElectricArtifact | null = null;
     let nodeType: WorkflowNode['type'];
     let title: string;
     let navigationTarget: string;
 
-    if (brainstormInputs.length > 0) {
-        // Get the latest brainstorm input
+    if (brainstormInputs.length > 0 && brainstormCollections.length > 0) {
+        // Case 1: Both input AND collection exist -> user is in selection stage
+        // Get the latest collection (the result of the brainstorm input)
+        primaryArtifact = brainstormCollections
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+
+        // Determine node type based on collection type
+        if (primaryArtifact.schema_type === 'brainstorm_item_schema' && primaryArtifact.origin_type === 'user_input') {
+            // Single manually entered idea
+            nodeType = 'brainstorm_idea';
+            title = '选中创意';
+            navigationTarget = '#ideation-edit';
+        } else {
+            // AI-generated collection - user needs to select from ideas
+            nodeType = 'brainstorm_collection';
+            title = '创意构思';
+            navigationTarget = '#brainstorm-ideas';
+        }
+    } else if (brainstormInputs.length > 0) {
+        // Case 2: Only input exists (no collection yet) -> user is in input stage
         primaryArtifact = brainstormInputs
             .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
 
@@ -1372,13 +1390,11 @@ function createBrainstormOnlyWorkflow(artifacts: ElectricArtifact[]): WorkflowNo
         title = '头脑风暴输入';
         navigationTarget = '#brainstorm-input';
     } else if (brainstormCollections.length > 0) {
-        // Get the latest collection
+        // Case 3: Only collection exists (manual entry path) -> user is in collection stage
         primaryArtifact = brainstormCollections
             .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
 
         // Determine workflow node type based on artifact type
-        // For manually entered single ideas (brainstorm_item_schema), create brainstorm_idea node
-        // For AI-generated collections (brainstorm_collection_schema), create brainstorm_collection node
         if (primaryArtifact.schema_type === 'brainstorm_item_schema' && primaryArtifact.origin_type === 'user_input') {
             // Single manually entered idea
             nodeType = 'brainstorm_idea';

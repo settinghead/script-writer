@@ -3,6 +3,7 @@ import {
     computeWorkflowSteps,
     computeDisplayComponents,
     computeWorkflowParameters,
+    computeParamsAndActionsFromLineage,
     computeUnifiedWorkflowState
 } from '../actionComputation';
 import { ProjectDataContextType } from '../../../common/types';
@@ -12,7 +13,7 @@ import { WORKFLOW_STEPS } from '../workflowTypes';
 // Mock the lineage-based computation
 vi.mock('../lineageBasedActionComputation', () => ({
     computeActionsFromLineage: vi.fn((lineageGraph, artifacts) => {
-        // Determine current stage based on artifacts
+        // Determine current stage based on artifacts and lineage graph
         let currentStage = 'initial';
 
         if (artifacts && Array.isArray(artifacts)) {
@@ -26,31 +27,109 @@ vi.mock('../lineageBasedActionComputation', () => ({
             );
             const hasOutlineSettings = artifacts.some(a =>
                 a.schema_type === 'outline_settings_schema' ||
+                a.type === 'outline_settings_schema' ||
                 a.type === 'outline_settings'
             );
             const hasChronicles = artifacts.some(a =>
                 a.schema_type === 'chronicles_schema' ||
+                a.type === 'chronicles_schema' ||
                 a.type === 'chronicles'
             );
 
+            // Determine stage based on most advanced artifact type present
             if (hasChronicles) {
                 currentStage = 'chronicles_generation';
             } else if (hasOutlineSettings) {
                 currentStage = 'outline_generation';
             } else if (hasBrainstormIdeas) {
-                currentStage = 'idea_editing';
+                // Check if we have a leaf brainstorm idea (chosen idea) via lineage graph
+                if (lineageGraph && lineageGraph.nodes) {
+                    const leafBrainstormIdeas = artifacts.filter(a => {
+                        if (a.schema_type === 'brainstorm_item_schema' || a.type === 'brainstorm_item_schema') {
+                            const node = lineageGraph.nodes.get(a.id);
+                            return node && node.isLeaf;
+                        }
+                        return false;
+                    });
+
+                    if (leafBrainstormIdeas.length > 0) {
+                        currentStage = 'idea_editing';
+                    } else {
+                        currentStage = 'brainstorm_selection';
+                    }
+                } else {
+                    currentStage = 'idea_editing';
+                }
             } else if (hasBrainstormInput) {
                 currentStage = 'brainstorm_input';
             }
+
+            // Generate mock actions based on stage
+            const actions = [];
+            switch (currentStage) {
+                case 'idea_editing':
+                    actions.push({
+                        id: 'outline_generation',
+                        type: 'form',
+                        title: '生成大纲',
+                        description: '基于选中的创意生成详细大纲',
+                        component: null,
+                        props: {},
+                        enabled: true,
+                        priority: 1
+                    });
+                    break;
+                case 'chronicles_generation':
+                    actions.push({
+                        id: 'episode_synopsis_generation',
+                        type: 'button',
+                        title: '生成剧本',
+                        description: '基于分集概要生成具体剧本',
+                        component: null,
+                        props: {},
+                        enabled: true,
+                        priority: 1
+                    });
+                    break;
+            }
+
+            return {
+                actionContext: {
+                    currentStage,
+                    hasActiveTransforms: false,
+                    effectiveBrainstormIdeas: [],
+                    chosenBrainstormIdea: null,
+                    latestOutlineSettings: null,
+                    latestChronicles: null,
+                    brainstormInput: null,
+                    workflowNodes: [],
+                    activeTransforms: [],
+                    lineageGraph,
+                    rootNodes: [],
+                    leafNodes: []
+                },
+                actions,
+                stageDescription: `Stage: ${currentStage}`
+            };
         }
 
         return {
-            actions: [],
             actionContext: {
-                currentStage,
-                hasActiveTransforms: false
+                currentStage: 'initial',
+                hasActiveTransforms: false,
+                effectiveBrainstormIdeas: [],
+                chosenBrainstormIdea: null,
+                latestOutlineSettings: null,
+                latestChronicles: null,
+                brainstormInput: null,
+                workflowNodes: [],
+                activeTransforms: [],
+                lineageGraph,
+                rootNodes: [],
+                leafNodes: []
             },
-            stageDescription: '开始创建项目'
+            actions: [],
+            stageDescription: 'Initial stage'
         };
     })
 }));
@@ -225,9 +304,9 @@ describe('Unified Workflow Computation', () => {
                     },
                     {
                         id: 'brainstorm-ideas-1',
-                        schema_type: 'brainstorm_item_schema',
-                        data: '{"title": "Test Idea", "body": "Test body"}',
-                        created_at: '2024-01-01T00:00:00Z'
+                        type: 'brainstorm_item_schema',
+                        data: '{"ideas": [{"title": "Test Idea"}]}',
+                        created_at: '2024-01-01T00:01:00Z'
                     }
                 ] as any,
                 lineageGraph: {
@@ -235,7 +314,7 @@ describe('Unified Workflow Computation', () => {
                         ['brainstorm-input-1', {
                             type: 'artifact' as const,
                             artifactId: 'brainstorm-input-1',
-                            isLeaf: false,
+                            isLeaf: false, // Not a leaf node - should be minimized
                             depth: 0,
                             artifactType: 'brainstorm_tool_input_schema',
                             sourceTransform: 'none',
@@ -254,7 +333,7 @@ describe('Unified Workflow Computation', () => {
                             schemaType: 'brainstorm_item_schema',
                             originType: 'ai_generated',
                             artifact: { id: 'brainstorm-ideas-1' } as any,
-                            createdAt: '2024-01-01T00:00:00Z'
+                            createdAt: '2024-01-01T00:01:00Z'
                         }]
                     ]),
                     edges: new Map(),
@@ -268,8 +347,46 @@ describe('Unified Workflow Computation', () => {
             expect(components).toHaveLength(2);
             expect(components[0].id).toBe('brainstorm-input-editor');
             expect(components[0].mode).toBe('readonly');
+            expect(components[0].props.minimized).toBe(true); // Should be minimized when not leaf
             expect(components[1].id).toBe('project-brainstorm-page');
             expect(components[1].props.selectionMode).toBe(true);
+        });
+
+        it('should compute components for brainstorm_input stage with non-minimized mode', () => {
+            const mockProjectData = createMockProjectData({
+                artifacts: [{
+                    id: 'brainstorm-input-1',
+                    type: 'brainstorm_tool_input_schema',
+                    data: '{"platform": "douyin", "requirements": "test"}',
+                    created_at: '2024-01-01T00:00:00Z'
+                }] as any,
+                lineageGraph: {
+                    nodes: new Map([
+                        ['brainstorm-input-1', {
+                            type: 'artifact' as const,
+                            artifactId: 'brainstorm-input-1',
+                            isLeaf: true, // Is a leaf node - should not be minimized
+                            depth: 0,
+                            artifactType: 'brainstorm_tool_input_schema',
+                            sourceTransform: 'none',
+                            schemaType: 'brainstorm_tool_input_schema',
+                            originType: 'user_input',
+                            artifact: { id: 'brainstorm-input-1' } as any,
+                            createdAt: '2024-01-01T00:00:00Z'
+                        }]
+                    ]),
+                    edges: new Map(),
+                    paths: new Map(),
+                    rootNodes: new Set(['brainstorm-input-1'])
+                }
+            });
+
+            const components = computeDisplayComponents('brainstorm_input', false, mockProjectData);
+
+            expect(components).toHaveLength(1);
+            expect(components[0].id).toBe('brainstorm-input-editor');
+            expect(components[0].mode).toBe('editable');
+            expect(components[0].props.minimized).toBe(false); // Should not be minimized at brainstorm_input stage
         });
 
         it('should compute components for idea_editing stage', () => {
@@ -324,11 +441,75 @@ describe('Unified Workflow Computation', () => {
 
             const components = computeDisplayComponents('idea_editing', false, mockProjectData);
 
-            expect(components).toHaveLength(2); // brainstorm-input-editor + single-brainstorm-idea-editor
+            expect(components).toHaveLength(3); // brainstorm-input-editor + project-brainstorm-page + single-brainstorm-idea-editor
             expect(components[0].id).toBe('brainstorm-input-editor');
             expect(components[0].mode).toBe('readonly');
-            expect(components[1].id).toBe('single-brainstorm-idea-editor');
-            expect(components[1].mode).toBe('editable');
+            expect(components[1].id).toBe('project-brainstorm-page');
+            expect(components[1].mode).toBe('readonly');
+            expect(components[1].props.readOnly).toBe(true);
+            expect(components[2].id).toBe('single-brainstorm-idea-editor');
+            expect(components[2].mode).toBe('editable');
+        });
+
+        it('should compute components for idea_editing stage with minimized brainstorm input', () => {
+            const mockProjectData = createMockProjectData({
+                artifacts: [
+                    {
+                        id: 'brainstorm-input-1',
+                        type: 'brainstorm_tool_input_schema',
+                        data: '{"platform": "douyin", "requirements": "test"}',
+                        created_at: '2024-01-01T00:00:00Z'
+                    },
+                    {
+                        id: 'brainstorm-ideas-1',
+                        type: 'brainstorm_item_schema',
+                        data: '{"ideas": [{"title": "Test Idea"}]}',
+                        created_at: '2024-01-01T00:00:00Z'
+                    }
+                ] as any,
+                lineageGraph: {
+                    nodes: new Map([
+                        ['brainstorm-input-1', {
+                            type: 'artifact' as const,
+                            artifactId: 'brainstorm-input-1',
+                            isLeaf: false, // Not a leaf node - should be minimized
+                            depth: 0,
+                            artifactType: 'brainstorm_tool_input_schema',
+                            sourceTransform: 'none',
+                            schemaType: 'brainstorm_tool_input_schema',
+                            originType: 'user_input',
+                            artifact: { id: 'brainstorm-input-1' } as any,
+                            createdAt: '2024-01-01T00:00:00Z'
+                        }],
+                        ['brainstorm-ideas-1', {
+                            type: 'artifact' as const,
+                            artifactId: 'brainstorm-ideas-1',
+                            isLeaf: true,
+                            depth: 1,
+                            artifactType: 'brainstorm_item_schema',
+                            sourceTransform: 'none',
+                            schemaType: 'brainstorm_item_schema',
+                            originType: 'ai_generated',
+                            artifact: { id: 'brainstorm-ideas-1' } as any,
+                            createdAt: '2024-01-01T00:00:00Z'
+                        }]
+                    ]),
+                    edges: new Map(),
+                    paths: new Map(),
+                    rootNodes: new Set(['brainstorm-input-1'])
+                }
+            });
+
+            const components = computeDisplayComponents('idea_editing', false, mockProjectData);
+
+            expect(components).toHaveLength(3); // brainstorm-input-editor + project-brainstorm-page + single-brainstorm-idea-editor
+            expect(components[0].id).toBe('brainstorm-input-editor');
+            expect(components[0].mode).toBe('readonly');
+            expect(components[0].props.minimized).toBe(true); // Should be minimized when not leaf
+            expect(components[1].id).toBe('project-brainstorm-page');
+            expect(components[1].mode).toBe('readonly');
+            expect(components[1].props.readOnly).toBe(true);
+            expect(components[2].id).toBe('single-brainstorm-idea-editor');
         });
 
         it('should handle active transforms by setting readonly mode', () => {
@@ -420,6 +601,423 @@ describe('Unified Workflow Computation', () => {
             // Should be sorted by priority (1, 2, 3...)
             expect(components[0].priority).toBe(1);
             expect(components[1].priority).toBe(2);
+        });
+
+        it('should show SingleBrainstormIdeaEditor after human transform creation', () => {
+            // Test case: User selects an idea from brainstorm collection and creates human transform
+            const mockProjectData = createMockProjectData({
+                artifacts: [
+                    {
+                        id: 'brainstorm-input-1',
+                        type: 'brainstorm_tool_input_schema',
+                        data: '{"platform": "douyin", "requirements": "test"}',
+                        created_at: '2024-01-01T00:00:00Z'
+                    },
+                    {
+                        id: 'brainstorm-collection-1',
+                        type: 'brainstorm_collection_schema',
+                        data: '{"ideas": [{"title": "Original Idea", "body": "Original body"}]}',
+                        created_at: '2024-01-01T00:01:00Z'
+                    },
+                    {
+                        id: 'human-edited-idea-1',
+                        type: 'brainstorm_item_schema',
+                        data: '{"title": "Edited Idea", "body": "Edited body"}',
+                        origin_type: 'user_input',
+                        created_at: '2024-01-01T00:02:00Z'
+                    }
+                ] as any,
+                transforms: [
+                    {
+                        id: 'transform-1',
+                        type: 'human',
+                        status: 'completed',
+                        created_at: '2024-01-01T00:02:00Z'
+                    }
+                ] as any,
+                humanTransforms: [
+                    {
+                        id: 'human-transform-1',
+                        transform_id: 'transform-1',
+                        derivation_path: '$.ideas[0]',
+                        created_at: '2024-01-01T00:02:00Z'
+                    }
+                ] as any,
+                transformInputs: [
+                    {
+                        id: 'input-1',
+                        transform_id: 'transform-1',
+                        artifact_id: 'brainstorm-collection-1',
+                        artifact_path: '$.ideas[0]',
+                        created_at: '2024-01-01T00:02:00Z'
+                    }
+                ] as any,
+                transformOutputs: [
+                    {
+                        id: 'output-1',
+                        transform_id: 'transform-1',
+                        artifact_id: 'human-edited-idea-1',
+                        created_at: '2024-01-01T00:02:00Z'
+                    }
+                ] as any,
+                lineageGraph: {
+                    nodes: new Map([
+                        ['brainstorm-input-1', {
+                            type: 'artifact' as const,
+                            artifactId: 'brainstorm-input-1',
+                            isLeaf: false, // Not leaf because it has descendants
+                            depth: 0,
+                            artifactType: 'brainstorm_tool_input_schema',
+                            sourceTransform: 'none',
+                            schemaType: 'brainstorm_tool_input_schema',
+                            originType: 'user_input',
+                            artifact: { id: 'brainstorm-input-1' } as any,
+                            createdAt: '2024-01-01T00:00:00Z'
+                        }],
+                        ['brainstorm-collection-1', {
+                            type: 'artifact' as const,
+                            artifactId: 'brainstorm-collection-1',
+                            isLeaf: false, // Not leaf because human transform uses it as input
+                            depth: 1,
+                            artifactType: 'brainstorm_collection_schema',
+                            sourceTransform: 'none',
+                            schemaType: 'brainstorm_collection_schema',
+                            originType: 'ai_generated',
+                            artifact: { id: 'brainstorm-collection-1' } as any,
+                            createdAt: '2024-01-01T00:01:00Z'
+                        }],
+                        ['human-edited-idea-1', {
+                            type: 'artifact' as const,
+                            artifactId: 'human-edited-idea-1',
+                            isLeaf: true, // This is the leaf node - the chosen idea
+                            depth: 2,
+                            artifactType: 'brainstorm_item_schema',
+                            sourceTransform: 'none',
+                            schemaType: 'brainstorm_item_schema',
+                            originType: 'user_input',
+                            artifact: { id: 'human-edited-idea-1' } as any,
+                            createdAt: '2024-01-01T00:02:00Z'
+                        }]
+                    ]),
+                    edges: new Map([
+                        ['brainstorm-collection-1', ['human-edited-idea-1']]
+                    ]),
+                    paths: new Map(),
+                    rootNodes: new Set(['brainstorm-input-1'])
+                }
+            });
+
+            const components = computeDisplayComponents('idea_editing', false, mockProjectData);
+
+            // Should have brainstorm input (minimized), brainstorm page (readonly), and single brainstorm idea editor
+            expect(components).toHaveLength(3);
+
+            // First component should be minimized brainstorm input
+            expect(components[0].id).toBe('brainstorm-input-editor');
+            expect(components[0].props.minimized).toBe(true);
+
+            // Second component should be readonly brainstorm page
+            expect(components[1].id).toBe('project-brainstorm-page');
+            expect(components[1].mode).toBe('readonly');
+            expect(components[1].props.readOnly).toBe(true);
+
+            // Third component should be SingleBrainstormIdeaEditor with the human-edited idea
+            expect(components[2].id).toBe('single-brainstorm-idea-editor');
+            expect(components[2].props.idea).toBeDefined();
+            expect(components[2].props.idea.id).toBe('human-edited-idea-1');
+            expect(components[2].props.isEditable).toBe(true); // Should be editable since it's user_input leaf node
+        });
+
+        it('should show correct actions after human transform creation', () => {
+            // Test case: After human transform, user should see outline generation action
+            const mockProjectData = createMockProjectData({
+                artifacts: [
+                    {
+                        id: 'brainstorm-input-1',
+                        type: 'brainstorm_tool_input_schema',
+                        data: '{"platform": "douyin", "requirements": "test"}',
+                        created_at: '2024-01-01T00:00:00Z'
+                    },
+                    {
+                        id: 'brainstorm-collection-1',
+                        type: 'brainstorm_collection_schema',
+                        data: '{"ideas": [{"title": "Original Idea", "body": "Original body"}]}',
+                        created_at: '2024-01-01T00:01:00Z'
+                    },
+                    {
+                        id: 'human-edited-idea-1',
+                        type: 'brainstorm_item_schema',
+                        data: '{"title": "Edited Idea", "body": "Edited body"}',
+                        origin_type: 'user_input',
+                        created_at: '2024-01-01T00:02:00Z'
+                    }
+                ] as any,
+                transforms: [
+                    {
+                        id: 'transform-1',
+                        type: 'human',
+                        status: 'completed',
+                        created_at: '2024-01-01T00:02:00Z'
+                    }
+                ] as any,
+                humanTransforms: [
+                    {
+                        id: 'human-transform-1',
+                        transform_id: 'transform-1',
+                        derivation_path: '$.ideas[0]',
+                        created_at: '2024-01-01T00:02:00Z'
+                    }
+                ] as any,
+                transformInputs: [
+                    {
+                        id: 'input-1',
+                        transform_id: 'transform-1',
+                        artifact_id: 'brainstorm-collection-1',
+                        artifact_path: '$.ideas[0]',
+                        created_at: '2024-01-01T00:02:00Z'
+                    }
+                ] as any,
+                transformOutputs: [
+                    {
+                        id: 'output-1',
+                        transform_id: 'transform-1',
+                        artifact_id: 'human-edited-idea-1',
+                        created_at: '2024-01-01T00:02:00Z'
+                    }
+                ] as any,
+                lineageGraph: {
+                    nodes: new Map([
+                        ['human-edited-idea-1', {
+                            type: 'artifact' as const,
+                            artifactId: 'human-edited-idea-1',
+                            isLeaf: true, // This is the leaf node
+                            depth: 2,
+                            artifactType: 'brainstorm_item_schema',
+                            sourceTransform: 'none',
+                            schemaType: 'brainstorm_item_schema',
+                            originType: 'user_input',
+                            artifact: { id: 'human-edited-idea-1' } as any,
+                            createdAt: '2024-01-01T00:02:00Z'
+                        }]
+                    ]),
+                    edges: new Map(),
+                    paths: new Map(),
+                    rootNodes: new Set(['human-edited-idea-1'])
+                }
+            });
+
+            const result = computeParamsAndActionsFromLineage(mockProjectData);
+
+            // Should be in idea_editing stage
+            expect(result.currentStage).toBe('idea_editing');
+
+            // Should have outline generation action
+            expect(result.actions).toHaveLength(1);
+            expect(result.actions[0].id).toBe('outline_generation');
+            expect(result.actions[0].title).toBe('生成大纲');
+        });
+
+        it('should handle hard-coded vs dynamic stage detection', () => {
+            // Test to check if the computation is too hard-coded for specific scenarios
+            // This simulates a more complex chain: Input -> Collection -> Human Edit -> Outline -> Chronicles
+            const mockProjectData = createMockProjectData({
+                artifacts: [
+                    {
+                        id: 'brainstorm-input-1',
+                        type: 'brainstorm_tool_input_schema',
+                        data: '{"platform": "douyin", "requirements": "test"}',
+                        created_at: '2024-01-01T00:00:00Z'
+                    },
+                    {
+                        id: 'brainstorm-collection-1',
+                        type: 'brainstorm_collection_schema',
+                        data: '{"ideas": [{"title": "Original Idea", "body": "Original body"}]}',
+                        created_at: '2024-01-01T00:01:00Z'
+                    },
+                    {
+                        id: 'human-edited-idea-1',
+                        type: 'brainstorm_item_schema',
+                        data: '{"title": "Edited Idea", "body": "Edited body"}',
+                        origin_type: 'user_input',
+                        created_at: '2024-01-01T00:02:00Z'
+                    },
+                    {
+                        id: 'outline-1',
+                        type: 'outline_settings_schema',
+                        data: '{"episodes": 60, "genre": "modern"}',
+                        created_at: '2024-01-01T00:03:00Z'
+                    },
+                    {
+                        id: 'chronicles-1',
+                        type: 'chronicles_schema',
+                        data: '{"episodes": [{"title": "Episode 1"}]}',
+                        created_at: '2024-01-01T00:04:00Z'
+                    }
+                ] as any,
+                transforms: [
+                    {
+                        id: 'transform-1',
+                        type: 'human',
+                        status: 'completed',
+                        created_at: '2024-01-01T00:02:00Z'
+                    },
+                    {
+                        id: 'transform-2',
+                        type: 'llm',
+                        status: 'completed',
+                        created_at: '2024-01-01T00:03:00Z'
+                    },
+                    {
+                        id: 'transform-3',
+                        type: 'llm',
+                        status: 'completed',
+                        created_at: '2024-01-01T00:04:00Z'
+                    }
+                ] as any,
+                humanTransforms: [
+                    {
+                        id: 'human-transform-1',
+                        transform_id: 'transform-1',
+                        derivation_path: '$.ideas[0]',
+                        created_at: '2024-01-01T00:02:00Z'
+                    }
+                ] as any,
+                transformInputs: [
+                    {
+                        id: 'input-1',
+                        transform_id: 'transform-1',
+                        artifact_id: 'brainstorm-collection-1',
+                        artifact_path: '$.ideas[0]',
+                        created_at: '2024-01-01T00:02:00Z'
+                    },
+                    {
+                        id: 'input-2',
+                        transform_id: 'transform-2',
+                        artifact_id: 'human-edited-idea-1',
+                        created_at: '2024-01-01T00:03:00Z'
+                    },
+                    {
+                        id: 'input-3',
+                        transform_id: 'transform-3',
+                        artifact_id: 'outline-1',
+                        created_at: '2024-01-01T00:04:00Z'
+                    }
+                ] as any,
+                transformOutputs: [
+                    {
+                        id: 'output-1',
+                        transform_id: 'transform-1',
+                        artifact_id: 'human-edited-idea-1',
+                        created_at: '2024-01-01T00:02:00Z'
+                    },
+                    {
+                        id: 'output-2',
+                        transform_id: 'transform-2',
+                        artifact_id: 'outline-1',
+                        created_at: '2024-01-01T00:03:00Z'
+                    },
+                    {
+                        id: 'output-3',
+                        transform_id: 'transform-3',
+                        artifact_id: 'chronicles-1',
+                        created_at: '2024-01-01T00:04:00Z'
+                    }
+                ] as any,
+                lineageGraph: {
+                    nodes: new Map([
+                        ['brainstorm-input-1', {
+                            type: 'artifact' as const,
+                            artifactId: 'brainstorm-input-1',
+                            isLeaf: false, // Not leaf because it has descendants
+                            depth: 0,
+                            artifactType: 'brainstorm_tool_input_schema',
+                            sourceTransform: 'none',
+                            schemaType: 'brainstorm_tool_input_schema',
+                            originType: 'user_input',
+                            artifact: { id: 'brainstorm-input-1' } as any,
+                            createdAt: '2024-01-01T00:00:00Z'
+                        }],
+                        ['brainstorm-collection-1', {
+                            type: 'artifact' as const,
+                            artifactId: 'brainstorm-collection-1',
+                            isLeaf: false, // Not leaf because human transform uses it as input
+                            depth: 1,
+                            artifactType: 'brainstorm_collection_schema',
+                            sourceTransform: 'none',
+                            schemaType: 'brainstorm_collection_schema',
+                            originType: 'ai_generated',
+                            artifact: { id: 'brainstorm-collection-1' } as any,
+                            createdAt: '2024-01-01T00:01:00Z'
+                        }],
+                        ['human-edited-idea-1', {
+                            type: 'artifact' as const,
+                            artifactId: 'human-edited-idea-1',
+                            isLeaf: false, // Not leaf because outline uses it as input
+                            depth: 2,
+                            artifactType: 'brainstorm_item_schema',
+                            sourceTransform: 'none',
+                            schemaType: 'brainstorm_item_schema',
+                            originType: 'user_input',
+                            artifact: { id: 'human-edited-idea-1' } as any,
+                            createdAt: '2024-01-01T00:02:00Z'
+                        }],
+                        ['outline-1', {
+                            type: 'artifact' as const,
+                            artifactId: 'outline-1',
+                            isLeaf: false, // Not leaf because chronicles uses it as input
+                            depth: 3,
+                            artifactType: 'outline_settings_schema',
+                            sourceTransform: 'none',
+                            schemaType: 'outline_settings_schema',
+                            originType: 'ai_generated',
+                            artifact: { id: 'outline-1' } as any,
+                            createdAt: '2024-01-01T00:03:00Z'
+                        }],
+                        ['chronicles-1', {
+                            type: 'artifact' as const,
+                            artifactId: 'chronicles-1',
+                            isLeaf: true, // Chronicles is the leaf node
+                            depth: 4,
+                            artifactType: 'chronicles_schema',
+                            sourceTransform: 'none',
+                            schemaType: 'chronicles_schema',
+                            originType: 'ai_generated',
+                            artifact: { id: 'chronicles-1' } as any,
+                            createdAt: '2024-01-01T00:04:00Z'
+                        }]
+                    ]),
+                    edges: new Map([
+                        ['brainstorm-input-1', ['brainstorm-collection-1']],
+                        ['brainstorm-collection-1', ['human-edited-idea-1']],
+                        ['human-edited-idea-1', ['outline-1']],
+                        ['outline-1', ['chronicles-1']]
+                    ]),
+                    paths: new Map(),
+                    rootNodes: new Set(['brainstorm-input-1'])
+                }
+            });
+
+            const result = computeParamsAndActionsFromLineage(mockProjectData);
+
+            // Should be in chronicles_generation stage (most advanced stage)
+            expect(result.currentStage).toBe('chronicles_generation');
+
+            // Should have episode generation action
+            expect(result.actions).toHaveLength(1);
+            expect(result.actions[0].id).toBe('episode_synopsis_generation');
+
+            // Test display components for this complex scenario
+            const components = computeDisplayComponents('chronicles_generation', false, mockProjectData);
+
+            // Should show all previous components in readonly mode
+            expect(components.length).toBeGreaterThan(0);
+
+            // Should include brainstorm input (minimized), chosen idea, outline, and chronicles
+            const componentIds = components.map(c => c.id);
+            expect(componentIds).toContain('brainstorm-input-editor');
+            expect(componentIds).toContain('single-brainstorm-idea-editor');
+            expect(componentIds).toContain('outline-settings-display');
+            expect(componentIds).toContain('chronicles-display');
         });
     });
 
@@ -535,7 +1133,7 @@ describe('Unified Workflow Computation', () => {
             const state = computeUnifiedWorkflowState(mockProjectData, 'test-project');
 
             expect(state.steps).toHaveLength(7); // AI path: 创意输入 → 头脑风暴 → 创意编辑 → 剧本框架 → 时间顺序大纲 → 每集大纲 → 分集剧本
-            expect(state.displayComponents).toHaveLength(2); // brainstorm-input-editor + single-brainstorm-idea-editor
+            expect(state.displayComponents).toHaveLength(3); // brainstorm-input-editor + project-brainstorm-page + single-brainstorm-idea-editor
             expect(Array.isArray(state.actions)).toBe(true); // Actions are computed
             expect(state.parameters.currentStage).toBe('idea_editing');
             expect(state.parameters.hasActiveTransforms).toBe(false);
@@ -592,7 +1190,7 @@ describe('Unified Workflow Computation', () => {
 
             const state = computeUnifiedWorkflowState(mockProjectData, 'test-project');
 
-            expect(state.displayComponents).toHaveLength(2);
+            expect(state.displayComponents).toHaveLength(3);
             expect(state.parameters.currentStage).toBe('idea_editing');
         });
     });

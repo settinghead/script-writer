@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
-import { Card, Button, Typography, message, Tag, Space, InputNumber, Input } from 'antd';
-import { BulbOutlined, RightOutlined } from '@ant-design/icons';
+import { Card, Button, Typography, message, Tag, Space, InputNumber, Input, Collapse } from 'antd';
+import { BulbOutlined, RightOutlined, DownOutlined } from '@ant-design/icons';
 import { useProjectData } from '../contexts/ProjectDataContext';
 import { YJSArtifactProvider, useYJSField, useYJSArtifactContext } from '../transform-artifact-framework/contexts/YJSArtifactContext';
 import { YJSTextField, YJSTextAreaField, YJSNumberField } from '../transform-artifact-framework/components/YJSField';
@@ -8,10 +8,12 @@ import GenreSelectionPopup, { MAX_GENRE_SELECTIONS } from './GenreSelectionPopup
 import PlatformSelection from './PlatformSelection';
 
 const { Text, Title } = Typography;
+const { Panel } = Collapse;
 
 interface BrainstormInputEditorProps {
     artifact: any;
     isEditable?: boolean;
+    minimized?: boolean;
     currentStage?: string;
     onViewOriginalIdeas?: () => void;
 }
@@ -97,13 +99,113 @@ const YJSPlatformSelectionField: React.FC<{ path: string; placeholder?: string }
     );
 };
 
+// Component to generate summary text from brainstorm params
+const BrainstormSummary: React.FC = () => {
+    const { value: platform } = useYJSField('platform');
+    const { value: genre } = useYJSField('genre');
+    const { value: numberOfIdeas } = useYJSField('numberOfIdeas');
+    const { value: otherRequirements } = useYJSField('other_requirements');
+
+    const summaryText = useMemo(() => {
+        const parts: string[] = [];
+
+        if (platform) {
+            parts.push(`平台: ${platform}`);
+        }
+
+        if (genre) {
+            parts.push(`类型: ${genre}`);
+        }
+
+        if (numberOfIdeas) {
+            parts.push(`数量: ${numberOfIdeas}个`);
+        }
+
+        if (otherRequirements && otherRequirements.trim()) {
+            const truncated = otherRequirements.length > 30
+                ? otherRequirements.substring(0, 30) + '...'
+                : otherRequirements;
+            parts.push(`要求: ${truncated}`);
+        }
+
+        return parts.length > 0 ? parts.join(' | ') : '头脑风暴参数';
+    }, [platform, genre, numberOfIdeas, otherRequirements]);
+
+    return (
+        <Text type="secondary" style={{ fontSize: '14px' }}>
+            {summaryText}
+        </Text>
+    );
+};
+
 // Separate component that uses YJS context
-const BrainstormInputForm: React.FC = () => {
+const BrainstormInputForm: React.FC<{ minimized?: boolean }> = ({ minimized = false }) => {
     const { value: platform } = useYJSField('platform');
     const { value: genrePaths } = useYJSField('genrePaths');
     const { value: genre } = useYJSField('genre');
     const { value: numberOfIdeas } = useYJSField('numberOfIdeas');
     const { value: otherRequirements } = useYJSField('other_requirements');
+
+    if (minimized) {
+        return (
+            <Collapse
+                ghost
+                size="small"
+                style={{
+                    backgroundColor: '#1a1a1a',
+                    border: '1px solid #434343',
+                    borderRadius: '6px'
+                }}
+            >
+                <Panel
+                    header={
+                        <Space>
+                            <BulbOutlined style={{ color: '#1890ff' }} />
+                            <Text strong>头脑风暴参数</Text>
+                            <BrainstormSummary />
+                        </Space>
+                    }
+                    key="brainstorm-params"
+                    style={{
+                        backgroundColor: '#1a1a1a',
+                        border: 'none'
+                    }}
+                >
+                    <Space direction="vertical" style={{ width: '100%' }} size="large">
+                        <div>
+                            <Text strong>目标平台：</Text>
+                            <div style={{ marginTop: '8px' }}>
+                                <Text type="secondary">{platform || '未设置'}</Text>
+                            </div>
+                        </div>
+
+                        <div>
+                            <Text strong>故事类型：</Text>
+                            <div style={{ marginTop: '8px' }}>
+                                <Text type="secondary">{genre || '未设置'}</Text>
+                            </div>
+                        </div>
+
+                        <div>
+                            <Text strong>生成创意数量：</Text>
+                            <div style={{ marginTop: '8px' }}>
+                                <Text type="secondary">{numberOfIdeas || '3'}个</Text>
+                            </div>
+                        </div>
+
+                        {otherRequirements && (
+                            <div>
+                                <Text strong>其他要求：</Text>
+                                <div style={{ marginTop: '8px' }}>
+                                    <Text type="secondary">{otherRequirements}</Text>
+                                </div>
+                            </div>
+                        )}
+                    </Space>
+                </Panel>
+            </Collapse>
+        );
+    }
 
     return (
         <Card
@@ -163,7 +265,8 @@ const BrainstormInputForm: React.FC = () => {
 // Main component
 const BrainstormInputEditor: React.FC<BrainstormInputEditorProps> = ({
     artifact,
-    isEditable = true
+    isEditable = true,
+    minimized = false
 }) => {
     if (!artifact) {
         return (
@@ -175,7 +278,7 @@ const BrainstormInputEditor: React.FC<BrainstormInputEditorProps> = ({
 
     return (
         <YJSArtifactProvider artifactId={artifact.id}>
-            <BrainstormInputForm />
+            <BrainstormInputForm minimized={minimized} />
         </YJSArtifactProvider>
     );
 };

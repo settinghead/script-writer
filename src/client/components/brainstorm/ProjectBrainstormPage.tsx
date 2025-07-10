@@ -20,7 +20,8 @@ const IdeaCardWrapper: React.FC<{
   chosenIdea: any;
   ideaOutlines: any[];
   onIdeaClick: (collectionId: string, index: number) => void;
-}> = ({ idea, index, isSelected, chosenIdea, ideaOutlines, onIdeaClick }) => {
+  readOnly?: boolean;
+}> = ({ idea, index, isSelected, chosenIdea, ideaOutlines, onIdeaClick, readOnly = false }) => {
   const projectData = useProjectData();
 
   // Check if this idea has descendants (transforms using it as input)
@@ -57,17 +58,32 @@ const IdeaCardWrapper: React.FC<{
       index={index}
       isSelected={isSelected}
       isChosen={!!isChosenIdea}
-      hasEditableDescendants={hasEditableDescendants}
+      hasEditableDescendants={hasEditableDescendants || readOnly} // Treat read-only as having descendants to disable clicks
       ideaOutlines={ideaOutlines}
-      onIdeaClick={onIdeaClick}
+      onIdeaClick={readOnly ? () => { } : onIdeaClick} // Disable clicks in read-only mode
     />
   );
 };
 
-export default function ProjectBrainstormPage() {
+interface ProjectBrainstormPageProps {
+  ideas?: IdeaWithTitle[];
+  selectionMode?: boolean;
+  isLoading?: boolean;
+  readOnly?: boolean;
+}
+
+export default function ProjectBrainstormPage(props: ProjectBrainstormPageProps = {}) {
   const { projectId } = useParams<{ projectId: string }>()
   const navigate = useNavigate()
   const [ideaOutlines, setIdeaOutlines] = useState<Record<string, any[]>>({});
+
+  // Extract props with defaults
+  const {
+    ideas: propsIdeas,
+    selectionMode: propsSelectionMode,
+    isLoading: propsIsLoading,
+    readOnly = false
+  } = props;
 
   if (!projectId) {
     navigate('/projects')
@@ -197,22 +213,36 @@ export default function ProjectBrainstormPage() {
     }
   }, [latestIdeas, projectData.isLoading, projectData.error]);
 
-  // Use the better data source
+  // Use the better data source - prioritize props when available
   const ideas = useMemo(() => {
+    // If props provide ideas, use them (for read-only mode)
+    if (propsIdeas && propsIdeas.length > 0) {
+      return propsIdeas;
+    }
+
+    // Otherwise use the computed data
     if (latestIdeas === "pending" || latestIdeas === "error") {
       return fallbackIdeas;
     }
     return latestIdeas.length > 0 ? latestIdeas : fallbackIdeas;
-  }, [latestIdeas, fallbackIdeas]);
+  }, [propsIdeas, latestIdeas, fallbackIdeas]);
 
-  const isStreaming = status === 'streaming';
-  const isConnecting = isLoading && ideas.length === 0;
+  const isStreaming = propsIsLoading ?? status === 'streaming';
+  const isConnecting = (propsIsLoading ?? isLoading) && ideas.length === 0;
 
   // Determine if we should show collapsed view
   const isCollapsedView = chosenIdea && !chosenIdeaLoading;
 
+  // Determine if we're in selection mode
+  const inSelectionMode = propsSelectionMode ?? (!chosenIdea && !readOnly);
+
   // Handle idea card click - store selection in action items store
   const handleIdeaClick = useCallback((collectionId: string, index: number) => {
+    // Don't handle clicks if in read-only mode
+    if (readOnly) {
+      return;
+    }
+
     // Don't handle clicks if we already have a chosen idea
     if (chosenIdea) {
       return;
@@ -237,7 +267,7 @@ export default function ProjectBrainstormPage() {
       artifactPath: clickedIdea.artifactPath,
       index: index
     });
-  }, [chosenIdea, ideas, store]);
+  }, [readOnly, chosenIdea, ideas, store]);
 
   // Handle stop streaming
   const handleStop = useCallback(() => {
@@ -341,9 +371,9 @@ export default function ProjectBrainstormPage() {
               </div>
 
               {/* Selection instruction */}
-              {!chosenIdea && (
-                <div className="text-center py-4">
-                  <Text className="text-gray-400">
+              {inSelectionMode && !chosenIdea && (
+                <div className="text-center py-4 " style={{ padding: "12px 12px" }}>
+                  <Text className="text-gray-400" >
                     {store.selectedBrainstormIdea
                       ? `已选择创意 ${store.selectedBrainstormIdea.index + 1}，请使用下方的操作面板确认选择`
                       : '点击选择一个创意想法继续开发'
@@ -352,11 +382,20 @@ export default function ProjectBrainstormPage() {
                 </div>
               )}
 
+              {/* Read-only mode instruction */}
+              {readOnly && (
+                <div className="text-center py-4 " style={{ padding: "12px 12px" }}>
+                  <Text className="text-gray-400">
+                    创意回顾 - 这些是之前生成的创意想法
+                  </Text>
+                </div>
+              )}
+
               {/* Ideas grid - responsive layout based on collapsed state */}
               <div className={isCollapsedView
                 ? "grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3"
                 : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-              }>
+              } style={{ padding: "12px 12px" }}>
                 {ideas.map((idea, index) => (
                   <IdeaCardWrapper
                     key={`${idea.artifactId}-${index}`}
@@ -366,6 +405,7 @@ export default function ProjectBrainstormPage() {
                     chosenIdea={chosenIdea}
                     ideaOutlines={ideaOutlines[idea.artifactId || ''] || []}
                     onIdeaClick={handleIdeaClick}
+                    readOnly={readOnly}
                   />
                 ))}
               </div>
