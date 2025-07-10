@@ -10,7 +10,7 @@ A collaborative Chinese short drama script writing application built on the [Tra
 - **AI-Powered Script Creation** - From initial brainstorming to complete episode scripts
 - **Chinese Short Drama Focus** - Specialized for 抖音, 快手, and other Chinese platforms
 - **去脸谱化 Content** - Emphasizes modern, non-stereotypical characters and plots
-- **Real-time Collaboration** - Multiple creators can work simultaneously
+- **Real-time Collaboration** - YJS-powered collaborative editing with conflict resolution
 - **Complete Project Workflow** - 灵感 → 剧本框架 → 时间顺序大纲 → 分集 → 剧本 pipeline
 
 ## Application-Specific Features
@@ -390,7 +390,7 @@ This dual-computation system ensures that users always see the correct workflow 
 - **Project Hierarchy** - Project → Episodes → Scripts structure
 - **Artifact Lineage** - Complete audit trail of all content modifications
 - **Version Control** - Edit history with "always edit latest" principle
-- **Collaborative Editing** - Multiple users can edit different parts simultaneously
+- **Collaborative Editing** - YJS-powered real-time collaborative editing with conflict resolution
 
 **Content Types**:
 - **Brainstorm Ideas** - Initial story concepts with platform targeting
@@ -398,6 +398,79 @@ This dual-computation system ensures that users always see the correct workflow 
 - **Chronicles** - Chronological story timeline and staged progression
 - **Episode Synopses** - Individual episode breakdowns
 - **Script Content** - Full dialogue and scene descriptions
+
+## Real-time Collaboration with YJS
+
+觅光助创 supports real-time collaborative editing powered by YJS (Yjs) + Electric SQL:
+
+### Collaboration Features
+- **Live Collaborative Editing** - Multiple users can edit artifacts simultaneously
+- **Conflict-Free Synchronization** - CRDT-based conflict resolution
+- **Optimistic Updates** - Immediate UI feedback with automatic conflict resolution
+- **Path-Based Field Access** - Edit any nested field using JSON paths
+- **Context-Based Architecture** - Unified state management for all YJS operations
+
+### YJS Integration Architecture
+
+**Hybrid Approach**:
+- **YJS Documents** - CRDT-based collaborative data structures for real-time editing
+- **Electric SQL Sync** - Persistent storage with real-time updates
+- **Transform Framework** - YJS for editing, Electric SQL for audit trails
+- **Conflict Resolution** - Automatic merge with user edit priority
+
+### Usage Examples
+
+**Context-Based Editing**:
+```typescript
+// Enable YJS for artifact editing
+<YJSArtifactProvider artifactId={artifactId}>
+  <YJSTextField path="title" placeholder="输入标题..." />
+  <YJSArrayField path="themes" placeholder="每行一个主题..." />
+  <YJSTextField path="characters.male_lead.name" placeholder="男主姓名..." />
+</YJSArtifactProvider>
+```
+
+**YJS Hook Usage**:
+```typescript
+// Access YJS document directly
+const { doc, provider, isConnected } = useYJSArtifact(artifactId);
+
+// Edit text collaboratively
+const yText = doc.getText('content');
+yText.insert(0, 'Hello collaborative world!');
+```
+
+### Implemented YJS Components
+
+**Completed Migrations**:
+- ✅ **BrainstormInputEditor** - Requirements input with YJS textarea field
+- ✅ **SingleBrainstormIdeaEditor** - Idea editing with YJS title/body fields  
+- ✅ **OutlineSettingsDisplay** - Complex nested editing with character management
+- 🚧 **ChronicleStageCard** - Stage descriptions (in progress)
+
+**YJS Field Components**:
+- **YJSTextField** - Click-to-edit text input with debounced auto-save
+- **YJSTextAreaField** - Multi-line text editing with auto-sizing
+- **YJSArrayField** - Array editing with textarea (one item per line)
+- **Keyboard shortcuts** - Enter to save, Escape to cancel
+- **Visual feedback** - Hover states, loading indicators, collaborative mode indicators
+
+### Benefits Achieved
+
+**Real-time Collaboration**:
+- Multiple users can edit brainstorm requirements, story ideas, and outline settings simultaneously
+- Immediate visual feedback during collaboration
+- Automatic conflict resolution without user intervention
+
+**Code Reduction**:
+- ~500+ lines of complex state management code removed
+- Eliminated debounced saves, field-level change handlers, and complex path management
+- Simplified component architecture with path-based field access
+
+**User Experience**:
+- Maintained all existing UI states and interactions while adding collaborative features
+- Advanced features like complex nested object editing and dynamic array management
+- Rich read-only displays with conditional sections
 
 ## Technical Architecture
 
@@ -438,6 +511,7 @@ This dual-computation system ensures that users always see the correct workflow 
 - **TanStack Query** - Server state management with intelligent caching
 - **Zustand** - Global client state for UI interactions
 - **Electric SQL React hooks** - Real-time data synchronization
+- **YJS Integration** - Real-time collaborative editing with context-based architecture
 - **Ant Design** - Component library with dark theme throughout
 - **SectionWrapper Architecture** - Unified section management with automatic status detection
 
@@ -446,11 +520,13 @@ This dual-computation system ensures that users always see the correct workflow 
 - **Streaming Framework** - Unified pattern for all AI tools
 - **Template System** - Chinese short drama specific prompts
 - **Electric SQL Proxy** - Authenticated real-time data access
+- **YJS Service** - Document creation, persistence, and artifact conversion
 
 **Database (PostgreSQL + Electric SQL)**:
 - **Project-Based Access Control** - All content scoped to projects
 - **Artifact System** - Immutable content with edit lineage
 - **Transform Tracking** - Complete audit trail of all modifications
+- **YJS Tables** - Real-time collaborative document storage and updates
 
 ### Script Writing UI Components
 
@@ -772,10 +848,10 @@ cd script-writer
 # Start PostgreSQL + Electric SQL
 docker compose up -d
 
-# Install dependencies
+# Install dependencies (includes YJS packages)
 npm install
 
-# Run database migrations
+# Run database migrations (includes YJS tables)
 npm run migrate
 
 # Seed test users
@@ -784,6 +860,11 @@ npm run seed
 # Start development server
 npm run dev
 ```
+
+**YJS Dependencies Included**:
+- `yjs@^13.6.27` - Core YJS library
+- `@electric-sql/y-electric@^0.1.3` - Electric SQL integration
+- `y-websocket@^3.0.0` - WebSocket provider for real-time sync
 
 ### First Steps
 
@@ -870,6 +951,12 @@ fetch('/api/chat', {
 - `GET /api/projects/:projectId/outline-settings` - Get outline settings for brainstorm ideas
 - `GET /api/projects/:projectId/chronicles` - Get chronicles for outline settings
 
+### YJS Collaboration
+- `GET /api/yjs/artifact/:artifactId` - Get artifact data for YJS initialization
+- `PUT /api/yjs/artifact/:artifactId` - Update artifact from YJS changes
+- `POST /api/yjs/update` - Handle YJS document updates
+- `POST /api/yjs/awareness` - Handle YJS awareness updates
+
 **Human Transform Examples**:
 ```bash
 # Create editable chronicle stage
@@ -935,7 +1022,8 @@ POST /api/artifacts/outline-artifact-id/human-transform
 3. **Build Tool** - Implement using streaming framework pattern
 4. **Add UI Components** - Create React components with Ant Design
 5. **Integrate SectionWrapper** - Use `SectionWrapper` for consistent section management
-6. **Test Integration** - Add cache-based tests for AI functionality
+6. **Add YJS Support** - Implement YJS field components for real-time collaboration
+7. **Test Integration** - Add cache-based tests for AI functionality
 
 ### Adding New Script Content Types
 
@@ -969,7 +1057,21 @@ Content Requirements:
 `;
 ```
 
-**Step 3: Add Action Component**
+**Step 3: Add YJS Components**
+```typescript
+// In src/client/components/shared/
+export const NewContentEditor: React.FC<{ artifactId: string }> = ({ artifactId }) => {
+  return (
+    <YJSArtifactProvider artifactId={artifactId}>
+      <YJSTextField path="title" placeholder="输入标题..." />
+      <YJSTextAreaField path="content" placeholder="输入内容..." />
+      <YJSArrayField path="tags" placeholder="每行一个标签..." />
+    </YJSArtifactProvider>
+  );
+};
+```
+
+**Step 4: Add Action Component**
 ```typescript
 // In src/client/components/actions/
 export const NewContentAction: React.FC<BaseActionProps> = ({ 
@@ -994,7 +1096,7 @@ export const NewContentAction: React.FC<BaseActionProps> = ({
 };
 ```
 
-**Step 4: Update Workflow Logic**
+**Step 5: Update Workflow Logic**
 ```typescript
 // In src/client/utils/actionComputation.ts
 // Add new stage detection for the content type

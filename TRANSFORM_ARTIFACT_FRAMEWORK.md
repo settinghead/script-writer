@@ -2033,6 +2033,159 @@ export const ActionItemsSection: React.FC<{ projectId: string }> = ({ projectId 
 - **Main Area**: Large text editing, complex data structures, detailed content viewing
 - **Action Items**: Workflow buttons, parameter forms, immediate action controls
 
+## YJS Integration for Real-time Collaboration
+
+The Transform Artifact Framework integrates YJS (Yjs) for real-time collaborative editing while maintaining the immutable artifact → transform → artifact paradigm.
+
+### Architecture Integration
+
+**Hybrid Approach**:
+- **Artifacts remain immutable** - YJS operates on temporary collaborative documents
+- **Transform creation** - Collaborative changes trigger artifact updates via transforms
+- **Audit trail preservation** - All changes tracked through transform system
+- **Conflict resolution** - YJS handles real-time conflicts, transforms handle persistence
+
+### YJS Document Structure
+
+```typescript
+// YJS document mirrors artifact structure
+const doc = new Y.Doc();
+const yMap = doc.getMap('content');
+const yText = doc.getText('description');
+const yArray = doc.getArray('items');
+
+// Sync with artifact data
+yMap.set('title', artifact.data.title);
+yText.insert(0, artifact.data.description);
+```
+
+### Database Schema for YJS
+
+```sql
+-- YJS document storage per artifact
+CREATE TABLE artifact_yjs_documents (
+  id SERIAL PRIMARY KEY,
+  artifact_id TEXT NOT NULL REFERENCES artifacts(id),
+  room_id TEXT NOT NULL UNIQUE,
+  document_state BYTEA, -- Encoded YJS document state
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- YJS updates (for Electric SQL streaming)
+CREATE TABLE artifact_yjs_updates (
+  id SERIAL PRIMARY KEY,
+  room_id TEXT NOT NULL,
+  project_id TEXT NOT NULL, -- For access control
+  update BYTEA NOT NULL,
+  client_id TEXT,
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- YJS awareness (user presence)
+CREATE TABLE artifact_yjs_awareness (
+  client_id TEXT,
+  room_id TEXT NOT NULL,
+  project_id TEXT NOT NULL, -- For access control
+  update BYTEA NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (client_id, room_id)
+);
+```
+
+### YJS Context Provider System
+
+**Context-Based Architecture**: The framework uses a context-based approach for YJS integration:
+
+```typescript
+// Context provider for artifact-level YJS management
+<YJSArtifactProvider artifactId={artifactId}>
+  <YJSTextField path="title" placeholder="输入标题..." />
+  <YJSArrayField path="themes" placeholder="每行一个主题..." />
+  <YJSTextField path="characters.male_lead.name" placeholder="男主姓名..." />
+</YJSArtifactProvider>
+```
+
+**Key Features**:
+- **Path-based field access**: JSON path support (e.g., `"characters.male_lead.name"`)
+- **Optimistic updates**: Immediate UI updates with automatic conflict resolution
+- **Smart merging**: Combines YJS data with local optimistic updates
+- **Safe defaults**: Returns empty arrays/strings for undefined paths
+- **Error handling**: Graceful handling of malformed data and path errors
+
+### YJS Field Components
+
+**Specialized YJS Components**:
+- **YJSTextField**: Click-to-edit text input with debounced auto-save
+- **YJSTextAreaField**: Multi-line text editing with auto-sizing
+- **YJSArrayField**: Array editing with textarea (one item per line)
+- **Keyboard shortcuts**: Enter to save, Escape to cancel
+- **Visual feedback**: Hover states, loading indicators, collaborative mode indicators
+
+### Collaborative Transform Pattern
+
+```typescript
+// YJS changes trigger transform creation
+yText.observe((event) => {
+  if (event.transaction.local) {
+    // Local change - create human transform
+    createHumanTransform({
+      sourceArtifactId: artifact.id,
+      changes: extractChanges(event),
+      collaborativeSession: doc.guid
+    });
+  }
+});
+```
+
+### Benefits for Framework Applications
+
+- **Real-time UX** - Immediate visual feedback during collaboration
+- **Preserved Immutability** - Artifact history remains complete
+- **Scalable Collaboration** - Support for multiple simultaneous editors
+- **Framework Compatibility** - Works with existing transform patterns
+
+### YJS-Enhanced Frontend Components
+
+**Collaborative Artifact Editor**:
+```typescript
+const CollaborativeArtifactEditor = ({ artifactId, field }) => {
+  const { doc, provider, isConnected } = useYJSArtifact(artifactId);
+  const yText = doc.getText(field);
+  
+  return (
+    <YJSTextEditor
+      yText={yText}
+      placeholder="Start typing..."
+      onSave={(content) => {
+        // Create transform when collaboration session ends
+        createHumanTransform({
+          sourceArtifactId: artifactId,
+          fieldUpdates: { [field]: content }
+        });
+      }}
+    />
+  );
+};
+```
+
+### Implementation Status
+
+**Completed Features**:
+- ✅ Complete YJS infrastructure (database, backend services, frontend hooks)
+- ✅ Context-based editing with path-based field editing and optimistic updates
+- ✅ Real-time synchronization via YJS documents syncing with Electric SQL
+- ✅ Major component migrations (BrainstormInputEditor, SingleBrainstormIdeaEditor, OutlineSettingsDisplay)
+- ✅ Authentication with proper project-based access control
+- ✅ Bug fixes for infinite loops and Electric proxy issues
+
+**Architecture Decision**: Context-based approach instead of direct YJS integration provides:
+- **Simpler component API**: Path-based field access instead of YJS document manipulation
+- **Better error handling**: Context handles malformed data and missing paths
+- **Optimistic updates**: Immediate UI feedback with automatic conflict resolution
+- **Unified state**: Single context manages all YJS operations for an artifact
+- **Developer experience**: Easy to use, no YJS knowledge required for component authors
+
 ## Summary
 
-The Transform Artifact Framework provides a complete foundation for sophisticated data transformation applications with intelligent agent orchestration, immutable artifact management, real-time collaboration, and enterprise-grade development tooling. Applications built on this framework benefit from automatic lineage tracking, type-safe operations, and advanced caching while maintaining focus on domain-specific business logic. 
+The Transform Artifact Framework provides a complete foundation for sophisticated data transformation applications with intelligent agent orchestration, immutable artifact management, real-time collaboration via YJS, and enterprise-grade development tooling. Applications built on this framework benefit from automatic lineage tracking, type-safe operations, advanced caching, and seamless real-time collaborative editing while maintaining focus on domain-specific business logic. 
