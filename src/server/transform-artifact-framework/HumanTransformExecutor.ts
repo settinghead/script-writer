@@ -208,7 +208,7 @@ export class HumanTransformExecutor {
     }
 
     // Get current data and apply updates
-    let currentData = currentArtifact.data; // Already parsed by ArtifactRepository
+    const currentData = currentArtifact.data; // Already parsed by ArtifactRepository
 
     // Use artifact data directly (no special handling needed)
 
@@ -233,7 +233,7 @@ export class HumanTransformExecutor {
 
     // Update artifact with validated data
     let finalData;
-    let finalMetadata = currentArtifact.metadata || {};
+    const finalMetadata = currentArtifact.metadata || {};
 
     // Store the validated data directly (no special handling needed)
     finalData = validationResult.data;
@@ -313,7 +313,7 @@ export class HumanTransformExecutor {
 
     // 5. Create derived artifact
     let artifactData = targetValidation.data;
-    let artifactMetadata: any = {
+    const artifactMetadata: any = {
       transform_name: transformName,
       source_artifact_id: sourceArtifactId,
       derivation_path: derivationPath

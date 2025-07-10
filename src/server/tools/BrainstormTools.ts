@@ -63,7 +63,7 @@ async function extractSourceIdeaData(
         throw new Error('Access denied to source artifact');
     }
 
-    let sourceData = sourceArtifact.data;
+    const sourceData = sourceArtifact.data;
     let originalIdea: { title: string; body: string };
     let targetPlatform = 'unknown';
     let storyGenre = 'unknown';

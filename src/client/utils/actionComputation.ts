@@ -1,9 +1,7 @@
-import React from 'react';
 import { ProjectDataContextType } from '../../common/types';
 import { SelectedBrainstormIdea } from '../stores/actionItemsStore';
 import {
     computeActionsFromLineage,
-    type ComputedActions as LineageComputedActions,
     type ActionItem,
     type WorkflowStage
 } from './lineageBasedActionComputation';
@@ -11,20 +9,10 @@ import {
     UnifiedWorkflowState,
     WorkflowStep,
     DisplayComponent,
-    ComponentId,
-    ComponentMode,
     WorkflowParameters,
     WORKFLOW_STEPS
 } from './workflowTypes';
 import { getComponentById } from './componentRegistry';
-
-// Import action components
-import BrainstormCreationActions from '../components/actions/BrainstormCreationActions';
-import BrainstormInputForm from '../components/actions/BrainstormInputForm';
-import BrainstormIdeaSelection from '../components/actions/BrainstormIdeaSelection';
-import OutlineGenerationForm from '../components/actions/OutlineGenerationForm';
-import ChroniclesGenerationAction from '../components/actions/ChroniclesGenerationAction';
-import EpisodeGenerationAction from '../components/actions/EpisodeGenerationAction';
 
 // Re-export types from lineageBasedActionComputation for backward compatibility
 export type { WorkflowStage, ActionItem } from './lineageBasedActionComputation';
@@ -51,37 +39,76 @@ export const canBecomeEditable = (artifact: any, transformInputs: any[]): boolea
     return isLeafNode(artifact.id, transformInputs) && artifact.origin_type === 'ai_generated';
 };
 
-/**
- * Lineage-based action computation (main method)
- * Uses lineage graph traversal for robust state detection
- */
-export const computeParamsAndActionsFromLineage = (
-    projectData: ProjectDataContextType
-): ComputedActions => {
+// ==============================================================================
+// UNIFIED COMPUTATION SYSTEM
+// ==============================================================================
 
+/**
+ * Internal context computed from lineage graph - contains all the data needed 
+ * for workflow steps, display components, actions, and parameters
+ */
+interface UnifiedComputationContext {
+    // Basic state
+    currentStage: WorkflowStage;
+    hasActiveTransforms: boolean;
+    stageDescription: string;
+
+    // Workflow path detection
+    isManualPath: boolean;
+
+    // Resolved artifacts from lineage graph
+    canonicalBrainstormArtifacts: any[];
+    brainstormInput: any;
+    brainstormIdeas: any[];
+    chosenIdea: any;
+    outlineSettings: any;
+    canonicalChronicles: any;
+
+    // Lineage and transform data
+    lineageGraph: any;
+    transformInputs: any[];
+    artifacts: any[];
+
+    // Actions from lineage computation
+    actions: ActionItem[];
+}
+
+/**
+ * Core unified computation function that builds the context once
+ * This function performs all lineage graph analysis and artifact filtering in a single pass
+ */
+function computeUnifiedContext(
+    projectData: ProjectDataContextType,
+    _projectId: string
+): UnifiedComputationContext | null {
     // Check if any data is still loading
     if (projectData.artifacts === "pending" ||
         projectData.transforms === "pending" ||
         projectData.humanTransforms === "pending" ||
         projectData.transformInputs === "pending" ||
         projectData.transformOutputs === "pending") {
-        return {
-            actions: [],
-            currentStage: 'initial',
-            hasActiveTransforms: false,
-            stageDescription: '加载中...'
-        };
+        return null;
     }
 
-    // If lineage graph is pending but artifacts are loaded, use simple fallback
+    // Handle lineage graph pending state
     if (projectData.lineageGraph === "pending") {
         // Simple fallback: check if we have any artifacts
         if (projectData.artifacts === "error" || !Array.isArray(projectData.artifacts) || projectData.artifacts.length === 0) {
             return {
-                actions: [],
                 currentStage: 'initial',
                 hasActiveTransforms: false,
-                stageDescription: '准备开始...'
+                stageDescription: '准备开始...',
+                isManualPath: false,
+                canonicalBrainstormArtifacts: [],
+                brainstormInput: null,
+                brainstormIdeas: [],
+                chosenIdea: null,
+                outlineSettings: null,
+                canonicalChronicles: null,
+                lineageGraph: null,
+                transformInputs: [],
+                artifacts: [],
+                actions: []
             };
         }
 
@@ -92,21 +119,42 @@ export const computeParamsAndActionsFromLineage = (
 
         if (brainstormIdeas.length > 0) {
             return {
-                actions: [],
                 currentStage: 'idea_editing',
                 hasActiveTransforms: false,
-                stageDescription: '编辑创意中...'
+                stageDescription: '编辑创意中...',
+                isManualPath: true,
+                canonicalBrainstormArtifacts: brainstormIdeas,
+                brainstormInput: null,
+                brainstormIdeas,
+                chosenIdea: brainstormIdeas[0] || null,
+                outlineSettings: null,
+                canonicalChronicles: null,
+                lineageGraph: null,
+                transformInputs: [],
+                artifacts: projectData.artifacts,
+                actions: []
             };
         }
 
         return {
-            actions: [],
             currentStage: 'initial',
             hasActiveTransforms: false,
-            stageDescription: '准备开始...'
+            stageDescription: '准备开始...',
+            isManualPath: false,
+            canonicalBrainstormArtifacts: [],
+            brainstormInput: null,
+            brainstormIdeas: [],
+            chosenIdea: null,
+            outlineSettings: null,
+            canonicalChronicles: null,
+            lineageGraph: null,
+            transformInputs: [],
+            artifacts: [],
+            actions: []
         };
     }
 
+    // Handle error states
     if (projectData.lineageGraph === "error" ||
         projectData.artifacts === "error" ||
         projectData.transforms === "error" ||
@@ -114,14 +162,24 @@ export const computeParamsAndActionsFromLineage = (
         projectData.transformInputs === "error" ||
         projectData.transformOutputs === "error") {
         return {
-            actions: [],
             currentStage: 'initial',
             hasActiveTransforms: false,
-            stageDescription: '加载失败'
+            stageDescription: '加载失败',
+            isManualPath: false,
+            canonicalBrainstormArtifacts: [],
+            brainstormInput: null,
+            brainstormIdeas: [],
+            chosenIdea: null,
+            outlineSettings: null,
+            canonicalChronicles: null,
+            lineageGraph: null,
+            transformInputs: [],
+            artifacts: [],
+            actions: []
         };
     }
 
-    // Use the lineage-based computation
+    // Use the lineage-based computation for actions and stage detection
     const lineageResult = computeActionsFromLineage(
         projectData.lineageGraph,
         projectData.artifacts,
@@ -131,38 +189,120 @@ export const computeParamsAndActionsFromLineage = (
         projectData.transformOutputs
     );
 
-    // Convert to the expected format
-    return {
-        actions: lineageResult.actions,
-        currentStage: lineageResult.actionContext.currentStage,
-        hasActiveTransforms: lineageResult.actionContext.hasActiveTransforms,
-        stageDescription: lineageResult.stageDescription
-    };
-};
+    // Extract all needed data from lineage graph and artifacts in a single pass
+    const lineageGraph = projectData.lineageGraph;
+    const artifacts = projectData.artifacts as any[];
+    const transformInputs = Array.isArray(projectData.transformInputs)
+        ? projectData.transformInputs
+        : [];
 
+    // Single pass through lineage graph to collect all artifact types
+    const canonicalBrainstormArtifacts: any[] = [];
+    const canonicalOutlineArtifacts: any[] = [];
+    const canonicalChroniclesArtifacts: any[] = [];
 
+    // Process all lineage nodes in one pass
+    for (const node of lineageGraph.nodes.values()) {
+        if (node.type !== 'artifact') continue;
 
-// ==============================================================================
-// NEW UNIFIED COMPUTATION SYSTEM
-// ==============================================================================
+        const lineageArtifactNode = node as any;
+        const artifact = artifacts.find((a: any) => a.id === lineageArtifactNode.artifactId);
 
-/**
- * Compute workflow steps based on current state
- */
-export const computeWorkflowSteps = (
-    currentStage: WorkflowStage,
-    hasActiveTransforms: boolean,
-    projectData: ProjectDataContextType
-): WorkflowStep[] => {
+        if (!artifact) continue;
 
-
-    // Return empty array if currentStage is initial - no workflow steps to show
-    if (currentStage === 'initial') {
-        return [];
+        // Categorize artifacts by type
+        if (artifact.schema_type === 'brainstorm_tool_input_schema' ||
+            artifact.type === 'brainstorm_tool_input_schema' ||
+            artifact.schema_type === 'brainstorm_item_schema' ||
+            artifact.type === 'brainstorm_item_schema' ||
+            artifact.schema_type === 'brainstorm_idea_schema' ||
+            artifact.type === 'brainstorm_idea' ||
+            artifact.schema_type === 'brainstorm_collection_schema' ||
+            artifact.type === 'brainstorm_collection_schema') {
+            canonicalBrainstormArtifacts.push(artifact);
+        } else if (artifact.schema_type === 'outline_settings_schema' ||
+            artifact.type === 'outline_settings') {
+            canonicalOutlineArtifacts.push(artifact);
+        } else if (artifact.schema_type === 'chronicles_schema') {
+            canonicalChroniclesArtifacts.push(artifact);
+        }
     }
 
-    // Detect workflow path based on project data
-    const isManualPath = detectIsManualPath(projectData);
+    // Extract specific artifact types from brainstorm artifacts
+    const brainstormInput = canonicalBrainstormArtifacts.find((a: any) =>
+        a.schema_type === 'brainstorm_tool_input_schema' || a.type === 'brainstorm_tool_input_schema'
+    );
+
+    const brainstormIdeas = canonicalBrainstormArtifacts.filter((a: any) =>
+        a.schema_type === 'brainstorm_item_schema' || a.type === 'brainstorm_item_schema' ||
+        a.schema_type === 'brainstorm_idea_schema' || a.type === 'brainstorm_idea' ||
+        a.schema_type === 'brainstorm_collection_schema' || a.type === 'brainstorm_collection_schema'
+    );
+
+    // Find chosen idea (leaf node without descendants) using lineage graph
+    const chosenIdea = brainstormIdeas.find((idea: any) => {
+        const lineageNode = lineageGraph.nodes.get(idea.id);
+        return lineageNode && lineageNode.isLeaf;
+    });
+
+    // Process outline settings with priority logic
+    let outlineSettings = null;
+    if (canonicalOutlineArtifacts.length > 0) {
+        // Find leaf nodes from canonical set
+        const leafOutlineSettings = canonicalOutlineArtifacts.filter((artifact: any) => {
+            const lineageNode = lineageGraph.nodes.get(artifact.id);
+            return lineageNode && lineageNode.isLeaf;
+        });
+
+        if (leafOutlineSettings.length > 0) {
+            // Prioritize user_input artifacts, then by most recent
+            leafOutlineSettings.sort((a: any, b: any) => {
+                // First priority: user_input origin type
+                if (a.origin_type === 'user_input' && b.origin_type !== 'user_input') return -1;
+                if (b.origin_type === 'user_input' && a.origin_type !== 'user_input') return 1;
+                // Second priority: most recent
+                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+            });
+            outlineSettings = leafOutlineSettings[0];
+        } else {
+            // Fallback to most recent from canonical set if no leaf nodes found
+            canonicalOutlineArtifacts.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+            outlineSettings = canonicalOutlineArtifacts[0];
+        }
+    }
+
+    // Find canonical chronicles (should be only one)
+    const canonicalChronicles = canonicalChroniclesArtifacts[0] || null;
+
+    // Detect workflow path
+    const isManualPath = !brainstormInput;
+
+    return {
+        currentStage: lineageResult.actionContext.currentStage,
+        hasActiveTransforms: lineageResult.actionContext.hasActiveTransforms,
+        stageDescription: lineageResult.stageDescription,
+        isManualPath,
+        canonicalBrainstormArtifacts,
+        brainstormInput,
+        brainstormIdeas,
+        chosenIdea,
+        outlineSettings,
+        canonicalChronicles,
+        lineageGraph,
+        transformInputs,
+        artifacts,
+        actions: lineageResult.actions
+    };
+}
+
+/**
+ * Compute workflow steps from unified context
+ */
+function computeWorkflowStepsFromContext(context: UnifiedComputationContext): WorkflowStep[] {
+    // Return empty array if currentStage is initial - no workflow steps to show
+    if (context.currentStage === 'initial') {
+        return [];
+    }
 
     // Define steps for each path
     const manualPathSteps: WorkflowStep[] = [
@@ -232,7 +372,7 @@ export const computeWorkflowSteps = (
     ];
 
     // Choose steps based on path
-    const steps = isManualPath ? manualPathSteps : aiPathSteps;
+    const steps = context.isManualPath ? manualPathSteps : aiPathSteps;
 
     // Map workflow stages to step indices based on path
     const manualStageToStepMap: Record<WorkflowStage, number> = {
@@ -255,15 +395,15 @@ export const computeWorkflowSteps = (
         'episode_synopsis_generation': 6 // Skip "每集大纲" for now, map to final step
     };
 
-    const stageToStepMap = isManualPath ? manualStageToStepMap : aiStageToStepMap;
-    const currentStepIndex = stageToStepMap[currentStage];
+    const stageToStepMap = context.isManualPath ? manualStageToStepMap : aiStageToStepMap;
+    const currentStepIndex = stageToStepMap[context.currentStage];
 
     // Update step statuses
     steps.forEach((step, index) => {
         if (index < currentStepIndex) {
             step.status = 'finish';
         } else if (index === currentStepIndex) {
-            if (hasActiveTransforms) {
+            if (context.hasActiveTransforms) {
                 step.status = 'process'; // Show loading spinner
             } else {
                 step.status = 'finish'; // Current step is completed
@@ -273,9 +413,371 @@ export const computeWorkflowSteps = (
         }
     });
 
-
-
     return steps;
+}
+
+/**
+ * Compute display components from unified context
+ */
+function computeDisplayComponentsFromContext(context: UnifiedComputationContext): DisplayComponent[] {
+    const components: DisplayComponent[] = [];
+
+    switch (context.currentStage) {
+        case 'initial':
+            // Show project creation form
+            components.push({
+                id: 'project-creation-form',
+                component: getComponentById('project-creation-form'),
+                mode: 'editable',
+                props: {},
+                priority: 1
+            });
+            break;
+
+        case 'brainstorm_input':
+            // Show brainstorm input editor
+            if (context.brainstormInput) {
+                components.push({
+                    id: 'brainstorm-input-editor',
+                    component: getComponentById('brainstorm-input-editor'),
+                    mode: context.hasActiveTransforms ? 'readonly' : 'editable',
+                    props: {
+                        artifact: context.brainstormInput,
+                        isEditable: !context.hasActiveTransforms
+                    },
+                    priority: 1
+                });
+            }
+            break;
+
+        case 'brainstorm_selection':
+            // Show brainstorm input in readonly mode
+            if (context.brainstormInput) {
+                components.push({
+                    id: 'brainstorm-input-editor',
+                    component: getComponentById('brainstorm-input-editor'),
+                    mode: 'readonly',
+                    props: {
+                        artifact: context.brainstormInput,
+                        isEditable: false
+                    },
+                    priority: 1
+                });
+            }
+
+            // Show brainstorm ideas for selection
+            if (context.brainstormIdeas.length > 0) {
+                components.push({
+                    id: 'project-brainstorm-page',
+                    component: getComponentById('project-brainstorm-page'),
+                    mode: context.hasActiveTransforms ? 'readonly' : 'editable',
+                    props: {
+                        ideas: context.brainstormIdeas,
+                        selectionMode: true,
+                        isLoading: context.hasActiveTransforms
+                    },
+                    priority: 2
+                });
+            }
+            break;
+
+        case 'idea_editing':
+            // Show brainstorm input in readonly mode
+            if (context.brainstormInput) {
+                components.push({
+                    id: 'brainstorm-input-editor',
+                    component: getComponentById('brainstorm-input-editor'),
+                    mode: 'readonly',
+                    props: {
+                        artifact: context.brainstormInput,
+                        isEditable: false
+                    },
+                    priority: 1
+                });
+            }
+
+            // Show chosen idea editor (if we have one)
+            if (context.chosenIdea) {
+                components.push({
+                    id: 'single-brainstorm-idea-editor',
+                    component: getComponentById('single-brainstorm-idea-editor'),
+                    mode: context.hasActiveTransforms ? 'readonly' : 'editable',
+                    props: {
+                        idea: context.chosenIdea,
+                        isEditable: !context.hasActiveTransforms,
+                        currentStage: context.currentStage
+                    },
+                    priority: 2
+                });
+            } else {
+                // No chosen idea yet - this should be brainstorm_selection stage instead
+                // But for backward compatibility, show brainstorm collection for selection
+                console.warn('[computeDisplayComponents] idea_editing stage but no chosenIdea found - should be brainstorm_selection');
+                if (context.brainstormIdeas.length > 0) {
+                    components.push({
+                        id: 'single-brainstorm-idea-editor',
+                        component: getComponentById('single-brainstorm-idea-editor'),
+                        mode: context.hasActiveTransforms ? 'readonly' : 'editable',
+                        props: {
+                            idea: context.brainstormIdeas[0], // Use first idea as fallback
+                            isEditable: !context.hasActiveTransforms,
+                            currentStage: context.currentStage
+                        },
+                        priority: 2
+                    });
+                }
+            }
+            break;
+
+        case 'outline_generation':
+            // Show previous components in readonly/collapsed mode
+            if (context.brainstormInput) {
+                components.push({
+                    id: 'brainstorm-input-editor',
+                    component: getComponentById('brainstorm-input-editor'),
+                    mode: 'readonly',
+                    props: {
+                        artifact: context.brainstormInput,
+                        isEditable: false
+                    },
+                    priority: 1
+                });
+            }
+
+            // Only show chosen idea editor (not the collection)
+            if (context.chosenIdea) {
+                components.push({
+                    id: 'single-brainstorm-idea-editor',
+                    component: getComponentById('single-brainstorm-idea-editor'),
+                    mode: 'readonly',
+                    props: {
+                        idea: context.chosenIdea,
+                        isEditable: false,
+                        currentStage: context.currentStage
+                    },
+                    priority: 2
+                });
+            }
+
+            // Show outline settings
+            if (context.outlineSettings) {
+                // Determine if the outline settings artifact is actually editable
+                const isOutlineLeafNode = isLeafNode(context.outlineSettings.id, context.transformInputs);
+                const isOutlineEditable = !context.hasActiveTransforms &&
+                    isOutlineLeafNode &&
+                    context.outlineSettings.origin_type === 'user_input';
+
+                components.push({
+                    id: 'outline-settings-display',
+                    component: getComponentById('outline-settings-display'),
+                    mode: context.hasActiveTransforms ? 'readonly' : 'editable',
+                    props: {
+                        outlineSettings: context.outlineSettings,
+                        isEditable: isOutlineEditable
+                    },
+                    priority: 4
+                });
+            }
+            break;
+
+        case 'chronicles_generation':
+            // Show previous components in readonly/collapsed mode
+            if (context.brainstormInput) {
+                components.push({
+                    id: 'brainstorm-input-editor',
+                    component: getComponentById('brainstorm-input-editor'),
+                    mode: 'readonly',
+                    props: {
+                        artifact: context.brainstormInput,
+                        isEditable: false
+                    },
+                    priority: 1
+                });
+            }
+
+            // Only show chosen idea editor (not the collection)
+            if (context.chosenIdea) {
+                components.push({
+                    id: 'single-brainstorm-idea-editor',
+                    component: getComponentById('single-brainstorm-idea-editor'),
+                    mode: 'readonly',
+                    props: {
+                        idea: context.chosenIdea,
+                        isEditable: false,
+                        currentStage: context.currentStage
+                    },
+                    priority: 2
+                });
+            }
+
+            if (context.outlineSettings) {
+                components.push({
+                    id: 'outline-settings-display',
+                    component: getComponentById('outline-settings-display'),
+                    mode: 'readonly',
+                    props: {
+                        outlineSettings: context.outlineSettings,
+                        isEditable: false
+                    },
+                    priority: 4
+                });
+            }
+
+            // Show chronicles
+            if (context.canonicalChronicles) {
+                components.push({
+                    id: 'chronicles-display',
+                    component: getComponentById('chronicles-display'),
+                    mode: context.hasActiveTransforms ? 'readonly' : 'editable',
+                    props: {
+                        chronicles: context.canonicalChronicles,
+                        isEditable: !context.hasActiveTransforms
+                    },
+                    priority: 5
+                });
+            }
+            break;
+
+        case 'episode_synopsis_generation':
+            // Show all previous components in readonly/collapsed mode
+            if (context.brainstormInput) {
+                components.push({
+                    id: 'brainstorm-input-editor',
+                    component: getComponentById('brainstorm-input-editor'),
+                    mode: 'readonly',
+                    props: {
+                        artifact: context.brainstormInput,
+                        isEditable: false
+                    },
+                    priority: 1
+                });
+            }
+
+            // Only show chosen idea editor (not the collection)
+            if (context.chosenIdea) {
+                components.push({
+                    id: 'single-brainstorm-idea-editor',
+                    component: getComponentById('single-brainstorm-idea-editor'),
+                    mode: 'readonly',
+                    props: {
+                        idea: context.chosenIdea,
+                        isEditable: false,
+                        currentStage: context.currentStage
+                    },
+                    priority: 2
+                });
+            }
+
+            if (context.outlineSettings) {
+                components.push({
+                    id: 'outline-settings-display',
+                    component: getComponentById('outline-settings-display'),
+                    mode: 'readonly',
+                    props: {
+                        outlineSettings: context.outlineSettings,
+                        isEditable: false
+                    },
+                    priority: 4
+                });
+            }
+
+            if (context.canonicalChronicles) {
+                components.push({
+                    id: 'chronicles-display',
+                    component: getComponentById('chronicles-display'),
+                    mode: 'readonly',
+                    props: {
+                        chronicles: context.canonicalChronicles,
+                        isEditable: false
+                    },
+                    priority: 5
+                });
+            }
+            break;
+    }
+
+    // Sort by priority
+    return components.sort((a, b) => a.priority - b.priority);
+}
+
+/**
+ * Compute workflow parameters from unified context
+ */
+function computeWorkflowParametersFromContext(
+    context: UnifiedComputationContext,
+    projectId: string
+): WorkflowParameters {
+    return {
+        projectId,
+        currentStage: context.currentStage,
+        hasActiveTransforms: context.hasActiveTransforms,
+        effectiveBrainstormIdeas: context.canonicalBrainstormArtifacts,
+        chosenBrainstormIdea: context.chosenIdea,
+        latestOutlineSettings: context.outlineSettings,
+        latestChronicles: context.canonicalChronicles,
+        brainstormInput: context.brainstormInput
+    };
+}
+
+// ==============================================================================
+// BACKWARD COMPATIBILITY FUNCTIONS
+// ==============================================================================
+
+/**
+ * Lineage-based action computation (main method)
+ * Uses lineage graph traversal for robust state detection
+ * @deprecated Use computeUnifiedWorkflowState instead
+ */
+export const computeParamsAndActionsFromLineage = (
+    projectData: ProjectDataContextType
+): ComputedActions => {
+    const context = computeUnifiedContext(projectData, 'legacy');
+
+    if (!context) {
+        return {
+            actions: [],
+            currentStage: 'initial',
+            hasActiveTransforms: false,
+            stageDescription: '加载中...'
+        };
+    }
+
+    return {
+        actions: context.actions,
+        currentStage: context.currentStage,
+        hasActiveTransforms: context.hasActiveTransforms,
+        stageDescription: context.stageDescription
+    };
+};
+
+/**
+ * Compute workflow steps based on current state
+ * @deprecated Use computeUnifiedWorkflowState instead
+ */
+export const computeWorkflowSteps = (
+    currentStage: WorkflowStage,
+    hasActiveTransforms: boolean,
+    projectData: ProjectDataContextType
+): WorkflowStep[] => {
+    // For backward compatibility, create a minimal context that matches the old behavior
+    const context: UnifiedComputationContext = {
+        currentStage,
+        hasActiveTransforms,
+        stageDescription: '',
+        isManualPath: detectIsManualPath(projectData),
+        canonicalBrainstormArtifacts: [],
+        brainstormInput: null,
+        brainstormIdeas: [],
+        chosenIdea: null,
+        outlineSettings: null,
+        canonicalChronicles: null,
+        lineageGraph: null,
+        transformInputs: [],
+        artifacts: [],
+        actions: []
+    };
+
+    return computeWorkflowStepsFromContext(context);
 };
 
 /**
@@ -297,416 +799,54 @@ const detectIsManualPath = (projectData: ProjectDataContextType): boolean => {
 
 /**
  * Compute display components based on current state
+ * @deprecated Use computeUnifiedWorkflowState instead
  */
 export const computeDisplayComponents = (
     currentStage: WorkflowStage,
     hasActiveTransforms: boolean,
     projectData: ProjectDataContextType
 ): DisplayComponent[] => {
-    const components: DisplayComponent[] = [];
+    // For backward compatibility, call the unified context but handle edge cases
+    const context = computeUnifiedContext(projectData, 'legacy');
 
-    if (projectData.artifacts === "pending" || projectData.artifacts === "error") {
-        return components;
-    }
-
-    // Check if lineage graph is available
-    if (projectData.lineageGraph === "pending" || projectData.lineageGraph === "error") {
-        return components;
-    }
-
-    // Use lineage graph to find canonical artifacts
-    const lineageGraph = projectData.lineageGraph;
-    const transformInputs = projectData.transformInputs === "pending" || projectData.transformInputs === "error"
-        ? [] : projectData.transformInputs;
-
-    // Cast artifacts to proper type after checking it's not pending/error
-    const artifacts = projectData.artifacts as any[];
-
-    // Find canonical brainstorm artifacts using lineage graph
-    const canonicalBrainstormArtifacts = Array.from(lineageGraph.nodes.values())
-        .filter(node => {
-            if (node.type !== 'artifact') return false;
-            const lineageArtifactNode = node as any; // Cast to access artifactId
-            const artifact = artifacts.find((a: any) => a.id === lineageArtifactNode.artifactId);
-            return artifact && (
-                artifact.schema_type === 'brainstorm_tool_input_schema' ||
-                artifact.type === 'brainstorm_tool_input_schema' ||
-                artifact.schema_type === 'brainstorm_item_schema' ||
-                artifact.type === 'brainstorm_item_schema' ||
-                artifact.schema_type === 'brainstorm_idea_schema' ||
-                artifact.type === 'brainstorm_idea' ||
-                artifact.schema_type === 'brainstorm_collection_schema' ||
-                artifact.type === 'brainstorm_collection_schema'
-            );
-        })
-        .map(node => {
-            const lineageArtifactNode = node as any; // Cast to access artifactId
-            return artifacts.find((a: any) => a.id === lineageArtifactNode.artifactId);
-        })
-        .filter(artifact => artifact != null);
-
-    const brainstormInput = canonicalBrainstormArtifacts.find((a: any) =>
-        a.schema_type === 'brainstorm_tool_input_schema' || a.type === 'brainstorm_tool_input_schema'
-    );
-
-    const brainstormIdeas = canonicalBrainstormArtifacts.filter((a: any) =>
-        a.schema_type === 'brainstorm_item_schema' || a.type === 'brainstorm_item_schema' ||
-        a.schema_type === 'brainstorm_idea_schema' || a.type === 'brainstorm_idea' ||
-        a.schema_type === 'brainstorm_collection_schema' || a.type === 'brainstorm_collection_schema'
-    );
-
-    // Find chosen idea (leaf node without descendants) using lineage graph
-    const chosenIdea = brainstormIdeas.find((idea: any) => {
-        const lineageNode = lineageGraph.nodes.get(idea.id);
-        return lineageNode && lineageNode.isLeaf;
-    });
-
-    // Find canonical outline settings using lineage graph - this is the key fix!
-    const canonicalOutlineArtifacts = Array.from(lineageGraph.nodes.values())
-        .filter(node => {
-            if (node.type !== 'artifact') return false;
-            const lineageArtifactNode = node as any; // Cast to access artifactId
-            const artifact = artifacts.find((a: any) => a.id === lineageArtifactNode.artifactId);
-            return artifact && (
-                artifact.schema_type === 'outline_settings_schema' ||
-                artifact.type === 'outline_settings'
-            );
-        })
-        .map(node => {
-            const lineageArtifactNode = node as any; // Cast to access artifactId
-            return artifacts.find((a: any) => a.id === lineageArtifactNode.artifactId);
-        })
-        .filter(artifact => artifact != null);
-
-    let outlineSettings = null;
-    if (canonicalOutlineArtifacts.length > 0) {
-        // Find leaf nodes (artifacts without descendants) from canonical set
-        const leafOutlineSettings = canonicalOutlineArtifacts.filter((artifact: any) => {
-            const lineageNode = lineageGraph.nodes.get(artifact.id);
-            return lineageNode && lineageNode.isLeaf;
-        });
-
-        if (leafOutlineSettings.length > 0) {
-            // Prioritize user_input artifacts, then by most recent
-            leafOutlineSettings.sort((a: any, b: any) => {
-                // First priority: user_input origin type
-                if (a.origin_type === 'user_input' && b.origin_type !== 'user_input') return -1;
-                if (b.origin_type === 'user_input' && a.origin_type !== 'user_input') return 1;
-                // Second priority: most recent
-                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-            });
-            outlineSettings = leafOutlineSettings[0];
-        } else {
-            // Fallback to most recent from canonical set if no leaf nodes found
-            canonicalOutlineArtifacts.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-            outlineSettings = canonicalOutlineArtifacts[0];
-        }
-    }
-
-    // Find canonical chronicles using lineage graph
-    const canonicalChronicles = Array.from(lineageGraph.nodes.values())
-        .filter(node => {
-            if (node.type !== 'artifact') return false;
-            const lineageArtifactNode = node as any; // Cast to access artifactId
-            const artifact = artifacts.find((a: any) => a.id === lineageArtifactNode.artifactId);
-            return artifact && artifact.schema_type === 'chronicles_schema';
-        })
-        .map(node => {
-            const lineageArtifactNode = node as any; // Cast to access artifactId
-            return artifacts.find((a: any) => a.id === lineageArtifactNode.artifactId);
-        })
-        .filter(artifact => artifact != null)[0]; // Take the first (should be only one)
-
-
-    switch (currentStage) {
-        case 'initial':
-            // Show project creation form
-            components.push({
+    if (!context) {
+        // Handle the case where lineage graph is missing but we should still show project creation
+        // Only show project creation form if we have valid artifacts (not pending/error)
+        if (currentStage === 'initial' &&
+            projectData.artifacts !== "pending" &&
+            projectData.artifacts !== "error") {
+            return [{
                 id: 'project-creation-form',
                 component: getComponentById('project-creation-form'),
                 mode: 'editable',
                 props: {},
                 priority: 1
-            });
-            break;
-
-        case 'brainstorm_input':
-            // Show brainstorm input editor
-            if (brainstormInput) {
-                components.push({
-                    id: 'brainstorm-input-editor',
-                    component: getComponentById('brainstorm-input-editor'),
-                    mode: hasActiveTransforms ? 'readonly' : 'editable',
-                    props: {
-                        artifact: brainstormInput,
-                        isEditable: !hasActiveTransforms
-                    },
-                    priority: 1
-                });
-            }
-            break;
-
-        case 'brainstorm_selection':
-            // Show brainstorm input in readonly mode
-            if (brainstormInput) {
-                components.push({
-                    id: 'brainstorm-input-editor',
-                    component: getComponentById('brainstorm-input-editor'),
-                    mode: 'readonly',
-                    props: {
-                        artifact: brainstormInput,
-                        isEditable: false
-                    },
-                    priority: 1
-                });
-            }
-
-            // Show brainstorm ideas for selection
-            if (brainstormIdeas.length > 0) {
-                components.push({
-                    id: 'project-brainstorm-page',
-                    component: getComponentById('project-brainstorm-page'),
-                    mode: hasActiveTransforms ? 'readonly' : 'editable',
-                    props: {
-                        ideas: brainstormIdeas,
-                        selectionMode: true,
-                        isLoading: hasActiveTransforms
-                    },
-                    priority: 2
-                });
-            }
-            break;
-
-        case 'idea_editing':
-            // Show brainstorm input in readonly mode
-            if (brainstormInput) {
-                components.push({
-                    id: 'brainstorm-input-editor',
-                    component: getComponentById('brainstorm-input-editor'),
-                    mode: 'readonly',
-                    props: {
-                        artifact: brainstormInput,
-                        isEditable: false
-                    },
-                    priority: 1
-                });
-            }
-
-            // Show chosen idea editor (if we have one)
-            if (chosenIdea) {
-                components.push({
-                    id: 'single-brainstorm-idea-editor',
-                    component: getComponentById('single-brainstorm-idea-editor'),
-                    mode: hasActiveTransforms ? 'readonly' : 'editable',
-                    props: {
-                        idea: chosenIdea,
-                        isEditable: !hasActiveTransforms,
-                        currentStage: currentStage
-                    },
-                    priority: 2
-                });
-            } else {
-                // No chosen idea yet - show brainstorm collection for selection
-                // This should only happen if detectCurrentStage logic is incorrect
-                console.warn('[computeDisplayComponents] idea_editing stage but no chosenIdea found - adding project-brainstorm-page');
-                if (brainstormIdeas.length > 0) {
-                    components.push({
-                        id: 'project-brainstorm-page',
-                        component: getComponentById('project-brainstorm-page'),
-                        mode: hasActiveTransforms ? 'readonly' : 'editable',
-                        props: {
-                            ideas: brainstormIdeas,
-                            selectionMode: true,
-                            isLoading: hasActiveTransforms
-                        },
-                        priority: 2
-                    });
-                }
-            }
-            break;
-
-        case 'outline_generation':
-            // Show previous components in readonly/collapsed mode
-            if (brainstormInput) {
-                components.push({
-                    id: 'brainstorm-input-editor',
-                    component: getComponentById('brainstorm-input-editor'),
-                    mode: 'readonly',
-                    props: {
-                        artifact: brainstormInput,
-                        isEditable: false
-                    },
-                    priority: 1
-                });
-            }
-
-            // Only show chosen idea editor (not the collection)
-            if (chosenIdea) {
-                components.push({
-                    id: 'single-brainstorm-idea-editor',
-                    component: getComponentById('single-brainstorm-idea-editor'),
-                    mode: 'readonly',
-                    props: {
-                        idea: chosenIdea,
-                        isEditable: false,
-                        currentStage: currentStage
-                    },
-                    priority: 2
-                });
-            }
-
-            // Show outline settings
-            if (outlineSettings) {
-                // Determine if the outline settings artifact is actually editable
-                // Only user_input artifacts should be editable, not ai_generated ones
-                const isOutlineLeafNode = isLeafNode(outlineSettings.id, transformInputs);
-                const isOutlineEditable = !hasActiveTransforms &&
-                    isOutlineLeafNode &&
-                    outlineSettings.origin_type === 'user_input'; // Only user_input, not ai_generated
-
-                components.push({
-                    id: 'outline-settings-display',
-                    component: getComponentById('outline-settings-display'),
-                    mode: hasActiveTransforms ? 'readonly' : 'editable',
-                    props: {
-                        outlineSettings,
-                        isEditable: isOutlineEditable
-                    },
-                    priority: 4
-                });
-            }
-            break;
-
-        case 'chronicles_generation':
-            // Show previous components in readonly/collapsed mode
-            if (brainstormInput) {
-                components.push({
-                    id: 'brainstorm-input-editor',
-                    component: getComponentById('brainstorm-input-editor'),
-                    mode: 'readonly',
-                    props: {
-                        artifact: brainstormInput,
-                        isEditable: false
-                    },
-                    priority: 1
-                });
-            }
-
-            // Only show chosen idea editor (not the collection)
-            if (chosenIdea) {
-                components.push({
-                    id: 'single-brainstorm-idea-editor',
-                    component: getComponentById('single-brainstorm-idea-editor'),
-                    mode: 'readonly',
-                    props: {
-                        idea: chosenIdea,
-                        isEditable: false,
-                        currentStage: currentStage
-                    },
-                    priority: 2
-                });
-            }
-
-            if (outlineSettings) {
-                components.push({
-                    id: 'outline-settings-display',
-                    component: getComponentById('outline-settings-display'),
-                    mode: 'readonly',
-                    props: {
-                        outlineSettings,
-                        isEditable: false
-                    },
-                    priority: 4
-                });
-            }
-
-            // Show chronicles
-            if (canonicalChronicles) {
-                components.push({
-                    id: 'chronicles-display',
-                    component: getComponentById('chronicles-display'),
-                    mode: hasActiveTransforms ? 'readonly' : 'editable',
-                    props: {
-                        chronicles: canonicalChronicles,
-                        isEditable: !hasActiveTransforms
-                    },
-                    priority: 5
-                });
-            }
-            break;
-
-        case 'episode_synopsis_generation':
-            // Show all previous components in readonly/collapsed mode
-            if (brainstormInput) {
-                components.push({
-                    id: 'brainstorm-input-editor',
-                    component: getComponentById('brainstorm-input-editor'),
-                    mode: 'readonly',
-                    props: {
-                        artifact: brainstormInput,
-                        isEditable: false
-                    },
-                    priority: 1
-                });
-            }
-
-            // Only show chosen idea editor (not the collection)
-            if (chosenIdea) {
-                components.push({
-                    id: 'single-brainstorm-idea-editor',
-                    component: getComponentById('single-brainstorm-idea-editor'),
-                    mode: 'readonly',
-                    props: {
-                        idea: chosenIdea,
-                        isEditable: false,
-                        currentStage: currentStage
-                    },
-                    priority: 2
-                });
-            }
-
-            if (outlineSettings) {
-                components.push({
-                    id: 'outline-settings-display',
-                    component: getComponentById('outline-settings-display'),
-                    mode: 'readonly',
-                    props: {
-                        outlineSettings,
-                        isEditable: false
-                    },
-                    priority: 4
-                });
-            }
-
-            if (canonicalChronicles) {
-                components.push({
-                    id: 'chronicles-display',
-                    component: getComponentById('chronicles-display'),
-                    mode: 'readonly',
-                    props: {
-                        chronicles: canonicalChronicles,
-                        isEditable: false
-                    },
-                    priority: 5
-                });
-            }
-            break;
+            }];
+        }
+        return [];
     }
 
-    // Sort by priority
-    const sortedComponents = components.sort((a, b) => a.priority - b.priority);
+    // Override the context with the passed parameters for backward compatibility
+    const compatContext: UnifiedComputationContext = {
+        ...context,
+        currentStage,
+        hasActiveTransforms
+    };
 
-    return sortedComponents;
+    return computeDisplayComponentsFromContext(compatContext);
 };
 
 /**
  * Compute workflow parameters for components and actions
+ * @deprecated Use computeUnifiedWorkflowState instead
  */
 export const computeWorkflowParameters = (
     projectData: ProjectDataContextType,
     projectId: string
 ): WorkflowParameters => {
-    if (projectData.artifacts === "pending" || projectData.artifacts === "error") {
+    const context = computeUnifiedContext(projectData, projectId);
+
+    if (!context) {
         return {
             projectId,
             currentStage: 'initial',
@@ -719,149 +859,47 @@ export const computeWorkflowParameters = (
         };
     }
 
-    // Check if lineage graph is available
-    if (projectData.lineageGraph === "pending" || projectData.lineageGraph === "error") {
-        return {
-            projectId,
-            currentStage: 'initial',
-            hasActiveTransforms: false,
-            effectiveBrainstormIdeas: [],
-            chosenBrainstormIdea: null,
-            latestOutlineSettings: null,
-            latestChronicles: null,
-            brainstormInput: null
-        };
-    }
-
-    // Use the lineage-based computation for current stage and active transforms
-    const actionResult = computeParamsAndActionsFromLineage(projectData);
-
-    // Use lineage graph to find canonical artifacts
-    const lineageGraph = projectData.lineageGraph;
-    const artifacts = projectData.artifacts as any[];
-
-    // Find canonical brainstorm artifacts using lineage graph
-    const canonicalBrainstormArtifacts = Array.from(lineageGraph.nodes.values())
-        .filter(node => {
-            if (node.type !== 'artifact') return false;
-            const lineageArtifactNode = node as any;
-            const artifact = artifacts.find((a: any) => a.id === lineageArtifactNode.artifactId);
-            return artifact && (
-                artifact.schema_type === 'brainstorm_item_schema' ||
-                artifact.type === 'brainstorm_item_schema' ||
-                artifact.schema_type === 'brainstorm_idea_schema' ||
-                artifact.type === 'brainstorm_idea' ||
-                artifact.schema_type === 'brainstorm_collection_schema' ||
-                artifact.type === 'brainstorm_collection_schema'
-            );
-        })
-        .map(node => {
-            const lineageArtifactNode = node as any;
-            return artifacts.find((a: any) => a.id === lineageArtifactNode.artifactId);
-        })
-        .filter(artifact => artifact != null);
-
-    const chosenIdea = canonicalBrainstormArtifacts.find((idea: any) => {
-        const lineageNode = lineageGraph.nodes.get(idea.id);
-        return lineageNode && lineageNode.isLeaf;
-    });
-
-    // Find canonical outline settings using lineage graph
-    const canonicalOutlineArtifacts = Array.from(lineageGraph.nodes.values())
-        .filter(node => {
-            if (node.type !== 'artifact') return false;
-            const lineageArtifactNode = node as any;
-            const artifact = artifacts.find((a: any) => a.id === lineageArtifactNode.artifactId);
-            return artifact && (
-                artifact.schema_type === 'outline_settings_schema' ||
-                artifact.type === 'outline_settings'
-            );
-        })
-        .map(node => {
-            const lineageArtifactNode = node as any;
-            return artifacts.find((a: any) => a.id === lineageArtifactNode.artifactId);
-        })
-        .filter(artifact => artifact != null);
-
-    let outlineSettings = null;
-    if (canonicalOutlineArtifacts.length > 0) {
-        // Find leaf nodes from canonical set
-        const leafOutlineSettings = canonicalOutlineArtifacts.filter((artifact: any) => {
-            const lineageNode = lineageGraph.nodes.get(artifact.id);
-            return lineageNode && lineageNode.isLeaf;
-        });
-
-        if (leafOutlineSettings.length > 0) {
-            // Prioritize user_input artifacts, then by most recent
-            leafOutlineSettings.sort((a: any, b: any) => {
-                // First priority: user_input origin type
-                if (a.origin_type === 'user_input' && b.origin_type !== 'user_input') return -1;
-                if (b.origin_type === 'user_input' && a.origin_type !== 'user_input') return 1;
-                // Second priority: most recent
-                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-            });
-            outlineSettings = leafOutlineSettings[0];
-        } else {
-            // Fallback to most recent from canonical set if no leaf nodes found
-            canonicalOutlineArtifacts.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-            outlineSettings = canonicalOutlineArtifacts[0];
-        }
-    }
-
-    return {
-        projectId,
-        currentStage: actionResult.currentStage,
-        hasActiveTransforms: actionResult.hasActiveTransforms,
-        effectiveBrainstormIdeas: canonicalBrainstormArtifacts,
-        chosenBrainstormIdea: chosenIdea,
-        latestOutlineSettings: outlineSettings,
-        latestChronicles: artifacts.find((a: any) =>
-            a.schema_type === 'chronicles_schema'
-        ) || null,
-        brainstormInput: artifacts.find((a: any) =>
-            a.schema_type === 'brainstorm_tool_input_schema' || a.type === 'brainstorm_tool_input_schema'
-        ) || null
-    };
+    return computeWorkflowParametersFromContext(context, projectId);
 };
 
 /**
  * MAIN UNIFIED COMPUTATION FUNCTION
- * Computes steps, display components, actions, and parameters
+ * Computes steps, display components, actions, and parameters in a single pass
  */
 export const computeUnifiedWorkflowState = (
     projectData: ProjectDataContextType,
     projectId: string,
-    selectedBrainstormIdea?: SelectedBrainstormIdea | null
+    _selectedBrainstormIdea?: SelectedBrainstormIdea | null
 ): UnifiedWorkflowState => {
+    const context = computeUnifiedContext(projectData, projectId);
 
-    // First compute actions using existing logic
-    const actionResult = computeParamsAndActionsFromLineage(projectData);
+    if (!context) {
+        return {
+            steps: [],
+            displayComponents: [],
+            actions: [],
+            parameters: {
+                projectId,
+                currentStage: 'initial',
+                hasActiveTransforms: false,
+                effectiveBrainstormIdeas: [],
+                chosenBrainstormIdea: null,
+                latestOutlineSettings: null,
+                latestChronicles: null,
+                brainstormInput: null
+            }
+        };
+    }
 
-    // Compute workflow parameters
-    const parameters = computeWorkflowParameters(projectData, projectId);
+    // Compute all outputs from the unified context
+    const steps = computeWorkflowStepsFromContext(context);
+    const displayComponents = computeDisplayComponentsFromContext(context);
+    const parameters = computeWorkflowParametersFromContext(context, projectId);
 
-    // Compute workflow steps
-    const steps = computeWorkflowSteps(
-        actionResult.currentStage,
-        actionResult.hasActiveTransforms,
-        projectData
-    );
-
-    // Compute display components
-    const displayComponents = computeDisplayComponents(
-        actionResult.currentStage,
-        actionResult.hasActiveTransforms,
-        projectData
-    );
-
-    const result: UnifiedWorkflowState = {
+    return {
         steps,
         displayComponents,
-        actions: actionResult.actions,
+        actions: context.actions,
         parameters
     };
-
-
-
-    return result;
 }; 

@@ -450,22 +450,34 @@ describe('Unified Workflow Computation', () => {
                     project_id: 'test-project',
                     created_at: '2024-01-01T00:00:00Z'
                 }] as any,
-                // Need to provide a lineage graph for the lineage-based computation
+                // Provide a proper lineage graph with the brainstorm input artifact
                 lineageGraph: {
-                    nodes: new Map(),
+                    nodes: new Map([
+                        ['brainstorm-input-1', {
+                            type: 'artifact' as const,
+                            artifactId: 'brainstorm-input-1',
+                            isLeaf: true,
+                            depth: 0,
+                            artifactType: 'brainstorm_tool_input_schema',
+                            sourceTransform: 'none',
+                            schemaType: 'brainstorm_tool_input_schema',
+                            originType: 'user_input',
+                            artifact: { id: 'brainstorm-input-1' } as any,
+                            createdAt: '2024-01-01T00:00:00Z'
+                        }]
+                    ]),
                     edges: new Map(),
                     paths: new Map(),
-                    rootNodes: new Set()
+                    rootNodes: new Set(['brainstorm-input-1'])
                 }
             });
 
             const params = computeWorkflowParameters(mockProjectData, 'test-project');
 
             expect(params.projectId).toBe('test-project');
-            // Note: hasActiveTransforms detection requires a proper lineage graph with nodes
-            // In this test with empty lineage graph, hasActiveTransforms will be false
             expect(params.hasActiveTransforms).toBe(false);
             expect(params.brainstormInput).toBeTruthy();
+            expect(params.brainstormInput.id).toBe('brainstorm-input-1');
         });
     });
 

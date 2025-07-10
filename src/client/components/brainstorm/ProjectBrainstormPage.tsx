@@ -139,7 +139,7 @@ export default function ProjectBrainstormPage() {
     }
 
     // Convert brainstorm data to IdeaWithTitle format
-    let ideas: IdeaWithTitle[] = []
+    const ideas: IdeaWithTitle[] = []
     let status: 'idle' | 'streaming' | 'completed' | 'failed' = 'completed'
     let progress = 100
     let lastSyncedAt: string | null = null
