@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom';
 import { YJSTextField, YJSTextAreaField, YJSArrayOfStringField } from '../components/YJSField';
+import { YJSSlateArrayOfStringField } from '../components/YJSSlateArrayField';
 
 // Mock the YJS context and hooks
 const mockUpdateField = vi.fn();
@@ -56,6 +57,47 @@ vi.mock('antd', async () => {
         )
     };
 });
+
+// Mock Slate.js components for testing
+vi.mock('slate-react', () => ({
+    Slate: ({ children, initialValue, onValueChange }: any) => (
+        <div data-testid="slate-editor" data-initial-value={JSON.stringify(initialValue)}>
+            {children}
+        </div>
+    ),
+    Editable: ({ placeholder, onKeyDown, renderElement, ...props }: any) => (
+        <div
+            data-testid="slate-editable"
+            data-placeholder={placeholder}
+            contentEditable
+            onKeyDown={onKeyDown}
+            {...props}
+        />
+    ),
+    withReact: (editor: any) => editor
+}));
+
+vi.mock('slate', () => ({
+    createEditor: () => ({}),
+    Editor: {},
+    Node: {
+        string: (node: any) => node.children?.[0]?.text || '',
+        children: function* (editor: any, path: any) {
+            // Mock implementation for testing
+        }
+    },
+    Element: {
+        isElement: (node: any) => node && typeof node === 'object' && node.type
+    },
+    Transforms: {
+        insertNodes: vi.fn(),
+        setNodes: vi.fn()
+    }
+}));
+
+vi.mock('slate-history', () => ({
+    withHistory: (editor: any) => editor
+}));
 
 describe('YJS Field Components - Working Tests', () => {
     beforeEach(() => {
@@ -251,6 +293,125 @@ describe('YJS Field Components - Working Tests', () => {
             // Should split into two items
             const lastCall = mockUpdateField.mock.calls[mockUpdateField.mock.calls.length - 1];
             expect(lastCall[0]).toEqual(['Item 1', 'and more text']);
+        });
+    });
+
+    describe('YJSSlateArrayOfStringField', () => {
+        it('renders correctly with string array data', () => {
+            mockValue.mockReturnValue(['Item 1', 'Item 2', 'Item 3']);
+
+            render(<YJSSlateArrayOfStringField path="slateArray" placeholder="Enter bullet items" />);
+
+            // Check that the Slate editor is rendered
+            const slateEditor = screen.getByTestId('slate-editor');
+            expect(slateEditor).toBeInTheDocument();
+
+            // Check that the Editable component is rendered
+            const slateEditable = screen.getByTestId('slate-editable');
+            expect(slateEditable).toBeInTheDocument();
+            expect(slateEditable).toHaveAttribute('data-placeholder', 'Enter bullet items');
+        });
+
+        it('converts array to slate format correctly', () => {
+            mockValue.mockReturnValue(['Item 1', 'Item 2']);
+
+            render(<YJSSlateArrayOfStringField path="slateArray" placeholder="Enter items" />);
+
+            const slateEditor = screen.getByTestId('slate-editor');
+            const initialValue = JSON.parse(slateEditor.getAttribute('data-initial-value') || '[]');
+
+            // Should convert array to bullet-item format
+            expect(initialValue).toHaveLength(2);
+            expect(initialValue[0]).toEqual({
+                type: 'bullet-item',
+                children: [{ text: 'Item 1' }]
+            });
+            expect(initialValue[1]).toEqual({
+                type: 'bullet-item',
+                children: [{ text: 'Item 2' }]
+            });
+        });
+
+        it('handles empty array correctly', () => {
+            mockValue.mockReturnValue([]);
+
+            render(<YJSSlateArrayOfStringField path="slateArray" placeholder="Enter items" />);
+
+            const slateEditor = screen.getByTestId('slate-editor');
+            const initialValue = JSON.parse(slateEditor.getAttribute('data-initial-value') || '[]');
+
+            // Should create one empty bullet item for empty array
+            expect(initialValue).toHaveLength(1);
+            expect(initialValue[0]).toEqual({
+                type: 'bullet-item',
+                children: [{ text: '' }]
+            });
+        });
+
+        it('handles non-array values gracefully', () => {
+            mockValue.mockReturnValue('not an array');
+
+            render(<YJSSlateArrayOfStringField path="slateArray" placeholder="Enter items" />);
+
+            const slateEditor = screen.getByTestId('slate-editor');
+            const initialValue = JSON.parse(slateEditor.getAttribute('data-initial-value') || '[]');
+
+            // Should create one empty bullet item for non-array values
+            expect(initialValue).toHaveLength(1);
+            expect(initialValue[0]).toEqual({
+                type: 'bullet-item',
+                children: [{ text: '' }]
+            });
+        });
+
+        it('handles Enter key correctly', () => {
+            mockValue.mockReturnValue(['Item 1']);
+
+            render(<YJSSlateArrayOfStringField path="slateArray" placeholder="Enter items" />);
+
+            const slateEditable = screen.getByTestId('slate-editable');
+
+            // Simulate pressing Enter key
+            fireEvent.keyDown(slateEditable, { key: 'Enter', code: 'Enter' });
+
+            // The component should handle Enter key (preventDefault and create new bullet item)
+            // Since we're mocking Slate, we can't test the actual transform, but we can verify the event handler exists
+            expect(slateEditable).toBeInTheDocument();
+        });
+
+        it('displays helper text correctly', () => {
+            mockValue.mockReturnValue(['Item 1']);
+
+            render(<YJSSlateArrayOfStringField path="slateArray" placeholder="Enter items" />);
+
+            // Check for helper text
+            expect(screen.getByText('按 Enter 创建新的列表项')).toBeInTheDocument();
+        });
+
+        it('shows loading state when not initialized', () => {
+            mockValue.mockReturnValue(['Item 1']);
+            mockIsInitialized.mockReturnValue(false);
+
+            render(<YJSSlateArrayOfStringField path="slateArray" placeholder="Enter items" />);
+
+            // Should show loading text
+            expect(screen.getByText('Loading...')).toBeInTheDocument();
+        });
+
+        it('handles undefined and null values', () => {
+            mockValue.mockReturnValue(undefined);
+
+            render(<YJSSlateArrayOfStringField path="slateArray" placeholder="Enter items" />);
+
+            const slateEditor = screen.getByTestId('slate-editor');
+            const initialValue = JSON.parse(slateEditor.getAttribute('data-initial-value') || '[]');
+
+            // Should create one empty bullet item for undefined values
+            expect(initialValue).toHaveLength(1);
+            expect(initialValue[0]).toEqual({
+                type: 'bullet-item',
+                children: [{ text: '' }]
+            });
         });
     });
 

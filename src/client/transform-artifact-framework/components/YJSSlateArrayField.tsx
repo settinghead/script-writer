@@ -84,8 +84,6 @@ export const YJSSlateArrayOfStringField = React.memo(({ path, placeholder }: {
 
     const handleChange = useCallback((newValue: any[]) => {
         const newArray = slateValueToArray(newValue);
-        console.log('[YJSSlateArrayOfStringField] Slate value changed:', newValue);
-        console.log('[YJSSlateArrayOfStringField] Converted to array:', newArray);
         updateValue(newArray);
     }, [slateValueToArray, updateValue]);
 
@@ -120,7 +118,6 @@ export const YJSSlateArrayOfStringField = React.memo(({ path, placeholder }: {
             };
 
             Transforms.insertNodes(editor, newBulletItem as any);
-            console.log('[YJSSlateArrayOfStringField] Created new bullet item');
         }
     }, [editor]);
 
@@ -128,8 +125,6 @@ export const YJSSlateArrayOfStringField = React.memo(({ path, placeholder }: {
         return <div>Loading...</div>;
     }
 
-    console.log('[YJSSlateArrayOfStringField] Rendering with array:', value);
-    console.log('[YJSSlateArrayOfStringField] Slate value:', slateValue);
 
     return (
         <div style={{ border: '1px solid #d9d9d9', borderRadius: '6px', padding: '8px', minHeight: '100px' }}>
