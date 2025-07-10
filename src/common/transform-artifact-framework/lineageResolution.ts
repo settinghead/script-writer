@@ -200,8 +200,8 @@ export function buildLineageGraph(
 
         // If we didn't process any transforms in this iteration, we have a cycle or missing dependencies
         if (pendingTransforms.length === initialLength) {
-            console.warn('Warning: Could not process all transforms due to cycles or missing dependencies:',
-                pendingTransforms.map(t => t.id));
+            // console.warn('Warning: Could not process all transforms due to cycles or missing dependencies:',
+            //     pendingTransforms.map(t => t.id));
             break;
         }
     }

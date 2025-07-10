@@ -146,7 +146,7 @@ export function useCurrentSection(): CurrentSection {
                     elementsFound.push(selector);
                     observer.observe(element);
                 } else {
-                    console.warn(`[useCurrentSection] Element not found: ${selector}`);
+                    // console.warn(`[useCurrentSection] Element not found: ${selector}`);
                 }
             });
         };
