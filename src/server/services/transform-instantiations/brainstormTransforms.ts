@@ -179,4 +179,29 @@ export function createOutlineSettingsFromOutlineSettings(
     // Return the raw data even if validation fails - user can edit it
     return outlineSettingsData;
   }
+}
+
+/**
+ * Create editable chronicles from existing chronicles
+ * Returns the chronicles data directly (no wrapper)
+ */
+export function createChroniclesFromChronicles(
+  sourceArtifactData: any,
+  derivationPath: string
+): any {
+  const chroniclesData = extractDataAtPath(sourceArtifactData, derivationPath);
+
+  if (!chroniclesData || typeof chroniclesData !== 'object') {
+    throw new Error(`Invalid chronicles data at path ${derivationPath}`);
+  }
+
+  // Validate the data structure against the output schema
+  try {
+    const validatedData = ChroniclesOutputSchema.parse(chroniclesData);
+    return validatedData;
+  } catch (error) {
+    console.warn('Chronicles validation failed, using raw data:', error);
+    // Return the raw data even if validation fails - user can edit it
+    return chroniclesData;
+  }
 } 

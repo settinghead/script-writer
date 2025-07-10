@@ -185,6 +185,14 @@ export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinitio
     targetArtifactType: 'outline_settings_schema',
     pathPattern: '^\\$(\\..*)?$', // Root or any path like $.title, $.characters[0].name, etc.
     instantiationFunction: 'createOutlineSettingsFromOutlineSettings'
+  },
+  'edit_chronicles': {
+    name: 'edit_chronicles',
+    description: 'Edit chronicles document with whole-document editing',
+    sourceArtifactType: 'chronicles_schema',
+    targetArtifactType: 'chronicles_schema',
+    pathPattern: '^\\$(\\..*)?$', // Root or any path like $.stages[0].title, $.stages[1].event, etc.
+    instantiationFunction: 'createChroniclesFromChronicles'
   }
 };
 

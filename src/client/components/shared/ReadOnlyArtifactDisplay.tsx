@@ -68,6 +68,155 @@ export const ReadOnlyArtifactDisplay: React.FC<ReadOnlyArtifactDisplayProps> = (
 
 
 
+    // Render chronicles specific layout
+    if (schemaType === 'chronicles_schema') {
+        return (
+            <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                {Array.isArray(parsedData.stages) && parsedData.stages.length > 0 ? (
+                    parsedData.stages.map((stage: any, index: number) => (
+                        <Card
+                            key={index}
+                            size="small"
+                            style={{
+                                backgroundColor: '#262626',
+                                border: '1px solid #434343'
+                            }}
+                            styles={{ body: { padding: '20px' } }}
+                            title={
+                                <Text strong style={{ fontSize: '16px', color: '#fff' }}>
+                                    第 {index + 1} 阶段：{stage.title || '未命名阶段'}
+                                </Text>
+                            }
+                        >
+                            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                                {/* Stage Synopsis */}
+                                <div>
+                                    <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '8px' }}>
+                                        📝 阶段概述
+                                    </Text>
+                                    {renderMultilineText(stage.stageSynopsis, '未设置阶段概述')}
+                                </div>
+
+                                {/* Event */}
+                                <div>
+                                    <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '8px' }}>
+                                        🎬 关键事件
+                                    </Text>
+                                    {renderMultilineText(stage.event, '未设置关键事件')}
+                                </div>
+
+                                {/* Emotion Arcs */}
+                                <div>
+                                    <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '8px' }}>
+                                        💭 情感弧线
+                                    </Text>
+                                    {Array.isArray(stage.emotionArcs) && stage.emotionArcs.length > 0 ? (
+                                        <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                                            {stage.emotionArcs.map((arc: any, arcIndex: number) => (
+                                                <Card
+                                                    key={arcIndex}
+                                                    size="small"
+                                                    style={{
+                                                        backgroundColor: '#1a1a1a',
+                                                        border: '1px solid #333'
+                                                    }}
+                                                    styles={{ body: { padding: '12px' } }}
+                                                >
+                                                    <div style={{ marginBottom: '8px' }}>
+                                                        <Text strong style={{ fontSize: '12px', color: '#aaa' }}>
+                                                            涉及角色：
+                                                        </Text>
+                                                        <div style={{ marginTop: '4px' }}>
+                                                            {renderArrayField(arc.characters, '无角色')}
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <Text strong style={{ fontSize: '12px', color: '#aaa' }}>
+                                                            情感内容：
+                                                        </Text>
+                                                        <div style={{ marginTop: '4px' }}>
+                                                            {renderMultilineText(arc.content, '未设置内容')}
+                                                        </div>
+                                                    </div>
+                                                </Card>
+                                            ))}
+                                        </Space>
+                                    ) : (
+                                        <Text style={{ color: '#666', fontStyle: 'italic' }}>暂无情感弧线</Text>
+                                    )}
+                                </div>
+
+                                {/* Relationship Developments */}
+                                <div>
+                                    <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '8px' }}>
+                                        💕 关系发展
+                                    </Text>
+                                    {Array.isArray(stage.relationshipDevelopments) && stage.relationshipDevelopments.length > 0 ? (
+                                        <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                                            {stage.relationshipDevelopments.map((rel: any, relIndex: number) => (
+                                                <Card
+                                                    key={relIndex}
+                                                    size="small"
+                                                    style={{
+                                                        backgroundColor: '#1a1a1a',
+                                                        border: '1px solid #333'
+                                                    }}
+                                                    styles={{ body: { padding: '12px' } }}
+                                                >
+                                                    <div style={{ marginBottom: '8px' }}>
+                                                        <Text strong style={{ fontSize: '12px', color: '#aaa' }}>
+                                                            涉及角色：
+                                                        </Text>
+                                                        <div style={{ marginTop: '4px' }}>
+                                                            {renderArrayField(rel.characters, '无角色')}
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <Text strong style={{ fontSize: '12px', color: '#aaa' }}>
+                                                            关系内容：
+                                                        </Text>
+                                                        <div style={{ marginTop: '4px' }}>
+                                                            {renderMultilineText(rel.content, '未设置内容')}
+                                                        </div>
+                                                    </div>
+                                                </Card>
+                                            ))}
+                                        </Space>
+                                    ) : (
+                                        <Text style={{ color: '#666', fontStyle: 'italic' }}>暂无关系发展</Text>
+                                    )}
+                                </div>
+
+                                {/* Insights */}
+                                <div>
+                                    <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '8px' }}>
+                                        <BulbOutlined style={{ marginRight: '8px' }} />
+                                        关键洞察
+                                    </Text>
+                                    {renderArrayField(stage.insights, '暂无关键洞察')}
+                                </div>
+                            </Space>
+                        </Card>
+                    ))
+                ) : (
+                    <Card
+                        size="small"
+                        style={{
+                            backgroundColor: '#1a1a1a',
+                            border: '1px dashed #434343',
+                            textAlign: 'center'
+                        }}
+                        styles={{ body: { padding: '40px' } }}
+                    >
+                        <Text style={{ color: '#666', fontSize: '16px' }}>
+                            暂无时间顺序大纲内容
+                        </Text>
+                    </Card>
+                )}
+            </Space>
+        );
+    }
+
     // Render outline settings specific layout
     if (schemaType === 'outline_settings_schema') {
         return (
