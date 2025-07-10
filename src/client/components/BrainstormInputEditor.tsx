@@ -43,8 +43,8 @@ const YJSGenreSelectionField: React.FC<{ path: string; placeholder?: string }> =
         if (!genrePaths || !Array.isArray(genrePaths)) return [];
 
         return genrePaths.map((path: string[], index: number) => (
-            <Tag key={index} style={{ marginBottom: '4px' }}>
-                {path.join(' > ')}
+            <Tag key={index} style={{ marginBottom: '4px', fontSize: '16px', padding: "5px 10px" }}>
+                {path[path.length - 1]}
             </Tag>
         ));
     }, [genrePaths]);

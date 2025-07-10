@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Button, Typography, message, Space } from 'antd';
-import { BulbOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import { BulbOutlined, ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { BaseActionProps } from './index';
 import { ActionComponentProps } from '../../utils/lineageBasedActionComputation';
 import { apiService } from '../../services/apiService';
@@ -97,11 +97,7 @@ const BrainstormInputForm: React.FC<BrainstormInputFormPropsUnion> = (props) => 
 
     return (
         <div style={{ padding: '16px 0', textAlign: 'center' }}>
-            <div style={{ marginBottom: '16px' }}>
-                <Typography.Text type="secondary" style={{ fontSize: '14px' }}>
-                    请确保上方的参数已填写完整，然后点击下方按钮开始生成创意
-                </Typography.Text>
-            </div>
+
 
             <Space size="large">
                 <Button
@@ -122,6 +118,7 @@ const BrainstormInputForm: React.FC<BrainstormInputFormPropsUnion> = (props) => 
                 <AIButton
                     size="large"
                     loading={isStarting}
+
                     onClick={handleStartBrainstorm}
                     style={{
                         minWidth: '200px',
@@ -129,7 +126,8 @@ const BrainstormInputForm: React.FC<BrainstormInputFormPropsUnion> = (props) => 
                         fontSize: '16px'
                     }}
                 >
-                    {isStarting ? '启动中...' : '开始头脑风暴'}
+                    {isStarting ? '启动中...' : <>开始头脑风暴 <ArrowRightOutlined /></>}
+
                 </AIButton>
             </Space>
         </div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Typography, Spin } from 'antd';
 import { useProjectData } from '../contexts/ProjectDataContext';
+import { ArrowDown } from 'lucide-react';
 
 const { Text } = Typography;
 
@@ -40,8 +41,10 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
     return (
         <div style={{ textAlign: 'center', padding: '24px' }}>
             <Text type="secondary">
-                <p>项目已创建。</p>
-                <p>使用下方的按钮继续。</p>
+                <p style={{
+                    fontSize: "20px"
+                }}>使用下方的按钮继续。</p>
+                <ArrowDown size={128} style={{ marginTop: '32px' }} />
             </Text>
         </div>
     );

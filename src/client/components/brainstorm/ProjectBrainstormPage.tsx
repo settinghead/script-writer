@@ -85,16 +85,7 @@ export default function ProjectBrainstormPage(props: ProjectBrainstormPageProps 
     readOnly = false
   } = props;
 
-  console.log('[ProjectBrainstormPage] Rendering with props:', {
-    projectId,
-    propsIdeas: propsIdeas ? propsIdeas.length : 'none',
-    selectionMode: propsSelectionMode,
-    isLoading: propsIsLoading,
-    readOnly
-  });
-
   if (!projectId) {
-    console.log('[ProjectBrainstormPage] No projectId, navigating to projects');
     navigate('/projects')
     return null
   }
@@ -224,27 +215,17 @@ export default function ProjectBrainstormPage(props: ProjectBrainstormPageProps 
 
   // Use the better data source - prioritize props when available
   const ideas = useMemo(() => {
-    console.log('[ProjectBrainstormPage] Computing ideas from sources:', {
-      propsIdeas: propsIdeas ? propsIdeas.length : 'none',
-      latestIdeas: latestIdeas === "pending" ? "pending" :
-        latestIdeas === "error" ? "error" :
-          Array.isArray(latestIdeas) ? latestIdeas.length : 'unknown',
-      fallbackIdeas: fallbackIdeas.length
-    });
 
     // If props provide ideas, use them (for read-only mode)
     if (propsIdeas && propsIdeas.length > 0) {
-      console.log('[ProjectBrainstormPage] Using props ideas:', propsIdeas.length);
       return propsIdeas;
     }
 
     // Otherwise use the computed data
     if (latestIdeas === "pending" || latestIdeas === "error") {
-      console.log('[ProjectBrainstormPage] Using fallback ideas:', fallbackIdeas.length);
       return fallbackIdeas;
     }
     const finalIdeas = latestIdeas.length > 0 ? latestIdeas : fallbackIdeas;
-    console.log('[ProjectBrainstormPage] Using computed ideas:', finalIdeas.length);
     return finalIdeas;
   }, [propsIdeas, latestIdeas, fallbackIdeas]);
 
@@ -286,7 +267,8 @@ export default function ProjectBrainstormPage(props: ProjectBrainstormPageProps 
       artifactId: clickedIdea.artifactId,
       originalArtifactId: clickedIdea.originalArtifactId || clickedIdea.artifactId,
       artifactPath: clickedIdea.artifactPath,
-      index: index
+      index: index,
+      title: clickedIdea.title
     });
   }, [readOnly, chosenIdea, ideas, store]);
 

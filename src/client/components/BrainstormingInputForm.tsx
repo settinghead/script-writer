@@ -78,7 +78,12 @@ const BrainstormingInputForm: React.FC<BrainstormingInputFormProps> = ({
                 <Text style={{ color: '#d9d9d9', marginBottom: '8px', display: 'block', fontWeight: 500 }}>
                     故事类型
                 </Text>
-
+                <GenreSelectionPopup
+                    visible={genrePopupVisible}
+                    onClose={() => setGenrePopupVisible(false)}
+                    onSelect={handleGenreSelectionConfirm}
+                    currentSelectionPaths={selectedGenrePaths}
+                />
                 <div
                     onClick={() => setGenrePopupVisible(true)}
                     style={{

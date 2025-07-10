@@ -39,13 +39,6 @@ const BrainstormIdeaSelection: React.FC<BaseActionProps> = ({ projectId, onSucce
                 derivationPath = selectedIdea.artifactPath;
             }
 
-            console.log('[BrainstormIdeaSelection] Creating human transform:', {
-                transformName,
-                sourceArtifactId,
-                derivationPath,
-                selectedIdea
-            });
-
             // Create human transform to start editing
             await new Promise((resolve, reject) => {
                 projectData.createHumanTransform.mutate({
@@ -106,7 +99,7 @@ const BrainstormIdeaSelection: React.FC<BaseActionProps> = ({ projectId, onSucce
             }}>
                 <div style={{ marginBottom: '8px' }}>
                     <Text strong style={{ color: '#fff', fontSize: '16px' }}>
-                        创意 {store.selectedBrainstormIdea.index + 1}
+                        创意 “{store.selectedBrainstormIdea.title}”
                     </Text>
                 </div>
                 <div style={{ marginBottom: '16px' }}>

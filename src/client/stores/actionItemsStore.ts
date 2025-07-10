@@ -26,6 +26,7 @@ interface SelectedBrainstormIdea {
     originalArtifactId: string;
     artifactPath: string;
     index: number;
+    title: string;
 }
 
 // Main store state interface
