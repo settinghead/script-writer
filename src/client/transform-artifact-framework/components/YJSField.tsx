@@ -49,7 +49,7 @@ export const YJSTextAreaField = React.memo(({ path, placeholder, rows = 4 }: {
     );
 });
 
-// Array Field Component
+// Array Field Component (for complex objects)
 export const YJSArrayField = React.memo(({ path, placeholder, itemPlaceholder }: {
     path: string;
     placeholder?: string;
@@ -106,6 +106,48 @@ export const YJSArrayField = React.memo(({ path, placeholder, itemPlaceholder }:
             >
                 {placeholder || '添加项目'}
             </Button>
+        </div>
+    );
+});
+
+// Dedicated String Array Field Component
+export const YJSArrayOfStringField = React.memo(({ path, placeholder }: {
+    path: string;
+    placeholder?: string;
+}) => {
+    const { value, updateValue, isInitialized } = useYJSField(path);
+
+    const arrayValue = useMemo(() => {
+        if (!Array.isArray(value)) return [];
+        return value.filter(item => typeof item === 'string');
+    }, [value]);
+
+    const arrayToTextarea = useCallback(() => {
+        return arrayValue.join('\n');
+    }, [arrayValue]);
+
+    const textareaToArray = useCallback((text: string) => {
+        return text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+    }, []);
+
+    const handleTextareaChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const newArray = textareaToArray(e.target.value);
+        updateValue(newArray);
+    }, [textareaToArray, updateValue]);
+
+    if (!isInitialized) return null;
+
+    return (
+        <div>
+            <TextArea
+                value={arrayToTextarea()}
+                onChange={handleTextareaChange}
+                placeholder={placeholder || '每行一个项目，空行将被忽略'}
+                autoSize={{ minRows: 3, maxRows: 8 }}
+            />
+            <div style={{ marginTop: 4, color: '#666', fontSize: '12px' }}>
+                每行一个项目，空行将被忽略
+            </div>
         </div>
     );
 });
