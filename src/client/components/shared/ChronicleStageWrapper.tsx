@@ -1,8 +1,7 @@
 import React, { useMemo, useCallback, useState } from 'react';
 import { Button, message } from 'antd';
 import { EditOutlined } from '@ant-design/icons';
-import { YJSArtifactProvider, useYJSField } from '../../transform-artifact-framework/contexts/YJSArtifactContext';
-import EditableChronicleStageForm from './EditableChronicleStageForm';
+import { YJSArtifactProvider } from '../../transform-artifact-framework/contexts/YJSArtifactContext';
 import { ReadOnlyArtifactDisplay } from './ReadOnlyArtifactDisplay';
 import { useLineageResolution } from '../../transform-artifact-framework/useLineageResolution';
 import { useProjectData } from '../../contexts/ProjectDataContext';
@@ -82,7 +81,7 @@ export const ChronicleStageWrapper = React.memo(({
     // If editable, show editable form
     return (
         <YJSArtifactProvider artifactId={effectiveArtifactId} basePath={basePath}>
-            {children || <EditableChronicleStageForm stageIndex={stageIndex} />}
+            {children || <div>Editable form placeholder</div>}
         </YJSArtifactProvider>
     );
 });
@@ -95,9 +94,36 @@ const ReadOnlyChronicleStageDisplay = React.memo(({
     stageIndex: number;
     chroniclesArtifactId: string;
 }) => {
-    const { value: stageData } = useYJSField('');
     const projectData = useProjectData();
     const [isCreatingTransform, setIsCreatingTransform] = useState(false);
+
+    // Get stage data directly from artifact instead of using YJS for read-only display
+    const stageData = useMemo(() => {
+        if (!projectData.artifacts || projectData.artifacts === "pending" || projectData.artifacts === "error") {
+            return null;
+        }
+
+        const artifact = projectData.artifacts.find(a => a.id === chroniclesArtifactId);
+        if (!artifact?.data) {
+            return null;
+        }
+
+        try {
+            let data: any = artifact.data;
+            if (typeof data === 'string') {
+                data = JSON.parse(data);
+            }
+
+            if (data.stages && Array.isArray(data.stages) && data.stages[stageIndex]) {
+                return data.stages[stageIndex];
+            }
+
+            return null;
+        } catch (error) {
+            console.error('Failed to parse artifact data:', error);
+            return null;
+        }
+    }, [projectData.artifacts, chroniclesArtifactId, stageIndex]);
 
     // Handle creating human transform to make stage editable
     const handleCreateEditableVersion = useCallback(async () => {

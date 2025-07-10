@@ -59,8 +59,8 @@ const ChatMessage: React.FC<{ message: any; isStreaming?: boolean }> = ({ messag
         if (message.display_type === 'thinking') {
             if (message.status === 'streaming') {
                 return (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '12px', color: AppColors.text.secondary }}>
-                        <span>{processedMessage.content}</span>
+                    <div style={{ fontSize: '12px', color: AppColors.text.secondary, maxWidth: '300px', lineHeight: 1.4 }}>
+                        <div style={{ marginBottom: '4px' }}>{processedMessage.content}</div>
                         <Spin size="small" />
                     </div>
                 );

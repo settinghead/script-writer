@@ -16,6 +16,7 @@ export const ChroniclesDisplay: React.FC<ChroniclesDisplayProps> = ({
     const projectData = useProjectData();
 
     const { artifacts, isLoading, isError, error } = projectData;
+
     if (artifacts === "pending" || artifacts === "error") {
         return null;
     }
@@ -87,7 +88,6 @@ export const ChroniclesDisplay: React.FC<ChroniclesDisplayProps> = ({
     }
 
     const { latestArtifactId, hasLineage, isLoading: lineageLoading, error: lineageError } = r;
-
 
     // Get the effective chronicles artifact
     const effectiveChroniclesArtifact = useMemo(() => {
