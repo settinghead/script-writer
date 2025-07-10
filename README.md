@@ -597,6 +597,164 @@ await handleSave('emotionArcs', convertedEmotionArcs);
 - **Flexible Editing** - Can edit some stages while leaving others unchanged
 - **Type Safety** - Full TypeScript support for all stage fields and operations
 
+## Chinese Short Drama UI/UX Principles
+
+Based on our implementation experience, the following UI/UX principles have emerged for Chinese short drama script creation applications:
+
+### 1. **Hierarchical Content Organization**
+**Principle**: Organize content in clear parent-child relationships that mirror the creative workflow.
+
+**Implementation**:
+- **Project → Collections → Individual Items** - Clear hierarchy with independent editing capabilities
+- **Chronicles → Stages → Fields** - Nested structure allowing granular modifications
+- **Visual Hierarchy** - Use cards, borders, and spacing to show relationships
+
+**Benefits**:
+- Users understand where they are in the creative process
+- Easy to navigate between different levels of detail
+- Maintains context while allowing focused editing
+
+### 2. **Click-to-Edit Interaction Pattern**
+**Principle**: Make the entire interface element clickable to enter edit mode, not just buttons.
+
+**Implementation**:
+- **Entire Stage Cards** - Clicking anywhere on a read-only stage creates an editable version
+- **Collection Items** - Clicking on any story idea enters editing mode
+- **Visual Feedback** - Clear hover states and click affordances
+
+**Benefits**:
+- More intuitive than hunting for small edit buttons
+- Faster workflow for content creators
+- Reduces cognitive load - entire areas are interactive
+
+### 3. **Smart Array Field Editing**
+**Principle**: Automatically detect string arrays and provide textarea-based editing instead of individual input fields.
+
+**Implementation**:
+```typescript
+// Auto-detect string arrays and use textarea mode
+const isStringArray = useMemo(() => {
+  return Array.isArray(value) && value.every(item => typeof item === 'string');
+}, [value]);
+
+// Textarea mode: each line = one array item
+const textareaValue = isStringArray ? value.join('\n') : '';
+```
+
+**Benefits**:
+- Much cleaner UI for fields like "核心事件", "关键洞察", "卖点"
+- Faster editing - no need to click individual delete buttons
+- More natural for Chinese text input
+
+### 4. **Real-time Collaboration Without Disruption**
+**Principle**: Enable real-time collaboration while preserving user focus and preventing interruptions.
+
+**Implementation**:
+- **Focus Preservation** - Never lose cursor position during auto-save
+- **Debounced Saving** - 1-second delay prevents excessive API calls
+- **Optimistic Updates** - Changes appear immediately, sync happens in background
+- **Queue-based Conflict Resolution** - Handle rapid typing without data loss
+
+**Benefits**:
+- Seamless typing experience for Chinese content creators
+- Multiple users can work simultaneously without conflicts
+- No disruption to creative flow
+
+### 5. **Visual Status Indicators**
+**Principle**: Use consistent visual language to indicate content status and editing capabilities.
+
+**Implementation**:
+- **Green Borders** - Editable/edited content (human transforms)
+- **Blue Borders** - Read-only AI-generated content
+- **"已编辑" Tags** - Clear indication of user modifications
+- **"只读" Labels** - Explicit read-only indicators
+
+**Benefits**:
+- Users immediately understand what they can edit
+- Clear distinction between AI-generated and human-edited content
+- Builds confidence in the editing workflow
+
+### 6. **Contextual Field Validation**
+**Principle**: Validate content based on Chinese short drama requirements and platform constraints.
+
+**Implementation**:
+- **Character Limits** - Appropriate for 抖音 (short) vs 快手 (longer) content
+- **Genre Validation** - Ensure content fits selected genre conventions
+- **Platform Optimization** - Validate hook strength for different platforms
+- **去脸谱化 Checking** - Warn against stereotypical content
+
+**Benefits**:
+- Content automatically optimized for target platforms
+- Reduces revision cycles
+- Maintains quality standards for Chinese audiences
+
+### 7. **Progressive Content Revelation**
+**Principle**: Show content complexity progressively as users dive deeper into editing.
+
+**Implementation**:
+- **Collection Overview** - Show summary cards with key information
+- **Individual Editing** - Reveal full field set when editing specific items
+- **Staged Workflow** - Only show next steps when prerequisites are complete
+- **Expandable Sections** - Allow users to focus on specific areas
+
+**Benefits**:
+- Reduces overwhelming interfaces
+- Guides users through complex creative processes
+- Maintains focus on current task
+
+### 8. **Intelligent Auto-Save with Conflict Resolution**
+**Principle**: Save user work automatically while handling concurrent edits gracefully.
+
+**Implementation**:
+```typescript
+// Queue-based saving to prevent data loss
+if (savingRef.current) {
+    pendingSaveRef.current = valueToSave; // Queue latest value
+    return;
+}
+
+// Process queued values after save completes
+if (pendingSaveRef.current && pendingSaveRef.current !== valueToSave) {
+    const queuedValue = pendingSaveRef.current;
+    setTimeout(() => saveValue(queuedValue), 0);
+}
+```
+
+**Benefits**:
+- No lost work during rapid typing
+- Handles network delays gracefully
+- Supports collaborative editing without conflicts
+
+### 9. **Schema-Driven UI Generation**
+**Principle**: Generate editing interfaces automatically from content schemas while maintaining Chinese-specific optimizations.
+
+**Implementation**:
+- **Field Type Detection** - Automatically choose appropriate input components
+- **Chinese Text Optimization** - Proper handling of Chinese character input
+- **Platform-Specific Validation** - Built-in validation for different social media platforms
+- **Genre-Aware Forms** - Different form layouts for different drama types
+
+**Benefits**:
+- Consistent editing experience across all content types
+- Reduces development time for new content types
+- Maintains Chinese language input optimization
+
+### 10. **Workflow-Aware Action Management**
+**Principle**: Present only relevant actions based on current workflow state and available content.
+
+**Implementation**:
+- **Lineage-Based Action Computation** - Analyze artifact relationships to determine available actions
+- **Stage Detection** - Automatically identify current position in creative workflow
+- **Prerequisite Validation** - Only show actions when required content exists
+- **Priority Ordering** - Display actions in logical workflow sequence
+
+**Benefits**:
+- Users never see irrelevant or impossible actions
+- Clear guidance through complex creative workflows
+- Reduces decision fatigue and cognitive load
+
+These principles have been battle-tested in the 觅光助创 application and provide a solid foundation for Chinese short drama content creation tools. They balance the need for sophisticated AI-powered workflows with the practical requirements of Chinese content creators working on platforms like 抖音, 快手, and 小红书.
+
 ## Getting Started
 
 ### Prerequisites

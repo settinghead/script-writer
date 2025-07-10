@@ -393,6 +393,118 @@ User Request → Agent Analysis → Context Enrichment → Tool Selection → Ex
 - **Editability Logic** - Use origin_type to determine edit permissions and UI behavior
 - **Versioned Validation** - All transforms validated against Zod schemas with version suffixes
 
+### 4. Hierarchical Context Architecture
+**Parent-Child Context Pattern**: Use parent contexts with child contexts only when human transforms exist, avoiding complex data merging.
+
+**Context Hierarchy Principles**:
+- **Parent Context** - Chronicles artifact (for all stages) or collection artifacts (for all items)
+- **Child Context** - Individual stage/item artifacts (only for stages/items that have human transforms)
+- **Path-Based Field Access** - For unedited content, use parent context with specific paths (e.g., `stages[0]`)
+- **Conditional Context Creation** - Child contexts should only exist when there's actual override data to manage
+
+**Lineage-Based Context Selection**:
+```typescript
+// Determine which artifact to use based on lineage
+const hasHumanTransform = useLineageResolution(parentArtifactId, itemPath);
+const contextArtifactId = hasHumanTransform ? childArtifactId : parentArtifactId;
+const contextPath = hasHumanTransform ? '$' : itemPath;
+```
+
+### 5. Data Flow Stability Principles
+**Reference Stability**: Prevent infinite loops and focus loss in React components through careful dependency management.
+
+**Critical Patterns**:
+- **Avoid Reference Instability** - Never include computed values or new object references in `useCallback` dependencies
+- **Use Ref Pattern** - Access current values via refs in debounced callbacks to prevent stale closures
+- **Stabilize Context Values** - Memoize context values to prevent unnecessary provider re-renders
+- **Component Memoization** - Use `React.memo` for components that receive frequently changing props
+
+**Anti-Pattern Example**:
+```typescript
+// ❌ BAD - Creates infinite loop
+const debouncedSave = useCallback(
+  debounce((value) => onSave(value), 1000),
+  [value, onSave] // value changes constantly, recreating function
+);
+
+// ✅ GOOD - Stable function with refs
+const valueRef = useRef(value);
+const onSaveRef = useRef(onSave);
+valueRef.current = value;
+onSaveRef.current = onSave;
+
+const debouncedSave = useCallback(
+  debounce(() => onSaveRef.current(valueRef.current), 1000),
+  [] // Empty dependencies - function never recreated
+);
+```
+
+### 6. Subscription-Based State Management
+**Prevent React Re-renders**: Use subscription patterns for real-time data that changes frequently without triggering component re-renders.
+
+**Subscription Context Pattern**:
+```typescript
+// Separate structural (stable) from content (changing) contexts
+interface StructuralContext {
+  subscribeToValue: (path: string, callback: (value: any) => void) => () => void;
+  updateValue: (path: string, value: any) => void;
+  getValue: (path: string) => any;
+}
+
+// Field components subscribe without triggering context re-renders
+const useFieldSubscription = (path: string) => {
+  const [value, setValue] = useState();
+  const { subscribeToValue } = useContext(StructuralContext);
+  
+  useEffect(() => {
+    return subscribeToValue(path, setValue);
+  }, [path, subscribeToValue]);
+  
+  return value;
+};
+```
+
+### 7. Click-to-Edit Interaction Pattern
+**Seamless Editing Workflow**: Make entire interface elements clickable to create human transforms and enter edit mode.
+
+**Implementation Pattern**:
+- **Entire Cards Clickable** - Not just edit buttons, but entire read-only cards should be clickable
+- **Human Transform Creation** - Click handlers create human transforms with appropriate derivation paths
+- **Automatic Mode Switching** - Components automatically switch from read-only to editable based on artifact origin_type
+- **Visual Feedback** - Clear indicators for read-only vs editable states
+
+**Transform Creation Example**:
+```typescript
+const handleCreateEditableVersion = useCallback(async () => {
+  projectData.createHumanTransform.mutate({
+    transformName: 'edit_collection_item',
+    sourceArtifactId: parentArtifactId,
+    derivationPath: `$.items[${itemIndex}]`,
+    fieldUpdates: {}
+  });
+}, [projectData, parentArtifactId, itemIndex]);
+```
+
+### 8. Field Name Consistency Principle
+**Schema-UI Alignment**: Ensure UI field names exactly match artifact data structure field names.
+
+**Critical Rule**: UI components must use the exact field names from the artifact schema, not assumed or convenient names.
+
+**Common Mistake**:
+```typescript
+// ❌ BAD - UI uses 'content' but data has 'stageSynopsis'
+<YJSTextAreaField path="content" />
+
+// ✅ GOOD - UI matches data structure
+<YJSTextAreaField path="stageSynopsis" />
+```
+
+**Validation Process**:
+1. **Check Artifact Data** - Always verify actual field names in stored artifacts
+2. **Match Schema Definitions** - Ensure UI field paths match Zod schema field names
+3. **Test with Real Data** - Use actual artifact data for testing, not mock data
+4. **Debug with API Calls** - Use `curl` or API inspection to verify data structure
+
 ## Database Architecture
 
 **PostgreSQL + Electric SQL + Kysely**:
