@@ -3,7 +3,7 @@ import { ComponentId } from './workflowTypes';
 
 // Import all the components that will be managed by the unified system
 import { ProjectCreationForm } from '../components/ProjectCreationForm';
-import { BrainstormInputEditor } from '../components/BrainstormInputEditor';
+import BrainstormInputEditor from '../components/BrainstormInputEditor';
 import ProjectBrainstormPage from '../components/brainstorm/ProjectBrainstormPage';
 import { SingleBrainstormIdeaEditor } from '../components/brainstorm/SingleBrainstormIdeaEditor';
 import { OutlineSettingsDisplay } from '../components/OutlineSettingsDisplay';

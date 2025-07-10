@@ -209,6 +209,7 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
             // Always prioritize server data (currentSelectionPaths) over localStorage
             // Only use localStorage if server data is empty
             const initialSelections = currentSelectionPaths.length > 0 ? currentSelectionPaths : tempSelectedPathsStorage;
+
             setTempSelectedPaths(initialSelections);
             setNavigationPath([]);
             if (!isMobile) {
@@ -219,7 +220,7 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
                 }
             }
         }
-    }, [visible, currentSelectionPaths, isMobile, tempSelectedPathsStorage]);
+    }, [visible, currentSelectionPaths, isMobile]); // Removed tempSelectedPathsStorage from dependencies
 
     const isOptionDisabled = (path: string[]) => {
         // Check if the path is in disabledOptions
@@ -283,6 +284,7 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
 
         setTempSelectedPaths(prevSelectedPaths => {
             const isAlreadySelected = prevSelectedPaths.some(p => JSON.stringify(p) === JSON.stringify(fullItemPath));
+
             let newSelectedPaths;
 
             if (isAlreadySelected) {
@@ -314,6 +316,8 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
             onClose();
             // Clear localStorage after confirming selection
             setTempSelectedPathsStorage([]);
+        } else {
+            // No action needed, handleConfirm is called when tempSelectedPaths.length is 0 or > MAX_GENRE_SELECTIONS
         }
     };
 

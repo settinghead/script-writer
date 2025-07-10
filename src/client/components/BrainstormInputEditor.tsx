@@ -2,103 +2,92 @@ import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { Card, Button, Typography, message, Tag, Space, InputNumber, Input } from 'antd';
 import { BulbOutlined, RightOutlined } from '@ant-design/icons';
 import { useProjectData } from '../contexts/ProjectDataContext';
-import { YJSArtifactProvider, useYJSField } from '../transform-artifact-framework/contexts/YJSArtifactContext';
+import { YJSArtifactProvider, useYJSField, useYJSArtifactContext } from '../transform-artifact-framework/contexts/YJSArtifactContext';
 import { YJSTextField, YJSTextAreaField, YJSNumberField } from '../transform-artifact-framework/components/YJSField';
 import GenreSelectionPopup, { MAX_GENRE_SELECTIONS } from './GenreSelectionPopup';
 import PlatformSelection from './PlatformSelection';
-import AIButton from './shared/AIButton';
 
 const { Text, Title } = Typography;
 
 interface BrainstormInputEditorProps {
-    projectId: string;
+    artifact: any;
+    isEditable?: boolean;
+    currentStage?: string;
+    onViewOriginalIdeas?: () => void;
 }
 
 // Custom YJS Genre Selection Field Component
 const YJSGenreSelectionField: React.FC<{ path: string; placeholder?: string }> = ({ path, placeholder }) => {
     const { value, updateValue, isInitialized } = useYJSField(path);
+    const { updateValue: updateGenreText } = useYJSField('genre'); // Also update genre text
     const [genrePopupVisible, setGenrePopupVisible] = useState(false);
 
     // Parse the current value to get genre paths
     const genrePaths = useMemo(() => {
-        if (!value || !Array.isArray(value)) return [];
-        return value;
+        const result = !value || !Array.isArray(value) ? [] : value;
+        return result;
     }, [value]);
 
     // Handle genre selection
     const handleGenreSelectionConfirm = useCallback((selection: { paths: string[][] }) => {
+        const genreText = selection.paths.map(path => path.join(' > ')).join(', ');
         updateValue(selection.paths);
+        updateGenreText(genreText);
         setGenrePopupVisible(false);
-    }, [updateValue]);
+    }, [updateValue, updateGenreText, value, genrePaths]);
 
     // Build genre display elements
     const buildGenreDisplayElements = useCallback((): React.ReactElement[] => {
         if (!genrePaths || !Array.isArray(genrePaths)) return [];
 
-        return genrePaths.map((path: string[], index: number) => {
-            const genreText = path.join(' > ');
-            return (
-                <Tag key={index} color="blue" style={{ marginBottom: 4 }}>
-                    {genreText}
-                </Tag>
-            );
-        });
+        return genrePaths.map((path: string[], index: number) => (
+            <Tag key={index} style={{ marginBottom: '4px' }}>
+                {path.join(' > ')}
+            </Tag>
+        ));
     }, [genrePaths]);
 
-    if (!isInitialized) return null;
+    if (!isInitialized) {
+        return <div>加载中...</div>;
+    }
 
     return (
         <div>
-            <div
-                onClick={() => setGenrePopupVisible(true)}
-                style={{
-                    border: '1px solid #434343',
-                    borderRadius: '6px',
-                    padding: '8px 12px',
-                    minHeight: '32px',
-                    cursor: 'pointer',
-                    background: '#141414',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    transition: 'all 0.3s'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.borderColor = '#1890ff'}
-                onMouseLeave={(e) => e.currentTarget.style.borderColor = '#434343'}
-            >
-                {genrePaths && genrePaths.length > 0 ? (
-                    <div style={{ color: '#d9d9d9', cursor: 'pointer', flex: 1 }}>
-                        <Space wrap>
-                            {buildGenreDisplayElements()}
-                        </Space>
-                    </div>
-                ) : (
-                    <span style={{ color: '#666', cursor: 'pointer' }}>
-                        {placeholder || `点击选择故事类型 (可多选, 最多${MAX_GENRE_SELECTIONS}个)`}
-                    </span>
-                )}
-                <RightOutlined style={{ fontSize: '12px', color: '#666', marginLeft: '8px' }} />
+            <div style={{ marginBottom: '8px' }}>
+                <Space wrap>
+                    {buildGenreDisplayElements()}
+                </Space>
             </div>
+            <Button
+                type="dashed"
+                icon={<RightOutlined />}
+                onClick={() => setGenrePopupVisible(true)}
+                style={{ width: '100%' }}
+            >
+                {genrePaths.length > 0 ? '修改故事类型' : '选择故事类型'}
+            </Button>
 
             <GenreSelectionPopup
                 visible={genrePopupVisible}
                 onClose={() => setGenrePopupVisible(false)}
                 onSelect={handleGenreSelectionConfirm}
-                currentSelectionPaths={genrePaths || []}
+                currentSelectionPaths={genrePaths}
             />
         </div>
     );
 };
 
 // Custom YJS Platform Selection Field Component
-const YJSPlatformSelectionField: React.FC<{ path: string }> = ({ path }) => {
+const YJSPlatformSelectionField: React.FC<{ path: string; placeholder?: string }> = ({ path, placeholder }) => {
     const { value, updateValue, isInitialized } = useYJSField(path);
 
-    const handlePlatformChange = useCallback((newValue: string) => {
-        updateValue(newValue);
+    const handlePlatformChange = useCallback((selectedPlatform: string) => {
+        updateValue(selectedPlatform);
     }, [updateValue]);
 
-    if (!isInitialized) return null;
+    if (!isInitialized) {
+        return <div>加载中...</div>;
+    }
 
     return (
         <PlatformSelection
@@ -110,265 +99,85 @@ const YJSPlatformSelectionField: React.FC<{ path: string }> = ({ path }) => {
 
 // Separate component that uses YJS context
 const BrainstormInputForm: React.FC = () => {
-    const { value: artifact } = useYJSField(''); // Get the entire artifact
     const { value: platform } = useYJSField('platform');
     const { value: genrePaths } = useYJSField('genrePaths');
     const { value: genre } = useYJSField('genre');
     const { value: numberOfIdeas } = useYJSField('numberOfIdeas');
+    const { value: otherRequirements } = useYJSField('other_requirements');
 
-    const handleStartBrainstorm = async () => {
-        try {
-            if (!genre || !genre.trim()) {
-                message.warning('请先填写故事类型');
-                return;
-            }
-
-            if (!platform || !platform.trim()) {
-                message.warning('请先填写目标平台');
-                return;
-            }
-
-            // Get project ID from artifact
-            const projectId = artifact?.project_id;
-            if (!projectId) {
-                message.error('无法获取项目ID');
-                return;
-            }
-
-            // Trigger brainstorm agent
-            const response = await fetch(`/api/projects/${projectId}/agent`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer debug-auth-token-script-writer-dev`
-                },
-                body: JSON.stringify({
-                    userRequest: `基于artifact ID ${artifact?.id} 的头脑风暴参数，生成${numberOfIdeas || 3}个创意想法。平台：${platform}，类型：${genre}`,
-                    projectId: projectId
-                })
-            });
-
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || 'Failed to start brainstorm');
-            }
-
-            message.success('头脑风暴已开始！请查看聊天面板了解进度。');
-        } catch (error) {
-            console.error('Error starting brainstorm:', error);
-            message.error(`启动头脑风暴失败：${error instanceof Error ? error.message : '未知错误'}`);
-        }
-    };
-
-    return (
-        <div style={{ padding: '24px' }}>
-            <Title level={4} style={{ marginBottom: '24px', color: '#fff', textAlign: 'center' }}>
-                <BulbOutlined style={{ marginRight: '8px', color: '#1890ff' }} />
-                头脑风暴要求
-            </Title>
-
-            <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '20px',
-                maxWidth: '600px',
-                margin: '0 auto'
-            }}>
-                {/* Platform Selection */}
-                <div>
-                    <YJSPlatformSelectionField path="platform" />
-                </div>
-
-                {/* Genre Selection */}
-                <div>
-                    <Text style={{ color: '#d9d9d9', marginBottom: '8px', display: 'block', fontWeight: 500 }}>
-                        故事类型
-                    </Text>
-                    <YJSGenreSelectionField
-                        path="genrePaths"
-                        placeholder={`点击选择故事类型 (可多选, 最多${MAX_GENRE_SELECTIONS}个)`}
-                    />
-                </div>
-
-                {/* Number of Ideas Selection */}
-                <div>
-                    <Text style={{ color: '#d9d9d9', marginBottom: '8px', display: 'block', fontWeight: 500 }}>
-                        生成创意数量
-                    </Text>
-                    <YJSNumberField
-                        path="numberOfIdeas"
-                        min={1}
-                        max={4}
-                        placeholder="选择要生成的创意数量 (1-4)"
-                    />
-                    <Text style={{ color: '#666', fontSize: '12px', marginTop: '4px', display: 'block' }}>
-                        建议生成2-3个创意进行对比选择
-                    </Text>
-                </div>
-
-                {/* Requirements Input - Using YJS TextArea */}
-                <div>
-                    <Text style={{ color: '#d9d9d9', marginBottom: '8px', display: 'block', fontWeight: 500 }}>
-                        其他要求 (可选)
-                    </Text>
-                    <YJSTextAreaField
-                        path="other_requirements"
-                        placeholder="请输入故事的具体要求，如角色设定、情节偏好等..."
-                        rows={3}
-                    />
-                </div>
-
-                {/* Start Brainstorm Button */}
-                <div style={{ marginTop: '16px' }}>
-                    <Button
-                        type="primary"
-                        size="large"
-                        onClick={handleStartBrainstorm}
-                        style={{
-                            width: '100%',
-                            height: '48px',
-                            fontSize: '16px',
-                            fontWeight: 500,
-                            background: 'linear-gradient(135deg, #1890ff 0%, #36cfc9 100%)',
-                            border: 'none',
-                            borderRadius: '8px'
-                        }}
-                    >
-                        <BulbOutlined style={{ marginRight: '8px' }} />
-                        开始头脑风暴
-                    </Button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-// Compact view component for when ideas have been generated
-const CompactBrainstormView: React.FC<{ currentData: any }> = ({ currentData }) => {
     return (
         <Card
-            size="small"
+            title={
+                <Space>
+                    <BulbOutlined style={{ color: '#1890ff' }} />
+                    <Text strong>头脑风暴需求</Text>
+                </Space>
+            }
             style={{
-                maxWidth: '600px',
-                margin: '0 auto 16px auto',
-                background: '#1a1a1a',
-                borderColor: '#434343',
-                borderWidth: '1px'
-            }}
-            styles={{
-                header: {
-                    background: '#1a1a1a',
-                    borderBottom: '1px solid #333',
-                    color: '#fff',
-                    minHeight: 'auto',
-                    padding: '8px 16px'
-                },
-                body: { background: '#1a1a1a', padding: '12px 16px' }
+                backgroundColor: '#1a1a1a',
+                border: '1px solid #434343'
             }}
         >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <BulbOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
-                    <Text style={{ color: '#fff', fontWeight: 500 }}>头脑风暴要求</Text>
+            <Space direction="vertical" style={{ width: '100%' }} size="large">
+                <div>
+                    <Text strong>目标平台：</Text>
+                    <div style={{ marginTop: '8px' }}>
+                        <YJSPlatformSelectionField path="platform" placeholder="请选择发布平台" />
+                    </div>
                 </div>
-            </div>
-            <div style={{ marginTop: '8px', display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
-                <Text style={{ color: '#999', fontSize: '12px' }}>平台:</Text>
-                <Tag color="blue" style={{ fontSize: '11px', padding: '0 6px', lineHeight: '18px' }}>{currentData.platform}</Tag>
-                <Text style={{ color: '#999', fontSize: '12px' }}>类型:</Text>
-                {currentData.genrePaths && currentData.genrePaths.length > 0 ? (
-                    currentData.genrePaths.slice(0, 2).map((path: string[], index: number) => (
-                        <Tag key={index} color="green" style={{ fontSize: '11px', padding: '0 6px', lineHeight: '18px' }}>
-                            {path.join(' > ')}
-                        </Tag>
-                    ))
-                ) : (
-                    <Tag color="green" style={{ fontSize: '11px', padding: '0 6px', lineHeight: '18px' }}>{currentData.genre}</Tag>
-                )}
-                {currentData.genrePaths && currentData.genrePaths.length > 2 && (
-                    <Text style={{ color: '#666', fontSize: '12px' }}>+{currentData.genrePaths.length - 2}个</Text>
-                )}
-                <Text style={{ color: '#999', fontSize: '12px' }}>数量:</Text>
-                <Tag color="orange" style={{ fontSize: '11px', padding: '0 6px', lineHeight: '18px' }}>{currentData.numberOfIdeas}个</Tag>
-            </div>
+
+                <div>
+                    <Text strong>故事类型</Text>
+                    <div style={{ marginTop: '8px' }}>
+                        <YJSGenreSelectionField path="genrePaths" />
+                    </div>
+                </div>
+
+                <div>
+                    <Text strong>生成创意数量</Text>
+                    <div style={{ marginTop: '8px' }}>
+                        <YJSNumberField path="numberOfIdeas" placeholder="3" />
+                        <div style={{ marginTop: '4px' }}>
+                            <Text type="secondary" style={{ fontSize: '12px' }}>
+                                建议生成2-3个创意进行比较选择
+                            </Text>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <Text strong>其他要求 (可选)</Text>
+                    <div style={{ marginTop: '8px' }}>
+                        <YJSTextAreaField
+                            path="other_requirements"
+                            placeholder="例如：特定的情节要求、角色设定、风格偏好等"
+                            rows={4}
+                        />
+                    </div>
+                </div>
+            </Space>
         </Card>
     );
 };
 
-export const BrainstormInputEditor: React.FC<BrainstormInputEditorProps> = ({
-    projectId
+// Main component
+const BrainstormInputEditor: React.FC<BrainstormInputEditorProps> = ({
+    artifact,
+    isEditable = true
 }) => {
-    const projectData = useProjectData();
-
-    // Find the brainstorm input artifact
-    const brainstormInputArtifact = useMemo(() => {
-        if (!Array.isArray(projectData.artifacts) || projectData.artifacts.length === 0) {
-            return null;
-        }
-
-        // Look for brainstorm_tool_input_schema artifacts
-        return projectData.artifacts.find(artifact =>
-            artifact.type === 'brainstorm_tool_input_schema'
-        );
-    }, [projectData.artifacts]);
-
-    // Check if this artifact has been used to generate ideas (has descendants)
-    const hasGeneratedIdeas = useMemo(() => {
-        if (!brainstormInputArtifact) return false;
-        if (!Array.isArray(projectData.transformInputs)) return false;
-
-        // Check if any transforms use this artifact as input
-        return projectData.transformInputs.some(input =>
-            input.artifact_id === brainstormInputArtifact.id
-        );
-    }, [brainstormInputArtifact, projectData.transformInputs]);
-
-    // Don't render if no artifact exists
-    if (!brainstormInputArtifact) {
-        return null;
-    }
-
-    // Parse current data for compact view
-    const currentData = useMemo(() => {
-        if (!brainstormInputArtifact?.data) return null;
-
-        try {
-            return typeof brainstormInputArtifact.data === 'string'
-                ? JSON.parse(brainstormInputArtifact.data)
-                : brainstormInputArtifact.data;
-        } catch (error) {
-            console.error('Error parsing artifact data:', error);
-            return null;
-        }
-    }, [brainstormInputArtifact?.data]);
-
-    // Show compact read-only view if ideas have been generated
-    if (hasGeneratedIdeas && currentData) {
-        return <CompactBrainstormView currentData={currentData} />;
-    }
-
-    // Show full editing form wrapped in YJS context
-    return (
-        <YJSArtifactProvider artifactId={brainstormInputArtifact.id} enableCollaboration={true}>
-            <Card
-                style={{
-                    maxWidth: '800px',
-                    margin: '0 auto 24px auto',
-                    background: '#1a1a1a',
-                    borderColor: '#1890ff',
-                    borderWidth: '2px'
-                }}
-                styles={{
-                    header: {
-                        background: '#1a1a1a',
-                        borderBottom: '1px solid #333',
-                        color: '#fff'
-                    },
-                    body: { background: '#1a1a1a' }
-                }}
-            >
-                <BrainstormInputForm />
+    if (!artifact) {
+        return (
+            <Card style={{ backgroundColor: '#1a1a1a', border: '1px solid #434343' }}>
+                <Text type="secondary">未找到头脑风暴输入数据</Text>
             </Card>
+        );
+    }
+
+    return (
+        <YJSArtifactProvider artifactId={artifact.id}>
+            <BrainstormInputForm />
         </YJSArtifactProvider>
     );
-}; 
+};
+
+export default BrainstormInputEditor; 

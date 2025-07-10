@@ -175,9 +175,6 @@ export function useYJSField(path: string = '') {
     const [localValue, setLocalValue] = React.useState<any>(undefined);
     const [isInitialized, setIsInitialized] = React.useState(false);
 
-    // Debug logging for field initialization
-    const shouldLog = structural.basePath?.includes('stages[') || !structural.basePath;
-
     // Initialize and subscribe to value changes
     useEffect(() => {
         // Get initial value
@@ -191,7 +188,7 @@ export function useYJSField(path: string = '') {
         });
 
         return unsubscribe;
-    }, [structural, path, shouldLog]);
+    }, [structural, path]);
 
     // Update function that updates both local state and YJS
     const updateValue = useCallback((newValue: any) => {

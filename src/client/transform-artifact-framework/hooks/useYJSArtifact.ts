@@ -570,6 +570,16 @@ export const useYJSArtifact = (
 
     // Update field in YJS document
     const updateField = useCallback(async (field: string, value: any) => {
+        const shouldLog = field === 'genrePaths' || field === 'genre';
+
+        if (shouldLog) {
+            console.log(`🔧 useYJSArtifact.updateField(${field}) called:`, {
+                value,
+                hasDoc: !!docRef.current,
+                collaborationEnabled: enableCollaborationRef.current
+            });
+        }
+
         if (!docRef.current || !enableCollaborationRef.current) {
             console.warn(`[useYJSArtifact] Cannot update field - no doc or collaboration disabled`);
             return;
@@ -580,11 +590,23 @@ export const useYJSArtifact = (
             const Y = await import('yjs');
             const yMap = yMapRef.current;
 
+            if (shouldLog) {
+                console.log(`🗺️ useYJSArtifact.updateField(${field}) yMap available:`, !!yMap);
+            }
+
             // Handle array index paths like "emotionArcs[0]" or "emotionArcs[0].characters"
             const arrayIndexMatch = field.match(/^(.+)\[(\d+)\](.*)$/);
             if (arrayIndexMatch) {
                 const [, arrayName, indexStr, remainingPath] = arrayIndexMatch;
                 const index = parseInt(indexStr, 10);
+
+                if (shouldLog) {
+                    console.log(`📚 useYJSArtifact.updateField(${field}) handling array index:`, {
+                        arrayName,
+                        index,
+                        remainingPath
+                    });
+                }
 
                 // Get or create the YJS array
                 let yArray = yMap?.get(arrayName);
@@ -645,11 +667,19 @@ export const useYJSArtifact = (
                 yArray.delete(index, 1);
                 yArray.insert(index, [JSON.stringify(currentElement)]);
 
+                if (shouldLog) {
+                    console.log(`📚 useYJSArtifact.updateField(${field}) array update completed`);
+                }
+
                 return;
             }
 
             // Handle nested object paths like "target_audience.demographic"
             if (field.includes('.')) {
+                if (shouldLog) {
+                    console.log(`🔗 useYJSArtifact.updateField(${field}) handling nested path`);
+                }
+
                 const pathParts = field.split('.');
                 const rootField = pathParts[0];
                 const nestedPath = pathParts.slice(1).join('.');
@@ -704,11 +734,19 @@ export const useYJSArtifact = (
                 yText.delete(0, yText.length);
                 yText.insert(0, jsonString);
 
+                if (shouldLog) {
+                    console.log(`🔗 useYJSArtifact.updateField(${field}) nested update completed`);
+                }
+
                 return;
             }
 
             // Handle regular field updates (no nesting)
             if (typeof value === 'string') {
+                if (shouldLog) {
+                    console.log(`📝 useYJSArtifact.updateField(${field}) handling string value:`, value);
+                }
+
                 const yText = yMap?.get(field) || new Y.Text();
                 if (!yMap?.has(field)) {
                     yMap?.set(field, yText);
@@ -716,6 +754,10 @@ export const useYJSArtifact = (
                 yText.delete(0, yText.length);
                 yText.insert(0, value);
             } else if (Array.isArray(value)) {
+                if (shouldLog) {
+                    console.log(`📋 useYJSArtifact.updateField(${field}) handling array value:`, value);
+                }
+
                 const yArray = yMap?.get(field) || new Y.Array();
                 if (!yMap?.has(field)) {
                     yMap?.set(field, yArray);
@@ -733,7 +775,15 @@ export const useYJSArtifact = (
                         yArray.push([item]);
                     }
                 });
+
+                if (shouldLog) {
+                    console.log(`📋 useYJSArtifact.updateField(${field}) array update completed, length:`, yArray.length);
+                }
             } else if (typeof value === 'object' && value !== null) {
+                if (shouldLog) {
+                    console.log(`🗂️ useYJSArtifact.updateField(${field}) handling object value:`, value);
+                }
+
                 // For objects, store as JSON string in YText (same as initialization)
                 const yText = yMap?.get(field) || new Y.Text();
                 if (!yMap?.has(field)) {
@@ -743,6 +793,10 @@ export const useYJSArtifact = (
                 yText.delete(0, yText.length);
                 yText.insert(0, jsonString);
             } else {
+                if (shouldLog) {
+                    console.log(`⚡ useYJSArtifact.updateField(${field}) handling primitive value:`, value);
+                }
+
                 // For primitive values (number, boolean, null)
                 yMap?.set(field, value);
             }

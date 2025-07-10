@@ -1,6 +1,8 @@
 import React, { useMemo } from 'react';
+import { useParams } from 'react-router-dom';
 import { Typography, Space } from 'antd';
 import { useProjectData } from '../../contexts/ProjectDataContext';
+import { useYJSField } from '../../transform-artifact-framework/contexts/YJSArtifactContext';
 import { YJSTextField, YJSTextAreaField } from '../../transform-artifact-framework/components/YJSField';
 import { SectionWrapper, ArtifactSchemaType, ArtifactDisplayWrapper } from '../shared';
 
@@ -52,6 +54,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
     brainstormIdea: propsBrainstormIdea,
     mode: propsMode
 }) => {
+    const { projectId } = useParams<{ projectId: string }>();
     const projectData = useProjectData();
 
     // If we have props from actionComputation, use them directly

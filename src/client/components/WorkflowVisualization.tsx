@@ -30,6 +30,10 @@ const createReactFlowNode = (workflowNode: WorkflowNode, currentSection: Current
     const getNodeColor = (type: WorkflowNode['type'], isHighlighted: boolean) => {
         // Define colorful scheme for when node is highlighted
         const colorfulColors = {
+            brainstorm_input: {
+                gradient: 'linear-gradient(135deg, #1890ff 0%, #40a9ff 50%, #69c0ff 100%)',
+                shadow: 'rgba(24, 144, 255, 0.3)'
+            },
             brainstorm_collection: {
                 gradient: 'linear-gradient(135deg, #1890ff 0%, #40a9ff 50%, #69c0ff 100%)',
                 shadow: 'rgba(24, 144, 255, 0.3)'
@@ -58,6 +62,10 @@ const createReactFlowNode = (workflowNode: WorkflowNode, currentSection: Current
 
         // Define monochrome scheme for default state
         const monochromeColors = {
+            brainstorm_input: {
+                gradient: 'linear-gradient(135deg, #404040 0%, #505050 50%, #606060 100%)',
+                shadow: 'rgba(64, 64, 64, 0.2)'
+            },
             brainstorm_collection: {
                 gradient: 'linear-gradient(135deg, #404040 0%, #505050 50%, #606060 100%)',
                 shadow: 'rgba(64, 64, 64, 0.2)'
@@ -116,6 +124,7 @@ const createReactFlowNode = (workflowNode: WorkflowNode, currentSection: Current
 
     const getNodeIcon = (type: WorkflowNode['type']) => {
         const icons = {
+            brainstorm_input: '📝',
             brainstorm_collection: '💡',
             brainstorm_idea: '📝',
             outline: '📋',
