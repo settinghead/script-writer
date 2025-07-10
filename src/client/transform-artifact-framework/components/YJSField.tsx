@@ -127,26 +127,55 @@ export const YJSArrayOfStringField = React.memo(({ path, placeholder }: {
     }, [arrayValue]);
 
     const textareaToArray = useCallback((text: string) => {
-        return text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+        console.log('[YJSArrayOfStringField] textareaToArray input:', JSON.stringify(text));
+        const lines = text.split('\n');
+        console.log('[YJSArrayOfStringField] Split lines:', lines);
+        const trimmedLines = lines.map(line => line.trim());
+        console.log('[YJSArrayOfStringField] Trimmed lines (no filtering):', trimmedLines);
+        return trimmedLines;
     }, []);
 
     const handleTextareaChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        console.log('[YJSArrayOfStringField] handleTextareaChange called');
+        console.log('[YJSArrayOfStringField] Raw textarea value:', JSON.stringify(e.target.value));
         const newArray = textareaToArray(e.target.value);
+        console.log('[YJSArrayOfStringField] Converted array:', newArray);
         updateValue(newArray);
+        console.log('[YJSArrayOfStringField] updateValue called with:', newArray);
     }, [textareaToArray, updateValue]);
 
+    const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        console.log('[YJSArrayOfStringField] Key pressed:', e.key, 'Code:', e.code);
+        if (e.key === 'Enter') {
+            console.log('[YJSArrayOfStringField] Enter key detected - allowing default behavior');
+            // Don't prevent default - let Enter create new lines
+        }
+    }, []);
+
+    const handleKeyUp = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        console.log('[YJSArrayOfStringField] Key released:', e.key);
+        if (e.key === 'Enter') {
+            console.log('[YJSArrayOfStringField] Enter key released - textarea value:', JSON.stringify((e.target as HTMLTextAreaElement).value));
+        }
+    }, []);
+
     if (!isInitialized) return null;
+
+    console.log('[YJSArrayOfStringField] Rendering with value:', arrayValue);
+    console.log('[YJSArrayOfStringField] Textarea display value:', JSON.stringify(arrayToTextarea()));
 
     return (
         <div>
             <TextArea
                 value={arrayToTextarea()}
                 onChange={handleTextareaChange}
-                placeholder={placeholder || '每行一个项目，空行将被忽略'}
+                onKeyDown={handleKeyDown}
+                onKeyUp={handleKeyUp}
+                placeholder={placeholder || '每行一个项目'}
                 autoSize={{ minRows: 3, maxRows: 8 }}
             />
             <div style={{ marginTop: 4, color: '#666', fontSize: '12px' }}>
-                每行一个项目，空行将被忽略
+                每行一个项目
             </div>
         </div>
     );
