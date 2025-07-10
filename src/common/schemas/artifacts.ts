@@ -43,8 +43,7 @@ export const ArtifactSchemaRegistry = {
   'chronicles_input_schema': ChroniclesInputSchema,
   'chronicles_schema': ChroniclesOutputSchema,
 
-  // NEW: Individual chronicle stage schema for granular editing
-  'chronicle_stage_schema': ChroniclesStageSchema,
+
 
   // Script schemas
   'script_schema': ScriptSchema,

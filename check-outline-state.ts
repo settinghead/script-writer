@@ -61,7 +61,7 @@ async function checkState() {
             .selectFrom('artifacts')
             .selectAll()
             .where('project_id', '=', 'test-project-1')
-            .where('schema_type', '=', 'chronicle_stage_schema')
+
             .orderBy('created_at', 'desc')
             .execute();
 

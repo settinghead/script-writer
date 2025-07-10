@@ -17,14 +17,19 @@ vi.mock('../shared', () => ({
     ),
     ArtifactSchemaType: {
         CHRONICLES: 'chronicles'
-    }
-}));
-vi.mock('../ChronicleStageCard', () => ({
-    ChronicleStageCard: ({ stageIndex, chroniclesArtifactId }: any) => (
-        <div data-testid={`chronicle-stage-${stageIndex}`} data-artifact-id={chroniclesArtifactId}>
-            Stage {stageIndex + 1}
+    },
+    ArtifactDisplayWrapper: ({ artifact, isEditable, title }: any) => (
+        <div data-testid="artifact-display-wrapper"
+            data-artifact-id={artifact?.id}
+            data-is-editable={isEditable}>
+            <h3>{title}</h3>
+            <div>Artifact: {artifact?.id}</div>
+            <div>Editable: {isEditable ? 'Yes' : 'No'}</div>
         </div>
     )
+}));
+vi.mock('../shared/EditableChroniclesForm', () => ({
+    default: () => <div data-testid="editable-chronicles-form">Editable Chronicles Form</div>
 }));
 
 const mockUseProjectData = vi.mocked(useProjectData);
@@ -86,6 +91,7 @@ describe('ChroniclesDisplay', () => {
         // Default mock setup
         mockUseProjectData.mockReturnValue({
             artifacts: [mockChroniclesArtifact],
+            transformInputs: [],
             isLoading: false,
             isError: false,
             error: null,
@@ -104,28 +110,96 @@ describe('ChroniclesDisplay', () => {
         });
     });
 
-    it('should render chronicles display with stages when data is available', async () => {
+    it('should render chronicles display with whole-document editing when data is available', async () => {
         render(<ChroniclesDisplay />);
 
         await waitFor(() => {
             expect(screen.getByTestId('section-wrapper')).toBeInTheDocument();
         });
 
-        // Check that the section wrapper is rendered with correct title
-        expect(screen.getByText('时间顺序大纲')).toBeInTheDocument();
+        // Check that the section wrapper is rendered
+        expect(screen.getByTestId('section-wrapper')).toBeInTheDocument();
 
-        // Check that both stages are rendered
-        expect(screen.getByTestId('chronicle-stage-0')).toBeInTheDocument();
-        expect(screen.getByTestId('chronicle-stage-1')).toBeInTheDocument();
+        // Check that the artifact display wrapper is rendered
+        expect(screen.getByTestId('artifact-display-wrapper')).toBeInTheDocument();
 
         // Verify artifact ID is passed correctly
-        expect(screen.getByTestId('chronicle-stage-0')).toHaveAttribute(
+        expect(screen.getByTestId('artifact-display-wrapper')).toHaveAttribute(
             'data-artifact-id',
             'chronicles-artifact-id'
         );
-        expect(screen.getByTestId('chronicle-stage-1')).toHaveAttribute(
+
+        // Check that it's not editable by default (ai_generated artifact)
+        expect(screen.getByTestId('artifact-display-wrapper')).toHaveAttribute(
+            'data-is-editable',
+            'false'
+        );
+
+        // Component should be rendered successfully
+    });
+
+    it('should render chronicles as editable when artifact is user_input with no descendants', async () => {
+        const editableArtifact = {
+            ...mockChroniclesArtifact,
+            origin_type: 'user_input'
+        };
+
+        mockUseProjectData.mockReturnValue({
+            artifacts: [editableArtifact],
+            transformInputs: [], // No descendants
+            isLoading: false,
+            isError: false,
+            error: null,
+            createHumanTransform: { mutate: vi.fn() }
+        } as any);
+
+        mockUseLineageResolution.mockReturnValue({
+            latestArtifactId: editableArtifact.id,
+            hasLineage: false,
+            isLoading: false,
+            error: null,
+            resolvedPath: '$',
+            lineagePath: [],
+            depth: 1,
+            originalArtifactId: editableArtifact.id
+        });
+
+        render(<ChroniclesDisplay />);
+
+        await waitFor(() => {
+            expect(screen.getByTestId('artifact-display-wrapper')).toBeInTheDocument();
+        });
+
+        // Check that it's editable
+        expect(screen.getByTestId('artifact-display-wrapper')).toHaveAttribute(
+            'data-is-editable',
+            'true'
+        );
+    });
+
+    it('should use props when provided (from action computation)', async () => {
+        const propsArtifact = {
+            ...mockChroniclesArtifact,
+            id: 'props-artifact-id',
+            origin_type: 'user_input'
+        };
+
+        render(<ChroniclesDisplay isEditable={true} chroniclesArtifact={propsArtifact} />);
+
+        await waitFor(() => {
+            expect(screen.getByTestId('artifact-display-wrapper')).toBeInTheDocument();
+        });
+
+        // Check that it uses the props artifact
+        expect(screen.getByTestId('artifact-display-wrapper')).toHaveAttribute(
             'data-artifact-id',
-            'chronicles-artifact-id'
+            'props-artifact-id'
+        );
+
+        // Check that it's editable as specified in props
+        expect(screen.getByTestId('artifact-display-wrapper')).toHaveAttribute(
+            'data-is-editable',
+            'true'
         );
     });
 
@@ -172,7 +246,7 @@ describe('ChroniclesDisplay', () => {
         expect(container.firstChild).toBeNull();
     });
 
-    it('should handle chronicles artifacts with no stages', () => {
+    it('should still render artifact display wrapper even with no stages', () => {
         const artifactWithNoStages = {
             ...mockChroniclesArtifact,
             data: { stages: [] }
@@ -180,13 +254,16 @@ describe('ChroniclesDisplay', () => {
 
         mockUseProjectData.mockReturnValue({
             artifacts: [artifactWithNoStages],
+            transformInputs: [],
             isLoading: false,
             isError: false,
             error: null
         } as any);
 
-        const { container } = render(<ChroniclesDisplay />);
-        expect(container.firstChild).toBeNull();
+        render(<ChroniclesDisplay />);
+
+        // Should still render the artifact display wrapper
+        expect(screen.getByTestId('artifact-display-wrapper')).toBeInTheDocument();
     });
 
     it('should handle string-formatted data correctly', () => {
@@ -197,6 +274,7 @@ describe('ChroniclesDisplay', () => {
 
         mockUseProjectData.mockReturnValue({
             artifacts: [artifactWithStringData],
+            transformInputs: [],
             isLoading: false,
             isError: false,
             error: null
@@ -204,8 +282,11 @@ describe('ChroniclesDisplay', () => {
 
         render(<ChroniclesDisplay />);
 
-        expect(screen.getByTestId('chronicle-stage-0')).toBeInTheDocument();
-        expect(screen.getByTestId('chronicle-stage-1')).toBeInTheDocument();
+        expect(screen.getByTestId('artifact-display-wrapper')).toBeInTheDocument();
+        expect(screen.getByTestId('artifact-display-wrapper')).toHaveAttribute(
+            'data-artifact-id',
+            'chronicles-artifact-id'
+        );
     });
 
     it('should prioritize chronicles_schema over legacy chronicles type', () => {
@@ -229,6 +310,7 @@ describe('ChroniclesDisplay', () => {
 
         mockUseProjectData.mockReturnValue({
             artifacts: [legacyChroniclesArtifact, modernChroniclesArtifact],
+            transformInputs: [],
             isLoading: false,
             isError: false,
             error: null
@@ -248,7 +330,7 @@ describe('ChroniclesDisplay', () => {
         render(<ChroniclesDisplay />);
 
         // Should use the modern chronicles artifact
-        expect(screen.getByTestId('chronicle-stage-0')).toHaveAttribute(
+        expect(screen.getByTestId('artifact-display-wrapper')).toHaveAttribute(
             'data-artifact-id',
             'modern-chronicles'
         );
@@ -296,13 +378,20 @@ describe('ChroniclesDisplay', () => {
 
         mockUseProjectData.mockReturnValue({
             artifacts: [artifactWithCorruptedData],
+            transformInputs: [],
             isLoading: false,
             isError: false,
             error: null
         } as any);
 
-        const { container } = render(<ChroniclesDisplay />);
-        expect(container.firstChild).toBeNull();
+        render(<ChroniclesDisplay />);
+
+        // Should still render the artifact display wrapper even with corrupted data
+        expect(screen.getByTestId('artifact-display-wrapper')).toBeInTheDocument();
+        expect(screen.getByTestId('artifact-display-wrapper')).toHaveAttribute(
+            'data-artifact-id',
+            'chronicles-artifact-id'
+        );
     });
 
     describe('artifact selection logic', () => {
@@ -323,6 +412,7 @@ describe('ChroniclesDisplay', () => {
 
             mockUseProjectData.mockReturnValue({
                 artifacts: [userInputArtifact, aiGeneratedArtifact],
+                transformInputs: [],
                 isLoading: false,
                 isError: false,
                 error: null
@@ -341,7 +431,7 @@ describe('ChroniclesDisplay', () => {
 
             render(<ChroniclesDisplay />);
 
-            expect(screen.getByTestId('chronicle-stage-0')).toHaveAttribute(
+            expect(screen.getByTestId('artifact-display-wrapper')).toHaveAttribute(
                 'data-artifact-id',
                 'ai-generated-chronicles'
             );
@@ -364,6 +454,7 @@ describe('ChroniclesDisplay', () => {
 
             mockUseProjectData.mockReturnValue({
                 artifacts: [laterArtifact, earlierArtifact],
+                transformInputs: [],
                 isLoading: false,
                 isError: false,
                 error: null
@@ -382,7 +473,7 @@ describe('ChroniclesDisplay', () => {
 
             render(<ChroniclesDisplay />);
 
-            expect(screen.getByTestId('chronicle-stage-0')).toHaveAttribute(
+            expect(screen.getByTestId('artifact-display-wrapper')).toHaveAttribute(
                 'data-artifact-id',
                 'earlier-chronicles'
             );

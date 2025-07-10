@@ -625,53 +625,43 @@ export const ChroniclesStageSchema = z.object({
 });
 ```
 
-**Stage-Level Human Transforms**:
-- **Individual Stage Artifacts** - Each stage can be converted to a `chronicle_stage_schema` artifact for independent editing
-- **JSONPath Targeting** - Uses paths like `$.stages[0]`, `$.stages[1]` for precise stage identification
-- **Transform Name**: `edit_chronicles_stage` for all stage-level modifications
-- **Lineage Preservation** - Original chronicles collection remains intact while individual stages can be edited
+**Whole-Document Editing**:
+- **Complete Chronicles Editing** - Chronicles are edited as complete documents using the ArtifactDisplayWrapper pattern
+- **Click-to-Edit Interface** - Clicking on any chronicle section enters whole-document editing mode
+- **YJS-Powered Collaboration** - Real-time collaborative editing with automatic conflict resolution
+- **Comprehensive Field Access** - All chronicle fields (stages, titles, synopses, etc.) available in single editing session
 
 **UI Features**:
-- **Smart Editability Detection** - Only stages with `chronicle_stage_schema` artifacts show as editable (green border)
-- **Complete Field Editing** - All stage fields become editable when in edit mode:
-  - `title` - Stage title (text input)
-  - `stageSynopsis` - Stage overview (textarea)
-  - `event` - Core event description (textarea)
-  - `emotionArcs` - Character emotion development (textarea array)
-  - `relationshipDevelopments` - Character relationship progression (textarea array)
-  - `insights` - Key story insights (textarea array)
-- **Edit Button** - Non-editable stages show "编辑阶段" button to create editable versions
-- **Visual Indicators** - Green border and "已编辑" tag for edited stages
-
-**Data Conversion**:
-- **Complex Fields** - `emotionArcs` and `relationshipDevelopments` convert to/from "characters: content" format for editing
-- **Simple Arrays** - `insights` edited directly as string arrays
-- **Textarea Mode** - All array fields use textarea editing with one item per line
+- **Unified Editing Interface** - Single form for editing all chronicle content
+- **Stage Management** - Add, remove, and reorder stages within the unified editor
+- **Rich Field Support** - Full editing capabilities for all chronicle fields:
+  - Stage titles and synopses
+  - Event descriptions  
+  - Emotion arcs and relationship developments
+  - Story insights and character development
+- **Visual Consistency** - Consistent with other artifact editing patterns in the application
 
 **Technical Implementation**:
 ```typescript
-// Stage editability check
-const isEditable = isUserInput && isStageArtifact && !hasDescendants;
+// Whole-document editing with ArtifactDisplayWrapper
+<ArtifactDisplayWrapper
+  artifact={chroniclesArtifact}
+  isEditable={isEditable}
+  title="时间顺序大纲"
+  readOnlyComponent={ReadOnlyArtifactDisplay}
+  editableComponent={EditableChroniclesForm}
+/>
 
-// Transform creation for stage editing
-projectData.createHumanTransform.mutate({
-  transformName: 'edit_chronicles_stage',
-  sourceArtifactId: chroniclesArtifactId,
-  derivationPath: `$.stages[${stageIndex}]`,
-  fieldUpdates: {}
-});
-
-// Individual field saving
-await handleSave('title', newValue);
-await handleSave('emotionArcs', convertedEmotionArcs);
+// YJS-based field editing
+const { value: stages, updateValue: setStages } = useYJSField<any[]>('stages');
 ```
 
 **Benefits**:
-- **Granular Control** - Edit individual stages without affecting the entire chronicles
-- **Preserved Structure** - Original AI-generated chronicles remains as reference
-- **Complete Audit Trail** - All stage modifications tracked through transform system
-- **Flexible Editing** - Can edit some stages while leaving others unchanged
-- **Type Safety** - Full TypeScript support for all stage fields and operations
+- **Simplified Workflow** - Single editing session for entire chronicle
+- **Better Collaboration** - Real-time editing with multiple users
+- **Consistent UX** - Matches other artifact editing patterns
+- **Reduced Complexity** - No need to manage individual stage artifacts
+- **Improved Performance** - Fewer database operations and transform chains
 
 ## Chinese Short Drama UI/UX Principles
 

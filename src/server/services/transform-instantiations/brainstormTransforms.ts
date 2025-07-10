@@ -10,13 +10,13 @@ import {
 // Get the schemas from the registry
 const BrainstormIdeaSchema = ArtifactSchemaRegistry.brainstorm_item_schema;
 const UserInputSchema = ArtifactSchemaRegistry.user_input_schema;
-const ChronicleStageSchema = ArtifactSchemaRegistry.chronicle_stage_schema;
+
 
 // Type definitions based on schemas
 type BrainstormIdea = z.infer<typeof BrainstormIdeaSchema>;
 type UserInput = z.infer<typeof UserInputSchema>;
 type BrainstormToolInput = z.infer<typeof BrainstormToolInputSchema>;
-type ChronicleStage = z.infer<typeof ChronicleStageSchema>;
+
 
 /**
  * Extract data at a given path from source data
@@ -105,28 +105,7 @@ export function createUserInputFromBrainstormField(
   };
 }
 
-/**
- * Create chronicle stage from chronicles collection path
- * Extracts a single stage from a chronicles collection for editing
- */
-export function createChronicleStageFromPath(
-  sourceArtifactData: any,
-  derivationPath: string
-): ChronicleStage {
-  const stageData = extractDataAtPath(sourceArtifactData, derivationPath);
 
-  if (!stageData || typeof stageData !== 'object') {
-    throw new Error(`Invalid chronicle stage data at path ${derivationPath}`);
-  }
-
-  // Validate that extracted data matches ChronicleStage schema
-  const result = ChronicleStageSchema.safeParse(stageData);
-  if (!result.success) {
-    throw new Error(`Data at path ${derivationPath} does not match ChronicleStage schema: ${result.error.message}`);
-  }
-
-  return result.data;
-}
 
 // Define transform functions
 export const createBrainstormIdeaTransform = (sourceArtifactId: string, targetPath: string) => {

@@ -494,8 +494,7 @@ export class ArtifactRepository {
             // NEW: Split outline schemas
             'outline_settings': 'outline_settings_schema',
             'chronicles': 'chronicles_schema',
-            // NEW: Individual chronicle stage schema
-            'chronicle_stage': 'chronicle_stage_schema'
+
         };
 
         return typeMapping[type] || `${type}_schema`;

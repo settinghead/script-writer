@@ -72,22 +72,7 @@ function artifactToContextString(artifact: ElectricArtifact, maxLength: number =
                 }
                 break;
 
-            case 'chronicle_stage_schema':
-                const stageParts = [];
-                if (data.title) stageParts.push(`标题: "${data.title}"`);
-                if (data.stageSynopsis) {
-                    const synopsis = data.stageSynopsis.toString();
-                    const truncatedSynopsis = synopsis.length > 150 ? synopsis.substring(0, 150) + '...' : synopsis;
-                    stageParts.push(`概要: ${truncatedSynopsis}`);
-                }
-                if (data.event) stageParts.push(`事件: ${data.event}`);
-                if (data.emotionArcs && data.emotionArcs.length > 0) {
-                    stageParts.push(`情感发展: ${data.emotionArcs.length}个`);
-                }
-                if (data.relationshipDevelopments && data.relationshipDevelopments.length > 0) {
-                    stageParts.push(`关系发展: ${data.relationshipDevelopments.length}个`);
-                }
-                return stageParts.join('; ');
+
             case 'brainstorm_item_schema':
             case 'brainstorm_idea':
                 const itemParts = [];

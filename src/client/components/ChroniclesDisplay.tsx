@@ -3,18 +3,50 @@ import { Card, Typography, Space } from 'antd';
 import { ChroniclesOutput } from '../../common/schemas/outlineSchemas';
 import { useProjectData } from '../contexts/ProjectDataContext';
 import { useLineageResolution } from '../transform-artifact-framework/useLineageResolution';
-import { SectionWrapper, ArtifactSchemaType } from './shared';
-import { ChronicleStageCard } from './ChronicleStageCard';
+import { SectionWrapper, ArtifactSchemaType, ArtifactDisplayWrapper } from './shared';
+import EditableChroniclesForm from './shared/EditableChroniclesForm';
 
 const { Text } = Typography;
 
 interface ChroniclesDisplayProps {
+    isEditable?: boolean;
+    chroniclesArtifact?: any;
 }
 
 export const ChroniclesDisplay: React.FC<ChroniclesDisplayProps> = ({
+    isEditable: propsIsEditable,
+    chroniclesArtifact: propsChroniclesArtifact
 }) => {
     const projectData = useProjectData();
 
+    // If props are provided (from action computation), use them directly
+    if (propsChroniclesArtifact) {
+        const isEditable = propsIsEditable ?? false;
+        const effectiveArtifact = propsChroniclesArtifact;
+
+        return (
+            <SectionWrapper
+                schemaType={ArtifactSchemaType.CHRONICLES}
+                title="时间顺序大纲"
+                sectionId="chronicles"
+                artifactId={effectiveArtifact?.id}
+            >
+                <div style={{ marginTop: '24px' }}>
+                    <ArtifactDisplayWrapper
+                        artifact={effectiveArtifact}
+                        isEditable={isEditable}
+                        title="时间顺序大纲"
+                        icon="📅"
+                        editableComponent={EditableChroniclesForm}
+                        schemaType="chronicles_schema"
+                        enableClickToEdit={true}
+                    />
+                </div>
+            </SectionWrapper>
+        );
+    }
+
+    // Fallback: Find chronicles artifact from project data
     const { artifacts, isLoading, isError, error } = projectData;
 
     if (artifacts === "pending" || artifacts === "error") {
@@ -96,36 +128,27 @@ export const ChroniclesDisplay: React.FC<ChroniclesDisplayProps> = ({
         }
         const artifact = artifacts.find(a => a.id === latestArtifactId);
 
-        // If the latest artifact is a chronicle stage (individual stage), we need to use the root chronicles instead
-        if (artifact?.schema_type === 'chronicle_stage_schema') {
-            return rootChroniclesArtifact;
+        // Use the latest artifact directly (no more individual stage handling)
+        return artifact;
+    }, [latestArtifactId, artifacts]);
+
+    // Determine editability for fallback mode
+    const isEditable = useMemo(() => {
+        if (!effectiveChroniclesArtifact) return false;
+
+        // Check if this artifact has descendants (is used as input in any transform)
+        if (projectData.transformInputs === "pending" || projectData.transformInputs === "error") {
+            return false;
         }
 
-        // If the latest artifact is a chronicles collection, use it
-        if (artifact?.schema_type === 'chronicles_schema') {
-            return artifact;
-        }
+        const transformInputs = Array.isArray(projectData.transformInputs) ? projectData.transformInputs : [];
+        const hasDescendants = transformInputs.some((input: any) =>
+            input.artifact_id === effectiveChroniclesArtifact.id
+        );
 
-        // Fallback to root chronicles
-        return rootChroniclesArtifact;
-    }, [latestArtifactId, artifacts, rootChroniclesArtifact]);
-
-    // Parse chronicles data from the effective artifact
-    const chroniclesData = useMemo(() => {
-        if (!effectiveChroniclesArtifact?.data) {
-            return null;
-        }
-
-        try {
-            let data: any = effectiveChroniclesArtifact.data;
-            if (typeof data === 'string') {
-                data = JSON.parse(data);
-            }
-            return data as ChroniclesOutput;
-        } catch (error) {
-            return null;
-        }
-    }, [effectiveChroniclesArtifact]);
+        // Only editable if it's user_input and has no descendants
+        return effectiveChroniclesArtifact.origin_type === 'user_input' && !hasDescendants;
+    }, [effectiveChroniclesArtifact, projectData.transformInputs]);
 
     if (projectData.isLoading || lineageLoading) {
         return null;
@@ -139,7 +162,7 @@ export const ChroniclesDisplay: React.FC<ChroniclesDisplayProps> = ({
         );
     }
 
-    if (!chroniclesData || !chroniclesData.stages || chroniclesData.stages.length === 0) {
+    if (!effectiveChroniclesArtifact) {
         return null;
     }
 
@@ -151,40 +174,15 @@ export const ChroniclesDisplay: React.FC<ChroniclesDisplayProps> = ({
             artifactId={effectiveChroniclesArtifact?.id}
         >
             <div style={{ marginTop: '24px' }}>
-                <Card
-                    style={{
-                        backgroundColor: '#1f1f1f',
-                        border: '1px solid #434343',
-                        borderRadius: '8px',
-                    }}
-                    styles={{ body: { padding: '24px' } }}
-                >
-                    {/* Header */}
-                    <div style={{ marginBottom: '24px', textAlign: 'center' }}>
-                        <Space direction="vertical" size="small">
-                            <Text type="secondary">
-                                按时间顺序梳理的完整故事发展阶段（共 {chroniclesData.stages.length} 个阶段）
-                            </Text>
-                        </Space>
-                    </div>
-
-                    {/* Stages Timeline */}
-                    <div>
-                        {chroniclesData.stages.map((stage, index) => {
-                            const stagePath = `$.stages[${index}]`;
-                            const chroniclesArtifactId = rootChroniclesArtifact?.id || '';
-
-                            return (
-                                <ChronicleStageCard
-                                    key={`stage-${index}`}
-                                    chroniclesArtifactId={chroniclesArtifactId}
-                                    stagePath={stagePath}
-                                    stageIndex={index}
-                                />
-                            );
-                        })}
-                    </div>
-                </Card>
+                <ArtifactDisplayWrapper
+                    artifact={effectiveChroniclesArtifact}
+                    isEditable={isEditable}
+                    title="时间顺序大纲"
+                    icon="📅"
+                    editableComponent={EditableChroniclesForm}
+                    schemaType="chronicles_schema"
+                    enableClickToEdit={true}
+                />
             </div>
         </SectionWrapper>
     );

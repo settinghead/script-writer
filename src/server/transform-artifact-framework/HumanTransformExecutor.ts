@@ -38,7 +38,7 @@ export class HumanTransformExecutor {
       'outline_settings_schema': 'outline_settings',
       'chronicles_schema': 'chronicles',
       // NEW: Individual chronicle stage schema
-      'chronicle_stage_schema': 'chronicle_stage'
+
     };
 
     return schemaToLegacyMapping[schemaType] || schemaType.replace('_schema', '');
@@ -62,8 +62,7 @@ export class HumanTransformExecutor {
       // NEW: Split outline schemas
       'outline_settings': 'outline_settings_schema',
       'chronicles': 'chronicles_schema',
-      // NEW: Individual chronicle stage schema
-      'chronicle_stage': 'chronicle_stage_schema'
+
     };
 
     return legacyToSchemaMapping[legacyType] || legacyType + '_schema';

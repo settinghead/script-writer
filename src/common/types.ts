@@ -235,7 +235,7 @@ export type TypedArtifact =
     | ArtifactWithData<'outline_setting_schema', 'v1', OutlineSettingV1>
     | ArtifactWithData<'outline_synopsis_schema', 'v1', OutlineSynopsisV1>
     | ArtifactWithData<'outline_characters_schema', 'v1', OutlineCharactersV1>
-    | ArtifactWithData<'chronicle_stage_schema', 'v1', ChroniclesStage>;
+
 
 // Helper type for creating strongly typed artifacts
 export interface ArtifactWithData<SchemaType extends string, SchemaVersion extends string, Data> extends Omit<Artifact, 'schema_type' | 'schema_version' | 'data'> {
@@ -257,9 +257,7 @@ export function isBrainstormCollectionArtifact(artifact: Artifact): artifact is 
     return artifact.schema_type === 'brainstorm_collection_schema' && artifact.schema_version === 'v1';
 }
 
-export function isChronicleStageArtifact(artifact: Artifact): artifact is ArtifactWithData<'chronicle_stage_schema', 'v1', ChroniclesStage> {
-    return artifact.schema_type === 'chronicle_stage_schema' && artifact.schema_version === 'v1';
-}
+
 
 // Helper function to get text content from any artifact type
 export function getArtifactTextContent(artifact: TypedArtifact | Artifact): string {
