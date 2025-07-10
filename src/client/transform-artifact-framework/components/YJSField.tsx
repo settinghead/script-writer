@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react';
-import { Input, Select, Button, Typography, Card, Space } from 'antd';
-import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Input, Select, Button, Typography, Card, Space, Tag, InputNumber } from 'antd';
+import { PlusOutlined, DeleteOutlined, RightOutlined } from '@ant-design/icons';
 import { useYJSField } from '../contexts/YJSArtifactContext';
 
 const { TextArea } = Input;
@@ -623,5 +623,39 @@ const YJSArrayFieldInline = React.memo(({ value, onChange, placeholder }: {
     );
 });
 
+// Number Input Field Component
+export const YJSNumberField = React.memo(({ path, min, max, placeholder }: {
+    path: string;
+    min?: number;
+    max?: number;
+    placeholder?: string;
+}) => {
+    const { value, updateValue, isInitialized } = useYJSField(path);
+
+    const handleChange = useCallback((newValue: number | null) => {
+        updateValue(newValue);
+    }, [updateValue]);
+
+    if (!isInitialized) return null;
+
+    return (
+        <InputNumber
+            min={min}
+            max={max}
+            value={value}
+            onChange={handleChange}
+            style={{
+                width: '100%',
+                background: '#141414',
+                borderColor: '#434343',
+                color: '#d9d9d9'
+            }}
+            size="large"
+            placeholder={placeholder}
+        />
+    );
+});
+
 YJSCharacterArray.displayName = 'YJSCharacterArray';
-YJSArrayFieldInline.displayName = 'YJSArrayFieldInline'; 
+YJSArrayFieldInline.displayName = 'YJSArrayFieldInline';
+YJSNumberField.displayName = 'YJSNumberField'; 

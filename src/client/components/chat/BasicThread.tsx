@@ -81,41 +81,38 @@ const ChatMessage: React.FC<{ message: any; isStreaming?: boolean }> = ({ messag
     const getMessageStyle = () => {
         const isUserMessage = message.role === 'user';
         const isAssistantMessage = message.role === 'assistant';
+        const isThinkingMessage = message.display_type === 'thinking';
 
-        let backgroundColor;
-        let backgroundImage;
-
-        if (isUserMessage) {
-            // Human messages use regular dark background
-            backgroundColor = AppColors.human.background;
+        // Glass effect classes will handle most styling
+        let glassClass = '';
+        if (isThinkingMessage) {
+            glassClass = 'chat-message-glass-thinking';
+        } else if (isUserMessage) {
+            glassClass = 'chat-message-glass-user';
         } else if (isAssistantMessage) {
-            // Bot messages use darker purple gradient background
-            backgroundColor = AppColors.ai.primary;
-            backgroundImage = AppColors.ai.gradient;
-        } else {
-            backgroundColor = AppColors.human.background;
-        }
-
-        // Different styling for computation/thinking messages
-        if (message.display_type === 'thinking') {
-            if (isAssistantMessage) {
-                // Thinking messages for bot use an even darker purple gradient
-                backgroundColor = AppColors.ai.tertiary;
-                backgroundImage = AppColors.ai.gradientDark;
-            } else {
-                backgroundColor = '#1f2937'; // Darker background for computation messages
-            }
+            glassClass = 'chat-message-glass-assistant';
         }
 
         return {
-            background: backgroundColor,
-            backgroundImage: backgroundImage,
-            border: 'none',
-            borderRadius: 10,
             maxWidth: '100%',
             wordBreak: 'break-word' as const,
-            boxShadow: isAssistantMessage ? `0 4px 12px ${AppColors.ai.shadow}` : 'none'
+            className: glassClass
         };
+    };
+
+    const getMessageClassName = () => {
+        const isUserMessage = message.role === 'user';
+        const isAssistantMessage = message.role === 'assistant';
+        const isThinkingMessage = message.display_type === 'thinking';
+
+        if (isThinkingMessage) {
+            return 'chat-message-glass-thinking';
+        } else if (isUserMessage) {
+            return 'chat-message-glass-user';
+        } else if (isAssistantMessage) {
+            return 'chat-message-glass-assistant';
+        }
+        return '';
     };
 
     const isUserMessage = message.role === 'user';
@@ -170,13 +167,17 @@ const ChatMessage: React.FC<{ message: any; isStreaming?: boolean }> = ({ messag
                 {!isThinkingMessage && (
                     <Card
                         size="small"
-                        style={getMessageStyle()}
+                        className={getMessageClassName()}
+                        style={{
+                            maxWidth: '100%',
+                            wordBreak: 'break-word' as const
+                        }}
                         styles={{
                             body: {
-                                padding: '10px 10px',
+                                padding: '12px 14px',
                                 color: isUserMessage ? AppColors.text.primary : (message.role === 'assistant' ? AppColors.text.white : AppColors.text.primary),
-                                // Slightly different opacity for thinking messages
-                                opacity: isThinkingMessage ? 0.9 : 1
+                                position: 'relative',
+                                zIndex: 1
                             }
                         }}
                     >

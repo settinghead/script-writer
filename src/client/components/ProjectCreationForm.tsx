@@ -40,7 +40,8 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
     return (
         <div style={{ textAlign: 'center', padding: '24px' }}>
             <Text type="secondary">
-                项目已就绪。请使用下方的操作面板来创建和管理项目内容。
+                <p>项目已创建。</p>
+                <p>使用下方的按钮继续。</p>
             </Text>
         </div>
     );

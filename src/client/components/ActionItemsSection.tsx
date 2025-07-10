@@ -99,6 +99,9 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
         <Card
             style={{
                 backgroundColor: '#1a1a1a',
+                display: 'flex',
+                flexDirection: 'row',
+                justifyContent: 'center',
             }}
 
         >

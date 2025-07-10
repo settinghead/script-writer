@@ -124,18 +124,23 @@ export function computeActionsFromLineage(
     );
 
     // 2. Determine current stage from workflow nodes
-    const currentStage = detectStageFromWorkflowNodes(actionContext.workflowNodes);
+    let currentStage = detectStageFromWorkflowNodes(actionContext.workflowNodes);
 
-    // 3. Complete the action context with current stage
+    // 3. Fallback logic: if no workflow nodes but we have brainstorm input artifact, set to brainstorm_input stage
+    if (currentStage === 'initial' && actionContext.brainstormInput) {
+        currentStage = 'brainstorm_input';
+    }
+
+    // 4. Complete the action context with current stage
     const completeActionContext: LineageBasedActionContext = {
         ...actionContext,
         currentStage
     };
 
-    // 4. Generate actions based on lineage state
+    // 5. Generate actions based on lineage state
     const actions = generateActionsForStage(currentStage, completeActionContext);
 
-    // 4. Get stage description
+    // 6. Get stage description
     const stageDescription = getStageDescription(currentStage);
 
     return {

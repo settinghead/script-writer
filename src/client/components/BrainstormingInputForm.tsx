@@ -4,6 +4,7 @@ import { BulbOutlined, RightOutlined } from '@ant-design/icons';
 import GenreSelectionPopup from './GenreSelectionPopup';
 import PlatformSelection from './PlatformSelection';
 import { MAX_GENRE_SELECTIONS } from './GenreSelectionPopup';
+import AIButton from './shared/AIButton';
 
 const { Text } = Typography;
 
@@ -160,23 +161,19 @@ const BrainstormingInputForm: React.FC<BrainstormingInputFormProps> = ({
             </div>
 
             {/* Generate Button */}
-            <Button
-                type="primary"
-                icon={<BulbOutlined />}
+            <AIButton
                 onClick={onGenerate}
                 loading={isGenerating}
                 disabled={!isGenreSelectionComplete()}
                 size="large"
                 style={{
-                    background: isGenreSelectionComplete() ? '#1890ff' : '#434343',
-                    borderColor: isGenreSelectionComplete() ? '#1890ff' : '#434343',
                     height: '44px',
                     fontSize: '16px',
                     fontWeight: 500
                 }}
             >
                 {isGenerating ? '生成中...' : `开始头脑风暴 (${numberOfIdeas}个创意)`}
-            </Button>
+            </AIButton>
         </div>
     );
 };

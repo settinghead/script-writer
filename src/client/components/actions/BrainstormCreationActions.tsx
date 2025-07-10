@@ -4,7 +4,7 @@ import { BulbOutlined, EditOutlined } from '@ant-design/icons';
 import { BaseActionProps } from './index';
 import { ActionComponentProps } from '../../utils/lineageBasedActionComputation';
 import { apiService } from '../../services/apiService';
-import { AIButton } from '../shared';
+import AIButton from '../shared/AIButton';
 
 const { Text } = Typography;
 
@@ -69,7 +69,6 @@ const BrainstormCreationActions: React.FC<BrainstormCreationActionsProps> = (pro
                 {/* Brainstorm Creation Button */}
                 <div style={{ textAlign: 'center' }}>
                     <AIButton
-                        type="primary"
                         size="large"
                         onClick={handleCreateBrainstormInput}
                         loading={isCreating}

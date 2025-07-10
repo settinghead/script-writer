@@ -2,10 +2,11 @@ import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { Card, Button, Typography, message, Tag, Space, InputNumber, Input } from 'antd';
 import { BulbOutlined, RightOutlined } from '@ant-design/icons';
 import { useProjectData } from '../contexts/ProjectDataContext';
-import { YJSArtifactProvider, useYJSArtifactContext } from '../transform-artifact-framework/contexts/YJSArtifactContext';
-import { YJSTextField, YJSTextAreaField } from '../transform-artifact-framework/components/YJSField';
+import { YJSArtifactProvider, useYJSField } from '../transform-artifact-framework/contexts/YJSArtifactContext';
+import { YJSTextField, YJSTextAreaField, YJSNumberField } from '../transform-artifact-framework/components/YJSField';
 import GenreSelectionPopup, { MAX_GENRE_SELECTIONS } from './GenreSelectionPopup';
 import PlatformSelection from './PlatformSelection';
+import AIButton from './shared/AIButton';
 
 const { Text, Title } = Typography;
 
@@ -13,48 +14,25 @@ interface BrainstormInputEditorProps {
     projectId: string;
 }
 
-// Separate component that uses YJS context
-const BrainstormInputForm: React.FC = () => {
-    const { getField, setField, isLoading, artifact } = useYJSArtifactContext();
+// Custom YJS Genre Selection Field Component
+const YJSGenreSelectionField: React.FC<{ path: string; placeholder?: string }> = ({ path, placeholder }) => {
+    const { value, updateValue, isInitialized } = useYJSField(path);
     const [genrePopupVisible, setGenrePopupVisible] = useState(false);
 
-    // Get current values from YJS context
-    const platform = getField('platform') || '';
-    const genre = getField('genre') || '';
-    const genrePaths = getField('genrePaths') || [];
-    const other_requirements = getField('other_requirements') || '';
-    const numberOfIdeas = getField('numberOfIdeas') || 3;
-
-    // Handle platform change
-    const handlePlatformChange = (value: string) => {
-        setField('platform', value);
-    };
+    // Parse the current value to get genre paths
+    const genrePaths = useMemo(() => {
+        if (!value || !Array.isArray(value)) return [];
+        return value;
+    }, [value]);
 
     // Handle genre selection
-    const handleGenreSelectionConfirm = (selection: { paths: string[][] }) => {
-        const genreText = selection.paths.map(path => path.join(' > ')).join(', ');
-
-        // Update both fields together
-        setField('genrePaths', selection.paths);
-        setField('genre', genreText);
-
+    const handleGenreSelectionConfirm = useCallback((selection: { paths: string[][] }) => {
+        updateValue(selection.paths);
         setGenrePopupVisible(false);
-    };
-
-    // Handle number of ideas change
-    const handleNumberOfIdeasChange = (value: number | null) => {
-        const finalValue = value || 3;
-        setField('numberOfIdeas', finalValue);
-    };
-
-    // Check if genre selection is complete
-    const isGenreSelectionComplete = () => {
-        return genrePaths && genrePaths.length > 0 &&
-            genrePaths.every((path: string[]) => path.length > 0);
-    };
+    }, [updateValue]);
 
     // Build genre display elements
-    const buildGenreDisplayElements = (): React.ReactElement[] => {
+    const buildGenreDisplayElements = useCallback((): React.ReactElement[] => {
         if (!genrePaths || !Array.isArray(genrePaths)) return [];
 
         return genrePaths.map((path: string[], index: number) => {
@@ -65,7 +43,78 @@ const BrainstormInputForm: React.FC = () => {
                 </Tag>
             );
         });
-    };
+    }, [genrePaths]);
+
+    if (!isInitialized) return null;
+
+    return (
+        <div>
+            <div
+                onClick={() => setGenrePopupVisible(true)}
+                style={{
+                    border: '1px solid #434343',
+                    borderRadius: '6px',
+                    padding: '8px 12px',
+                    minHeight: '32px',
+                    cursor: 'pointer',
+                    background: '#141414',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    transition: 'all 0.3s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.borderColor = '#1890ff'}
+                onMouseLeave={(e) => e.currentTarget.style.borderColor = '#434343'}
+            >
+                {genrePaths && genrePaths.length > 0 ? (
+                    <div style={{ color: '#d9d9d9', cursor: 'pointer', flex: 1 }}>
+                        <Space wrap>
+                            {buildGenreDisplayElements()}
+                        </Space>
+                    </div>
+                ) : (
+                    <span style={{ color: '#666', cursor: 'pointer' }}>
+                        {placeholder || `点击选择故事类型 (可多选, 最多${MAX_GENRE_SELECTIONS}个)`}
+                    </span>
+                )}
+                <RightOutlined style={{ fontSize: '12px', color: '#666', marginLeft: '8px' }} />
+            </div>
+
+            <GenreSelectionPopup
+                visible={genrePopupVisible}
+                onClose={() => setGenrePopupVisible(false)}
+                onSelect={handleGenreSelectionConfirm}
+                currentSelectionPaths={genrePaths || []}
+            />
+        </div>
+    );
+};
+
+// Custom YJS Platform Selection Field Component
+const YJSPlatformSelectionField: React.FC<{ path: string }> = ({ path }) => {
+    const { value, updateValue, isInitialized } = useYJSField(path);
+
+    const handlePlatformChange = useCallback((newValue: string) => {
+        updateValue(newValue);
+    }, [updateValue]);
+
+    if (!isInitialized) return null;
+
+    return (
+        <PlatformSelection
+            selectedPlatform={value || ''}
+            onPlatformChange={handlePlatformChange}
+        />
+    );
+};
+
+// Separate component that uses YJS context
+const BrainstormInputForm: React.FC = () => {
+    const { value: artifact } = useYJSField(''); // Get the entire artifact
+    const { value: platform } = useYJSField('platform');
+    const { value: genrePaths } = useYJSField('genrePaths');
+    const { value: genre } = useYJSField('genre');
+    const { value: numberOfIdeas } = useYJSField('numberOfIdeas');
 
     const handleStartBrainstorm = async () => {
         try {
@@ -94,7 +143,7 @@ const BrainstormInputForm: React.FC = () => {
                     'Authorization': `Bearer debug-auth-token-script-writer-dev`
                 },
                 body: JSON.stringify({
-                    userRequest: `基于artifact ID ${artifact?.id} 的头脑风暴参数，生成${numberOfIdeas || 3}个创意想法。平台：${platform}，类型：${genre}${other_requirements ? `，其他要求：${other_requirements}` : ''}`,
+                    userRequest: `基于artifact ID ${artifact?.id} 的头脑风暴参数，生成${numberOfIdeas || 3}个创意想法。平台：${platform}，类型：${genre}`,
                     projectId: projectId
                 })
             });
@@ -127,10 +176,7 @@ const BrainstormInputForm: React.FC = () => {
             }}>
                 {/* Platform Selection */}
                 <div>
-                    <PlatformSelection
-                        selectedPlatform={platform}
-                        onPlatformChange={handlePlatformChange}
-                    />
+                    <YJSPlatformSelectionField path="platform" />
                 </div>
 
                 {/* Genre Selection */}
@@ -138,63 +184,21 @@ const BrainstormInputForm: React.FC = () => {
                     <Text style={{ color: '#d9d9d9', marginBottom: '8px', display: 'block', fontWeight: 500 }}>
                         故事类型
                     </Text>
-
-                    <div
-                        onClick={() => setGenrePopupVisible(true)}
-                        style={{
-                            border: '1px solid #434343',
-                            borderRadius: '6px',
-                            padding: '8px 12px',
-                            minHeight: '32px',
-                            cursor: 'pointer',
-                            background: '#141414',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            transition: 'all 0.3s'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.borderColor = '#1890ff'}
-                        onMouseLeave={(e) => e.currentTarget.style.borderColor = '#434343'}
-                    >
-                        {genrePaths && genrePaths.length > 0 ? (
-                            <div style={{ color: '#d9d9d9', cursor: 'pointer', flex: 1 }}>
-                                <Space wrap>
-                                    {buildGenreDisplayElements()}
-                                </Space>
-                            </div>
-                        ) : (
-                            <span style={{ color: '#666', cursor: 'pointer' }}>
-                                点击选择故事类型 (可多选, 最多{MAX_GENRE_SELECTIONS}个)
-                            </span>
-                        )}
-                        <RightOutlined style={{ fontSize: '12px', color: '#666', marginLeft: '8px' }} />
-                    </div>
+                    <YJSGenreSelectionField
+                        path="genrePaths"
+                        placeholder={`点击选择故事类型 (可多选, 最多${MAX_GENRE_SELECTIONS}个)`}
+                    />
                 </div>
-
-                <GenreSelectionPopup
-                    visible={genrePopupVisible}
-                    onClose={() => setGenrePopupVisible(false)}
-                    onSelect={handleGenreSelectionConfirm}
-                    currentSelectionPaths={genrePaths || []}
-                />
 
                 {/* Number of Ideas Selection */}
                 <div>
                     <Text style={{ color: '#d9d9d9', marginBottom: '8px', display: 'block', fontWeight: 500 }}>
                         生成创意数量
                     </Text>
-                    <InputNumber
+                    <YJSNumberField
+                        path="numberOfIdeas"
                         min={1}
                         max={4}
-                        value={numberOfIdeas}
-                        onChange={handleNumberOfIdeasChange}
-                        style={{
-                            width: '100%',
-                            background: '#141414',
-                            borderColor: '#434343',
-                            color: '#d9d9d9'
-                        }}
-                        size="large"
                         placeholder="选择要生成的创意数量 (1-4)"
                     />
                     <Text style={{ color: '#666', fontSize: '12px', marginTop: '4px', display: 'block' }}>
@@ -214,23 +218,23 @@ const BrainstormInputForm: React.FC = () => {
                     />
                 </div>
 
-                {/* Action Buttons */}
-                <div style={{ marginTop: '24px', textAlign: 'center' }}>
+                {/* Start Brainstorm Button */}
+                <div style={{ marginTop: '16px' }}>
                     <Button
                         type="primary"
                         size="large"
-                        icon={<BulbOutlined />}
                         onClick={handleStartBrainstorm}
-                        disabled={isLoading || !platform || !genre}
                         style={{
-                            background: isGenreSelectionComplete() && platform ? '#1890ff' : '#434343',
-                            borderColor: isGenreSelectionComplete() && platform ? '#1890ff' : '#434343',
-                            height: '44px',
+                            width: '100%',
+                            height: '48px',
                             fontSize: '16px',
                             fontWeight: 500,
-                            minWidth: '200px'
+                            background: 'linear-gradient(135deg, #1890ff 0%, #36cfc9 100%)',
+                            border: 'none',
+                            borderRadius: '8px'
                         }}
                     >
+                        <BulbOutlined style={{ marginRight: '8px' }} />
                         开始头脑风暴
                     </Button>
                 </div>

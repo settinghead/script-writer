@@ -4,6 +4,7 @@ import { BulbOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { BaseActionProps } from './index';
 import { ActionComponentProps } from '../../utils/lineageBasedActionComputation';
 import { apiService } from '../../services/apiService';
+import AIButton from '../shared/AIButton';
 
 const { Title } = Typography;
 
@@ -118,23 +119,18 @@ const BrainstormInputForm: React.FC<BrainstormInputFormPropsUnion> = (props) => 
                     {isDeleting ? '返回中...' : '返回'}
                 </Button>
 
-                <Button
-                    type="primary"
+                <AIButton
                     size="large"
                     loading={isStarting}
                     onClick={handleStartBrainstorm}
                     style={{
                         minWidth: '200px',
                         height: '48px',
-                        fontSize: '16px',
-                        borderRadius: '8px',
-                        background: 'linear-gradient(135deg, #1890ff, #52c41a)',
-                        border: 'none',
-                        boxShadow: '0 4px 12px rgba(24, 144, 255, 0.3)'
+                        fontSize: '16px'
                     }}
                 >
                     {isStarting ? '启动中...' : '开始头脑风暴'}
-                </Button>
+                </AIButton>
             </Space>
         </div>
     );

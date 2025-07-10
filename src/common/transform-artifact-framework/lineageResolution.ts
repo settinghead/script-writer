@@ -1198,7 +1198,7 @@ export interface IdeaWithTitle {
 
 export interface WorkflowNode {
     id: string;
-    type: 'brainstorm_collection' | 'brainstorm_idea' | 'outline' | 'chronicles' | 'episode' | 'script';
+    type: 'brainstorm_input' | 'brainstorm_collection' | 'brainstorm_idea' | 'outline' | 'chronicles' | 'episode' | 'script';
     title: string;
     artifactId: string;
     position: { x: number; y: number };
@@ -1343,6 +1343,13 @@ export function findMainWorkflowPath(
  * Create workflow when only brainstorm data exists (no outline yet)
  */
 function createBrainstormOnlyWorkflow(artifacts: ElectricArtifact[]): WorkflowNode[] {
+    // Look for brainstorm input artifacts first (highest priority)
+    const brainstormInputs = artifacts.filter(a =>
+        a.schema_type === 'brainstorm_tool_input_schema' ||
+        a.type === 'brainstorm_tool_input_schema'
+    );
+
+    // Look for brainstorm collections and ideas
     const brainstormCollections = artifacts.filter(a =>
         a.schema_type === 'brainstorm_collection_schema' ||
         a.schema_type === 'brainstorm_item_schema' ||
@@ -1350,45 +1357,60 @@ function createBrainstormOnlyWorkflow(artifacts: ElectricArtifact[]): WorkflowNo
         a.type === 'brainstorm_item_schema'
     );
 
-    if (brainstormCollections.length === 0) {
-        return [];
-    }
-
-    // Get the latest collection
-    const latestCollection = brainstormCollections
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
-
-    // Determine workflow node type based on artifact type
-    // For manually entered single ideas (brainstorm_item_schema), create brainstorm_idea node
-    // For AI-generated collections (brainstorm_collection_schema), create brainstorm_collection node
+    // Priority order: brainstorm_input > brainstorm_collections
+    let primaryArtifact: ElectricArtifact | null = null;
     let nodeType: WorkflowNode['type'];
     let title: string;
     let navigationTarget: string;
 
-    if (latestCollection.schema_type === 'brainstorm_item_schema' && latestCollection.origin_type === 'user_input') {
-        // Single manually entered idea
-        nodeType = 'brainstorm_idea';
-        title = '选中创意';
-        navigationTarget = '#ideation-edit';
+    if (brainstormInputs.length > 0) {
+        // Get the latest brainstorm input
+        primaryArtifact = brainstormInputs
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+
+        nodeType = 'brainstorm_input';
+        title = '头脑风暴输入';
+        navigationTarget = '#brainstorm-input';
+    } else if (brainstormCollections.length > 0) {
+        // Get the latest collection
+        primaryArtifact = brainstormCollections
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+
+        // Determine workflow node type based on artifact type
+        // For manually entered single ideas (brainstorm_item_schema), create brainstorm_idea node
+        // For AI-generated collections (brainstorm_collection_schema), create brainstorm_collection node
+        if (primaryArtifact.schema_type === 'brainstorm_item_schema' && primaryArtifact.origin_type === 'user_input') {
+            // Single manually entered idea
+            nodeType = 'brainstorm_idea';
+            title = '选中创意';
+            navigationTarget = '#ideation-edit';
+        } else {
+            // AI-generated collection or other types
+            nodeType = 'brainstorm_collection';
+            title = '创意构思';
+            navigationTarget = '#brainstorm-ideas';
+        }
     } else {
-        // AI-generated collection or other types
-        nodeType = 'brainstorm_collection';
-        title = '创意构思';
-        navigationTarget = '#brainstorm-ideas';
+        // No brainstorm artifacts found
+        return [];
+    }
+
+    if (!primaryArtifact) {
+        return [];
     }
 
     return [{
-        id: `workflow-node-${latestCollection.id}`,
+        id: `workflow-node-${primaryArtifact.id}`,
         type: nodeType,
         title: title,
-        artifactId: latestCollection.id,
+        artifactId: primaryArtifact.id,
         position: { x: 90, y: 50 },
         isMain: true,
         isActive: true,
         navigationTarget: navigationTarget,
-        createdAt: latestCollection.created_at,
-        status: latestCollection.streaming_status === 'streaming' ? 'processing' : 'completed',
-        schemaType: latestCollection.schema_type // NEW: Include schema_type for display
+        createdAt: primaryArtifact.created_at,
+        status: primaryArtifact.streaming_status === 'streaming' ? 'processing' : 'completed',
+        schemaType: primaryArtifact.schema_type // NEW: Include schema_type for display
     }];
 }
 
