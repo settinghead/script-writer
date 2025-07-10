@@ -17,8 +17,7 @@ export { YJSSlateArrayOfStringField } from '../../transform-artifact-framework/c
 export { ReadOnlyArtifactDisplay } from './ReadOnlyArtifactDisplay';
 export { ArtifactDisplayWrapper } from '../../transform-artifact-framework/components/ArtifactDisplayWrapper';
 export { EditableOutlineForm } from './EditableOutlineForm';
-export { default as EditableChronicleStageForm } from './EditableChronicleStageForm';
-export { default as ChronicleStageWrapper } from './ChronicleStageWrapper';
+export { default as EditableChroniclesForm } from './EditableChroniclesForm';
 export { default as AIButton } from './AIButton';
 export * from './YJSComplexFields';
 export * from './streaming';
