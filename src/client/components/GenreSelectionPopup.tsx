@@ -256,6 +256,8 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
     const createMenuItems = (data: GenreSelection[], basePath: string[] = []): MenuProps['items'] => {
         if (!data || data.length === 0) return [];
 
+
+
         return data.map(item => {
             const itemPath = [...basePath, item.label];
             const itemHasChildren = item.selections && item.selections.length > 0;
@@ -266,11 +268,28 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
             const hasChildrenSelected = hasSelectedChildren(itemPath);
             const hasParentSelected = hasSelectedParent(itemPath);
 
+            // Check if this item is part of the current navigation path (for navigation highlighting)
+            const isInNavigationPath = activeNavigationPath.length > basePath.length &&
+                activeNavigationPath[basePath.length] === item.label &&
+                basePath.every((segment, index) => activeNavigationPath[index] === segment);
+
+            // Debug logging
+            console.log('🔧 Menu item debug:', {
+                label: item.label,
+                itemPath,
+                basePath,
+                isSelected: isSelected,
+                isInNavigationPath: isInNavigationPath,
+                activeNavigationPath,
+                tempSelectedPaths
+            });
+
             return {
                 key: itemPath.join('|'),
                 label: (
                     <Flex justify="space-between" align="center" style={{
-                        backgroundColor: isSelected ? '#1890ff10' : 'transparent',
+                        // Only show navigation highlighting, NOT selection highlighting
+                        backgroundColor: isInNavigationPath ? '#1890ff10' : 'transparent',
                         padding: '4px 8px',
                         borderRadius: '4px',
                         margin: '-4px -8px'
@@ -305,6 +324,12 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
         const columns: React.ReactElement[] = [];
         let currentLevelData: GenreSelection[] = genreSelections;
         let currentPathSegmentsForRender: string[] = [];
+
+        // Debug logging
+        console.log('🔄 renderMillerColumns called:', {
+            tempSelectedPaths,
+            activeNavigationPath
+        });
 
         // Root column
         const rootSelectedKeys = [];
