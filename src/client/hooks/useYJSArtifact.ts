@@ -579,7 +579,6 @@ export const useYJSArtifact = (
             const Y = await import('yjs');
             const yMap = yMapRef.current;
 
-            console.log(`[useYJSArtifact] Updating field: ${field} with value:`, value);
 
             // Handle array index paths like "emotionArcs[0]" or "emotionArcs[0].characters"
             const arrayIndexMatch = field.match(/^(.+)\[(\d+)\](.*)$/);
@@ -587,7 +586,6 @@ export const useYJSArtifact = (
                 const [, arrayName, indexStr, remainingPath] = arrayIndexMatch;
                 const index = parseInt(indexStr, 10);
 
-                console.log(`[useYJSArtifact] Array index update: ${arrayName}[${index}]${remainingPath}`);
 
                 // Get or create the YJS array
                 let yArray = yMap?.get(arrayName);
@@ -648,7 +646,6 @@ export const useYJSArtifact = (
                 yArray.delete(index, 1);
                 yArray.insert(index, [JSON.stringify(currentElement)]);
 
-                console.log(`[useYJSArtifact] Array updated: ${arrayName}[${index}]${remainingPath} = `, value);
                 return;
             }
 
