@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react';
-import { Input, Select, Button, Typography } from 'antd';
+import { Input, Select, Button, Typography, Card, Space } from 'antd';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useYJSField } from '../../contexts/YJSArtifactContext';
 
@@ -320,4 +320,237 @@ YJSTextAreaField.displayName = 'YJSTextAreaField';
 YJSArrayField.displayName = 'YJSArrayField';
 YJSMultiSelect.displayName = 'YJSMultiSelect';
 YJSEmotionArcsArray.displayName = 'YJSEmotionArcsArray';
-YJSRelationshipDevelopmentsArray.displayName = 'YJSRelationshipDevelopmentsArray'; 
+YJSRelationshipDevelopmentsArray.displayName = 'YJSRelationshipDevelopmentsArray';
+
+// Character Array Component
+export const YJSCharacterArray = React.memo(({ path }: { path: string }) => {
+    const { value, updateValue, isInitialized } = useYJSField(path);
+
+    const arrayValue = useMemo(() => {
+        if (!Array.isArray(value)) return [];
+        return value;
+    }, [value]);
+
+    const handleItemChange = useCallback((index: number, field: string, newValue: any) => {
+        const newArray = [...arrayValue];
+        if (!newArray[index]) {
+            newArray[index] = {
+                name: '',
+                type: 'supporting',
+                age: '',
+                gender: '',
+                occupation: '',
+                description: '',
+                personality_traits: [],
+                character_arc: '',
+                key_scenes: []
+            };
+        }
+        newArray[index] = { ...newArray[index], [field]: newValue };
+        updateValue(newArray);
+    }, [arrayValue, updateValue]);
+
+    const handleAddItem = useCallback(() => {
+        const newArray = [...arrayValue, {
+            name: '',
+            type: 'supporting',
+            age: '',
+            gender: '',
+            occupation: '',
+            description: '',
+            personality_traits: [],
+            character_arc: '',
+            key_scenes: []
+        }];
+        updateValue(newArray);
+    }, [arrayValue, updateValue]);
+
+    const handleRemoveItem = useCallback((index: number) => {
+        const newArray = arrayValue.filter((_, i) => i !== index);
+        updateValue(newArray);
+    }, [arrayValue, updateValue]);
+
+    const handleArrayFieldChange = useCallback((index: number, field: string, newArrayValue: string[]) => {
+        const newArray = [...arrayValue];
+        if (!newArray[index]) {
+            newArray[index] = {
+                name: '',
+                type: 'supporting',
+                age: '',
+                gender: '',
+                occupation: '',
+                description: '',
+                personality_traits: [],
+                character_arc: '',
+                key_scenes: []
+            };
+        }
+        newArray[index] = { ...newArray[index], [field]: newArrayValue };
+        updateValue(newArray);
+    }, [arrayValue, updateValue]);
+
+    if (!isInitialized) return null;
+
+    return (
+        <div>
+            {arrayValue.map((character, index) => (
+                <Card
+                    key={index}
+                    size="small"
+                    style={{
+                        backgroundColor: '#262626',
+                        border: '1px solid #434343',
+                        marginBottom: '16px'
+                    }}
+                    styles={{ body: { padding: '16px' } }}
+                    extra={
+                        <Button
+                            type="text"
+                            icon={<DeleteOutlined />}
+                            size="small"
+                            onClick={() => handleRemoveItem(index)}
+                            style={{ color: '#ff4d4f' }}
+                        />
+                    }
+                >
+                    <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                        <div>
+                            <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>姓名：</Text>
+                            <Input
+                                value={character?.name || ''}
+                                onChange={(e) => handleItemChange(index, 'name', e.target.value)}
+                                placeholder="角色姓名"
+                            />
+                        </div>
+                        <div>
+                            <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>类型：</Text>
+                            <Input
+                                value={character?.type || ''}
+                                onChange={(e) => handleItemChange(index, 'type', e.target.value)}
+                                placeholder="角色类型"
+                            />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>基本信息：</Text>
+                            <div>
+                                <Text strong style={{ fontSize: '12px', color: '#aaa', display: 'block', marginBottom: '2px' }}>年龄：</Text>
+                                <Input
+                                    value={character?.age || ''}
+                                    onChange={(e) => handleItemChange(index, 'age', e.target.value)}
+                                    placeholder="年龄"
+                                />
+                            </div>
+                            <div>
+                                <Text strong style={{ fontSize: '12px', color: '#aaa', display: 'block', marginBottom: '2px' }}>性别：</Text>
+                                <Input
+                                    value={character?.gender || ''}
+                                    onChange={(e) => handleItemChange(index, 'gender', e.target.value)}
+                                    placeholder="性别"
+                                />
+                            </div>
+                            <div>
+                                <Text strong style={{ fontSize: '12px', color: '#aaa', display: 'block', marginBottom: '2px' }}>职业：</Text>
+                                <Input
+                                    value={character?.occupation || ''}
+                                    onChange={(e) => handleItemChange(index, 'occupation', e.target.value)}
+                                    placeholder="职业"
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>角色描述：</Text>
+                            <TextArea
+                                value={character?.description || ''}
+                                onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                                placeholder="角色描述"
+                                rows={2}
+                            />
+                        </div>
+                        <div>
+                            <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>性格特点：</Text>
+                            <YJSArrayFieldInline
+                                value={character?.personality_traits || []}
+                                onChange={(newValue) => handleArrayFieldChange(index, 'personality_traits', newValue)}
+                                placeholder="每行一个性格特点..."
+                            />
+                        </div>
+                        <div>
+                            <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>成长轨迹：</Text>
+                            <TextArea
+                                value={character?.character_arc || ''}
+                                onChange={(e) => handleItemChange(index, 'character_arc', e.target.value)}
+                                placeholder="成长轨迹"
+                                rows={2}
+                            />
+                        </div>
+                        <div>
+                            <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>关键场景：</Text>
+                            <YJSArrayFieldInline
+                                value={character?.key_scenes || []}
+                                onChange={(newValue) => handleArrayFieldChange(index, 'key_scenes', newValue)}
+                                placeholder="每行一个关键场景..."
+                            />
+                        </div>
+                    </Space>
+                </Card>
+            ))}
+
+            {arrayValue.length === 0 && (
+                <Card
+                    size="small"
+                    style={{
+                        backgroundColor: '#1a1a1a',
+                        border: '1px dashed #434343',
+                        textAlign: 'center'
+                    }}
+                    styles={{ body: { padding: '24px' } }}
+                >
+                    <Text style={{ color: '#666', fontSize: '14px' }}>
+                        暂无角色，点击下方"添加角色"按钮开始创建
+                    </Text>
+                </Card>
+            )}
+
+            <Button
+                type="dashed"
+                icon={<PlusOutlined />}
+                onClick={handleAddItem}
+                style={{ width: '100%', marginTop: '8px' }}
+            >
+                添加角色
+            </Button>
+        </div>
+    );
+});
+
+// Inline Array Field Component for use within character forms
+const YJSArrayFieldInline = React.memo(({ value, onChange, placeholder }: {
+    value: string[];
+    onChange: (value: string[]) => void;
+    placeholder?: string;
+}) => {
+    const handleTextAreaChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const newValue = e.target.value
+            .split('\n')
+            .map(line => line.trim())
+            .filter(line => line.length > 0);
+        onChange(newValue);
+    }, [onChange]);
+
+    const textAreaValue = useMemo(() => {
+        return Array.isArray(value) ? value.join('\n') : '';
+    }, [value]);
+
+    return (
+        <TextArea
+            value={textAreaValue}
+            onChange={handleTextAreaChange}
+            placeholder={placeholder}
+            rows={3}
+            style={{ resize: 'vertical' }}
+        />
+    );
+});
+
+YJSCharacterArray.displayName = 'YJSCharacterArray';
+YJSArrayFieldInline.displayName = 'YJSArrayFieldInline'; 

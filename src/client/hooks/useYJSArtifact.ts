@@ -362,7 +362,8 @@ export const useYJSArtifact = (
                             const stringValue = value.toString();
                             try {
                                 // Try to parse as JSON for nested objects
-                                data[key] = JSON.parse(stringValue);
+                                const parsedValue = JSON.parse(stringValue);
+                                data[key] = parsedValue;
                             } catch {
                                 // If not JSON, use as string
                                 data[key] = stringValue;
@@ -444,7 +445,7 @@ export const useYJSArtifact = (
                                         });
                                         yMap.set(key, yArray);
                                     } else if (typeof value === 'object' && value !== null) {
-                                        // For nested objects, store as JSON string for now
+                                        // For nested objects like target_audience, store as JSON string
                                         const yText = new Y.Text();
                                         yText.insert(0, JSON.stringify(value));
                                         yMap.set(key, yText);
@@ -579,13 +580,11 @@ export const useYJSArtifact = (
             const Y = await import('yjs');
             const yMap = yMapRef.current;
 
-
             // Handle array index paths like "emotionArcs[0]" or "emotionArcs[0].characters"
             const arrayIndexMatch = field.match(/^(.+)\[(\d+)\](.*)$/);
             if (arrayIndexMatch) {
                 const [, arrayName, indexStr, remainingPath] = arrayIndexMatch;
                 const index = parseInt(indexStr, 10);
-
 
                 // Get or create the YJS array
                 let yArray = yMap?.get(arrayName);
@@ -649,7 +648,66 @@ export const useYJSArtifact = (
                 return;
             }
 
-            // Handle regular field updates
+            // Handle nested object paths like "target_audience.demographic"
+            if (field.includes('.')) {
+                const pathParts = field.split('.');
+                const rootField = pathParts[0];
+                const nestedPath = pathParts.slice(1).join('.');
+
+                // Get the root object from YJS
+                let rootObject = {};
+                const yValue = yMap?.get(rootField);
+
+                if (yValue && typeof yValue.toString === 'function') {
+                    // It's a YText containing JSON
+                    const jsonString = yValue.toString();
+                    try {
+                        rootObject = JSON.parse(jsonString);
+                    } catch (e) {
+                        console.warn(`[useYJSArtifact] Failed to parse JSON for field ${rootField}:`, e);
+                        rootObject = {};
+                    }
+                } else if (yValue && typeof yValue === 'object') {
+                    // It's already an object
+                    rootObject = yValue;
+                }
+
+                // Update the nested property
+                const setValueByPath = (obj: any, path: string, value: any): any => {
+                    const keys = path.split('.');
+                    const result = { ...obj };
+                    let current = result;
+
+                    for (let i = 0; i < keys.length - 1; i++) {
+                        const key = keys[i];
+                        if (!(key in current) || typeof current[key] !== 'object' || current[key] === null) {
+                            current[key] = {};
+                        } else {
+                            current[key] = { ...current[key] };
+                        }
+                        current = current[key];
+                    }
+
+                    const lastKey = keys[keys.length - 1];
+                    current[lastKey] = value;
+                    return result;
+                };
+
+                const updatedObject = setValueByPath(rootObject, nestedPath, value);
+
+                // Store the updated object back to YJS as JSON string
+                const yText = yMap?.get(rootField) || new Y.Text();
+                if (!yMap?.has(rootField)) {
+                    yMap?.set(rootField, yText);
+                }
+                const jsonString = JSON.stringify(updatedObject);
+                yText.delete(0, yText.length);
+                yText.insert(0, jsonString);
+
+                return;
+            }
+
+            // Handle regular field updates (no nesting)
             if (typeof value === 'string') {
                 const yText = yMap?.get(field) || new Y.Text();
                 if (!yMap?.has(field)) {

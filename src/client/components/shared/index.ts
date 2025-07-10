@@ -2,7 +2,15 @@ export { TopProgressBar } from './TopProgressBar';
 export { ReasoningIndicator } from './ReasoningIndicator';
 export { SectionWrapper, ArtifactSchemaType } from './SectionWrapper';
 export { YJSEditableText } from './YJSEditableText';
-export { YJSTextField, YJSTextAreaField, YJSArrayField, YJSMultiSelect, YJSEmotionArcsArray, YJSRelationshipDevelopmentsArray } from './YJSField';
+export {
+    YJSTextField,
+    YJSTextAreaField,
+    YJSArrayField,
+    YJSMultiSelect,
+    YJSEmotionArcsArray,
+    YJSRelationshipDevelopmentsArray,
+    YJSCharacterArray
+} from './YJSField';
 export { ReadOnlyArtifactDisplay } from './ReadOnlyArtifactDisplay';
 export { ArtifactDisplayWrapper } from './ArtifactDisplayWrapper';
 export { EditableOutlineForm } from './EditableOutlineForm';
