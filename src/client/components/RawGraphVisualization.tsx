@@ -4,6 +4,7 @@ import { Typography, Checkbox, Space, Tooltip, Spin, Button, message } from 'ant
 import { DatabaseOutlined, UserOutlined, RobotOutlined, CloseOutlined, DeleteOutlined } from '@ant-design/icons';
 import dagre from 'dagre';
 import { useProjectData } from '../contexts/ProjectDataContext';
+import { AppColors, ColorUtils } from '../../common/theme/colors';
 import 'reactflow/dist/style.css';
 
 const { Text } = Typography;
@@ -71,30 +72,11 @@ const ArtifactNode: React.FC<{ data: any }> = ({ data }) => {
     };
 
     const getTypeColor = (type: string, originType?: string) => {
-        // Input params get purple color
-        if (type === 'brainstorm_params' || type === 'brainstorm_tool_input' || type === 'outline_input' || type.includes('input')) {
-            return '#722ed1'; // Purple for input params
-        }
-
-        // Color based on origin type
-        if (originType === 'human') {
-            return '#52c41a'; // Green for human-derived artifacts
-        } else if (originType === 'llm') {
-            return '#fa8c16'; // Orange for AI-generated artifacts
-        }
-
-        // Fallback colors for specific types
-        switch (type) {
-            case 'user_input': return '#52c41a'; // Green for user input
-            case 'brainstorm_idea': return '#fa8c16'; // Orange for AI-generated ideas
-            case 'outline_response': return '#fa8c16'; // Orange for AI-generated outlines
-            case 'chronicles': return '#fa8c16'; // Orange for AI-generated chronicles
-            default: return '#666'; // Gray for unknown types
-        }
+        return ColorUtils.getArtifactColor(type, originType);
     };
 
     const typeColor = getTypeColor(artifact.type, originType);
-    const borderColor = isLatest ? '#fadb14' : typeColor;
+    const borderColor = isLatest ? AppColors.status.latest : typeColor;
     const borderWidth = isLatest ? 3 : 2;
 
     let parsedData;
@@ -106,14 +88,14 @@ const ArtifactNode: React.FC<{ data: any }> = ({ data }) => {
 
     return (
         <div style={{
-            background: '#1a1a1a',
+            background: AppColors.background.primary,
             border: `${borderWidth}px solid ${borderColor}`,
             borderRadius: '8px',
             padding: '16px',
             minWidth: '220px',
             maxWidth: '320px',
             minHeight: '100px',
-            color: 'white',
+            color: AppColors.text.white,
             position: 'relative'
         }}>
             {/* Connection handles */}
@@ -178,12 +160,12 @@ const ArtifactNode: React.FC<{ data: any }> = ({ data }) => {
                         gap: '8px'
                     }}>
                         <DatabaseOutlined style={{ color: typeColor }} />
-                        <Text style={{ color: 'white', fontWeight: 'bold', fontSize: '12px' }}>
+                        <Text style={{ color: AppColors.text.white, fontWeight: 'bold', fontSize: '12px' }}>
                             {artifact.type}
                         </Text>
                         {isLatest && (
                             <span style={{
-                                background: '#fadb14',
+                                background: AppColors.status.latest,
                                 color: '#000',
                                 padding: '2px 6px',
                                 borderRadius: '4px',
@@ -194,11 +176,11 @@ const ArtifactNode: React.FC<{ data: any }> = ({ data }) => {
                             </span>
                         )}
                     </div>
-                    <Text style={{ color: '#ccc', fontSize: '10px' }}>
+                    <Text style={{ color: AppColors.text.secondary, fontSize: '10px' }}>
                         {artifact.schema_type || artifact.type}
                     </Text>
                     <br />
-                    <Text style={{ color: '#aaa', fontSize: '9px', fontStyle: 'italic' }}>
+                    <Text style={{ color: AppColors.text.tertiary, fontSize: '9px', fontStyle: 'italic' }}>
                         {(() => {
                             try {
                                 const data = typeof artifact.data === 'string' ? JSON.parse(artifact.data) : artifact.data;
@@ -253,7 +235,7 @@ const TransformNode: React.FC<{ data: any }> = ({ data }) => {
     const { transform, humanTransform } = data;
 
     const getTypeColor = (type: string) => {
-        return type === 'human' ? '#52c41a' : '#fa8c16'; // Green for human, orange for AI
+        return ColorUtils.getTransformColor(type as 'human' | 'llm');
     };
 
     const typeColor = getTypeColor(transform.type);
@@ -281,13 +263,13 @@ const TransformNode: React.FC<{ data: any }> = ({ data }) => {
     return (
         <div
             style={{
-                background: '#2a2a2a',
+                background: AppColors.background.secondary,
                 border: `2px solid ${typeColor}`,
                 borderRadius: '8px',
                 padding: '12px',
                 minWidth: '180px',
                 maxWidth: '250px',
-                color: 'white',
+                color: AppColors.text.white,
                 position: 'relative',
                 transform: 'rotate(45deg)',
                 transformOrigin: 'center'
@@ -354,7 +336,7 @@ const TransformNode: React.FC<{ data: any }> = ({ data }) => {
                                 <UserOutlined style={{ color: typeColor }} /> :
                                 <RobotOutlined style={{ color: typeColor }} />
                             }
-                            <Text style={{ color: 'white', fontWeight: 'bold', fontSize: '11px' }}>
+                            <Text style={{ color: AppColors.text.white, fontWeight: 'bold', fontSize: '11px' }}>
                                 {transform.type.toUpperCase()}
                             </Text>
                         </div>
@@ -365,7 +347,7 @@ const TransformNode: React.FC<{ data: any }> = ({ data }) => {
                                 position: 'absolute',
                                 top: '-8px',
                                 right: '-8px',
-                                background: '#1a1a1a',
+                                background: AppColors.background.primary,
                                 borderRadius: '50%',
                                 padding: '2px'
                             }}>
@@ -378,7 +360,7 @@ const TransformNode: React.FC<{ data: any }> = ({ data }) => {
                                 position: 'absolute',
                                 top: '-8px',
                                 right: '-8px',
-                                background: '#f5222d',
+                                background: AppColors.status.error,
                                 borderRadius: '50%',
                                 padding: '2px',
                                 display: 'flex',
@@ -387,7 +369,7 @@ const TransformNode: React.FC<{ data: any }> = ({ data }) => {
                                 width: '16px',
                                 height: '16px'
                             }}>
-                                <CloseOutlined style={{ color: 'white', fontSize: '10px' }} />
+                                <CloseOutlined style={{ color: AppColors.text.white, fontSize: '10px' }} />
                             </div>
                         )}
 
@@ -542,7 +524,7 @@ const RawGraphVisualization: React.FC = () => {
                 // Create edges from input artifacts to transform
                 if (Array.isArray(projectData.transformInputs)) {
                     const inputs = projectData.transformInputs.filter((ti: any) => ti.transform_id === transform.id);
-                    const edgeColor = transform.type === 'human' ? '#52c41a' : '#fa8c16'; // Green for human, orange for AI
+                    const edgeColor = ColorUtils.getTransformColor(transform.type as 'human' | 'llm');
 
                     inputs.forEach((input: any) => {
                         if (showArtifacts && Array.isArray(projectData.artifacts) && projectData.artifacts.some((a: any) => a.id === input.artifact_id)) {
@@ -561,7 +543,7 @@ const RawGraphVisualization: React.FC = () => {
                 // Create edges from transform to output artifacts
                 if (Array.isArray(projectData.transformOutputs)) {
                     const outputs = projectData.transformOutputs.filter((to: any) => to.transform_id === transform.id);
-                    const edgeColor = transform.type === 'human' ? '#52c41a' : '#fa8c16'; // Green for human, orange for AI
+                    const edgeColor = ColorUtils.getTransformColor(transform.type as 'human' | 'llm');
 
                     outputs.forEach((output: any) => {
                         if (showArtifacts && Array.isArray(projectData.artifacts) && projectData.artifacts.some((a: any) => a.id === output.artifact_id)) {
@@ -592,7 +574,7 @@ const RawGraphVisualization: React.FC = () => {
                         (transform.type === 'llm' && showLLMTransforms);
                     if (!shouldShow) return;
 
-                    const edgeColor = transform.type === 'human' ? '#52c41a' : '#fa8c16'; // Green for human, orange for AI
+                    const edgeColor = ColorUtils.getTransformColor(transform.type as 'human' | 'llm');
 
                     // Create edge from source artifact to transform (if both exist in nodes)
                     if (humanTransform.source_artifact_id &&
@@ -703,18 +685,18 @@ const RawGraphVisualization: React.FC = () => {
                 border: '1px solid #333'
             }}>
                 <Space direction="vertical" size="small">
-                    <Text style={{ color: 'white', fontWeight: 'bold' }}>显示选项</Text>
+                    <Text style={{ color: AppColors.text.white, fontWeight: 'bold' }}>显示选项</Text>
                     <Checkbox
                         checked={showArtifacts}
                         onChange={(e) => setShowArtifacts(e.target.checked)}
-                        style={{ color: 'white' }}
+                        style={{ color: AppColors.text.white }}
                     >
                         <DatabaseOutlined /> Artifact ({projectData.artifacts.length})
                     </Checkbox>
                     <Checkbox
                         checked={showTransforms}
                         onChange={(e) => setShowTransforms(e.target.checked)}
-                        style={{ color: 'white' }}
+                        style={{ color: AppColors.text.white }}
                         disabled={!showHumanTransforms && !showLLMTransforms}
                     >
                         Transform ({projectData.transforms.length})
@@ -723,7 +705,7 @@ const RawGraphVisualization: React.FC = () => {
                         <Checkbox
                             checked={showHumanTransforms}
                             onChange={(e) => setShowHumanTransforms(e.target.checked)}
-                            style={{ color: 'white' }}
+                            style={{ color: AppColors.text.white }}
                         >
                             <UserOutlined /> Human Transform
                         </Checkbox>
@@ -731,7 +713,7 @@ const RawGraphVisualization: React.FC = () => {
                         <Checkbox
                             checked={showLLMTransforms}
                             onChange={(e) => setShowLLMTransforms(e.target.checked)}
-                            style={{ color: 'white' }}
+                            style={{ color: AppColors.text.white }}
                         >
                             <RobotOutlined /> LLM Transform
                         </Checkbox>

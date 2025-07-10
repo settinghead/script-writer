@@ -4,6 +4,7 @@ import { Cpu, Trash, Settings } from 'iconoir-react';
 
 import { BasicThread } from './BasicThread';
 import { useClearChat } from '../../hooks/useChatMessages';
+import { AppColors } from '../../../common/theme/colors';
 import './chat.css';
 
 const { Header, Content } = Layout;
@@ -39,7 +40,7 @@ export const AssistantChatSidebar: React.FC<AssistantChatSidebarProps> = ({ proj
                 justifyContent: 'space-between'
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Cpu style={{ fontSize: '20px', color: '#1890ff' }} />
+                    <Cpu style={{ fontSize: '20px', color: AppColors.ai.primary }} />
                     <Title level={4} style={{ color: '#f0f0f0', margin: 0 }}>
                         觅光智能体
                     </Title>
@@ -50,8 +51,8 @@ export const AssistantChatSidebar: React.FC<AssistantChatSidebarProps> = ({ proj
                     <Tooltip title="清空对话">
                         <Button
                             type="text"
-                            icon={<Trash style={{ fontSize: 18, color: '#1890ff' }} />}
-                            style={{ color: '#1890ff' }}
+                            icon={<Trash style={{ fontSize: 18, color: AppColors.ai.primary }} />}
+                            style={{ color: AppColors.ai.primary }}
                             loading={clearChatMutation.isPending}
                             onClick={handleClearChat}
                         />

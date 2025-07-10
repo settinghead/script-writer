@@ -1,9 +1,10 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { Button, Typography, Form, Input, InputNumber, Select, message } from 'antd';
+import { Typography, Form, Input, InputNumber, Select, message } from 'antd';
 import { FileTextOutlined } from '@ant-design/icons';
 import { BaseActionProps } from './index';
 import { ActionComponentProps } from '../../utils/lineageBasedActionComputation';
 import { apiService } from '../../services/apiService';
+import { AIButton } from '../shared';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -99,21 +100,18 @@ const OutlineGenerationForm: React.FC<OutlineGenerationFormProps> = (props) => {
     return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', justifyContent: 'center' }}>
             {/* Generate button */}
-            <Button
+            <AIButton
                 type="primary"
                 onClick={() => handleGenerateOutline({ title: ideaData?.title || '', requirements: '' })}
                 loading={isGenerating}
                 disabled={isGenerating}
-                icon={<FileTextOutlined />}
                 style={{
-                    background: '#1890ff',
-                    borderColor: '#1890ff',
                     minWidth: '140px',
                     height: '40px'
                 }}
             >
                 {isGenerating ? '生成中...' : '生成剧本框架'}
-            </Button>
+            </AIButton>
         </div>
     );
 };

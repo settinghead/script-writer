@@ -1,9 +1,10 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { Button, Typography, Alert, message } from 'antd';
+import { Typography, Alert, message } from 'antd';
 import { PlayCircleOutlined } from '@ant-design/icons';
 import { BaseActionProps } from './index';
 import { ActionComponentProps } from '../../utils/lineageBasedActionComputation';
 import { apiService } from '../../services/apiService';
+import { AIButton } from '../shared';
 
 const { Title, Text } = Typography;
 
@@ -72,18 +73,17 @@ const EpisodeGenerationAction: React.FC<EpisodeGenerationActionProps> = (props) 
         <div style={{ margin: '0 auto', display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
             {/* Generate button */}
             <div style={{ textAlign: 'center' }}>
-                <Button
+                <AIButton
                     type="primary"
                     size="large"
                     loading={isGenerating}
                     onClick={handleGenerateEpisodes}
                     style={{
-                        fontSize: '16px',
-                        borderRadius: '8px'
+                        fontSize: '16px'
                     }}
                 >
                     {isGenerating ? '生成中...' : '生成每集大纲 ➤'}
-                </Button>
+                </AIButton>
             </div>
         </div>
     );

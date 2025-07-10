@@ -1,9 +1,10 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { Button, Typography, Alert, message } from 'antd';
+import { Typography, Alert, message } from 'antd';
 import { HistoryOutlined } from '@ant-design/icons';
 import { BaseActionProps } from './index';
 import { ActionComponentProps } from '../../utils/lineageBasedActionComputation';
 import { apiService } from '../../services/apiService';
+import { AIButton } from '../shared';
 
 const { Title, Text } = Typography;
 
@@ -71,7 +72,7 @@ const ChroniclesGenerationAction: React.FC<ChroniclesGenerationActionProps> = (p
 
 
         <div style={{ textAlign: 'center' }}>
-            <Button
+            <AIButton
                 type="primary"
                 size="large"
                 loading={isGenerating}
@@ -79,12 +80,11 @@ const ChroniclesGenerationAction: React.FC<ChroniclesGenerationActionProps> = (p
                 style={{
                     width: '200px',
                     height: '48px',
-                    fontSize: '16px',
-                    borderRadius: '8px'
+                    fontSize: '16px'
                 }}
             >
                 {isGenerating ? '生成中...' : '生成时间顺序大纲'}
-            </Button>
+            </AIButton>
         </div>
     );
 };

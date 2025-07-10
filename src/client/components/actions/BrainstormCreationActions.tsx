@@ -4,6 +4,7 @@ import { BulbOutlined, EditOutlined } from '@ant-design/icons';
 import { BaseActionProps } from './index';
 import { ActionComponentProps } from '../../utils/lineageBasedActionComputation';
 import { apiService } from '../../services/apiService';
+import { AIButton } from '../shared';
 
 const { Text } = Typography;
 
@@ -67,52 +68,25 @@ const BrainstormCreationActions: React.FC<BrainstormCreationActionsProps> = (pro
             }}>
                 {/* Brainstorm Creation Button */}
                 <div style={{ textAlign: 'center' }}>
-                    <Button
+                    <AIButton
                         type="primary"
                         size="large"
-                        icon={<BulbOutlined />}
                         onClick={handleCreateBrainstormInput}
                         loading={isCreating}
                         style={{
                             height: '120px',
                             width: '100%',
                             minWidth: '200px',
-                            fontSize: '16px',
-                            borderRadius: '12px',
-                            background: 'linear-gradient(135deg, #722ed1, #9254de, #b37feb, #722ed1)',
-                            backgroundSize: '200% 200%',
-                            backgroundPosition: '0% 50%',
-                            border: 'none',
-                            boxShadow: '0 4px 12px rgba(114, 46, 209, 0.3)',
-                            transition: 'all 0.3s ease',
-                            position: 'relative',
-                            overflow: 'hidden'
-                        }}
-                        onMouseEnter={(e) => {
-                            const target = e.currentTarget as HTMLElement;
-                            target.style.background = 'linear-gradient(135deg, #531dab, #722ed1, #9254de, #531dab)';
-                            target.style.backgroundSize = '200% 200%';
-                            target.style.backgroundPosition = '100% 50%';
-                            target.style.boxShadow = '0 6px 16px rgba(114, 46, 209, 0.4)';
-                            target.style.transform = 'translateY(-2px)';
-                        }}
-                        onMouseLeave={(e) => {
-                            const target = e.currentTarget as HTMLElement;
-                            target.style.background = 'linear-gradient(135deg, #722ed1, #9254de, #b37feb, #722ed1)';
-                            target.style.backgroundSize = '200% 200%';
-                            target.style.backgroundPosition = '0% 50%';
-                            target.style.boxShadow = '0 4px 12px rgba(114, 46, 209, 0.3)';
-                            target.style.transform = 'translateY(0)';
+                            fontSize: '16px'
                         }}
                     >
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                            <div style={{ fontSize: '24px' }}>💡</div>
                             <div>使用头脑风暴</div>
                             <div style={{ fontSize: '12px', opacity: 0.8 }}>
                                 通过AI辅助生成创意想法
                             </div>
                         </div>
-                    </Button>
+                    </AIButton>
                 </div>
 
                 {/* Manual Creation Button */}

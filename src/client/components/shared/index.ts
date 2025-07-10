@@ -13,12 +13,13 @@ export {
     YJSCharacterArray
 } from '../../transform-artifact-framework/components/YJSField';
 
-export { YJSSlateArrayField } from '../../transform-artifact-framework/components/YJSSlateArrayField';
+export { YJSSlateArrayOfStringField } from '../../transform-artifact-framework/components/YJSSlateArrayField';
 export { ReadOnlyArtifactDisplay } from './ReadOnlyArtifactDisplay';
 export { ArtifactDisplayWrapper } from '../../transform-artifact-framework/components/ArtifactDisplayWrapper';
 export { EditableOutlineForm } from './EditableOutlineForm';
 export { default as EditableChronicleStageForm } from './EditableChronicleStageForm';
 export { default as ChronicleStageWrapper } from './ChronicleStageWrapper';
+export { default as AIButton } from './AIButton';
 export * from './YJSComplexFields';
 export * from './streaming';
 export * from './fieldConfigs'; 
