@@ -1,8 +1,11 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback, useState } from 'react';
+import { Button, message } from 'antd';
+import { EditOutlined } from '@ant-design/icons';
 import { YJSArtifactProvider, useYJSField } from '../../contexts/YJSArtifactContext';
 import EditableChronicleStageForm from './EditableChronicleStageForm';
 import { ReadOnlyArtifactDisplay } from './ReadOnlyArtifactDisplay';
 import { useLineageResolution } from '../../transform-artifact-framework/useLineageResolution';
+import { useProjectData } from '../../contexts/ProjectDataContext';
 
 interface ChronicleStageWrapperProps {
     chroniclesArtifactId: string;
@@ -64,11 +67,14 @@ export const ChronicleStageWrapper = React.memo(({
         };
     }, [overrideArtifactId, lineageResult, chroniclesArtifactId, stageIndex]);
 
-    // If not editable, show read-only display
+    // If not editable, show read-only display with click-to-edit
     if (!isEditable) {
         return (
             <YJSArtifactProvider artifactId={effectiveArtifactId} basePath={basePath}>
-                <ReadOnlyChronicleStageDisplay stageIndex={stageIndex} />
+                <ReadOnlyChronicleStageDisplay
+                    stageIndex={stageIndex}
+                    chroniclesArtifactId={chroniclesArtifactId}
+                />
             </YJSArtifactProvider>
         );
     }
@@ -82,8 +88,42 @@ export const ChronicleStageWrapper = React.memo(({
 });
 
 // Read-only display component for stages without human transforms
-const ReadOnlyChronicleStageDisplay = React.memo(({ stageIndex }: { stageIndex: number }) => {
+const ReadOnlyChronicleStageDisplay = React.memo(({
+    stageIndex,
+    chroniclesArtifactId
+}: {
+    stageIndex: number;
+    chroniclesArtifactId: string;
+}) => {
     const { value: stageData } = useYJSField('');
+    const projectData = useProjectData();
+    const [isCreatingTransform, setIsCreatingTransform] = useState(false);
+
+    // Handle creating human transform to make stage editable
+    const handleCreateEditableVersion = useCallback(async () => {
+        if (isCreatingTransform) return;
+
+        setIsCreatingTransform(true);
+
+        const stagePath = `$.stages[${stageIndex}]`;
+
+        projectData.createHumanTransform.mutate({
+            transformName: 'edit_chronicles_stage',
+            sourceArtifactId: chroniclesArtifactId,
+            derivationPath: stagePath,
+            fieldUpdates: {}
+        }, {
+            onSuccess: (response: any) => {
+                setIsCreatingTransform(false);
+                message.success('阶段已进入编辑模式');
+            },
+            onError: (error: any) => {
+                setIsCreatingTransform(false);
+                console.error('Failed to create editable stage:', error);
+                message.error('创建编辑版本失败');
+            }
+        });
+    }, [isCreatingTransform, stageIndex, chroniclesArtifactId, projectData.createHumanTransform]);
 
     if (!stageData) {
         return (
@@ -102,13 +142,27 @@ const ReadOnlyChronicleStageDisplay = React.memo(({ stageIndex }: { stageIndex: 
     }
 
     return (
-        <div style={{
-            padding: '16px',
-            backgroundColor: '#1f1f1f',
-            border: '1px solid #434343',
-            borderRadius: '8px',
-            marginBottom: '16px'
-        }}>
+        <div
+            style={{
+                padding: '16px',
+                backgroundColor: '#1f1f1f',
+                border: '1px solid #434343',
+                borderRadius: '8px',
+                marginBottom: '16px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                position: 'relative'
+            }}
+            onClick={handleCreateEditableVersion}
+            onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#2a2a2a';
+                e.currentTarget.style.borderColor = '#1890ff';
+            }}
+            onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#1f1f1f';
+                e.currentTarget.style.borderColor = '#434343';
+            }}
+        >
             <div style={{
                 marginBottom: '12px',
                 paddingBottom: '8px',
@@ -118,20 +172,59 @@ const ReadOnlyChronicleStageDisplay = React.memo(({ stageIndex }: { stageIndex: 
                 alignItems: 'center'
             }}>
                 <h4 style={{ margin: 0, color: '#fff' }}>阶段 {stageIndex + 1}</h4>
-                <span style={{
-                    fontSize: '12px',
-                    color: '#666',
-                    padding: '2px 8px',
-                    backgroundColor: '#333',
-                    borderRadius: '4px'
-                }}>
-                    只读
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{
+                        fontSize: '12px',
+                        color: '#666',
+                        padding: '2px 8px',
+                        backgroundColor: '#333',
+                        borderRadius: '4px'
+                    }}>
+                        只读
+                    </span>
+                    <Button
+                        type="primary"
+                        size="small"
+                        icon={<EditOutlined />}
+                        loading={isCreatingTransform}
+                        onClick={(e) => {
+                            e.stopPropagation(); // Prevent card click when button is clicked
+                            handleCreateEditableVersion();
+                        }}
+                        style={{ fontSize: '12px' }}
+                    >
+                        编辑阶段
+                    </Button>
+                </div>
             </div>
             <ReadOnlyArtifactDisplay
                 data={stageData}
                 schemaType="chronicle_stage_schema"
             />
+
+            {/* Hover overlay to indicate clickability */}
+            <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: 'rgba(24, 144, 255, 0.05)',
+                borderRadius: '8px',
+                opacity: 0,
+                transition: 'opacity 0.2s ease',
+                pointerEvents: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '14px',
+                color: '#1890ff',
+                fontWeight: 'bold'
+            }}
+                className="hover-overlay"
+            >
+                点击编辑阶段
+            </div>
         </div>
     );
 });
