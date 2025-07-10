@@ -260,7 +260,7 @@ export const BasicThread: React.FC<BasicThreadProps> = ({ projectId }) => {
             height: '100%',
             display: 'flex',
             flexDirection: 'column',
-            background: '#1a1a1a',
+            background: 'transparent',
             position: 'relative'
         }}>
             {/* Messages Area */}
@@ -271,7 +271,7 @@ export const BasicThread: React.FC<BasicThreadProps> = ({ projectId }) => {
                     flex: 1,
                     padding: '16px',
                     overflow: 'auto',
-                    background: '#1a1a1a'
+                    background: 'transparent'
                 }}
             >
                 {messages.length === 0 && !isLoading ? (
@@ -359,7 +359,8 @@ export const BasicThread: React.FC<BasicThreadProps> = ({ projectId }) => {
 
             {/* Input Area */}
             <div style={{
-                background: '#1e1e1e',
+                background: 'rgba(30, 30, 30, 0.9)',
+                backdropFilter: 'blur(10px)',
                 borderTop: '1px solid #333',
                 padding: '16px'
             }}>

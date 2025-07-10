@@ -127,7 +127,13 @@ export const YJSSlateArrayOfStringField = React.memo(({ path, placeholder }: {
 
 
     return (
-        <div style={{ border: '1px solid #d9d9d9', borderRadius: '6px', padding: '8px', minHeight: '100px' }}>
+        <div style={{
+            backgroundColor: '#1f1f1f',
+            border: '1px solid #434343',
+            borderRadius: '6px',
+            padding: '8px',
+            minHeight: '100px'
+        }}>
             <Slate
                 key={editorKey}
                 editor={editor}
@@ -143,6 +149,8 @@ export const YJSSlateArrayOfStringField = React.memo(({ path, placeholder }: {
                         minHeight: '80px',
                         fontSize: '14px',
                         lineHeight: '1.5',
+                        color: '#fff',
+                        backgroundColor: 'transparent',
                     }}
                 />
             </Slate>

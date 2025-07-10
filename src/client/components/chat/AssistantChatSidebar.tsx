@@ -30,46 +30,59 @@ export const AssistantChatSidebar: React.FC<AssistantChatSidebarProps> = ({ proj
     };
 
     return (
-        <Layout style={{ height: '100%', background: '#1a1a1a' }}>
-            <Header style={{
-                background: '#1e1e1e',
-                borderBottom: '1px solid #333',
-                padding: '0 16px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between'
-            }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Cpu style={{ fontSize: '20px', color: AppColors.ai.primary }} />
-                    <Title level={4} style={{ color: '#f0f0f0', margin: 0 }}>
-                        觅光智能体
-                    </Title>
-                </div>
+        <Layout style={{ height: '100%', background: 'transparent', position: 'relative' }}>
+            {/* Animated Background */}
+            <div className="chat-background">
+                <span className="chat-ball"></span>
+                <span className="chat-ball"></span>
+                <span className="chat-ball"></span>
+                <span className="chat-ball"></span>
+                <span className="chat-ball"></span>
+                <span className="chat-ball"></span>
+            </div>
 
-                <div style={{ display: 'flex', gap: '8px' }}>
-                    {/* Future: Add status indicators, clear chat button, etc. */}
-                    <Tooltip title="清空对话">
-                        <Button
-                            type="text"
-                            icon={<Trash style={{ fontSize: 18, color: AppColors.ai.primary }} />}
-                            style={{ color: AppColors.ai.primary }}
-                            loading={clearChatMutation.isPending}
-                            onClick={handleClearChat}
-                        />
-                    </Tooltip>
-                </div>
-            </Header>
+            {/* Content Wrapper */}
+            <div className="chat-content-wrapper">
+                <Header
+                    className="chat-header-glass"
+                    style={{
+                        padding: '0 16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between'
+                    }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Cpu style={{ fontSize: '20px', color: AppColors.ai.primary }} />
+                        <Title level={4} style={{ color: '#f0f0f0', margin: 0 }}>
+                            觅光智能体
+                        </Title>
+                    </div>
 
-            <Content style={{
-                background: '#1a1a1a',
-                padding: 0,
-                overflow: 'hidden',
-                display: 'flex',
-                flexDirection: 'column'
-            }}>
-                {/* Assistant-UI style Thread component with enhanced message handling */}
-                <BasicThread projectId={projectId} />
-            </Content>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        {/* Future: Add status indicators, clear chat button, etc. */}
+                        <Tooltip title="清空对话">
+                            <Button
+                                type="text"
+                                icon={<Trash style={{ fontSize: 18, color: AppColors.ai.primary }} />}
+                                style={{ color: AppColors.ai.primary }}
+                                loading={clearChatMutation.isPending}
+                                onClick={handleClearChat}
+                            />
+                        </Tooltip>
+                    </div>
+                </Header>
+
+                <Content style={{
+                    background: 'transparent',
+                    padding: 0,
+                    overflow: 'hidden',
+                    display: 'flex',
+                    flexDirection: 'column'
+                }}>
+                    {/* Assistant-UI style Thread component with enhanced message handling */}
+                    <BasicThread projectId={projectId} />
+                </Content>
+            </div>
         </Layout>
     );
 }; 

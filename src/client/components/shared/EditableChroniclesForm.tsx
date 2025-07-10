@@ -8,6 +8,7 @@ import {
     YJSEmotionArcsArray,
     YJSRelationshipDevelopmentsArray
 } from '../../transform-artifact-framework/components/YJSField';
+import { YJSSlateArrayOfStringField } from '../../transform-artifact-framework/components/YJSSlateArrayField';
 import { useYJSField } from '../../transform-artifact-framework/contexts/YJSArtifactContext';
 
 const { Title, Text } = Typography;
@@ -162,10 +163,9 @@ const EditableChroniclesForm: React.FC<EditableChroniclesFormProps> = memo(() =>
                             <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '8px' }}>
                                 关键洞察
                             </Text>
-                            <YJSArrayField
+                            <YJSSlateArrayOfStringField
                                 path={`stages[${index}].insights`}
-                                placeholder="添加洞察要点"
-                                itemPlaceholder="输入洞察"
+                                placeholder="输入关键洞察..."
                             />
                         </div>
                     </Space>
