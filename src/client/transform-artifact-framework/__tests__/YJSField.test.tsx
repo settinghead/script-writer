@@ -170,7 +170,7 @@ describe('YJS Field Components - Working Tests', () => {
             expect(textarea).toHaveValue('');
         });
 
-        it('filters out empty lines', async () => {
+        it('preserves empty lines', async () => {
             mockValue.mockReturnValue([]);
 
             render(<YJSArrayOfStringField path="stringArray" placeholder="Enter items" />);
@@ -184,6 +184,10 @@ describe('YJS Field Components - Working Tests', () => {
             await waitFor(() => {
                 expect(mockUpdateField).toHaveBeenCalled();
             }, { timeout: 1500 });
+
+            // Verify that empty lines are preserved (trimmed but not filtered out)
+            const lastCall = mockUpdateField.mock.calls[mockUpdateField.mock.calls.length - 1];
+            expect(lastCall[0]).toEqual(['Item 1', '', 'Item 2', '', 'Item 3', '']);
         });
 
         it('should allow Enter key to create new lines and increase array size', async () => {
@@ -212,7 +216,7 @@ describe('YJS Field Components - Working Tests', () => {
 
             // Verify that updateField was called with the new array
             const lastCall = mockUpdateField.mock.calls[mockUpdateField.mock.calls.length - 1];
-            expect(lastCall[0]).toEqual(['Item 1']); // Should still be one item since second line is empty
+            expect(lastCall[0]).toEqual(['Item 1', '']); // Should have two items: one with content and one empty
 
             // Now test typing after the Enter
             fireEvent.change(textarea, { target: { value: 'Item 1\nItem 2' } });
