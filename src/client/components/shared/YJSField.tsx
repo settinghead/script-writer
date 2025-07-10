@@ -1,286 +1,323 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Input, Typography } from 'antd';
-import { useYJSArtifactContext } from '../../contexts/YJSArtifactContext';
-import { useDebouncedCallback } from '../../hooks/useDebounce';
+import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react';
+import { Input, Select, Button, Typography } from 'antd';
+import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import { useYJSField } from '../../contexts/YJSArtifactContext';
 
+const { TextArea } = Input;
 const { Text } = Typography;
 
-// Base YJS Field Props
-export interface YJSFieldProps {
-    path: string;
-    placeholder?: string;
-    disabled?: boolean;
-    className?: string;
-}
+// Text Field Component
+export const YJSTextField = React.memo(({ path, placeholder }: { path: string; placeholder?: string }) => {
+    const { value, updateValue, isInitialized } = useYJSField(path);
 
-// YJS Text Field Component
-export const YJSTextField: React.FC<YJSFieldProps> = React.memo(({
-    path,
-    placeholder,
-    disabled = false,
-    className
-}) => {
-    const { getField, setField, isLoading, isConnected, isCollaborative } = useYJSArtifactContext();
+    const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        updateValue(e.target.value);
+    }, [updateValue]);
 
-    // Initialize local value with empty string, will be set properly in useEffect
-    const [localValue, setLocalValue] = useState('');
-    const inputRef = useRef<any>(null);
-    const initializedRef = useRef(false);
-
-    // Initialize when component mounts and data is available
-    useEffect(() => {
-        if (!initializedRef.current) {
-            // Initialize immediately without delay to prevent flashing
-            const currentValue = getField(path) || '';
-            setLocalValue(currentValue);
-            initializedRef.current = true;
-        }
-    }, []); // Empty dependency array - only run once on mount
-
-    // Debounced save function - use useCallback to prevent recreation
-    const debouncedSave = useDebouncedCallback(
-        React.useCallback((value: string) => {
-            // Don't save if value is undefined, null
-            if (value === undefined || value === null) {
-                return;
-            }
-
-            setField(path, value);
-        }, [setField, path]),
-        300
-    );
-
-    // Handle input changes
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const newValue = e.target.value;
-        setLocalValue(newValue);
-        debouncedSave(newValue);
-    };
-
-    // Handle blur (save final value)
-    const handleBlur = () => {
-        // Final save on blur
-        setField(path, localValue);
-    };
-
-    // Handle key press
-    const handleKeyPress = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter') {
-            handleBlur();
-        }
-        if (e.key === 'Escape') {
-            // Reset to current YJS value on escape
-            const currentYJSValue = getField(path) || '';
-            setLocalValue(currentYJSValue);
-        }
-    };
-
-    const effectiveDisabled = disabled || isLoading;
+    if (!isInitialized) return null;
 
     return (
         <Input
-            ref={inputRef}
-            value={localValue}
+            value={value || ''}
             onChange={handleChange}
-            onBlur={handleBlur}
-            onKeyDown={handleKeyPress}
             placeholder={placeholder}
-            disabled={effectiveDisabled}
-            className={className}
-            style={{ minWidth: '200px' }}
         />
     );
 });
 
-// YJS TextArea Field Component
-export interface YJSTextAreaFieldProps extends YJSFieldProps {
+// TextArea Field Component
+export const YJSTextAreaField = React.memo(({ path, placeholder, rows = 4 }: {
+    path: string;
+    placeholder?: string;
     rows?: number;
-    autoSize?: boolean | { minRows?: number; maxRows?: number };
-}
-
-export const YJSTextAreaField: React.FC<YJSTextAreaFieldProps> = React.memo(({
-    path,
-    placeholder,
-    disabled = false,
-    className,
-    rows = 3,
-    autoSize = { minRows: 3, maxRows: 8 }
 }) => {
-    const { getField, setField, isLoading, isConnected, isCollaborative } = useYJSArtifactContext();
+    const { value, updateValue, isInitialized } = useYJSField(path);
 
-    // Initialize local value with empty string, will be set properly in useEffect
-    const [localValue, setLocalValue] = useState('');
-    const textAreaRef = useRef<any>(null);
-    const initializedRef = useRef(false);
+    const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        updateValue(e.target.value);
+    }, [updateValue]);
 
-    // Initialize when component mounts and data is available
-    useEffect(() => {
-        if (!initializedRef.current) {
-            // Initialize immediately without delay to prevent flashing
-            const currentValue = getField(path) || '';
-            setLocalValue(currentValue);
-            initializedRef.current = true;
-        }
-    }, []); // Empty dependency array - only run once on mount
-
-    // Debounced save function - use useCallback to prevent recreation
-    const debouncedSave = useDebouncedCallback(
-        React.useCallback((value: string) => {
-            // Don't save if value is undefined, null
-            if (value === undefined || value === null) {
-                return;
-            }
-
-            setField(path, value);
-        }, [setField, path]),
-        300
-    );
-
-    // Handle input changes
-    const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        const newValue = e.target.value;
-        setLocalValue(newValue);
-        debouncedSave(newValue);
-    };
-
-    // Handle blur (save final value)
-    const handleBlur = () => {
-        // Final save on blur
-        setField(path, localValue);
-    };
-
-    // Handle key press
-    const handleKeyPress = (e: React.KeyboardEvent) => {
-        if (e.key === 'Escape') {
-            // Reset to current YJS value on escape
-            const currentYJSValue = getField(path) || '';
-            setLocalValue(currentYJSValue);
-        }
-    };
-
-    const effectiveDisabled = disabled || isLoading;
+    if (!isInitialized) return null;
 
     return (
-        <Input.TextArea
-            ref={textAreaRef}
-            value={localValue}
+        <TextArea
+            value={value || ''}
             onChange={handleChange}
-            onBlur={handleBlur}
-            onKeyDown={handleKeyPress}
             placeholder={placeholder}
-            disabled={effectiveDisabled}
-            className={className}
             rows={rows}
-            autoSize={autoSize}
-            style={{ minWidth: '200px' }}
         />
     );
 });
 
-// YJS Array Field Component
-export interface YJSArrayFieldProps extends YJSFieldProps {
+// Array Field Component
+export const YJSArrayField = React.memo(({ path, placeholder, itemPlaceholder }: {
+    path: string;
+    placeholder?: string;
     itemPlaceholder?: string;
-}
-
-export const YJSArrayField: React.FC<YJSArrayFieldProps> = React.memo(({
-    path,
-    placeholder,
-    disabled = false,
-    className,
-    itemPlaceholder = '新项目'
 }) => {
-    const { getField, setField, isLoading, isConnected, isCollaborative } = useYJSArtifactContext();
+    const { value, updateValue, isInitialized } = useYJSField(path);
 
-    // Local value state for immediate UI updates
-    const [localValue, setLocalValue] = useState('');
-    const textAreaRef = useRef<any>(null);
+    const arrayValue = useMemo(() => {
+        if (!Array.isArray(value)) return [];
+        return value;
+    }, [value]);
 
-    // Get current value from context
-    const currentArray = getField(path) || [];
-    const currentArrayRef = useRef(currentArray);
+    const handleItemChange = useCallback((index: number, newValue: string) => {
+        const newArray = [...arrayValue];
+        newArray[index] = newValue;
+        updateValue(newArray);
+    }, [arrayValue, updateValue]);
 
-    // Update ref when currentArray changes
-    useEffect(() => {
-        currentArrayRef.current = currentArray;
-    }, [currentArray]);
+    const handleAddItem = useCallback(() => {
+        const newArray = [...arrayValue, ''];
+        updateValue(newArray);
+    }, [arrayValue, updateValue]);
 
-    // Convert array to textarea format (one item per line)
-    const arrayToTextarea = (arr: string[] | null | undefined): string => {
-        if (!Array.isArray(arr)) return '';
-        return arr.filter(item => item && item.trim()).join('\n');
-    };
+    const handleRemoveItem = useCallback((index: number) => {
+        const newArray = arrayValue.filter((_, i) => i !== index);
+        updateValue(newArray);
+    }, [arrayValue, updateValue]);
 
-    // Convert textarea to array format
-    const textareaToArray = (text: string | null | undefined): string[] => {
-        if (!text || typeof text !== 'string') return [];
-        return text
-            .split('\n')
-            .map(line => line.trim())
-            .filter(line => line.length > 0);
-    };
-
-    const currentValue = arrayToTextarea(currentArray);
-
-    // Debounced save function
-    const debouncedSave = useDebouncedCallback(
-        React.useCallback((value: string) => {
-            const newArray = textareaToArray(value);
-            const currentArrayNormalized = Array.isArray(currentArrayRef.current) ? currentArrayRef.current : [];
-
-            // Compare arrays
-            const arraysEqual = JSON.stringify(newArray) === JSON.stringify(currentArrayNormalized);
-
-            if (!arraysEqual) {
-                setField(path, newArray);
-            }
-        }, [setField, path]), // Remove currentArray from dependencies
-        300
-    );
-
-    // Handle input changes
-    const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        const newValue = e.target.value;
-        setLocalValue(newValue);
-        debouncedSave(newValue);
-    };
-
-    // Handle blur (save final value)
-    const handleBlur = () => {
-        // Final save on blur
-        const finalArray = textareaToArray(localValue);
-        if (JSON.stringify(finalArray) !== JSON.stringify(currentArrayRef.current)) {
-            setField(path, finalArray);
-        }
-    };
-
-    // Handle key press
-    const handleKeyPress = (e: React.KeyboardEvent) => {
-        if (e.key === 'Escape') {
-            setLocalValue(currentValue);
-        }
-    };
-
-    // Update local value when context value changes
-    useEffect(() => {
-        const newValue = arrayToTextarea(currentArray);
-        setLocalValue(newValue);
-    }, [currentArray]);
-
-    const effectiveDisabled = disabled || isLoading;
+    if (!isInitialized) return null;
 
     return (
-        <Input.TextArea
-            ref={textAreaRef}
-            value={localValue}
+        <div>
+            {arrayValue.map((item, index) => (
+                <div key={index} style={{ display: 'flex', marginBottom: 8, alignItems: 'center' }}>
+                    <Input
+                        value={item || ''}
+                        onChange={(e) => handleItemChange(index, e.target.value)}
+                        placeholder={itemPlaceholder}
+                        style={{ flex: 1, marginRight: 8 }}
+                    />
+                    <Button
+                        type="text"
+                        icon={<DeleteOutlined />}
+                        onClick={() => handleRemoveItem(index)}
+                        size="small"
+                    />
+                </div>
+            ))}
+            <Button
+                type="dashed"
+                icon={<PlusOutlined />}
+                onClick={handleAddItem}
+                style={{ width: '100%' }}
+            >
+                {placeholder || '添加项目'}
+            </Button>
+        </div>
+    );
+});
+
+// Multi-Select Field Component
+export const YJSMultiSelect = React.memo(({ path, options, placeholder }: {
+    path: string;
+    options: Array<{ value: string; label: string }>;
+    placeholder?: string;
+}) => {
+    const { value, updateValue, isInitialized } = useYJSField(path);
+
+    const arrayValue = useMemo(() => {
+        if (!Array.isArray(value)) return [];
+        return value;
+    }, [value]);
+
+    const handleChange = useCallback((newValue: string[]) => {
+        updateValue(newValue);
+    }, [updateValue]);
+
+    if (!isInitialized) return null;
+
+    return (
+        <Select
+            mode="multiple"
+            value={arrayValue}
             onChange={handleChange}
-            onBlur={handleBlur}
-            onKeyDown={handleKeyPress}
-            placeholder={placeholder || '每行一个项目...'}
-            disabled={effectiveDisabled}
-            rows={4}
-            autoSize={{ minRows: 4, maxRows: 10 }}
-            className={className}
-            style={{ minWidth: '200px' }}
+            options={options}
+            placeholder={placeholder}
+            style={{ width: '100%' }}
         />
     );
-}); 
+});
+
+// Emotion Arcs Array Component
+export const YJSEmotionArcsArray = React.memo(({ path }: { path: string }) => {
+    const { value, updateValue, isInitialized } = useYJSField(path);
+
+    const arrayValue = useMemo(() => {
+        if (!Array.isArray(value)) return [];
+        return value;
+    }, [value]);
+
+    const handleItemChange = useCallback((index: number, field: string, newValue: any) => {
+        const newArray = [...arrayValue];
+        if (!newArray[index]) {
+            newArray[index] = {};
+        }
+        newArray[index] = { ...newArray[index], [field]: newValue };
+        updateValue(newArray);
+    }, [arrayValue, updateValue]);
+
+    const handleAddItem = useCallback(() => {
+        const newArray = [...arrayValue, { characters: [], content: '' }];
+        updateValue(newArray);
+    }, [arrayValue, updateValue]);
+
+    const handleRemoveItem = useCallback((index: number) => {
+        const newArray = arrayValue.filter((_, i) => i !== index);
+        updateValue(newArray);
+    }, [arrayValue, updateValue]);
+
+    if (!isInitialized) return null;
+
+    return (
+        <div>
+            {arrayValue.map((item, index) => (
+                <div key={index} style={{ border: '1px solid #d9d9d9', borderRadius: 6, padding: 16, marginBottom: 16 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <Text strong>情感发展 {index + 1}</Text>
+                        <Button
+                            type="text"
+                            icon={<DeleteOutlined />}
+                            onClick={() => handleRemoveItem(index)}
+                            size="small"
+                        />
+                    </div>
+
+                    <div style={{ marginBottom: 12 }}>
+                        <Text>描述：</Text>
+                        <TextArea
+                            value={item?.content || ''}
+                            onChange={(e) => handleItemChange(index, 'content', e.target.value)}
+                            placeholder="描述这个阶段的情感发展..."
+                            rows={3}
+                            style={{ marginTop: 4 }}
+                        />
+                    </div>
+
+                    <div>
+                        <Text>涉及角色：</Text>
+                        <Select
+                            mode="multiple"
+                            value={item?.characters || []}
+                            onChange={(newValue) => handleItemChange(index, 'characters', newValue)}
+                            placeholder="选择涉及的角色"
+                            style={{ width: '100%', marginTop: 4 }}
+                            options={[
+                                { value: '林小满', label: '林小满' },
+                                { value: '顾沉舟', label: '顾沉舟' },
+                                { value: '南宫玥', label: '南宫玥' },
+                                { value: '沈曼', label: '沈曼' },
+                                { value: '其他', label: '其他' }
+                            ]}
+                        />
+                    </div>
+                </div>
+            ))}
+
+            <Button
+                type="dashed"
+                icon={<PlusOutlined />}
+                onClick={handleAddItem}
+                style={{ width: '100%' }}
+            >
+                添加情感发展
+            </Button>
+        </div>
+    );
+});
+
+// Relationship Developments Array Component
+export const YJSRelationshipDevelopmentsArray = React.memo(({ path }: { path: string }) => {
+    const { value, updateValue, isInitialized } = useYJSField(path);
+
+    const arrayValue = useMemo(() => {
+        if (!Array.isArray(value)) return [];
+        return value;
+    }, [value]);
+
+    const handleItemChange = useCallback((index: number, field: string, newValue: any) => {
+        const newArray = [...arrayValue];
+        if (!newArray[index]) {
+            newArray[index] = {};
+        }
+        newArray[index] = { ...newArray[index], [field]: newValue };
+        updateValue(newArray);
+    }, [arrayValue, updateValue]);
+
+    const handleAddItem = useCallback(() => {
+        const newArray = [...arrayValue, { characters: [], content: '' }];
+        updateValue(newArray);
+    }, [arrayValue, updateValue]);
+
+    const handleRemoveItem = useCallback((index: number) => {
+        const newArray = arrayValue.filter((_, i) => i !== index);
+        updateValue(newArray);
+    }, [arrayValue, updateValue]);
+
+    if (!isInitialized) return null;
+
+    return (
+        <div>
+            {arrayValue.map((item, index) => (
+                <div key={index} style={{ border: '1px solid #d9d9d9', borderRadius: 6, padding: 16, marginBottom: 16 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <Text strong>关系发展 {index + 1}</Text>
+                        <Button
+                            type="text"
+                            icon={<DeleteOutlined />}
+                            onClick={() => handleRemoveItem(index)}
+                            size="small"
+                        />
+                    </div>
+
+                    <div style={{ marginBottom: 12 }}>
+                        <Text>涉及角色：</Text>
+                        <Select
+                            mode="multiple"
+                            value={item?.characters || []}
+                            onChange={(newValue) => handleItemChange(index, 'characters', newValue)}
+                            placeholder="选择涉及的角色"
+                            style={{ width: '100%', marginTop: 4 }}
+                            options={[
+                                { value: '林小满', label: '林小满' },
+                                { value: '顾沉舟', label: '顾沉舟' },
+                                { value: '南宫玥', label: '南宫玥' },
+                                { value: '沈曼', label: '沈曼' },
+                                { value: '其他', label: '其他' }
+                            ]}
+                        />
+                    </div>
+
+                    <div>
+                        <Text>发展过程：</Text>
+                        <TextArea
+                            value={item?.content || ''}
+                            onChange={(e) => handleItemChange(index, 'content', e.target.value)}
+                            placeholder="描述关系如何发展..."
+                            rows={3}
+                            style={{ marginTop: 4 }}
+                        />
+                    </div>
+                </div>
+            ))}
+
+            <Button
+                type="dashed"
+                icon={<PlusOutlined />}
+                onClick={handleAddItem}
+                style={{ width: '100%' }}
+            >
+                添加关系发展
+            </Button>
+        </div>
+    );
+});
+
+YJSTextField.displayName = 'YJSTextField';
+YJSTextAreaField.displayName = 'YJSTextAreaField';
+YJSArrayField.displayName = 'YJSArrayField';
+YJSMultiSelect.displayName = 'YJSMultiSelect';
+YJSEmotionArcsArray.displayName = 'YJSEmotionArcsArray';
+YJSRelationshipDevelopmentsArray.displayName = 'YJSRelationshipDevelopmentsArray'; 

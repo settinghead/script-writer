@@ -1,97 +1,142 @@
-import React, { useMemo, useCallback, useState } from 'react';
-import { message } from 'antd';
-import { ArtifactDisplayWrapper } from './ArtifactDisplayWrapper';
-import { EditableChronicleStageForm } from './EditableChronicleStageForm';
-import { useCharactersFromLineage, useStageOverride } from '../../transform-artifact-framework/useLineageResolution';
-import { useProjectData } from '../../contexts/ProjectDataContext';
+import React, { useMemo } from 'react';
+import { YJSArtifactProvider, useYJSField } from '../../contexts/YJSArtifactContext';
+import EditableChronicleStageForm from './EditableChronicleStageForm';
+import { ReadOnlyArtifactDisplay } from './ReadOnlyArtifactDisplay';
+import { useLineageResolution } from '../../transform-artifact-framework/useLineageResolution';
 
 interface ChronicleStageWrapperProps {
-    artifact?: any;
-    isEditable?: boolean;
-    canBecomeEditable?: boolean;
     chroniclesArtifactId: string;
-    stagePath?: string;
     stageIndex: number;
+    overrideArtifactId?: string;
+    children?: React.ReactNode;
 }
 
-/**
- * Wrapper component that provides character resolution for chronicle stages
- * and uses the generic ArtifactDisplayWrapper
- */
-export const ChronicleStageWrapper: React.FC<ChronicleStageWrapperProps> = React.memo(({
-    artifact,
-    isEditable = false,
-    canBecomeEditable = false,
+export const ChronicleStageWrapper = React.memo(({
     chroniclesArtifactId,
-    stagePath,
-    stageIndex
-}) => {
+    stageIndex,
+    overrideArtifactId,
+    children
+}: ChronicleStageWrapperProps) => {
+    // Use lineage resolution to determine if this stage has human transforms
+    const stagePath = `$.stages[${stageIndex}]`;
+    const lineageResult = useLineageResolution({
+        sourceArtifactId: chroniclesArtifactId,
+        path: stagePath,
+        options: { enabled: !!chroniclesArtifactId }
+    });
 
-    const projectData = useProjectData();
-    const [isCreatingTransform, setIsCreatingTransform] = useState(false);
-
-    // Extract available characters from lineage graph
-    const { characters: availableCharacters } = useCharactersFromLineage(chroniclesArtifactId);
-
-    // Check if this stage has a human transform override
-    const { hasOverride, overrideArtifactId } = useStageOverride(chroniclesArtifactId, stagePath || null);
-
-    // Determine which artifact to use:
-    // - If there's an override, use the override artifact
-    // - Otherwise, use the chronicles artifact (parent context)
-    const effectiveArtifactId = hasOverride && overrideArtifactId ? overrideArtifactId : chroniclesArtifactId;
-    const effectiveArtifact = projectData.getArtifactById(effectiveArtifactId);
-
-
-
-    // Handle click-to-edit functionality
-    const handleClickToEdit = useCallback(async () => {
-        if (!canBecomeEditable || !stagePath) {
-            return;
+    // Determine if this stage should be editable
+    const { isEditable, effectiveArtifactId, basePath } = useMemo(() => {
+        // If override is provided, use it
+        if (overrideArtifactId) {
+            return {
+                isEditable: true,
+                effectiveArtifactId: overrideArtifactId,
+                basePath: undefined
+            };
         }
 
-        setIsCreatingTransform(true);
-
-        try {
-            // Create a human transform for this specific stage path
-            await projectData.createHumanTransform.mutateAsync({
-                transformName: 'edit_chronicles_stage',
-                sourceArtifactId: chroniclesArtifactId,
-                derivationPath: stagePath,
-                fieldUpdates: {}
-            });
-
-            message.success('阶段已开始编辑');
-        } catch (error: any) {
-            message.error(`创建编辑失败: ${error.message}`);
-        } finally {
-            setIsCreatingTransform(false);
+        // If lineage resolution is pending or error, default to read-only
+        if (lineageResult === "pending" || lineageResult === "error") {
+            return {
+                isEditable: false,
+                effectiveArtifactId: chroniclesArtifactId,
+                basePath: `stages[${stageIndex}]`
+            };
         }
-    }, [canBecomeEditable, stagePath, chroniclesArtifactId, projectData.createHumanTransform]);
 
-    // Create a wrapper component that passes the characters to the editable form
-    const EditableFormWithCharacters = useMemo(() => {
-        return () => (
-            <EditableChronicleStageForm
-                availableCharacters={availableCharacters}
-            />
+        const { latestArtifactId, hasLineage } = lineageResult;
+
+        // If there's lineage (human transforms), it's editable
+        if (hasLineage && latestArtifactId) {
+            return {
+                isEditable: true,
+                effectiveArtifactId: latestArtifactId,
+                basePath: undefined // Use the derived artifact directly
+            };
+        }
+
+        // No lineage means read-only
+        return {
+            isEditable: false,
+            effectiveArtifactId: chroniclesArtifactId,
+            basePath: `stages[${stageIndex}]`
+        };
+    }, [overrideArtifactId, lineageResult, chroniclesArtifactId, stageIndex]);
+
+    // If not editable, show read-only display
+    if (!isEditable) {
+        return (
+            <YJSArtifactProvider artifactId={effectiveArtifactId} basePath={basePath}>
+                <ReadOnlyChronicleStageDisplay stageIndex={stageIndex} />
+            </YJSArtifactProvider>
         );
-    }, [availableCharacters]);
+    }
+
+    // If editable, show editable form
+    return (
+        <YJSArtifactProvider artifactId={effectiveArtifactId} basePath={basePath}>
+            {children || <EditableChronicleStageForm stageIndex={stageIndex} />}
+        </YJSArtifactProvider>
+    );
+});
+
+// Read-only display component for stages without human transforms
+const ReadOnlyChronicleStageDisplay = React.memo(({ stageIndex }: { stageIndex: number }) => {
+    const { value: stageData } = useYJSField('');
+
+    if (!stageData) {
+        return (
+            <div style={{
+                padding: '16px',
+                backgroundColor: '#1f1f1f',
+                border: '1px solid #434343',
+                borderRadius: '8px',
+                marginBottom: '16px'
+            }}>
+                <div style={{ color: '#666', fontStyle: 'italic' }}>
+                    阶段 {stageIndex + 1} - 数据加载中...
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <ArtifactDisplayWrapper
-            artifact={effectiveArtifact || artifact}
-            isEditable={hasOverride ? true : isEditable}
-            title={`第 ${stageIndex + 1} 阶段`}
-            icon="⏰"
-            editableComponent={EditableFormWithCharacters}
-            schemaType="chronicle_stage_schema"
-            enableClickToEdit={canBecomeEditable && !hasOverride}
-            onClickToEdit={handleClickToEdit}
-            clickToEditLoading={isCreatingTransform}
-            // NEW: Hierarchical context support
-            parentArtifactId={hasOverride ? undefined : chroniclesArtifactId}
-            artifactPath={hasOverride ? undefined : stagePath}
-        />
+        <div style={{
+            padding: '16px',
+            backgroundColor: '#1f1f1f',
+            border: '1px solid #434343',
+            borderRadius: '8px',
+            marginBottom: '16px'
+        }}>
+            <div style={{
+                marginBottom: '12px',
+                paddingBottom: '8px',
+                borderBottom: '1px solid #434343',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+            }}>
+                <h4 style={{ margin: 0, color: '#fff' }}>阶段 {stageIndex + 1}</h4>
+                <span style={{
+                    fontSize: '12px',
+                    color: '#666',
+                    padding: '2px 8px',
+                    backgroundColor: '#333',
+                    borderRadius: '4px'
+                }}>
+                    只读
+                </span>
+            </div>
+            <ReadOnlyArtifactDisplay
+                data={stageData}
+                schemaType="chronicle_stage_schema"
+            />
+        </div>
     );
-}); 
+});
+
+ReadOnlyChronicleStageDisplay.displayName = 'ReadOnlyChronicleStageDisplay';
+ChronicleStageWrapper.displayName = 'ChronicleStageWrapper';
+
+export default ChronicleStageWrapper; 

@@ -1,387 +1,240 @@
-import React, { createContext, useContext, useEffect, useState, useRef, useCallback, ReactNode, useMemo } from 'react';
+import React, { createContext, useContext, useRef, useCallback, useMemo, useEffect } from 'react';
 import { useYJSArtifact } from '../hooks/useYJSArtifact';
+import { extractDataAtPath, setDataAtPath } from '../../common/utils/pathExtraction';
 
-// Types
-export interface YJSArtifactContextValue {
-    // State
-    data: any;
-    isLoading: boolean;
-    isConnected: boolean;
-    isCollaborative: boolean;
-    error: string | null;
-
-    // Field operations
-    getField: (path: string) => any;
-    setField: (path: string, value: any) => void;
-    updateFields: (updates: Record<string, any>) => void;
-
-    // Metadata
+// Structural context - rarely changes, contains stable functions
+interface YJSStructuralContextType {
     artifactId: string;
-    artifact: any;
+    basePath?: string;
+    subscribeToValue: (path: string, callback: (value: any) => void) => () => void;
+    updateValue: (path: string, value: any) => void;
+    getValue: (path: string) => any;
 }
 
-export interface YJSArtifactProviderProps {
+// Content context - manages subscriptions without re-renders
+interface YJSContentContextType {
+    // This context intentionally has no value - it's just for subscription management
+}
+
+const YJSStructuralContext = createContext<YJSStructuralContextType | null>(null);
+const YJSContentContext = createContext<YJSContentContextType | null>(null);
+
+interface YJSArtifactProviderProps {
     artifactId: string;
-    enableCollaboration?: boolean;
-    basePath?: string; // NEW: Support for hierarchical context (e.g., "stages[0]")
-    children: ReactNode;
+    basePath?: string;
+    enableCollaboration?: boolean; // For backward compatibility
+    children: React.ReactNode;
 }
 
-// Context
-const YJSArtifactContext = createContext<YJSArtifactContextValue | null>(null);
+export function YJSArtifactProvider({ artifactId, basePath, enableCollaboration, children }: YJSArtifactProviderProps) {
+    const { data, artifact, isLoading, error, isConnected, updateField } = useYJSArtifact(artifactId);
 
-// Utility function to get/set nested object values by path
-function getValueByPath(obj: any, path: string): any {
-    if (!obj || typeof obj !== 'object') return undefined;
+    // Get the actual data to use - prefer artifact data if YJS data is not ready
+    const actualData = useMemo(() => {
+        // Check if collaborative data is actually loaded (has meaningful content)
+        const hasCollaborativeData = data && typeof data === 'object' && Object.keys(data).length > 0;
 
-    // Split the path into parts, handling array indices
-    const parts: string[] = [];
-    let current = '';
-    let inBrackets = false;
-
-    for (let i = 0; i < path.length; i++) {
-        const char = path[i];
-
-        if (char === '[') {
-            if (current) {
-                parts.push(current);
-                current = '';
-            }
-            inBrackets = true;
-        } else if (char === ']') {
-            if (inBrackets && current) {
-                parts.push(current);
-                current = '';
-            }
-            inBrackets = false;
-        } else if (char === '.' && !inBrackets) {
-            if (current) {
-                parts.push(current);
-                current = '';
-            }
-        } else {
-            current += char;
+        if (hasCollaborativeData) {
+            return data;
         }
-    }
 
-    if (current) {
-        parts.push(current);
-    }
-
-    // Navigate through the object using the parsed parts
-    return parts.reduce((current, key) => {
-        if (current === null || current === undefined) return undefined;
-        return current[key];
-    }, obj);
-}
-
-function setValueByPath(obj: any, path: string, value: any): any {
-    // Create a deep copy to avoid mutating the original object
-    const result = JSON.parse(JSON.stringify(obj || {}));
-
-    // Split the path into parts, handling array indices
-    const parts: string[] = [];
-    let current = '';
-    let inBrackets = false;
-
-    for (let i = 0; i < path.length; i++) {
-        const char = path[i];
-
-        if (char === '[') {
-            if (current) {
-                parts.push(current);
-                current = '';
-            }
-            inBrackets = true;
-        } else if (char === ']') {
-            if (inBrackets && current) {
-                parts.push(current);
-                current = '';
-            }
-            inBrackets = false;
-        } else if (char === '.' && !inBrackets) {
-            if (current) {
-                parts.push(current);
-                current = '';
-            }
-        } else {
-            current += char;
-        }
-    }
-
-    if (current) {
-        parts.push(current);
-    }
-
-    const lastKey = parts.pop()!;
-
-    // Navigate to the parent object, creating intermediate objects/arrays as needed
-    const target = parts.reduce((current, key) => {
-        if (!current[key]) {
-            // If the next key is a number, create an array, otherwise create an object
-            const nextIndex = parts.indexOf(key) + 1;
-            const nextKey = nextIndex < parts.length ? parts[nextIndex] : lastKey;
-            const isNextKeyArrayIndex = /^\d+$/.test(nextKey);
-
-            current[key] = isNextKeyArrayIndex ? [] : {};
-        }
-        return current[key];
-    }, result);
-
-    // Set the final value
-    target[lastKey] = value;
-    return result;
-}
-
-// Provider Component
-export const YJSArtifactProvider: React.FC<YJSArtifactProviderProps> = ({
-    artifactId,
-    enableCollaboration = true,
-    basePath,
-    children
-}) => {
-
-
-    // Use the existing YJS hook
-    const {
-        data: yjsData,
-        updateField: yjsUpdateField,
-        updateFields: yjsUpdateFields,
-        isLoading,
-        isConnected,
-        isCollaborative,
-        error,
-        artifact
-    } = useYJSArtifact(artifactId, { enableCollaboration });
-
-
-    // Local state for optimistic updates
-    const [localData, setLocalData] = useState<any>({});
-    // State for optimistic updates
-    const [optimisticUpdates, setOptimisticUpdates] = useState<Record<string, any>>({});
-    const [pendingUpdates, setPendingUpdates] = useState<Record<string, any>>({});
-    const yjsDataRef = useRef<any>(null);
-    const contextDataRef = useRef<any>(null);
-
-    // Update the yjsData ref whenever it changes
-    useEffect(() => {
-        yjsDataRef.current = yjsData;
-    }, [yjsData]);
-
-    // SIMPLIFIED: No complex merging needed with hierarchical context approach
-    const contextData = React.useMemo(() => {
-        // Start with artifact data as base
-        let base = {};
-
+        // Fall back to artifact data
         if (artifact?.data) {
-            try {
-                if (typeof artifact.data === 'string') {
-                    base = JSON.parse(artifact.data);
-                } else if (typeof artifact.data === 'object') {
-                    base = { ...artifact.data };
+            let artifactData = artifact.data;
+            if (typeof artifactData === 'string') {
+                try {
+                    artifactData = JSON.parse(artifactData);
+                } catch (e) {
+                    console.error('[YJSProvider] Failed to parse artifact data:', e);
+                    return {};
                 }
-            } catch (e) {
-                console.error(`[YJSArtifactProvider] Failed to parse artifact data:`, e);
-                base = {};
             }
+            return artifactData;
         }
 
-        // Apply YJS data if available (this is the real-time collaborative state)
-        if (yjsData && typeof yjsData === 'object' && !Array.isArray(yjsData) && Object.keys(yjsData).length > 0) {
-            base = { ...yjsData };
-        } else if (typeof yjsData === 'string') {
-            try {
-                base = JSON.parse(yjsData);
-            } catch (e) {
-                // Keep the artifact data as fallback
-            }
-        }
+        return {};
+    }, [data, artifact, artifactId, basePath]);
 
-        // Apply optimistic updates for immediate UI feedback
-        let result = { ...base };
-        Object.entries(optimisticUpdates).forEach(([path, value]) => {
-            try {
-                result = setValueByPath(result, path, value);
-            } catch (e) {
-                console.error(`[YJSArtifactProvider] Failed to set path ${path}:`, e);
-            }
-        });
+    // Store current data in ref to avoid function recreation
+    const dataRef = useRef(actualData);
+    dataRef.current = actualData;
 
-        return result;
-    }, [artifact?.data, yjsData, optimisticUpdates]);
+    // Store other values for backward compatibility
+    const artifactRef = useRef(artifact);
+    artifactRef.current = artifact;
 
-    // Update the contextData ref whenever it changes
+    const isLoadingRef = useRef(isLoading);
+    isLoadingRef.current = isLoading;
+
+    const errorRef = useRef(error);
+    errorRef.current = error;
+
+    const isConnectedRef = useRef(isConnected);
+    isConnectedRef.current = isConnected;
+
+    // Debug data loading
     useEffect(() => {
-        contextDataRef.current = contextData;
-    }, [contextData]);
+        // Data loading effect can be removed or kept for future debugging
+    }, [actualData, isLoading, error, artifactId, basePath]);
 
-    // Update local data when YJS data changes
-    useEffect(() => {
-        if (yjsData) {
-            setLocalData(yjsData);
+    // Subscription management
+    const subscriptionsRef = useRef<Map<string, Set<(value: any) => void>>>(new Map());
 
-            // Clear optimistic updates that have been confirmed by YJS
-            setOptimisticUpdates(prevOptimistic => {
-                const newOptimisticUpdates = { ...prevOptimistic };
-                let hasChanges = false;
+    // Resolve full path considering basePath
+    const resolvePath = useCallback((path: string) => {
+        if (!basePath) return path;
+        return basePath + (path ? '.' + path : '');
+    }, [basePath]);
 
-                Object.keys(newOptimisticUpdates).forEach(path => {
-                    const yjsValue = getValueByPath(yjsData, path);
-                    const optimisticValue = newOptimisticUpdates[path];
+    // Get current value for a path
+    const getValue = useCallback((path: string) => {
+        const fullPath = resolvePath(path);
+        const currentData = dataRef.current;
 
-                    // If YJS has the value we optimistically set, clear the optimistic update
-                    if (yjsValue === optimisticValue) {
-                        delete newOptimisticUpdates[path];
-                        hasChanges = true;
-                    }
-                });
-
-                if (hasChanges) {
-                    setPendingUpdates(newOptimisticUpdates);
-                    return newOptimisticUpdates;
-                }
-
-                return prevOptimistic;
-            });
-        }
-    }, [yjsData]);
-
-    // Get field value by path - include contextData so components re-render when data changes
-    const getField = useCallback((path: string): any => {
-        // If basePath is provided, prefix the path
-        const fullPath = basePath ? `${basePath}.${path}` : path;
-
-        // Use current contextData directly so components react to changes
-        const currentData = contextData || {};
-        const value = getValueByPath(currentData, fullPath);
-
-        console.log(`[YJSArtifactProvider] getField - Path: ${path}, FullPath: ${fullPath}, HasData: ${!!currentData}, Value: ${typeof value === 'string' ? `"${value.substring(0, 50)}..."` : typeof value}`);
-
-        // Return safe defaults for undefined values
-        if (value === undefined || value === null) {
-            // Check if path suggests an array (common array field names)
-            if (path.includes('themes') || path.includes('points') || path.includes('tags') || path.includes('items') ||
-                path.includes('emotionArcs') || path.includes('relationshipDevelopments') || path.includes('insights')) {
-                return [];
-            }
-            // Default to empty string for other fields
-            return '';
-        }
+        const value = extractDataAtPath(currentData, fullPath);
 
         return value;
-    }, [basePath, contextData]); // Include contextData for reactivity
+    }, [resolvePath]);
 
-    // Set field value by path with optimistic updates
-    const setField = useCallback((path: string, value: any) => {
-        // Don't save undefined or null values unless explicitly setting them to empty string
-        if (value === undefined || value === null) {
-            return;
+    // Subscribe to value changes
+    const subscribeToValue = useCallback((path: string, callback: (value: any) => void) => {
+        const fullPath = resolvePath(path);
+
+        if (!subscriptionsRef.current.has(fullPath)) {
+            subscriptionsRef.current.set(fullPath, new Set());
         }
 
-        // If basePath is provided, prefix the path
-        const fullPath = basePath ? `${basePath}.${path}` : path;
+        const pathSubscriptions = subscriptionsRef.current.get(fullPath)!;
+        pathSubscriptions.add(callback);
 
-        // Apply optimistic update immediately
-        setOptimisticUpdates(prev => ({
-            ...prev,
-            [fullPath]: value
-        }));
+        // Immediately call with current value
+        const currentValue = getValue(path);
+        callback(currentValue);
 
-        // Update via YJS (this will eventually sync back and clear the optimistic update)
-        if (isCollaborative) {
-            // Let the YJS hook handle the complex path logic
-            // It already supports array indices and nested paths properly
-            yjsUpdateField(fullPath, value).catch(error => {
-                console.error(`[YJSArtifactProvider] Error updating field ${fullPath}:`, error);
-            });
-        } else if (!isCollaborative) {
-            // TODO: Handle non-collaborative updates
-        }
-    }, [isCollaborative, yjsUpdateField, basePath]);
-
-    // Update multiple fields
-    const updateFields = useCallback((updates: Record<string, any>) => {
-
-        setTimeout(() => {
-            try {
-                // Apply optimistic updates
-                setOptimisticUpdates(prev => ({
-                    ...prev,
-                    ...updates
-                }));
-
-                // Update via YJS
-                if (isCollaborative) {
-
-                    // Group updates by root key for efficient YJS updates
-                    const rootUpdates: Record<string, any> = {};
-                    Object.entries(updates).forEach(([path, value]) => {
-                        const rootKey = path.split('.')[0];
-                        if (!rootUpdates[rootKey]) {
-                            rootUpdates[rootKey] = yjsDataRef.current?.[rootKey] || {};
-                        }
-                        rootUpdates[rootKey] = setValueByPath(rootUpdates[rootKey], path, value);
-                    });
-
-                    // Apply all root updates
-                    Object.entries(rootUpdates).forEach(([rootKey, rootValue]) => {
-                        yjsUpdateField(rootKey, rootValue).catch(error => {
-                            console.error(`[YJSArtifactProvider] Error updating root field ${rootKey}:`, error);
-                        });
-                    });
-                } else {
-                }
-            } catch (error) {
-                console.error(`[YJSArtifactProvider] Error in updateFields:`, error);
+        // Return unsubscribe function
+        return () => {
+            pathSubscriptions.delete(callback);
+            if (pathSubscriptions.size === 0) {
+                subscriptionsRef.current.delete(fullPath);
             }
-        }, 0);
-    }, [isCollaborative, yjsUpdateField]);
-
-
-
-    const contextValue: YJSArtifactContextValue = useMemo(() => {
-        console.log(`[YJSArtifactProvider] Creating context - ArtifactId: ${artifactId}, IsLoading: ${isLoading}, HasData: ${!!contextData}, DataKeys: ${contextData ? Object.keys(contextData).length : 0}`);
-
-        return {
-            // Provide actual values, but memoize the context object itself to prevent excessive re-renders
-            data: contextData,
-            isLoading,
-            isConnected,
-            error,
-            artifact,
-            isCollaborative,
-            getField,
-            setField,
-            updateFields,
-            artifactId,
-
         };
-    }, [
-        // ESSENTIAL: Include state that components need to react to
+    }, [getValue, resolvePath]);
+
+    // Update value
+    const updateValue = useCallback((path: string, value: any) => {
+        const fullPath = resolvePath(path);
+
+        updateField(fullPath, value);
+
+        // Notify subscribers
+        const pathSubscriptions = subscriptionsRef.current.get(fullPath);
+        if (pathSubscriptions) {
+            pathSubscriptions.forEach(callback => callback(value));
+        }
+    }, [resolvePath, updateField]);
+
+    // Notify subscribers when data changes
+    useEffect(() => {
+        subscriptionsRef.current.forEach((callbacks, path) => {
+            const currentValue = extractDataAtPath(actualData, path);
+            callbacks.forEach(callback => callback(currentValue));
+        });
+    }, [actualData]);
+
+    // Stable structural context value
+    const structuralValue = useMemo(() => ({
         artifactId,
-        isLoading,
-        error,
-        getField,  // This changes when contextData changes, triggering component updates
-        setField,
-        updateFields,
-        // DON'T include: contextData directly (causes too many re-renders)
-        // DON'T include: isConnected, artifact (less critical)
-    ]);
+        basePath,
+        subscribeToValue,
+        updateValue,
+        getValue
+    }), [artifactId, basePath, subscribeToValue, updateValue, getValue]);
 
-
+    // Empty content context value (never changes)
+    const contentValue = useMemo(() => ({}), []);
 
     return (
-        <YJSArtifactContext.Provider value={contextValue}>
-            {children}
-        </YJSArtifactContext.Provider>
+        <YJSStructuralContext.Provider value={structuralValue}>
+            <YJSContentContext.Provider value={contentValue}>
+                {children}
+            </YJSContentContext.Provider>
+        </YJSStructuralContext.Provider>
     );
-};
+}
 
-export const useYJSArtifactContext = (): YJSArtifactContextValue => {
-    const context = useContext(YJSArtifactContext);
-    if (!context) {
+// Hook to use the subscription-based context
+export function useYJSField(path: string = '') {
+    const structural = useContext(YJSStructuralContext);
+    const content = useContext(YJSContentContext);
+
+    if (!structural || !content) {
+        throw new Error('useYJSField must be used within a YJSArtifactProvider');
+    }
+
+    // Local state for the field value
+    const [localValue, setLocalValue] = React.useState<any>(undefined);
+    const [isInitialized, setIsInitialized] = React.useState(false);
+
+    // Debug logging for field initialization
+    const shouldLog = structural.basePath?.includes('stages[') || !structural.basePath;
+
+    // Initialize and subscribe to value changes
+    useEffect(() => {
+        // Get initial value
+        const initialValue = structural.getValue(path);
+        setLocalValue(initialValue);
+        setIsInitialized(true);
+
+        // Subscribe to changes
+        const unsubscribe = structural.subscribeToValue(path, (newValue) => {
+            setLocalValue(newValue);
+        });
+
+        return unsubscribe;
+    }, [structural, path, shouldLog]);
+
+    // Update function that updates both local state and YJS
+    const updateValue = useCallback((newValue: any) => {
+        setLocalValue(newValue); // Immediate local update
+        structural.updateValue(path, newValue); // YJS update
+    }, [structural, path]);
+
+    return {
+        value: localValue,
+        updateValue,
+        isInitialized
+    };
+}
+
+// Legacy compatibility hook
+export function useYJSArtifactContext() {
+    const structural = useContext(YJSStructuralContext);
+    const content = useContext(YJSContentContext);
+
+    if (!structural || !content) {
         throw new Error('useYJSArtifactContext must be used within a YJSArtifactProvider');
     }
-    return context;
-};
+
+    // Access the YJS hook data through the provider
+    const { data, artifact, isLoading, error, isConnected, updateField } = useYJSArtifact(structural.artifactId);
+
+    // Return legacy-compatible interface
+    return {
+        data,
+        artifact,
+        isLoading,
+        error,
+        isConnected,
+        isCollaborative: true,
+        getField: structural.getValue,
+        setField: structural.updateValue,
+        updateField: structural.updateValue,
+        updateFields: useCallback((updates: Record<string, any>) => {
+            Object.entries(updates).forEach(([path, value]) => {
+                structural.updateValue(path, value);
+            });
+        }, [structural]),
+        artifactId: structural.artifactId
+    };
+}
 

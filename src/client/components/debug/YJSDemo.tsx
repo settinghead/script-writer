@@ -47,7 +47,6 @@ const YJSDemoFields: React.FC = () => {
                         <YJSArrayField
                             path="themes"
                             placeholder="每行一个主题..."
-                            itemPlaceholder="新主题"
                         />
                     </div>
 
@@ -56,7 +55,6 @@ const YJSDemoFields: React.FC = () => {
                         <YJSArrayField
                             path="selling_points"
                             placeholder="每行一个卖点..."
-                            itemPlaceholder="新卖点"
                         />
                     </div>
                 </Space>

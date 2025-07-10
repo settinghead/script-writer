@@ -1,88 +1,79 @@
-import React from 'react';
-import { Space, Typography } from 'antd';
-import { ClockCircleOutlined, ThunderboltOutlined, BulbOutlined } from '@ant-design/icons';
-import { YJSTextField, YJSTextAreaField, YJSArrayField } from './YJSField';
-import { YJSEmotionArcsArray, YJSRelationshipDevelopmentsArray } from './YJSComplexFields';
+import React, { memo } from 'react';
+import { Card, Typography, Space, Divider } from 'antd';
+import {
+    YJSEmotionArcsArray,
+    YJSRelationshipDevelopmentsArray,
+    YJSArrayField,
+    YJSTextField,
+    YJSTextAreaField
+} from './YJSField';
 
-const { Text } = Typography;
+const { Title } = Typography;
 
 interface EditableChronicleStageFormProps {
-    availableCharacters: string[];
+    stageIndex: number;
+    title?: string;
 }
 
-/**
- * YJS-enabled editable form component for chronicle stages
- * This component is designed to be used within a YJSArtifactProvider
- * Uses atomic JSON path editing for complex nested structures
- */
-export const EditableChronicleStageForm: React.FC<EditableChronicleStageFormProps> = React.memo(({
-    availableCharacters
+const EditableChronicleStageForm: React.FC<EditableChronicleStageFormProps> = memo(({
+    stageIndex,
+    title = `阶段 ${stageIndex + 1}`
 }) => {
+    // Use relative paths since YJSArtifactProvider handles the basePath
+    // If basePath is set to `stages[6]`, then `title` becomes `stages[6].title`
 
     return (
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
-            {/* Stage Title */}
-            <div>
-                <YJSTextField
-                    path="title"
-                    placeholder="阶段标题"
-                    className="stage-title-field"
-                />
-            </div>
-
-            {/* Stage Synopsis */}
-            <div>
-                <YJSTextAreaField
-                    path="stageSynopsis"
-                    placeholder="阶段概述"
-                    rows={3}
-                    className="stage-synopsis-field"
-                />
-            </div>
-
-            {/* Core Event */}
-            <div>
-                <Space align="center" style={{ marginBottom: '8px' }}>
-                    <ThunderboltOutlined style={{ color: '#faad14' }} />
-                    <Text strong style={{ color: '#faad14' }}>核心事件</Text>
-                </Space>
-
-                <div style={{ paddingLeft: '20px' }}>
-                    <YJSTextAreaField
-                        path="event"
-                        placeholder="核心事件描述"
-                        rows={2}
-                        className="stage-event-field"
+        <Card
+            title={title}
+            size="small"
+            style={{ marginBottom: 16 }}
+        >
+            <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                {/* 标题 */}
+                <div>
+                    <Title level={5} style={{ margin: 0, marginBottom: 8 }}>标题</Title>
+                    <YJSTextField
+                        path="title"
+                        placeholder="阶段标题"
                     />
                 </div>
-            </div>
 
-            {/* Emotion Arcs - Complex nested structure with atomic editing */}
-            <YJSEmotionArcsArray
-                basePath="emotionArcs"
-                availableCharacters={availableCharacters}
-            />
+                {/* 内容 */}
+                <div>
+                    <Title level={5} style={{ margin: 0, marginBottom: 8 }}>内容</Title>
+                    <YJSTextAreaField
+                        path="stageSynopsis"
+                        placeholder="你的内容描述"
+                        rows={4}
+                    />
+                </div>
 
-            {/* Relationship Developments - Complex nested structure with atomic editing */}
-            <YJSRelationshipDevelopmentsArray
-                basePath="relationshipDevelopments"
-                availableCharacters={availableCharacters}
-            />
+                <Divider style={{ margin: '16px 0' }} />
 
-            {/* Key Insights - Array of strings (textarea mode) */}
-            <div>
-                <Space align="center" style={{ marginBottom: '8px' }}>
-                    <BulbOutlined style={{ color: '#fadb14' }} />
-                    <Text strong style={{ color: '#fadb14' }}>关键洞察</Text>
-                </Space>
+                {/* 情感发展 */}
+                <YJSEmotionArcsArray path="emotionArcs" />
 
-                <div style={{ paddingLeft: '20px' }}>
+                <Divider style={{ margin: '16px 0' }} />
+
+                {/* 关系发展 */}
+                <YJSRelationshipDevelopmentsArray path="relationshipDevelopments" />
+
+                <Divider style={{ margin: '16px 0' }} />
+
+                {/* 关键洞察 */}
+                <div>
+                    <Title level={5} style={{ margin: 0, marginBottom: 8 }}>关键洞察</Title>
                     <YJSArrayField
                         path="insights"
-                        placeholder="每行一个关键洞察..."
+                        placeholder="添加洞察要点"
+                        itemPlaceholder="输入洞察"
                     />
                 </div>
-            </div>
-        </Space>
+            </Space>
+        </Card>
     );
-}); 
+});
+
+EditableChronicleStageForm.displayName = 'EditableChronicleStageForm';
+
+export default EditableChronicleStageForm; 
