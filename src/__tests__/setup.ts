@@ -1,5 +1,6 @@
 import { vi } from 'vitest';
 import { createCachedStreamObjectMock, createCachedStreamTextMock } from './mocks/aiSdkMocks';
+import '@testing-library/jest-dom';
 
 // Mock AI SDK functions globally
 vi.mock('ai', () => ({

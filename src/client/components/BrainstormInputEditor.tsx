@@ -2,8 +2,8 @@ import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { Card, Button, Typography, message, Tag, Space, InputNumber, Input } from 'antd';
 import { BulbOutlined, RightOutlined } from '@ant-design/icons';
 import { useProjectData } from '../contexts/ProjectDataContext';
-import { YJSArtifactProvider, useYJSArtifactContext } from '../contexts/YJSArtifactContext';
-import { YJSTextField, YJSTextAreaField } from './shared/YJSField';
+import { YJSArtifactProvider, useYJSArtifactContext } from '../transform-artifact-framework/contexts/YJSArtifactContext';
+import { YJSTextField, YJSTextAreaField } from '../transform-artifact-framework/components/YJSField';
 import GenreSelectionPopup, { MAX_GENRE_SELECTIONS } from './GenreSelectionPopup';
 import PlatformSelection from './PlatformSelection';
 

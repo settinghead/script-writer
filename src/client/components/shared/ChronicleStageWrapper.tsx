@@ -1,7 +1,7 @@
 import React, { useMemo, useCallback, useState } from 'react';
 import { Button, message } from 'antd';
 import { EditOutlined } from '@ant-design/icons';
-import { YJSArtifactProvider, useYJSField } from '../../contexts/YJSArtifactContext';
+import { YJSArtifactProvider, useYJSField } from '../../transform-artifact-framework/contexts/YJSArtifactContext';
 import EditableChronicleStageForm from './EditableChronicleStageForm';
 import { ReadOnlyArtifactDisplay } from './ReadOnlyArtifactDisplay';
 import { useLineageResolution } from '../../transform-artifact-framework/useLineageResolution';

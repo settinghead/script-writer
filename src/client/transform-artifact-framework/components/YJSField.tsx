@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import { Input, Select, Button, Typography, Card, Space } from 'antd';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
-import { useYJSField } from '../../contexts/YJSArtifactContext';
+import { useYJSField } from '../contexts/YJSArtifactContext';
 
 const { TextArea } = Input;
 const { Text } = Typography;

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useRef, useCallback, useMemo, useEffect } from 'react';
 import { useYJSArtifact } from '../hooks/useYJSArtifact';
-import { extractDataAtPath, setDataAtPath } from '../../common/utils/pathExtraction';
+import { extractDataAtPath, setDataAtPath } from '../../../common/utils/pathExtraction';
 
 // Structural context - rarely changes, contains stable functions
 interface YJSStructuralContextType {

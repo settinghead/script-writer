@@ -12,6 +12,7 @@ The Transform Artifact Framework provides a sophisticated foundation for applica
 - **Real-time Synchronization** - Electric SQL integration for instant cross-client updates
 - **Schema-Driven Architecture** - Type-safe operations with Zod validation throughout
 - **Advanced Caching System** - Development-optimized streaming response caching
+- **Comprehensive Testing Framework** - React component testing with YJS collaboration mocking
 
 ## Core Concepts
 
@@ -1143,37 +1144,392 @@ export class ProjectService {
 
 ## Testing Framework
 
-### Cache-Based Testing Architecture
-The framework uses a sophisticated **cache-based testing system** with **Vitest** that leverages real cached LLM responses for realistic, fast, and cost-effective tests.
+### React Component Testing Architecture
 
-**Key Innovation**: Instead of hardcoded mock responses, tests use **actual cached LLM responses** from the `/cache/llm-streams/` directory, providing realistic test data while maintaining zero API costs.
+The Transform Artifact Framework includes a comprehensive testing system specifically designed for React components with YJS integration, real-time collaboration, and complex artifact management scenarios.
 
-**Test Framework Benefits**:
-- **🚀 50x Faster Execution** - No real LLM calls during testing
-- **💰 Zero Testing Costs** - Uses cached responses instead of API calls
-- **🎯 Realistic Test Data** - Actual LLM outputs, not fabricated responses
-- **🔄 Deterministic Results** - Same cache key = same response every time
-- **📊 Comprehensive Coverage** - Tests against variety of real scenarios
-- **🐞 Better Debugging** - Trace through actual data flows
+**Framework Benefits**:
+- **🚀 Fast Execution** - Mocked dependencies eliminate external service calls
+- **🎯 Realistic Test Data** - Tests use patterns that match actual component behavior
+- **🔄 Deterministic Results** - Consistent test outcomes across environments
+- **📊 Comprehensive Coverage** - Tests cover rendering, interaction, and state management
+- **🐞 Better Debugging** - Clear separation of concerns with focused test scenarios
 
-**Test Structure Example**:
-```typescript
-describe('Transform System', () => {
-  let mockArtifactRepo: ArtifactRepository;
-  let mockTransformRepo: TransformRepository;
+### Testing Environment Setup
 
-  beforeEach(() => {
-    mockArtifactRepo = createMockArtifactRepository();
-    mockTransformRepo = createMockTransformRepository();
-  });
+**Dependencies and Configuration**:
+```bash
+# Install testing dependencies
+npm install --save-dev @testing-library/react @testing-library/jest-dom @testing-library/user-event jsdom
 
-  it('should execute transforms using cached responses', async () => {
-    // Test automatically uses cached LLM response
-    const result = await transformTool.execute(testInput);
-    expect(result).toBeDefined();
-  });
+# Vitest configuration for React testing
+# vitest.config.ts
+export default defineConfig({
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    include: ['src/**/*.{test,spec}.{js,ts,tsx}'],
+    setupFiles: ['src/__tests__/setup.ts']
+  }
 });
 ```
+
+**Test Setup File**:
+```typescript
+// src/__tests__/setup.ts
+import { vi } from 'vitest';
+import '@testing-library/jest-dom';
+
+// Global test configuration
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+```
+
+### YJS Component Testing Patterns
+
+**Mock Architecture for YJS Components**:
+```typescript
+// Mock the YJS context and hooks
+const mockUpdateField = vi.fn();
+const mockValue = vi.fn();
+const mockIsInitialized = vi.fn();
+
+// Mock the YJS context
+vi.mock('../../../contexts/YJSArtifactContext', () => ({
+    YJSArtifactProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    useYJSField: vi.fn((path: string) => ({
+        value: mockValue(path),
+        updateValue: mockUpdateField,
+        isInitialized: mockIsInitialized(path)
+    }))
+}));
+
+// Mock Ant Design components for simpler testing
+vi.mock('antd', async () => {
+    const actual = await vi.importActual('antd');
+    
+    const MockInput = ({ value, onChange, placeholder, ...props }: any) => (
+        <input
+            data-testid="input"
+            value={value || ''}
+            onChange={(e) => onChange?.(e)}
+            placeholder={placeholder}
+            {...props}
+        />
+    );
+    
+    const MockTextArea = ({ value, onChange, placeholder, rows, ...props }: any) => (
+        <textarea
+            data-testid="textarea"
+            value={value || ''}
+            onChange={(e) => onChange?.(e)}
+            placeholder={placeholder}
+            rows={rows}
+            {...props}
+        />
+    );
+    
+    return {
+        ...actual,
+        Input: MockInput,
+        Spin: ({ children, ...props }: any) => (
+            <div data-testid="spin" {...props}>
+                {children}
+            </div>
+        )
+    };
+});
+```
+
+### Component Testing Categories
+
+**1. Rendering Tests**
+Verify components render correctly with different props and states:
+```typescript
+describe('YJSTextField Rendering', () => {
+    it('renders correctly with mocked data', () => {
+        mockValue.mockReturnValue('Test Title');
+        
+        render(<YJSTextField path="title" placeholder="Enter title" />);
+
+        const input = screen.getByTestId('input');
+        expect(input).toBeInTheDocument();
+        expect(input).toHaveAttribute('placeholder', 'Enter title');
+    });
+
+    it('handles empty values gracefully', () => {
+        mockValue.mockReturnValue('');
+        
+        render(<YJSTextField path="title" placeholder="Enter title" />);
+
+        const input = screen.getByTestId('input');
+        expect(input).toBeInTheDocument();
+        expect(input).toHaveValue('');
+    });
+});
+```
+
+**2. Interaction Tests**
+Test user interactions and component behavior:
+```typescript
+describe('YJSTextField Interactions', () => {
+    it('calls updateValue when input changes', async () => {
+        mockValue.mockReturnValue('Initial Value');
+        
+        render(<YJSTextField path="title" placeholder="Enter title" />);
+
+        const input = screen.getByTestId('input');
+        
+        // Simulate user typing
+        fireEvent.change(input, { target: { value: 'New Title' } });
+
+        // Wait for debounced update
+        await waitFor(() => {
+            expect(mockUpdateField).toHaveBeenCalled();
+        }, { timeout: 1500 });
+    });
+});
+```
+
+**3. Integration Tests**
+Test multiple components working together:
+```typescript
+describe('Component Integration', () => {
+    it('can render multiple components together', () => {
+        mockValue.mockImplementation((path: string) => {
+            switch (path) {
+                case 'title': return 'Test Title';
+                case 'description': return 'Test Description';
+                default: return '';
+            }
+        });
+
+        render(
+            <div>
+                <YJSTextField path="title" placeholder="Title" />
+                <YJSTextAreaField path="description" placeholder="Description" />
+            </div>
+        );
+
+        expect(screen.getByTestId('input')).toBeInTheDocument();
+        expect(screen.getByTestId('textarea')).toBeInTheDocument();
+    });
+});
+```
+
+**4. Error Handling Tests**
+Test edge cases and error scenarios:
+```typescript
+describe('Error Handling', () => {
+    it('handles undefined values gracefully', () => {
+        mockValue.mockReturnValue(undefined);
+        
+        render(<YJSTextField path="title" placeholder="Enter title" />);
+
+        const input = screen.getByTestId('input');
+        expect(input).toBeInTheDocument();
+        expect(input).toHaveValue('');
+    });
+
+    it('handles null values gracefully', () => {
+        mockValue.mockReturnValue(null);
+        
+        render(<YJSTextField path="title" placeholder="Enter title" />);
+
+        const input = screen.getByTestId('input');
+        expect(input).toBeInTheDocument();
+        expect(input).toHaveValue('');
+    });
+});
+```
+
+### Mock Validation Tests
+
+**Ensure mocks work correctly**:
+```typescript
+describe('Mock Validation', () => {
+    it('validates that mocks are working correctly', () => {
+        mockValue.mockReturnValue('test-value');
+        mockIsInitialized.mockReturnValue(true);
+        
+        expect(mockValue('test-path')).toBe('test-value');
+        expect(mockIsInitialized('test-path')).toBe(true);
+    });
+
+    it('validates that mock functions are called with correct parameters', () => {
+        mockValue.mockReturnValue('test');
+        
+        render(<YJSTextField path="title" placeholder="Test" />);
+        
+        expect(mockValue).toHaveBeenCalledWith('title');
+        expect(mockIsInitialized).toHaveBeenCalledWith('title');
+    });
+});
+```
+
+### Advanced Testing Patterns
+
+**Testing Debounced Operations**:
+```typescript
+describe('Debounced Operations', () => {
+    it('handles rapid input changes with debouncing', async () => {
+        mockValue.mockReturnValue('');
+        
+        render(<YJSTextField path="title" placeholder="Enter title" />);
+        const input = screen.getByTestId('input');
+        
+        // Simulate rapid typing
+        fireEvent.change(input, { target: { value: 'T' } });
+        fireEvent.change(input, { target: { value: 'Te' } });
+        fireEvent.change(input, { target: { value: 'Test' } });
+        
+        // Should only call updateValue once after debounce
+        await waitFor(() => {
+            expect(mockUpdateField).toHaveBeenCalledTimes(1);
+            expect(mockUpdateField).toHaveBeenCalledWith('title', 'Test');
+        }, { timeout: 1500 });
+    });
+});
+```
+
+**Testing Complex Component States**:
+```typescript
+describe('Complex Component States', () => {
+    it('handles loading states correctly', () => {
+        mockIsInitialized.mockReturnValue(false);
+        
+        render(<YJSTextField path="title" placeholder="Enter title" />);
+        
+        // Component should show loading state when not initialized
+        expect(screen.getByTestId('spin')).toBeInTheDocument();
+    });
+
+    it('transitions from loading to ready state', () => {
+        mockIsInitialized.mockReturnValue(true);
+        mockValue.mockReturnValue('Ready value');
+        
+        render(<YJSTextField path="title" placeholder="Enter title" />);
+        
+        const input = screen.getByTestId('input');
+        expect(input).toBeInTheDocument();
+        expect(input).toHaveValue('Ready value');
+    });
+});
+```
+
+### File Organization
+
+**Test File Structure**:
+```
+src/
+├── client/
+│   └── transform-artifact-framework/
+│       └── __tests__/
+│           ├── YJSField.test.tsx           # YJS component tests
+│           ├── ArtifactEditor.test.tsx     # Artifact editor tests
+│           ├── LineageResolution.test.tsx  # Lineage resolution tests
+│           └── README.md                   # Testing documentation
+```
+
+### Running Tests
+
+**Test Execution Commands**:
+```bash
+# Run all tests
+npm test -- --run
+
+# Run specific test file
+npm test -- --run src/client/transform-artifact-framework/__tests__/YJSField.test.tsx
+
+# Run tests in watch mode (for development)
+npm test
+
+# Run tests with coverage
+npm test -- --coverage
+```
+
+### Testing Best Practices
+
+**1. Mock Strategy**:
+- **Isolate External Dependencies** - Mock YJS context, Ant Design components, and API calls
+- **Focus on Component Logic** - Test component behavior, not implementation details
+- **Use Realistic Mock Data** - Mock responses should match actual data structures
+- **Maintain Mock Consistency** - Keep mocks simple and predictable
+
+**2. Test Organization**:
+- **Group Related Tests** - Use `describe` blocks to organize test categories
+- **Clear Test Names** - Test names should describe expected behavior
+- **Setup and Teardown** - Use `beforeEach` and `afterEach` for consistent test state
+- **Avoid Test Interdependence** - Each test should be independent
+
+**3. Assertion Strategy**:
+- **Test User-Visible Behavior** - Focus on what users see and interact with
+- **Use Semantic Queries** - Prefer `getByRole`, `getByLabelText` over `getByTestId`
+- **Test Accessibility** - Ensure components are accessible and properly labeled
+- **Verify State Changes** - Test that interactions produce expected state changes
+
+**4. Performance Considerations**:
+- **Mock Heavy Operations** - Mock expensive operations like API calls and complex computations
+- **Use Fake Timers** - For testing debounced operations and timeouts
+- **Cleanup Resources** - Ensure proper cleanup to prevent memory leaks
+- **Parallel Test Execution** - Structure tests to run independently in parallel
+
+### Integration with Framework Components
+
+**Testing Artifact Editor Components**:
+```typescript
+describe('ArtifactEditor Integration', () => {
+    it('creates human transforms when editing', async () => {
+        const mockCreateTransform = vi.fn();
+        
+        render(
+            <ArtifactEditor
+                artifactId="test-artifact"
+                transformName="edit_transform"
+                fields={[
+                    { field: 'title', component: 'input' },
+                    { field: 'content', component: 'textarea' }
+                ]}
+                onTransition={mockCreateTransform}
+            />
+        );
+        
+        // Test editing workflow
+        const editButton = screen.getByRole('button', { name: /edit/i });
+        fireEvent.click(editButton);
+        
+        await waitFor(() => {
+            expect(mockCreateTransform).toHaveBeenCalled();
+        });
+    });
+});
+```
+
+**Testing Lineage Resolution**:
+```typescript
+describe('Lineage Resolution Testing', () => {
+    it('resolves to latest artifact version', () => {
+        const mockLineageData = {
+            latestArtifactId: 'latest-artifact-123',
+            hasLineage: true,
+            depth: 2
+        };
+        
+        // Mock lineage resolution hook
+        vi.mock('../hooks/useLineageResolution', () => ({
+            useLineageResolution: () => mockLineageData
+        }));
+        
+        render(<ComponentUsingLineage sourceArtifactId="original-artifact" />);
+        
+        // Verify component uses latest artifact
+        expect(screen.getByText('latest-artifact-123')).toBeInTheDocument();
+    });
+});
+```
+
+This comprehensive testing framework ensures that Transform Artifact Framework applications maintain high quality, reliability, and user experience while supporting complex real-time collaboration and artifact management scenarios.
 
 ## Development Tools
 

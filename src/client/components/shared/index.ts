@@ -10,9 +10,9 @@ export {
     YJSEmotionArcsArray,
     YJSRelationshipDevelopmentsArray,
     YJSCharacterArray
-} from './YJSField';
+} from '../../transform-artifact-framework/components/YJSField';
 export { ReadOnlyArtifactDisplay } from './ReadOnlyArtifactDisplay';
-export { ArtifactDisplayWrapper } from './ArtifactDisplayWrapper';
+export { ArtifactDisplayWrapper } from '../../transform-artifact-framework/components/ArtifactDisplayWrapper';
 export { EditableOutlineForm } from './EditableOutlineForm';
 export { default as EditableChronicleStageForm } from './EditableChronicleStageForm';
 export { default as ChronicleStageWrapper } from './ChronicleStageWrapper';

@@ -3,8 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button, Typography, Card, Spin } from 'antd';
 import { EyeOutlined, LoadingOutlined, EditOutlined } from '@ant-design/icons';
 import { useProjectData } from '../../contexts/ProjectDataContext';
-import { YJSArtifactProvider, useYJSArtifactContext } from '../../contexts/YJSArtifactContext';
-import { YJSTextField, YJSTextAreaField } from '../shared/YJSField';
+import { YJSArtifactProvider, useYJSArtifactContext } from '../../transform-artifact-framework/contexts/YJSArtifactContext';
+import { YJSTextField, YJSTextAreaField } from '../../transform-artifact-framework/components/YJSField';
 import { SectionWrapper, ArtifactSchemaType } from '../shared';
 
 const { Title, Text } = Typography;

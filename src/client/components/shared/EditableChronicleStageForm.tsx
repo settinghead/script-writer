@@ -6,7 +6,7 @@ import {
     YJSArrayField,
     YJSTextField,
     YJSTextAreaField
-} from './YJSField';
+} from '../../transform-artifact-framework/components/YJSField';
 
 const { Title } = Typography;
 

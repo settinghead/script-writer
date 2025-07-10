@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useProjectData } from '../contexts/ProjectDataContext';
-import { createElectricConfigWithDebugAuth } from '../../common/config/electric';
+import { useProjectData } from '../../contexts/ProjectDataContext';
+import { createElectricConfigWithDebugAuth } from '../../../common/config/electric';
 
 // Global registry to track YJS document initialization state
 const globalYJSRegistry = new Map<string, {

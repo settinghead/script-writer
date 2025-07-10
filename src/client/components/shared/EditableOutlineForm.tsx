@@ -1,7 +1,7 @@
 import React from 'react';
 import { Typography, Space } from 'antd';
 import { UserOutlined, HeartOutlined, StarOutlined, EnvironmentOutlined, TeamOutlined } from '@ant-design/icons';
-import { YJSTextField, YJSTextAreaField, YJSArrayField, YJSCharacterArray } from './YJSField';
+import { YJSTextField, YJSTextAreaField, YJSArrayField, YJSCharacterArray } from '../../transform-artifact-framework/components/YJSField';
 
 const { Text } = Typography;
 

@@ -2,8 +2,8 @@ import React, { useMemo, useState, useCallback } from 'react';
 import { Card, Typography, Button, Spin, message } from 'antd';
 import { EditOutlined, LoadingOutlined } from '@ant-design/icons';
 import { useProjectData } from '../../contexts/ProjectDataContext';
-import { YJSArtifactProvider } from '../../contexts/YJSArtifactContext';
-import { ReadOnlyArtifactDisplay } from './ReadOnlyArtifactDisplay';
+import { YJSArtifactProvider } from '../contexts/YJSArtifactContext';
+import { ReadOnlyArtifactDisplay } from '../../components/shared/ReadOnlyArtifactDisplay';
 import { canBecomeEditable } from '../../utils/actionComputation';
 
 const { Text, Title } = Typography;

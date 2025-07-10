@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Input, Typography } from 'antd';
-import { useYJSArtifact } from '../../hooks/useYJSArtifact';
+import { useYJSArtifact } from '../../transform-artifact-framework/hooks/useYJSArtifact';
 
 const { Text } = Typography;
 

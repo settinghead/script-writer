@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Button, Space, Typography, Alert, Divider, Input, Tag, Spin } from 'antd';
-import { YJSArtifactProvider } from '../../contexts/YJSArtifactContext';
-import { YJSTextField, YJSTextAreaField, YJSArrayField } from '../shared/YJSField';
+import { YJSArtifactProvider } from '../../transform-artifact-framework/contexts/YJSArtifactContext';
+import { YJSTextField, YJSTextAreaField, YJSArrayField } from '../../transform-artifact-framework/components/YJSField';
 import { useProjectData } from '../../contexts/ProjectDataContext';
 
 const { Title, Text } = Typography;
