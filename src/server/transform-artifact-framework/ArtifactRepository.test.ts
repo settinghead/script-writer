@@ -25,14 +25,12 @@ describe('ArtifactRepository', () => {
             vi.spyOn(repository, 'getProjectArtifactsByType').mockResolvedValue([
                 {
                     id: mockArtifacts.brainstormIdea.id,
-                    type: mockArtifacts.brainstormIdea.type,
+                    schema_type: mockArtifacts.brainstormIdea.schema_type,
                     project_id: mockArtifacts.brainstormIdea.project_id,
                     data: JSON.parse(mockArtifacts.brainstormIdea.data), // Parsed data
                     metadata: mockArtifacts.brainstormIdea.metadata,
                     created_at: mockArtifacts.brainstormIdea.created_at.toISOString(),
-                    schema_type: mockArtifacts.brainstormIdea.schema_type,
                     schema_version: mockArtifacts.brainstormIdea.schema_version,
-                    type_version: mockArtifacts.brainstormIdea.type_version,
                     origin_type: mockArtifacts.brainstormIdea.origin_type as 'ai_generated' | 'user_input'
                 }
             ]);
@@ -42,7 +40,7 @@ describe('ArtifactRepository', () => {
 
             // Assert
             expect(result).toHaveLength(1);
-            expect(result[0].type).toBe('brainstorm_idea');
+            expect(result[0].schema_type).toBe('brainstorm_idea_schema');
             expect(result[0].data).toEqual({
                 title: '误爱成宠',
                 body: '林氏集团总裁林慕琛因一场误会将普通职员夏栀认作富家千金...'
@@ -72,7 +70,7 @@ describe('ArtifactRepository', () => {
             // Assert
             expect(result).toBeDefined();
             expect(result?.id).toBe('test-brainstorm-1');
-            expect(result?.type).toBe('brainstorm_idea');
+            expect(result?.schema_type).toBe('brainstorm_idea_schema');
             expect(result?.project_id).toBe('test-project-1');
             expect(result?.data).toEqual({
                 title: '误爱成宠',

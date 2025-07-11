@@ -342,7 +342,6 @@ export class ArtifactRepository {
                     if (latestArtifact && latestArtifact.type === 'brainstorm_idea') {
                         resolvedArtifacts.push(this.rowToArtifact({
                             ...latestArtifact,
-                            type_version: latestArtifact.type_version as string
                         }));
                     }
                 }
