@@ -10,7 +10,7 @@ import { z } from 'zod';
  */
 export const IdeationInputSchema = z.object({
   sourceArtifactId: z.string().min(1, '源artifact ID不能为空').describe('源头脑风暴参数artifact ID，包含所有生成参数'),
-  otherRequirements: z.string().optional().describe('其他要求，如故事类型、内容、故事风格等'),
+  otherRequirements: z.string().describe('其他要求，如故事类型、内容、故事风格等'),
 });
 
 /**

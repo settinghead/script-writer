@@ -35,7 +35,7 @@ const BrainstormToolResultSchema = z.object({
     finishReason: z.string()
 });
 
-type BrainstormEditToolResult = z.infer<typeof BrainstormEditToolResultSchema>;
+export type BrainstormEditToolResult = z.infer<typeof BrainstormEditToolResultSchema>;
 
 /**
  * Extract source idea data from different artifact types
@@ -385,7 +385,7 @@ export function createBrainstormToolDefinition(
         outputSchema: BrainstormToolResultSchema,
         execute: async (params: IdeationInput): Promise<BrainstormToolResult> => {
             console.log(`[BrainstormTool] Starting brainstorm generation for artifact ${params.sourceArtifactId}`);
-
+            console.log('[BrainstormTool] params', params);
             // Extract parameters from source artifact
             const extractedParams = await extractBrainstormParams(params.sourceArtifactId, artifactRepo, userId);
 
@@ -415,7 +415,7 @@ export function createBrainstormToolDefinition(
                 userId,
                 transformRepo,
                 artifactRepo,
-                outputArtifactType: 'brainstorm_idea_collection',
+                outputArtifactType: 'brainstorm_collection',
                 transformMetadata: {
                     toolName: 'generate_brainstorm_ideas',
                     platform: extractedParams.platform,

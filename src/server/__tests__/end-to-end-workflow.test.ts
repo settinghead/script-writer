@@ -124,7 +124,8 @@ describe('End-to-End Workflow Tests', () => {
         );
 
         const brainstormInput = {
-            sourceArtifactId: 'test-brainstorm-input'
+            sourceArtifactId: 'test-brainstorm-input',
+            otherRequirements: '生成3个故事创意'
         };
 
         console.log('📝 Step 1: Generating brainstorm ideas...');

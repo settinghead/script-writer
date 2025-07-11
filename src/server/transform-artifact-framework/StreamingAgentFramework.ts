@@ -9,7 +9,7 @@ export interface StreamingToolDefinition<TInput, TOutput> {
   description: string;
   inputSchema: z.ZodSchema<TInput>;
   outputSchema: z.ZodSchema<TOutput>; // This is now for documentation/validation, not direct streaming output
-  execute: (input: TInput, options: { toolCallId: string }) => Promise<any>;
+  execute: (input: TInput, options: { toolCallId: string }) => Promise<TOutput>;
 }
 
 /**

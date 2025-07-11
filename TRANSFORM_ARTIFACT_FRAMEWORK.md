@@ -860,7 +860,6 @@ const config: StreamingTransformConfig<InputType, OutputType> = {
   templateName: 'template_name',
   inputSchema: InputSchema,
   outputSchema: OutputSchema,
-  prepareTemplateVariables: (input) => ({ /* business logic */ })
 };
 
 return executeStreamingTransform({ config, input, ...dependencies });
@@ -1601,13 +1600,7 @@ export function createContentTool(
   const config: StreamingTransformConfig<ContentInput, ContentOutput> = {
     templateName: 'content_generation',
     inputSchema: ContentInputSchema,
-    outputSchema: ContentOutputSchema,
-    prepareTemplateVariables: (input: ContentInput) => ({
-      title: input.title,
-      requirements: input.requirements,
-      format: input.format,
-      context: input.context || ''
-    })
+    outputSchema: ContentOutputSchema
   };
 
   return {

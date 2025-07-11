@@ -1,12 +1,14 @@
 import { describe, it, expect, beforeEach, } from 'vitest';
-import { createBrainstormToolDefinition } from '../BrainstormTools';
+import { BrainstormEditToolResult, createBrainstormToolDefinition } from '../BrainstormTools';
 import { createMockArtifactRepository, createMockTransformRepository } from '../../../__tests__/mocks/databaseMocks';
 import { TypedArtifact } from '@/common/types';
+import { IdeationInput } from '@/common/transform_schemas';
+import { StreamingToolDefinition } from '@/server/transform-artifact-framework/StreamingAgentFramework';
 
 describe('BrainstormTool', () => {
     let mockTransformRepo: any;
     let mockArtifactRepo: any;
-    let brainstormTool: any;
+    let brainstormTool: StreamingToolDefinition<IdeationInput, BrainstormEditToolResult>;
 
     beforeEach(() => {
         mockTransformRepo = createMockTransformRepository();
@@ -46,8 +48,9 @@ describe('BrainstormTool', () => {
         mockArtifactRepo.createArtifact.mockResolvedValue({ id: 'new-artifact-1' });
         mockTransformRepo.createTransform.mockResolvedValue({ id: 'new-transform-1' });
 
-        const input = {
-            sourceArtifactId: 'test-brainstorm-input-1'
+        const input: IdeationInput = {
+            sourceArtifactId: 'test-brainstorm-input-1',
+            otherRequirements: '快节奏，高颜值主角'
         };
 
         // Act
@@ -83,8 +86,9 @@ describe('BrainstormTool', () => {
             return null;
         });
 
-        const input = {
-            sourceArtifactId: 'test-brainstorm-input-2'
+        const input: IdeationInput = {
+            sourceArtifactId: 'test-brainstorm-input-2',
+            otherRequirements: '反转剧情'
         };
 
         // Act
@@ -112,8 +116,9 @@ describe('BrainstormTool', () => {
         mockTransformRepo.createTransform.mockRejectedValue(new Error('Database error'));
         mockTransformRepo.addTransformInputs.mockRejectedValue(new Error('Database error'));
 
-        const input = {
-            sourceArtifactId: 'test-brainstorm-input-1'
+        const input: IdeationInput = {
+            sourceArtifactId: 'test-brainstorm-input-1',
+            otherRequirements: '快节奏，高颜值主角'
         };
 
         // Act & Assert

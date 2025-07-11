@@ -5,6 +5,7 @@ import { CachedLLMService, getCachedLLMService } from './CachedLLMService';
 import { TransformRepository } from './TransformRepository';
 import { ArtifactRepository } from './ArtifactRepository';
 import { applyPatch, deepClone, Operation } from 'fast-json-patch';
+import { TypedArtifact } from '@/common/artifacts';
 
 /**
  * Configuration for a streaming transform - minimal interface that tools provide
@@ -41,7 +42,7 @@ export interface StreamingTransformParams<TInput, TOutput> {
     userId: string;
     transformRepo: TransformRepository;
     artifactRepo: ArtifactRepository;
-    outputArtifactType: string;  // e.g., 'brainstorm_idea_collection', 'outline'
+    outputArtifactType: TypedArtifact['schema_type'];  // e.g., 'brainstorm_idea_collection', 'outline'
     transformMetadata?: Record<string, any>;  // tool-specific metadata
     updateIntervalChunks?: number;  // How often to update artifact (default: 3)
     // Caching options
@@ -205,7 +206,9 @@ export class StreamingTransformExecutor {
                     throw new Error(`Template '${config.templateName}' not found`);
                 }
 
+
                 const templateVariables = config.prepareTemplateVariables(validatedInput);
+
                 const finalPrompt = await this.templateService.renderTemplate(template, {
                     params: templateVariables
                 });
@@ -626,13 +629,13 @@ export class StreamingTransformExecutor {
     /**
  * Map template names to their correct input artifact types
  */
-    private getInputArtifactType(templateName: string): string {
-        const inputArtifactTypeMap: Record<string, string> = {
+    private getInputArtifactType(templateName: string): TypedArtifact['schema_type'] {
+        const inputArtifactTypeMap: Record<string, TypedArtifact['schema_type']> = {
             'brainstorming': 'brainstorm_input_params',
-            'brainstorm_edit': 'brainstorm_edit_input',
-            'outline': 'outline_generation_input',
-            'outline_settings': 'outline_settings_input',
-            'chronicles': 'chronicles_input'
+            'brainstorm_edit': 'brainstorm_input_params',
+            'outline': 'outline_settings',
+            'outline_settings': 'outline_settings',
+            'chronicles': 'chronicles'
         };
 
         return inputArtifactTypeMap[templateName] || `${templateName}_input`;
