@@ -268,8 +268,8 @@ export class HumanTransformExecutor {
     }
 
     // 2. Check artifact type compatibility
-    if (!this.isCompatibleArtifactType(sourceArtifact.type, sourceArtifact.schema_type, transformDef.sourceArtifactType)) {
-      throw new Error(`Incompatible artifact type. Expected: ${transformDef.sourceArtifactType}, but artifact has type: ${sourceArtifact.type}${sourceArtifact.schema_type ? ` (schema_type: ${sourceArtifact.schema_type})` : ''}`);
+    if (!this.isCompatibleArtifactType(sourceArtifact.schema_type, sourceArtifact.schema_type, transformDef.sourceArtifactType)) {
+      throw new Error(`Incompatible artifact type. Expected: ${transformDef.sourceArtifactType}, but artifact has type: ${sourceArtifact.schema_type}${sourceArtifact.schema_type ? ` (schema_type: ${sourceArtifact.schema_type})` : ''}`);
     }
 
     // 3. Validate source artifact data against schema

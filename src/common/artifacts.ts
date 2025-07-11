@@ -1,8 +1,8 @@
 // ========== TRANSITION: Re-export from common types ==========
 // TODO: Gradually migrate all server imports to use ../../common/types directly
 
-export * from '../../common/types';
-import type { OutlineCharacter, OutlineCharactersV1 } from '../../common/types';
+export * from './types';
+import type { OutlineCharacter, OutlineCharactersV1 } from './types';
 
 // ========== LEGACY: These will be removed once migration is complete ==========
 
@@ -35,9 +35,6 @@ export interface Artifact {
     schema_version: string;
     origin_type: 'ai_generated' | 'user_input';
 
-    // LEGACY: Keep old fields for backward compatibility
-    type: string;
-    type_version: string;
 
     data: any;
     metadata?: any;
@@ -381,9 +378,7 @@ function mapTypeToSchemaType(type: string): string {
     return typeMapping[type] || `${type}_schema`;
 }
 
-export function validateArtifactData(type: string, typeVersion: string, data: any): boolean {
-    // Map type to schema type for new artifacts
-    const schemaType = mapTypeToSchemaType(type);
+export function validateArtifactData(schemaType: string, schemaVersion: string, data: any): boolean {
 
     // Use Zod schemas for new artifact types
     const { ArtifactSchemaRegistry } = require('../../common/schemas/artifacts');
@@ -394,7 +389,7 @@ export function validateArtifactData(type: string, typeVersion: string, data: an
     }
 
     // Fallback to existing validation for legacy types
-    switch (`${type}:${typeVersion}`) {
+    switch (`${schemaType}:${schemaVersion}`) {
         case 'ideation_session:v1':
             return isIdeationSessionV1(data);
         case 'brainstorm_params:v1':

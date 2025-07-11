@@ -1,7 +1,7 @@
 import { ProjectRepository } from '../transform-artifact-framework/ProjectRepository';
 import { ArtifactRepository } from '../transform-artifact-framework/ArtifactRepository';
 import { TransformRepository } from '../transform-artifact-framework/TransformRepository';
-import { Project } from '../types/artifacts';
+import { Project } from '../../common/artifacts';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../database/connection';
 import type { Kysely } from 'kysely';
@@ -46,10 +46,10 @@ export class ProjectService {
 
                     // Count different types of artifacts
                     const artifactCounts = {
-                        ideations: artifacts.filter(a => a.type === 'ideation_session').length,
-                        outlines: artifacts.filter(a => a.type === 'outline_session').length,
-                        episodes: artifacts.filter(a => a.type === 'episode_synopsis_generation_session').length,
-                        scripts: artifacts.filter(a => a.type === 'episode_script').length,
+                        ideations: artifacts.filter(a => a.schema_type === 'ideation_session_schema').length,
+                        outlines: artifacts.filter(a => a.schema_type === 'outline_session_schema').length,
+                        episodes: artifacts.filter(a => a.schema_type === 'episode_synopsis_generation_session_schema').length,
+                        scripts: artifacts.filter(a => a.schema_type === 'episode_script_schema').length,
                     };
 
                     // Determine project status and current phase
@@ -78,7 +78,7 @@ export class ProjectService {
                     let genre = '';
 
                     // Try to get brainstorm params for metadata
-                    const brainstormParams = artifacts.find(a => a.type === 'brainstorm_params');
+                    const brainstormParams = artifacts.find(a => a.schema_type === 'brainstorm_params_schema');
                     if (brainstormParams) {
                         platform = brainstormParams.data.platform || '';
                         if (brainstormParams.data.genre_paths && brainstormParams.data.genre_paths.length > 0) {
@@ -89,9 +89,9 @@ export class ProjectService {
                     }
 
                     // Try to get some content for preview
-                    const userInput = artifacts.find(a => a.type === 'user_input');
-                    const brainstormIdea = artifacts.find(a => a.type === 'brainstorm_idea');
-                    const outlineTitle = artifacts.find(a => a.type === 'outline_title');
+                    const userInput = artifacts.find(a => a.schema_type === 'user_input_schema');
+                    const brainstormIdea = artifacts.find(a => a.schema_type === 'brainstorm_idea_schema');
+                    const outlineTitle = artifacts.find(a => a.schema_type === 'outline_title_schema');
 
                     if (outlineTitle) {
                         previewContent = outlineTitle.data.title;

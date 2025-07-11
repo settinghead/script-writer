@@ -416,22 +416,7 @@ export function createArtifactRoutes(
                     return;
                 }
                 updatedData = data;
-            } else if (existingArtifact.type === 'user_input') {
-                // Legacy: Handle old user_input type artifacts with text field
-                if (!text || typeof text !== 'string' || !text.trim()) {
-                    res.status(400).json({
-                        error: 'Missing or empty text',
-                        details: 'text must be a non-empty string for user_input artifacts'
-                    });
-                    return;
-                }
-
-                // Update the artifact in place (for user_input artifacts)
-                updatedData = {
-                    ...existingArtifact.data,
-                    text: text.trim()
-                };
-            } else if (existingArtifact.type === 'brainstorm_idea') {
+            } else if (existingArtifact.schema_type === 'brainstorm_idea_schema') {
                 // Validate required fields for brainstorm_idea
                 if (!data || typeof data !== 'object') {
                     res.status(400).json({
@@ -444,7 +429,7 @@ export function createArtifactRoutes(
                 // Update the artifact in place (for brainstorm_idea artifacts)
                 updatedData = data;
             } else {
-                res.status(400).json({ error: `Cannot update artifacts of type: ${existingArtifact.type} with origin_type: ${existingArtifact.origin_type}` });
+                res.status(400).json({ error: `Cannot update artifacts of type: ${existingArtifact.schema_type} with origin_type: ${existingArtifact.origin_type}` });
                 return;
             }
 

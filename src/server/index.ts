@@ -175,13 +175,13 @@ async function findBrainstormParamsInLineage(userId: string, sourceArtifactId: s
       if (!hasAccess) {
         continue; // Skip artifacts user doesn't have access to
       }
-      if (artifact.type === 'brainstorm_params') {
+      if (artifact.schema_type === 'brainstorm_params_schema') {
         brainstormParams.push(artifact);
-      } else if (artifact.type === 'brainstorming_job_params') {
+      } else if (artifact.schema_type === 'brainstorming_job_params_schema') {
         // Convert brainstorming_job_params to brainstorm_params format
         const convertedParams = {
           ...artifact,
-          type: 'brainstorm_params',
+          schema_type: 'brainstorm_params_schema',
           data: {
             platform: artifact.data.platform,
             genre_paths: artifact.data.genrePaths,
@@ -277,7 +277,7 @@ app.get("/api/artifacts",
         } else {
           // Fallback to all brainstorm_params for the user
           artifacts = await artifactRepo.getUserArtifacts(user.id);
-          artifacts = artifacts.filter(a => a.type === type);
+          artifacts = artifacts.filter(a => a.schema_type === type);
         }
       } else {
         // Regular artifact fetching
@@ -285,12 +285,12 @@ app.get("/api/artifacts",
 
         // Apply filters
         if (type) {
-          artifacts = artifacts.filter(a => a.type === type);
+          artifacts = artifacts.filter(a => a.schema_type === type);
         }
       }
 
       if (type_version) {
-        artifacts = artifacts.filter(a => a.type_version === type_version);
+        artifacts = artifacts.filter(a => a.schema_version === type_version);
       }
 
       // Sort by created_at descending (most recent first)
@@ -335,14 +335,14 @@ app.post("/api/artifacts/user-input",
     try {
       const artifact = await artifactRepo.createArtifact(
         user.id,
-        'user_input',
+        'user_input_schema',
         {
           text: text.trim(),
           title: title?.trim() || undefined,
           source: sourceArtifactId ? 'modified_brainstorm' : 'manual',
           source_artifact_id: sourceArtifactId
         },
-        'v1', // typeVersion
+        'v1', // schemaVersion
         undefined, // metadata
         'completed', // streamingStatus
         'user_input' // originType - this is user-created content

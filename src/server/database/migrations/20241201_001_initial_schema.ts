@@ -98,8 +98,7 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn('project_id', 'text', (col) =>
       col.references('projects.id').onDelete('cascade').notNull()
     )
-    .addColumn('type', 'text', (col) => col.notNull())
-    .addColumn('type_version', 'text', (col) => col.defaultTo('v1').notNull())
+    .addColumn('schema_type', 'text', (col) => col.notNull())
     .addColumn('data', 'text', (col) => col.notNull())
     .addColumn('metadata', 'text')
     .addColumn('created_at', 'timestamp', (col) =>

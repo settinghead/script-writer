@@ -65,8 +65,7 @@ async function extractSourceIdeaData(
     let targetPlatform = 'unknown';
     let storyGenre = 'unknown';
 
-    if (sourceArtifact.type === 'brainstorm_idea_collection') {
-        // Collection artifact - extract specific idea using JSONPath
+    if (sourceArtifact.schema_type === 'brainstorm_idea_collection') {
         const ideaPath = `$.ideas[${params.ideaIndex}]`;
         try {
             const extractedIdea = extractDataAtPath(sourceData, ideaPath);
@@ -85,7 +84,7 @@ async function extractSourceIdeaData(
         } catch (extractError) {
             throw new Error(`Failed to extract idea at index ${params.ideaIndex}: ${extractError instanceof Error ? extractError.message : String(extractError)}`);
         }
-    } else if (sourceArtifact.type === 'brainstorm_idea') {
+    } else if (sourceArtifact.schema_type === 'brainstorm_idea_schema') {
         // Direct brainstorm idea artifact
         if (!sourceData.title || !sourceData.body) {
             throw new Error('Invalid brainstorm idea artifact');
@@ -100,7 +99,7 @@ async function extractSourceIdeaData(
             targetPlatform = sourceArtifact.metadata.platform || 'unknown';
             storyGenre = sourceArtifact.metadata.genre || 'unknown';
         }
-    } else if (sourceArtifact.type === 'brainstorm_item_schema') {
+    } else if (sourceArtifact.schema_type === 'brainstorm_item_schema') {
         // Schema-based brainstorm item artifact (new schema system)
         if (!sourceData.title || !sourceData.body) {
             throw new Error('Invalid brainstorm_item_schema artifact');
@@ -115,7 +114,7 @@ async function extractSourceIdeaData(
             targetPlatform = sourceArtifact.metadata.platform || 'unknown';
             storyGenre = sourceArtifact.metadata.genre || 'unknown';
         }
-    } else if (sourceArtifact.type === 'user_input') {
+    } else if (sourceArtifact.origin_type === 'user_input') {
         // User-edited artifact - extract from derived data
         let derivedData = sourceArtifact.metadata?.derived_data;
         if (!derivedData && sourceData.text) {
@@ -144,7 +143,7 @@ async function extractSourceIdeaData(
             }
         }
     } else {
-        throw new Error(`Unsupported source artifact type: ${sourceArtifact.type}`);
+        throw new Error(`Unsupported source artifact schema_type: ${sourceArtifact.schema_type}, origin_type: ${sourceArtifact.origin_type}`);
     }
 
     return { originalIdea, targetPlatform, storyGenre };
@@ -187,7 +186,7 @@ export function createBrainstormEditToolDefinition(
             }
 
             let outputArtifactType: string;
-            if (sourceArtifact.type === 'brainstorm_item_schema') {
+            if (sourceArtifact.schema_type === 'brainstorm_item_schema') {
                 outputArtifactType = 'brainstorm_item_schema'; // Use new schema type
             } else {
                 outputArtifactType = 'brainstorm_idea'; // Legacy type
@@ -235,7 +234,7 @@ export function createBrainstormEditToolDefinition(
                         platform: targetPlatform,
                         genre: storyGenre,
                         method: 'unified_patch',
-                        source_artifact_type: sourceArtifact.type,
+                        source_artifact_type: sourceArtifact.schema_type,
                         output_artifact_type: outputArtifactType
                     },
                     enableCaching: cachingOptions?.enableCaching,

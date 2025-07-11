@@ -60,9 +60,8 @@ export function createChroniclesToolDefinition(
             }
 
             // Verify artifact is outline settings type
-            if (outlineSettingsArtifact.schema_type !== 'outline_settings_schema' &&
-                outlineSettingsArtifact.type !== 'outline_settings') {
-                throw new Error(`Expected outline settings artifact, got: ${outlineSettingsArtifact.schema_type || outlineSettingsArtifact.type}`);
+            if (outlineSettingsArtifact.schema_type !== 'outline_settings_schema') {
+                throw new Error(`Expected outline settings artifact, got: ${outlineSettingsArtifact.schema_type}`);
             }
 
             // Extract outline settings data

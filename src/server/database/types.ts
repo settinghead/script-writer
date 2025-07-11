@@ -35,8 +35,6 @@ export interface Artifacts {
   schema_type: string;
   schema_version: string;
   streaming_status: Generated<string | null>;
-  type: string;
-  type_version: Generated<string>;
   updated_at: Generated<Timestamp>;
 }
 

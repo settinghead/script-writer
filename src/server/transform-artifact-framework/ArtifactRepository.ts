@@ -1,6 +1,6 @@
 import { Kysely, sql } from 'kysely';
 import { v4 as uuidv4 } from 'uuid';
-import { Artifact, validateArtifactData } from '../types/artifacts';
+import { Artifact, validateArtifactData } from '../../common/artifacts';
 import type { DB } from '../database/types';
 import { buildLineageGraph, findLatestArtifact } from '../../common/transform-artifact-framework/lineageResolution';
 import type { ElectricArtifact, ElectricTransform, ElectricHumanTransform, ElectricTransformInput, ElectricTransformOutput } from '../../common/types';
@@ -11,29 +11,26 @@ export class ArtifactRepository {
     // Create a new artifact
     async createArtifact(
         projectId: string,
-        type: string,
+        schemaType: string,
         data: any,
-        typeVersion: string,
+        schemaVersion: string,
         metadata: any | undefined,
         streamingStatus: string,
         originType: 'ai_generated' | 'user_input',
         initialInput: boolean = false
     ): Promise<Artifact> {
         // Skip validation for initial brainstorm input artifacts
-        const shouldSkipValidation = type === 'brainstorm_tool_input_schema' && initialInput;
+        const shouldSkipValidation = schemaType === 'brainstorm_tool_input_schema' && initialInput;
 
         // Only validate completed artifacts, skip validation during streaming or for initial brainstorm inputs
-        if (streamingStatus === 'completed' && !shouldSkipValidation && !validateArtifactData(type, typeVersion, data)) {
-            console.error(`Invalid data for artifact type ${type}:${typeVersion}`);
+        if (streamingStatus === 'completed' && !shouldSkipValidation && !validateArtifactData(schemaType, schemaVersion, data)) {
+            console.error(`Invalid data for artifact schemaType ${schemaType}:${schemaVersion}`);
             console.error("data:", data);
-            throw new Error(`Invalid data for artifact type ${type}:${typeVersion}`);
+            throw new Error(`Invalid data for artifact schemaType ${schemaType}:${schemaVersion}`);
         }
 
         const id = uuidv4();
         const now = new Date();
-
-        // Map old type names to new schema types for backward compatibility
-        const schemaType = this.mapTypeToSchemaType(type);
 
         const artifactData = {
             id,
@@ -41,12 +38,9 @@ export class ArtifactRepository {
 
             // NEW: Schema and origin types
             schema_type: schemaType,
-            schema_version: typeVersion,
+            schema_version: schemaVersion,
             origin_type: originType,
 
-            // LEGACY: Keep old fields for backward compatibility
-            type,
-            type_version: typeVersion,
 
             data: JSON.stringify(data),
             metadata: metadata ? JSON.stringify(metadata) : null,
@@ -63,10 +57,8 @@ export class ArtifactRepository {
             id,
             project_id: projectId,
             schema_type: schemaType,
-            schema_version: typeVersion,
+            schema_version: schemaVersion,
             origin_type: originType,
-            type,
-            type_version: typeVersion,
             data,
             metadata,
             created_at: now.toISOString()
@@ -93,8 +85,6 @@ export class ArtifactRepository {
         return {
             id: row.id,
             project_id: row.project_id,
-            type: row.type,
-            type_version: row.type_version,
             schema_type: row.schema_type,
             schema_version: row.schema_version,
             origin_type: row.origin_type as 'ai_generated' | 'user_input',
@@ -107,17 +97,17 @@ export class ArtifactRepository {
     // Get artifacts by type for a project
     async getArtifactsByType(
         projectId: string,
-        type: string,
-        typeVersion?: string
+        schemaType: string,
+        schemaVersion?: string
     ): Promise<Artifact[]> {
         let query = this.db
             .selectFrom('artifacts')
             .selectAll()
             .where('project_id', '=', projectId)
-            .where('type', '=', type);
+            .where('schema_type', '=', schemaType);
 
-        if (typeVersion) {
-            query = query.where('type_version', '=', typeVersion);
+        if (schemaVersion) {
+            query = query.where('schema_version', '=', schemaVersion);
         }
 
         const rows = await query
@@ -188,12 +178,12 @@ export class ArtifactRepository {
     }
 
     // Get artifacts by type for a specific project
-    async getProjectArtifactsByType(projectId: string, type: string, limit: number = 20): Promise<Artifact[]> {
+    async getProjectArtifactsByType(projectId: string, schemaType: string, limit: number = 20): Promise<Artifact[]> {
         const rows = await this.db
             .selectFrom('artifacts')
             .selectAll()
             .where('project_id', '=', projectId)
-            .where('type', '=', type)
+            .where('schema_type', '=', schemaType)
             .orderBy('created_at', 'desc')
             .limit(limit)
             .execute();
@@ -204,15 +194,14 @@ export class ArtifactRepository {
     // Get artifacts by type for a specific session
     async getArtifactsByTypeForSession(
         projectId: string,
-        type: string,
+        schemaType: string,
         sessionId: string,
-        typeVersion?: string
     ): Promise<Artifact[]> {
         let query = this.db
             .selectFrom('artifacts as a')
             .selectAll()
             .where('a.project_id', '=', projectId)
-            .where('a.type', '=', type)
+            .where('a.schema_type', '=', schemaType)
             .where((eb) =>
                 eb.or([
                     eb(sql`a.data->>'id'`, '=', sessionId),
@@ -220,10 +209,6 @@ export class ArtifactRepository {
                     eb(sql`a.data->>'outline_session_id'`, '=', sessionId)
                 ])
             );
-
-        if (typeVersion) {
-            query = query.where('a.type_version', '=', typeVersion);
-        }
 
         const rows = await query
             .orderBy('a.created_at', 'desc')
@@ -243,9 +228,9 @@ export class ArtifactRepository {
             .innerJoin('transforms as t', 'ti.transform_id', 't.id')
             .innerJoin('transform_inputs as ti2', 't.id', 'ti2.transform_id')
             .innerJoin('artifacts as session_a', 'ti2.artifact_id', 'session_a.id')
-            .select(['a.id', 'a.project_id', 'a.type', 'a.type_version', 'a.data', 'a.metadata', 'a.created_at'])
+            .select(['a.id', 'a.project_id', 'a.schema_type', 'a.schema_version', 'a.data', 'a.metadata', 'a.created_at'])
             .where('a.project_id', '=', projectId)
-            .where('a.type', '=', 'user_input')
+            .where('a.origin_type', '=', 'user_input')
             .where((eb) =>
                 eb.or([
                     eb(sql`session_a.data->>'id'`, '=', sessionId),
@@ -304,7 +289,7 @@ export class ArtifactRepository {
         let query = this.db
             .selectFrom('artifacts')
             .innerJoin('projects_users', 'artifacts.project_id', 'projects_users.project_id')
-            .select(['artifacts.id', 'artifacts.project_id', 'artifacts.type', 'artifacts.type_version', 'artifacts.data', 'artifacts.metadata', 'artifacts.created_at'])
+            .select(['artifacts.id', 'artifacts.project_id', 'artifacts.schema_type', 'artifacts.schema_version', 'artifacts.data', 'artifacts.metadata', 'artifacts.created_at'])
             .where('projects_users.user_id', '=', userId)
             .orderBy('artifacts.created_at', 'desc');
 
@@ -388,15 +373,13 @@ export class ArtifactRepository {
         return rows.map(row => ({
             id: row.id,
             project_id: row.project_id,
-            type: row.type,
-            type_version: row.type_version,
+            schema_type: row.schema_type,
+            schema_version: row.schema_version,
             data: row.data, // Keep as string for Electric format
             metadata: row.metadata || undefined,
             created_at: row.created_at?.toISOString() || new Date().toISOString(),
             streaming_status: row.streaming_status as 'streaming' | 'completed' | 'failed' | 'cancelled' | undefined,
             // NEW: Include schema and origin type fields
-            schema_type: row.schema_type || this.mapTypeToSchemaType(row.type),
-            schema_version: row.schema_version || row.type_version,
             origin_type: (row.origin_type as 'ai_generated' | 'user_input') || 'ai_generated'
         }));
     }
@@ -475,41 +458,15 @@ export class ArtifactRepository {
         }));
     }
 
-    // Map legacy type names to new schema types for backward compatibility
-    private mapTypeToSchemaType(type: string): string {
-        const typeMapping: Record<string, string> = {
-            'brainstorm_idea': 'brainstorm_idea_schema',
-            'brainstorm_item_schema': 'brainstorm_item_schema', // Direct mapping for new schema type
-            'brainstorm_idea_collection': 'brainstorm_collection_schema',
-            'user_input': 'user_input_schema',
-            'chronological_outline_input': 'chronological_outline_input',
-            'outline_title': 'outline_title_schema',
-            'outline_genre': 'outline_genre_schema',
-            'outline_selling_points': 'outline_selling_points_schema',
-            'outline_setting': 'outline_setting_schema',
-            'outline_synopsis': 'outline_synopsis_schema',
-            'outline_characters': 'outline_characters_schema',
-            'brainstorm_params': 'brainstorm_params_schema',
-            'plot_outline': 'plot_outline_schema',
-            // NEW: Split outline schemas
-            'outline_settings': 'outline_settings_schema',
-            'chronicles': 'chronicles_schema',
-
-        };
-
-        return typeMapping[type] || `${type}_schema`;
-    }
 
     // Helper to convert database row to Artifact with all required fields
     private rowToArtifact(row: any): Artifact {
         return {
             id: row.id,
             project_id: row.project_id,
-            schema_type: row.schema_type || this.mapTypeToSchemaType(row.type),
-            schema_version: row.schema_version || row.type_version,
+            schema_type: row.schema_type,
+            schema_version: row.schema_version,
             origin_type: (row.origin_type as 'ai_generated' | 'user_input') || 'ai_generated',
-            type: row.type,
-            type_version: row.type_version,
             data: typeof row.data === 'string' ? JSON.parse(row.data) : row.data,
             metadata: row.metadata ? (typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata) : null,
             created_at: row.created_at?.toISOString() || new Date().toISOString()

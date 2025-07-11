@@ -1,6 +1,6 @@
 import { Kysely } from 'kysely';
 import { v4 as uuidv4 } from 'uuid';
-import { Project, ProjectUser } from '../types/artifacts';
+import { Project, ProjectUser } from '../../common/artifacts';
 import type { DB } from '../database/types';
 
 export class ProjectRepository {

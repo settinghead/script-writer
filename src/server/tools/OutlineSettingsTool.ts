@@ -57,7 +57,7 @@ export function createOutlineSettingsToolDefinition(
 
             console.log(`[OutlineSettingsTool] Found source artifact:`, {
                 id: sourceArtifact.id,
-                type: sourceArtifact.type,
+                schema_version: sourceArtifact.schema_version,
                 schema_type: sourceArtifact.schema_type,
                 origin_type: sourceArtifact.origin_type,
                 project_id: sourceArtifact.project_id
@@ -70,7 +70,7 @@ export function createOutlineSettingsToolDefinition(
             }
 
             // Extract source content - flexible approach that works with any artifact
-            console.log(`[OutlineSettingsTool] Processing artifact type: ${sourceArtifact.type}, schema_type: ${sourceArtifact.schema_type}`);
+            console.log(`[OutlineSettingsTool] Processing artifact type: ${sourceArtifact.schema_type}, schema_type: ${sourceArtifact.schema_type}`);
             console.log(`[OutlineSettingsTool] Source artifact data:`, typeof sourceArtifact.data === 'object' ?
                 `{${Object.keys(sourceArtifact.data || {}).join(', ')}} (${JSON.stringify(sourceArtifact.data).length} chars)` :
                 sourceArtifact.data);
@@ -82,7 +82,7 @@ export function createOutlineSettingsToolDefinition(
             let sourceContent = '';
 
             // Add basic artifact info
-            sourceContent += `Artifact Type: ${sourceArtifact.type}\n`;
+            sourceContent += `Artifact Type: ${sourceArtifact.schema_type}\n`;
             sourceContent += `Schema Type: ${sourceArtifact.schema_type || 'N/A'}\n`;
             sourceContent += `Origin: ${sourceArtifact.origin_type || 'N/A'}\n\n`;
 

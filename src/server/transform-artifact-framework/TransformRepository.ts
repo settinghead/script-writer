@@ -7,7 +7,7 @@ import {
     LLMPrompt,
     LLMTransform,
     HumanTransform
-} from '../types/artifacts';
+} from '../../common/artifacts';
 import type { DB } from '../database/types';
 
 export class TransformRepository {

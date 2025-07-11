@@ -24,7 +24,7 @@ async function checkArtifact() {
         console.log('✅ Artifact found:', {
             id: artifact.id,
             project_id: artifact.project_id,
-            type: artifact.type,
+            schema_version: artifact.schema_version,
             schema_type: artifact.schema_type,
             data: artifact.data
         });

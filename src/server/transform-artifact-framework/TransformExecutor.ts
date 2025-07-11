@@ -1,6 +1,6 @@
 import { ArtifactRepository } from './ArtifactRepository';
 import { TransformRepository } from './TransformRepository';
-import { Artifact } from '../types/artifacts';
+import { Artifact } from '../../common/artifacts';
 import { getLLMCredentials } from './LLMConfig';
 import { LLMService } from './LLMService';
 
