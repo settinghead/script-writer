@@ -413,8 +413,7 @@ export function createBrainstormToolDefinition(
                     genre: extractedParams.genre,
                     platform: extractedParams.platform,
                     numberOfIdeas: extractedParams.numberOfIdeas.toString(),
-                    requirementsSection: buildRequirementsSection(extractedParams),
-                    otherRequirements: params.otherRequirements || ''
+                    requirementsSection: buildRequirementsSection(extractedParams)
                 }),
                 transformLLMOutput: (llmOutput) => transformToCollectionFormat(llmOutput, extractedParams),
                 // Extract source artifact for proper lineage

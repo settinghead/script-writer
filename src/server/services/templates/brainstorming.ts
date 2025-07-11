@@ -86,5 +86,5 @@ export const brainstormingTemplate: LLMTemplate = {
 **重要：只输出纯JSON，不要任何解释、说明、或其他文本。不要在JSON前后添加任何内容。**`,
   outputFormat: 'json_array',
   responseWrapper: '```json',
-  variables: ['params.genre', 'params.platform', 'params.numberOfIdeas', 'params.requirementsSection', 'params.otherRequirements']
+  variables: ['params.genre', 'params.platform', 'params.numberOfIdeas', 'params.requirementsSection']
 }; 
