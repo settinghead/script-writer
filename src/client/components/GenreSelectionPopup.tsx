@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
     Modal,
     Drawer,
@@ -227,36 +227,9 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
         onClose();
     };
 
-    const renderSelectedItemsTags = () => {
-        if (tempSelectedPaths.length === 0) return null;
-
-        return (
-            <Card size="small" style={{ marginTop: 16 }}>
-                <Title level={5} style={{ marginBottom: 12, marginTop: 0 }}>已选择的故事类型</Title>
-                <Space wrap size="small">
-                    {tempSelectedPaths.map((path, index) => {
-                        const pathString = path.join(' > ');
-                        return (
-                            <Tag
-                                key={index}
-                                closable
-                                onClose={() => handleRemoveSelectedItem(index)}
-                                color="blue"
-                                style={{ marginBottom: 6, fontSize: '12px' }}
-                            >
-                                {pathString}
-                            </Tag>
-                        );
-                    })}
-                </Space>
-            </Card>
-        );
-    };
-
-    const createMenuItems = (data: GenreSelection[], basePath: string[] = []): MenuProps['items'] => {
+    // Memoize the createMenuItems function to prevent recreation on every render
+    const createMenuItems = useCallback((data: GenreSelection[], basePath: string[] = []): MenuProps['items'] => {
         if (!data || data.length === 0) return [];
-
-
 
         return data.map(item => {
             const itemPath = [...basePath, item.label];
@@ -272,17 +245,6 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
             const isInNavigationPath = activeNavigationPath.length > basePath.length &&
                 activeNavigationPath[basePath.length] === item.label &&
                 basePath.every((segment, index) => activeNavigationPath[index] === segment);
-
-            // Debug logging
-            console.log('🔧 Menu item debug:', {
-                label: item.label,
-                itemPath,
-                basePath,
-                isSelected: isSelected,
-                isInNavigationPath: isInNavigationPath,
-                activeNavigationPath,
-                tempSelectedPaths
-            });
 
             return {
                 key: itemPath.join('|'),
@@ -318,18 +280,40 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
                 }
             };
         });
-    };
+    }, [tempSelectedPaths, activeNavigationPath]);
 
-    const renderMillerColumns = () => {
+    // Memoize the renderSelectedItemsTags function
+    const renderSelectedItemsTags = useCallback(() => {
+        if (tempSelectedPaths.length === 0) return null;
+
+        return (
+            <Card size="small" style={{ marginTop: 16 }}>
+                <Title level={5} style={{ marginBottom: 12, marginTop: 0 }}>已选择的故事类型</Title>
+                <Space wrap size="small">
+                    {tempSelectedPaths.map((path, index) => {
+                        const pathString = path.join(' > ');
+                        return (
+                            <Tag
+                                key={index}
+                                closable
+                                onClose={() => handleRemoveSelectedItem(index)}
+                                color="blue"
+                                style={{ marginBottom: 6, fontSize: '12px' }}
+                            >
+                                {pathString}
+                            </Tag>
+                        );
+                    })}
+                </Space>
+            </Card>
+        );
+    }, [tempSelectedPaths]);
+
+    // Memoize the renderMillerColumns function
+    const renderMillerColumns = useMemo(() => {
         const columns: React.ReactElement[] = [];
         let currentLevelData: GenreSelection[] = genreSelections;
         let currentPathSegmentsForRender: string[] = [];
-
-        // Debug logging
-        console.log('🔄 renderMillerColumns called:', {
-            tempSelectedPaths,
-            activeNavigationPath
-        });
 
         // Root column
         const rootSelectedKeys = [];
@@ -404,9 +388,10 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
                 </div>
             </Flex>
         );
-    };
+    }, [activeNavigationPath, tempSelectedPaths, createMenuItems, renderSelectedItemsTags]);
 
-    const renderBreadcrumb = () => {
+    // Memoize the renderBreadcrumb function
+    const renderBreadcrumb = useCallback(() => {
         const breadcrumbItems = [
             {
                 title: <HomeOutlined />,
@@ -423,9 +408,10 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
                 style={{ marginBottom: 16 }}
             />
         );
-    };
+    }, [navigationPath]);
 
-    const renderSingleView = () => {
+    // Memoize the renderSingleView function
+    const renderSingleView = useMemo(() => {
         const currentDataToDisplay = getDataAtPath(navigationPath);
 
         return (
@@ -487,7 +473,7 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
                 {tempSelectedPaths.length > 0 && renderSelectedItemsTags()}
             </Flex>
         );
-    };
+    }, [navigationPath, tempSelectedPaths, renderBreadcrumb, renderSelectedItemsTags]);
 
     const drawerHeight = tempSelectedPaths.length > 0 ? '85vh' : '70vh';
 
@@ -514,7 +500,7 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
                     </Space>
                 }
             >
-                {renderSingleView()}
+                {renderSingleView}
             </Drawer>
         );
     }
@@ -551,7 +537,7 @@ const GenreSelectionPopup: React.FC<GenreSelectionPopupProps> = ({
                 </Flex>
             }
         >
-            {renderMillerColumns()}
+            {renderMillerColumns}
         </Modal>
     );
 };
