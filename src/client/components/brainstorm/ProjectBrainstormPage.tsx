@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button, Typography } from 'antd';
 import { StopOutlined } from '@ant-design/icons';
 import { IdeaWithTitle } from '../../../common/transform-artifact-framework/lineageResolution';
-import { ReasoningIndicator, SectionWrapper, ArtifactSchemaType } from '../shared';
+import { ReasoningIndicator, SectionWrapper, } from '../shared';
 import { useProjectData } from '../../contexts/ProjectDataContext';
 import { useLatestBrainstormIdeas } from '../../transform-artifact-framework/useLineageResolution';
 import { useChosenBrainstormIdea } from '../../hooks/useChosenBrainstormIdea';
@@ -314,7 +314,7 @@ export default function ProjectBrainstormPage(props: ProjectBrainstormPageProps 
 
   return (
     <SectionWrapper
-      schemaType={ArtifactSchemaType.BRAINSTORM_COLLECTION}
+      schemaType={"brainstorm_collection"}
       title="头脑风暴"
       sectionId="brainstorm-ideas"
     >

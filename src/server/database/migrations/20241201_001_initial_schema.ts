@@ -99,6 +99,8 @@ export async function up(db: Kysely<any>): Promise<void> {
       col.references('projects.id').onDelete('cascade').notNull()
     )
     .addColumn('schema_type', 'text', (col) => col.notNull())
+    .addColumn('schema_version', 'text', (col) => col.notNull())
+    .addColumn('origin_type', 'text', (col) => col.notNull())
     .addColumn('data', 'text', (col) => col.notNull())
     .addColumn('metadata', 'text')
     .addColumn('created_at', 'timestamp', (col) =>
@@ -224,7 +226,7 @@ export async function up(db: Kysely<any>): Promise<void> {
   await db.schema
     .createIndex('idx_artifacts_project_type')
     .on('artifacts')
-    .columns(['project_id', 'type'])
+    .columns(['project_id', 'schema_type', 'schema_version'])
     .execute()
 
   await db.schema
@@ -245,6 +247,20 @@ export async function up(db: Kysely<any>): Promise<void> {
     .columns(['source_artifact_id', 'derivation_path'])
     .where('source_artifact_id', 'is not', null)
     .execute()
+
+  // Create indexes for artifacts
+  await db.schema
+    .createIndex('artifacts_schema_type_idx')
+    .on('artifacts')
+    .column('schema_type')
+    .execute()
+
+  await db.schema
+    .createIndex('artifacts_origin_type_idx')
+    .on('artifacts')
+    .column('origin_type')
+    .execute()
+
 
   // Create auto-update triggers for timestamps
   await sql`

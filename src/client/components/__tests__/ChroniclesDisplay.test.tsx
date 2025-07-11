@@ -15,9 +15,7 @@ vi.mock('../shared', () => ({
             {children}
         </div>
     ),
-    ArtifactSchemaType: {
-        CHRONICLES: 'chronicles'
-    },
+
     ArtifactDisplayWrapper: ({ artifact, isEditable, title }: any) => (
         <div data-testid="artifact-display-wrapper"
             data-artifact-id={artifact?.id}

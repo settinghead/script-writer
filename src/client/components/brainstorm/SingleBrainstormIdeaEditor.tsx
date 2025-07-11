@@ -4,7 +4,7 @@ import { Typography, Space } from 'antd';
 import { useProjectData } from '../../contexts/ProjectDataContext';
 import { useYJSField } from '../../transform-artifact-framework/contexts/YJSArtifactContext';
 import { YJSTextField, YJSTextAreaField } from '../../transform-artifact-framework/components/YJSField';
-import { SectionWrapper, ArtifactSchemaType, ArtifactDisplayWrapper } from '../shared';
+import { SectionWrapper, ArtifactDisplayWrapper } from '../shared';
 
 const { Text } = Typography;
 
@@ -73,7 +73,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
 
         return (
             <SectionWrapper
-                schemaType={ArtifactSchemaType.BRAINSTORM_ITEM}
+                schemaType={"brainstorm_idea"}
                 title="初始创意"
                 sectionId="ideation-edit"
                 artifactId={effectiveArtifact?.id}
@@ -155,7 +155,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
 
     return (
         <SectionWrapper
-            schemaType={ArtifactSchemaType.BRAINSTORM_ITEM}
+            schemaType={"brainstorm_idea"}
             title="初始创意"
             sectionId="ideation-edit"
             artifactId={latestBrainstormIdea?.id}

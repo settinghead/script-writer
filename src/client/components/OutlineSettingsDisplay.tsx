@@ -1,5 +1,5 @@
 import React from 'react';
-import { SectionWrapper, ArtifactSchemaType, ArtifactDisplayWrapper, EditableOutlineForm } from './shared';
+import { SectionWrapper, ArtifactDisplayWrapper, EditableOutlineForm } from './shared';
 
 interface OutlineSettingsDisplayProps {
     outlineSettings?: any; // The artifact to display
@@ -19,7 +19,7 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
 
         return (
             <SectionWrapper
-                schemaType={ArtifactSchemaType.OUTLINE_SETTINGS}
+                schemaType={"outline_settings"}
                 title="剧本框架"
                 sectionId="outline-settings"
                 artifactId={effectiveArtifact?.id}
@@ -42,7 +42,7 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
     // Fallback: No props provided - show loading or empty state
     return (
         <SectionWrapper
-            schemaType={ArtifactSchemaType.OUTLINE_SETTINGS}
+            schemaType={"outline_settings"}
             title="剧本框架"
             sectionId="outline-settings"
             artifactId={undefined}

@@ -3,7 +3,7 @@ import { Card, Typography, Space } from 'antd';
 import { ChroniclesOutput } from '../../common/schemas/outlineSchemas';
 import { useProjectData } from '../contexts/ProjectDataContext';
 import { useLineageResolution } from '../transform-artifact-framework/useLineageResolution';
-import { SectionWrapper, ArtifactSchemaType, ArtifactDisplayWrapper } from './shared';
+import { SectionWrapper, ArtifactDisplayWrapper } from './shared';
 import EditableChroniclesForm from './shared/EditableChroniclesForm';
 
 const { Text } = Typography;
@@ -26,7 +26,7 @@ export const ChroniclesDisplay: React.FC<ChroniclesDisplayProps> = ({
 
         return (
             <SectionWrapper
-                schemaType={ArtifactSchemaType.CHRONICLES}
+                schemaType={"chronicles"}
                 title="时间顺序大纲"
                 sectionId="chronicles"
                 artifactId={effectiveArtifact?.id}
@@ -162,7 +162,7 @@ export const ChroniclesDisplay: React.FC<ChroniclesDisplayProps> = ({
 
     return (
         <SectionWrapper
-            schemaType={ArtifactSchemaType.CHRONICLES}
+            schemaType={"chronicles"}
             title="时间顺序大纲"
             sectionId="chronicles"
             artifactId={effectiveChroniclesArtifact?.id}

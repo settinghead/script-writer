@@ -12,7 +12,8 @@ import type {
     ElectricTransform,
     ElectricHumanTransform,
     ElectricTransformInput,
-    ElectricTransformOutput
+    ElectricTransformOutput,
+    TypedArtifact
 } from '../types';
 
 // ============================================================================
@@ -1314,7 +1315,7 @@ export interface IdeaWithTitle {
 
 export interface WorkflowNode {
     id: string;
-    type: 'brainstorm_input' | 'brainstorm_collection' | 'brainstorm_idea' | 'outline_settings' | 'chronicles';
+    schemaType: TypedArtifact['schema_type'];
     title: string;
     artifactId: string;
     position: { x: number; y: number };
@@ -1323,7 +1324,6 @@ export interface WorkflowNode {
     navigationTarget: string; // anchor or route
     createdAt: string;
     status?: 'completed' | 'processing' | 'failed';
-    schemaType?: string; // NEW: Include artifact schema_type for display
 }
 
 /**
@@ -1468,7 +1468,7 @@ function createBrainstormOnlyWorkflow(artifacts: ElectricArtifact[]): WorkflowNo
 
     // FIXED LOGIC: Properly handle the workflow progression
     let primaryArtifact: ElectricArtifact | null = null;
-    let nodeType: WorkflowNode['type'];
+    let nodeType: WorkflowNode['schemaType'];
     let title: string;
     let navigationTarget: string;
 
@@ -1670,7 +1670,7 @@ function createWorkflowNodeFromArtifact(
     yPosition: number,
     isLatest: boolean
 ): WorkflowNode | null {
-    let nodeType: WorkflowNode['type'];
+    let nodeType: WorkflowNode['schemaType'];
     let title: string;
     let navigationTarget: string;
 

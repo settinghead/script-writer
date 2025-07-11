@@ -172,9 +172,33 @@ export function createElectricProxyRoutes(authDB: AuthDatabase, artifactRepo: Ar
             headers.delete('content-encoding');
             headers.delete('content-length');
 
+            // Ensure Electric-specific headers are preserved and accessible via CORS
+            const electricHeaders = [
+                'electric-offset',
+                'electric-handle',
+                'electric-schema',
+                'electric-chunk-last-offset',
+                'electric-cursor',
+                'electric-up-to-date'
+            ];
+
+            // Set CORS headers to allow Electric headers to be read by the client
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+            res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, ' + electricHeaders.join(', '));
+            res.setHeader('Access-Control-Expose-Headers', electricHeaders.join(', '));
+
             // Set response headers
             headers.forEach((value, key) => {
                 res.setHeader(key, value);
+            });
+
+            // Double-check that Electric headers are properly set
+            electricHeaders.forEach(headerName => {
+                const headerValue = response.headers.get(headerName);
+                if (headerValue) {
+                    res.setHeader(headerName, headerValue);
+                }
             });
 
             // Stream the response body back to the client with error handling

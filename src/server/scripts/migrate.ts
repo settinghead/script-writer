@@ -3,17 +3,14 @@
 import * as path from 'path'
 import { promises as fs } from 'fs'
 import {
-  Kysely,
   Migrator,
-  PostgresDialect,
   FileMigrationProvider,
 } from 'kysely'
-import { Pool } from 'pg'
 import { db } from '../database/connection'
 
 async function migrateToLatest() {
   console.log('🚀 Running database migrations...')
-  
+
   const migrator = new Migrator({
     db,
     provider: new FileMigrationProvider({
@@ -46,7 +43,7 @@ async function migrateToLatest() {
 
 async function migrateDown() {
   console.log('⬇️ Rolling back database migrations...')
-  
+
   const migrator = new Migrator({
     db,
     provider: new FileMigrationProvider({
@@ -78,7 +75,7 @@ async function migrateDown() {
 
 async function migrationStatus() {
   console.log('📊 Checking migration status...')
-  
+
   const migrator = new Migrator({
     db,
     provider: new FileMigrationProvider({
@@ -89,17 +86,17 @@ async function migrationStatus() {
   })
 
   const migrations = await migrator.getMigrations()
-  
+
   console.log('\n📋 Migration Status:')
   console.log('====================')
-  
+
   migrations.forEach((migration) => {
     const status = migration.executedAt ? '✅ Executed' : '⏳ Pending'
-    const date = migration.executedAt ? 
+    const date = migration.executedAt ?
       ` (${migration.executedAt.toISOString()})` : ''
     console.log(`${status} ${migration.name}${date}`)
   })
-  
+
   await db.destroy()
 }
 

@@ -27,7 +27,7 @@ interface WorkflowVisualizationProps {
 
 // Convert WorkflowNode to ReactFlow Node
 const createReactFlowNode = (workflowNode: WorkflowNode, currentSection: CurrentSection): Node => {
-    const getNodeColor = (type: WorkflowNode['type'], isHighlighted: boolean) => {
+    const getNodeColor = (type: WorkflowNode['schemaType'], isHighlighted: boolean) => {
         // Define colorful scheme for when node is highlighted
         const colorfulColors = {
             brainstorm_input: {
@@ -122,7 +122,7 @@ const createReactFlowNode = (workflowNode: WorkflowNode, currentSection: Current
         return shouldHighlightResult;
     };
 
-    const getNodeIcon = (type: WorkflowNode['type']) => {
+    const getNodeIcon = (type: WorkflowNode['schemaType']) => {
         const icons = {
             brainstorm_input: '📝',
             brainstorm_collection: '💡',
@@ -136,8 +136,8 @@ const createReactFlowNode = (workflowNode: WorkflowNode, currentSection: Current
     };
 
     const isHighlighted = shouldHighlight();
-    const colorScheme = getNodeColor(workflowNode.type, isHighlighted);
-    const icon = getNodeIcon(workflowNode.type);
+    const colorScheme = getNodeColor(workflowNode.schemaType, isHighlighted);
+    const icon = getNodeIcon(workflowNode.schemaType);
 
     return {
         id: workflowNode.id,
