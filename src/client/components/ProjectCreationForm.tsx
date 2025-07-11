@@ -39,13 +39,26 @@ export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({
 
     // Project is loaded - ActionItemsSection will handle all actions
     return (
-        <div style={{ textAlign: 'center', padding: '24px' }}>
-            <Text type="secondary">
-                <p style={{
-                    fontSize: "20px"
-                }}>使用下方的按钮继续。</p>
-                <ArrowDown size={128} style={{ marginTop: '32px' }} />
+        <div style={{ textAlign: 'center', padding: '24px', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <Text type="secondary" >
+                <ArrowDown
+                    size={128}
+                    style={{
+                        marginTop: '32px',
+                        animation: 'float 2s ease-in-out infinite'
+                    }}
+                />
             </Text>
+            <style >{`
+                @keyframes float {
+                    0%, 100% {
+                        transform: translateY(0px);
+                    }
+                    50% {
+                        transform: translateY(-10px);
+                    }
+                }
+            `}</style>
         </div>
     );
 }; 

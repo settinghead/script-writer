@@ -88,7 +88,7 @@ const ProjectContentRenderer: React.FC<{ projectId: string; scrollContainerRef: 
     // Show creation form if no brainstorm input exists
     if (!hasBrainstormInput) {
         return (
-            <div style={{ padding: '24px 0' }}>
+            <div style={{ padding: '24px 0', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                 <ProjectCreationForm
                     projectId={projectId}
                     onCreated={() => {
