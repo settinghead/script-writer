@@ -120,14 +120,12 @@ export class CachedLLMService {
 
         // If caching is disabled, use original service directly
         if (!this.enableCaching) {
-            console.log(`[CachedLLMService] Caching disabled, calling LLMService directly for streamObject`);
             const stream = await this.llmService.streamObject({
                 prompt,
                 schema,
                 onReasoningStart,
                 onReasoningEnd
             });
-            console.log(`[CachedLLMService] LLMService.streamObject returned stream:`, typeof stream);
             return stream;
         }
 
@@ -195,7 +193,6 @@ export class CachedLLMService {
 
         if (cachedChunks) {
             // Replay from cache
-            console.log(`[CachedLLMService] Replaying cached streamText for key ${cacheKey.substring(0, 8)}...`);
 
             const textStream = this.streamCache.replayStream(cachedChunks);
 
@@ -209,7 +206,6 @@ export class CachedLLMService {
         }
 
         // Not in cache - generate new stream and cache it
-        console.log(`[CachedLLMService] Cache miss for streamText, calling LLM...`);
 
         const originalResult = await this.llmService.streamText(prompt, onReasoningStart, onReasoningEnd);
         const chunks: CachedStreamChunk[] = [];

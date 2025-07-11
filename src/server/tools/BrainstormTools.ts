@@ -384,8 +384,6 @@ export function createBrainstormToolDefinition(
         inputSchema: IdeationInputSchema,
         outputSchema: BrainstormToolResultSchema,
         execute: async (params: IdeationInput): Promise<BrainstormToolResult> => {
-            console.log(`[BrainstormTool] Starting brainstorm generation for artifact ${params.sourceArtifactId}`);
-            console.log('[BrainstormTool] params', params);
             // Extract parameters from source artifact
             const extractedParams = await extractBrainstormParams(params.sourceArtifactId, artifactRepo, userId);
 
@@ -398,7 +396,8 @@ export function createBrainstormToolDefinition(
                     genre: extractedParams.genre,
                     platform: extractedParams.platform,
                     numberOfIdeas: extractedParams.numberOfIdeas.toString(),
-                    requirementsSection: buildRequirementsSection(extractedParams)
+                    requirementsSection: buildRequirementsSection(extractedParams),
+                    otherRequirements: input.otherRequirements
                 }),
                 transformLLMOutput: (llmOutput) => transformToCollectionFormat(llmOutput, extractedParams),
                 // Extract source artifact for proper lineage
