@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Artifact, validateArtifactData } from '../../common/artifacts';
 import type { DB } from '../database/types';
 import { buildLineageGraph, findLatestArtifact } from '../../common/transform-artifact-framework/lineageResolution';
-import type { ElectricArtifact, ElectricTransform, ElectricHumanTransform, ElectricTransformInput, ElectricTransformOutput } from '../../common/types';
+import type { ElectricArtifact, ElectricTransform, ElectricHumanTransform, ElectricTransformInput, ElectricTransformOutput, TypedArtifact } from '../../common/types';
 
 export class ArtifactRepository {
     constructor(private db: Kysely<DB>) { }
@@ -11,16 +11,16 @@ export class ArtifactRepository {
     // Create a new artifact
     async createArtifact(
         projectId: string,
-        schemaType: string,
+        schemaType: TypedArtifact['schema_type'],
         data: any,
-        schemaVersion: string,
+        schemaVersion: TypedArtifact['schema_version'],
         metadata: any | undefined,
         streamingStatus: string,
         originType: 'ai_generated' | 'user_input',
         initialInput: boolean = false
     ): Promise<Artifact> {
         // Skip validation for initial brainstorm input artifacts
-        const shouldSkipValidation = schemaType === 'brainstorm_tool_input_schema' && initialInput;
+        const shouldSkipValidation = schemaType === 'brainstorm_input_params' && initialInput;
 
         // Only validate completed artifacts, skip validation during streaming or for initial brainstorm inputs
         if (streamingStatus === 'completed' && !shouldSkipValidation && !validateArtifactData(schemaType, schemaVersion, data)) {
@@ -97,8 +97,8 @@ export class ArtifactRepository {
     // Get artifacts by type for a project
     async getArtifactsByType(
         projectId: string,
-        schemaType: string,
-        schemaVersion?: string
+        schemaType: TypedArtifact['schema_type'],
+        schemaVersion?: TypedArtifact['schema_version']
     ): Promise<Artifact[]> {
         let query = this.db
             .selectFrom('artifacts')
@@ -178,7 +178,7 @@ export class ArtifactRepository {
     }
 
     // Get artifacts by type for a specific project
-    async getProjectArtifactsByType(projectId: string, schemaType: string, limit: number = 20): Promise<Artifact[]> {
+    async getProjectArtifactsByType(projectId: string, schemaType: TypedArtifact['schema_type'], limit: number = 20): Promise<Artifact[]> {
         const rows = await this.db
             .selectFrom('artifacts')
             .selectAll()
@@ -194,7 +194,7 @@ export class ArtifactRepository {
     // Get artifacts by type for a specific session
     async getArtifactsByTypeForSession(
         projectId: string,
-        schemaType: string,
+        schemaType: TypedArtifact['schema_type'],
         sessionId: string,
     ): Promise<Artifact[]> {
         let query = this.db
@@ -325,7 +325,7 @@ export class ArtifactRepository {
             );
 
             // Get all brainstorm_idea artifacts
-            const allBrainstormIdeas = artifacts.filter(a => a.type === 'brainstorm_idea');
+            const allBrainstormIdeas = artifacts.filter(a => a.schema_type === 'brainstorm_idea');
 
             // Resolve each to its latest version
             const latestArtifactIds = new Set<string>();
@@ -339,7 +339,7 @@ export class ArtifactRepository {
 
                     // Find the actual artifact data
                     const latestArtifact = artifacts.find(a => a.id === result.artifactId);
-                    if (latestArtifact && latestArtifact.type === 'brainstorm_idea') {
+                    if (latestArtifact && latestArtifact.schema_type === 'brainstorm_idea') {
                         resolvedArtifacts.push(this.rowToArtifact({
                             ...latestArtifact,
                         }));

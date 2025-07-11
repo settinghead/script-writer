@@ -5,6 +5,7 @@ import { useProjectData } from '../contexts/ProjectDataContext';
 import { useArtifactEditor } from '../hooks/useArtifactEditor';
 import { extractDataAtPath } from '../../common/utils/pathExtraction';
 import { EditableField } from './EditableField';
+import { TypedArtifact } from '@/common/types';
 
 export interface FieldConfig {
     field: string;
@@ -32,7 +33,7 @@ interface ArtifactFragment {
     artifactId: string;
     data: any;
     isEditable: boolean;
-    schema_type: string;
+    schema_type: TypedArtifact['schema_type'];
     origin_type: 'ai_generated' | 'user_input';
     path?: string;
 
@@ -279,7 +280,7 @@ const ArtifactEditor: React.FC<ArtifactEditorProps> = ({
             path,
 
             // DEPRECATED: Keep for backward compatibility during refactor  
-            type: (targetArtifact.type || targetArtifact.schema_type) as string
+            type: (targetArtifact.schema_type) as string
         };
     }, [artifactId, sourceArtifactId, path, projectData]);
 

@@ -31,7 +31,7 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                         title="剧本框架"
                         icon="📖"
                         editableComponent={EditableOutlineForm}
-                        schemaType="outline_settings_schema"
+                        schemaType="outline_settings"
                         enableClickToEdit={true}
                     />
                 </div>
@@ -54,7 +54,7 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                     title="剧本框架"
                     icon="📖"
                     editableComponent={EditableOutlineForm}
-                    schemaType="outline_settings_schema"
+                    schemaType="outline_settings"
                     enableClickToEdit={false}
                 />
             </div>

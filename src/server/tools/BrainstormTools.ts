@@ -15,6 +15,7 @@ import {
 import { extractDataAtPath } from '../services/transform-instantiations/pathTransforms';
 import type { StreamingToolDefinition } from '../transform-artifact-framework/StreamingAgentFramework';
 import { z } from 'zod';
+import { TypedArtifact } from '@/common/types';
 
 const BrainstormEditToolResultSchema = z.object({
     outputArtifactId: z.string(),
@@ -65,7 +66,7 @@ async function extractSourceIdeaData(
     let targetPlatform = 'unknown';
     let storyGenre = 'unknown';
 
-    if (sourceArtifact.schema_type === 'brainstorm_idea_collection') {
+    if (sourceArtifact.schema_type === 'brainstorm_collection') {
         const ideaPath = `$.ideas[${params.ideaIndex}]`;
         try {
             const extractedIdea = extractDataAtPath(sourceData, ideaPath);
@@ -84,25 +85,10 @@ async function extractSourceIdeaData(
         } catch (extractError) {
             throw new Error(`Failed to extract idea at index ${params.ideaIndex}: ${extractError instanceof Error ? extractError.message : String(extractError)}`);
         }
-    } else if (sourceArtifact.schema_type === 'brainstorm_idea_schema') {
+    } else if (sourceArtifact.schema_type === 'brainstorm_idea') {
         // Direct brainstorm idea artifact
         if (!sourceData.title || !sourceData.body) {
             throw new Error('Invalid brainstorm idea artifact');
-        }
-
-        originalIdea = {
-            title: sourceData.title,
-            body: sourceData.body
-        };
-
-        if (sourceArtifact.metadata) {
-            targetPlatform = sourceArtifact.metadata.platform || 'unknown';
-            storyGenre = sourceArtifact.metadata.genre || 'unknown';
-        }
-    } else if (sourceArtifact.schema_type === 'brainstorm_item_schema') {
-        // Schema-based brainstorm item artifact (new schema system)
-        if (!sourceData.title || !sourceData.body) {
-            throw new Error('Invalid brainstorm_item_schema artifact');
         }
 
         originalIdea = {
@@ -185,9 +171,9 @@ export function createBrainstormEditToolDefinition(
                 throw new Error('Source artifact not found');
             }
 
-            let outputArtifactType: string;
-            if (sourceArtifact.schema_type === 'brainstorm_item_schema') {
-                outputArtifactType = 'brainstorm_item_schema'; // Use new schema type
+            let outputArtifactType: TypedArtifact['schema_type'];
+            if (sourceArtifact.schema_type === 'brainstorm_idea') {
+                outputArtifactType = 'brainstorm_idea'; // Use new schema type
             } else {
                 outputArtifactType = 'brainstorm_idea'; // Legacy type
             }

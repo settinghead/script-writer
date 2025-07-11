@@ -30,10 +30,7 @@ export type LineageNodeBase = {
 export type LineageNodeArtifact = LineageNodeBase & {
     type: 'artifact';
     artifactId: string;
-    artifactType: string;
     sourceTransform: LineageNodeTransform | "none";
-    schemaType: string; // NEW: Add schema type for better narrative description
-    originType: 'ai_generated' | 'user_input'; // NEW: Add origin type for narrative
     artifact: ElectricArtifact; // NEW: Include the actual artifact object
 }
 
@@ -129,12 +126,9 @@ export function buildLineageGraph(
             artifactId: artifact.id,
             depth: 0,
             isLeaf: true, // Will be updated if we find outgoing transforms
-            artifactType: artifact.type,
             path: undefined,
             sourceTransformId,
             createdAt: artifact.created_at,
-            schemaType: artifact.schema_type,
-            originType: artifact.origin_type,
             artifact: artifact
         } as PhaseOneArtifactNode);
     }
@@ -218,13 +212,10 @@ export function buildLineageGraph(
             const finalArtifactNode: LineageNodeArtifact = {
                 type: 'artifact' as const,
                 artifactId: artifactNode.artifactId,
-                artifactType: artifactNode.artifactType,
                 path: artifactNode.path,
                 depth: artifactNode.depth,
                 isLeaf: artifactNode.isLeaf,
                 sourceTransform: "none", // Will be populated in second pass
-                schemaType: artifactNode.schemaType,
-                originType: artifactNode.originType,
                 artifact: artifactNode.artifact,
                 createdAt: artifactNode.createdAt
             };
@@ -905,7 +896,7 @@ export function findLeafNodesByType(
     for (const [artifactId, node] of graph.nodes) {
         if (node.isLeaf) {
             const artifact = artifactMap.get(artifactId);
-            if (artifact && artifact.type === artifactType) {
+            if (artifact && artifact.schema_type === artifactType) {
                 leafArtifacts.push(artifact);
             }
         }
@@ -1120,18 +1111,16 @@ export function findEffectiveBrainstormIdeas(
 
             const artifact = artifactMap.get((node as LineageNodeArtifact).artifactId);
             const isBrainstormType = artifact && (
-                artifact.schema_type === 'brainstorm_idea_schema' || artifact.schema_type === 'brainstorm_collection_schema' || artifact.schema_type === 'brainstorm_item_schema' ||
-                artifact.type === 'brainstorm_idea' || artifact.type === 'brainstorm_idea_collection' || artifact.type === 'brainstorm_item_schema'
+                artifact.schema_type === 'brainstorm_idea' || artifact.schema_type === 'brainstorm_collection'
             );
 
             // Include all brainstorm types regardless of leaf status
             // - brainstorm_idea: only if leaf (final versions)
-            // - brainstorm_item_schema: only if leaf (manually entered ideas)
             // - brainstorm_idea_collection: always (may have unconsumed ideas)
             const shouldInclude = isBrainstormType && (
-                ((artifact.schema_type === 'brainstorm_idea_schema' || artifact.type === 'brainstorm_idea') && node.isLeaf) ||
-                ((artifact.schema_type === 'brainstorm_item_schema' || artifact.type === 'brainstorm_item_schema') && node.isLeaf) ||
-                (artifact.schema_type === 'brainstorm_collection_schema' || artifact.type === 'brainstorm_idea_collection')
+                ((artifact.schema_type === 'brainstorm_idea') && node.isLeaf) ||
+                ((artifact.schema_type === 'brainstorm_collection') && node.isLeaf) ||
+                (artifact.schema_type === 'brainstorm_collection')
             );
 
 
@@ -1145,14 +1134,13 @@ export function findEffectiveBrainstormIdeas(
         const artifact = artifactMap.get(artifactId);
         if (!artifact) continue;
 
-        if (artifact.schema_type === 'brainstorm_collection_schema' || artifact.type === 'brainstorm_idea_collection') {
+        if (artifact.schema_type === 'brainstorm_collection') {
             // Step 2a: Collection leaf - check which ideas are still "available"
             const consumedPaths = findConsumedCollectionPaths(artifactId, graph);
             const collectionIdeas = extractCollectionIdeas(artifact, consumedPaths);
             results.push(...collectionIdeas);
 
-        } else if (artifact.schema_type === 'brainstorm_idea_schema' || artifact.type === 'brainstorm_idea' ||
-            artifact.schema_type === 'brainstorm_item_schema' || artifact.type === 'brainstorm_item_schema') {
+        } else if (artifact.schema_type === 'brainstorm_idea') {
             // Step 2b: Standalone idea leaf - check if it originated from a collection
             const originInfo = traceToCollectionOrigin(artifactId, graph, artifactMap);
 
@@ -1276,7 +1264,7 @@ function traceToCollectionOrigin(
         for (const sourceArtifact of sourceTransform.sourceArtifacts) {
             const sourceArtifactData = artifactMap.get(sourceArtifact.artifactId);
 
-            if (sourceArtifactData?.schema_type === 'brainstorm_collection_schema' || sourceArtifactData?.type === 'brainstorm_idea_collection') {
+            if (sourceArtifactData?.schema_type === 'brainstorm_collection') {
                 // Found a collection origin!
                 // Extract index from the path if available
                 let collectionIndex = 0;
@@ -1326,7 +1314,7 @@ export interface IdeaWithTitle {
 
 export interface WorkflowNode {
     id: string;
-    type: 'brainstorm_input' | 'brainstorm_collection' | 'brainstorm_idea' | 'outline' | 'chronicles' | 'episode' | 'script';
+    type: 'brainstorm_input' | 'brainstorm_collection' | 'brainstorm_idea' | 'outline_settings' | 'chronicles';
     title: string;
     artifactId: string;
     position: { x: number; y: number };
@@ -1436,11 +1424,7 @@ export function findMainWorkflowPath(
     try {
         // Step 1: Find the main outline (only one allowed per project)
         const outlineArtifacts = artifacts.filter(a =>
-            a.schema_type === 'outline_schema' ||
-            a.schema_type === 'outline_settings_schema' ||
-            a.type === 'outline_response' ||
-            a.type === 'outline' ||
-            a.type === 'outline_settings'
+            a.schema_type === 'outline_settings'
         );
 
         // Sort by creation date to get the latest/main outline
@@ -1473,16 +1457,13 @@ export function findMainWorkflowPath(
 function createBrainstormOnlyWorkflow(artifacts: ElectricArtifact[]): WorkflowNode[] {
     // Look for brainstorm input artifacts
     const brainstormInputs = artifacts.filter(a =>
-        a.schema_type === 'brainstorm_tool_input_schema' ||
-        a.type === 'brainstorm_tool_input_schema'
+        a.schema_type === 'brainstorm_input_params'
     );
 
     // Look for brainstorm collections and ideas
     const brainstormCollections = artifacts.filter(a =>
-        a.schema_type === 'brainstorm_collection_schema' ||
-        a.schema_type === 'brainstorm_item_schema' ||
-        a.type === 'brainstorm_idea_collection' ||
-        a.type === 'brainstorm_item_schema'
+        a.schema_type === 'brainstorm_collection' ||
+        a.schema_type === 'brainstorm_idea'
     );
 
     // FIXED LOGIC: Properly handle the workflow progression
@@ -1498,7 +1479,7 @@ function createBrainstormOnlyWorkflow(artifacts: ElectricArtifact[]): WorkflowNo
             .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
 
         // Determine node type based on collection type
-        if (primaryArtifact.schema_type === 'brainstorm_item_schema' && primaryArtifact.origin_type === 'user_input') {
+        if (primaryArtifact.schema_type === 'brainstorm_idea' && primaryArtifact.origin_type === 'user_input') {
             // Single manually entered idea
             nodeType = 'brainstorm_idea';
             title = '选中创意';
@@ -1523,7 +1504,7 @@ function createBrainstormOnlyWorkflow(artifacts: ElectricArtifact[]): WorkflowNo
             .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
 
         // Determine workflow node type based on artifact type
-        if (primaryArtifact.schema_type === 'brainstorm_item_schema' && primaryArtifact.origin_type === 'user_input') {
+        if (primaryArtifact.schema_type === 'brainstorm_idea' && primaryArtifact.origin_type === 'user_input') {
             // Single manually entered idea
             nodeType = 'brainstorm_idea';
             title = '选中创意';
@@ -1638,13 +1619,10 @@ function traceForwardFromArtifact(
         if (nextArtifact) {
             // Only include main workflow artifacts, not individual stage edits
             const isMainWorkflowArtifact =
-                nextArtifact.schema_type === 'brainstorm_collection_schema' ||
-                nextArtifact.schema_type === 'brainstorm_item_schema' ||
-                nextArtifact.schema_type === 'brainstorm_idea_schema' ||
-                nextArtifact.schema_type === 'outline_schema' ||
-                nextArtifact.schema_type === 'outline_settings_schema' ||
-                nextArtifact.schema_type === 'chronicles_schema' ||
-                nextArtifact.schema_type === 'episode_synopsis_schema';
+                nextArtifact.schema_type === 'brainstorm_collection' ||
+                nextArtifact.schema_type === 'brainstorm_idea' ||
+                nextArtifact.schema_type === 'outline_settings' ||
+                nextArtifact.schema_type === 'chronicles';
 
 
 
@@ -1697,15 +1675,11 @@ function createWorkflowNodeFromArtifact(
     let navigationTarget: string;
 
     // Determine node type and properties based on artifact
-    if (artifact.schema_type === 'brainstorm_collection_schema' ||
-        artifact.type === 'brainstorm_idea_collection') {
+    if (artifact.schema_type === 'brainstorm_collection') {
         nodeType = 'brainstorm_collection';
         title = '创意构思';
         navigationTarget = '#brainstorm-ideas';
-    } else if (artifact.schema_type === 'brainstorm_item_schema' ||
-        artifact.type === 'brainstorm_item_schema' ||
-        artifact.schema_type === 'brainstorm_idea_schema' ||
-        artifact.type === 'brainstorm_idea') {
+    } else if (artifact.schema_type === 'brainstorm_idea') {
         nodeType = 'brainstorm_idea';
 
         // Try to extract title from data
@@ -1717,12 +1691,9 @@ function createWorkflowNodeFromArtifact(
         }
 
         navigationTarget = '#selected-idea';
-    } else if (artifact.schema_type === 'outline_schema' ||
-        artifact.schema_type === 'outline_settings_schema' ||
-        artifact.type === 'outline_response' ||
-        artifact.type === 'outline' ||
-        artifact.type === 'outline_settings') {
-        nodeType = 'outline';
+    } else if (
+        artifact.schema_type === 'outline_settings') {
+        nodeType = 'outline_settings';
 
         // Try to extract title from outline data
         try {
@@ -1733,7 +1704,7 @@ function createWorkflowNodeFromArtifact(
         }
 
         navigationTarget = '#story-outline';
-    } else if (artifact.schema_type === 'chronicles_schema' || artifact.type === 'chronicles') {
+    } else if (artifact.schema_type === 'chronicles') {
         nodeType = 'chronicles';
         title = '分集概要';
         navigationTarget = '#chronicles';

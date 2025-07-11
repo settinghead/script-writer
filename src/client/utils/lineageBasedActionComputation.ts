@@ -140,10 +140,7 @@ export function computeActionsFromLineage(
 
                 const artifact = artifacts.find(a => a.id === nodeId);
                 return artifact && (
-                    artifact.schema_type === 'brainstorm_item_schema' ||
-                    artifact.schema_type === 'brainstorm_idea_schema' ||
-                    artifact.type === 'brainstorm_item_schema' ||
-                    artifact.type === 'brainstorm_idea_schema'
+                    artifact.schema_type === 'brainstorm_idea'
                 );
             });
 
@@ -215,20 +212,20 @@ function buildActionContextFromLineage(
     const latestOutlineSettings = findLatestArtifactByType(
         lineageGraph,
         artifacts,
-        'outline_settings_schema'
+        'outline_settings'
     );
 
     const latestChronicles = findLatestArtifactByType(
         lineageGraph,
         artifacts,
-        'chronicles_schema'
+        'chronicles'
     );
 
     // Find brainstorm input artifact
     const brainstormInput = findLatestArtifactByType(
         lineageGraph,
         artifacts,
-        'brainstorm_tool_input_schema'
+        'brainstorm_input_params'
     );
 
     return {
@@ -446,7 +443,7 @@ function findLatestArtifactByType(
 ): ElectricArtifact | null {
     // Find all artifacts of this type
     const candidateArtifacts = artifacts.filter(a =>
-        a.schema_type === schemaType || a.type === schemaType
+        a.schema_type === schemaType
     );
 
     if (candidateArtifacts.length === 0) return null;

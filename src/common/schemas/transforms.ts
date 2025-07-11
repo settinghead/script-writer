@@ -17,7 +17,7 @@ export const TransformRegistry = {
     pathPattern: '^\\$\\[outline_settings\\]$',
     inputSchema: OutlineSettingsInputSchema,
     outputSchema: OutlineSettingsOutputSchema,
-    outputType: 'outline_settings_schema'
+    outputType: 'outline_settings'
   },
 
   // Chronicles Transform
@@ -25,7 +25,7 @@ export const TransformRegistry = {
     pathPattern: '^\\$\\[chronicles\\]$',
     inputSchema: ChroniclesInputSchema,
     outputSchema: ChroniclesOutputSchema,
-    outputType: 'chronicles_schema'
+    outputType: 'chronicles'
   },
 
   // Brainstorm edit transforms
@@ -39,7 +39,7 @@ export const TransformRegistry = {
       title: z.string(),
       body: z.string()
     }),
-    outputType: 'user_input_schema'
+    outputType: 'brainstorm_idea'
   }
 } as const;
 
@@ -130,7 +130,7 @@ export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinitio
     name: 'create_brainstorm_input',
     description: 'Create brainstorm input parameters',
     sourceArtifactType: '*', // Can be created from any source or standalone
-    targetArtifactType: 'brainstorm_tool_input_schema',
+    targetArtifactType: 'brainstorm_input_params',
     pathPattern: '^\\$$', // Root path for new creation
     instantiationFunction: 'createBrainstormToolInput'
   },
@@ -138,8 +138,8 @@ export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinitio
   'edit_brainstorm_collection_idea': {
     name: 'edit_brainstorm_collection_idea',
     description: 'Edit individual idea within brainstorm collection',
-    sourceArtifactType: 'brainstorm_collection_schema',
-    targetArtifactType: 'brainstorm_item_schema',
+    sourceArtifactType: 'brainstorm_collection',
+    targetArtifactType: 'brainstorm_idea',
     pathPattern: '^\\$.ideas\\[\\d+\\]$', // JSONPath for ideas[n]
     instantiationFunction: 'createBrainstormIdeaFromPath'
   },
@@ -157,40 +157,40 @@ export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinitio
   'brainstorm_to_outline': {
     name: 'brainstorm_to_outline',
     description: 'Convert a brainstorm idea to outline input',
-    sourceArtifactType: 'brainstorm_item_schema',
-    targetArtifactType: 'outline_input_schema',
+    sourceArtifactType: 'brainstorm_idea',
+    targetArtifactType: 'outline_input',
     pathPattern: '^\\$$', // Root path indicator ($)
     instantiationFunction: 'createOutlineInputFromBrainstormIdea'
   },
   'edit_brainstorm_idea': {
     name: 'edit_brainstorm_idea',
     description: 'Edit entire brainstorm idea object',
-    sourceArtifactType: 'brainstorm_item_schema',
-    targetArtifactType: 'brainstorm_item_schema',
+    sourceArtifactType: 'brainstorm_idea',
+    targetArtifactType: 'brainstorm_idea',
     pathPattern: '^\\$$', // Root path indicator ($)
     instantiationFunction: 'createBrainstormIdeaFromBrainstormIdea'
   },
   'edit_brainstorm_idea_field': {
     name: 'edit_brainstorm_idea_field',
     description: 'Edit individual fields of brainstorm ideas',
-    sourceArtifactType: 'brainstorm_item_schema',
-    targetArtifactType: 'user_input_schema',
+    sourceArtifactType: 'brainstorm_idea',
+    targetArtifactType: 'brainstorm_idea',
     pathPattern: '^(title|body)$', // Matches title or body fields
     instantiationFunction: 'createUserInputFromBrainstormField'
   },
   'edit_outline_settings': {
     name: 'edit_outline_settings',
     description: 'Edit outline settings with fine-grained field tracking',
-    sourceArtifactType: 'outline_settings_schema',
-    targetArtifactType: 'outline_settings_schema',
+    sourceArtifactType: 'outline_settings',
+    targetArtifactType: 'outline_settings',
     pathPattern: '^\\$(\\..*)?$', // Root or any path like $.title, $.characters[0].name, etc.
     instantiationFunction: 'createOutlineSettingsFromOutlineSettings'
   },
   'edit_chronicles': {
     name: 'edit_chronicles',
     description: 'Edit chronicles document with whole-document editing',
-    sourceArtifactType: 'chronicles_schema',
-    targetArtifactType: 'chronicles_schema',
+    sourceArtifactType: 'chronicles',
+    targetArtifactType: 'chronicles',
     pathPattern: '^\\$(\\..*)?$', // Root or any path like $.stages[0].title, $.stages[1].event, etc.
     instantiationFunction: 'createChroniclesFromChronicles'
   }
@@ -217,8 +217,8 @@ export const LLM_TRANSFORM_DEFINITIONS: Record<string, LLMTransformDefinition> =
   'llm_edit_brainstorm_collection_idea': {
     name: 'llm_edit_brainstorm_collection_idea',
     description: 'AI editing of ideas within brainstorm collections',
-    inputTypes: ['brainstorm_collection_schema'],
-    outputType: 'brainstorm_item_schema',
+    inputTypes: ['brainstorm_collection'],
+    outputType: 'brainstorm_idea',
     templateName: 'brainstormEdit',
     inputSchema: BrainstormEditInputSchema,
     outputSchema: BrainstormEditOutputSchema
@@ -235,8 +235,8 @@ export const LLM_TRANSFORM_DEFINITIONS: Record<string, LLMTransformDefinition> =
   'llm_edit_brainstorm_idea': {
     name: 'llm_edit_brainstorm_idea',
     description: 'AI-powered editing of brainstorm ideas based on user requirements',
-    inputTypes: ['brainstorm_item_schema', 'user_input_schema'],
-    outputType: 'brainstorm_item_schema',
+    inputTypes: ['brainstorm_idea', 'user_input'],
+    outputType: 'brainstorm_idea',
     templateName: 'brainstormEdit',
     inputSchema: BrainstormEditInputSchema,
     outputSchema: BrainstormEditOutputSchema
@@ -244,8 +244,8 @@ export const LLM_TRANSFORM_DEFINITIONS: Record<string, LLMTransformDefinition> =
   'llm_generate_outline_settings': {
     name: 'llm_generate_outline_settings',
     description: 'AI generation of outline settings from brainstorm idea',
-    inputTypes: ['brainstorm_item_schema', 'user_input_schema'],
-    outputType: 'outline_settings_schema',
+    inputTypes: ['brainstorm_idea', 'user_input'],
+    outputType: 'outline_settings',
     templateName: 'outline_settings',
     inputSchema: OutlineSettingsInputSchema,
     outputSchema: OutlineSettingsOutputSchema
@@ -253,11 +253,11 @@ export const LLM_TRANSFORM_DEFINITIONS: Record<string, LLMTransformDefinition> =
   'llm_generate_chronicles': {
     name: 'llm_generate_chronicles',
     description: 'AI generation of chronicles from outline settings',
-    inputTypes: ['outline_settings_schema'],
-    outputType: 'chronicles_schema',
+    inputTypes: ['outline_settings'],
     templateName: 'chronicles',
     inputSchema: ChroniclesInputSchema,
-    outputSchema: ChroniclesOutputSchema
+    outputSchema: ChroniclesOutputSchema,
+    outputType: 'chronicles'
   }
 };
 

@@ -1,17 +1,24 @@
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
-import { Card, Button, Typography, message, Tag, Space, InputNumber, Input, Collapse } from 'antd';
-import { BulbOutlined, RightOutlined, DownOutlined } from '@ant-design/icons';
-import { useProjectData } from '../contexts/ProjectDataContext';
-import { YJSArtifactProvider, useYJSField, useYJSArtifactContext } from '../transform-artifact-framework/contexts/YJSArtifactContext';
-import { YJSTextField, YJSTextAreaField, YJSNumberField } from '../transform-artifact-framework/components/YJSField';
-import GenreSelectionPopup, { MAX_GENRE_SELECTIONS } from './GenreSelectionPopup';
+import React, { useMemo, useState, useCallback } from 'react';
+import { Card, Button, Typography, Tag, Space, Collapse } from 'antd';
+import { BulbOutlined, RightOutlined } from '@ant-design/icons';
+import { YJSArtifactProvider, useYJSField } from '../transform-artifact-framework/contexts/YJSArtifactContext';
+import { YJSTextAreaField, YJSNumberField } from '../transform-artifact-framework/components/YJSField';
+import GenreSelectionPopup from './GenreSelectionPopup';
 import PlatformSelection from './PlatformSelection';
+import { TypedArtifact } from '@/common/types';
 
 const { Text, Title } = Typography;
 const { Panel } = Collapse;
 
 interface BrainstormInputEditorProps {
-    artifact: any;
+    artifact: {
+        id: string;
+        schema_type: TypedArtifact['schema_type'];
+        schema_version: TypedArtifact['schema_version'];
+        origin_type: TypedArtifact['origin_type'];
+        data: string;
+        created_at: string;
+    } | null;
     isEditable?: boolean;
     minimized?: boolean;
     currentStage?: string;

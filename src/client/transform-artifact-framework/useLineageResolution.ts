@@ -304,32 +304,16 @@ export function useCharactersFromLineage(sourceArtifactId: string | null): {
                 return [];
             }
 
-            // Find parent outline artifacts using lineage graph
-            const outlineArtifacts = findParentArtifactsBySchemaType(
-                sourceArtifactId,
-                'outline_schema',
-                projectData.lineageGraph,
-                projectData.artifacts
-            );
 
-            // Also check for outline_input_schema (human-transformed outlines)
-            const outlineInputArtifacts = findParentArtifactsBySchemaType(
-                sourceArtifactId,
-                'outline_input_schema',
-                projectData.lineageGraph,
-                projectData.artifacts
-            );
-
-            // Also check for outline_settings_schema (outline settings)
+            // Also check for outline_settings (outline settings)
             const outlineSettingsArtifacts = findParentArtifactsBySchemaType(
-                sourceArtifactId,
-                'outline_settings_schema',
+                sourceArtifactId, 'outline_settings',
                 projectData.lineageGraph,
                 projectData.artifacts
             );
 
             // Combine all types of outline artifacts
-            const allOutlineArtifacts = [...outlineArtifacts, ...outlineInputArtifacts, ...outlineSettingsArtifacts];
+            const allOutlineArtifacts = [...outlineSettingsArtifacts];
 
             // Extract character names from all found outline artifacts
             const characterNames: string[] = [];

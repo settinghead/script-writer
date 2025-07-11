@@ -37,83 +37,33 @@ export async function up(db: Kysely<any>): Promise<void> {
     // Step 4: Update schema type names to be clearer
     await db
         .updateTable('artifacts')
-        .set({ schema_type: 'brainstorm_idea_schema' })
+        .set({ schema_type: 'brainstorm_idea' })
         .where('schema_type', '=', 'brainstorm_idea')
         .execute()
 
     await db
         .updateTable('artifacts')
-        .set({ schema_type: 'brainstorm_collection_schema' })
+        .set({ schema_type: 'brainstorm_collection' })
         .where('schema_type', '=', 'brainstorm_idea_collection')
         .execute()
 
-    await db
-        .updateTable('artifacts')
-        .set({ schema_type: 'user_input_schema' })
-        .where('schema_type', '=', 'user_input')
-        .execute()
 
     await db
         .updateTable('artifacts')
-        .set({ schema_type: 'brainstorm_params_schema' })
-        .where('schema_type', '=', 'brainstorm_params')
+        .set({ schema_type: 'brainstorm_input_params' })
+        .where('schema_type', '=', 'brainstorm_input_params')
         .execute()
+
+
 
     await db
         .updateTable('artifacts')
-        .set({ schema_type: 'outline_title_schema' })
-        .where('schema_type', '=', 'outline_title')
-        .execute()
-
-    await db
-        .updateTable('artifacts')
-        .set({ schema_type: 'outline_genre_schema' })
-        .where('schema_type', '=', 'outline_genre')
-        .execute()
-
-    await db
-        .updateTable('artifacts')
-        .set({ schema_type: 'outline_selling_points_schema' })
-        .where('schema_type', '=', 'outline_selling_points')
-        .execute()
-
-    await db
-        .updateTable('artifacts')
-        .set({ schema_type: 'outline_setting_schema' })
+        .set({ schema_type: 'outline_settings' })
         .where('schema_type', '=', 'outline_setting')
         .execute()
 
-    await db
-        .updateTable('artifacts')
-        .set({ schema_type: 'outline_synopsis_schema' })
-        .where('schema_type', '=', 'outline_synopsis')
-        .execute()
 
-    await db
-        .updateTable('artifacts')
-        .set({ schema_type: 'outline_characters_schema' })
-        .where('schema_type', '=', 'outline_characters')
-        .execute()
 
-    await db
-        .updateTable('artifacts')
-        .set({ schema_type: 'outline_target_audience_schema' })
-        .where('schema_type', '=', 'outline_target_audience')
-        .execute()
-
-    await db
-        .updateTable('artifacts')
-        .set({ schema_type: 'outline_satisfaction_points_schema' })
-        .where('schema_type', '=', 'outline_satisfaction_points')
-        .execute()
-
-    await db
-        .updateTable('artifacts')
-        .set({ schema_type: 'outline_synopsis_stages_schema' })
-        .where('schema_type', '=', 'outline_synopsis_stages')
-        .execute()
-
-    // Add more schema type mappings as needed for other artifact types
 
     // Step 5: Make new columns non-null now that they're populated  
     await db.schema

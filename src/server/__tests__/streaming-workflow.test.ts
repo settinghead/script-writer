@@ -4,6 +4,7 @@ import { createChroniclesToolDefinition } from '../tools/ChroniclesTool';
 import { ArtifactRepository } from '../transform-artifact-framework/ArtifactRepository';
 import { TransformRepository } from '../transform-artifact-framework/TransformRepository';
 import { createMockArtifactRepository, createMockTransformRepository } from '../../__tests__/mocks/databaseMocks';
+import { TypedArtifact } from '@/common/types';
 
 describe('Streaming Workflow Tests', () => {
     let mockArtifactRepo: any;
@@ -23,12 +24,11 @@ describe('Streaming Workflow Tests', () => {
                 return {
                     id: id,
                     project_id: testProjectId,
-                    type: 'brainstorm_idea',
                     data: {
                         title: '现代都市甜宠',
                         body: '一个关于都市白领的甜宠故事，男女主角在职场相遇，经历误会后走到一起'
                     },
-                    schema_type: 'user_input_schema',
+                    schema_type: 'brainstorm_idea' as TypedArtifact['schema_type'],
                     origin_type: 'user_input',
                     metadata: {
                         derived_data: {
@@ -41,7 +41,6 @@ describe('Streaming Workflow Tests', () => {
                 return {
                     id: id,
                     project_id: testProjectId,
-                    type: 'outline_settings',
                     data: {
                         title: '都市甜宠故事',
                         genre: '现代甜宠',
@@ -66,7 +65,7 @@ describe('Streaming Workflow Tests', () => {
                             }
                         ]
                     },
-                    schema_type: 'outline_settings_schema',
+                    schema_type: 'outline_settings' as TypedArtifact['schema_type'],
                     origin_type: 'ai_generated'
                 };
             }
@@ -79,13 +78,13 @@ describe('Streaming Workflow Tests', () => {
 
         // Create a mock brainstorm idea artifact (from human transform)
         const mockBrainstormArtifact = await mockArtifactRepo.createArtifact({
-            type: 'brainstorm_idea',
+            schema_type: 'brainstorm_idea' as TypedArtifact['schema_type'],
             data: {
                 title: '现代都市甜宠',
                 body: '一个关于都市白领的甜宠故事，男女主角在职场相遇，经历误会后走到一起'
             },
             projectId: testProjectId,
-            schemaType: 'user_input_schema',
+            schemaType: 'brainstorm_idea',
             originType: 'user_input'
         });
 
@@ -113,7 +112,7 @@ describe('Streaming Workflow Tests', () => {
 
         // Create a mock outline settings artifact first
         const mockOutlineSettingsArtifact = await mockArtifactRepo.createArtifact({
-            type: 'outline_settings',
+            schema_type: 'outline_settings' as TypedArtifact['schema_type'],
             data: {
                 title: '都市甜宠故事',
                 genre: '现代甜宠',
@@ -139,7 +138,7 @@ describe('Streaming Workflow Tests', () => {
                 ]
             },
             projectId: testProjectId,
-            schemaType: 'outline_settings_schema',
+            schemaType: 'outline_settings' as TypedArtifact['schema_type'],
             originType: 'ai_generated'
         });
 

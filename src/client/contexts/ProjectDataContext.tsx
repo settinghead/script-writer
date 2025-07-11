@@ -121,7 +121,9 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
     }, [electricConfig, projectWhereClause]); // Removed handleElectricError from deps
 
     // Electric SQL subscriptions
-    const { data: artifacts, isLoading: artifactsLoading, error: artifactsError } = useShape<ElectricArtifact>(artifactsConfig);
+    const { data: artifacts, isLoading: artifactsLoading, error: artifactsError } = useShape<ElectricArtifact & {
+        [key: string]: any;
+    }>(artifactsConfig);
 
     // Debug artifacts loading (removed for clarity)
 
@@ -403,7 +405,7 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
     const selectors = useMemo(() => ({
         // NEW: Collection-aware selectors
         getBrainstormCollections: () =>
-            artifacts?.filter(a => a.schema_type === 'brainstorm_collection_schema' || a.type === 'brainstorm_idea_collection') || [],
+            artifacts?.filter(a => a.schema_type === 'brainstorm_collection' || a.type === 'brainstorm_idea_collection') || [],
 
         getArtifactAtPath: (artifactId: string, artifactPath: string) => {
             const artifact = artifacts?.find(a => a.id === artifactId);
@@ -421,11 +423,6 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
 
         getLineageGraph: () => lineageGraph,
 
-        getOutlineArtifacts: () =>
-            artifacts?.filter(a =>
-                a.schema_type === 'outline_input_schema' || a.schema_type === 'outline_response_schema' ||
-                a.type === 'outline_input' || a.type === 'outline_response'
-            ) || [],
 
         getArtifactById: (id: string) => {
             // Check local updates first, then Electric data

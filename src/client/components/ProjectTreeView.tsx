@@ -98,23 +98,23 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
 
         // Check for brainstorm tool input (creation step)
         const hasBrainstormInput = projectData.artifacts.some(artifact =>
-            artifact.type === 'brainstorm_tool_input_schema'
+            artifact.schema_type === 'brainstorm_input_params'
         );
 
         // Check for editable brainstorm idea (editing step)
         const hasEditableBrainstormIdea = projectData.artifacts.some(artifact =>
-            (artifact.schema_type === 'brainstorm_idea' || artifact.type === 'brainstorm_idea') &&
+            (artifact.schema_type === 'brainstorm_idea') &&
             artifact.origin_type === 'user_input'
         );
 
         // Check for outline settings artifacts
         const hasOutlineSettings = projectData.artifacts.some(artifact =>
-            artifact.schema_type === 'outline_settings_schema'
+            artifact.schema_type === 'outline_settings'
         );
 
         // Check for chronicles artifacts
         const hasChronicles = projectData.artifacts.some(artifact =>
-            artifact.schema_type === 'chronicles_schema'
+            artifact.schema_type === 'chronicles'
         );
 
         return {

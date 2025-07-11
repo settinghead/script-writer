@@ -40,13 +40,11 @@ const ProjectContentRenderer: React.FC<{ projectId: string; scrollContainerRef: 
             return false;
         }
 
-        // Look for brainstorm_tool_input_schema artifacts OR brainstorm idea artifacts
-        return projectData.artifacts.some((artifact: any) =>
-            artifact.type === 'brainstorm_tool_input_schema' ||
-            artifact.schema_type === 'brainstorm_item_schema' ||
-            artifact.type === 'brainstorm_item_schema' ||
+        // Look for brainstorm_input_params artifacts OR brainstorm idea artifacts
+        return projectData.artifacts.some((artifact) =>
+            artifact.schema_type === 'brainstorm_input_params' ||
             artifact.schema_type === 'brainstorm_idea' ||
-            artifact.type === 'brainstorm_idea'
+            artifact.schema_type === 'brainstorm_collection'
         );
     }, [projectData.artifacts]);
 

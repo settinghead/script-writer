@@ -11,8 +11,8 @@ export interface Artifact {
     user_id: string;
 
     // SCHEMA TYPE: What data structure/format does this artifact contain?
-    schema_type: string;
-    schema_version: string;
+    schema_type: TypedArtifact['schema_type'];
+    schema_version: TypedArtifact['schema_version'];
 
     // ORIGIN TYPE: Who/what created this artifact?
     origin_type: 'ai_generated' | 'user_input';
@@ -217,55 +217,42 @@ export interface OutlineCharactersV1 {
     characters: Character[];
 }
 
+export interface Chronicle {
+    title: string;
+    body: string;
+}
+
+export interface ChroniclesV1 {
+    chronicles: Chronicle[];
+}
+
+
+
 // ========== STRONGLY TYPED ARTIFACT INTERFACES ==========
 
 // Discriminated union for strongly typed artifacts
 export type TypedArtifact =
-    | ArtifactWithData<'brainstorm_collection_schema', 'v1', BrainstormIdeaCollectionV1>
-    | ArtifactWithData<'brainstorm_idea_schema', 'v1', BrainstormIdeaV1>
-    | ArtifactWithData<'user_input_schema', 'v1', UserInputV1>
-    | ArtifactWithData<'brainstorm_params_schema', 'v1', BrainstormParamsV1>
-    | ArtifactWithData<'brainstorming_job_params', 'v1', BrainstormingJobParamsV1>
-    | ArtifactWithData<'chronological_outline_job_params', 'v1', ChronologicalOutlineJobParamsV1>
-    | ArtifactWithData<'outline_session', 'v1', OutlineSessionV1>
-    | ArtifactWithData<'outline_title_schema', 'v1', OutlineTitleV1>
-    | ArtifactWithData<'outline_genre_schema', 'v1', OutlineGenreV1>
-    | ArtifactWithData<'outline_selling_points_schema', 'v1', OutlineSellingPointsV1>
-    | ArtifactWithData<'outline_setting_schema', 'v1', OutlineSettingV1>
-    | ArtifactWithData<'outline_synopsis_schema', 'v1', OutlineSynopsisV1>
-    | ArtifactWithData<'outline_characters_schema', 'v1', OutlineCharactersV1>
+    | ArtifactWithData<'brainstorm_collection', 'v1', BrainstormIdeaCollectionV1>
+    | ArtifactWithData<'brainstorm_idea', 'v1', BrainstormIdeaV1>
+    | ArtifactWithData<'brainstorm_input_params', 'v1', BrainstormParamsV1>
+    | ArtifactWithData<'outline_settings', 'v1', OutlineSettingV1>
+    | ArtifactWithData<'chronicles', 'v1', ChroniclesV1>
 
 
 // Helper type for creating strongly typed artifacts
-export interface ArtifactWithData<SchemaType extends string, SchemaVersion extends string, Data> extends Omit<Artifact, 'schema_type' | 'schema_version' | 'data'> {
+export interface ArtifactWithData<
+    SchemaType extends string, SchemaVersion extends string, Data> extends Omit<Artifact, 'schema_type' | 'schema_version' | 'data'> {
     schema_type: SchemaType;
     schema_version: SchemaVersion;
     data: Data;
 }
 
-// Type guards for runtime type checking
-export function isBrainstormIdeaArtifact(artifact: Artifact): artifact is ArtifactWithData<'brainstorm_idea_schema', 'v1', BrainstormIdeaV1> {
-    return artifact.schema_type === 'brainstorm_idea_schema' && artifact.schema_version === 'v1';
-}
-
-export function isUserInputArtifact(artifact: Artifact): artifact is ArtifactWithData<'user_input_schema', 'v1', UserInputV1> {
-    return artifact.schema_type === 'user_input_schema' && artifact.schema_version === 'v1';
-}
-
-export function isBrainstormCollectionArtifact(artifact: Artifact): artifact is ArtifactWithData<'brainstorm_collection_schema', 'v1', BrainstormIdeaCollectionV1> {
-    return artifact.schema_type === 'brainstorm_collection_schema' && artifact.schema_version === 'v1';
-}
-
-
-
 // Helper function to get text content from any artifact type
-export function getArtifactTextContent(artifact: TypedArtifact | Artifact): string {
-    if (isBrainstormIdeaArtifact(artifact)) {
+export function getArtifactTextContent(artifact: TypedArtifact): string {
+    if (artifact.schema_type === 'brainstorm_idea') {
         return artifact.data.idea_text; // ✅ Correctly typed!
     }
-    if (isUserInputArtifact(artifact)) {
-        return artifact.data.text;
-    }
+
 
     // Fallback for unknown types
     const data = artifact.data as any;
@@ -346,8 +333,8 @@ export interface ElectricArtifact {
     project_id: string;
 
     // NEW: Schema and origin types
-    schema_type: string;
-    schema_version: string;
+    schema_type: TypedArtifact['schema_type'];
+    schema_version: TypedArtifact['schema_version'];
     origin_type: 'ai_generated' | 'user_input';
 
     data: string;
@@ -355,7 +342,6 @@ export interface ElectricArtifact {
     created_at: string;
     updated_at?: string;
     streaming_status?: 'streaming' | 'completed' | 'failed' | 'cancelled';
-    [key: string]: unknown;
 }
 
 // Extended artifact with lineage information
@@ -511,7 +497,6 @@ export interface ProjectDataContextType {
     getLatestVersionForPath: (artifactId: string, artifactPath: string) => string | null;
 
     getLineageGraph: () => LineageGraph | "pending" | "error";
-    getOutlineArtifacts: () => ElectricArtifact[] | "pending" | "error";
     getArtifactById: (id: string) => ElectricArtifactWithLineage | undefined;
     getTransformById: (id: string) => ElectricTransform | undefined;
     getHumanTransformsForArtifact: (artifactId: string, path?: string) => ElectricHumanTransform[] | "pending" | "error";

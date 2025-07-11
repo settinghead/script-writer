@@ -151,10 +151,9 @@ Every artifact has an `origin_type` that indicates how it was created:
 
 Artifacts also have `schema_type` that defines their data structure:
 
-- **`brainstorm_collection_schema`** - Multiple story ideas grouped together
-- **`outline_schema`** - Detailed story structure with characters and plot
-- **`episode_script_schema`** - Individual episode content and dialogue
-- **`user_request_schema`** - User requirements and preferences
+- **`brainstorm_collection`** - Multiple story ideas grouped together
+- **`outline_settings`** - Detailed story structure with characters and plot
+- **`chronicles`** - Chronicles
 
 **Why schema types matter**:
 - **Validation** - Ensure data integrity and type safety
@@ -389,7 +388,7 @@ User Request → Agent Analysis → Context Enrichment → Tool Selection → Ex
 - **Dependency Tracking** - Understand cascading effects of changes
 
 **Dual-Type Architecture**:
-- **Schema Types** (`schema_type`) - Define data structure (e.g., `collection_schema`, `individual_item_schema`)
+- **Schema Types** (`schema_type`) - Define data structure (e.g., `collection`, `individual_item`)
 - **Origin Types** (`origin_type`) - Define creation source (`ai_generated`, `user_input`, `decomposed_from_collection`)
 - **Editability Logic** - Use origin_type to determine edit permissions and UI behavior
 - **Versioned Validation** - All transforms validated against Zod schemas with version suffixes
@@ -1644,7 +1643,7 @@ export const useContentGeneration = (projectId: string) => {
   const { results: artifacts } = useShape({
     url: '/api/electric/v1/shape',
     table: 'artifacts',
-    where: `project_id = '${projectId}' AND schema_type = 'content_schema'`,
+    where: `project_id = '${projectId}' AND schema_type = 'content'`,
     headers: {
       Authorization: `Bearer ${token}`
     }
@@ -1758,11 +1757,11 @@ const useContentViewer = (projectId: string) => {
 
   // Find specific artifact types
   const brainstormCollections = artifacts.filter(a => 
-    a.schema_type === 'brainstorm_collection_schema'
+    a.schema_type === 'brainstorm_collection'
   );
 
   const outlineArtifacts = artifacts.filter(a => 
-    a.schema_type === 'outline_schema'
+    a.schema_type === 'outline'
   );
 
   // Check for active transforms
@@ -2280,9 +2279,9 @@ const detectCurrentStage = (projectData: ProjectDataContextType): string => {
   const artifactTypes = leafArtifacts.map(a => a.schema_type);
   
   // Return appropriate stage based on available artifacts
-  if (artifactTypes.includes('final_output_schema')) return 'completed';
-  if (artifactTypes.includes('processed_content_schema')) return 'processing';
-  if (artifactTypes.includes('user_input_schema')) return 'input_ready';
+  if (artifactTypes.includes('final_output')) return 'completed';
+  if (artifactTypes.includes('processed_content_')) return 'processing';
+  if (artifactTypes.includes('user_input')) return 'input_ready';
   return 'initial';
 };
 ```

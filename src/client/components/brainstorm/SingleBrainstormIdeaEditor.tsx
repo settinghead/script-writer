@@ -85,7 +85,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                         title="选中的创意"
                         icon="💡"
                         editableComponent={EditableBrainstormForm}
-                        schemaType="brainstorm_item_schema"
+                        schemaType="brainstorm_idea"
                         enableClickToEdit={true}
                     />
                 </div>
@@ -107,13 +107,12 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
 
         // Get all brainstorm idea artifacts (both user_input and ai_generated)
         const brainstormIdeaArtifacts = projectData.artifacts.filter(artifact =>
-            artifact.schema_type === 'brainstorm_item_schema' || artifact.type === 'brainstorm_item_schema' ||
-            artifact.schema_type === 'brainstorm_idea' || artifact.type === 'brainstorm_idea'
+            artifact.schema_type === 'brainstorm_idea'
         );
 
         console.log('[SingleBrainstormIdeaEditor] Found brainstorm idea artifacts:', brainstormIdeaArtifacts.map(a => ({
             id: a.id,
-            type: a.type || a.schema_type,
+            type: a.schema_type,
             origin_type: a.origin_type
         })));
 
@@ -129,7 +128,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
         const latest = brainstormIdeaArtifacts[0];
         console.log('[SingleBrainstormIdeaEditor] Latest brainstorm idea:', {
             id: latest.id,
-            type: latest.type || latest.schema_type,
+            type: latest.schema_type,
             origin_type: latest.origin_type
         });
 
@@ -168,7 +167,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                     title="当前创意"
                     icon="💡"
                     editableComponent={EditableBrainstormForm}
-                    schemaType="brainstorm_item_schema"
+                    schemaType="brainstorm_idea"
                     enableClickToEdit={true}
                 />
             </div>

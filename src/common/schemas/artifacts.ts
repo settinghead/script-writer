@@ -24,35 +24,24 @@ export type BrainstormToolInput = z.infer<typeof BrainstormToolInputSchema>;
 // Artifact Schema Registry
 export const ArtifactSchemaRegistry = {
   // Brainstorm schemas
-  'brainstorm_collection_schema': z.object({
+  'brainstorm_collection': z.object({
     ideas: z.array(IdeaSchema),
     platform: z.string(),
     genre: z.string(),
     total_ideas: z.number()
   }),
-  'brainstorm_item_schema': IdeaSchema,
-  'brainstorm_tool_input_schema': BrainstormToolInputSchema,
-  'user_input_schema': z.object({
-    title: z.string(),
-    body: z.string()
-  }),
+  'brainstorm_idea': IdeaSchema,
+  'brainstorm_input_params': BrainstormToolInputSchema,
 
   // New outline schemas
-  'outline_settings_input_schema': OutlineSettingsInputSchema,
-  'outline_settings_schema': OutlineSettingsOutputSchema,
-  'chronicles_input_schema': ChroniclesInputSchema,
-  'chronicles_schema': ChroniclesOutputSchema,
+  'outline_settings_input': OutlineSettingsInputSchema,
+  'outline_settings': OutlineSettingsOutputSchema,
+  'chronicles_input': ChroniclesInputSchema,
+  'chronicles': ChroniclesOutputSchema,
 
 
 
-  // Script schemas
-  'script_schema': ScriptSchema,
 
-  // Technical schemas
-  'debug_schema': z.object({
-    message: z.string(),
-    timestamp: z.string()
-  })
 } as const;
 
 // Type exports

@@ -16,13 +16,13 @@ describe('Brainstorm Edit Chain Integration Test', () => {
         // Test constants
         const projectId = 'test-project-1';
 
-        // Step 1: Create initial brainstorm_item_schema artifact
+        // Step 1: Create initial brainstorm_idea artifact
         const artifacts: ElectricArtifact[] = [
             {
                 id: 'artifact-1',
                 project_id: projectId,
-                schema_type: 'brainstorm_item_schema',
-                schema_version: '1.0',
+                schema_type: 'brainstorm_idea',
+                schema_version: 'v1',
                 origin_type: 'user_input',
                 data: JSON.stringify({
                     title: "误爱成宠",
@@ -31,11 +31,10 @@ describe('Brainstorm Edit Chain Integration Test', () => {
                 streaming_status: 'completed',
                 created_at: '2024-01-01T10:00:00Z',
                 updated_at: '2024-01-01T10:00:00Z',
-                type: 'brainstorm_item_schema'
             }
         ];
 
-        console.log('✅ Step 1: Created initial brainstorm_item_schema artifact:', artifacts[0].id);
+        console.log('✅ Step 1: Created initial brainstorm_idea artifact:', artifacts[0].id);
 
         // Step 2: LLM transform changes style
         const transforms: ElectricTransform[] = [
@@ -61,8 +60,8 @@ describe('Brainstorm Edit Chain Integration Test', () => {
         artifacts.push({
             id: 'artifact-2',
             project_id: projectId,
-            schema_type: 'brainstorm_item_schema',
-            schema_version: '1.0',
+            schema_type: 'brainstorm_idea',
+            schema_version: 'v1',
             origin_type: 'ai_generated',
             data: JSON.stringify({
                 title: "凤凰于飞",
@@ -71,7 +70,6 @@ describe('Brainstorm Edit Chain Integration Test', () => {
             streaming_status: 'completed',
             created_at: '2024-01-01T10:05:00Z',
             updated_at: '2024-01-01T10:05:00Z',
-            type: 'brainstorm_item_schema'
         });
 
         console.log('✅ Step 2: LLM transform created edited artifact:', artifacts[1].id);
@@ -109,8 +107,8 @@ describe('Brainstorm Edit Chain Integration Test', () => {
         artifacts.push({
             id: 'artifact-3',
             project_id: projectId,
-            schema_type: 'brainstorm_item_schema',
-            schema_version: '1.0',
+            schema_type: 'brainstorm_idea',
+            schema_version: 'v1',
             origin_type: 'user_input',
             data: JSON.stringify({
                 title: "凤凰于飞·医者仁心",
@@ -119,7 +117,6 @@ describe('Brainstorm Edit Chain Integration Test', () => {
             streaming_status: 'completed',
             created_at: '2024-01-01T10:10:00Z',
             updated_at: '2024-01-01T10:10:00Z',
-            type: 'brainstorm_item_schema'
         });
 
         console.log('✅ Step 3: Human transform created manually edited artifact:', artifacts[2].id);
@@ -146,8 +143,8 @@ describe('Brainstorm Edit Chain Integration Test', () => {
         artifacts.push({
             id: 'artifact-4',
             project_id: projectId,
-            schema_type: 'brainstorm_item_schema',
-            schema_version: '1.0',
+            schema_type: 'brainstorm_idea',
+            schema_version: 'v1',
             origin_type: 'ai_generated',
             data: JSON.stringify({
                 title: "凤凰于飞·医者仁心（完整版）",
@@ -156,7 +153,6 @@ describe('Brainstorm Edit Chain Integration Test', () => {
             streaming_status: 'completed',
             created_at: '2024-01-01T10:15:00Z',
             updated_at: '2024-01-01T10:15:00Z',
-            type: 'brainstorm_item_schema'
         });
 
         console.log('✅ Step 4: Second LLM transform created extended artifact:', artifacts[3].id);
@@ -256,7 +252,7 @@ describe('Brainstorm Edit Chain Integration Test', () => {
 
         // Step 9: Verify the complete artifact chain
         const sortedArtifacts = artifacts
-            .filter(a => a.schema_type === 'brainstorm_item_schema')
+            .filter(a => a.schema_type === 'brainstorm_idea')
             .sort((a, b) => a.created_at.localeCompare(b.created_at));
 
         expect(sortedArtifacts).toHaveLength(4);
@@ -391,7 +387,7 @@ describe('Brainstorm Edit Chain Integration Test', () => {
 
         // Test brainstorm idea artifacts detection
         const brainstormIdeas = artifacts.filter(a =>
-            a.schema_type === 'brainstorm_item_schema' || a.type === 'brainstorm_item_schema'
+            a.schema_type === 'brainstorm_idea'
         );
         console.log(`  - Found ${brainstormIdeas.length} brainstorm ideas`);
         expect(brainstormIdeas).toHaveLength(4);
@@ -430,7 +426,7 @@ describe('Brainstorm Edit Chain Integration Test', () => {
         const brainstormInputEditor = displayComponents.find((component: any) =>
             component.id === 'brainstorm-input-editor'
         );
-        // Note: brainstorm-input-editor might not be present if no brainstorm_tool_input_schema exists
+        // Note: brainstorm-input-editor might not be present if no brainstorm_input_params exists
 
         console.log('  - Display components:');
         displayComponents.forEach((component: any) => {

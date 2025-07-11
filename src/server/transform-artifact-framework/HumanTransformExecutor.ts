@@ -17,66 +17,9 @@ export class HumanTransformExecutor {
   }
 
 
-
-  // Map schema types back to legacy types for ArtifactRepository.createArtifact
-  private mapSchemaTypeToLegacyType(schemaType: string): string {
-    const schemaToLegacyMapping: Record<string, string> = {
-      'brainstorm_item_schema': 'brainstorm_idea',
-      'brainstorm_collection_schema': 'brainstorm_idea_collection',
-      'user_input_schema': 'user_input',
-      'outline_input_schema': 'outline_input',
-      'chronological_outline_input': 'chronological_outline_input',
-      'outline_title_schema': 'outline_title',
-      'outline_genre_schema': 'outline_genre',
-      'outline_selling_points_schema': 'outline_selling_points',
-      'outline_setting_schema': 'outline_setting',
-      'outline_synopsis_schema': 'outline_synopsis',
-      'outline_characters_schema': 'outline_characters',
-      'brainstorm_params_schema': 'brainstorm_params',
-      'plot_outline_schema': 'plot_outline',
-      // NEW: Split outline schemas
-      'outline_settings_schema': 'outline_settings',
-      'chronicles_schema': 'chronicles',
-      // NEW: Individual chronicle stage schema
-
-    };
-
-    return schemaToLegacyMapping[schemaType] || schemaType.replace('_schema', '');
-  }
-
-  private mapLegacyTypeToSchemaType(legacyType: string): string {
-    const legacyToSchemaMapping: Record<string, string> = {
-      'brainstorm_idea': 'brainstorm_item_schema',
-      'brainstorm_idea_collection': 'brainstorm_collection_schema',
-      'user_input': 'user_input_schema',
-      'outline_input': 'outline_input_schema',
-      'chronological_outline_input': 'chronological_outline_input',
-      'outline_title': 'outline_title_schema',
-      'outline_genre': 'outline_genre_schema',
-      'outline_selling_points': 'outline_selling_points_schema',
-      'outline_setting': 'outline_setting_schema',
-      'outline_synopsis': 'outline_synopsis_schema',
-      'outline_characters': 'outline_characters_schema',
-      'brainstorm_params': 'brainstorm_params_schema',
-      'plot_outline': 'plot_outline_schema',
-      // NEW: Split outline schemas
-      'outline_settings': 'outline_settings_schema',
-      'chronicles': 'chronicles_schema',
-
-    };
-
-    return legacyToSchemaMapping[legacyType] || legacyType + '_schema';
-  }
-
-  private isCompatibleArtifactType(artifactType: string, artifactSchemaType: string | undefined, expectedSchemaType: string): boolean {
-    // Check direct schema type match first
-    if (artifactSchemaType === expectedSchemaType) {
-      return true;
-    }
-
+  private isCompatibleArtifactType(artifactSchemaType: string | undefined, expectedSchemaType: string): boolean {
     // Check if legacy type maps to expected schema type
-    const mappedSchemaType = this.mapLegacyTypeToSchemaType(artifactType);
-    return mappedSchemaType === expectedSchemaType;
+    return artifactSchemaType === expectedSchemaType;
   }
 
   /**
@@ -268,7 +211,7 @@ export class HumanTransformExecutor {
     }
 
     // 2. Check artifact type compatibility
-    if (!this.isCompatibleArtifactType(sourceArtifact.schema_type, sourceArtifact.schema_type, transformDef.sourceArtifactType)) {
+    if (!this.isCompatibleArtifactType(sourceArtifact.schema_type, transformDef.sourceArtifactType)) {
       throw new Error(`Incompatible artifact type. Expected: ${transformDef.sourceArtifactType}, but artifact has type: ${sourceArtifact.schema_type}${sourceArtifact.schema_type ? ` (schema_type: ${sourceArtifact.schema_type})` : ''}`);
     }
 
@@ -322,7 +265,7 @@ export class HumanTransformExecutor {
     artifactData = targetValidation.data;
 
     // Map schema type back to legacy type for createArtifact
-    const legacyType = this.mapSchemaTypeToLegacyType(transformDef.targetArtifactType);
+    const legacyType = transformDef.targetArtifactType;
 
     const derivedArtifact = await this.artifactRepo.createArtifact(
       projectId,

@@ -346,8 +346,8 @@ const actions = computeActionsFromLineage(currentStage, context);
 - **Priority Ordering** - Actions displayed in logical workflow order
 
 **Dual-Path Support**:
-- **Manual Entry Detection** - Automatically identifies single `brainstorm_item_schema` with `user_input` origin
-- **AI Collection Handling** - Recognizes `brainstorm_collection_schema` from AI generation
+- **Manual Entry Detection** - Automatically identifies single `brainstorm_idea` with `user_input` origin
+- **AI Collection Handling** - Recognizes `brainstorm_collection` from AI generation
 - **Workflow Node Mapping** - Creates appropriate workflow nodes for each path type
 - **Stage Progression Logic** - Handles different progression patterns for each path
 

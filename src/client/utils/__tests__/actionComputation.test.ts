@@ -5,7 +5,7 @@ import {
     isLeafNode,
     canBecomeEditable
 } from '../actionComputation';
-import { ProjectDataContextType, ElectricArtifact } from '../../../common/types';
+import { ProjectDataContextType, ElectricArtifact, TypedArtifact } from '../../../common/types';
 import { LineageGraph, LineageNodeArtifact } from '../../../common/transform-artifact-framework/lineageResolution';
 import { ElectricTransformInput } from '../../../common/types';
 
@@ -19,7 +19,7 @@ const mockLineageGraph: LineageGraph = {
             depth: 2,
             artifactType: 'outline_settings',
             sourceTransform: 'none',
-            schemaType: 'outline_settings_schema',
+            schemaType: 'outline_settings',
             originType: 'user_input',
             artifact: { id: 'canonical-outline-1' } as ElectricArtifact,
             createdAt: '2025-01-01T00:00:00Z'
@@ -31,7 +31,7 @@ const mockLineageGraph: LineageGraph = {
             depth: 1,
             artifactType: 'outline_settings',
             sourceTransform: 'none',
-            schemaType: 'outline_settings_schema',
+            schemaType: 'outline_settings',
             originType: 'ai_generated',
             artifact: { id: 'canonical-outline-2' } as ElectricArtifact,
             createdAt: '2025-01-02T00:00:00Z'
@@ -43,7 +43,7 @@ const mockLineageGraph: LineageGraph = {
             depth: 1,
             artifactType: 'brainstorm_idea',
             sourceTransform: 'none',
-            schemaType: 'brainstorm_idea_schema',
+            schemaType: 'brainstorm_idea',
             originType: 'user_input',
             artifact: { id: 'brainstorm-1' } as ElectricArtifact,
             createdAt: '2025-01-01T00:00:00Z'
@@ -63,7 +63,7 @@ describe('actionComputation - Lineage Graph Integration', () => {
                     {
                         id: 'canonical-outline-1',
                         project_id: 'test-project',
-                        schema_type: 'outline_settings_schema',
+                        schema_type: 'outline_settings',
                         schema_version: 'v1',
                         origin_type: 'user_input',
                         created_at: '2025-01-01T00:00:00Z',
@@ -72,7 +72,7 @@ describe('actionComputation - Lineage Graph Integration', () => {
                     {
                         id: 'canonical-outline-2',
                         project_id: 'test-project',
-                        schema_type: 'outline_settings_schema',
+                        schema_type: 'outline_settings',
                         schema_version: 'v1',
                         origin_type: 'ai_generated',
                         created_at: '2025-01-02T00:00:00Z',
@@ -82,7 +82,7 @@ describe('actionComputation - Lineage Graph Integration', () => {
                     {
                         id: 'dead-outline-1',
                         project_id: 'test-project',
-                        schema_type: 'outline_settings_schema',
+                        schema_type: 'outline_settings',
                         schema_version: 'v1',
                         origin_type: 'user_input',
                         created_at: '2025-01-03T00:00:00Z',
@@ -91,7 +91,7 @@ describe('actionComputation - Lineage Graph Integration', () => {
                     {
                         id: 'dead-outline-2',
                         project_id: 'test-project',
-                        schema_type: 'outline_settings_schema',
+                        schema_type: 'outline_settings',
                         schema_version: 'v1',
                         origin_type: 'ai_generated',
                         created_at: '2025-01-04T00:00:00Z',
@@ -101,7 +101,7 @@ describe('actionComputation - Lineage Graph Integration', () => {
                     {
                         id: 'brainstorm-1',
                         project_id: 'test-project',
-                        schema_type: 'brainstorm_idea_schema',
+                        schema_type: 'brainstorm_idea',
                         schema_version: 'v1',
                         origin_type: 'user_input',
                         created_at: '2025-01-01T00:00:00Z',
@@ -121,9 +121,7 @@ describe('actionComputation - Lineage Graph Integration', () => {
                 getBrainstormCollections: () => [],
                 getArtifactAtPath: () => null,
                 getLatestVersionForPath: () => null,
-                getBrainstormArtifacts: () => [],
                 getLineageGraph: () => mockLineageGraph,
-                getOutlineArtifacts: () => [],
                 getArtifactById: (id: string) => {
                     const artifacts = mockProjectData.artifacts;
                     if (Array.isArray(artifacts)) {
@@ -180,7 +178,7 @@ describe('actionComputation - Lineage Graph Integration', () => {
                         depth: 2,
                         artifactType: 'outline_settings',
                         sourceTransform: 'none',
-                        schemaType: 'outline_settings_schema',
+                        schemaType: 'outline_settings',
                         originType: 'user_input',
                         artifact: { id: 'canonical-outline-1' } as ElectricArtifact,
                         createdAt: '2025-01-01T00:00:00Z'
@@ -192,7 +190,7 @@ describe('actionComputation - Lineage Graph Integration', () => {
                         depth: 1,
                         artifactType: 'outline_settings',
                         sourceTransform: 'none',
-                        schemaType: 'outline_settings_schema',
+                        schemaType: 'outline_settings',
                         originType: 'ai_generated',
                         artifact: { id: 'canonical-outline-2' } as ElectricArtifact,
                         createdAt: '2025-01-02T00:00:00Z'
@@ -208,7 +206,7 @@ describe('actionComputation - Lineage Graph Integration', () => {
                     {
                         id: 'canonical-outline-1',
                         project_id: 'test-project',
-                        schema_type: 'outline_settings_schema',
+                        schema_type: 'outline_settings',
                         schema_version: 'v1',
                         origin_type: 'user_input',
                         created_at: '2025-01-01T00:00:00Z',
@@ -217,7 +215,7 @@ describe('actionComputation - Lineage Graph Integration', () => {
                     {
                         id: 'canonical-outline-2',
                         project_id: 'test-project',
-                        schema_type: 'outline_settings_schema',
+                        schema_type: 'outline_settings',
                         schema_version: 'v1',
                         origin_type: 'ai_generated',
                         created_at: '2025-01-02T00:00:00Z',
@@ -237,9 +235,7 @@ describe('actionComputation - Lineage Graph Integration', () => {
                 getBrainstormCollections: () => [],
                 getArtifactAtPath: () => null,
                 getLatestVersionForPath: () => null,
-                getBrainstormArtifacts: () => [],
                 getLineageGraph: () => mockLineageGraphBothLeaf,
-                getOutlineArtifacts: () => [],
                 getArtifactById: (id: string) => {
                     const artifacts = mockProjectData.artifacts;
                     if (Array.isArray(artifacts)) {
@@ -293,7 +289,7 @@ describe('actionComputation - Lineage Graph Integration', () => {
                         depth: 2,
                         artifactType: 'outline_settings',
                         sourceTransform: 'none',
-                        schemaType: 'outline_settings_schema',
+                        schemaType: 'outline_settings',
                         originType: 'ai_generated',
                         artifact: { id: 'canonical-outline-ai' } as ElectricArtifact,
                         createdAt: '2025-01-01T00:00:00Z'
@@ -309,7 +305,7 @@ describe('actionComputation - Lineage Graph Integration', () => {
                     {
                         id: 'canonical-outline-ai',
                         project_id: 'test-project',
-                        schema_type: 'outline_settings_schema',
+                        schema_type: 'outline_settings',
                         schema_version: 'v1',
                         origin_type: 'ai_generated',
                         created_at: '2025-01-01T00:00:00Z',
@@ -329,9 +325,7 @@ describe('actionComputation - Lineage Graph Integration', () => {
                 getBrainstormCollections: () => [],
                 getArtifactAtPath: () => null,
                 getLatestVersionForPath: () => null,
-                getBrainstormArtifacts: () => [],
                 getLineageGraph: () => mockLineageGraphAIOnly,
-                getOutlineArtifacts: () => [],
                 getArtifactById: (id: string) => {
                     const artifacts = mockProjectData.artifacts;
                     if (Array.isArray(artifacts)) {
@@ -381,7 +375,7 @@ describe('actionComputation - Lineage Graph Integration', () => {
                     {
                         id: 'outline-1',
                         project_id: 'test-project',
-                        schema_type: 'outline_settings_schema',
+                        schema_type: 'outline_settings',
                         schema_version: 'v1',
                         origin_type: 'user_input',
                         created_at: '2025-01-01T00:00:00Z',
@@ -401,9 +395,7 @@ describe('actionComputation - Lineage Graph Integration', () => {
                 getBrainstormCollections: () => [],
                 getArtifactAtPath: () => null,
                 getLatestVersionForPath: () => null,
-                getBrainstormArtifacts: () => [],
                 getLineageGraph: () => "pending",
-                getOutlineArtifacts: () => [],
                 getArtifactById: (id: string) => {
                     const artifacts = mockProjectData.artifacts;
                     if (Array.isArray(artifacts)) {
@@ -451,7 +443,7 @@ describe('actionComputation - Lineage Graph Integration', () => {
                     {
                         id: 'canonical-outline-1',
                         project_id: 'test-project',
-                        schema_type: 'outline_settings_schema',
+                        schema_type: 'outline_settings',
                         schema_version: 'v1',
                         origin_type: 'user_input',
                         created_at: '2025-01-01T00:00:00Z',
@@ -461,7 +453,7 @@ describe('actionComputation - Lineage Graph Integration', () => {
                     {
                         id: 'dead-outline-1',
                         project_id: 'test-project',
-                        schema_type: 'outline_settings_schema',
+                        schema_type: 'outline_settings',
                         schema_version: 'v1',
                         origin_type: 'user_input',
                         created_at: '2025-01-02T00:00:00Z',
@@ -481,9 +473,7 @@ describe('actionComputation - Lineage Graph Integration', () => {
                 getBrainstormCollections: () => [],
                 getArtifactAtPath: () => null,
                 getLatestVersionForPath: () => null,
-                getBrainstormArtifacts: () => [],
                 getLineageGraph: () => mockLineageGraph,
-                getOutlineArtifacts: () => [],
                 getArtifactById: (id: string) => {
                     const artifacts = mockProjectData.artifacts;
                     if (Array.isArray(artifacts)) {
@@ -544,19 +534,19 @@ describe('actionComputation', () => {
 
     describe('canBecomeEditable', () => {
         it('should return true for AI-generated leaf node', () => {
-            const artifact = { id: 'test', origin_type: 'ai_generated' };
+            const artifact = { id: 'test', origin_type: 'ai_generated' } as TypedArtifact;
             const transformInputs: any[] = [];
             expect(canBecomeEditable(artifact, transformInputs)).toBe(true);
         });
 
         it('should return false for user input artifact', () => {
-            const artifact = { id: 'test', origin_type: 'user_input' };
+            const artifact = { id: 'test', origin_type: 'user_input' } as TypedArtifact;
             const transformInputs: any[] = [];
             expect(canBecomeEditable(artifact, transformInputs)).toBe(false);
         });
 
         it('should return false for artifact with descendants', () => {
-            const artifact = { id: 'test', origin_type: 'ai_generated' };
+            const artifact = { id: 'test', origin_type: 'ai_generated' } as TypedArtifact;
             const transformInputs = [{ artifact_id: 'test', transform_id: 'transform-1' }];
             expect(canBecomeEditable(artifact, transformInputs)).toBe(false);
         });
@@ -574,7 +564,7 @@ describe('actionComputation', () => {
                         depth: 1,
                         artifactType: 'outline_settings',
                         sourceTransform: 'none',
-                        schemaType: 'outline_settings_schema',
+                        schemaType: 'outline_settings',
                         originType: 'ai_generated',
                         artifact: { id: 'ai-outline-artifact' } as ElectricArtifact,
                         createdAt: '2025-01-01T10:00:00Z'
@@ -586,7 +576,7 @@ describe('actionComputation', () => {
                         depth: 2,
                         artifactType: 'outline_settings',
                         sourceTransform: 'none',
-                        schemaType: 'outline_settings_schema',
+                        schemaType: 'outline_settings',
                         originType: 'user_input',
                         artifact: { id: 'user-outline-artifact' } as ElectricArtifact,
                         createdAt: '2025-01-01T11:00:00Z'
@@ -604,7 +594,7 @@ describe('actionComputation', () => {
                     {
                         id: 'ai-outline-artifact',
                         project_id: 'test-project',
-                        schema_type: 'outline_settings_schema',
+                        schema_type: 'outline_settings',
                         schema_version: 'v1',
                         origin_type: 'ai_generated',
                         created_at: '2025-01-01T10:00:00Z',
@@ -614,7 +604,7 @@ describe('actionComputation', () => {
                     {
                         id: 'user-outline-artifact',
                         project_id: 'test-project',
-                        schema_type: 'outline_settings_schema',
+                        schema_type: 'outline_settings',
                         schema_version: 'v1',
                         origin_type: 'user_input',
                         created_at: '2025-01-01T11:00:00Z',
@@ -644,9 +634,7 @@ describe('actionComputation', () => {
                 getBrainstormCollections: () => [],
                 getArtifactAtPath: () => null,
                 getLatestVersionForPath: () => null,
-                getBrainstormArtifacts: () => [],
                 getLineageGraph: () => mockLineageGraph,
-                getOutlineArtifacts: () => [],
                 getArtifactById: (id: string) => {
                     const artifacts = mockProjectData.artifacts;
                     if (Array.isArray(artifacts)) {
@@ -703,7 +691,7 @@ describe('actionComputation', () => {
                         depth: 1,
                         artifactType: 'outline_settings',
                         sourceTransform: 'none',
-                        schemaType: 'outline_settings_schema',
+                        schemaType: 'outline_settings',
                         originType: 'ai_generated',
                         artifact: { id: 'old-outline-artifact' } as ElectricArtifact,
                         createdAt: '2025-01-01T10:00:00Z'
@@ -715,7 +703,7 @@ describe('actionComputation', () => {
                         depth: 2,
                         artifactType: 'outline_settings',
                         sourceTransform: 'none',
-                        schemaType: 'outline_settings_schema',
+                        schemaType: 'outline_settings',
                         originType: 'ai_generated',
                         artifact: { id: 'new-outline-artifact' } as ElectricArtifact,
                         createdAt: '2025-01-01T11:00:00Z'
@@ -733,7 +721,7 @@ describe('actionComputation', () => {
                     {
                         id: 'old-outline-artifact',
                         project_id: 'test-project',
-                        schema_type: 'outline_settings_schema',
+                        schema_type: 'outline_settings',
                         schema_version: 'v1',
                         origin_type: 'ai_generated',
                         created_at: '2025-01-01T10:00:00Z',
@@ -743,7 +731,7 @@ describe('actionComputation', () => {
                     {
                         id: 'new-outline-artifact',
                         project_id: 'test-project',
-                        schema_type: 'outline_settings_schema',
+                        schema_type: 'outline_settings',
                         schema_version: 'v1',
                         origin_type: 'ai_generated',
                         created_at: '2025-01-01T11:00:00Z',
@@ -779,9 +767,7 @@ describe('actionComputation', () => {
                 getBrainstormCollections: () => [],
                 getArtifactAtPath: () => null,
                 getLatestVersionForPath: () => null,
-                getBrainstormArtifacts: () => [],
                 getLineageGraph: () => mockLineageGraph,
-                getOutlineArtifacts: () => [],
                 getArtifactById: (id: string) => {
                     const artifacts = mockProjectData.artifacts;
                     if (Array.isArray(artifacts)) {
@@ -838,7 +824,7 @@ describe('actionComputation', () => {
                         depth: 1,
                         artifactType: 'outline_settings',
                         sourceTransform: 'none',
-                        schemaType: 'outline_settings_schema',
+                        schemaType: 'outline_settings',
                         originType: 'ai_generated',
                         artifact: { id: 'ai-leaf-artifact' } as ElectricArtifact,
                         createdAt: '2025-01-01T10:00:00Z'
@@ -850,7 +836,7 @@ describe('actionComputation', () => {
                         depth: 1,
                         artifactType: 'outline_settings',
                         sourceTransform: 'none',
-                        schemaType: 'outline_settings_schema',
+                        schemaType: 'outline_settings',
                         originType: 'user_input',
                         artifact: { id: 'user-leaf-artifact' } as ElectricArtifact,
                         createdAt: '2025-01-01T11:00:00Z'
@@ -868,7 +854,7 @@ describe('actionComputation', () => {
                     {
                         id: 'ai-leaf-artifact',
                         project_id: 'test-project',
-                        schema_type: 'outline_settings_schema',
+                        schema_type: 'outline_settings',
                         schema_version: 'v1',
                         origin_type: 'ai_generated',
                         created_at: '2025-01-01T10:00:00Z',
@@ -878,7 +864,7 @@ describe('actionComputation', () => {
                     {
                         id: 'user-leaf-artifact',
                         project_id: 'test-project',
-                        schema_type: 'outline_settings_schema',
+                        schema_type: 'outline_settings',
                         schema_version: 'v1',
                         origin_type: 'user_input',
                         created_at: '2025-01-01T11:00:00Z',
@@ -900,9 +886,7 @@ describe('actionComputation', () => {
                 getBrainstormCollections: () => [],
                 getArtifactAtPath: () => null,
                 getLatestVersionForPath: () => null,
-                getBrainstormArtifacts: () => [],
                 getLineageGraph: () => mockLineageGraph,
-                getOutlineArtifacts: () => [],
                 getArtifactById: (id: string) => {
                     const artifacts = mockProjectData.artifacts;
                     if (Array.isArray(artifacts)) {
@@ -964,7 +948,7 @@ describe('actionComputation', () => {
             artifacts.push({
                 id: 'outline-0',
                 project_id: 'test-project',
-                schema_type: 'outline_settings_schema',
+                schema_type: 'outline_settings',
                 schema_version: 'v1',
                 origin_type: 'ai_generated',
                 created_at: '2025-01-01T10:00:00Z',
@@ -977,10 +961,7 @@ describe('actionComputation', () => {
                 artifactId: 'outline-0',
                 isLeaf: chainLength === 1, // Only leaf if it's the only artifact
                 depth: 0,
-                artifactType: 'outline_settings',
                 sourceTransform: 'none',
-                schemaType: 'outline_settings_schema',
-                originType: 'ai_generated',
                 artifact: { id: 'outline-0' } as ElectricArtifact,
                 createdAt: '2025-01-01T10:00:00Z'
             });
@@ -995,7 +976,7 @@ describe('actionComputation', () => {
                 artifacts.push({
                     id: `outline-${i}`,
                     project_id: 'test-project',
-                    schema_type: 'outline_settings_schema',
+                    schema_type: 'outline_settings',
                     schema_version: 'v1',
                     origin_type: originType,
                     created_at: `2025-01-01T${10 + i}:00:00Z`,
@@ -1011,10 +992,7 @@ describe('actionComputation', () => {
                     artifactId: `outline-${i}`,
                     isLeaf: i === chainLength - 1, // Only the last artifact is a leaf
                     depth: i,
-                    artifactType: 'outline_settings',
                     sourceTransform: 'none',
-                    schemaType: 'outline_settings_schema',
-                    originType: originType,
                     artifact: { id: `outline-${i}` } as ElectricArtifact,
                     createdAt: `2025-01-01T${10 + i}:00:00Z`
                 });
@@ -1059,9 +1037,7 @@ describe('actionComputation', () => {
                 getBrainstormCollections: () => [],
                 getArtifactAtPath: () => null,
                 getLatestVersionForPath: () => null,
-                getBrainstormArtifacts: () => [],
                 getLineageGraph: () => mockLineageGraph,
-                getOutlineArtifacts: () => [],
                 getArtifactById: (id: string) => {
                     const artifacts = mockProjectData.artifacts;
                     if (Array.isArray(artifacts)) {

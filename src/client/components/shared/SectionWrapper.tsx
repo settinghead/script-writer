@@ -1,20 +1,10 @@
 import React, { useMemo } from 'react';
 import { useProjectData } from '../../contexts/ProjectDataContext';
-import { useLineageResolution } from '../../transform-artifact-framework/useLineageResolution';
+import { TypedArtifact } from '@/common/types';
 
-// Define the schema types enum
-export enum ArtifactSchemaType {
-    BRAINSTORM_COLLECTION = 'brainstorm_collection_schema',
-    BRAINSTORM_ITEM = 'brainstorm_item_schema',
-    OUTLINE_SETTINGS = 'outline_settings_schema',
-    CHRONICLES = 'chronicles_schema',
-
-    SCRIPT = 'script_schema',
-    USER_INPUT = 'user_input_schema'
-}
 
 interface SectionWrapperProps {
-    schemaType: ArtifactSchemaType;
+    schemaType: TypedArtifact['schema_type'];
     title: React.ReactNode;
     children: React.ReactNode;
     sectionId?: string;

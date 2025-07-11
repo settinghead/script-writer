@@ -38,8 +38,8 @@ const mockUseLineageResolution = vi.mocked(useLineageResolution);
 describe('ChroniclesDisplay', () => {
     const mockChroniclesArtifact = {
         id: 'chronicles-artifact-id',
-        schema_type: 'chronicles_schema',
-        type: 'chronicles',
+        schema_type: 'chronicles',
+        schema_version: 'v1',
         origin_type: 'ai_generated',
         created_at: '2025-01-01T00:00:00Z',
         data: {
@@ -232,7 +232,7 @@ describe('ChroniclesDisplay', () => {
             artifacts: [
                 {
                     id: 'other-artifact',
-                    schema_type: 'outline_settings_schema',
+                    schema_type: 'outline_settings',
                     type: 'outline_settings',
                     data: { title: 'Some outline' }
                 }
@@ -289,7 +289,7 @@ describe('ChroniclesDisplay', () => {
         );
     });
 
-    it('should prioritize chronicles_schema over legacy chronicles type', () => {
+    it('should prioritize chronicles over legacy chronicles type', () => {
         const legacyChroniclesArtifact = {
             id: 'legacy-chronicles',
             schema_type: null,
@@ -301,7 +301,7 @@ describe('ChroniclesDisplay', () => {
 
         const modernChroniclesArtifact = {
             id: 'modern-chronicles',
-            schema_type: 'chronicles_schema',
+            schema_type: 'chronicles',
             type: 'chronicles',
             origin_type: 'ai_generated',
             created_at: '2025-01-01T01:00:00Z',

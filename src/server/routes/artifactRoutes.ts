@@ -18,7 +18,7 @@ export function createArtifactRoutes(
     // Create new artifact
     router.post('/', authMiddleware.authenticate, async (req: any, res: any) => {
         try {
-            const { projectId, type, data } = req.body;
+            const { projectId, schemaType, data } = req.body;
             const user = authMiddleware.getCurrentUser(req);
 
             if (!user) {
@@ -26,8 +26,8 @@ export function createArtifactRoutes(
                 return;
             }
 
-            if (!projectId || !type) {
-                res.status(400).json({ error: 'projectId and type are required' });
+            if (!projectId || !schemaType) {
+                res.status(400).json({ error: 'projectId and schemaType are required' });
                 return;
             }
 
@@ -38,11 +38,11 @@ export function createArtifactRoutes(
                 return;
             }
 
-            // Allow minimal data for brainstorm_tool_input_schema to enable empty artifact creation
+            // Allow minimal data for brainstorm_input_params to enable empty artifact creation
             let artifactData = data;
             let isInitialInput = false;
 
-            if (type === 'brainstorm_tool_input_schema') {
+            if (schemaType === 'brainstorm_input_params') {
                 // Check if this is explicitly marked as initial input
                 isInitialInput = data && data.initialInput === true;
 
@@ -66,7 +66,7 @@ export function createArtifactRoutes(
             // Create the artifact
             const artifact = await artifactRepo.createArtifact(
                 projectId,
-                type,
+                schemaType,
                 artifactData,
                 'v1', // Default type version
                 {}, // Empty metadata
@@ -217,7 +217,7 @@ export function createArtifactRoutes(
     // List artifacts by type and project
     router.get('/', authMiddleware.authenticate, async (req: any, res: any) => {
         try {
-            const { projectId, type, typeVersion = 'v1' } = req.query;
+            const { projectId, schemaType, schemaVersion = 'v1' } = req.query;
             const userId = req.user?.id;
 
             if (!userId) {
@@ -238,11 +238,11 @@ export function createArtifactRoutes(
             }
 
             let artifacts;
-            if (type) {
+            if (schemaType) {
                 artifacts = await artifactRepo.getArtifactsByType(
                     projectId as string,
-                    type as string,
-                    typeVersion as string
+                    schemaType,
+                    schemaVersion
                 );
             } else {
                 artifacts = await artifactRepo.getProjectArtifacts(projectId as string);
@@ -416,7 +416,7 @@ export function createArtifactRoutes(
                     return;
                 }
                 updatedData = data;
-            } else if (existingArtifact.schema_type === 'brainstorm_idea_schema') {
+            } else if (existingArtifact.schema_type === 'brainstorm_idea') {
                 // Validate required fields for brainstorm_idea
                 if (!data || typeof data !== 'object') {
                     res.status(400).json({

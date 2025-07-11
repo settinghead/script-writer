@@ -6,6 +6,7 @@ import dagre from 'dagre';
 import { useProjectData } from '../contexts/ProjectDataContext';
 import { AppColors, ColorUtils } from '../../common/theme/colors';
 import 'reactflow/dist/style.css';
+import { ElectricArtifact } from '@/common/types';
 
 const { Text } = Typography;
 
@@ -63,7 +64,13 @@ const deleteArtifact = async (artifactId: string) => {
 };
 
 // Custom node components
-const ArtifactNode: React.FC<{ data: any }> = ({ data }) => {
+const ArtifactNode: React.FC<{
+    data: {
+        artifact: ElectricArtifact,
+        isLatest: boolean,
+        originType: string
+    }
+}> = ({ data }) => {
     const { artifact, isLatest, originType } = data;
 
     const handleDelete = (e: React.MouseEvent) => {
@@ -75,7 +82,7 @@ const ArtifactNode: React.FC<{ data: any }> = ({ data }) => {
         return ColorUtils.getArtifactColor(type, originType);
     };
 
-    const typeColor = getTypeColor(artifact.type, originType);
+    const typeColor = getTypeColor(artifact.schema_type, originType);
     const borderColor = isLatest ? AppColors.status.latest : typeColor;
     const borderWidth = isLatest ? 3 : 2;
 
@@ -118,8 +125,8 @@ const ArtifactNode: React.FC<{ data: any }> = ({ data }) => {
                         </div>
                         <div><strong>ID:</strong> {artifact.id}</div>
                         <div><strong>Project ID:</strong> {artifact.project_id}</div>
-                        <div><strong>Type:</strong> {artifact.type}</div>
-                        <div><strong>Type Version:</strong> {artifact.type_version}</div>
+                        <div><strong>Type:</strong> {artifact.schema_type}</div>
+                        <div><strong>Type Version:</strong> {artifact.schema_version}</div>
                         {artifact.metadata && (
                             <div><strong>Metadata:</strong> {typeof artifact.metadata === 'string' ? artifact.metadata : JSON.stringify(artifact.metadata)}</div>
                         )}
@@ -127,7 +134,7 @@ const ArtifactNode: React.FC<{ data: any }> = ({ data }) => {
                             <div><strong>Streaming Status:</strong> {artifact.streaming_status}</div>
                         )}
                         <div><strong>Created:</strong> {new Date(artifact.created_at).toLocaleString()}</div>
-                        <div><strong>Updated:</strong> {new Date(artifact.updated_at).toLocaleString()}</div>
+                        <div><strong>Updated:</strong> {new Date(artifact.updated_at || '').toLocaleString()}</div>
                     </div>
                     <div>
                         <div style={{ fontWeight: 'bold', color: '#52c41a', marginBottom: '4px' }}>
@@ -161,7 +168,7 @@ const ArtifactNode: React.FC<{ data: any }> = ({ data }) => {
                     }}>
                         <DatabaseOutlined style={{ color: typeColor }} />
                         <Text style={{ color: AppColors.text.white, fontWeight: 'bold', fontSize: '12px' }}>
-                            {artifact.type}
+                            {artifact.schema_type}
                         </Text>
                         {isLatest && (
                             <span style={{
@@ -177,7 +184,7 @@ const ArtifactNode: React.FC<{ data: any }> = ({ data }) => {
                         )}
                     </div>
                     <Text style={{ color: AppColors.text.secondary, fontSize: '10px' }}>
-                        {artifact.schema_type || artifact.type}
+                        {artifact.schema_type}
                     </Text>
                     <br />
                     <Text style={{ color: AppColors.text.tertiary, fontSize: '9px', fontStyle: 'italic' }}>
@@ -186,7 +193,7 @@ const ArtifactNode: React.FC<{ data: any }> = ({ data }) => {
                                 const data = typeof artifact.data === 'string' ? JSON.parse(artifact.data) : artifact.data;
                                 let preview = '';
 
-                                if (artifact.schema_type === 'brainstorm_collection_schema' || artifact.type === 'brainstorm_idea_collection') {
+                                if (artifact.schema_type === 'brainstorm_collection') {
                                     if (data.ideas && Array.isArray(data.ideas) && data.ideas.length > 0) {
                                         const firstIdea = data.ideas[0];
                                         const title = firstIdea.title || '';
@@ -194,15 +201,12 @@ const ArtifactNode: React.FC<{ data: any }> = ({ data }) => {
                                     } else {
                                         preview = '创意集合';
                                     }
-                                } else if (artifact.schema_type === 'brainstorm_idea_schema' || artifact.type === 'brainstorm_idea') {
+                                } else if (artifact.schema_type === 'brainstorm_idea') {
                                     const title = data.title || '';
                                     preview = title.length > 25 ? `${title.substring(0, 25)}...` : title;
-                                } else if (artifact.schema_type === 'outline_schema' || artifact.type === 'outline_response' || artifact.type === 'outline') {
+                                } else if (artifact.schema_type === 'outline_settings') {
                                     const outlineTitle = data.title || data.synopsis || '';
                                     preview = outlineTitle.length > 25 ? `${outlineTitle.substring(0, 25)}...` : outlineTitle;
-                                } else if (artifact.schema_type === 'user_input_schema' || artifact.type === 'user_input') {
-                                    const content = data.content || data.text || '';
-                                    preview = content.length > 25 ? `${content.substring(0, 25)}...` : content;
                                 } else {
                                     // Generic preview for other types
                                     const keys = Object.keys(data);
@@ -461,7 +465,7 @@ const RawGraphVisualization: React.FC = () => {
 
         // Create artifact nodes
         if (showArtifacts && Array.isArray(projectData.artifacts)) {
-            projectData.artifacts.forEach((artifact: any) => {
+            projectData.artifacts.forEach((artifact) => {
                 // Check if this is the latest version in a lineage chain
                 const lineageNode = lineageGraph.nodes?.get(artifact.id);
                 const isLatest = lineageNode?.isLeaf || false;
@@ -482,7 +486,7 @@ const RawGraphVisualization: React.FC = () => {
                 }
 
                 // Special handling for user input artifacts
-                if (artifact.origin_type === 'user_input' || artifact.type === 'user_input') {
+                if (artifact.origin_type === 'user_input') {
                     originType = 'human';
                 }
 
@@ -527,7 +531,7 @@ const RawGraphVisualization: React.FC = () => {
                     const edgeColor = ColorUtils.getTransformColor(transform.type as 'human' | 'llm');
 
                     inputs.forEach((input: any) => {
-                        if (showArtifacts && Array.isArray(projectData.artifacts) && projectData.artifacts.some((a: any) => a.id === input.artifact_id)) {
+                        if (showArtifacts && Array.isArray(projectData.artifacts) && projectData.artifacts.some((a) => a.id === input.artifact_id)) {
                             edges.push({
                                 id: `${input.artifact_id}-${transform.id}`,
                                 source: input.artifact_id,
@@ -546,7 +550,7 @@ const RawGraphVisualization: React.FC = () => {
                     const edgeColor = ColorUtils.getTransformColor(transform.type as 'human' | 'llm');
 
                     outputs.forEach((output: any) => {
-                        if (showArtifacts && Array.isArray(projectData.artifacts) && projectData.artifacts.some((a: any) => a.id === output.artifact_id)) {
+                        if (showArtifacts && Array.isArray(projectData.artifacts) && projectData.artifacts.some((a) => a.id === output.artifact_id)) {
                             edges.push({
                                 id: `${transform.id}-${output.artifact_id}`,
                                 source: transform.id,

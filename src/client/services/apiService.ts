@@ -1,3 +1,4 @@
+import { TypedArtifact } from "@/common/types";
 
 
 class ApiService {
@@ -145,7 +146,7 @@ class ApiService {
             },
             body: JSON.stringify({
                 projectId,
-                type: 'brainstorm_tool_input_schema',
+                type: 'brainstorm_input_params' as TypedArtifact['schema_type'],
                 data: {
                     initialInput: true // Explicitly mark as initial input to bypass validation
                 }
@@ -168,7 +169,7 @@ class ApiService {
             },
             body: JSON.stringify({
                 projectId,
-                type: 'brainstorm_item_schema',
+                type: 'brainstorm_idea' as TypedArtifact['schema_type'],
                 data: {
                     title: '新创意',
                     body: ''

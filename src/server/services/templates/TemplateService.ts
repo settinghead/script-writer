@@ -75,7 +75,7 @@ export class TemplateService {
   }
 
   private resolveVariable(path: string, context: TemplateContext): string {
-    // Handle nested paths like "artifacts.brainstorm_params.genre"
+    // Handle nested paths like "artifacts.brainstorm_input_params.genre"
     const parts = path.split('.');
     let value: any = context;
 

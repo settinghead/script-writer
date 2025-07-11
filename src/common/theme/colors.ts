@@ -66,7 +66,7 @@ export const ColorUtils = {
     // Get appropriate color for artifact based on origin
     getArtifactColor: (type: string, originType?: string) => {
         // Input params get purple color
-        if (type === 'brainstorm_params' || type === 'brainstorm_tool_input' || type === 'outline_input' || type.includes('input')) {
+        if (type === 'brainstorm_input_params' || type === 'brainstorm_input_params' || type === 'outline_input' || type.includes('input')) {
             return AppColors.ai.tertiary;
         }
 

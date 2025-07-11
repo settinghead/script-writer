@@ -60,7 +60,7 @@ export function createChroniclesToolDefinition(
             }
 
             // Verify artifact is outline settings type
-            if (outlineSettingsArtifact.schema_type !== 'outline_settings_schema') {
+            if (outlineSettingsArtifact.schema_type !== 'outline_settings') {
                 throw new Error(`Expected outline settings artifact, got: ${outlineSettingsArtifact.schema_type}`);
             }
 

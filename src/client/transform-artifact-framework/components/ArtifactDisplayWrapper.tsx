@@ -5,6 +5,7 @@ import { useProjectData } from '../../contexts/ProjectDataContext';
 import { YJSArtifactProvider } from '../contexts/YJSArtifactContext';
 import { ReadOnlyArtifactDisplay } from '../../components/shared/ReadOnlyArtifactDisplay';
 import { canBecomeEditable } from '../../utils/actionComputation';
+import { TypedArtifact } from '../../../common/types';
 
 const { Text, Title } = Typography;
 
@@ -14,7 +15,7 @@ interface ArtifactDisplayWrapperProps {
     title: string;
     icon: string;
     editableComponent: React.ComponentType<any>;
-    schemaType: string;
+    schemaType: TypedArtifact['schema_type'];
     enableClickToEdit?: boolean;
     onClickToEdit?: () => Promise<void>;
     clickToEditLoading?: boolean;

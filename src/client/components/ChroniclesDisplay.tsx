@@ -38,7 +38,7 @@ export const ChroniclesDisplay: React.FC<ChroniclesDisplayProps> = ({
                         title="时间顺序大纲"
                         icon="📅"
                         editableComponent={EditableChroniclesForm}
-                        schemaType="chronicles_schema"
+                        schemaType="chronicles"
                         enableClickToEdit={true}
                     />
                 </div>
@@ -55,17 +55,13 @@ export const ChroniclesDisplay: React.FC<ChroniclesDisplayProps> = ({
 
     // Find the root chronicles artifact using lineage resolution approach
     const rootChroniclesArtifact = useMemo(() => {
-        // First try: Look for chronicles_schema
+        // First try: Look for chronicles
         const chroniclesArtifacts = artifacts.filter(artifact =>
-            artifact.schema_type === 'chronicles_schema' &&
+            artifact.schema_type === 'chronicles' &&
             artifact.data
         );
 
-        // Second try: Look for legacy type 'chronicles'
-        const legacyChroniclesArtifacts = artifacts.filter(artifact =>
-            artifact.type === 'chronicles' &&
-            artifact.data
-        );
+
 
         // Third try: Look for any artifact that might contain chronicles data
         const possibleChroniclesArtifacts = artifacts.filter(artifact => {
@@ -80,9 +76,7 @@ export const ChroniclesDisplay: React.FC<ChroniclesDisplayProps> = ({
 
         // Use the most specific match first
         let candidateArtifacts = chroniclesArtifacts;
-        if (candidateArtifacts.length === 0) {
-            candidateArtifacts = legacyChroniclesArtifacts;
-        }
+
         if (candidateArtifacts.length === 0) {
             candidateArtifacts = possibleChroniclesArtifacts;
         }
@@ -180,7 +174,7 @@ export const ChroniclesDisplay: React.FC<ChroniclesDisplayProps> = ({
                     title="时间顺序大纲"
                     icon="📅"
                     editableComponent={EditableChroniclesForm}
-                    schemaType="chronicles_schema"
+                    schemaType="chronicles"
                     enableClickToEdit={true}
                 />
             </div>

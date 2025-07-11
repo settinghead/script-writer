@@ -6,34 +6,28 @@ import {
     computeParamsAndActionsFromLineage,
     computeUnifiedWorkflowState
 } from '../actionComputation';
-import { ProjectDataContextType } from '../../../common/types';
+import { ProjectDataContextType, TypedArtifact } from '../../../common/types';
 import { LineageGraph } from '../../../common/transform-artifact-framework/lineageResolution';
 import { WORKFLOW_STEPS } from '../workflowTypes';
 
 // Mock the lineage-based computation
 vi.mock('../lineageBasedActionComputation', () => ({
-    computeActionsFromLineage: vi.fn((lineageGraph, artifacts) => {
+    computeActionsFromLineage: vi.fn((lineageGraph, artifacts: TypedArtifact[]) => {
         // Determine current stage based on artifacts and lineage graph
         let currentStage = 'initial';
 
         if (artifacts && Array.isArray(artifacts)) {
             const hasBrainstormInput = artifacts.some(a =>
-                a.type === 'brainstorm_tool_input_schema' ||
-                a.schema_type === 'brainstorm_tool_input_schema'
+                a.schema_type === 'brainstorm_input_params'
             );
             const hasBrainstormIdeas = artifacts.some(a =>
-                a.schema_type === 'brainstorm_item_schema' ||
-                a.type === 'brainstorm_item_schema'
+                a.schema_type === 'brainstorm_idea'
             );
             const hasOutlineSettings = artifacts.some(a =>
-                a.schema_type === 'outline_settings_schema' ||
-                a.type === 'outline_settings_schema' ||
-                a.type === 'outline_settings'
+                a.schema_type === 'outline_settings'
             );
             const hasChronicles = artifacts.some(a =>
-                a.schema_type === 'chronicles_schema' ||
-                a.type === 'chronicles_schema' ||
-                a.type === 'chronicles'
+                a.schema_type === 'chronicles'
             );
 
             // Determine stage based on most advanced artifact type present
@@ -45,7 +39,7 @@ vi.mock('../lineageBasedActionComputation', () => ({
                 // Check if we have a leaf brainstorm idea (chosen idea) via lineage graph
                 if (lineageGraph && lineageGraph.nodes) {
                     const leafBrainstormIdeas = artifacts.filter(a => {
-                        if (a.schema_type === 'brainstorm_item_schema' || a.type === 'brainstorm_item_schema') {
+                        if (a.schema_type === 'brainstorm_idea') {
                             const node = lineageGraph.nodes.get(a.id);
                             return node && node.isLeaf;
                         }
@@ -161,7 +155,6 @@ const createMockProjectData = (overrides: Partial<ProjectDataContextType> = {}):
         paths: new Map(),
         rootNodes: new Set()
     }),
-    getOutlineArtifacts: () => [],
     getArtifactById: () => undefined,
     getTransformById: () => undefined,
     getHumanTransformsForArtifact: () => [],
@@ -198,7 +191,7 @@ describe('Unified Workflow Computation', () => {
             const mockProjectData = createMockProjectData({
                 artifacts: [{
                     id: 'brainstorm-input-1',
-                    type: 'brainstorm_tool_input_schema',
+                    type: 'brainstorm_input_params',
                     data: '{"platform": "douyin", "requirements": "test"}',
                     created_at: '2024-01-01T00:00:00Z'
                 }] as any
@@ -226,7 +219,7 @@ describe('Unified Workflow Computation', () => {
             const mockProjectData = createMockProjectData({
                 artifacts: [{
                     id: 'brainstorm-input-1',
-                    type: 'brainstorm_tool_input_schema',
+                    type: 'brainstorm_input_params',
                     data: '{"platform": "douyin", "requirements": "test"}',
                     created_at: '2024-01-01T00:00:00Z'
                 }] as any
@@ -259,7 +252,7 @@ describe('Unified Workflow Computation', () => {
             const mockProjectData = createMockProjectData({
                 artifacts: [{
                     id: 'brainstorm-input-1',
-                    type: 'brainstorm_tool_input_schema',
+                    schema_type: 'brainstorm_input_params',
                     data: '{"platform": "douyin", "requirements": "test"}',
                     created_at: '2024-01-01T00:00:00Z'
                 }] as any,
@@ -270,9 +263,9 @@ describe('Unified Workflow Computation', () => {
                             artifactId: 'brainstorm-input-1',
                             isLeaf: true,
                             depth: 0,
-                            artifactType: 'brainstorm_tool_input_schema',
+                            artifactType: 'brainstorm_input_params',
                             sourceTransform: 'none',
-                            schemaType: 'brainstorm_tool_input_schema',
+                            schemaType: 'brainstorm_input_params',
                             originType: 'user_input',
                             artifact: { id: 'brainstorm-input-1' } as any,
                             createdAt: '2024-01-01T00:00:00Z'
@@ -297,13 +290,13 @@ describe('Unified Workflow Computation', () => {
                 artifacts: [
                     {
                         id: 'brainstorm-input-1',
-                        type: 'brainstorm_tool_input_schema',
+                        schema_type: 'brainstorm_input_params',
                         data: '{"platform": "douyin", "requirements": "test"}',
                         created_at: '2024-01-01T00:00:00Z'
                     },
                     {
                         id: 'brainstorm-ideas-1',
-                        type: 'brainstorm_item_schema',
+                        schema_type: 'brainstorm_idea',
                         data: '{"ideas": [{"title": "Test Idea"}]}',
                         created_at: '2024-01-01T00:01:00Z'
                     }
@@ -315,9 +308,9 @@ describe('Unified Workflow Computation', () => {
                             artifactId: 'brainstorm-input-1',
                             isLeaf: false, // Not a leaf node - should be minimized
                             depth: 0,
-                            artifactType: 'brainstorm_tool_input_schema',
+                            artifactType: 'brainstorm_input_params',
                             sourceTransform: 'none',
-                            schemaType: 'brainstorm_tool_input_schema',
+                            schemaType: 'brainstorm_input_params',
                             originType: 'user_input',
                             artifact: { id: 'brainstorm-input-1' } as any,
                             createdAt: '2024-01-01T00:00:00Z'
@@ -327,9 +320,9 @@ describe('Unified Workflow Computation', () => {
                             artifactId: 'brainstorm-ideas-1',
                             isLeaf: true,
                             depth: 1,
-                            artifactType: 'brainstorm_item_schema',
+                            artifactType: 'brainstorm_idea',
                             sourceTransform: 'none',
-                            schemaType: 'brainstorm_item_schema',
+                            schemaType: 'brainstorm_idea',
                             originType: 'ai_generated',
                             artifact: { id: 'brainstorm-ideas-1' } as any,
                             createdAt: '2024-01-01T00:01:00Z'
@@ -355,7 +348,7 @@ describe('Unified Workflow Computation', () => {
             const mockProjectData = createMockProjectData({
                 artifacts: [{
                     id: 'brainstorm-input-1',
-                    type: 'brainstorm_tool_input_schema',
+                    schema_type: 'brainstorm_input_params',
                     data: '{"platform": "douyin", "requirements": "test"}',
                     created_at: '2024-01-01T00:00:00Z'
                 }] as any,
@@ -366,9 +359,9 @@ describe('Unified Workflow Computation', () => {
                             artifactId: 'brainstorm-input-1',
                             isLeaf: true, // Is a leaf node - should not be minimized
                             depth: 0,
-                            artifactType: 'brainstorm_tool_input_schema',
+                            artifactType: 'brainstorm_input_params',
                             sourceTransform: 'none',
-                            schemaType: 'brainstorm_tool_input_schema',
+                            schemaType: 'brainstorm_input_params',
                             originType: 'user_input',
                             artifact: { id: 'brainstorm-input-1' } as any,
                             createdAt: '2024-01-01T00:00:00Z'
@@ -393,13 +386,13 @@ describe('Unified Workflow Computation', () => {
                 artifacts: [
                     {
                         id: 'brainstorm-input-1',
-                        type: 'brainstorm_tool_input_schema',
+                        schema_type: 'brainstorm_input_params',
                         data: '{"platform": "douyin", "requirements": "test"}',
                         created_at: '2024-01-01T00:00:00Z'
                     },
                     {
                         id: 'brainstorm-ideas-1',
-                        schema_type: 'brainstorm_item_schema',
+                        schema_type: 'brainstorm_idea',
                         data: '{"title": "Test Idea", "body": "Test body"}',
                         created_at: '2024-01-01T00:00:00Z'
                     }
@@ -412,21 +405,20 @@ describe('Unified Workflow Computation', () => {
                             artifactId: 'brainstorm-input-1',
                             isLeaf: false,
                             depth: 0,
-                            artifactType: 'brainstorm_tool_input_schema',
-                            sourceTransform: 'none',
-                            schemaType: 'brainstorm_tool_input_schema',
+                            artifactType: 'brainstorm_input_params',
                             originType: 'user_input',
                             artifact: { id: 'brainstorm-input-1' } as any,
-                            createdAt: '2024-01-01T00:00:00Z'
+                            createdAt: '2024-01-01T00:00:00Z',
+                            sourceTransform: 'none'
                         }],
                         ['brainstorm-ideas-1', {
                             type: 'artifact' as const,
                             artifactId: 'brainstorm-ideas-1',
                             isLeaf: true,
                             depth: 1,
-                            artifactType: 'brainstorm_item_schema',
+                            artifactType: 'brainstorm_idea',
                             sourceTransform: 'none',
-                            schemaType: 'brainstorm_item_schema',
+                            schemaType: 'brainstorm_idea',
                             originType: 'ai_generated',
                             artifact: { id: 'brainstorm-ideas-1' } as any,
                             createdAt: '2024-01-01T00:00:00Z'
@@ -455,13 +447,13 @@ describe('Unified Workflow Computation', () => {
                 artifacts: [
                     {
                         id: 'brainstorm-input-1',
-                        type: 'brainstorm_tool_input_schema',
+                        type: 'brainstorm_input_params',
                         data: '{"platform": "douyin", "requirements": "test"}',
                         created_at: '2024-01-01T00:00:00Z'
                     },
                     {
                         id: 'brainstorm-ideas-1',
-                        type: 'brainstorm_item_schema',
+                        type: 'brainstorm_idea',
                         data: '{"ideas": [{"title": "Test Idea"}]}',
                         created_at: '2024-01-01T00:00:00Z'
                     }
@@ -473,9 +465,9 @@ describe('Unified Workflow Computation', () => {
                             artifactId: 'brainstorm-input-1',
                             isLeaf: false, // Not a leaf node - should be minimized
                             depth: 0,
-                            artifactType: 'brainstorm_tool_input_schema',
+                            artifactType: 'brainstorm_input_params',
                             sourceTransform: 'none',
-                            schemaType: 'brainstorm_tool_input_schema',
+                            schemaType: 'brainstorm_input_params',
                             originType: 'user_input',
                             artifact: { id: 'brainstorm-input-1' } as any,
                             createdAt: '2024-01-01T00:00:00Z'
@@ -485,9 +477,9 @@ describe('Unified Workflow Computation', () => {
                             artifactId: 'brainstorm-ideas-1',
                             isLeaf: true,
                             depth: 1,
-                            artifactType: 'brainstorm_item_schema',
+                            artifactType: 'brainstorm_idea',
                             sourceTransform: 'none',
-                            schemaType: 'brainstorm_item_schema',
+                            schemaType: 'brainstorm_idea',
                             originType: 'ai_generated',
                             artifact: { id: 'brainstorm-ideas-1' } as any,
                             createdAt: '2024-01-01T00:00:00Z'
@@ -515,7 +507,7 @@ describe('Unified Workflow Computation', () => {
             const mockProjectData = createMockProjectData({
                 artifacts: [{
                     id: 'brainstorm-input-1',
-                    type: 'brainstorm_tool_input_schema',
+                    type: 'brainstorm_input_params',
                     data: '{"platform": "douyin", "requirements": "test"}',
                     created_at: '2024-01-01T00:00:00Z'
                 }] as any,
@@ -526,9 +518,9 @@ describe('Unified Workflow Computation', () => {
                             artifactId: 'brainstorm-input-1',
                             isLeaf: true,
                             depth: 0,
-                            artifactType: 'brainstorm_tool_input_schema',
+                            artifactType: 'brainstorm_input_params',
                             sourceTransform: 'none',
-                            schemaType: 'brainstorm_tool_input_schema',
+                            schemaType: 'brainstorm_input_params',
                             originType: 'user_input',
                             artifact: { id: 'brainstorm-input-1' } as any,
                             createdAt: '2024-01-01T00:00:00Z'
@@ -551,13 +543,13 @@ describe('Unified Workflow Computation', () => {
                 artifacts: [
                     {
                         id: 'brainstorm-input-1',
-                        type: 'brainstorm_tool_input_schema',
+                        type: 'brainstorm_input_params',
                         data: '{"platform": "douyin", "requirements": "test"}',
                         created_at: '2024-01-01T00:00:00Z'
                     },
                     {
                         id: 'brainstorm-ideas-1',
-                        schema_type: 'brainstorm_item_schema',
+                        type: 'brainstorm_idea',
                         data: '{"title": "Test Idea", "body": "Test body"}',
                         created_at: '2024-01-01T00:00:00Z'
                     }
@@ -569,9 +561,9 @@ describe('Unified Workflow Computation', () => {
                             artifactId: 'brainstorm-input-1',
                             isLeaf: false,
                             depth: 0,
-                            artifactType: 'brainstorm_tool_input_schema',
+                            artifactType: 'brainstorm_input_params',
                             sourceTransform: 'none',
-                            schemaType: 'brainstorm_tool_input_schema',
+                            schemaType: 'brainstorm_input_params',
                             originType: 'user_input',
                             artifact: { id: 'brainstorm-input-1' } as any,
                             createdAt: '2024-01-01T00:00:00Z'
@@ -581,9 +573,9 @@ describe('Unified Workflow Computation', () => {
                             artifactId: 'brainstorm-ideas-1',
                             isLeaf: true,
                             depth: 1,
-                            artifactType: 'brainstorm_item_schema',
+                            artifactType: 'brainstorm_idea',
                             sourceTransform: 'none',
-                            schemaType: 'brainstorm_item_schema',
+                            schemaType: 'brainstorm_idea',
                             originType: 'ai_generated',
                             artifact: { id: 'brainstorm-ideas-1' } as any,
                             createdAt: '2024-01-01T00:00:00Z'
@@ -608,19 +600,19 @@ describe('Unified Workflow Computation', () => {
                 artifacts: [
                     {
                         id: 'brainstorm-input-1',
-                        type: 'brainstorm_tool_input_schema',
+                        type: 'brainstorm_input_params',
                         data: '{"platform": "douyin", "requirements": "test"}',
                         created_at: '2024-01-01T00:00:00Z'
                     },
                     {
                         id: 'brainstorm-collection-1',
-                        type: 'brainstorm_collection_schema',
+                        type: 'brainstorm_idea_collection',
                         data: '{"ideas": [{"title": "Original Idea", "body": "Original body"}]}',
                         created_at: '2024-01-01T00:01:00Z'
                     },
                     {
                         id: 'human-edited-idea-1',
-                        type: 'brainstorm_item_schema',
+                        type: 'brainstorm_idea',
                         data: '{"title": "Edited Idea", "body": "Edited body"}',
                         origin_type: 'user_input',
                         created_at: '2024-01-01T00:02:00Z'
@@ -666,9 +658,9 @@ describe('Unified Workflow Computation', () => {
                             artifactId: 'brainstorm-input-1',
                             isLeaf: false, // Not leaf because it has descendants
                             depth: 0,
-                            artifactType: 'brainstorm_tool_input_schema',
+                            artifactType: 'brainstorm_input_params',
                             sourceTransform: 'none',
-                            schemaType: 'brainstorm_tool_input_schema',
+                            schemaType: 'brainstorm_input_params',
                             originType: 'user_input',
                             artifact: { id: 'brainstorm-input-1' } as any,
                             createdAt: '2024-01-01T00:00:00Z'
@@ -678,9 +670,9 @@ describe('Unified Workflow Computation', () => {
                             artifactId: 'brainstorm-collection-1',
                             isLeaf: false, // Not leaf because human transform uses it as input
                             depth: 1,
-                            artifactType: 'brainstorm_collection_schema',
+                            artifactType: 'brainstorm_idea_collection',
                             sourceTransform: 'none',
-                            schemaType: 'brainstorm_collection_schema',
+                            schemaType: 'brainstorm_idea_collection',
                             originType: 'ai_generated',
                             artifact: { id: 'brainstorm-collection-1' } as any,
                             createdAt: '2024-01-01T00:01:00Z'
@@ -690,9 +682,9 @@ describe('Unified Workflow Computation', () => {
                             artifactId: 'human-edited-idea-1',
                             isLeaf: true, // This is the leaf node - the chosen idea
                             depth: 2,
-                            artifactType: 'brainstorm_item_schema',
+                            artifactType: 'brainstorm_idea',
                             sourceTransform: 'none',
-                            schemaType: 'brainstorm_item_schema',
+                            schemaType: 'brainstorm_idea',
                             originType: 'user_input',
                             artifact: { id: 'human-edited-idea-1' } as any,
                             createdAt: '2024-01-01T00:02:00Z'
@@ -733,19 +725,19 @@ describe('Unified Workflow Computation', () => {
                 artifacts: [
                     {
                         id: 'brainstorm-input-1',
-                        type: 'brainstorm_tool_input_schema',
+                        type: 'brainstorm_input_params',
                         data: '{"platform": "douyin", "requirements": "test"}',
                         created_at: '2024-01-01T00:00:00Z'
                     },
                     {
                         id: 'brainstorm-collection-1',
-                        type: 'brainstorm_collection_schema',
+                        type: 'brainstorm_idea_collection',
                         data: '{"ideas": [{"title": "Original Idea", "body": "Original body"}]}',
                         created_at: '2024-01-01T00:01:00Z'
                     },
                     {
                         id: 'human-edited-idea-1',
-                        type: 'brainstorm_item_schema',
+                        type: 'brainstorm_idea',
                         data: '{"title": "Edited Idea", "body": "Edited body"}',
                         origin_type: 'user_input',
                         created_at: '2024-01-01T00:02:00Z'
@@ -791,9 +783,9 @@ describe('Unified Workflow Computation', () => {
                             artifactId: 'human-edited-idea-1',
                             isLeaf: true, // This is the leaf node
                             depth: 2,
-                            artifactType: 'brainstorm_item_schema',
+                            artifactType: 'brainstorm_idea',
                             sourceTransform: 'none',
-                            schemaType: 'brainstorm_item_schema',
+                            schemaType: 'brainstorm_idea',
                             originType: 'user_input',
                             artifact: { id: 'human-edited-idea-1' } as any,
                             createdAt: '2024-01-01T00:02:00Z'
@@ -823,32 +815,32 @@ describe('Unified Workflow Computation', () => {
                 artifacts: [
                     {
                         id: 'brainstorm-input-1',
-                        type: 'brainstorm_tool_input_schema',
+                        type: 'brainstorm_input_params',
                         data: '{"platform": "douyin", "requirements": "test"}',
                         created_at: '2024-01-01T00:00:00Z'
                     },
                     {
                         id: 'brainstorm-collection-1',
-                        type: 'brainstorm_collection_schema',
+                        type: 'brainstorm_idea_collection',
                         data: '{"ideas": [{"title": "Original Idea", "body": "Original body"}]}',
                         created_at: '2024-01-01T00:01:00Z'
                     },
                     {
                         id: 'human-edited-idea-1',
-                        type: 'brainstorm_item_schema',
+                        type: 'brainstorm_idea',
                         data: '{"title": "Edited Idea", "body": "Edited body"}',
                         origin_type: 'user_input',
                         created_at: '2024-01-01T00:02:00Z'
                     },
                     {
                         id: 'outline-1',
-                        type: 'outline_settings_schema',
+                        type: 'outline_settings',
                         data: '{"episodes": 60, "genre": "modern"}',
                         created_at: '2024-01-01T00:03:00Z'
                     },
                     {
                         id: 'chronicles-1',
-                        type: 'chronicles_schema',
+                        type: 'chronicles',
                         data: '{"episodes": [{"title": "Episode 1"}]}',
                         created_at: '2024-01-01T00:04:00Z'
                     }
@@ -929,9 +921,9 @@ describe('Unified Workflow Computation', () => {
                             artifactId: 'brainstorm-input-1',
                             isLeaf: false, // Not leaf because it has descendants
                             depth: 0,
-                            artifactType: 'brainstorm_tool_input_schema',
+                            artifactType: 'brainstorm_input_params',
                             sourceTransform: 'none',
-                            schemaType: 'brainstorm_tool_input_schema',
+                            schemaType: 'brainstorm_input_params',
                             originType: 'user_input',
                             artifact: { id: 'brainstorm-input-1' } as any,
                             createdAt: '2024-01-01T00:00:00Z'
@@ -941,9 +933,9 @@ describe('Unified Workflow Computation', () => {
                             artifactId: 'brainstorm-collection-1',
                             isLeaf: false, // Not leaf because human transform uses it as input
                             depth: 1,
-                            artifactType: 'brainstorm_collection_schema',
+                            artifactType: 'brainstorm_idea_collection',
                             sourceTransform: 'none',
-                            schemaType: 'brainstorm_collection_schema',
+                            schemaType: 'brainstorm_idea_collection',
                             originType: 'ai_generated',
                             artifact: { id: 'brainstorm-collection-1' } as any,
                             createdAt: '2024-01-01T00:01:00Z'
@@ -953,9 +945,9 @@ describe('Unified Workflow Computation', () => {
                             artifactId: 'human-edited-idea-1',
                             isLeaf: false, // Not leaf because outline uses it as input
                             depth: 2,
-                            artifactType: 'brainstorm_item_schema',
+                            artifactType: 'brainstorm_idea',
                             sourceTransform: 'none',
-                            schemaType: 'brainstorm_item_schema',
+                            schemaType: 'brainstorm_idea',
                             originType: 'user_input',
                             artifact: { id: 'human-edited-idea-1' } as any,
                             createdAt: '2024-01-01T00:02:00Z'
@@ -965,9 +957,9 @@ describe('Unified Workflow Computation', () => {
                             artifactId: 'outline-1',
                             isLeaf: false, // Not leaf because chronicles uses it as input
                             depth: 3,
-                            artifactType: 'outline_settings_schema',
+                            artifactType: 'outline_settings',
                             sourceTransform: 'none',
-                            schemaType: 'outline_settings_schema',
+                            schemaType: 'outline_settings',
                             originType: 'ai_generated',
                             artifact: { id: 'outline-1' } as any,
                             createdAt: '2024-01-01T00:03:00Z'
@@ -977,9 +969,9 @@ describe('Unified Workflow Computation', () => {
                             artifactId: 'chronicles-1',
                             isLeaf: true, // Chronicles is the leaf node
                             depth: 4,
-                            artifactType: 'chronicles_schema',
+                            artifactType: 'chronicles',
                             sourceTransform: 'none',
-                            schemaType: 'chronicles_schema',
+                            schemaType: 'chronicles',
                             originType: 'ai_generated',
                             artifact: { id: 'chronicles-1' } as any,
                             createdAt: '2024-01-01T00:04:00Z'
@@ -1021,22 +1013,12 @@ describe('Unified Workflow Computation', () => {
     });
 
     describe('computeWorkflowParameters', () => {
-        it('should compute parameters for pending artifacts', () => {
-            const params = computeWorkflowParameters(createMockProjectData({
-                artifacts: "pending"
-            }), 'test-project');
-
-            expect(params.projectId).toBe('test-project');
-            expect(params.currentStage).toBe('initial');
-            expect(params.hasActiveTransforms).toBe(false);
-            expect(params.effectiveBrainstormIdeas).toEqual([]);
-        });
 
         it('should compute parameters for active project', () => {
             const mockProjectData = createMockProjectData({
                 artifacts: [{
                     id: 'brainstorm-input-1',
-                    type: 'brainstorm_tool_input_schema',
+                    type: 'brainstorm_input_params',
                     data: '{"platform": "douyin", "requirements": "test"}',
                     created_at: '2024-01-01T00:00:00Z'
                 }] as any,
@@ -1055,9 +1037,9 @@ describe('Unified Workflow Computation', () => {
                             artifactId: 'brainstorm-input-1',
                             isLeaf: true,
                             depth: 0,
-                            artifactType: 'brainstorm_tool_input_schema',
+                            artifactType: 'brainstorm_input_params',
                             sourceTransform: 'none',
-                            schemaType: 'brainstorm_tool_input_schema',
+                            schemaType: 'brainstorm_input_params',
                             originType: 'user_input',
                             artifact: { id: 'brainstorm-input-1' } as any,
                             createdAt: '2024-01-01T00:00:00Z'
@@ -1084,13 +1066,13 @@ describe('Unified Workflow Computation', () => {
                 artifacts: [
                     {
                         id: 'brainstorm-input-1',
-                        type: 'brainstorm_tool_input_schema',
+                        type: 'brainstorm_input_params',
                         data: '{"platform": "douyin", "requirements": "test"}',
                         created_at: '2024-01-01T00:00:00Z'
                     },
                     {
                         id: 'brainstorm-ideas-1',
-                        schema_type: 'brainstorm_item_schema',
+                        schema_type: 'brainstorm_idea',
                         data: '{"title": "Test Idea", "body": "Test body"}',
                         created_at: '2024-01-01T00:00:00Z'
                     }
@@ -1103,9 +1085,9 @@ describe('Unified Workflow Computation', () => {
                             artifactId: 'brainstorm-input-1',
                             isLeaf: false,
                             depth: 0,
-                            artifactType: 'brainstorm_tool_input_schema',
+                            artifactType: 'brainstorm_input_params',
                             sourceTransform: 'none',
-                            schemaType: 'brainstorm_tool_input_schema',
+                            schemaType: 'brainstorm_input_params',
                             originType: 'user_input',
                             artifact: { id: 'brainstorm-input-1' } as any,
                             createdAt: '2024-01-01T00:00:00Z'
@@ -1115,9 +1097,9 @@ describe('Unified Workflow Computation', () => {
                             artifactId: 'brainstorm-ideas-1',
                             isLeaf: true,
                             depth: 1,
-                            artifactType: 'brainstorm_item_schema',
+                            artifactType: 'brainstorm_idea',
                             sourceTransform: 'none',
-                            schemaType: 'brainstorm_item_schema',
+                            schemaType: 'brainstorm_idea',
                             originType: 'ai_generated',
                             artifact: { id: 'brainstorm-ideas-1' } as any,
                             createdAt: '2024-01-01T00:00:00Z'
@@ -1143,13 +1125,13 @@ describe('Unified Workflow Computation', () => {
                 artifacts: [
                     {
                         id: 'brainstorm-input-1',
-                        type: 'brainstorm_tool_input_schema',
+                        type: 'brainstorm_input_params',
                         data: '{"platform": "douyin", "requirements": "test"}',
                         created_at: '2024-01-01T00:00:00Z'
                     },
                     {
                         id: 'brainstorm-ideas-1',
-                        schema_type: 'brainstorm_item_schema',
+                        schema_type: 'brainstorm_idea',
                         data: '{"title": "Test Idea", "body": "Test body"}',
                         created_at: '2024-01-01T00:00:00Z'
                     }
@@ -1161,9 +1143,9 @@ describe('Unified Workflow Computation', () => {
                             artifactId: 'brainstorm-input-1',
                             isLeaf: false,
                             depth: 0,
-                            artifactType: 'brainstorm_tool_input_schema',
+                            artifactType: 'brainstorm_input_params',
                             sourceTransform: 'none',
-                            schemaType: 'brainstorm_tool_input_schema',
+                            schemaType: 'brainstorm_input_params',
                             originType: 'user_input',
                             artifact: { id: 'brainstorm-input-1' } as any,
                             createdAt: '2024-01-01T00:00:00Z'
@@ -1173,9 +1155,9 @@ describe('Unified Workflow Computation', () => {
                             artifactId: 'brainstorm-ideas-1',
                             isLeaf: true,
                             depth: 1,
-                            artifactType: 'brainstorm_item_schema',
+                            artifactType: 'brainstorm_idea',
                             sourceTransform: 'none',
-                            schemaType: 'brainstorm_item_schema',
+                            schemaType: 'brainstorm_idea',
                             originType: 'ai_generated',
                             artifact: { id: 'brainstorm-ideas-1' } as any,
                             createdAt: '2024-01-01T00:00:00Z'
@@ -1213,7 +1195,7 @@ describe('Unified Workflow Computation', () => {
                     {
                         id: 'brainstorm-idea-1',
                         project_id: 'test-project',
-                        schema_type: 'brainstorm_item_schema',
+                        schema_type: 'brainstorm_idea',
                         schema_version: 1,
                         origin_type: 'user_input',
                         data: '{"title": "Manual Idea", "synopsis": "User entered idea"}',
@@ -1242,7 +1224,7 @@ describe('Unified Workflow Computation', () => {
                     {
                         id: 'brainstorm-input-1',
                         project_id: 'test-project',
-                        type: 'brainstorm_tool_input_schema',
+                        type: 'brainstorm_input_params',
                         schema_version: 1,
                         origin_type: 'ai_generated',
                         data: '{"platform": "douyin", "genre": "romance"}',
@@ -1251,7 +1233,7 @@ describe('Unified Workflow Computation', () => {
                     {
                         id: 'brainstorm-idea-1',
                         project_id: 'test-project',
-                        schema_type: 'brainstorm_item_schema',
+                        schema_type: 'brainstorm_idea',
                         schema_version: 1,
                         origin_type: 'ai_generated',
                         data: '{"title": "AI Idea", "synopsis": "AI generated idea"}',
@@ -1278,7 +1260,7 @@ describe('Unified Workflow Computation', () => {
                     {
                         id: 'brainstorm-input-1',
                         project_id: 'test-project',
-                        type: 'brainstorm_tool_input_schema',
+                        type: 'brainstorm_input_params',
                         schema_version: 1,
                         origin_type: 'ai_generated',
                         data: '{"platform": "douyin", "genre": "romance"}',
@@ -1287,7 +1269,7 @@ describe('Unified Workflow Computation', () => {
                     {
                         id: 'brainstorm-idea-1',
                         project_id: 'test-project',
-                        schema_type: 'brainstorm_item_schema',
+                        schema_type: 'brainstorm_idea',
                         schema_version: 1,
                         origin_type: 'user_input',
                         data: '{"title": "Manual Idea", "synopsis": "User entered idea"}',
@@ -1296,7 +1278,7 @@ describe('Unified Workflow Computation', () => {
                     {
                         id: 'brainstorm-idea-2',
                         project_id: 'test-project',
-                        schema_type: 'brainstorm_item_schema',
+                        schema_type: 'brainstorm_idea',
                         schema_version: 1,
                         origin_type: 'ai_generated',
                         data: '{"title": "AI Idea", "synopsis": "AI generated idea"}',
@@ -1318,7 +1300,7 @@ describe('Unified Workflow Computation', () => {
                     {
                         id: 'brainstorm-idea-1',
                         project_id: 'test-project',
-                        schema_type: 'brainstorm_item_schema',
+                        schema_type: 'brainstorm_idea',
                         schema_version: 1,
                         origin_type: 'user_input',
                         data: '{"title": "Manual Idea", "synopsis": "User entered idea"}',
@@ -1342,7 +1324,7 @@ describe('Unified Workflow Computation', () => {
                     {
                         id: 'brainstorm-input-1',
                         project_id: 'test-project',
-                        type: 'brainstorm_tool_input_schema',
+                        type: 'brainstorm_input_params',
                         schema_version: 1,
                         origin_type: 'ai_generated',
                         data: '{"platform": "douyin", "genre": "romance"}',
@@ -1351,7 +1333,7 @@ describe('Unified Workflow Computation', () => {
                     {
                         id: 'brainstorm-idea-1',
                         project_id: 'test-project',
-                        schema_type: 'brainstorm_item_schema',
+                        schema_type: 'brainstorm_idea',
                         schema_version: 1,
                         origin_type: 'ai_generated',
                         data: '{"title": "AI Idea", "synopsis": "AI generated idea"}',

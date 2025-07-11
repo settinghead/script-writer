@@ -152,7 +152,7 @@ app.post("/api/transforms/:transformId/stop",
 
 // ========== ARTIFACT ENDPOINTS ==========
 
-// Helper function to find brainstorm_params in artifact lineage
+// Helper function to find brainstorm_input_params in artifact lineage
 async function findBrainstormParamsInLineage(userId: string, sourceArtifactId: string) {
   const userTransforms = await transformRepo.getUserTransforms(userId);
   const visitedArtifacts = new Set<string>();
@@ -167,7 +167,6 @@ async function findBrainstormParamsInLineage(userId: string, sourceArtifactId: s
     }
     visitedArtifacts.add(currentArtifactId);
 
-    // Check if this artifact is brainstorm_params or brainstorming_job_params (which contains the same data)
     const artifact = await artifactRepo.getArtifact(currentArtifactId);
     if (artifact) {
       // Verify user has access to this artifact's project
@@ -175,20 +174,8 @@ async function findBrainstormParamsInLineage(userId: string, sourceArtifactId: s
       if (!hasAccess) {
         continue; // Skip artifacts user doesn't have access to
       }
-      if (artifact.schema_type === 'brainstorm_params_schema') {
+      if (artifact.schema_type === 'brainstorm_input_params') {
         brainstormParams.push(artifact);
-      } else if (artifact.schema_type === 'brainstorming_job_params_schema') {
-        // Convert brainstorming_job_params to brainstorm_params format
-        const convertedParams = {
-          ...artifact,
-          schema_type: 'brainstorm_params_schema',
-          data: {
-            platform: artifact.data.platform,
-            genre_paths: artifact.data.genrePaths,
-            requirements: artifact.data.requirements
-          }
-        };
-        brainstormParams.push(convertedParams);
       }
     }
 
@@ -210,7 +197,7 @@ async function findBrainstormParamsInLineage(userId: string, sourceArtifactId: s
   return brainstormParams;
 }
 
-// Helper function to find brainstorm_params for a session (outline or episode)
+// Helper function to find brainstorm_input_params for a session (outline or episode)
 async function findBrainstormParamsForSession(userId: string, sessionId: string) {
   const userTransforms = await transformRepo.getUserTransforms(userId);
 
@@ -231,7 +218,7 @@ async function findBrainstormParamsForSession(userId: string, sessionId: string)
     outputs.forEach(o => relatedArtifactIds.add(o.artifact_id));
   }
 
-  // Now find brainstorm_params in the lineage of these artifacts
+  // Now find brainstorm_input_params in the lineage of these artifacts
   const brainstormParams: any[] = [];
 
   for (const artifactId of relatedArtifactIds) {
@@ -266,16 +253,16 @@ app.get("/api/artifacts",
 
       let artifacts: any[] = [];
 
-      if (type === 'brainstorm_params') {
-        // Special handling for brainstorm_params with lineage tracing
+      if (type === 'brainstorm_input_params') {
+        // Special handling for brainstorm_input_params with lineage tracing
         if (sourceArtifactId) {
-          // Find brainstorm_params in the lineage of this source artifact
+          // Find brainstorm_input_params in the lineage of this source artifact
           artifacts = await findBrainstormParamsInLineage(user.id, sourceArtifactId);
         } else if (sessionId) {
-          // Find brainstorm_params for a specific session (outline or episode)
+          // Find brainstorm_input_params for a specific session (outline or episode)
           artifacts = await findBrainstormParamsForSession(user.id, sessionId);
         } else {
-          // Fallback to all brainstorm_params for the user
+          // Fallback to all brainstorm_input_params for the user
           artifacts = await artifactRepo.getUserArtifacts(user.id);
           artifacts = artifacts.filter(a => a.schema_type === type);
         }
@@ -313,53 +300,6 @@ app.get("/api/artifacts",
 );
 
 
-
-app.post("/api/artifacts/user-input",
-  authMiddleware.authenticate,
-  async (req: any, res: any) => {
-    const { text, title, sourceArtifactId } = req.body;
-
-    const user = authMiddleware.getCurrentUser(req);
-    if (!user) {
-      return res.status(401).json({ error: "User not authenticated" });
-    }
-
-    // Validate required fields
-    if (!text || typeof text !== 'string' || !text.trim()) {
-      return res.status(400).json({
-        error: "Missing or empty text",
-        details: "text must be a non-empty string"
-      });
-    }
-
-    try {
-      const artifact = await artifactRepo.createArtifact(
-        user.id,
-        'user_input_schema',
-        {
-          text: text.trim(),
-          title: title?.trim() || undefined,
-          source: sourceArtifactId ? 'modified_brainstorm' : 'manual',
-          source_artifact_id: sourceArtifactId
-        },
-        'v1', // schemaVersion
-        undefined, // metadata
-        'completed', // streamingStatus
-        'user_input' // originType - this is user-created content
-      );
-
-      res.json(artifact);
-
-    } catch (error: any) {
-      console.error('Error creating user input artifact:', error);
-      res.status(500).json({
-        error: "Failed to create user input artifact",
-        details: error.message,
-        timestamp: new Date().toISOString()
-      });
-    }
-  }
-);
 
 
 

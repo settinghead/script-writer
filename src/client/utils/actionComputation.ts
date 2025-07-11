@@ -1,4 +1,4 @@
-import { ProjectDataContextType } from '../../common/types';
+import { ElectricArtifact, ProjectDataContextType, TypedArtifact } from '../../common/types';
 import { SelectedBrainstormIdea } from '../stores/actionItemsStore';
 import {
     computeActionsFromLineage,
@@ -36,7 +36,7 @@ export const isLeafNode = (artifactId: string, transformInputs: any[]): boolean 
 };
 
 // Helper function to check if an artifact can become editable
-export const canBecomeEditable = (artifact: any, transformInputs: any[]): boolean => {
+export const canBecomeEditable = (artifact: TypedArtifact, transformInputs: any[]): boolean => {
     return isLeafNode(artifact.id, transformInputs) && artifact.origin_type === 'ai_generated';
 };
 
@@ -82,17 +82,7 @@ function computeUnifiedContext(
     projectData: ProjectDataContextType,
     _projectId: string
 ): UnifiedComputationContext | null {
-    console.log('[computeUnifiedContext] Starting computation with projectData:', {
-        artifacts: projectData.artifacts === "pending" ? "pending" :
-            projectData.artifacts === "error" ? "error" :
-                Array.isArray(projectData.artifacts) ? `${projectData.artifacts.length} artifacts` : "unknown",
-        transforms: projectData.transforms === "pending" ? "pending" :
-            projectData.transforms === "error" ? "error" :
-                Array.isArray(projectData.transforms) ? `${projectData.transforms.length} transforms` : "unknown",
-        lineageGraph: projectData.lineageGraph === "pending" ? "pending" :
-            projectData.lineageGraph === "error" ? "error" :
-                projectData.lineageGraph ? "available" : "null"
-    });
+
 
     // Check if any data is still loading
     if (projectData.artifacts === "pending" ||
@@ -100,17 +90,14 @@ function computeUnifiedContext(
         projectData.humanTransforms === "pending" ||
         projectData.transformInputs === "pending" ||
         projectData.transformOutputs === "pending") {
-        console.log('[computeUnifiedContext] Data still loading, returning null');
         return null;
     }
 
     // Handle lineage graph pending state
     if (projectData.lineageGraph === "pending") {
-        console.log('[computeUnifiedContext] Lineage graph pending, using fallback logic');
 
         // Simple fallback: check if we have any artifacts
         if (projectData.artifacts === "error" || !Array.isArray(projectData.artifacts) || projectData.artifacts.length === 0) {
-            console.log('[computeUnifiedContext] No artifacts available, returning initial stage');
             return {
                 currentStage: 'initial',
                 hasActiveTransforms: false,
@@ -129,39 +116,24 @@ function computeUnifiedContext(
             };
         }
 
-        console.log('[computeUnifiedContext] Available artifacts:', projectData.artifacts.map(a => ({
-            id: a.id,
-            type: a.type || a.schema_type,
-            origin_type: a.origin_type
-        })));
 
         // Basic stage detection without lineage
         const brainstormIdeas = projectData.artifacts.filter(a =>
-            a.schema_type === 'brainstorm_item_schema' || a.type === 'brainstorm_item_schema'
+            a.schema_type === 'brainstorm_idea'
         );
 
         const brainstormCollections = projectData.artifacts.filter(a =>
-            a.schema_type === 'brainstorm_collection_schema' || a.type === 'brainstorm_collection_schema'
+            a.schema_type === 'brainstorm_collection'
         );
-
-        console.log('[computeUnifiedContext] Filtered artifacts:', {
-            brainstormIdeas: brainstormIdeas.length,
-            brainstormCollections: brainstormCollections.length
-        });
 
         if (brainstormIdeas.length > 0) {
             // Check if we have user_input brainstorm ideas (indicating human transform/chosen idea)
             const userInputIdeas = brainstormIdeas.filter(a => a.origin_type === 'user_input');
 
-            console.log('[computeUnifiedContext] Brainstorm ideas analysis:', {
-                totalIdeas: brainstormIdeas.length,
-                userInputIdeas: userInputIdeas.length,
-                allIdeas: brainstormIdeas.map(a => ({ id: a.id, origin_type: a.origin_type }))
-            });
+
 
             if (userInputIdeas.length > 0) {
                 // We have chosen/edited ideas -> idea_editing stage
-                console.log('[computeUnifiedContext] Detected idea_editing stage (user input ideas found)');
                 return {
                     currentStage: 'idea_editing',
                     hasActiveTransforms: false,
@@ -179,8 +151,6 @@ function computeUnifiedContext(
                     actions: []
                 };
             } else {
-                // Only AI-generated ideas -> brainstorm_selection stage
-                console.log('[computeUnifiedContext] Detected brainstorm_selection stage (only AI ideas found)');
                 return {
                     currentStage: 'brainstorm_selection',
                     hasActiveTransforms: false,
@@ -200,7 +170,6 @@ function computeUnifiedContext(
             }
         } else if (brainstormCollections.length > 0) {
             // We have brainstorm collections but no individual ideas -> brainstorm_selection stage
-            console.log('[computeUnifiedContext] Detected brainstorm_selection stage (collections found)');
             return {
                 currentStage: 'brainstorm_selection',
                 hasActiveTransforms: false,
@@ -219,7 +188,6 @@ function computeUnifiedContext(
             };
         }
 
-        console.log('[computeUnifiedContext] No brainstorm artifacts found, returning initial stage');
         return {
             currentStage: 'initial',
             hasActiveTransforms: false,
@@ -245,7 +213,6 @@ function computeUnifiedContext(
         projectData.humanTransforms === "error" ||
         projectData.transformInputs === "error" ||
         projectData.transformOutputs === "error") {
-        console.log('[computeUnifiedContext] Error state detected, returning initial stage');
         return {
             currentStage: 'initial',
             hasActiveTransforms: false,
@@ -264,7 +231,6 @@ function computeUnifiedContext(
         };
     }
 
-    console.log('[computeUnifiedContext] Using lineage-based computation');
 
     // Use the lineage-based computation for actions and stage detection
     const lineageResult = computeActionsFromLineage(
@@ -276,57 +242,43 @@ function computeUnifiedContext(
         projectData.transformOutputs
     );
 
-    console.log('[computeUnifiedContext] Lineage computation result:', {
-        currentStage: lineageResult.actionContext.currentStage,
-        hasActiveTransforms: lineageResult.actionContext.hasActiveTransforms,
-        actionsCount: lineageResult.actions.length,
-        stageDescription: lineageResult.stageDescription
-    });
 
     // Extract all needed data from lineage graph and artifacts in a single pass
     const lineageGraph = projectData.lineageGraph;
-    const artifacts = projectData.artifacts as any[];
+    const artifacts = projectData.artifacts;
     const transformInputs = Array.isArray(projectData.transformInputs)
         ? projectData.transformInputs
         : [];
 
     // Single pass through lineage graph to collect all artifact types
-    const canonicalBrainstormArtifacts: any[] = [];
-    const canonicalOutlineArtifacts: any[] = [];
-    const canonicalChroniclesArtifacts: any[] = [];
+    const canonicalBrainstormArtifacts: ElectricArtifact[] = [];
+    const canonicalOutlineArtifacts: ElectricArtifact[] = [];
+    const canonicalChroniclesArtifacts: ElectricArtifact[] = [];
 
     // Process all lineage nodes in one pass
     for (const node of lineageGraph.nodes.values()) {
         if (node.type !== 'artifact') continue;
 
         const lineageArtifactNode = node as any;
-        const artifact = artifacts.find((a: any) => a.id === lineageArtifactNode.artifactId);
+        const artifact = artifacts.find((a) => a.id === lineageArtifactNode.artifactId);
 
         if (!artifact) continue;
 
         // Categorize artifacts by type
-        if (artifact.schema_type === 'brainstorm_tool_input_schema' ||
-            artifact.type === 'brainstorm_tool_input_schema' ||
-            artifact.schema_type === 'brainstorm_item_schema' ||
-            artifact.type === 'brainstorm_item_schema' ||
-            artifact.schema_type === 'brainstorm_idea_schema' ||
-            artifact.type === 'brainstorm_idea' ||
-            artifact.schema_type === 'brainstorm_collection_schema' ||
-            artifact.type === 'brainstorm_collection_schema') {
+        if (artifact.schema_type === 'brainstorm_input_params' ||
+            artifact.schema_type === 'brainstorm_idea' ||
+            artifact.schema_type === 'brainstorm_collection') {
             canonicalBrainstormArtifacts.push(artifact);
-        } else if (artifact.schema_type === 'outline_settings_schema' ||
-            artifact.type === 'outline_settings' ||
-            artifact.type === 'outline_settings_schema') {
+        } else if (artifact.schema_type === 'outline_settings') {
             canonicalOutlineArtifacts.push(artifact);
-        } else if (artifact.schema_type === 'chronicles_schema' ||
-            artifact.type === 'chronicles_schema') {
+        } else if (artifact.schema_type === 'chronicles') {
             canonicalChroniclesArtifacts.push(artifact);
         }
     }
 
     // Extract specific artifact types from brainstorm artifacts
-    const brainstormInput = canonicalBrainstormArtifacts.find((a: any) =>
-        a.schema_type === 'brainstorm_tool_input_schema' || a.type === 'brainstorm_tool_input_schema'
+    const brainstormInput = canonicalBrainstormArtifacts.find((a) =>
+        a.schema_type === 'brainstorm_input_params'
     );
 
     // FIXED: Use effective brainstorm ideas from lineage computation instead of filtering artifacts
@@ -340,14 +292,14 @@ function computeUnifiedContext(
     let outlineSettings = null;
     if (canonicalOutlineArtifacts.length > 0) {
         // Find leaf nodes from canonical set
-        const leafOutlineSettings = canonicalOutlineArtifacts.filter((artifact: any) => {
+        const leafOutlineSettings = canonicalOutlineArtifacts.filter((artifact) => {
             const lineageNode = lineageGraph.nodes.get(artifact.id);
             return lineageNode && lineageNode.isLeaf;
         });
 
         if (leafOutlineSettings.length > 0) {
             // Prioritize user_input artifacts, then by most recent
-            leafOutlineSettings.sort((a: any, b: any) => {
+            leafOutlineSettings.sort((a, b) => {
                 // First priority: user_input origin type
                 if (a.origin_type === 'user_input' && b.origin_type !== 'user_input') return -1;
                 if (b.origin_type === 'user_input' && a.origin_type !== 'user_input') return 1;
@@ -357,7 +309,7 @@ function computeUnifiedContext(
             outlineSettings = leafOutlineSettings[0];
         } else {
             // Fallback to most recent from canonical set if no leaf nodes found
-            canonicalOutlineArtifacts.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+            canonicalOutlineArtifacts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
             outlineSettings = canonicalOutlineArtifacts[0];
         }
     }
@@ -511,12 +463,6 @@ function computeWorkflowStepsFromContext(context: UnifiedComputationContext): Wo
  * Compute display components from unified context
  */
 function computeDisplayComponentsFromContext(context: UnifiedComputationContext): DisplayComponent[] {
-    console.log('[computeDisplayComponentsFromContext] Computing components for stage:', context.currentStage, {
-        brainstormIdeas: context.brainstormIdeas.length,
-        chosenIdea: context.chosenIdea ? context.chosenIdea.id : null,
-        brainstormInput: context.brainstormInput ? context.brainstormInput.id : null,
-        hasActiveTransforms: context.hasActiveTransforms
-    });
 
     const components: DisplayComponent[] = [];
 
@@ -644,7 +590,7 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
                         component: getComponentById('single-brainstorm-idea-editor'),
                         mode: context.hasActiveTransforms ? 'readonly' : 'editable',
                         props: {
-                            brainstormIdea: context.brainstormIdeas[0], // Fixed: use brainstormIdea instead of idea
+                            brainstormIdea: context.brainstormIdeas[0],
                             isEditable: !context.hasActiveTransforms,
                             currentStage: context.currentStage
                         },
@@ -839,12 +785,6 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
     // Sort by priority
     const sortedComponents = components.sort((a, b) => a.priority - b.priority);
 
-    console.log('[computeDisplayComponentsFromContext] Final components:', sortedComponents.map(c => ({
-        id: c.id,
-        mode: c.mode,
-        priority: c.priority,
-        propsKeys: Object.keys(c.props || {})
-    })));
 
     return sortedComponents;
 }
@@ -937,10 +877,10 @@ const detectIsManualPath = (projectData: ProjectDataContextType): boolean => {
         return false;
     }
 
-    // Simple heuristic: if we have brainstorm_tool_input_schema artifacts, it's AI path
+    // Simple heuristic: if we have brainstorm_input_params artifacts, it's AI path
     // Otherwise, it's manual path
     const hasBrainstormInput = projectData.artifacts.some(a =>
-        a.schema_type === 'brainstorm_tool_input_schema' || a.type === 'brainstorm_tool_input_schema'
+        a.schema_type === 'brainstorm_input_params'
     );
 
     return !hasBrainstormInput;

@@ -27,7 +27,7 @@ async function testYJSFix() {
         // Create a test brainstorm artifact
         const testArtifact = await artifactRepo.createArtifact(
             TEST_PROJECT_ID,
-            'brainstorm_item_schema',
+            'brainstorm_idea',
             {
                 title: '测试YJS创意',
                 body: '这是一个测试YJS协作编辑功能的创意内容。'

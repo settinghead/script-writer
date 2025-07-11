@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useProjectData } from '../contexts/ProjectDataContext';
+import { TypedArtifact } from '@/common/types';
 
 interface UseChroniclesDescendantsResult {
     hasChroniclesDescendants: boolean;
@@ -21,14 +22,14 @@ export const useChroniclesDescendants = (outlineSettingsArtifactId: string): Use
 
         // Get all outline settings artifacts in the lineage chain
         if (!Array.isArray(projectData.artifacts)) return { hasChroniclesDescendants: false, latestChronicles: null, isLoading: false };
-        const allOutlineSettingsArtifacts = projectData.artifacts.filter((artifact: any) =>
-            artifact.schema_type === 'outline_settings_schema' && artifact.data
+        const allOutlineSettingsArtifacts = projectData.artifacts.filter((artifact) =>
+            artifact.schema_type === 'outline_settings' && artifact.data
         );
 
         // Find transforms that use ANY outline settings artifact as input (lineage-aware)
         if (!Array.isArray(projectData.transformInputs)) return { hasChroniclesDescendants: false, latestChronicles: null, isLoading: false };
-        const relatedTransforms = projectData.transformInputs.filter((input: any) =>
-            allOutlineSettingsArtifacts.some((artifact: any) => artifact.id === input.artifact_id)
+        const relatedTransforms = projectData.transformInputs.filter((input) =>
+            allOutlineSettingsArtifacts.some((artifact) => artifact.id === input.artifact_id)
         );
 
         if (relatedTransforms.length === 0) {
@@ -41,14 +42,14 @@ export const useChroniclesDescendants = (outlineSettingsArtifactId: string): Use
 
         // Find chronicles artifacts created by these transforms
         if (!Array.isArray(projectData.transformOutputs)) return { hasChroniclesDescendants: false, latestChronicles: null, isLoading: false };
-        const chroniclesArtifacts = projectData.artifacts.filter((artifact: any) =>
-            (artifact.schema_type === 'chronicles_schema' || artifact.type === 'chronicles') &&
-            relatedTransforms.some((transform: any) => {
+        const chroniclesArtifacts = projectData.artifacts.filter((artifact) =>
+            (artifact.schema_type === 'chronicles') &&
+            relatedTransforms.some((transform) => {
                 if (!Array.isArray(projectData.transformOutputs)) return false;
-                const outputs = projectData.transformOutputs.filter((output: any) =>
+                const outputs = projectData.transformOutputs.filter((output) =>
                     output.transform_id === transform.transform_id
                 );
-                return outputs.some((output: any) => output.artifact_id === artifact.id);
+                return outputs.some((output) => output.artifact_id === artifact.id);
             })
         );
 

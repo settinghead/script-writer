@@ -3,6 +3,7 @@
  * Please do not edit it manually.
  */
 
+import { TypedArtifact } from "@/common/types";
 import type { ColumnType } from "kysely";
 
 export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
@@ -32,8 +33,8 @@ export interface Artifacts {
   metadata: string | null;
   origin_type: string;
   project_id: string;
-  schema_type: string;
-  schema_version: string;
+  schema_type: TypedArtifact['schema_type'];
+  schema_version: TypedArtifact['schema_version'];
   streaming_status: Generated<string | null>;
   updated_at: Generated<Timestamp>;
 }

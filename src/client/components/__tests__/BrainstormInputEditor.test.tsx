@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import BrainstormInputEditor from '../BrainstormInputEditor';
 import { useYJSField } from '../../transform-artifact-framework/contexts/YJSArtifactContext';
+import { TypedArtifact } from '@/common/types';
 
 // Mock the YJS context
 vi.mock('../../transform-artifact-framework/contexts/YJSArtifactContext', () => ({
@@ -37,7 +38,9 @@ vi.mock('../../contexts/ProjectDataContext', () => ({
 describe('BrainstormInputEditor', () => {
     const mockArtifact = {
         id: 'test-artifact-1',
-        type: 'brainstorm_tool_input_schema',
+        schema_type: 'brainstorm_input_params' as TypedArtifact['schema_type'],
+        schema_version: 'v1' as TypedArtifact['schema_version'],
+        origin_type: 'ai_generated' as TypedArtifact['origin_type'],
         data: '{"platform": "douyin", "genre": "现代甜宠", "numberOfIdeas": 3, "other_requirements": "需要很多狗血和反转"}',
         created_at: '2024-01-01T00:00:00Z'
     };

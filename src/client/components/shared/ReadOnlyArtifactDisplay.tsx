@@ -1,13 +1,13 @@
 import React, { useMemo } from 'react';
 import { Typography, Space, Card, Tag } from 'antd';
 import { UserOutlined, HeartOutlined, StarOutlined, EnvironmentOutlined, TeamOutlined, ThunderboltOutlined, BulbOutlined } from '@ant-design/icons';
-import { ReadOnlyEmotionArcs, ReadOnlyRelationshipDevelopments, ReadOnlyInsights } from './YJSComplexFields';
+import { TypedArtifact } from '@/common/types';
 
 const { Text } = Typography;
 
 interface ReadOnlyArtifactDisplayProps {
     data: any;
-    schemaType: string;
+    schemaType: TypedArtifact['schema_type'];
 }
 
 /**
@@ -69,7 +69,7 @@ export const ReadOnlyArtifactDisplay: React.FC<ReadOnlyArtifactDisplayProps> = (
 
 
     // Render chronicles specific layout
-    if (schemaType === 'chronicles_schema') {
+    if (schemaType === 'chronicles') {
         return (
             <Space direction="vertical" size="large" style={{ width: '100%' }}>
                 {Array.isArray(parsedData.stages) && parsedData.stages.length > 0 ? (
@@ -218,7 +218,7 @@ export const ReadOnlyArtifactDisplay: React.FC<ReadOnlyArtifactDisplayProps> = (
     }
 
     // Render outline settings specific layout
-    if (schemaType === 'outline_settings_schema') {
+    if (schemaType === 'outline_settings') {
         return (
             <Space direction="vertical" size="large" style={{ width: '100%' }}>
                 {/* Basic Information */}

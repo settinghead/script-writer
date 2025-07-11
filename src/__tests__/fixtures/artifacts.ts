@@ -1,3 +1,5 @@
+import { TypedArtifact } from "@/common/types";
+
 export const mockArtifacts = {
     brainstormIdea: {
         id: 'test-brainstorm-1',
@@ -7,7 +9,7 @@ export const mockArtifacts = {
             title: '误爱成宠',
             body: '林氏集团总裁林慕琛因一场误会将普通职员夏栀认作富家千金...'
         }),
-        schema_type: 'brainstorm_idea',
+        schema_type: 'brainstorm_idea' as TypedArtifact['schema_type'],
         schema_version: '1.0',
         type_version: '1.0',
         origin_type: 'ai_generated',

@@ -8,13 +8,11 @@ import {
 } from '../../../common/schemas/outlineSchemas';
 
 // Get the schemas from the registry
-const BrainstormIdeaSchema = ArtifactSchemaRegistry.brainstorm_item_schema;
-const UserInputSchema = ArtifactSchemaRegistry.user_input_schema;
+const BrainstormIdeaSchema = ArtifactSchemaRegistry.brainstorm_idea;
 
 
 // Type definitions based on schemas
 type BrainstormIdea = z.infer<typeof BrainstormIdeaSchema>;
-type UserInput = z.infer<typeof UserInputSchema>;
 type BrainstormToolInput = z.infer<typeof BrainstormToolInputSchema>;
 
 
@@ -44,27 +42,7 @@ function extractDataAtPath(sourceData: any, path: string): any {
   return sourceData;
 }
 
-// Legacy function removed - OutlineInput type no longer exists in new system
 
-/**
- * Create user input from entire brainstorm idea
- */
-export function createUserInputFromBrainstormIdea(
-  sourceArtifactData: any,
-  derivationPath: string
-): UserInput {
-  const ideaData = extractDataAtPath(sourceArtifactData, derivationPath) as BrainstormIdea;
-
-  if (!ideaData || typeof ideaData.title !== 'string' || typeof ideaData.body !== 'string') {
-    throw new Error(`Invalid brainstorm idea data at path ${derivationPath}`);
-  }
-
-  // For entire object editing, we store the full idea in the text field as JSON
-  return {
-    title: ideaData.title,
-    body: ideaData.body
-  };
-}
 
 /**
  * Create brainstorm idea from brainstorm idea (for editing)
@@ -86,37 +64,9 @@ export function createBrainstormIdeaFromBrainstormIdea(
   };
 }
 
-/**
- * Create user input from brainstorm idea field (title or body)
- */
-export function createUserInputFromBrainstormField(
-  sourceArtifactData: any,
-  derivationPath: string
-): UserInput {
-  const fieldValue = extractDataAtPath(sourceArtifactData, derivationPath);
-
-  if (typeof fieldValue !== 'string') {
-    throw new Error(`Invalid field value at path ${derivationPath}`);
-  }
-
-  return {
-    title: 'Field Edit',
-    body: fieldValue
-  };
-}
 
 
 
-// Define transform functions
-export const createBrainstormIdeaTransform = (sourceArtifactId: string, targetPath: string) => {
-  return {
-    sourceArtifactId,
-    targetPath,
-    inputSchema: BrainstormIdeaSchema,
-    outputSchema: UserInputSchema,
-    transformType: 'human' as const
-  };
-};
 
 export const createOutlineSettingsTransform = (sourceArtifactId: string) => {
   return {

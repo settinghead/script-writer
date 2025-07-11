@@ -5,6 +5,7 @@ import { createChroniclesToolDefinition } from '../tools/ChroniclesTool';
 import { ArtifactRepository } from '../transform-artifact-framework/ArtifactRepository';
 import { TransformRepository } from '../transform-artifact-framework/TransformRepository';
 import { createMockArtifactRepository, createMockTransformRepository } from '../../__tests__/mocks/databaseMocks';
+import { TypedArtifact } from '@/common/types';
 
 describe('End-to-End Workflow Tests', () => {
     let mockArtifactRepo: any;
@@ -50,7 +51,7 @@ describe('End-to-End Workflow Tests', () => {
                             }
                         ]
                     },
-                    schema_type: 'outline_settings_schema',
+                    schema_type: 'outline_settings' as TypedArtifact['schema_type'],
                     origin_type: 'ai_generated'
                 };
             } else if (id.includes('brainstorm') || id === 'mock-artifact-1') {
@@ -58,12 +59,11 @@ describe('End-to-End Workflow Tests', () => {
                 return {
                     id: id,
                     project_id: testProjectId,
-                    type: 'brainstorm_idea',
+                    schema_type: 'brainstorm_idea' as TypedArtifact['schema_type'],
                     data: {
                         title: '现代都市甜宠',
                         body: '一个关于都市白领的甜宠故事，男女主角在职场相遇，经历误会后走到一起'
                     },
-                    schema_type: 'user_input_schema',
                     origin_type: 'user_input',
                     metadata: {
                         derived_data: {
@@ -77,14 +77,13 @@ describe('End-to-End Workflow Tests', () => {
                 return {
                     id: id,
                     project_id: testProjectId,
-                    type: 'brainstorm_tool_input_schema',
+                    schema_type: 'brainstorm_input_params' as TypedArtifact['schema_type'],
                     data: {
                         platform: '抖音',
                         genre: '现代甜宠',
                         other_requirements: '生成3个故事创意',
                         numberOfIdeas: 3
                     },
-                    schema_type: 'brainstorm_tool_input_schema',
                     origin_type: 'user_input'
                 };
             }

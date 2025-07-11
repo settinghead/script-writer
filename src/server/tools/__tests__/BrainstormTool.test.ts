@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, } from 'vitest';
 import { createBrainstormToolDefinition } from '../BrainstormTools';
 import { createMockArtifactRepository, createMockTransformRepository } from '../../../__tests__/mocks/databaseMocks';
+import { TypedArtifact } from '@/common/types';
 
 describe('BrainstormTool', () => {
     let mockTransformRepo: any;
@@ -17,15 +18,15 @@ describe('BrainstormTool', () => {
                 return {
                     id: id,
                     project_id: 'test-project-1',
-                    type: 'brainstorm_tool_input_schema',
                     data: {
                         platform: '抖音',
                         genre: '现代甜宠',
                         other_requirements: '快节奏，高颜值主角',
                         numberOfIdeas: 3
                     },
-                    schema_type: 'brainstorm_tool_input_schema',
-                    origin_type: 'user_input'
+                    schema_type: 'brainstorm_input_params' as TypedArtifact['schema_type'],
+                    schema_version: 'v1',
+                    origin_type: 'user_input' as TypedArtifact['origin_type']
                 };
             }
             return null;
@@ -69,15 +70,14 @@ describe('BrainstormTool', () => {
                 return {
                     id: id,
                     project_id: 'test-project-1',
-                    type: 'brainstorm_tool_input_schema',
+                    schema_type: 'brainstorm_input_params' as TypedArtifact['schema_type'],
                     data: {
                         platform: 'YouTube',
                         genre: '悬疑',
                         other_requirements: '反转剧情',
                         numberOfIdeas: 3
                     },
-                    schema_type: 'brainstorm_tool_input_schema',
-                    origin_type: 'user_input'
+                    origin_type: 'user_input' as TypedArtifact['origin_type']
                 };
             }
             return null;

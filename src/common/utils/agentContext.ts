@@ -38,7 +38,7 @@ function artifactToContextString(artifact: ElectricArtifact, maxLength: number =
         const data = JSON.parse(artifact.data);
 
         switch (artifact.schema_type) {
-            case 'brainstorm_collection_schema':
+            case 'brainstorm_collection':
                 if (data.ideas && Array.isArray(data.ideas)) {
                     const ideaDescriptions = data.ideas.map((idea: any) => {
                         const title = idea.title || '无标题';
@@ -50,7 +50,7 @@ function artifactToContextString(artifact: ElectricArtifact, maxLength: number =
                 }
                 break;
 
-            case 'brainstorm_tool_input_schema':
+            case 'brainstorm_input_params':
                 const parts = [];
                 if (data.genre) parts.push(`题材: ${data.genre}`);
                 if (data.platform) parts.push(`平台: ${data.platform}`);
@@ -58,22 +58,7 @@ function artifactToContextString(artifact: ElectricArtifact, maxLength: number =
                 if (data.requirements) parts.push(`要求: ${data.requirements}`);
                 return parts.join('; ');
 
-            case 'outline_input_schema':
-                const outlineParts = [];
-                if (data.chosen_idea?.title) outlineParts.push(`选定创意: "${data.chosen_idea.title}"`);
-                if (data.episode_count) outlineParts.push(`集数: ${data.episode_count}`);
-                if (data.target_length) outlineParts.push(`时长: ${data.target_length}`);
-                return outlineParts.join('; ');
 
-            case 'user_input_schema':
-                if (data.content) {
-                    const content = data.content.toString();
-                    return content.length > maxLength ? content.substring(0, maxLength) + '...' : content;
-                }
-                break;
-
-
-            case 'brainstorm_item_schema':
             case 'brainstorm_idea':
                 const itemParts = [];
                 if (data.title) itemParts.push(`标题: "${data.title}"`);
@@ -135,12 +120,12 @@ export async function prepareAgentPromptContext(
         if (node.type === 'artifact') {
             const artifactNode = node as LineageNodeArtifact;
 
-            if (artifactNode.originType === 'user_input') {
+            if (artifactNode.artifact.origin_type === 'user_input') {
                 // This is initial user input
                 events.push({
                     timestamp: artifactNode.createdAt,
                     type: 'initial_content',
-                    description: `项目开始：用户修改了${artifactNode.schemaType}`,
+                    description: `项目开始：用户修改了${artifactNode.artifact.schema_type}`,
                     details: artifactToContextString(artifactNode.artifact),
                     artifact: artifactNode
                 });
@@ -151,7 +136,7 @@ export async function prepareAgentPromptContext(
                     events.push({
                         timestamp: artifactNode.createdAt,
                         type: 'ai_generation',
-                        description: `AI生成的${artifactNode.schemaType}`,
+                        description: `AI生成的${artifactNode.artifact.schema_type}`,
                         details: artifactToContextString(artifactNode.artifact),
                         artifact: artifactNode,
                         transform: sourceTransform
@@ -160,7 +145,7 @@ export async function prepareAgentPromptContext(
                     events.push({
                         timestamp: artifactNode.createdAt,
                         type: 'user_edit',
-                        description: `用户编辑${artifactNode.schemaType}`,
+                        description: `用户编辑${artifactNode.artifact.schema_type}`,
                         details: artifactToContextString(artifactNode.artifact),
                         artifact: artifactNode,
                         transform: sourceTransform
@@ -198,7 +183,7 @@ export async function prepareAgentPromptContext(
 
             if (event.transform && event.transform.sourceArtifacts.length > 0) {
                 const sourceIds = event.transform.sourceArtifacts.map(a => a.artifactId).join(', ');
-                description += `AI根据[${sourceIds}]，生成了以下${event.artifact?.schemaType}`;
+                description += `AI根据[${sourceIds}]，生成了以下${event.artifact?.artifact.schema_type}`;
             } else {
                 description += event.description;
             }
@@ -217,7 +202,7 @@ export async function prepareAgentPromptContext(
 
             if (event.transform && event.transform.sourceArtifacts.length > 0) {
                 const sourceIds = event.transform.sourceArtifacts.map(a => a.artifactId).join(', ');
-                description += `用户基于[${sourceIds}]，编辑了${event.artifact?.schemaType}`;
+                description += `用户基于[${sourceIds}]，编辑了${event.artifact?.artifact.schema_type}`;
             } else {
                 description += event.description;
             }
@@ -237,7 +222,7 @@ export async function prepareAgentPromptContext(
         .map(node => node as LineageNodeArtifact);
 
     for (const artifact of leafNodes) {
-        narrative += `• ${artifact.schemaType}[${artifact.artifactId}] - ${artifactToContextString(artifact.artifact)}\n`;
+        narrative += `• ${artifact.artifact.schema_type}[${artifact.artifactId}] - ${artifactToContextString(artifact.artifact)}\n`;
     }
 
     return narrative;

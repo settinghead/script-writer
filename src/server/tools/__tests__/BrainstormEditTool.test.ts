@@ -72,7 +72,7 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
             // Arrange
             mockArtifactRepo.getArtifact.mockResolvedValue({
                 id: 'restricted-artifact',
-                type: 'brainstorm_item_schema',
+                schema_type: 'brainstorm_idea',
                 project_id: 'different-project', // Different project
                 data: { title: 'test', body: 'test' }
             });
@@ -90,11 +90,11 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
                 .rejects.toThrow('Access denied to source artifact');
         });
 
-        it('should handle unsupported artifact types', async () => {
+        it('should handle unsupported artifact schema_type', async () => {
             // Arrange
             mockArtifactRepo.getArtifact.mockResolvedValue({
                 id: 'unsupported-artifact',
-                type: 'unsupported_type',
+                schema_type: 'unsupported_type',
                 project_id: 'test-project-1',
                 data: { some: 'data' }
             });
@@ -115,7 +115,7 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
             // Arrange
             mockArtifactRepo.getArtifact.mockResolvedValue({
                 id: 'collection-invalid-index',
-                type: 'brainstorm_idea_collection',
+                schema_type: 'brainstorm_collection',
                 project_id: 'test-project-1',
                 data: {
                     ideas: [
@@ -139,11 +139,11 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
     });
 
     describe('Source Artifact Processing', () => {
-        it('should correctly extract data from brainstorm_item_schema artifacts', async () => {
+        it('should correctly extract data from brainstorm_idea artifacts', async () => {
             // Arrange
             const sourceArtifact = {
                 id: 'schema-artifact',
-                type: 'brainstorm_item_schema',
+                schema_type: 'brainstorm_idea',
                 project_id: 'test-project-1',
                 data: {
                     title: '测试标题',
@@ -173,7 +173,7 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
             // Arrange
             const sourceArtifact = {
                 id: 'legacy-artifact',
-                type: 'brainstorm_idea',
+                schema_type: 'brainstorm_idea',
                 project_id: 'test-project-1',
                 data: {
                     title: '传统标题',
@@ -202,7 +202,7 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
             // Arrange
             const sourceArtifact = {
                 id: 'collection-artifact',
-                type: 'brainstorm_idea_collection',
+                schema_type: 'brainstorm_collection',
                 project_id: 'test-project-1',
                 data: {
                     ideas: [
@@ -288,7 +288,7 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
             // Arrange
             mockArtifactRepo.getArtifact.mockResolvedValue({
                 id: 'test-artifact',
-                type: 'brainstorm_item_schema',
+                schema_type: 'brainstorm_idea',
                 project_id: 'test-project-1',
                 data: { title: 'test', body: 'test' }
             });
@@ -312,7 +312,7 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
             // Test that access control is properly enforced
             mockArtifactRepo.getArtifact.mockResolvedValue({
                 id: 'protected-artifact',
-                type: 'brainstorm_item_schema',
+                schema_type: 'brainstorm_idea',
                 project_id: 'other-project',
                 data: { title: 'protected', body: 'protected content' }
             });

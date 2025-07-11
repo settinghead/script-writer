@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useProjectData } from '../../contexts/ProjectDataContext';
 import { createElectricConfigWithDebugAuth } from '../../../common/config/electric';
+import { ElectricArtifact } from '@/common/types';
 
 // Global registry to track YJS document initialization state
 const globalYJSRegistry = new Map<string, {
@@ -42,7 +43,7 @@ export interface YJSArtifactHook {
 
     // Data access
     data: any;
-    artifact: any;
+    artifact: ElectricArtifact | null | undefined;
 
     // Update methods
     updateField: (field: string, value: any) => Promise<void>;
@@ -104,7 +105,7 @@ export const useYJSArtifact = (
 
     // Get artifact from project data
     const artifact = projectData.artifacts && Array.isArray(projectData.artifacts)
-        ? projectData.artifacts.find((a: any) => a.id === artifactId)
+        ? projectData.artifacts.find((a) => a.id === artifactId)
         : null;
 
 

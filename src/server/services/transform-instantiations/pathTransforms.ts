@@ -1,7 +1,7 @@
 import { ArtifactSchemaRegistry } from '../../../common/schemas/artifacts';
 
 // Get the schema from the registry
-const BrainstormIdeaSchema = ArtifactSchemaRegistry.brainstorm_item_schema;
+const BrainstormIdeaSchema = ArtifactSchemaRegistry.brainstorm_idea;
 
 // Export the schema for use by other modules
 export { BrainstormIdeaSchema };
