@@ -8,9 +8,11 @@ export async function up(db: Kysely<any>): Promise<void> {
         .createTable('artifact_yjs_documents')
         .addColumn('id', 'serial', (col) => col.primaryKey())
         .addColumn('artifact_id', 'text', (col) => col.notNull())
+        .addColumn('project_id', 'text', (col) => col.notNull())
         .addColumn('room_id', 'text', (col) => col.notNull())
-        .addColumn('update', 'bytea', (col) => col.notNull())
+        .addColumn('document_state', 'bytea', (col) => col.notNull())
         .addColumn('created_at', 'timestamptz', (col) => col.defaultTo(sql`CURRENT_TIMESTAMP`))
+        .addColumn('updated_at', 'timestamptz', (col) => col.defaultTo(sql`CURRENT_TIMESTAMP`))
         .execute();
 
     // Create artifact YJS awareness table
@@ -18,8 +20,10 @@ export async function up(db: Kysely<any>): Promise<void> {
         .createTable('artifact_yjs_awareness')
         .addColumn('client_id', 'text', (col) => col.notNull())
         .addColumn('artifact_id', 'text', (col) => col.notNull())
+        .addColumn('project_id', 'text', (col) => col.notNull())
         .addColumn('room_id', 'text', (col) => col.notNull())
         .addColumn('update', 'bytea', (col) => col.notNull())
+        .addColumn('created_at', 'timestamptz', (col) => col.defaultTo(sql`CURRENT_TIMESTAMP`))
         .addColumn('updated_at', 'timestamptz', (col) => col.defaultTo(sql`CURRENT_TIMESTAMP`))
         .execute();
 
@@ -29,7 +33,7 @@ export async function up(db: Kysely<any>): Promise<void> {
         .addPrimaryKeyConstraint('artifact_yjs_awareness_pkey', ['client_id', 'artifact_id'])
         .execute();
 
-    // Add foreign key constraints
+    // Add foreign key constraints for artifact_id
     await db.schema
         .alterTable('artifact_yjs_documents')
         .addForeignKeyConstraint('artifact_yjs_documents_artifact_id_fkey', ['artifact_id'], 'artifacts', ['id'])
@@ -39,6 +43,19 @@ export async function up(db: Kysely<any>): Promise<void> {
     await db.schema
         .alterTable('artifact_yjs_awareness')
         .addForeignKeyConstraint('artifact_yjs_awareness_artifact_id_fkey', ['artifact_id'], 'artifacts', ['id'])
+        .onDelete('cascade')
+        .execute();
+
+    // Add foreign key constraints for project_id
+    await db.schema
+        .alterTable('artifact_yjs_documents')
+        .addForeignKeyConstraint('artifact_yjs_documents_project_id_fkey', ['project_id'], 'projects', ['id'])
+        .onDelete('cascade')
+        .execute();
+
+    await db.schema
+        .alterTable('artifact_yjs_awareness')
+        .addForeignKeyConstraint('artifact_yjs_awareness_project_id_fkey', ['project_id'], 'projects', ['id'])
         .onDelete('cascade')
         .execute();
 

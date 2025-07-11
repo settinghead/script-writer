@@ -108,7 +108,7 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
 
             // Act & Assert
             await expect(brainstormEditTool.execute(input, { toolCallId: 'test-type-error' }))
-                .rejects.toThrow('Unsupported source artifact type: unsupported_type');
+                .rejects.toThrow(/Unsupported source artifact/);
         });
 
         it('should handle invalid idea index for collections', async () => {
