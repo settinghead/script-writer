@@ -8,8 +8,8 @@ import { CharacterSchema } from './streaming';
 // Outline Settings Schemas
 export const OutlineSettingsInputSchema = z.object({
     sourceArtifactId: z.string(),
-    title: z.string(),
-    requirements: z.string()
+    title: z.string().describe('故事标题'),
+    requirements: z.string().describe('故事要求'),
 });
 
 export const OutlineSettingsOutputSchema = z.object({
