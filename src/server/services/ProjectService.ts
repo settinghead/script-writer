@@ -46,10 +46,9 @@ export class ProjectService {
 
                     // Count different types of artifacts
                     const artifactCounts = {
-                        ideations: artifacts.filter(a => a.schema_type === 'ideation_session_schema').length,
-                        outlines: artifacts.filter(a => a.schema_type === 'outline_session_schema').length,
-                        episodes: artifacts.filter(a => a.schema_type === 'episode_synopsis_generation_session_schema').length,
-                        scripts: artifacts.filter(a => a.schema_type === 'episode_script_schema').length,
+                        ideations: artifacts.filter(a => a.schema_type === 'brainstorm_collection').length,
+                        outline_settings: artifacts.filter(a => a.schema_type === 'outline_settings').length,
+                        chronicles: artifacts.filter(a => a.schema_type === 'chronicles').length,
                     };
 
                     // Determine project status and current phase
@@ -61,12 +60,10 @@ export class ProjectService {
                         status = latestTransform.status === 'failed' ? 'failed' : 'active';
 
                         // Determine phase based on latest artifacts
-                        if (artifactCounts.scripts > 0) {
-                            currentPhase = 'scripts';
-                        } else if (artifactCounts.episodes > 0) {
-                            currentPhase = 'episodes';
-                        } else if (artifactCounts.outlines > 0) {
-                            currentPhase = 'outline';
+                        if (artifactCounts.chronicles > 0) {
+                            currentPhase = 'chronicles';
+                        } else if (artifactCounts.outline_settings > 0) {
+                            currentPhase = 'outline_settings';
                         } else {
                             currentPhase = 'brainstorming';
                         }
@@ -78,7 +75,7 @@ export class ProjectService {
                     let genre = '';
 
                     // Try to get brainstorm params for metadata
-                    const brainstormParams = artifacts.find(a => a.schema_type === 'brainstorm_params_schema');
+                    const brainstormParams = artifacts.find(a => a.schema_type === 'brainstorm_input_params');
                     if (brainstormParams) {
                         platform = brainstormParams.data.platform || '';
                         if (brainstormParams.data.genre_paths && brainstormParams.data.genre_paths.length > 0) {
@@ -89,9 +86,9 @@ export class ProjectService {
                     }
 
                     // Try to get some content for preview
-                    const userInput = artifacts.find(a => a.schema_type === 'user_input_schema');
-                    const brainstormIdea = artifacts.find(a => a.schema_type === 'brainstorm_idea_schema');
-                    const outlineTitle = artifacts.find(a => a.schema_type === 'outline_title_schema');
+                    const userInput = artifacts.find(a => a.schema_type === 'brainstorm_idea');
+                    const brainstormIdea = artifacts.find(a => a.schema_type === 'brainstorm_idea');
+                    const outlineTitle = artifacts.find(a => a.schema_type === 'outline_settings');
 
                     if (outlineTitle) {
                         previewContent = outlineTitle.data.title;
@@ -127,9 +124,8 @@ export class ProjectService {
                         updatedAt: project.updated_at,
                         artifactCounts: {
                             ideations: 0,
-                            outlines: 0,
-                            episodes: 0,
-                            scripts: 0
+                            outline_settings: 0,
+                            chronicles: 0,
                         }
                     };
                 }
