@@ -468,7 +468,7 @@ yText.insert(0, 'Hello collaborative world!');
 
 ### Script-Writer Transform Usage
 
-觅光助创 leverages the Transform Artifact Framework's dual-mode execution system for optimal content creation and editing workflows:
+觅光助创 leverages the Transform Artifact Framework's dual-mode execution system with TypedArtifact validation for optimal content creation and editing workflows:
 
 **Content Generation (Full-Object Mode)**:
 - **Story Brainstorming** - Generate complete collections of story ideas
@@ -507,7 +507,8 @@ yText.insert(0, 'Hello collaborative world!');
 
 **Database (PostgreSQL + Electric SQL)**:
 - **Project-Based Access Control** - All content scoped to projects
-- **Artifact System** - Immutable content with edit lineage
+- **TypedArtifact System** - Immutable content with schema_type and origin_type fields
+- **ArtifactSchemaRegistry** - Centralized Zod validation for all artifact types
 - **Transform Tracking** - Complete audit trail of all modifications
 - **YJS Tables** - Real-time collaborative document storage and updates
 
@@ -522,10 +523,10 @@ yText.insert(0, 'Hello collaborative world!');
 - **Visual Indicators** - Clear feedback for editing states and completion status
 
 **Specialized Editing Components**:
-- **BrainstormIdeaEditor** - Multi-idea editing with selection and refinement capabilities
-- **OutlineSettingsDisplay** - Character development, story foundation, and commercial elements
-- **ChroniclesDisplay** - Chronological story timeline with stage-level editing
-- **ChronicleStageCard** - Individual stage editing with emotion arcs and relationship developments
+- **BrainstormIdeaEditor** - Multi-idea editing with TypedArtifact validation
+- **OutlineSettingsDisplay** - Character development using ArtifactSchemaRegistry
+- **ChroniclesDisplay** - Chronological story timeline with schema-validated editing
+- **ChronicleStageCard** - Individual stage editing with typed field validation
 
 **Content-Specific Features**:
 - **Chinese Text Optimization** - Proper handling of Chinese character input and display
@@ -537,18 +538,31 @@ yText.insert(0, 'Hello collaborative world!');
 
 **Brainstorm Schema**:
 ```typescript
-export const BrainstormIdeaSchema = z.object({
+export const ArtifactSchemaRegistry = {
+  'brainstorm_collection': z.object({
+    ideas: z.array(IdeaSchema),
+    platform: z.string(),
+    genre: z.string(),
+    total_ideas: z.number()
+  }),
+  'brainstorm_idea': IdeaSchema
+} as const;
+
+export const IdeaSchema = z.object({
   title: z.string(),
-  synopsis: z.string(),
-  genre: z.string(),
-  platform: z.string(),
-  target_audience: z.string(),
-  key_elements: z.array(z.string())
+  body: z.string(),
+  artifactId: z.string().optional()
 });
 ```
 
 **Outline Settings Schema**:
 ```typescript
+export const ArtifactSchemaRegistry = {
+  'outline_settings': OutlineSettingsOutputSchema,
+  'outline_settings_input': OutlineSettingsInputSchema,
+  // ... other schemas
+} as const;
+
 export const OutlineSettingsOutputSchema = z.object({
   title: z.string(),
   genre: z.string(),
@@ -581,6 +595,12 @@ export const CharacterSchema = z.object({
 
 **Chronicles Schema**:
 ```typescript
+export const ArtifactSchemaRegistry = {
+  'chronicles': ChroniclesOutputSchema,
+  'chronicles_input': ChroniclesInputSchema,
+  // ... other schemas
+} as const;
+
 export const ChroniclesOutputSchema = z.object({
   synopsis_stages: z.array(z.string())     // Chronological story progression
 });
@@ -606,6 +626,9 @@ export const ChroniclesStageSchema = z.object({
   })),
   insights: z.array(z.string())
 });
+
+// Used in ArtifactSchemaRegistry for validation
+export type ChroniclesStage = z.infer<typeof ChroniclesStageSchema>;
 ```
 
 **Whole-Document Editing**:
@@ -778,7 +801,8 @@ if (pendingSaveRef.current && pendingSaveRef.current !== valueToSave) {
 **Principle**: Generate editing interfaces automatically from content schemas while maintaining Chinese-specific optimizations.
 
 **Implementation**:
-- **Field Type Detection** - Automatically choose appropriate input components
+- **TypedArtifact Integration** - Automatically choose appropriate input components based on schema_type
+- **ArtifactSchemaRegistry Validation** - Real-time validation using centralized Zod schemas
 - **Chinese Text Optimization** - Proper handling of Chinese character input
 - **Platform-Specific Validation** - Built-in validation for different social media platforms
 - **Genre-Aware Forms** - Different form layouts for different drama types
@@ -1012,6 +1036,12 @@ export const NewContentSchema = z.object({
   genre: z.string(),
   target_audience: z.string()
 });
+
+// Add to ArtifactSchemaRegistry
+export const ArtifactSchemaRegistry = {
+  // ... existing schemas
+  'new_content': NewContentSchema
+} as const;
 ```
 
 **Step 2: Create Template**
@@ -1087,6 +1117,11 @@ if (hasNewContentPrerequisites && isLeafNode(prerequisiteArtifact)) {
     hasActiveTransforms: false
   };
 }
+
+// Update TypedArtifact type to include new content type
+export type TypedArtifact = 
+  | ArtifactWithData<'new_content', 'v1', NewContentV1>
+  | ... // existing types
 ```
 
 ### Chinese Drama Content Guidelines

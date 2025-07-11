@@ -152,14 +152,116 @@ Every artifact has an `origin_type` that indicates how it was created:
 Artifacts also have `schema_type` that defines their data structure:
 
 - **`brainstorm_collection`** - Multiple story ideas grouped together
+- **`brainstorm_idea`** - Individual story idea
+- **`brainstorm_input_params`** - Parameters for brainstorm generation
 - **`outline_settings`** - Detailed story structure with characters and plot
-- **`chronicles`** - Chronicles
+- **`outline_settings_input`** - Input parameters for outline generation
+- **`chronicles`** - Chronological story timeline
+- **`chronicles_input`** - Input parameters for chronicles generation
 
 **Why schema types matter**:
-- **Validation** - Ensure data integrity and type safety
+- **Validation** - Ensure data integrity and type safety via ArtifactSchemaRegistry
 - **UI generation** - Automatically create appropriate editing interfaces
 - **Transform compatibility** - Match inputs/outputs correctly
 - **Evolution** - Version schemas as requirements change
+
+### **TypedArtifact System**
+
+The framework uses a sophisticated TypeScript typing system with `TypedArtifact`:
+
+```typescript
+// TypedArtifact is a discriminated union based on schema_type
+export type TypedArtifact =
+    | ArtifactWithData<'brainstorm_collection', 'v1', BrainstormIdeaCollectionV1>
+    | ArtifactWithData<'brainstorm_idea', 'v1', BrainstormIdeaV1>
+    | ArtifactWithData<'brainstorm_input_params', 'v1', BrainstormParamsV1>
+    | ArtifactWithData<'outline_settings', 'v1', OutlineSettingsV1>
+    | ArtifactWithData<'chronicles', 'v1', ChroniclesV1>
+    // ... more types
+
+// Each artifact has strongly typed data based on its schema_type
+export interface ArtifactWithData<
+    SchemaType extends string, 
+    SchemaVersion extends string, 
+    Data
+> extends Omit<Artifact, 'schema_type' | 'schema_version' | 'data'> {
+    schema_type: SchemaType;
+    schema_version: SchemaVersion;
+    data: Data;
+}
+```
+
+**Benefits of TypedArtifact**:
+- **Type Safety** - Compile-time validation of artifact data structures
+- **IntelliSense** - Full IDE support for artifact properties
+- **Runtime Validation** - Zod schema validation via ArtifactSchemaRegistry
+- **Versioning** - Built-in support for schema evolution
+
+### **Migration from Legacy Typing System**
+
+The framework recently underwent a major typing refactoring to improve type safety and developer experience:
+
+**What Changed**:
+- **Removed `artifact.type` field** - Replaced with `schema_type` and `origin_type`
+- **Removed `type_version` field** - Replaced with `schema_version`
+- **Consolidated schema names** - Cleaner, more consistent naming (e.g., `brainstorm_idea_collection` → `brainstorm_collection`)
+- **Introduced TypedArtifact** - Discriminated union types for compile-time safety
+- **Centralized ArtifactSchemaRegistry** - Single source of truth for all schema validation
+
+**Database Migration**:
+```sql
+-- Migration 20241201_008_refactor_artifact_types.ts
+-- Added new columns
+ALTER TABLE artifacts ADD COLUMN schema_type TEXT;
+ALTER TABLE artifacts ADD COLUMN schema_version TEXT;
+ALTER TABLE artifacts ADD COLUMN origin_type TEXT;
+
+-- Migrated existing data
+UPDATE artifacts SET schema_type = type, schema_version = type_version;
+UPDATE artifacts SET origin_type = CASE 
+  WHEN type = 'user_input' THEN 'user_input' 
+  ELSE 'ai_generated' 
+END;
+```
+
+**Code Migration Pattern**:
+```typescript
+// OLD: Legacy typing
+interface OldArtifact {
+  type: string;
+  type_version: string;
+  data: any;
+}
+
+// NEW: TypedArtifact system
+interface NewArtifact {
+  schema_type: TypedArtifact['schema_type'];
+  schema_version: string;
+  origin_type: 'ai_generated' | 'user_input';
+  data: any; // Strongly typed based on schema_type
+}
+
+// Usage
+const artifact: TypedArtifact = {
+  schema_type: 'brainstorm_collection',
+  schema_version: 'v1',
+  origin_type: 'ai_generated',
+  data: { ideas: [...], platform: '...', genre: '...' }
+};
+```
+
+**Benefits of Migration**:
+- **Stronger Type Safety** - Compile-time validation of artifact structures
+- **Better Developer Experience** - IntelliSense and autocomplete for artifact properties
+- **Centralized Validation** - Single ArtifactSchemaRegistry for all schema definitions
+- **Cleaner Architecture** - Separation of concerns between schema structure and origin source
+
+**Remaining Cleanup**:
+The migration maintains backward compatibility by keeping the old `type` and `type_version` columns. Future work includes:
+- Remove deprecated columns in a future migration
+- Update remaining references to `artifact.type` in client code
+- Complete migration of all `type_version` references to `schema_version`
+- Standardize all schema validation to use ArtifactSchemaRegistry
 
 ### **The Immutability Principle**
 
@@ -388,10 +490,11 @@ User Request → Agent Analysis → Context Enrichment → Tool Selection → Ex
 - **Dependency Tracking** - Understand cascading effects of changes
 
 **Dual-Type Architecture**:
-- **Schema Types** (`schema_type`) - Define data structure (e.g., `collection`, `individual_item`)
+- **Schema Types** (`schema_type`) - Define data structure (e.g., `brainstorm_collection`, `outline_settings`)
 - **Origin Types** (`origin_type`) - Define creation source (`ai_generated`, `user_input`, `decomposed_from_collection`)
 - **Editability Logic** - Use origin_type to determine edit permissions and UI behavior
-- **Versioned Validation** - All transforms validated against Zod schemas with version suffixes
+- **Versioned Validation** - All transforms validated against Zod schemas via ArtifactSchemaRegistry
+- **TypedArtifact System** - Discriminated union types for compile-time type safety
 
 ### 4. Hierarchical Context Architecture
 **Parent-Child Context Pattern**: Use parent contexts with child contexts only when human transforms exist, avoiding complex data merging.
@@ -518,9 +621,10 @@ const handleCreateEditableVersion = useCallback(async () => {
 CREATE TABLE artifacts (
   id TEXT PRIMARY KEY,
   project_id TEXT NOT NULL,
-  schema_type TEXT NOT NULL,        -- Data structure type
-  origin_type TEXT NOT NULL,        -- Creation source
-  data TEXT NOT NULL,
+  schema_type TEXT NOT NULL,        -- Data structure type (e.g., 'brainstorm_collection')
+  schema_version TEXT NOT NULL,     -- Schema version (e.g., 'v1')
+  origin_type TEXT NOT NULL,        -- Creation source ('ai_generated', 'user_input')
+  data TEXT NOT NULL,               -- JSON data validated by ArtifactSchemaRegistry
   streaming_status TEXT DEFAULT 'completed',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -749,7 +853,7 @@ promptTemplate: `生成${numberOfIdeas}个故事创意...
   {"title": "标题2", "body": "完整故事梗概2"}
 ]`
 
-outputSchema: z.array(BrainstormIdeaSchema)
+outputSchema: z.array(IdeaSchema)
 ```
 
 **Patch Mode Templates**:
@@ -948,38 +1052,50 @@ if (pendingSaveRef.current && pendingSaveRef.current !== valueToSave) {
 ## Schema System
 
 ### Zod Schema Definitions
-**Versioned Artifact Schemas**:
+**ArtifactSchemaRegistry System**:
 ```typescript
-// Define shared types in src/common/ for consistency
-export const DataCollectionSchemaV1 = z.object({
-  items: z.array(z.object({
-    id: z.string(),
-    title: z.string(),
-    content: z.string(),
-    metadata: z.record(z.unknown()).optional()
-  })),
-  metadata: z.object({
-    created_at: z.string(),
-    total_count: z.number()
-  })
-});
+// Centralized schema registry in src/common/schemas/artifacts.ts
+export const ArtifactSchemaRegistry = {
+  // Brainstorm schemas
+  'brainstorm_collection': z.object({
+    ideas: z.array(IdeaSchema),
+    platform: z.string(),
+    genre: z.string(),
+    total_ideas: z.number()
+  }),
+  'brainstorm_idea': IdeaSchema,
+  'brainstorm_input_params': BrainstormToolInputSchema,
+
+  // Outline schemas
+  'outline_settings_input': OutlineSettingsInputSchema,
+  'outline_settings': OutlineSettingsOutputSchema,
+  
+  // Chronicles schemas
+  'chronicles_input': ChroniclesInputSchema,
+  'chronicles': ChroniclesOutputSchema,
+} as const;
 
 // Transform schemas with regex path patterns
-export const EditTransformSchema = z.object({
-  pathPattern: z.string().regex(/^\/items\/\d+$/),
-  input: z.object({
-    targetArtifacts: z.array(z.string()),
-    instructions: z.string(),
-    context: z.string().optional()
-  }),
-  output: z.object({
-    editedItems: z.array(z.object({
-      id: z.string(),
+export const TransformRegistry = {
+  'outline_settings_generation': {
+    pathPattern: '^\\$\\[outline_settings\\]$',
+    inputSchema: OutlineSettingsInputSchema,
+    outputSchema: OutlineSettingsOutputSchema,
+    outputType: 'outline_settings'
+  },
+  'brainstorm_idea_edit': {
+    pathPattern: '^\\$\\.ideas\\[\\d+\\]$',
+    inputSchema: z.object({
       title: z.string(),
-      content: z.string()
-    }))
-  })
-});
+      body: z.string()
+    }),
+    outputSchema: z.object({
+      title: z.string(),
+      body: z.string()
+    }),
+    outputType: 'brainstorm_idea'
+  }
+} as const;
 ```
 
 ### Schema Transform Executor
@@ -1002,8 +1118,17 @@ export class SchemaTransformExecutor {
       context
     );
     
-    // 3. Validate and return output
-    return transformDef.outputSchema.parse(result);
+    // 3. Validate output against ArtifactSchemaRegistry
+    const outputSchema = ArtifactSchemaRegistry[transformDef.outputType];
+    return outputSchema.parse(result);
+  }
+  
+  private getTransformDefinition(transformName: string) {
+    const definition = TransformRegistry[transformName];
+    if (!definition) {
+      throw new Error(`Transform definition not found: ${transformName}`);
+    }
+    return definition;
   }
 }
 ```
