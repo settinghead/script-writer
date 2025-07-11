@@ -418,9 +418,6 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
             return getLatestVersionForPath(artifactId, artifactPath, lineageGraph);
         },
 
-        // LEGACY: Keep existing selectors for backward compatibility
-        getBrainstormArtifacts: () =>
-            artifacts?.filter(a => a.schema_type === 'brainstorm_idea_schema' || a.type === 'brainstorm_idea') || [],
 
         getLineageGraph: () => lineageGraph,
 

@@ -327,23 +327,6 @@ const currentStage = detectStageFromWorkflowNodes(workflowNodes);
 const actions = computeActionsFromLineage(currentStage, context);
 ```
 
-### Legacy Action Computation (Fallback)
-**Fallback System**: Traditional artifact-based computation used when lineage graph is unavailable.
-
-**Key Features**:
-- **Artifact Type Detection** - Analyzes artifact types to determine workflow stage
-- **Stage Detection Logic** - Uses rule-based logic to identify current stage
-- **Robust Fallback** - Ensures system continues working during lineage computation delays
-- **Backward Compatibility** - Maintains compatibility with existing project data
-
-**Automatic Fallback Logic**:
-```typescript
-// Fallback mechanism
-if (projectData.lineageGraph === "pending") {
-    console.log('[computeParamsAndActionsFromLineage] Lineage graph pending, falling back to legacy computation');
-    return computeParamsAndActions(projectData);
-}
-```
 
 ### Workflow Stage Detection
 

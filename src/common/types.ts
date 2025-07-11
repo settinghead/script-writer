@@ -1,4 +1,3 @@
-// Legacy outline types removed - now using outline settings + chronicles system
 import { z } from 'zod';
 import { UseMutationResult } from '@tanstack/react-query';
 import type { LineageGraph } from './transform-artifact-framework/lineageResolution.js';
@@ -284,12 +283,6 @@ export interface WorkflowContextV1 {
     [key: string]: any;
 }
 
-// Legacy stage structure interface - now replaced by chronicles system
-export interface StageStructure {
-    // Legacy interface - replaced by chronicles system
-    stageSynopsis: string;
-    numberOfEpisodes: number;
-}
 
 // ========== FLOW TYPES ==========
 
@@ -517,8 +510,6 @@ export interface ProjectDataContextType {
     getArtifactAtPath: (artifactId: string, artifactPath: string) => any | null;
     getLatestVersionForPath: (artifactId: string, artifactPath: string) => string | null;
 
-    // LEGACY: Keep existing selectors for backward compatibility
-    getBrainstormArtifacts: () => ElectricArtifact[] | "pending" | "error";
     getLineageGraph: () => LineageGraph | "pending" | "error";
     getOutlineArtifacts: () => ElectricArtifact[] | "pending" | "error";
     getArtifactById: (id: string) => ElectricArtifactWithLineage | undefined;
