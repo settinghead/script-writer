@@ -358,19 +358,7 @@ export default function ProjectBrainstormPage(props: ProjectBrainstormPageProps 
                   )}
                 </div>
 
-                <div className="flex items-center gap-2">
-                  {isStreaming && (
-                    <Button
-                      type="primary"
-                      danger
-                      size="small"
-                      icon={<StopOutlined />}
-                      onClick={handleStop}
-                    >
-                      停止生成
-                    </Button>
-                  )}
-                </div>
+
               </div>
 
               {/* Selection instruction */}
