@@ -145,8 +145,6 @@ const syncYJSToArtifact = async (artifactId: string) => {
             }
         }
 
-        console.log(`[YJS Sync] Applied ${updateCount} updates, skipped ${skippedCount} corrupted updates for artifact ${artifactId}`);
-
         // Extract data from the YJS document
         const contentMap = tempDoc.getMap('content');
 
@@ -208,8 +206,6 @@ const syncYJSToArtifact = async (artifactId: string) => {
 // Helper function to clean up corrupted YJS documents
 const cleanupCorruptedDocuments = async (artifactId: string) => {
     try {
-        console.log(`[YJS Cleanup] Checking for corrupted documents for artifact ${artifactId}`);
-
         const updates = await db
             .selectFrom('artifact_yjs_documents')
             .select(['id', 'document_state', 'created_at'])
@@ -230,7 +226,6 @@ const cleanupCorruptedDocuments = async (artifactId: string) => {
 
                 // Basic validation
                 if (updateData.length === 0 || updateData.length < 10) {
-                    console.log(`[YJS Cleanup] Marking document ${update.id} as corrupted (invalid size: ${updateData.length})`);
                     corruptedIds.push(update.id);
                     continue;
                 }
@@ -240,22 +235,15 @@ const cleanupCorruptedDocuments = async (artifactId: string) => {
                 Y.applyUpdate(tempDoc, updateData);
 
             } catch (error) {
-                console.log(`[YJS Cleanup] Marking document ${update.id} as corrupted:`, error instanceof Error ? error.message : String(error));
                 corruptedIds.push(update.id);
             }
         }
 
         if (corruptedIds.length > 0) {
-            console.log(`[YJS Cleanup] Removing ${corruptedIds.length} corrupted documents for artifact ${artifactId}`);
-
             await db
                 .deleteFrom('artifact_yjs_documents')
                 .where('id', 'in', corruptedIds)
                 .execute();
-
-            console.log(`[YJS Cleanup] Successfully removed ${corruptedIds.length} corrupted documents`);
-        } else {
-            console.log(`[YJS Cleanup] No corrupted documents found for artifact ${artifactId}`);
         }
 
     } catch (error) {
@@ -339,8 +327,6 @@ router.put('/update', async (req: any, res: any) => {
                 console.warn(`YJS: Update has unusual first byte: ${firstByte}, but proceeding anyway`);
             }
 
-            console.log(`YJS: Update validation passed for artifact ${artifactId} (${parsedRequest.update.length} bytes)`);
-
         } catch (validationError) {
             console.error(`YJS: Update validation failed for artifact ${artifactId}:`, validationError);
             console.error(`YJS: Update details - Size: ${parsedRequest.update.length} bytes`);
@@ -420,8 +406,6 @@ router.get('/document/:artifactId', async (req: any, res: any) => {
                     }
                 }
             }
-
-            console.log(`[YJS Document] Applied ${appliedCount} updates, skipped ${skippedCount} corrupted updates for artifact ${artifactId}`);
 
             // Get the final document state
             const finalState = Y.encodeStateAsUpdate(tempDoc);
