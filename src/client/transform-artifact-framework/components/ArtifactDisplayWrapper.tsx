@@ -131,7 +131,7 @@ export const ArtifactDisplayWrapper: React.FC<ArtifactDisplayWrapperProps> = ({
                             borderRadius: '3px'
                         }} />
                         <div>
-                            <Title level={4} style={{ margin: 0, color: '#52c41a' }}>
+                            <Title level={5} style={{ margin: 0, color: '#52c41a' }}>
                                 ✏️ 编辑{title}
                             </Title>
                         </div>

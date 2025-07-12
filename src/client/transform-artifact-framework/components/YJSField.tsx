@@ -6,8 +6,9 @@ import { useYJSField } from '../contexts/YJSArtifactContext';
 const { TextArea } = Input;
 const { Text } = Typography;
 
+const DEFAULT_FONT_SIZE = 16;
 // Text Field Component
-export const YJSTextField = React.memo(({ path, placeholder }: { path: string; placeholder?: string }) => {
+export const YJSTextField = React.memo(({ path, placeholder, fontSize = DEFAULT_FONT_SIZE }: { path: string; placeholder?: string, fontSize?: number }) => {
     const { value, updateValue, isInitialized } = useYJSField(path);
 
     const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -21,15 +22,17 @@ export const YJSTextField = React.memo(({ path, placeholder }: { path: string; p
             value={value || ''}
             onChange={handleChange}
             placeholder={placeholder}
+            style={{ fontSize: fontSize }}
         />
     );
 });
 
 // TextArea Field Component
-export const YJSTextAreaField = React.memo(({ path, placeholder, rows = 4 }: {
+export const YJSTextAreaField = React.memo(({ path, placeholder, rows = 4, fontSize = DEFAULT_FONT_SIZE }: {
     path: string;
     placeholder?: string;
     rows?: number;
+    fontSize?: number;
 }) => {
     const { value, updateValue, isInitialized } = useYJSField(path);
 
@@ -45,15 +48,17 @@ export const YJSTextAreaField = React.memo(({ path, placeholder, rows = 4 }: {
             onChange={handleChange}
             placeholder={placeholder}
             rows={rows}
+            style={{ fontSize: fontSize }}
         />
     );
 });
 
 // Array Field Component (for complex objects)
-export const YJSArrayField = React.memo(({ path, placeholder, itemPlaceholder }: {
+export const YJSArrayField = React.memo(({ path, placeholder, itemPlaceholder, fontSize = DEFAULT_FONT_SIZE }: {
     path: string;
     placeholder?: string;
     itemPlaceholder?: string;
+    fontSize?: number;
 }) => {
     const { value, updateValue, isInitialized } = useYJSField(path);
 
@@ -88,7 +93,7 @@ export const YJSArrayField = React.memo(({ path, placeholder, itemPlaceholder }:
                         value={item || ''}
                         onChange={(e) => handleItemChange(index, e.target.value)}
                         placeholder={itemPlaceholder}
-                        style={{ flex: 1, marginRight: 8 }}
+                        style={{ flex: 1, marginRight: 8, fontSize: fontSize }}
                     />
                     <Button
                         type="text"
@@ -111,9 +116,10 @@ export const YJSArrayField = React.memo(({ path, placeholder, itemPlaceholder }:
 });
 
 // Dedicated String Array Field Component
-export const YJSArrayOfStringField = React.memo(({ path, placeholder }: {
+export const YJSArrayOfStringField = React.memo(({ path, placeholder, fontSize = DEFAULT_FONT_SIZE }: {
     path: string;
     placeholder?: string;
+    fontSize?: number;
 }) => {
     const { value, updateValue, isInitialized } = useYJSField(path);
 
@@ -173,6 +179,7 @@ export const YJSArrayOfStringField = React.memo(({ path, placeholder }: {
                 onKeyUp={handleKeyUp}
                 placeholder={placeholder || '每行一个项目'}
                 autoSize={{ minRows: 3, maxRows: 8 }}
+                style={{ fontSize: fontSize }}
             />
             <div style={{ marginTop: 4, color: '#666', fontSize: '12px' }}>
                 每行一个项目
@@ -182,10 +189,11 @@ export const YJSArrayOfStringField = React.memo(({ path, placeholder }: {
 });
 
 // Multi-Select Field Component
-export const YJSMultiSelect = React.memo(({ path, options, placeholder }: {
+export const YJSMultiSelect = React.memo(({ path, options, placeholder, fontSize = DEFAULT_FONT_SIZE }: {
     path: string;
     options: Array<{ value: string; label: string }>;
     placeholder?: string;
+    fontSize?: number;
 }) => {
     const { value, updateValue, isInitialized } = useYJSField(path);
 
@@ -207,13 +215,13 @@ export const YJSMultiSelect = React.memo(({ path, options, placeholder }: {
             onChange={handleChange}
             options={options}
             placeholder={placeholder}
-            style={{ width: '100%' }}
+            style={{ width: '100%', fontSize: fontSize }}
         />
     );
 });
 
 // Emotion Arcs Array Component
-export const YJSEmotionArcsArray = React.memo(({ path }: { path: string }) => {
+export const YJSEmotionArcsArray = React.memo(({ path, fontSize = DEFAULT_FONT_SIZE }: { path: string, fontSize?: number }) => {
     const { value, updateValue, isInitialized } = useYJSField(path);
 
     const arrayValue = useMemo(() => {
@@ -263,7 +271,7 @@ export const YJSEmotionArcsArray = React.memo(({ path }: { path: string }) => {
                             onChange={(e) => handleItemChange(index, 'content', e.target.value)}
                             placeholder="描述这个阶段的情感发展..."
                             rows={3}
-                            style={{ marginTop: 4 }}
+                            style={{ marginTop: 4, fontSize: fontSize }}
                         />
                     </div>
 
@@ -300,7 +308,7 @@ export const YJSEmotionArcsArray = React.memo(({ path }: { path: string }) => {
 });
 
 // Relationship Developments Array Component
-export const YJSRelationshipDevelopmentsArray = React.memo(({ path }: { path: string }) => {
+export const YJSRelationshipDevelopmentsArray = React.memo(({ path, fontSize = DEFAULT_FONT_SIZE }: { path: string, fontSize?: number }) => {
     const { value, updateValue, isInitialized } = useYJSField(path);
 
     const arrayValue = useMemo(() => {
@@ -368,7 +376,7 @@ export const YJSRelationshipDevelopmentsArray = React.memo(({ path }: { path: st
                             onChange={(e) => handleItemChange(index, 'content', e.target.value)}
                             placeholder="描述关系如何发展..."
                             rows={3}
-                            style={{ marginTop: 4 }}
+                            style={{ marginTop: 4, fontSize: fontSize }}
                         />
                     </div>
                 </div>
@@ -394,7 +402,7 @@ YJSEmotionArcsArray.displayName = 'YJSEmotionArcsArray';
 YJSRelationshipDevelopmentsArray.displayName = 'YJSRelationshipDevelopmentsArray';
 
 // Character Array Component
-export const YJSCharacterArray = React.memo(({ path }: { path: string }) => {
+export const YJSCharacterArray = React.memo(({ path, fontSize = DEFAULT_FONT_SIZE }: { path: string, fontSize?: number }) => {
     const { value, updateValue, isInitialized } = useYJSField(path);
 
     const arrayValue = useMemo(() => {
@@ -535,6 +543,7 @@ export const YJSCharacterArray = React.memo(({ path }: { path: string }) => {
                                 onChange={(e) => handleItemChange(index, 'description', e.target.value)}
                                 placeholder="角色描述"
                                 rows={2}
+                                style={{ fontSize: fontSize }}
                             />
                         </div>
                         <div>
@@ -560,6 +569,7 @@ export const YJSCharacterArray = React.memo(({ path }: { path: string }) => {
                                 value={character?.key_scenes || []}
                                 onChange={(newValue) => handleArrayFieldChange(index, 'key_scenes', newValue)}
                                 placeholder="每行一个关键场景..."
+                                fontSize={fontSize}
                             />
                         </div>
                     </Space>
@@ -595,10 +605,11 @@ export const YJSCharacterArray = React.memo(({ path }: { path: string }) => {
 });
 
 // Inline Array Field Component for use within character forms
-const YJSArrayFieldInline = React.memo(({ value, onChange, placeholder }: {
+const YJSArrayFieldInline = React.memo(({ value, onChange, placeholder, fontSize = DEFAULT_FONT_SIZE }: {
     value: string[];
     onChange: (value: string[]) => void;
     placeholder?: string;
+    fontSize?: number;
 }) => {
     const handleTextAreaChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
         const newValue = e.target.value
@@ -618,17 +629,18 @@ const YJSArrayFieldInline = React.memo(({ value, onChange, placeholder }: {
             onChange={handleTextAreaChange}
             placeholder={placeholder}
             rows={3}
-            style={{ resize: 'vertical' }}
+            style={{ resize: 'vertical', fontSize: fontSize }}
         />
     );
 });
 
 // Number Input Field Component
-export const YJSNumberField = React.memo(({ path, min, max, placeholder }: {
+export const YJSNumberField = React.memo(({ path, min, max, placeholder, fontSize = DEFAULT_FONT_SIZE }: {
     path: string;
     min?: number;
     max?: number;
     placeholder?: string;
+    fontSize?: number;
 }) => {
     const { value, updateValue, isInitialized } = useYJSField(path);
 
@@ -648,7 +660,8 @@ export const YJSNumberField = React.memo(({ path, min, max, placeholder }: {
                 width: '100%',
                 background: '#141414',
                 borderColor: '#434343',
-                color: '#d9d9d9'
+                color: '#d9d9d9',
+                fontSize: fontSize
             }}
             size="large"
             placeholder={placeholder}

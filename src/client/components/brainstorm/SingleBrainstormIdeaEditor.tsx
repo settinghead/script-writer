@@ -29,6 +29,7 @@ const EditableBrainstormForm: React.FC = () => {
                 </Text>
                 <YJSTextField
                     path="title"
+                    fontSize={18}
                     placeholder="输入创意标题..."
                 />
             </div>
@@ -67,16 +68,23 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
     });
 
     // If we have props from actionComputation, use them directly
-    if (propsBrainstormIdea) {
+    if (propsBrainstormIdea && propsBrainstormIdea.id) {
         const isEditable = propsIsEditable ?? false;
         const effectiveArtifact = propsBrainstormIdea;
+
+        console.log('[SingleBrainstormIdeaEditor] Using props artifact:', {
+            id: effectiveArtifact.id,
+            schema_type: effectiveArtifact.schema_type,
+            origin_type: effectiveArtifact.origin_type,
+            isEditable
+        });
 
         return (
             <SectionWrapper
                 schemaType={"brainstorm_idea"}
                 title="初始创意"
                 sectionId="ideation-edit"
-                artifactId={effectiveArtifact?.id}
+                artifactId={effectiveArtifact.id}
             >
                 <div style={{ marginTop: '24px', position: 'relative' }}>
                     <ArtifactDisplayWrapper
