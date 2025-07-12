@@ -47,7 +47,7 @@
 ### 6. Type Safety
 - Use strict TypeScript throughout both frontend and backend
 - **ALWAYS define shared types in `src/common/`** - whenever types can be shared between frontend and backend, they MUST be placed under `/src/common` for consistency and single source of truth
-- Define interfaces with version suffixes (e.g., `BrainstormCollectionV1`) for artifact types
+- Define interfaces with version suffixes (e.g., `IdeaCollectionV1`) for artifact types
 - Properly type all streaming services and API responses
 - Frontend-only types go in `src/client/types/`, backend-only types go in `src/server/types/`
 

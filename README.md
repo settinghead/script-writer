@@ -130,7 +130,7 @@ The system computes four essential elements for every workflow state:
 type ComponentId = 
   | 'project-creation-form'
   | 'brainstorm-input-editor' 
-  | 'project-brainstorm-page'
+  | 'brainstorm-idea-colletion'
   | 'single-brainstorm-idea-editor'
   | 'outline-settings-display'
   | 'chronicles-display';
@@ -159,7 +159,7 @@ type ComponentMode =
 export const componentRegistry: Record<ComponentId, React.ComponentType<any>> = {
   'project-creation-form': ProjectCreationForm,
   'brainstorm-input-editor': BrainstormInputEditor,
-  'project-brainstorm-page': ProjectBrainstormPage,
+  'brainstorm-idea-colletion': ProjectBrainstormPage,
   'single-brainstorm-idea-editor': SingleBrainstormIdeaEditor,
   'outline-settings-display': OutlineSettingsDisplay,
   'chronicles-display': ChroniclesDisplay

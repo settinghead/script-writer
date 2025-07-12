@@ -64,14 +64,14 @@ const IdeaCardWrapper: React.FC<{
   );
 };
 
-interface BrainstormCollection {
+interface IdeaCollection {
   ideas?: IdeaWithTitle[];
   selectionMode?: boolean;
   isLoading?: boolean;
   readOnly?: boolean;
 }
 
-export default function BrainstormCollection(props: BrainstormCollection = {}) {
+export default function IdeaCollection(props: IdeaCollection = {}) {
   const { projectId } = useParams<{ projectId: string }>()
   const navigate = useNavigate()
   const [ideaOutlines, setIdeaOutlines] = useState<Record<string, any[]>>({});
@@ -116,7 +116,7 @@ export default function BrainstormCollection(props: BrainstormCollection = {}) {
     }
 
     // Fallback to legacy collection-based approach
-    const collections = projectData.getBrainstormCollections();
+    const collections = projectData.getIdeaCollections();
 
     if (collections === "pending") {
       return {

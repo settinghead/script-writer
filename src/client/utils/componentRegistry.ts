@@ -4,7 +4,7 @@ import { ComponentId } from './workflowTypes';
 // Import all the components that will be managed by the unified system
 import { ProjectCreationForm } from '../components/ProjectCreationForm';
 import BrainstormInputEditor from '../components/BrainstormInputEditor';
-import BrianstormCollection from '../components/brainstorm/BrainstormCollection';
+import BrianstormCollection from '../components/brainstorm/IdeaCollection';
 import { SingleBrainstormIdeaEditor } from '../components/brainstorm/SingleBrainstormIdeaEditor';
 import { OutlineSettingsDisplay } from '../components/OutlineSettingsDisplay';
 import { ChroniclesDisplay } from '../components/ChroniclesDisplay';
@@ -12,7 +12,7 @@ import { ChroniclesDisplay } from '../components/ChroniclesDisplay';
 export const COMPONENT_REGISTRY = {
     'project-creation-form': ProjectCreationForm,
     'brainstorm-input-editor': BrainstormInputEditor,
-    'project-brainstorm-page': BrianstormCollection,
+    'brainstorm-idea-colletion': BrianstormCollection,
     'single-brainstorm-idea-editor': SingleBrainstormIdeaEditor,
     'outline-settings-display': OutlineSettingsDisplay,
     'chronicles-display': ChroniclesDisplay,

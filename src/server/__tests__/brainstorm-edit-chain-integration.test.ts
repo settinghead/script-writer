@@ -414,19 +414,18 @@ describe('Brainstorm Edit Chain Integration Test', () => {
         expect(singleIdeaEditor?.props.brainstormIdea).toBeTruthy();
         expect(singleIdeaEditor?.props.brainstormIdea.artifactId).toBe('artifact-4');
 
-        // Verify that ProjectBrainstormPage IS included in idea_editing stage (read-only mode)
+        // Verify that ProjectBrainstormPage is NOT included in manual path idea_editing stage
         const brainstormPage = displayComponents.find((component: any) =>
-            component.id === 'project-brainstorm-page'
+            component.id === 'brainstorm-idea-colletion'
         );
-        expect(brainstormPage).toBeTruthy(); // Should be present in read-only mode
-        expect(brainstormPage?.mode).toBe('readonly');
-        expect(brainstormPage?.props.readOnly).toBe(true);
+        expect(brainstormPage).toBeFalsy(); // Should NOT be present in manual path
 
         // Verify other expected components
         const brainstormInputEditor = displayComponents.find((component: any) =>
             component.id === 'brainstorm-input-editor'
         );
-        // Note: brainstorm-input-editor might not be present if no brainstorm_input_params exists
+        // Note: brainstorm-input-editor should NOT be present in manual path (no brainstorm_input_params)
+        expect(brainstormInputEditor).toBeFalsy(); // Should NOT be present in manual path
 
         console.log('  - Display components:');
         displayComponents.forEach((component: any) => {

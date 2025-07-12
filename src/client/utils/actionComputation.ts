@@ -518,8 +518,8 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
             // Show brainstorm ideas for selection
             if (context.brainstormIdeas.length > 0) {
                 components.push({
-                    id: 'project-brainstorm-page',
-                    component: getComponentById('project-brainstorm-page'),
+                    id: 'brainstorm-idea-colletion',
+                    component: getComponentById('brainstorm-idea-colletion'),
                     mode: context.hasActiveTransforms ? 'readonly' : 'editable',
                     props: {
                         ideas: context.brainstormIdeas,
@@ -532,8 +532,8 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
             break;
 
         case 'idea_editing':
-            // Show brainstorm input in readonly mode
-            if (context.brainstormInput) {
+            // Show brainstorm input in readonly mode (only for AI path)
+            if (context.brainstormInput && !context.isManualPath) {
                 // Check if brainstorm input is at leaf level in lineage graph
                 const brainstormInputNode = context.lineageGraph?.nodes.get(context.brainstormInput.id);
                 const isAtLeafLevel = brainstormInputNode?.isLeaf ?? true;
@@ -551,11 +551,11 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
                 });
             }
 
-            // Show brainstorm ideas in readonly mode for reference
-            if (context.brainstormIdeas.length > 0) {
+            // Show brainstorm ideas in readonly mode for reference (only for AI path)
+            if (context.brainstormIdeas.length > 0 && !context.isManualPath) {
                 components.push({
-                    id: 'project-brainstorm-page',
-                    component: getComponentById('project-brainstorm-page'),
+                    id: 'brainstorm-idea-colletion',
+                    component: getComponentById('brainstorm-idea-colletion'),
                     mode: 'readonly',
                     props: {
                         ideas: context.brainstormIdeas,
@@ -601,8 +601,8 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
             break;
 
         case 'outline_generation':
-            // Show previous components in readonly/collapsed mode
-            if (context.brainstormInput) {
+            // Show previous components in readonly/collapsed mode (only for AI path)
+            if (context.brainstormInput && !context.isManualPath) {
                 // Check if brainstorm input is at leaf level in lineage graph
                 const brainstormInputNode = context.lineageGraph?.nodes.get(context.brainstormInput.id);
                 const isAtLeafLevel = brainstormInputNode?.isLeaf ?? true;
@@ -657,8 +657,8 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
             break;
 
         case 'chronicles_generation':
-            // Show previous components in readonly/collapsed mode
-            if (context.brainstormInput) {
+            // Show previous components in readonly/collapsed mode (only for AI path)
+            if (context.brainstormInput && !context.isManualPath) {
                 // Check if brainstorm input is at leaf level in lineage graph
                 const brainstormInputNode = context.lineageGraph?.nodes.get(context.brainstormInput.id);
                 const isAtLeafLevel = brainstormInputNode?.isLeaf ?? true;
@@ -720,8 +720,8 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
             break;
 
         case 'episode_synopsis_generation':
-            // Show all previous components in readonly/collapsed mode
-            if (context.brainstormInput) {
+            // Show all previous components in readonly/collapsed mode (only for AI path)
+            if (context.brainstormInput && !context.isManualPath) {
                 // Check if brainstorm input is at leaf level in lineage graph
                 const brainstormInputNode = context.lineageGraph?.nodes.get(context.brainstormInput.id);
                 const isAtLeafLevel = brainstormInputNode?.isLeaf ?? true;

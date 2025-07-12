@@ -142,7 +142,7 @@ const createMockProjectData = (overrides: Partial<ProjectDataContextType> = {}):
         paths: new Map(),
         rootNodes: new Set()
     },
-    getBrainstormCollections: () => [],
+    getIdeaCollections: () => [],
     getArtifactAtPath: () => null,
     getLatestVersionForPath: () => null,
     getLineageGraph: () => ({

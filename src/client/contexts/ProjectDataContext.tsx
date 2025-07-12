@@ -404,7 +404,7 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
     // Memoized selectors
     const selectors = useMemo(() => ({
         // NEW: Collection-aware selectors
-        getBrainstormCollections: () =>
+        getIdeaCollections: () =>
             artifacts?.filter(a => a.schema_type === 'brainstorm_collection' || a.type === 'brainstorm_idea_collection') || [],
 
         getArtifactAtPath: (artifactId: string, artifactPath: string) => {

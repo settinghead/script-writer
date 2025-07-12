@@ -500,7 +500,7 @@ export interface ProjectDataContextType {
 
     // Selectors (memoized)
     // NEW: Collection-aware selectors
-    getBrainstormCollections: () => ElectricArtifact[] | "pending" | "error";
+    getIdeaCollections: () => ElectricArtifact[] | "pending" | "error";
     getArtifactAtPath: (artifactId: string, artifactPath: string) => any | null;
     getLatestVersionForPath: (artifactId: string, artifactPath: string) => string | null;
 

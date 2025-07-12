@@ -55,10 +55,10 @@ const ProjectContentRenderer: React.FC<{ projectId: string; scrollContainerRef: 
         }
 
         // Look for brainstorm collections or brainstorm ideas
-        const collections = projectData.getBrainstormCollections();
+        const collections = projectData.getIdeaCollections();
 
         return collections.length > 0;
-    }, [projectData.artifacts, projectData.getBrainstormCollections]);
+    }, [projectData.artifacts, projectData.getIdeaCollections]);
 
     // Compute unified workflow state - ALWAYS call this hook
     const workflowState = useMemo(() => {
