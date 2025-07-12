@@ -111,11 +111,11 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
             {/* Horizontal layout: workflow steps on left, actions on right */}
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '24px', width: '100%' }}>
                 {/* Workflow steps take available space */}
-                <div style={{ flex: 1 }}>
+                {/* <div style={{ flex: 1 }}>
                     {steps.length > 0 && (
                         <WorkflowSteps steps={steps} inline={true} />
                     )}
-                </div>
+                </div> */}
 
                 {/* Actions on the right */}
                 <div style={{ flexShrink: 0 }}>

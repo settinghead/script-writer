@@ -31,38 +31,31 @@ export function YJSArtifactProvider({ artifactId, basePath, enableCollaboration,
 
     // Get the actual data to use - prefer artifact data if YJS data is not ready
     const actualData = useMemo(() => {
-        console.log(`[YJSProvider] Computing actualData for ${artifactId}`, {
-            hasYJSData: data && typeof data === 'object' && Object.keys(data).length > 0,
-            yjsData: data,
-            hasArtifactData: !!artifact?.data,
-            artifactData: artifact?.data
-        });
+        const hasYJSData = data && typeof data === 'object' && Object.keys(data).length > 0;
 
-        // Check if collaborative data is actually loaded (has meaningful content)
-        const hasCollaborativeData = data && typeof data === 'object' && Object.keys(data).length > 0;
-
-        if (hasCollaborativeData) {
-            console.log(`[YJSProvider] Using YJS data for ${artifactId}`, data);
-            return data;
-        }
-
-        // Fall back to artifact data
-        if (artifact?.data) {
-            let artifactData = artifact.data;
-            if (typeof artifactData === 'string') {
-                try {
-                    artifactData = JSON.parse(artifactData);
-                } catch (e) {
-                    console.error('[YJSProvider] Failed to parse artifact data:', e);
-                    return {};
-                }
+        // Parse artifact data if it's a string
+        let parsedArtifactData: any = artifact?.data;
+        if (typeof parsedArtifactData === 'string') {
+            try {
+                parsedArtifactData = JSON.parse(parsedArtifactData);
+            } catch (e) {
+                console.error('[YJSProvider] Failed to parse artifact data:', e);
+                parsedArtifactData = null;
             }
-            console.log(`[YJSProvider] Using artifact data for ${artifactId}`, artifactData);
-            return artifactData;
         }
 
-        console.log(`[YJSProvider] No data available for ${artifactId}`);
-        return {};
+        const hasArtifactData = parsedArtifactData && typeof parsedArtifactData === 'object' && Object.keys(parsedArtifactData).length > 0;
+
+        if (hasYJSData) {
+            // Use YJS data if available (most recent collaborative changes)
+            return data;
+        } else if (hasArtifactData) {
+            // Fall back to artifact data if no YJS data
+            return parsedArtifactData;
+        } else {
+            // No data available
+            return {};
+        }
     }, [data, artifact, artifactId, basePath]);
 
     // Store current data in ref to avoid function recreation

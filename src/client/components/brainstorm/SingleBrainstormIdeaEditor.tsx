@@ -58,26 +58,10 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
     const { projectId } = useParams<{ projectId: string }>();
     const projectData = useProjectData();
 
-    console.log('[SingleBrainstormIdeaEditor] Rendering with props:', {
-        projectId,
-        currentStage,
-        isEditable: propsIsEditable,
-        mode: propsMode,
-        hasPropsBrainstormIdea: !!propsBrainstormIdea,
-        propsBrainstormIdeaId: propsBrainstormIdea?.id
-    });
-
     // If we have props from actionComputation, use them directly
     if (propsBrainstormIdea && propsBrainstormIdea.id) {
         const isEditable = propsIsEditable ?? false;
         const effectiveArtifact = propsBrainstormIdea;
-
-        console.log('[SingleBrainstormIdeaEditor] Using props artifact:', {
-            id: effectiveArtifact.id,
-            schema_type: effectiveArtifact.schema_type,
-            origin_type: effectiveArtifact.origin_type,
-            isEditable
-        });
 
         return (
             <SectionWrapper
@@ -101,47 +85,27 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
         );
     }
 
-    // Fallback: Find the latest brainstorm idea artifact from project data
+    // Otherwise, find the latest brainstorm idea from project data
     const latestBrainstormIdea = useMemo(() => {
-        console.log('[SingleBrainstormIdeaEditor] Computing latestBrainstormIdea, projectData.artifacts:',
-            projectData.artifacts === "pending" ? "pending" :
-                projectData.artifacts === "error" ? "error" :
-                    Array.isArray(projectData.artifacts) ? `${projectData.artifacts.length} artifacts` : "unknown");
-
-        // Check if data is ready
-        if (projectData.artifacts === "pending" || projectData.artifacts === "error") {
+        if (!projectData || !projectData.artifacts || projectData.artifacts === "pending" || projectData.artifacts === "error") {
             return null;
         }
 
-        // Get all brainstorm idea artifacts (both user_input and ai_generated)
-        const brainstormIdeaArtifacts = projectData.artifacts.filter(artifact =>
-            artifact.schema_type === 'brainstorm_idea'
+        const brainstormIdeaArtifacts = projectData.artifacts.filter(
+            (artifact: any) => artifact.schema_type === 'brainstorm_idea'
         );
-
-        console.log('[SingleBrainstormIdeaEditor] Found brainstorm idea artifacts:', brainstormIdeaArtifacts.map(a => ({
-            id: a.id,
-            type: a.schema_type,
-            origin_type: a.origin_type
-        })));
 
         if (brainstormIdeaArtifacts.length === 0) {
             return null;
         }
 
-        // Sort by creation time to find the latest
-        brainstormIdeaArtifacts.sort((a, b) =>
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        // Sort by created_at and get the most recent one
+        const sortedArtifacts = brainstormIdeaArtifacts.sort(
+            (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
 
-        const latest = brainstormIdeaArtifacts[0];
-        console.log('[SingleBrainstormIdeaEditor] Latest brainstorm idea:', {
-            id: latest.id,
-            type: latest.schema_type,
-            origin_type: latest.origin_type
-        });
-
-        return latest;
-    }, [projectData.artifacts]);
+        return sortedArtifacts[0];
+    }, [projectData]);
 
     // Determine editability for fallback mode
     const isEditable = useMemo(() => {

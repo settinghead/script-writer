@@ -292,8 +292,6 @@ export const useYJSArtifact = (
 
                     const data: any = {};
 
-                    console.log(`[useYJSArtifact] updateCollaborativeData called for ${artifactId}, yMap size: ${yMap.size}`);
-
                     // Convert YJS data to regular object
                     yMap.forEach((value: any, key: string) => {
                         if (value && typeof value.toArray === 'function') {
@@ -341,8 +339,6 @@ export const useYJSArtifact = (
                     // Update registry
                     currentRegistry.collaborativeData = data;
 
-                    console.log(`[useYJSArtifact] Updated collaborative data for ${artifactId}:`, data);
-
                     // Notify all callbacks
                     currentRegistry.callbacks.forEach(callback => {
                         try {
@@ -364,7 +360,6 @@ export const useYJSArtifact = (
                         // First, try to load saved YJS document state from server
                         let hasLoadedFromServer = false;
                         try {
-                            console.log(`[useYJSArtifact] Loading YJS document state for ${artifactId}`);
                             const response = await fetch(`/api/yjs/document/${artifactId}`, {
                                 method: 'GET',
                                 headers: {
@@ -374,18 +369,14 @@ export const useYJSArtifact = (
 
                             if (response.ok) {
                                 const savedState = await response.arrayBuffer();
-                                console.log(`[useYJSArtifact] Received saved state, size: ${savedState.byteLength} bytes`);
                                 if (savedState.byteLength > 0) {
                                     // Apply the saved state to the YJS document
                                     const update = new Uint8Array(savedState);
                                     Y.applyUpdate(yjsDoc, update, 'load-from-server');
                                     hasLoadedFromServer = true;
-                                    console.log(`[useYJSArtifact] Applied saved state to YJS document`);
                                 } else {
-                                    console.log(`[useYJSArtifact] Saved state is empty, will initialize from artifact`);
                                 }
                             } else {
-                                console.log(`[useYJSArtifact] Failed to load saved state: ${response.status}`);
                             }
                         } catch (loadError) {
                             console.warn(`[useYJSArtifact] Failed to load saved YJS document state:`, loadError);

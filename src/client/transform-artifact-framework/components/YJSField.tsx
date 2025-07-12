@@ -132,48 +132,41 @@ export const YJSArrayOfStringField = React.memo(({ path, placeholder, fontSize =
         return arrayValue.join('\n');
     }, [arrayValue]);
 
-    const textareaToArray = useCallback((text: string) => {
-        console.log('[YJSArrayOfStringField] textareaToArray input:', JSON.stringify(text));
+    const textareaToArray = useCallback((text: string): string[] => {
+        if (!text) return [];
         const lines = text.split('\n');
-        console.log('[YJSArrayOfStringField] Split lines:', lines);
         const trimmedLines = lines.map(line => line.trim());
-        console.log('[YJSArrayOfStringField] Trimmed lines (no filtering):', trimmedLines);
         return trimmedLines;
     }, []);
 
     const handleTextareaChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        console.log('[YJSArrayOfStringField] handleTextareaChange called');
-        console.log('[YJSArrayOfStringField] Raw textarea value:', JSON.stringify(e.target.value));
         const newArray = textareaToArray(e.target.value);
-        console.log('[YJSArrayOfStringField] Converted array:', newArray);
         updateValue(newArray);
-        console.log('[YJSArrayOfStringField] updateValue called with:', newArray);
     }, [textareaToArray, updateValue]);
 
     const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        console.log('[YJSArrayOfStringField] Key pressed:', e.key, 'Code:', e.code);
         if (e.key === 'Enter') {
-            console.log('[YJSArrayOfStringField] Enter key detected - allowing default behavior');
-            // Don't prevent default - let Enter create new lines
+            // Allow default behavior for Enter key to create new lines
         }
     }, []);
 
     const handleKeyUp = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        console.log('[YJSArrayOfStringField] Key released:', e.key);
         if (e.key === 'Enter') {
-            console.log('[YJSArrayOfStringField] Enter key released - textarea value:', JSON.stringify((e.target as HTMLTextAreaElement).value));
+            // Trigger change after Enter key is released
+            const target = e.target as HTMLTextAreaElement;
+            const newArray = textareaToArray(target.value);
+            updateValue(newArray);
         }
-    }, []);
+    }, [textareaToArray, updateValue]);
 
     if (!isInitialized) return null;
 
-    console.log('[YJSArrayOfStringField] Rendering with value:', arrayValue);
-    console.log('[YJSArrayOfStringField] Textarea display value:', JSON.stringify(arrayToTextarea()));
+    const textareaValue = arrayToTextarea();
 
     return (
         <div>
             <TextArea
-                value={arrayToTextarea()}
+                value={textareaValue}
                 onChange={handleTextareaChange}
                 onKeyDown={handleKeyDown}
                 onKeyUp={handleKeyUp}
