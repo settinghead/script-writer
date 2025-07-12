@@ -1482,7 +1482,15 @@ function createBrainstormOnlyWorkflow(artifacts: ElectricArtifact[]): WorkflowNo
         if (primaryArtifact.schema_type === 'brainstorm_idea' && primaryArtifact.origin_type === 'user_input') {
             // Single manually entered idea
             nodeType = 'brainstorm_idea';
-            title = '选中创意';
+
+            // Try to extract title from the artifact data
+            try {
+                const data = JSON.parse(primaryArtifact.data);
+                title = data.title || '选中创意';
+            } catch {
+                title = '选中创意';
+            }
+
             navigationTarget = '#ideation-edit';
         } else {
             // AI-generated collection - user needs to select from ideas
@@ -1495,7 +1503,7 @@ function createBrainstormOnlyWorkflow(artifacts: ElectricArtifact[]): WorkflowNo
         primaryArtifact = brainstormInputs
             .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
 
-        nodeType = 'brainstorm_input';
+        nodeType = 'brainstorm_input_params';
         title = '头脑风暴输入';
         navigationTarget = '#brainstorm-input';
     } else if (brainstormCollections.length > 0) {
@@ -1507,7 +1515,15 @@ function createBrainstormOnlyWorkflow(artifacts: ElectricArtifact[]): WorkflowNo
         if (primaryArtifact.schema_type === 'brainstorm_idea' && primaryArtifact.origin_type === 'user_input') {
             // Single manually entered idea
             nodeType = 'brainstorm_idea';
-            title = '选中创意';
+
+            // Try to extract title from the artifact data
+            try {
+                const data = JSON.parse(primaryArtifact.data);
+                title = data.title || '选中创意';
+            } catch {
+                title = '选中创意';
+            }
+
             navigationTarget = '#ideation-edit';
         } else {
             // AI-generated collection or other types
@@ -1526,7 +1542,7 @@ function createBrainstormOnlyWorkflow(artifacts: ElectricArtifact[]): WorkflowNo
 
     return [{
         id: `workflow-node-${primaryArtifact.id}`,
-        type: nodeType,
+        schemaType: nodeType,
         title: title,
         artifactId: primaryArtifact.id,
         position: { x: 90, y: 50 },
@@ -1534,8 +1550,7 @@ function createBrainstormOnlyWorkflow(artifacts: ElectricArtifact[]): WorkflowNo
         isActive: true,
         navigationTarget: navigationTarget,
         createdAt: primaryArtifact.created_at,
-        status: primaryArtifact.streaming_status === 'streaming' ? 'processing' : 'completed',
-        schemaType: primaryArtifact.schema_type // NEW: Include schema_type for display
+        status: primaryArtifact.streaming_status === 'streaming' ? 'processing' : 'completed'
     }];
 }
 
@@ -1715,7 +1730,7 @@ function createWorkflowNodeFromArtifact(
 
     return {
         id: `workflow-node-${artifact.id}`,
-        type: nodeType,
+        schemaType: nodeType,
         title,
         artifactId: artifact.id,
         position: { x: 90, y: yPosition },
@@ -1723,8 +1738,7 @@ function createWorkflowNodeFromArtifact(
         isActive: isLatest, // Only the latest node is "active"
         navigationTarget,
         createdAt: artifact.created_at,
-        status: artifact.streaming_status === 'streaming' ? 'processing' : 'completed',
-        schemaType: artifact.schema_type // NEW: Include schema_type for display
+        status: artifact.streaming_status === 'streaming' ? 'processing' : 'completed'
     };
 }
 

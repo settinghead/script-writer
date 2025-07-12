@@ -1,9 +1,10 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Button, Typography, Alert, message } from 'antd';
 import { CheckOutlined, EditOutlined } from '@ant-design/icons';
 import { BaseActionProps } from './index';
 import { useProjectData } from '../../contexts/ProjectDataContext';
 import { useActionItemsStore } from '../../stores/actionItemsStore';
+import { getArtifactAtPath } from '../../../common/transform-artifact-framework/lineageResolution';
 
 const { Text, Title } = Typography;
 
@@ -12,13 +13,40 @@ const BrainstormIdeaSelection: React.FC<BaseActionProps> = ({ projectId, onSucce
     const projectData = useProjectData();
     const store = useActionItemsStore(projectId);
 
+    // Independently extract the title from the selected artifact
+    const selectedIdeaTitle = useMemo(() => {
+        if (!store.selectedArtifactAndPath) return '';
+
+        const { artifactId, artifactPath } = store.selectedArtifactAndPath;
+
+        // Get the artifact from project data
+        const artifact = projectData.getArtifactById(artifactId);
+        if (!artifact) return '';
+
+        try {
+            const parsedData = JSON.parse(artifact.data);
+
+            if (artifactPath === '$') {
+                // Standalone artifact - use the title directly
+                return parsedData.title || '';
+            } else {
+                // Collection artifact - extract from the specific path
+                const ideaData = getArtifactAtPath(artifact, artifactPath);
+                return ideaData?.title || '';
+            }
+        } catch (error) {
+            console.warn('Failed to parse artifact data for title extraction:', error);
+            return '';
+        }
+    }, [store.selectedArtifactAndPath, projectData]);
+
     // Handle confirm selection and create human transform
     const handleConfirmSelection = useCallback(async () => {
-        if (!store.selectedBrainstormIdea || isCreatingTransform) {
+        if (!store.selectedArtifactAndPath || isCreatingTransform) {
             return;
         }
 
-        const selectedIdea = store.selectedBrainstormIdea;
+        const selectedIdea = store.selectedArtifactAndPath;
         setIsCreatingTransform(true);
 
         try {
@@ -66,10 +94,10 @@ const BrainstormIdeaSelection: React.FC<BaseActionProps> = ({ projectId, onSucce
         } finally {
             setIsCreatingTransform(false);
         }
-    }, [store.selectedBrainstormIdea, projectData.createHumanTransform, onSuccess, onError, isCreatingTransform]);
+    }, [store.selectedArtifactAndPath, projectData.createHumanTransform, onSuccess, onError, isCreatingTransform]);
 
     // Show error state if no selection
-    if (!store.selectedBrainstormIdea) {
+    if (!store.selectedArtifactAndPath) {
         return (
             <Alert
                 message="请选择一个创意"
@@ -99,7 +127,7 @@ const BrainstormIdeaSelection: React.FC<BaseActionProps> = ({ projectId, onSucce
             }}>
                 <div style={{ marginBottom: '8px' }}>
                     <Text strong style={{ color: '#fff', fontSize: '16px' }}>
-                        创意 “{store.selectedBrainstormIdea.title}”
+                        创意 "{selectedIdeaTitle || `第${(store.selectedArtifactAndPath.index || 0) + 1}个创意`}"
                     </Text>
                 </div>
                 <div style={{ marginBottom: '16px' }}>

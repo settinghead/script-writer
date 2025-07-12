@@ -64,8 +64,47 @@ export function createBrainstormIdeaFromBrainstormIdea(
   };
 }
 
+/**
+ * Create user input from brainstorm idea (for editing)
+ */
+export function createUserInputFromBrainstormIdea(
+  sourceArtifactData: any,
+  derivationPath: string
+): any {
+  const ideaData = extractDataAtPath(sourceArtifactData, derivationPath);
 
+  if (!ideaData) {
+    throw new Error(`No data found at path ${derivationPath}`);
+  }
 
+  // Convert brainstorm idea to user input format
+  return {
+    text: typeof ideaData === 'string' ? ideaData : JSON.stringify(ideaData),
+    source: 'modified_brainstorm',
+    source_artifact_id: undefined // Will be set by the executor
+  };
+}
+
+/**
+ * Create user input from brainstorm field (for editing specific fields)
+ */
+export function createUserInputFromBrainstormField(
+  sourceArtifactData: any,
+  derivationPath: string
+): any {
+  const fieldData = extractDataAtPath(sourceArtifactData, derivationPath);
+
+  if (fieldData === null || fieldData === undefined) {
+    throw new Error(`No data found at path ${derivationPath}`);
+  }
+
+  // Convert field data to user input format
+  return {
+    text: typeof fieldData === 'string' ? fieldData : JSON.stringify(fieldData),
+    source: 'modified_brainstorm',
+    source_artifact_id: undefined // Will be set by the executor
+  };
+}
 
 
 export const createOutlineSettingsTransform = (sourceArtifactId: string) => {

@@ -257,20 +257,20 @@ export function detectStageFromWorkflowNodes(workflowNodes: WorkflowNode[]): Wor
 
     // Map workflow node types to action stages
     // For brainstorm_collection, we should be in brainstorm_selection stage
-    if (lastNode.type === 'brainstorm_collection') {
+    if (lastNode.schemaType === 'brainstorm_collection') {
         // When we have a brainstorm collection, the user needs to select one idea
         return 'brainstorm_selection';
     }
 
     const stageMap: Record<string, WorkflowStage> = {
-        'brainstorm_input': 'brainstorm_input',
+        'brainstorm_input_params': 'brainstorm_input',
         'brainstorm_idea': 'idea_editing',
-        'outline': 'outline_generation',
+        'outline_settings': 'outline_generation',
         'chronicles': 'chronicles_generation',
         'episode_synopsis': 'episode_synopsis_generation'
     };
 
-    const detectedStage = stageMap[lastNode.type] || 'initial';
+    const detectedStage = stageMap[lastNode.schemaType] || 'initial';
 
     return detectedStage;
 }

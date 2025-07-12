@@ -1,6 +1,7 @@
 import { ArtifactRepository } from './ArtifactRepository';
 import { TransformRepository } from './TransformRepository';
 import { Artifact } from '../../common/artifacts';
+import { TypedArtifact } from '../../common/types';
 import { getLLMCredentials } from './LLMConfig';
 import { LLMService } from './LLMService';
 
@@ -128,7 +129,7 @@ export class TransformExecutor {
                             order_index: i,
                             confidence_score: null
                         },
-                        outputArtifactTypeVersion,
+                        outputArtifactTypeVersion as TypedArtifact['schema_version'],
                         undefined, // metadata
                         'completed', // streamingStatus
                         'ai_generated' // originType - explicitly set for LLM outputs
@@ -272,9 +273,9 @@ export class TransformExecutor {
                 // Create single output artifact - AI generated
                 const outputArtifact = await this.artifactRepo.createArtifact(
                     userId,
-                    outputArtifactType,
+                    outputArtifactType as TypedArtifact['schema_type'],
                     parsedData,
-                    outputArtifactTypeVersion,
+                    outputArtifactTypeVersion as TypedArtifact['schema_version'],
                     undefined, // metadata
                     'completed', // streamingStatus
                     'ai_generated' // originType - LLM generated artifacts
@@ -473,9 +474,9 @@ export class TransformExecutor {
         // Create derived user_input artifact - human created/edited
         const derivedArtifact = await this.artifactRepo.createArtifact(
             projectId,
-            'user_input',
+            'user_input' as TypedArtifact['schema_type'],
             userInputData,
-            'v1',
+            'v1' as TypedArtifact['schema_version'],
             {
                 source: 'human',
                 original_artifact_id: sourceArtifactId,

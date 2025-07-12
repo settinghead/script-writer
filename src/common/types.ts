@@ -235,8 +235,16 @@ export type TypedArtifact =
     | ArtifactWithData<'brainstorm_collection', 'v1', BrainstormIdeaCollectionV1>
     | ArtifactWithData<'brainstorm_idea', 'v1', BrainstormIdeaV1>
     | ArtifactWithData<'brainstorm_input_params', 'v1', BrainstormParamsV1>
+    | ArtifactWithData<'brainstorm_input', 'v1', BrainstormParamsV1>
     | ArtifactWithData<'outline_settings', 'v1', OutlineSettingV1>
     | ArtifactWithData<'chronicles', 'v1', ChroniclesV1>
+    | ArtifactWithData<'user_input', 'v1', UserInputV1>
+    | ArtifactWithData<'outline_title', 'v1', OutlineTitleV1>
+    | ArtifactWithData<'outline_genre', 'v1', OutlineGenreV1>
+    | ArtifactWithData<'outline_selling_points', 'v1', OutlineSellingPointsV1>
+    | ArtifactWithData<'outline_setting', 'v1', OutlineSettingV1>
+    | ArtifactWithData<'outline_synopsis', 'v1', OutlineSynopsisV1>
+    | ArtifactWithData<'outline_characters', 'v1', OutlineCharactersV1>
 
 
 // Helper type for creating strongly typed artifacts

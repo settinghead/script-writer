@@ -1,5 +1,5 @@
 import { ElectricArtifact, ProjectDataContextType, TypedArtifact } from '../../common/types';
-import { SelectedBrainstormIdea } from '../stores/actionItemsStore';
+import { SelectedArtifactAndPath } from '../stores/actionItemsStore';
 import {
     computeActionsFromLineage,
     type ActionItem,
@@ -862,7 +862,7 @@ export const computeWorkflowParameters = (
 export const computeUnifiedWorkflowState = (
     projectData: ProjectDataContextType,
     projectId: string,
-    _selectedBrainstormIdea?: SelectedBrainstormIdea | null
+    _selectedArtifactAndPath?: SelectedArtifactAndPath | null
 ): UnifiedWorkflowState => {
     const context = computeUnifiedContext(projectData, projectId);
 

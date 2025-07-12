@@ -1,4 +1,4 @@
-import { genreOptions, GenreSelection } from '../../client/data/genreOptions';
+import { genreSelections as genreOptions, GenreSelection } from '../../client/data/genreOptions';
 
 console.log('🎭 Testing Complete Genre Selection Data Structure');
 console.log('===============================================\n');

@@ -263,7 +263,7 @@ export default function ProjectBrainstormPage(props: ProjectBrainstormPageProps 
     });
 
     // Store selection in action items store
-    store.setSelectedBrainstormIdea({
+    store.setSelectedArtifactAndPath({
       artifactId: clickedIdea.artifactId,
       originalArtifactId: clickedIdea.originalArtifactId || clickedIdea.artifactId,
       artifactPath: clickedIdea.artifactPath,
@@ -279,7 +279,7 @@ export default function ProjectBrainstormPage(props: ProjectBrainstormPageProps 
   }, []);
 
   // Determine selected idea index for visual feedback
-  const selectedIdea = store.selectedBrainstormIdea?.index ?? null;
+  const selectedIdea = store.selectedArtifactAndPath?.index ?? null;
 
   // Show loading state during initial sync
   if (isConnecting) {
@@ -365,8 +365,8 @@ export default function ProjectBrainstormPage(props: ProjectBrainstormPageProps 
               {inSelectionMode && !chosenIdea && (
                 <div className="text-center py-4 " style={{ padding: "12px 12px" }}>
                   <Text className="text-gray-400" >
-                    {store.selectedBrainstormIdea
-                      ? `已选择创意 ${store.selectedBrainstormIdea.index + 1}，请使用下方的操作面板确认选择`
+                    {store.selectedArtifactAndPath
+                      ? `已选择创意 ${store.selectedArtifactAndPath.index + 1}，请使用下方的操作面板确认选择`
                       : '点击选择一个创意想法继续开发'
                     }
                   </Text>

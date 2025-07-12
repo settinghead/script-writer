@@ -20,19 +20,19 @@ interface OutlineGenerationParams {
     requirements?: string;
 }
 
-// Selection state for brainstorm ideas
-interface SelectedBrainstormIdea {
+// Selection state for any artifact and path
+interface SelectedArtifactAndPath {
     artifactId: string;
     originalArtifactId: string;
-    artifactPath: string;
+    artifactPath: string; // JSONPath notation, use '$' for root
     index: number;
     title: string;
 }
 
 // Main store state interface
 interface ActionItemsState {
-    // Brainstorm idea selection (single select)
-    selectedBrainstormIdea: SelectedBrainstormIdea | null;
+    // Artifact and path selection (single select)
+    selectedArtifactAndPath: SelectedArtifactAndPath | null;
 
     // Form data persistence (auto-saved drafts)
     formData: {
@@ -41,7 +41,7 @@ interface ActionItemsState {
     };
 
     // Actions
-    setSelectedBrainstormIdea: (idea: SelectedBrainstormIdea | null) => void;
+    setSelectedArtifactAndPath: (selection: SelectedArtifactAndPath | null) => void;
     updateFormData: (key: keyof ActionItemsState['formData'], data: any) => void;
     clearFormData: (key: keyof ActionItemsState['formData']) => void;
     resetStore: () => void;
@@ -52,18 +52,18 @@ const useActionItemsStoreInternal = create<ActionItemsState>()(
     persist(
         (set, get) => {
             return {
-                selectedBrainstormIdea: null,
+                selectedArtifactAndPath: null,
                 formData: {
                     brainstormParams: null,
                     outlineGenerationParams: null,
                 },
 
-                setSelectedBrainstormIdea: (idea) => {
+                setSelectedArtifactAndPath: (selection) => {
                     const currentState = get();
-                    if (currentState.selectedBrainstormIdea === idea) {
+                    if (currentState.selectedArtifactAndPath === selection) {
                         return;
                     }
-                    set({ selectedBrainstormIdea: idea });
+                    set({ selectedArtifactAndPath: selection });
                 },
 
                 updateFormData: (key, data) => set((state) => ({
@@ -81,7 +81,7 @@ const useActionItemsStoreInternal = create<ActionItemsState>()(
                 })),
 
                 resetStore: () => set({
-                    selectedBrainstormIdea: null,
+                    selectedArtifactAndPath: null,
                     formData: {
                         brainstormParams: null,
                         outlineGenerationParams: null,
@@ -97,7 +97,7 @@ const useActionItemsStoreInternal = create<ActionItemsState>()(
 
 // Type for persisted state
 interface PersistedState {
-    selectedBrainstormIdea: SelectedBrainstormIdea | null;
+    selectedArtifactAndPath: SelectedArtifactAndPath | null;
     formData: {
         brainstormParams: BrainstormParams | null;
         outlineGenerationParams: OutlineGenerationParams | null;
@@ -117,7 +117,7 @@ export const useActionItemsStore = (projectId?: string) => {
     const [persistedState, setPersistedState] = useLocalStorage<PersistedState>(
         storageKey || 'action-items-state-default',
         {
-            selectedBrainstormIdea: null,
+            selectedArtifactAndPath: null,
             formData: {
                 brainstormParams: null,
                 outlineGenerationParams: null,
@@ -131,8 +131,8 @@ export const useActionItemsStore = (projectId?: string) => {
             isInitializedRef.current = true;
 
             // Load persisted state into store
-            if (persistedState.selectedBrainstormIdea) {
-                store.setSelectedBrainstormIdea(persistedState.selectedBrainstormIdea);
+            if (persistedState.selectedArtifactAndPath) {
+                store.setSelectedArtifactAndPath(persistedState.selectedArtifactAndPath);
             }
             if (persistedState.formData) {
                 Object.entries(persistedState.formData).forEach(([key, value]) => {
@@ -150,7 +150,7 @@ export const useActionItemsStore = (projectId?: string) => {
             isSyncingToLocalStorageRef.current = true;
 
             const stateToSave = {
-                selectedBrainstormIdea: store.selectedBrainstormIdea,
+                selectedArtifactAndPath: store.selectedArtifactAndPath,
                 formData: store.formData,
             };
 
@@ -161,7 +161,7 @@ export const useActionItemsStore = (projectId?: string) => {
                 isSyncingToLocalStorageRef.current = false;
             }, 100);
         }
-    }, [storageKey, store.selectedBrainstormIdea, store.formData]); // Remove setPersistedState from deps
+    }, [storageKey, store.selectedArtifactAndPath, store.formData]); // Remove setPersistedState from deps
 
     return store;
 };
@@ -170,6 +170,6 @@ export const useActionItemsStore = (projectId?: string) => {
 export type {
     BrainstormParams,
     OutlineGenerationParams,
-    SelectedBrainstormIdea,
+    SelectedArtifactAndPath,
     ActionItemsState
 }; 
