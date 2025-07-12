@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button, Typography } from 'antd';
-import { StopOutlined } from '@ant-design/icons';
 import { IdeaWithTitle } from '../../../common/transform-artifact-framework/lineageResolution';
 import { ReasoningIndicator, SectionWrapper, } from '../shared';
 import { useProjectData } from '../../contexts/ProjectDataContext';
@@ -275,7 +274,26 @@ export default function BrainstormCollection(props: BrainstormCollection = {}) {
   }, []);
 
   // Determine selected idea index for visual feedback
-  const selectedIdea = store.selectedArtifactAndPath?.index ?? null;
+  // Match based on artifact ID and path, not just index
+  const getIsIdeaSelected = useCallback((idea: IdeaWithTitle, index: number) => {
+    if (!store.selectedArtifactAndPath) return false;
+
+    const selected = store.selectedArtifactAndPath;
+
+    // First try to match by artifact ID and path (most precise)
+    if (selected.artifactId === idea.artifactId && selected.artifactPath === idea.artifactPath) {
+      return true;
+    }
+
+    // Fallback to original artifact ID and path matching (for collection items)
+    if (selected.originalArtifactId === idea.originalArtifactId &&
+      selected.artifactPath === idea.artifactPath) {
+      return true;
+    }
+
+    // Final fallback to index matching (for backward compatibility)
+    return selected.index === index;
+  }, [store.selectedArtifactAndPath]);
 
   // Show loading state during initial sync
   if (isConnecting) {
@@ -388,7 +406,7 @@ export default function BrainstormCollection(props: BrainstormCollection = {}) {
                     key={`${idea.artifactId}-${index}`}
                     idea={idea}
                     index={index}
-                    isSelected={selectedIdea === index}
+                    isSelected={getIsIdeaSelected(idea, index)}
                     chosenIdea={chosenIdea}
                     ideaOutlines={ideaOutlines[idea.artifactId || ''] || []}
                     onIdeaClick={handleIdeaClick}

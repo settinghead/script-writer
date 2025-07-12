@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { HTMLAttributes } from 'react';
 import { Card, Typography } from 'antd';
 import { StarFilled } from '@ant-design/icons';
 import { useProjectData } from '../../contexts/ProjectDataContext';
@@ -16,7 +16,7 @@ export const BrainstormIdeaEditor: React.FC<{
     hasEditableDescendants: boolean;
     ideaOutlines: any[];
     onIdeaClick: (collectionId: string, index: number) => void;
-}> = ({ artifactId, artifactPath, originalCollectionId, index, isSelected, isChosen, hasEditableDescendants, onIdeaClick }) => {
+} & HTMLAttributes<HTMLDivElement>> = ({ artifactId, artifactPath, originalCollectionId, index, isSelected, isChosen, hasEditableDescendants, onIdeaClick, ...props }) => {
     const projectData = useProjectData();
 
     // Get the artifact data to display
@@ -49,15 +49,6 @@ export const BrainstormIdeaEditor: React.FC<{
     return (
         <Card
             key={`${artifactId}-${index}`}
-            style={{
-                backgroundColor: isChosen ? '#2d3f2d' : (isSelected ? '#2d3436' : '#262626'),
-                border: isChosen ? '2px solid #52c41a' : (isSelected ? '1px solid #1890ff' : '1px solid #434343'),
-                transition: 'all 0.2s ease',
-                animation: 'fadeIn 0.3s ease-out',
-                position: 'relative',
-                opacity: hasEditableDescendants ? 0.6 : (isChosen ? 1 : 0.8),
-                cursor: isClickable ? 'pointer' : 'default'
-            }}
             styles={{ body: { padding: '12px' } }}
             hoverable={isClickable}
             onMouseEnter={(e) => {
@@ -73,6 +64,17 @@ export const BrainstormIdeaEditor: React.FC<{
                 }
             }}
             onClick={() => isClickable && onIdeaClick(originalCollectionId, index)}
+            {...props}
+            style={{
+                backgroundColor: isChosen ? '#2d3f2d' : (isSelected ? '#2d3436' : '#262626'),
+                border: isChosen ? '2px solid #52c41a' : (isSelected ? '1px solid #1890ff' : '1px solid #434343'),
+                transition: 'all 0.2s ease',
+                animation: 'fadeIn 0.3s ease-out',
+                position: 'relative',
+                opacity: hasEditableDescendants ? 0.6 : (isChosen ? 1 : 0.8),
+                cursor: isClickable ? 'pointer' : 'default',
+                ...props.style
+            }}
         >
             {/* Status indicator */}
             <div style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>

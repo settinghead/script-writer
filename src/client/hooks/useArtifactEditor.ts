@@ -112,7 +112,7 @@ export const useArtifactEditor = (options: UseArtifactEditorOptions): UseArtifac
         // Prepare request based on artifact type to match backend expectations
         // Backend expects: { text: "..." } for user_input, { data: rawObject } for others
         let requestData;
-        if (artifact.type === 'user_input') {
+        if (artifact.schema_type === 'user_input') {
             requestData = { text: JSON.stringify(updatedData) };
         } else {
             // For non-user_input artifacts (like brainstorm_idea), send the raw data directly
@@ -148,7 +148,7 @@ export const useArtifactEditor = (options: UseArtifactEditorOptions): UseArtifac
 
         // Prepare request based on artifact type to match backend expectations
         let requestData;
-        if (artifact.type === 'user_input') {
+        if (artifact.schema_type === 'user_input') {
             requestData = { text: JSON.stringify(updatedData) };
         } else {
             requestData = updatedData;

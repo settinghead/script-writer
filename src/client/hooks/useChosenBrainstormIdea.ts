@@ -45,7 +45,7 @@ export function useChosenBrainstormIdea(): {
                     if (humanTransform.derived_artifact_id) {
                         const derivedArtifact = projectData.getArtifactById(humanTransform.derived_artifact_id);
 
-                        if (derivedArtifact && (derivedArtifact.type === 'user_input' || derivedArtifact.type === 'brainstorm_idea')) {
+                        if (derivedArtifact && (derivedArtifact.schema_type === 'brainstorm_idea')) {
                             // Extract index from derivation path
                             let index = 0;
                             let isFromCollection = false;
