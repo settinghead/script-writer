@@ -36,11 +36,12 @@ const mockUseLineageResolution = vi.mocked(useLineageResolution);
 describe('ChroniclesDisplay', () => {
     const mockChroniclesArtifact = {
         id: 'chronicles-artifact-id',
-        schema_type: 'chronicles',
-        schema_version: 'v1',
-        origin_type: 'ai_generated',
+        project_id: 'test-project-id',
+        schema_type: 'chronicles' as const,
+        schema_version: 'v1' as const,
+        origin_type: 'ai_generated' as const,
         created_at: '2025-01-01T00:00:00Z',
-        data: {
+        data: JSON.stringify({
             stages: [
                 {
                     title: '历史起源阶段：数据之母与神经革命（故事开始前25年）',
@@ -80,7 +81,7 @@ describe('ChroniclesDisplay', () => {
                     ]
                 }
             ]
-        }
+        })
     };
 
     beforeEach(() => {
@@ -93,7 +94,7 @@ describe('ChroniclesDisplay', () => {
             isLoading: false,
             isError: false,
             error: null,
-            createHumanTransform: { mutate: vi.fn() }
+            createHumanTransform: { mutate: vi.fn(), }
         } as any);
 
         mockUseLineageResolution.mockReturnValue({

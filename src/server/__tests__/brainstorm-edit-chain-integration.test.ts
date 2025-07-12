@@ -364,8 +364,8 @@ describe('Brainstorm Edit Chain Integration Test', () => {
         // Step 12: Test actual display component computation
         console.log('✅ Step 12: Testing display component computation...');
 
-        // Import the display computation functions
-        const { computeDisplayComponents, computeParamsAndActionsFromLineage } = await import('../../client/utils/actionComputation.js');
+        // Import the unified workflow computation function
+        const { computeUnifiedWorkflowState } = await import('../../client/utils/actionComputation.js');
 
         // Create mock project data context with minimal required properties
         const mockProjectData = {
@@ -380,10 +380,10 @@ describe('Brainstorm Edit Chain Integration Test', () => {
             error: null
         } as any; // Type cast to avoid missing properties for test
 
-        // Test current stage detection using the new lineage-based system
-        const actionResult = computeParamsAndActionsFromLineage(mockProjectData);
-        console.log(`  - Detected current stage: ${actionResult.currentStage}`);
-        expect(actionResult.currentStage).toBe('idea_editing'); // Should be in idea editing stage
+        // Test current stage detection using the unified workflow system
+        const workflowState = computeUnifiedWorkflowState(mockProjectData, 'test-project');
+        console.log(`  - Detected current stage: ${workflowState.parameters.currentStage}`);
+        expect(workflowState.parameters.currentStage).toBe('idea_editing'); // Should be in idea editing stage
 
         // Test brainstorm idea artifacts detection
         const brainstormIdeas = artifacts.filter(a =>
@@ -402,7 +402,7 @@ describe('Brainstorm Edit Chain Integration Test', () => {
         expect(chosenIdea?.id).toBe('artifact-4'); // Latest artifact with no descendants
 
         // Test display components computation
-        const displayComponents = computeDisplayComponents(actionResult.currentStage, false, mockProjectData);
+        const displayComponents = workflowState.displayComponents;
         console.log(`  - Generated ${displayComponents.length} display components`);
 
         // Verify that SingleBrainstormIdeaEditor is included
@@ -461,16 +461,12 @@ describe('Brainstorm Edit Chain Integration Test', () => {
         };
 
         // Test that hasActiveTransforms is correctly detected
-        const activeTransformResult = computeParamsAndActionsFromLineage(mockProjectDataWithActiveTransforms);
-        console.log(`  - hasActiveTransforms: ${activeTransformResult.hasActiveTransforms}`);
-        expect(activeTransformResult.hasActiveTransforms).toBe(true);
+        const activeTransformWorkflowState = computeUnifiedWorkflowState(mockProjectDataWithActiveTransforms, 'test-project');
+        console.log(`  - hasActiveTransforms: ${activeTransformWorkflowState.parameters.hasActiveTransforms}`);
+        expect(activeTransformWorkflowState.parameters.hasActiveTransforms).toBe(true);
 
         // Test that display components reflect the disabled state
-        const activeTransformComponents = computeDisplayComponents(
-            activeTransformResult.currentStage,
-            activeTransformResult.hasActiveTransforms,
-            mockProjectDataWithActiveTransforms
-        );
+        const activeTransformComponents = activeTransformWorkflowState.displayComponents;
 
         const disabledSingleIdeaEditor = activeTransformComponents.find((component: any) =>
             component.id === 'single-brainstorm-idea-editor'

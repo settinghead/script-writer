@@ -813,63 +813,6 @@ function computeWorkflowParametersFromContext(
 // ==============================================================================
 
 /**
- * Lineage-based action computation (main method)
- * Uses lineage graph traversal for robust state detection
- * @deprecated Use computeUnifiedWorkflowState instead
- */
-export const computeParamsAndActionsFromLineage = (
-    projectData: ProjectDataContextType
-): ComputedActions => {
-    const context = computeUnifiedContext(projectData, 'legacy');
-
-    if (!context) {
-        return {
-            actions: [],
-            currentStage: 'initial',
-            hasActiveTransforms: false,
-            stageDescription: '加载中...'
-        };
-    }
-
-    return {
-        actions: context.actions,
-        currentStage: context.currentStage,
-        hasActiveTransforms: context.hasActiveTransforms,
-        stageDescription: context.stageDescription
-    };
-};
-
-/**
- * Compute workflow steps based on current state
- * @deprecated Use computeUnifiedWorkflowState instead
- */
-export const computeWorkflowSteps = (
-    currentStage: WorkflowStage,
-    hasActiveTransforms: boolean,
-    projectData: ProjectDataContextType
-): WorkflowStep[] => {
-    // For backward compatibility, create a minimal context that matches the old behavior
-    const context: UnifiedComputationContext = {
-        currentStage,
-        hasActiveTransforms,
-        stageDescription: '',
-        isManualPath: detectIsManualPath(projectData),
-        canonicalBrainstormArtifacts: [],
-        brainstormInput: null,
-        brainstormIdeas: [],
-        chosenIdea: null,
-        outlineSettings: null,
-        canonicalChronicles: null,
-        lineageGraph: null,
-        transformInputs: [],
-        artifacts: [],
-        actions: []
-    };
-
-    return computeWorkflowStepsFromContext(context);
-};
-
-/**
  * Detect if this is a manual path (user directly entered an idea) vs AI path (brainstorm generation)
  */
 const detectIsManualPath = (projectData: ProjectDataContextType): boolean => {
@@ -884,45 +827,6 @@ const detectIsManualPath = (projectData: ProjectDataContextType): boolean => {
     );
 
     return !hasBrainstormInput;
-};
-
-/**
- * Compute display components based on current state
- * @deprecated Use computeUnifiedWorkflowState instead
- */
-export const computeDisplayComponents = (
-    currentStage: WorkflowStage,
-    hasActiveTransforms: boolean,
-    projectData: ProjectDataContextType
-): DisplayComponent[] => {
-    // For backward compatibility, call the unified context but handle edge cases
-    const context = computeUnifiedContext(projectData, 'legacy');
-
-    if (!context) {
-        // Handle the case where lineage graph is missing but we should still show project creation
-        // Only show project creation form if we have valid artifacts (not pending/error)
-        if (currentStage === 'initial' &&
-            projectData.artifacts !== "pending" &&
-            projectData.artifacts !== "error") {
-            return [{
-                id: 'project-creation-form',
-                component: getComponentById('project-creation-form'),
-                mode: 'editable',
-                props: {},
-                priority: 1
-            }];
-        }
-        return [];
-    }
-
-    // Override the context with the passed parameters for backward compatibility
-    const compatContext: UnifiedComputationContext = {
-        ...context,
-        currentStage,
-        hasActiveTransforms
-    };
-
-    return computeDisplayComponentsFromContext(compatContext);
 };
 
 /**

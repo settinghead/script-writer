@@ -211,14 +211,23 @@ export function computeUnifiedWorkflowState(
   projectData: ProjectData, 
   projectId: string
 ): UnifiedWorkflowState {
-  // Get base computation from existing system
-  const baseResult = computeParamsAndActionsFromLineage(projectData);
+  // Single unified computation that handles all workflow state
+  const context = computeUnifiedContext(projectData, projectId);
+  
+  if (!context) {
+    return {
+      steps: [],
+      displayComponents: [],
+      actions: [],
+      parameters: getDefaultParameters(projectId)
+    };
+  }
   
   return {
-    steps: computeWorkflowSteps(baseResult.currentStage, baseResult.hasActiveTransforms),
-    displayComponents: computeDisplayComponents(projectData, baseResult),
-    actions: baseResult.actions,
-    parameters: computeWorkflowParameters(projectData, baseResult)
+    steps: computeWorkflowStepsFromContext(context),
+    displayComponents: computeDisplayComponentsFromContext(context),
+    actions: context.actions,
+    parameters: computeWorkflowParametersFromContext(context, projectId)
   };
 }
 ```
