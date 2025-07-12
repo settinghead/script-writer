@@ -12,6 +12,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './components/LoginPage';
 import ProjectsList from './components/ProjectList';
 import ProjectLayout from './components/ProjectLayout';
+import ProjectAccessGuard from './components/ProjectAccessGuard';
 import Breadcrumb from './components/Breadcrumb';
 import StagewiseToolbar from './components/StagewiseToolbar';
 
@@ -42,9 +43,11 @@ const ProjectLayoutWrapper: React.FC = () => {
   }
 
   return (
-    <ProjectDataProvider projectId={projectId}>
-      <ProjectLayout />
-    </ProjectDataProvider>
+    <ProjectAccessGuard projectId={projectId}>
+      <ProjectDataProvider projectId={projectId}>
+        <ProjectLayout />
+      </ProjectDataProvider>
+    </ProjectAccessGuard>
   );
 };
 

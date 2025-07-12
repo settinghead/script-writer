@@ -43,7 +43,24 @@ class ApiService {
     async getProject(projectId: string): Promise<any> {
         const response = await fetch(`${this.baseUrl}/projects/${projectId}`);
         if (!response.ok) {
-            throw new Error(`Failed to fetch project: ${response.status}`);
+            if (response.status === 404) {
+                const errorData = await response.json().catch(() => ({}));
+                const error = new Error(errorData.error || 'Project not found');
+                (error as any).status = 404;
+                (error as any).code = 'PROJECT_NOT_FOUND';
+                throw error;
+            } else if (response.status === 403) {
+                const errorData = await response.json().catch(() => ({}));
+                const error = new Error(errorData.error || 'Access denied');
+                (error as any).status = 403;
+                (error as any).code = 'ACCESS_DENIED';
+                throw error;
+            } else {
+                const errorData = await response.json().catch(() => ({}));
+                const error = new Error(errorData.error || `Failed to fetch project: ${response.status}`);
+                (error as any).status = response.status;
+                throw error;
+            }
         }
         return response.json();
     }

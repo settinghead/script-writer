@@ -270,7 +270,7 @@ export const BasicThread: React.FC<BasicThreadProps> = ({ projectId }) => {
                 onScroll={handleScroll}
                 style={{
                     flex: 1,
-                    padding: '16px',
+                    padding: '80px 16px 160px 16px', // Top padding for header, bottom padding for input
                     overflow: 'auto',
                     background: 'transparent'
                 }}
@@ -333,9 +333,9 @@ export const BasicThread: React.FC<BasicThreadProps> = ({ projectId }) => {
             {!isAtBottom && (
                 <div style={{
                     position: 'absolute',
-                    bottom: '80px',
+                    bottom: '180px', // Adjusted to be above the glass input area
                     right: '16px',
-                    zIndex: 10
+                    zIndex: 15 // Higher z-index to be above glass effects
                 }}>
                     <button
                         onClick={scrollToBottom}
@@ -358,15 +358,20 @@ export const BasicThread: React.FC<BasicThreadProps> = ({ projectId }) => {
                 </div>
             )}
 
-            {/* Input Area */}
-            <div style={{
-                background: 'rgba(30, 30, 30, 0.9)',
-                backdropFilter: 'blur(10px)',
-                borderTop: '1px solid #333',
-                padding: '16px'
-            }}>
+            {/* Glass Input Area Overlay */}
+            <div
+                className="chat-input-glass"
+                style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    padding: '16px',
+                    zIndex: 10,
+                    borderTop: '1px solid rgba(255, 255, 255, 0.1)'
+                }}
+            >
                 <ChatInput onSend={handleSendMessage} disabled={isLoading} />
-
             </div>
         </div>
     );
