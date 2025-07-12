@@ -116,18 +116,36 @@ const syncYJSToArtifact = async (artifactId: string) => {
         const Y = await import('yjs');
         const tempDoc = new Y.Doc();
         let updateCount = 0;
+        let skippedCount = 0;
 
         for (const update of updates) {
             try {
                 const updateData = Buffer.from(update.document_state);
+
+                // Basic validation before applying
+                if (updateData.length === 0) {
+                    console.warn(`[YJS Sync] Skipping empty update for artifact ${artifactId}`);
+                    skippedCount++;
+                    continue;
+                }
+
+                // Validate minimum size for YJS updates (should be at least a few bytes)
+                if (updateData.length < 10) {
+                    console.warn(`[YJS Sync] Skipping suspiciously small update (${updateData.length} bytes) for artifact ${artifactId}`);
+                    skippedCount++;
+                    continue;
+                }
+
                 Y.applyUpdate(tempDoc, updateData);
                 updateCount++;
             } catch (error) {
-                console.warn(`[YJS Sync] Skipping potentially corrupted update ${updateCount + 1} for artifact ${artifactId}:`, error instanceof Error ? error.message : String(error));
-                // Continue with next update instead of stopping entirely
+                console.warn(`[YJS Sync] Skipping corrupted update ${updateCount + skippedCount + 1} for artifact ${artifactId}:`, error instanceof Error ? error.message : String(error));
+                skippedCount++;
                 continue;
             }
         }
+
+        console.log(`[YJS Sync] Applied ${updateCount} updates, skipped ${skippedCount} corrupted updates for artifact ${artifactId}`);
 
         // Extract data from the YJS document
         const contentMap = tempDoc.getMap('content');
@@ -184,6 +202,64 @@ const syncYJSToArtifact = async (artifactId: string) => {
 
     } catch (error) {
         console.error(`[YJS Sync] Error syncing YJS to artifact ${artifactId}:`, error);
+    }
+};
+
+// Helper function to clean up corrupted YJS documents
+const cleanupCorruptedDocuments = async (artifactId: string) => {
+    try {
+        console.log(`[YJS Cleanup] Checking for corrupted documents for artifact ${artifactId}`);
+
+        const updates = await db
+            .selectFrom('artifact_yjs_documents')
+            .select(['id', 'document_state', 'created_at'])
+            .where('artifact_id', '=', artifactId)
+            .orderBy('created_at', 'asc')
+            .execute();
+
+        if (updates.length === 0) {
+            return;
+        }
+
+        const Y = await import('yjs');
+        const corruptedIds = [];
+
+        for (const update of updates) {
+            try {
+                const updateData = Buffer.from(update.document_state);
+
+                // Basic validation
+                if (updateData.length === 0 || updateData.length < 10) {
+                    console.log(`[YJS Cleanup] Marking document ${update.id} as corrupted (invalid size: ${updateData.length})`);
+                    corruptedIds.push(update.id);
+                    continue;
+                }
+
+                // Try to apply the update to a temporary document
+                const tempDoc = new Y.Doc();
+                Y.applyUpdate(tempDoc, updateData);
+
+            } catch (error) {
+                console.log(`[YJS Cleanup] Marking document ${update.id} as corrupted:`, error instanceof Error ? error.message : String(error));
+                corruptedIds.push(update.id);
+            }
+        }
+
+        if (corruptedIds.length > 0) {
+            console.log(`[YJS Cleanup] Removing ${corruptedIds.length} corrupted documents for artifact ${artifactId}`);
+
+            await db
+                .deleteFrom('artifact_yjs_documents')
+                .where('id', 'in', corruptedIds)
+                .execute();
+
+            console.log(`[YJS Cleanup] Successfully removed ${corruptedIds.length} corrupted documents`);
+        } else {
+            console.log(`[YJS Cleanup] No corrupted documents found for artifact ${artifactId}`);
+        }
+
+    } catch (error) {
+        console.error(`[YJS Cleanup] Error cleaning up corrupted documents for artifact ${artifactId}:`, error);
     }
 };
 
@@ -299,6 +375,9 @@ router.get('/document/:artifactId', async (req: any, res: any) => {
             return res.status(400).json({ error: 'Artifact ID is required' });
         }
 
+        // First, clean up any corrupted documents
+        await cleanupCorruptedDocuments(artifactId);
+
         // Get all document updates for this artifact, ordered by creation time
         const updates = await db
             .selectFrom('artifact_yjs_documents')
@@ -311,18 +390,38 @@ router.get('/document/:artifactId', async (req: any, res: any) => {
             // Apply all updates to reconstruct the current document state
             const Y = await import('yjs');
             const tempDoc = new Y.Doc();
+            let appliedCount = 0;
+            let skippedCount = 0;
 
             // Apply updates in order
             for (const update of updates) {
                 if (update.document_state) {
                     try {
                         const updateArray = new Uint8Array(update.document_state);
+
+                        // Basic validation
+                        if (updateArray.length === 0) {
+                            console.warn(`[YJS Document] Skipping empty update for artifact ${artifactId}`);
+                            skippedCount++;
+                            continue;
+                        }
+
+                        if (updateArray.length < 10) {
+                            console.warn(`[YJS Document] Skipping suspiciously small update (${updateArray.length} bytes) for artifact ${artifactId}`);
+                            skippedCount++;
+                            continue;
+                        }
+
                         Y.applyUpdate(tempDoc, updateArray);
+                        appliedCount++;
                     } catch (error) {
-                        console.warn('YJS: Failed to apply update, skipping:', error);
+                        console.warn(`[YJS Document] Failed to apply update for artifact ${artifactId}, skipping:`, error instanceof Error ? error.message : String(error));
+                        skippedCount++;
                     }
                 }
             }
+
+            console.log(`[YJS Document] Applied ${appliedCount} updates, skipped ${skippedCount} corrupted updates for artifact ${artifactId}`);
 
             // Get the final document state
             const finalState = Y.encodeStateAsUpdate(tempDoc);
@@ -337,6 +436,30 @@ router.get('/document/:artifactId', async (req: any, res: any) => {
 
     } catch (error) {
         console.error('YJS: Error loading document:', error);
+        const message = error instanceof Error ? error.message : String(error);
+        res.status(500).json({ error: message });
+    }
+});
+
+// Add a cleanup endpoint for manual cleanup (dev-only)
+router.post('/cleanup/:artifactId', async (req: any, res: any) => {
+    try {
+        const user = authMiddleware.getCurrentUser(req);
+        if (!user) {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
+
+        const artifactId = req.params.artifactId;
+        if (!artifactId) {
+            return res.status(400).json({ error: 'Artifact ID is required' });
+        }
+
+        await cleanupCorruptedDocuments(artifactId);
+
+        res.json({ success: true, message: 'Cleanup completed' });
+
+    } catch (error) {
+        console.error('YJS: Error during cleanup:', error);
         const message = error instanceof Error ? error.message : String(error);
         res.status(500).json({ error: message });
     }

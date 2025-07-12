@@ -6,6 +6,7 @@ import RawGraphVisualization from '../RawGraphVisualization';
 import RawChatMessages from '../RawChatMessages';
 import RawAgentContext from '../RawAgentContext';
 import { ScrollPositionDemo } from '../ScrollPositionDemo';
+import { YJSDebugComponent } from './YJSDebugComponent';
 import { useDebugState } from './DebugMenu';
 
 interface DebugPanelsProps {
@@ -16,8 +17,12 @@ export const DebugPanels: React.FC<DebugPanelsProps> = ({ projectId }) => {
     const { showRawGraph, showRawChat, showRawContext, showScrollDemo } = useDebugState();
     const [searchParams, setSearchParams] = useSearchParams();
 
+    // Check for YJS debug mode
+    const showYJSDebug = searchParams.get('yjs-debug') === '1';
+    const artifactId = searchParams.get('artifact-id');
+
     // Don't render anything if no debug mode is active
-    if (!showRawGraph && !showRawChat && !showRawContext && !showScrollDemo) {
+    if (!showRawGraph && !showRawChat && !showRawContext && !showScrollDemo && !showYJSDebug) {
         return null;
     }
 
@@ -36,6 +41,9 @@ export const DebugPanels: React.FC<DebugPanelsProps> = ({ projectId }) => {
     } else if (showScrollDemo) {
         debugTitle = '滚动位置保存演示';
         debugContent = <ScrollPositionDemo />;
+    } else if (showYJSDebug && artifactId) {
+        debugTitle = 'YJS调试信息';
+        debugContent = <YJSDebugComponent artifactId={artifactId} />;
     }
 
     return (
@@ -78,6 +86,8 @@ export const DebugPanels: React.FC<DebugPanelsProps> = ({ projectId }) => {
                         newSearchParams.delete('raw-chat');
                         newSearchParams.delete('raw-context');
                         newSearchParams.delete('yjs-demo');
+                        newSearchParams.delete('yjs-debug');
+                        newSearchParams.delete('artifact-id');
                         newSearchParams.delete('scroll-demo');
                         setSearchParams(newSearchParams);
                     }}

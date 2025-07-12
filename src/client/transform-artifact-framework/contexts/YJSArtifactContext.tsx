@@ -31,10 +31,18 @@ export function YJSArtifactProvider({ artifactId, basePath, enableCollaboration,
 
     // Get the actual data to use - prefer artifact data if YJS data is not ready
     const actualData = useMemo(() => {
+        console.log(`[YJSProvider] Computing actualData for ${artifactId}`, {
+            hasYJSData: data && typeof data === 'object' && Object.keys(data).length > 0,
+            yjsData: data,
+            hasArtifactData: !!artifact?.data,
+            artifactData: artifact?.data
+        });
+
         // Check if collaborative data is actually loaded (has meaningful content)
         const hasCollaborativeData = data && typeof data === 'object' && Object.keys(data).length > 0;
 
         if (hasCollaborativeData) {
+            console.log(`[YJSProvider] Using YJS data for ${artifactId}`, data);
             return data;
         }
 
@@ -49,9 +57,11 @@ export function YJSArtifactProvider({ artifactId, basePath, enableCollaboration,
                     return {};
                 }
             }
+            console.log(`[YJSProvider] Using artifact data for ${artifactId}`, artifactData);
             return artifactData;
         }
 
+        console.log(`[YJSProvider] No data available for ${artifactId}`);
         return {};
     }, [data, artifact, artifactId, basePath]);
 
