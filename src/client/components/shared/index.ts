@@ -19,6 +19,7 @@ export { ArtifactDisplayWrapper } from '../../transform-artifact-framework/compo
 export { EditableOutlineForm } from './EditableOutlineForm';
 export { default as EditableChroniclesForm } from './EditableChroniclesForm';
 export { default as AIButton } from './AIButton';
+export { default as HumanButton } from './HumanButton';
 export * from './YJSComplexFields';
 export * from './streaming';
 export * from './fieldConfigs'; 

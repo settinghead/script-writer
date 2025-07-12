@@ -221,46 +221,7 @@ export const useYJSArtifact = (
                     });
                 });
 
-                // Initialize document with artifact data if empty
-                const yMap = yMapRef.current;
-
-                if (yMap && yMap.size === 0 && artifact.data) {
-
-                    let artifactData: any = artifact.data;
-                    if (typeof artifactData === 'string') {
-                        try {
-                            artifactData = JSON.parse(artifactData);
-                        } catch (err) {
-                            console.error(`[useYJSArtifact] Failed to parse artifact data:`, err);
-                            artifactData = {} as any;
-                        }
-                    }
-
-                    // Populate YJS document (simplified approach)
-                    if (artifactData && typeof artifactData === 'object' && !Array.isArray(artifactData)) {
-                        Object.entries(artifactData as Record<string, any>).forEach(([key, value]) => {
-                            if (typeof value === 'string') {
-                                const yText = new Y.Text();
-                                yText.insert(0, value);
-                                yMap.set(key, yText);
-                            } else if (Array.isArray(value)) {
-                                const yArray = new Y.Array();
-                                value.forEach((item: any) => {
-                                    if (typeof item === 'string') {
-                                        const yText = new Y.Text();
-                                        yText.insert(0, item);
-                                        yArray.push([yText]);
-                                    } else {
-                                        yArray.push([item]);
-                                    }
-                                });
-                                yMap.set(key, yArray);
-                            } else {
-                                yMap.set(key, value);
-                            }
-                        });
-                    }
-                }
+                // This early initialization is removed - we'll do it later after Electric provider is set up
 
                 // Set up Electric provider (same pattern as Electric YJS example)
                 const electricConfig = createElectricConfigWithDebugAuth();
@@ -411,7 +372,7 @@ export const useYJSArtifact = (
                                 if (savedState.byteLength > 0) {
                                     // Apply the saved state to the YJS document
                                     const update = new Uint8Array(savedState);
-                                    Y.applyUpdate(yjsDoc, update, 'server');
+                                    Y.applyUpdate(yjsDoc, update, 'load-from-server');
                                     hasLoadedFromServer = true;
                                 } else {
                                 }
@@ -425,6 +386,9 @@ export const useYJSArtifact = (
                         if (!hasLoadedFromServer) {
                             // Use a transaction with origin to prevent these updates from being sent to server
                             yjsDoc.transact(() => {
+                                const yMap = yMapRef.current;
+                                if (!yMap) return;
+
                                 // Populate YJS map with artifact data
                                 Object.entries(artifactData).forEach(([key, value]) => {
                                     if (typeof value === 'string') {
@@ -460,7 +424,7 @@ export const useYJSArtifact = (
                         // Set up YJS document update handler to send changes to server
                         updateHandler = (update: Uint8Array, origin: unknown) => {
                             // Don't send updates that originated from the server or initial loading (to avoid loops)
-                            if (origin === 'server' || origin === 'load-from-server' || origin === 'load-from-artifact') {
+                            if (origin === 'load-from-server' || origin === 'load-from-artifact') {
                                 return;
                             }
 

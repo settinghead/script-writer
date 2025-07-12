@@ -65,14 +65,14 @@ const IdeaCardWrapper: React.FC<{
   );
 };
 
-interface ProjectBrainstormPageProps {
+interface BrainstormCollection {
   ideas?: IdeaWithTitle[];
   selectionMode?: boolean;
   isLoading?: boolean;
   readOnly?: boolean;
 }
 
-export default function ProjectBrainstormPage(props: ProjectBrainstormPageProps = {}) {
+export default function BrainstormCollection(props: BrainstormCollection = {}) {
   const { projectId } = useParams<{ projectId: string }>()
   const navigate = useNavigate()
   const [ideaOutlines, setIdeaOutlines] = useState<Record<string, any[]>>({});
@@ -257,10 +257,6 @@ export default function ProjectBrainstormPage(props: ProjectBrainstormPageProps 
       return;
     }
 
-    console.log('[ProjectBrainstormPage] Selecting idea:', {
-      index,
-      clickedIdea
-    });
 
     // Store selection in action items store
     store.setSelectedArtifactAndPath({

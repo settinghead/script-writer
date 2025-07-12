@@ -835,6 +835,50 @@ if (pendingSaveRef.current && pendingSaveRef.current !== valueToSave) {
 - Clear guidance through complex creative workflows
 - Reduces decision fatigue and cognitive load
 
+### 11. **Color Theme Principles**
+**Principle**: Use consistent color coding to distinguish between AI-generated and human-edited content throughout the application.
+
+**Implementation**:
+- **Purple/Violet Theme** - All AI-related elements use purple gradients and colors
+  - AI-generated content (artifacts with `origin_type: 'llm'`)
+  - Buttons that trigger AI operations (brainstorm generation, outline creation, etc.)
+  - AI agent indicators and streaming states
+  - AI-powered tools and features
+- **Green Theme** - All human-related elements use green gradients and colors
+  - Human-edited content (artifacts with `origin_type: 'human'`)
+  - Buttons that create human transforms (editing, manual input, etc.)
+  - User input fields and manual content creation
+  - Human editing indicators and states
+
+**Color Specifications**:
+```typescript
+// AI Theme - Purple gradients
+ai: {
+  primary: '#6d28d9',
+  gradient: 'linear-gradient(135deg, #6d28d9 0%, #5b21b6 50%, #4c1d95 100%)',
+  shadow: 'rgba(76, 29, 149, 0.3)'
+},
+
+// Human Theme - Dark Green gradients  
+human: {
+  primary: '#237804',
+  gradient: 'linear-gradient(135deg, #237804 0%, #389e0d 50%, #52c41a 100%)',
+  shadow: 'rgba(35, 120, 4, 0.4)'
+}
+```
+
+**Component Examples**:
+- **AIButton** - Purple gradient button for AI operations like "生成创意", "生成大纲"
+- **HumanButton** - Green gradient button for human actions like "确认选择并开始编辑", "保存修改"
+- **Artifact Borders** - Purple borders for AI-generated content, green borders for human-edited content
+- **Status Indicators** - Consistent color coding for transform types and content origins
+
+**Benefits**:
+- **Immediate Visual Distinction** - Users instantly understand content source and editing capabilities
+- **Consistent User Experience** - Same color meaning throughout the entire application
+- **Reduced Cognitive Load** - No need to read labels, colors communicate functionality
+- **Professional Appearance** - Cohesive color scheme enhances overall application design
+
 These principles have been battle-tested in the 觅光助创 application and provide a solid foundation for Chinese short drama content creation tools. They balance the need for sophisticated AI-powered workflows with the practical requirements of Chinese content creators working on platforms like 抖音, 快手, and 小红书.
 
 ## Getting Started

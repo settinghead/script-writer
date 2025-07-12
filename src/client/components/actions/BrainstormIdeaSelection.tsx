@@ -1,10 +1,11 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { Button, Typography, Alert, message } from 'antd';
-import { CheckOutlined, EditOutlined } from '@ant-design/icons';
+import { Typography, Alert, message } from 'antd';
+import { CheckOutlined, EditOutlined, RightOutlined } from '@ant-design/icons';
 import { BaseActionProps } from './index';
 import { useProjectData } from '../../contexts/ProjectDataContext';
 import { useActionItemsStore } from '../../stores/actionItemsStore';
 import { getArtifactAtPath } from '../../../common/transform-artifact-framework/lineageResolution';
+import { HumanButton } from '../shared';
 
 const { Text, Title } = Typography;
 
@@ -111,10 +112,7 @@ const BrainstormIdeaSelection: React.FC<BaseActionProps> = ({ projectId, onSucce
 
     return (
         <div style={{ padding: '16px 0', textAlign: 'center' }}>
-            <Title level={4} style={{ marginBottom: '16px', color: '#fff' }}>
-                <EditOutlined style={{ marginRight: '8px', color: '#1890ff' }} />
-                确认选择的创意
-            </Title>
+
 
             <div style={{
                 background: '#2a2a2a',
@@ -125,16 +123,17 @@ const BrainstormIdeaSelection: React.FC<BaseActionProps> = ({ projectId, onSucce
                 maxWidth: '600px',
                 margin: '0 auto 16px'
             }}>
+                <Text style={{ color: '#1890ff', fontWeight: 'bold' }}>
+                    已选择
+                </Text>
                 <div style={{ marginBottom: '8px' }}>
+
                     <Text strong style={{ color: '#fff', fontSize: '16px' }}>
+                        <CheckOutlined />
                         创意 "{selectedIdeaTitle || `第${(store.selectedArtifactAndPath.index || 0) + 1}个创意`}"
                     </Text>
                 </div>
-                <div style={{ marginBottom: '16px' }}>
-                    <Text style={{ color: '#ccc', fontSize: '14px' }}>
-                        已选择的创意，点击下方按钮确认并开始编辑
-                    </Text>
-                </div>
+
 
                 <div style={{
                     display: 'flex',
@@ -143,26 +142,32 @@ const BrainstormIdeaSelection: React.FC<BaseActionProps> = ({ projectId, onSucce
                     gap: '8px',
                     color: '#1890ff'
                 }}>
-                    <CheckOutlined />
-                    <Text style={{ color: '#1890ff', fontWeight: 'bold' }}>
-                        已选择
+
+                </div>
+                <div style={{ marginBottom: '16px' }}>
+                    <Text style={{ color: '#ccc', fontSize: '14px' }}>
+                        点击下方按钮继续
                     </Text>
                 </div>
             </div>
 
-            <Button
-                type="primary"
+            <HumanButton
                 size="large"
                 loading={isCreatingTransform}
                 onClick={handleConfirmSelection}
                 style={{
                     minWidth: '200px',
-                    height: '48px',
-                    fontSize: '16px'
+                    fontSize: '16px',
+                    padding: '10px 16px',
+                    height: 'auto'
                 }}
             >
-                {isCreatingTransform ? '确认中...' : '确认选择并开始编辑'}
-            </Button>
+                {isCreatingTransform ? '确认中...' : (
+                    <>
+                        开始编辑<br />"{selectedIdeaTitle}" <RightOutlined />
+                    </>
+                )}
+            </HumanButton>
 
             {isCreatingTransform && (
                 <div style={{ marginTop: '16px' }}>

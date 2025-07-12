@@ -14,9 +14,9 @@ export const AppColors = {
         avatar: '#6d28d9'
     },
 
-    // Human/User theme - Blue and green
+    // Human/User theme - Blue and dark green
     human: {
-        primary: '#52c41a', // Green for human actions
+        primary: '#237804', // Dark green for human actions
         secondary: '#4f46e5', // Blue for user messages
         avatar: '#4f46e5',
         background: '#2a2a2a'
