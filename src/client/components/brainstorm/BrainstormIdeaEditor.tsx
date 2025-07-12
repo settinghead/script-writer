@@ -3,6 +3,7 @@ import { Card, Typography } from 'antd';
 import { StarFilled } from '@ant-design/icons';
 import { useProjectData } from '../../contexts/ProjectDataContext';
 import { getArtifactAtPath } from '../../../common/transform-artifact-framework/lineageResolution';
+import './BrainstormIdeaCard.css';
 
 const { Text } = Typography;
 
@@ -50,24 +51,12 @@ export const BrainstormIdeaEditor: React.FC<{
         <Card
             key={`${artifactId}-${index}`}
             styles={{ body: { padding: '12px' } }}
-            hoverable={isClickable}
-            onMouseEnter={(e) => {
-                if (isClickable) {
-                    e.currentTarget.style.borderColor = '#1890ff';
-                    e.currentTarget.style.backgroundColor = '#2d3436';
-                }
-            }}
-            onMouseLeave={(e) => {
-                if (isClickable) {
-                    e.currentTarget.style.borderColor = '#434343';
-                    e.currentTarget.style.backgroundColor = '#262626';
-                }
-            }}
+            hoverable={false} // Disable Ant Design's built-in hover to use our custom CSS
             onClick={() => isClickable && onIdeaClick(originalCollectionId, index)}
             {...props}
             style={{
                 backgroundColor: isChosen ? '#2d3f2d' : (isSelected ? '#2d3436' : '#262626'),
-                border: isChosen ? '2px solid #52c41a' : (isSelected ? '1px solid #1890ff' : '1px solid #434343'),
+                border: isChosen ? '2px solid #52c41a' : (isSelected ? '2px solid #1890ff' : '1px solid #434343'),
                 transition: 'all 0.2s ease',
                 animation: 'fadeIn 0.3s ease-out',
                 position: 'relative',
@@ -75,6 +64,7 @@ export const BrainstormIdeaEditor: React.FC<{
                 cursor: isClickable ? 'pointer' : 'default',
                 ...props.style
             }}
+            className={`brainstorm-idea-card ${isClickable ? 'clickable' : ''} ${isSelected ? 'selected' : ''} ${isChosen ? 'chosen' : ''}`}
         >
             {/* Status indicator */}
             <div style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
