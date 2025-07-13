@@ -2,7 +2,6 @@ import express from 'express';
 import { AuthMiddleware } from '../middleware/auth';
 import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
 import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
-import { TransformExecutor } from '../transform-jsondoc-framework/TransformExecutor';
 import { HumanTransformExecutor } from '../transform-jsondoc-framework/HumanTransformExecutor';
 
 
@@ -12,7 +11,6 @@ export function createJsondocRoutes(
     transformRepo: TransformRepository
 ) {
     const router = express.Router();
-    const transformExecutor = new TransformExecutor(jsondocRepo, transformRepo);
     const schemaExecutor = new HumanTransformExecutor(jsondocRepo, transformRepo);
 
     // Create new jsondoc
@@ -121,58 +119,6 @@ export function createJsondocRoutes(
         }
     });
 
-    // Edit jsondoc with path-based derivation
-    router.post('/:id/edit-with-path', authMiddleware.authenticate, async (req: any, res: any) => {
-        try {
-            const { id: jsondocId } = req.params;
-            const { path = "", field, value } = req.body;
-            const userId = req.user?.id;
-
-            if (!userId) {
-                res.status(401).json({ error: 'User not authenticated' });
-                return;
-            }
-
-            // Validate required fields
-            if (!field || value === undefined) {
-                res.status(400).json({ error: 'Field and value are required' });
-                return;
-            }
-
-            // Get jsondoc to verify access
-            const jsondoc = await jsondocRepo.getJsondoc(jsondocId);
-            if (!jsondoc) {
-                res.status(404).json({ error: 'Jsondoc not found' });
-                return;
-            }
-
-            // Verify user has access to this jsondoc's project
-            const hasAccess = await jsondocRepo.userHasProjectAccess(userId, jsondoc.project_id);
-            if (!hasAccess) {
-                res.status(403).json({ error: 'Access denied' });
-                return;
-            }
-
-            // Execute human transform with path
-            const result = await transformExecutor.executeHumanTransformWithPath(
-                jsondoc.project_id,
-                jsondocId,
-                path,
-                field,
-                value,
-                userId
-            );
-
-            res.json({
-                jsondocId: result.derivedJsondoc.id,
-                wasTransformed: result.wasTransformed,
-                transformId: result.transform.id
-            });
-        } catch (error: any) {
-            console.error('Error editing jsondoc with path:', error);
-            res.status(500).json({ error: error.message || 'Internal server error' });
-        }
-    });
 
     // Get human transform for jsondoc and path
     router.get('/:id/human-transform', authMiddleware.authenticate, async (req: any, res: any) => {
