@@ -131,7 +131,370 @@ const ProjectContentRenderer: React.FC<{ projectId: string; scrollContainerRef: 
     );
 };
 
+// Mobile drawer for chat sidebar
+const MobileChatDrawer: React.FC<{
+    open: boolean;
+    onClose: () => void;
+    projectId: string;
+}> = ({ open, onClose, projectId }) => {
+    return (
+        <Drawer
+            title="聊天"
+            placement="left"
+            onClose={onClose}
+            open={open}
+            width={Math.min(320, window.innerWidth * 0.85)}
+            styles={{
+                body: { padding: 0, background: '#1a1a1a' },
+                header: { background: '#1a1a1a', borderBottom: '1px solid #333' }
+            }}
+            closeIcon={<span style={{ color: '#fff' }}>×</span>}
+        >
+            <ChatSidebarWrapper projectId={projectId} />
+        </Drawer>
+    );
+};
 
+// Desktop sidebar with resize handle
+const DesktopSidebar: React.FC<{
+    width: number;
+    onResizeStart: (e: React.MouseEvent) => void;
+    isResizing: boolean;
+    projectId: string;
+}> = ({ width, onResizeStart, isResizing, projectId }) => {
+    return (
+        <div style={{ position: 'relative', display: 'flex' }}>
+            <Sider
+                width={width}
+                style={{
+                    background: '#1a1a1a',
+                    height: '100%',
+                    overflow: 'hidden',
+                    position: 'relative'
+                }}
+                theme="dark"
+            >
+                <ChatSidebarWrapper projectId={projectId} />
+            </Sider>
+
+            {/* Sidebar Resize Handle */}
+            <div
+                onMouseDown={onResizeStart}
+                style={{
+                    width: '6px',
+                    background: isResizing ? '#1890ff' : 'transparent',
+                    cursor: 'ew-resize',
+                    position: 'relative',
+                    borderRight: '1px solid #333',
+                    transition: 'background 0.2s ease-in-out',
+                    height: '100vh',
+                    flexShrink: 0
+                }}
+            >
+                <div
+                    style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        width: '4px',
+                        height: '40px',
+                        background: isResizing ? '#1890ff' : '#666',
+                        borderRadius: '2px',
+                        transition: 'background 0.2s ease-in-out',
+                    }}
+                />
+            </div>
+        </div>
+    );
+};
+
+// Mobile drawer for right sidebar with tabs
+const MobileRightDrawer: React.FC<{
+    open: boolean;
+    onClose: () => void;
+    activeTab: string;
+    onTabChange: (key: string) => void;
+}> = ({ open, onClose, activeTab, onTabChange }) => {
+    return (
+        <Drawer
+            title="目录/地图"
+            placement="right"
+            onClose={onClose}
+            open={open}
+            width={Math.min(320, window.innerWidth * 0.85)}
+            styles={{
+                body: { padding: 0, background: '#1a1a1a' },
+                header: { background: '#1a1a1a', borderBottom: '1px solid #333' }
+            }}
+            closeIcon={<span style={{ color: '#fff' }}>×</span>}
+        >
+            <Tabs
+                activeKey={activeTab}
+                onChange={onTabChange}
+                size="small"
+                style={{ height: '100%' }}
+                tabBarStyle={{
+                    background: '#1a1a1a',
+                    margin: 0,
+                    padding: '0 12px'
+                }}
+                items={[
+                    {
+                        key: 'tree',
+                        label: (
+                            <Space>
+                                <UnorderedListOutlined />
+                                <span>目录树</span>
+                            </Space>
+                        ),
+                        children: (
+                            <div style={{ padding: '12px' }}>
+                                <ProjectTreeView width={280} />
+                            </div>
+                        )
+                    },
+                    {
+                        key: 'workflow',
+                        label: (
+                            <Space>
+                                <ApartmentOutlined />
+                                <span>流程图</span>
+                            </Space>
+                        ),
+                        children: (
+                            <div style={{ padding: '12px' }}>
+                                <WorkflowVisualization width={280} />
+                            </div>
+                        )
+                    },
+                ]}
+            />
+        </Drawer>
+    );
+};
+
+// Desktop right sidebar with tabs and resize handle
+const DesktopRightSidebar: React.FC<{
+    visible: boolean;
+    width: number;
+    onResizeStart: (e: React.MouseEvent) => void;
+    isResizing: boolean;
+    onToggleVisibility: () => void;
+    activeTab: string;
+    onTabChange: (key: string) => void;
+}> = ({ visible, width, onResizeStart, isResizing, onToggleVisibility, activeTab, onTabChange }) => {
+    return (
+        <div style={{ position: 'relative', display: 'flex' }}>
+            {/* Right Sidebar Resize Handle */}
+            <div
+                onMouseDown={onResizeStart}
+                style={{
+                    width: '6px',
+                    background: isResizing ? '#1890ff' : 'transparent',
+                    cursor: 'ew-resize',
+                    position: 'relative',
+                    borderLeft: '1px solid #333',
+                    transition: 'background 0.2s ease-in-out',
+                    height: '100vh',
+                    flexShrink: 0
+                }}
+            >
+                <div
+                    style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        width: '4px',
+                        height: '40px',
+                        background: isResizing ? '#1890ff' : '#666',
+                        borderRadius: '2px',
+                        transition: 'background 0.2s ease-in-out',
+                    }}
+                />
+            </div>
+
+            {/* Right Sidebar Content */}
+            {visible ? (
+                <Sider
+                    width={width}
+                    style={{
+                        background: '#1a1a1a',
+                        height: '100vh',
+                        overflow: 'hidden',
+                        position: 'relative'
+                    }}
+                    theme="dark"
+                >
+                    <div style={{
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column'
+                    }}>
+                        <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            padding: '12px 12px 0 12px'
+                        }}>
+                            <Title level={5} style={{ margin: 0, color: '#fff' }}>
+                                目录/地图
+                            </Title>
+                            <Button
+                                type="text"
+                                icon={<EyeInvisibleOutlined />}
+                                onClick={onToggleVisibility}
+                                style={{ color: '#1890ff' }}
+                                size="small"
+                            />
+                        </div>
+                        <div style={{ flex: 1, paddingTop: '8px' }}>
+                            <Tabs
+                                activeKey={activeTab}
+                                onChange={onTabChange}
+                                size="small"
+                                style={{ height: '100%' }}
+                                tabBarStyle={{
+                                    background: '#1a1a1a',
+                                    margin: 0,
+                                    padding: '0 12px'
+                                }}
+                                items={[
+                                    {
+                                        key: 'tree',
+                                        label: (
+                                            <Space>
+                                                <UnorderedListOutlined />
+                                                <span>目录树</span>
+                                            </Space>
+                                        ),
+                                        children: (
+                                            <div style={{ padding: '12px' }}>
+                                                <ProjectTreeView width={width - 48} />
+                                            </div>
+                                        )
+                                    },
+                                    {
+                                        key: 'workflow',
+                                        label: (
+                                            <Space>
+                                                <ApartmentOutlined />
+                                                <span>流程图</span>
+                                            </Space>
+                                        ),
+                                        children: (
+                                            <div style={{ padding: '12px' }}>
+                                                <WorkflowVisualization width={width - 48} />
+                                            </div>
+                                        )
+                                    },
+                                ]}
+                            />
+                        </div>
+                    </div>
+                </Sider>
+            ) : (
+                /* Collapsed Right Sidebar Button */
+                <div style={{
+                    width: '24px',
+                    height: '100vh',
+                    background: '#1a1a1a',
+                    borderLeft: '1px solid #333',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease-in-out'
+                }} onClick={onToggleVisibility}>
+                    <div style={{
+                        writingMode: 'vertical-rl',
+                        textOrientation: 'mixed',
+                        color: '#1890ff',
+                        fontSize: '12px',
+                        fontWeight: 500,
+                        userSelect: 'none'
+                    }}>
+                        ﹤ 目录
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// Header with breadcrumb and debug menu
+const ProjectHeader: React.FC<{
+    isMobile: boolean;
+    sidebarWidth: number;
+    rightSidebarVisible: boolean;
+    rightSidebarWidth: number;
+    onMobileRightDrawerOpen: () => void;
+}> = ({ isMobile, sidebarWidth, rightSidebarVisible, rightSidebarWidth, onMobileRightDrawerOpen }) => {
+    return (
+        <div style={{
+            top: 0,
+            left: isMobile ? 0 : sidebarWidth + 6,
+            right: !isMobile && rightSidebarVisible ? rightSidebarWidth + 6 : 0,
+            zIndex: 100,
+            padding: isMobile ? '8px 12px' : '12px 16px',
+            borderBottom: '1px solid #333',
+            background: '#1a1a1a',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            height: '60px'
+        }}>
+            <DebugMenu
+                isMobile={isMobile}
+                onMobileRightDrawerOpen={onMobileRightDrawerOpen}
+            />
+        </div>
+    );
+};
+
+// Main content area with scrollable content and action items
+const MainContentArea: React.FC<{
+    projectId: string;
+    scrollContainerRef: React.RefObject<HTMLDivElement | null>;
+}> = ({ projectId, scrollContainerRef }) => {
+    return (
+        <Content style={{
+            display: 'flex',
+            flexDirection: 'column',
+            height: '100%',
+            overflow: 'hidden'
+        }}>
+            {/* Main Content - Always Rendered */}
+            <div style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                height: '100%',
+                overflow: 'hidden'
+            }}>
+                {/* Scrollable Content Container */}
+                <div
+                    ref={scrollContainerRef}
+                    className="content-area-inset"
+                    style={{
+                        flex: 1,
+                        overflowY: 'auto',
+                    }}
+                >
+                    <ProjectContentRenderer projectId={projectId} scrollContainerRef={scrollContainerRef} />
+                    <Outlet />
+                </div>
+
+                {/* Sticky Action Items Section */}
+                <ActionItemsSection projectId={projectId} />
+            </div>
+
+            {/* Debug Panels Overlay */}
+            <DebugPanels projectId={projectId} />
+        </Content>
+    );
+};
 
 const ProjectLayout: React.FC = () => {
     const { projectId } = useParams<{ projectId: string }>();
@@ -152,26 +515,19 @@ const ProjectLayout: React.FC = () => {
     const screens = useBreakpoint();
     const isMobile = !screens.md; // Mobile when smaller than md breakpoint (768px)
 
-
-
     // Cache the selector to avoid infinite loop warning
     const emptyProject = useMemo(() => ({}), []);
     const project = useProjectStore(useMemo(() => (state: any) => state.projects[projectId!] || emptyProject, [projectId, emptyProject]));
     const { name, loading, error } = project;
 
-
-    // We'll add the empty project detection inside the ProjectDataProvider
-
     // Debug: Log when right sidebar is rendered
     useEffect(() => {
         if (!isMobile && rightSidebarVisible) {
-
+            // Right sidebar is visible
         } else {
-
+            // Right sidebar is hidden or mobile
         }
     }, [isMobile, rightSidebarVisible]);
-
-
 
     // Resize handlers for right sidebar
     const handleRightSidebarMouseDown = (e: React.MouseEvent) => {
@@ -278,159 +634,35 @@ const ProjectLayout: React.FC = () => {
         setMobileRightDrawerOpen(false);
     };
 
-    // Error handling is now done by ProjectAccessGuard
-    // We can assume project access is valid if we reach this point
-
-    const breadcrumbItems = [
-        {
-            title: (
-                <span onClick={handleGoBack} style={{ cursor: 'pointer', color: '#1890ff' }}>
-                    <HomeOutlined /> 首页
-                </span>
-            ),
-        },
-        {
-            title: (
-                <Space>
-                    <ProjectOutlined />
-                    {name || '未命名项目'}
-                </Space>
-            ),
-        }
-    ];
-
-
-    // Chat sidebar content component for reuse
-    const ChatSidebarContent = () => (
-        <ChatSidebarWrapper projectId={projectId!} />
-    );
-
-
-
     return (
-        <Layout style={{ height: '100%', overflow: 'hidden', }}>
+        <Layout style={{ height: '100%', overflow: 'hidden' }}>
             {/* Mobile Drawer for Chat */}
             {isMobile && (
-                <Drawer
-                    title="聊天"
-                    placement="left"
-                    onClose={hideMobileDrawer}
+                <MobileChatDrawer
                     open={mobileDrawerOpen}
-                    width={Math.min(320, window.innerWidth * 0.85)}
-                    styles={{
-                        body: { padding: 0, background: '#1a1a1a' },
-                        header: { background: '#1a1a1a', borderBottom: '1px solid #333' }
-                    }}
-                    closeIcon={<span style={{ color: '#fff' }}>×</span>}
-                >
-                    <ChatSidebarContent />
-                </Drawer>
+                    onClose={hideMobileDrawer}
+                    projectId={projectId!}
+                />
             )}
 
             {/* Desktop Sidebar */}
             {!isMobile && (
-                <div style={{ position: 'relative', display: 'flex' }}>
-                    <Sider
-                        width={sidebarWidth}
-                        style={{
-                            background: '#1a1a1a',
-                            height: '100%',
-                            overflow: 'hidden',
-                            position: 'relative'
-                        }}
-                        theme="dark"
-                    >
-                        <ChatSidebarContent />
-                    </Sider>
-
-                    {/* Sidebar Resize Handle - Desktop Only */}
-                    <div
-                        onMouseDown={handleSidebarMouseDown}
-                        style={{
-                            width: '6px',
-                            background: isResizingSidebar ? '#1890ff' : 'transparent',
-                            cursor: 'ew-resize',
-                            position: 'relative',
-                            borderRight: '1px solid #333',
-                            transition: 'background 0.2s ease-in-out',
-                            height: '100vh',
-                            flexShrink: 0
-                        }}
-                    >
-                        <div
-                            style={{
-                                position: 'absolute',
-                                top: '50%',
-                                left: '50%',
-                                transform: 'translate(-50%, -50%)',
-                                width: '4px',
-                                height: '40px',
-                                background: isResizingSidebar ? '#1890ff' : '#666',
-                                borderRadius: '2px',
-                                transition: 'background 0.2s ease-in-out',
-                            }}
-                        />
-                    </div>
-                </div>
+                <DesktopSidebar
+                    width={sidebarWidth}
+                    onResizeStart={handleSidebarMouseDown}
+                    isResizing={isResizingSidebar}
+                    projectId={projectId!}
+                />
             )}
 
             {/* Mobile Right Drawer with Tabs */}
             {isMobile && (
-                <Drawer
-                    title="目录/地图"
-                    placement="right"
-                    onClose={hideMobileRightDrawer}
+                <MobileRightDrawer
                     open={mobileRightDrawerOpen}
-                    width={Math.min(320, window.innerWidth * 0.85)}
-                    styles={{
-                        body: { padding: 0, background: '#1a1a1a' },
-                        header: { background: '#1a1a1a', borderBottom: '1px solid #333' }
-                    }}
-                    closeIcon={<span style={{ color: '#fff' }}>×</span>}
-                >
-                    <Tabs
-                        activeKey={activeRightTab}
-                        onChange={setActiveRightTab}
-                        size="small"
-                        style={{ height: '100%' }}
-                        tabBarStyle={{
-                            background: '#1a1a1a',
-                            margin: 0,
-                            padding: '0 12px'
-                        }}
-                        items={[
-                            {
-                                key: 'tree',
-                                label: (
-                                    <Space>
-                                        <UnorderedListOutlined />
-                                        <span>目录树</span>
-                                    </Space>
-                                ),
-                                children: (
-                                    <div style={{ padding: '12px' }}>
-                                        <ProjectTreeView width={280} />
-                                    </div>
-                                )
-                            },
-                            {
-                                key: 'workflow',
-                                label: (
-                                    <Space>
-                                        <ApartmentOutlined />
-                                        <span>流程图</span>
-                                    </Space>
-                                ),
-                                children: (
-                                    <div style={{ padding: '12px' }}>
-                                        <WorkflowVisualization width={280} />
-                                    </div>
-                                )
-                            },
-
-                        ]}
-                    />
-                </Drawer>
+                    onClose={hideMobileRightDrawer}
+                    activeTab={activeRightTab}
+                    onTabChange={setActiveRightTab}
+                />
             )}
 
             <Layout style={{
@@ -440,209 +672,38 @@ const ProjectLayout: React.FC = () => {
                 flexDirection: 'row',
                 padding: "0"
             }}>
-
                 {/* Main Content Layout */}
                 <Layout style={{
                     flex: 1,
                     overflow: 'hidden',
                 }}>
                     {/* Breadcrumb and Toggle Buttons Row */}
-                    <div style={{
-                        top: 0,
-                        left: isMobile ? 0 : sidebarWidth + 6,
-                        right: !isMobile && rightSidebarVisible ? rightSidebarWidth + 6 : 0,
-                        zIndex: 100,
-                        padding: isMobile ? '8px 12px' : '12px 16px',
-                        borderBottom: '1px solid #333',
-                        background: '#1a1a1a',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        height: '60px'
-                    }}>
-
-
-                        <DebugMenu
-                            isMobile={isMobile}
-                            onMobileRightDrawerOpen={showMobileRightDrawer}
-                        />
-                    </div>
+                    <ProjectHeader
+                        isMobile={isMobile}
+                        sidebarWidth={sidebarWidth}
+                        rightSidebarVisible={rightSidebarVisible}
+                        rightSidebarWidth={rightSidebarWidth}
+                        onMobileRightDrawerOpen={showMobileRightDrawer}
+                    />
 
                     {/* Main Content Area */}
-                    <Content style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        height: '100%',
-                        overflow: 'hidden'
-                    }}>
-                        {/* Main Content - Always Rendered */}
-                        <div style={{
-                            flex: 1,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            height: '100%',
-                            overflow: 'hidden'
-                        }}>
-                            {/* Scrollable Content Container */}
-                            <div
-                                ref={scrollContainerRef}
-                                className="content-area-inset"
-                                style={{
-                                    flex: 1,
-                                    overflowY: 'auto',
-                                }}
-                            >
-                                <ProjectContentRenderer projectId={projectId!} scrollContainerRef={scrollContainerRef} />
-                                <Outlet />
-                            </div>
-
-                            {/* Sticky Action Items Section */}
-                            <ActionItemsSection projectId={projectId!} />
-                        </div>
-
-                        {/* Debug Panels Overlay */}
-                        <DebugPanels projectId={projectId!} />
-                    </Content>
+                    <MainContentArea
+                        projectId={projectId!}
+                        scrollContainerRef={scrollContainerRef}
+                    />
                 </Layout>
 
                 {/* Right Sidebar - Desktop Only */}
                 {!isMobile && (
-                    <div style={{ position: 'relative', display: 'flex' }}>
-                        {/* Right Sidebar Resize Handle */}
-                        <div
-                            onMouseDown={handleRightSidebarMouseDown}
-                            style={{
-                                width: '6px',
-                                background: isResizingRightSidebar ? '#1890ff' : 'transparent',
-                                cursor: 'ew-resize',
-                                position: 'relative',
-                                borderLeft: '1px solid #333',
-                                transition: 'background 0.2s ease-in-out',
-                                height: '100vh',
-                                flexShrink: 0
-                            }}
-                        >
-                            <div
-                                style={{
-                                    position: 'absolute',
-                                    top: '50%',
-                                    left: '50%',
-                                    transform: 'translate(-50%, -50%)',
-                                    width: '4px',
-                                    height: '40px',
-                                    background: isResizingRightSidebar ? '#1890ff' : '#666',
-                                    borderRadius: '2px',
-                                    transition: 'background 0.2s ease-in-out',
-                                }}
-                            />
-                        </div>
-
-                        {/* Right Sidebar Content */}
-                        {rightSidebarVisible ? (
-                            <Sider
-                                width={rightSidebarWidth}
-                                style={{
-                                    background: '#1a1a1a',
-                                    height: '100vh',
-                                    overflow: 'hidden',
-                                    position: 'relative'
-                                }}
-                                theme="dark"
-                            >
-                                <div style={{
-                                    height: '100%',
-                                    display: 'flex',
-                                    flexDirection: 'column'
-                                }}>
-                                    <div style={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        padding: '12px 12px 0 12px'
-                                    }}>
-                                        <Title level={5} style={{ margin: 0, color: '#fff' }}>
-                                            目录/地图
-                                        </Title>
-                                        <Button
-                                            type="text"
-                                            icon={<EyeInvisibleOutlined />}
-                                            onClick={() => setRightSidebarVisible(false)}
-                                            style={{ color: '#1890ff' }}
-                                            size="small"
-                                        />
-                                    </div>
-                                    <div style={{ flex: 1, paddingTop: '8px' }}>
-                                        <Tabs
-                                            activeKey={activeRightTab}
-                                            onChange={setActiveRightTab}
-                                            size="small"
-                                            style={{ height: '100%' }}
-                                            tabBarStyle={{
-                                                background: '#1a1a1a',
-                                                margin: 0,
-                                                padding: '0 12px'
-                                            }}
-                                            items={[
-                                                {
-                                                    key: 'tree',
-                                                    label: (
-                                                        <Space>
-                                                            <UnorderedListOutlined />
-                                                            <span>目录树</span>
-                                                        </Space>
-                                                    ),
-                                                    children: (
-                                                        <div style={{ padding: '12px' }}>
-                                                            <ProjectTreeView width={rightSidebarWidth - 48} />
-                                                        </div>
-                                                    )
-                                                },
-                                                {
-                                                    key: 'workflow',
-                                                    label: (
-                                                        <Space>
-                                                            <ApartmentOutlined />
-                                                            <span>流程图</span>
-                                                        </Space>
-                                                    ),
-                                                    children: (
-                                                        <div style={{ padding: '12px' }}>
-                                                            <WorkflowVisualization width={rightSidebarWidth - 48} />
-                                                        </div>
-                                                    )
-                                                },
-
-                                            ]}
-                                        />
-                                    </div>
-                                </div>
-                            </Sider>
-                        ) : (
-                            /* Collapsed Right Sidebar Button */
-                            <div style={{
-                                width: '24px',
-                                height: '100vh',
-                                background: '#1a1a1a',
-                                borderLeft: '1px solid #333',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                cursor: 'pointer',
-                                transition: 'all 0.3s ease-in-out'
-                            }} onClick={() => setRightSidebarVisible(true)}>
-                                <div style={{
-                                    writingMode: 'vertical-rl',
-                                    textOrientation: 'mixed',
-                                    color: '#1890ff',
-                                    fontSize: '12px',
-                                    fontWeight: 500,
-                                    userSelect: 'none'
-                                }}>
-                                    ﹤ 目录
-                                </div>
-                            </div>
-                        )}
-                    </div>
+                    <DesktopRightSidebar
+                        visible={rightSidebarVisible}
+                        width={rightSidebarWidth}
+                        onResizeStart={handleRightSidebarMouseDown}
+                        isResizing={isResizingRightSidebar}
+                        onToggleVisibility={() => setRightSidebarVisible(!rightSidebarVisible)}
+                        activeTab={activeRightTab}
+                        onTabChange={setActiveRightTab}
+                    />
                 )}
             </Layout>
         </Layout>
