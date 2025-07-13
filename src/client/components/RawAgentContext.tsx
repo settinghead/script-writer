@@ -429,6 +429,10 @@ const RawAgentContext: React.FC<RawAgentContextProps> = ({ projectId }) => {
                         生成结果
                     </Title>
 
+
+                    <Title level={5} style={{ color: '#fff', marginTop: 20 }}>完整提示词</Title>
+                    {renderCodeBlock(promptResult.prompt, '300px')}
+
                     <div style={{ marginBottom: 16, padding: 16, backgroundColor: '#262626', borderRadius: 8 }}>
                         <Text strong style={{ color: '#fff' }}>工具: </Text>
                         <Text code>{promptResult.tool.name}</Text>
@@ -451,8 +455,6 @@ const RawAgentContext: React.FC<RawAgentContextProps> = ({ projectId }) => {
                         </div>
                     ))}
 
-                    <Title level={5} style={{ color: '#fff', marginTop: 20 }}>完整提示词</Title>
-                    {renderCodeBlock(promptResult.prompt, '300px')}
                 </div>
             ) : (
                 <div style={{

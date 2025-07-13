@@ -195,57 +195,12 @@ export function createAdminRoutes(
                 return;
             }
 
-            // Get the template
-            const template = templateService.getTemplate(templateName);
-
-            // Prepare template variables using default schema-driven extraction
-            const templateVariables: Record<string, string> = {};
-
-            // Add params section
-            if (additionalParams) {
-                templateVariables['params'] = Object.entries(additionalParams)
-                    .map(([key, value]) => `${key}: ${value}`)
-                    .join('\n');
-            } else {
-                templateVariables['params'] = 'No additional parameters provided';
-            }
-
-            // Add jsondocs section
-            if (jsondocs && jsondocs.length > 0) {
-                // For debugging, we'll just show the jsondoc IDs and types
-                templateVariables['jsondocs'] = jsondocs
-                    .map((doc: any) => `- ${doc.jsondocId} (${doc.schemaType})`)
-                    .join('\n');
-            } else {
-                templateVariables['jsondocs'] = 'No jsondocs provided';
-            }
-
-            // Generate the final prompt by replacing template variables
-            let finalPrompt = template.promptTemplate;
-            for (const [key, value] of Object.entries(templateVariables)) {
-                const placeholder = `%%${key}%%`;
-                finalPrompt = finalPrompt.replace(new RegExp(placeholder, 'g'), value);
-            }
-
-            // Prepare response in the format expected by frontend
-            const result = {
-                success: true,
-                tool: {
-                    name: toolName,
-                    description: `Debug prompt generation for ${toolName}`,
-                    templatePath: templateName
-                },
-                input: {
-                    jsondocs,
-                    additionalParams
-                },
-                templateVariables,
-                fieldTitles: {
-                    params: 'Input Parameters',
-                    jsondocs: 'Referenced Jsondocs'
-                },
-                prompt: finalPrompt
-            };
+            // Use centralized prompt generation from TemplateService
+            const result = await templateService.generatePromptForDebugging(
+                toolName,
+                templateName,
+                { jsondocs, additionalParams }
+            );
 
             res.json(result);
 

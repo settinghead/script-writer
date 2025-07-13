@@ -69,7 +69,6 @@ export const brainstormingTemplate: LLMTemplate = {
 ## 输入参数
 %%params%%
 
-## 参考数据
 %%jsondocs%%
 
 ## 输出要求
