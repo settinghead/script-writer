@@ -50,38 +50,100 @@ export const IdeationInputSchema = z.object({
 });
 ```
 
-### 4.2. Intelligent TemplateVariableService
+### 4.2. Intelligent TemplateVariableService with Custom Override Support
 
-A new service will replace all `prepareTemplateVariables` functions. It will automatically construct human-readable YAML for template injection.
+A new service will replace all `prepareTemplateVariables` functions. It will automatically construct human-readable YAML for template injection, **while allowing tools to provide custom override logic when needed**.
 
 ```typescript
 // src/server/services/TemplateVariableService.ts (NEW FILE)
 import { dump } from 'js-yaml';
 
+type CustomTemplateVariableFunction = (
+  input: any, 
+  inputSchema: ZodSchema, 
+  executionContext: any,
+  defaultService: TemplateVariableService
+) => Promise<Record<string, string>> | Record<string, string>;
+
 class TemplateVariableService {
-  prepareTemplateVariables(input: any, inputSchema: ZodSchema, executionContext: any): Record<string, string> {
+  async prepareTemplateVariables(
+    input: any, 
+    inputSchema: ZodSchema, 
+    executionContext: any,
+    customFunction?: CustomTemplateVariableFunction
+  ): Promise<Record<string, string>> {
+    
+    // If custom function provided, use it (with access to default service)
+    if (customFunction) {
+      return await customFunction(input, inputSchema, executionContext, this);
+    }
+    
+    // Default automatic preparation
     const params = this.extractParams(input);
     const jsondocRefs = input.jsondocs || [];
 
     return {
       params: this.formatParamsAsYAML(params, inputSchema),
-      jsondocs: this.formatJsondocsAsYAML(jsondocRefs, executionContext)
+      jsondocs: await this.formatJsondocsAsYAML(jsondocRefs, executionContext)
     };
   }
 
-  private formatParamsAsYAML(params: any, schema: ZodSchema): string {
+  // Public methods for custom functions to use
+  public async formatParamsAsYAML(params: any, schema: ZodSchema): Promise<string> {
     // 1. Parse schema to get field descriptions/titles
     // 2. Create a human-readable object with titles as keys
     // 3. Convert to YAML string
   }
 
-  private formatJsondocsAsYAML(jsondocRefs: JsondocReference[], executionContext: any): string {
+  public async formatJsondocsAsYAML(jsondocRefs: JsondocReference[], executionContext: any): Promise<string> {
     // 1. For each ref, fetch the full jsondoc
     // 2. Handle special logic (e.g., 'patch' mode extraction from executionContext)
     // 3. Create a map where keys are ref.description and values are jsondoc.data
     // 4. Convert to YAML string
   }
+  
+  // Helper method for complex jsondoc data extraction (used by custom functions)
+  public async extractJsondocContent(jsondocId: string, executionContext: any): Promise<any> {
+    // Complex extraction logic that tools currently implement manually
+  }
 }
+```
+
+**Usage Examples**:
+
+```typescript
+// Simple tool - uses default automatic preparation
+const config: StreamingTransformConfig = {
+  templateName: 'simple_template',
+  inputSchema: SimpleInputSchema,
+  outputSchema: SimpleOutputSchema,
+  // No prepareTemplateVariables - uses default
+};
+
+// Complex tool - provides custom logic while leveraging default service
+const config: StreamingTransformConfig = {
+  templateName: 'complex_template',
+  inputSchema: ComplexInputSchema,
+  outputSchema: ComplexOutputSchema,
+  prepareTemplateVariables: async (input, schema, context, defaultService) => {
+    // Custom logic for complex data extraction
+    const sourceJsondoc = await context.jsondocRepo.getJsondoc(input.jsondocs[0].jsondocId);
+    const complexData = extractComplexData(sourceJsondoc);
+    
+    // Use default service for standard params
+    const defaultParams = await defaultService.formatParamsAsYAML(input, schema);
+    
+    // Custom jsondocs formatting
+    const customJsondocs = formatComplexJsondocs(complexData);
+    
+    return {
+      params: defaultParams,
+      jsondocs: customJsondocs,
+      // Add custom variables
+      specialContext: complexData.specialField
+    };
+  }
+};
 ```
 
 ### 4.3. Simplified Template Structure
@@ -151,10 +213,53 @@ A new debug tab and backend endpoint to inspect tool-specific prompts.
 // - Displays the final prompt returned from the debug endpoint.
 ```
 
+### 4.6. Migration Strategy for Custom Logic
+
+The refactor will preserve existing custom logic by converting it to the new override system:
+
+```typescript
+// BEFORE: OutlineSettingsTool custom logic
+prepareTemplateVariables: (input) => {
+  const sourceContent = `Jsondoc Type: ${sourceJsondoc.schema_type}\n...`;
+  return {
+    userInput: sourceContent,
+    totalEpisodes: '60',
+    episodeInfo: episodeInfo,
+    platform: platform,
+    genre: genre,
+    requirements: input.requirements || '无特殊要求'
+  };
+}
+
+// AFTER: Converted to new override system
+prepareTemplateVariables: async (input, schema, context, defaultService) => {
+  // Custom extraction logic (preserved)
+  const sourceJsondoc = await context.jsondocRepo.getJsondoc(input.jsondocs[0].jsondocId);
+  const sourceContent = `Jsondoc Type: ${sourceJsondoc.schema_type}\n...`;
+  
+  // Use default service for standard params
+  const defaultParams = await defaultService.formatParamsAsYAML(input, schema);
+  
+  // Custom jsondocs with specific formatting
+  const customJsondocs = `用户输入内容:\n${sourceContent}`;
+  
+  return {
+    params: defaultParams,
+    jsondocs: customJsondocs
+  };
+}
+```
+
+**Migration Benefits**:
+- **Preserve Functionality**: All existing custom logic is maintained
+- **Reduce Boilerplate**: Standard params use automatic formatting
+- **Enhance Consistency**: Custom logic can leverage default service methods
+- **Future-Proof**: Easy to migrate from custom to default as templates improve
+
 ## 5. Implementation Plan
 
 ### Phase 1: Core Infrastructure ✅ TODO
-- [ ] Create `TemplateVariableService.ts` with placeholder methods.
+- [ ] Create `TemplateVariableService.ts` with placeholder methods and custom override support.
 - [ ] Create `SchemaDescriptionParser.ts` to extract titles from Zod descriptions.
 - [ ] Create `common/schemas/common.ts` for `JsondocReferenceSchema`.
 - [ ] Implement YAML formatting utility.
@@ -167,7 +272,12 @@ A new debug tab and backend endpoint to inspect tool-specific prompts.
 ### Phase 3: Template & Tool Refactoring ✅ TODO
 - [ ] Update `TemplateService.ts` to use `TemplateVariableService`.
 - [ ] Refactor all templates in `src/server/services/templates/` to use `%%params%%` and `%%jsondocs%%`.
-- [ ] Refactor tool definitions in `src/server/tools/` to remove `prepareTemplateVariables` and rely on the new system. Encapsulate data extraction logic inside the new `TemplateVariableService`.
+- [ ] **Migrate existing custom `prepareTemplateVariables` logic**:
+  - [ ] Convert `OutlineSettingsTool` complex jsondoc extraction to override function
+  - [ ] Convert `ChroniclesTool` JSON stringification to override function  
+  - [ ] Convert `BrainstormEditTool` multi-field extraction to override function
+  - [ ] Convert `BrainstormTool` parameter building to override function
+- [ ] **Identify opportunities to use default service**: Replace simple custom logic with automatic preparation where possible.
 
 ### Phase 4: AgentService Integration ✅ TODO
 - [ ] Instantiate `ToolRegistry` and register all tools at application startup.
