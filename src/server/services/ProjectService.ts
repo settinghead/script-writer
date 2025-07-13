@@ -1,24 +1,24 @@
-import { ProjectRepository } from '../transform-artifact-framework/ProjectRepository';
-import { ArtifactRepository } from '../transform-artifact-framework/ArtifactRepository';
-import { TransformRepository } from '../transform-artifact-framework/TransformRepository';
-import { Project } from '../../common/artifacts';
+import { ProjectRepository } from '../transform-jsonDoc-framework/ProjectRepository';
+import { JsonDocRepository } from '../transform-jsonDoc-framework/JsonDocRepository';
+import { TransformRepository } from '../transform-jsonDoc-framework/TransformRepository';
+import { Project } from '../../common/jsonDocs';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../database/connection';
 import type { Kysely } from 'kysely';
 import type { DB } from '../database/types';
-import { ChatMessageRepository } from '../transform-artifact-framework/ChatMessageRepository';
+import { ChatMessageRepository } from '../transform-jsonDoc-framework/ChatMessageRepository';
 
 export class ProjectService {
     private db: Kysely<DB>;
     private projectRepo: ProjectRepository;
-    private artifactRepo: ArtifactRepository;
+    private jsonDocRepo: JsonDocRepository;
     private transformRepo: TransformRepository;
     private chatMessageRepo: ChatMessageRepository;
 
     constructor(database: Kysely<DB>) {
         this.db = database;
         this.projectRepo = new ProjectRepository(database);
-        this.artifactRepo = new ArtifactRepository(database);
+        this.jsonDocRepo = new JsonDocRepository(database);
         this.transformRepo = new TransformRepository(database);
         this.chatMessageRepo = new ChatMessageRepository(database);
     }
@@ -41,14 +41,14 @@ export class ProjectService {
             projects.map(async (project) => {
                 try {
                     // Get project statistics
-                    const artifacts = await this.artifactRepo.getProjectArtifacts(project.id, 50);
+                    const jsonDocs = await this.jsonDocRepo.getProjectJsonDocs(project.id, 50);
                     const transforms = await this.transformRepo.getProjectTransforms(project.id, 10);
 
-                    // Count different types of artifacts
-                    const artifactCounts = {
-                        ideations: artifacts.filter(a => a.schema_type === 'brainstorm_collection').length,
-                        outline_settings: artifacts.filter(a => a.schema_type === 'outline_settings').length,
-                        chronicles: artifacts.filter(a => a.schema_type === 'chronicles').length,
+                    // Count different types of jsonDocs
+                    const jsonDocCounts = {
+                        ideations: jsonDocs.filter(a => a.schema_type === 'brainstorm_collection').length,
+                        outline_settings: jsonDocs.filter(a => a.schema_type === 'outline_settings').length,
+                        chronicles: jsonDocs.filter(a => a.schema_type === 'chronicles').length,
                     };
 
                     // Determine project status and current phase
@@ -59,10 +59,10 @@ export class ProjectService {
                     if (latestTransform) {
                         status = latestTransform.status === 'failed' ? 'failed' : 'active';
 
-                        // Determine phase based on latest artifacts
-                        if (artifactCounts.chronicles > 0) {
+                        // Determine phase based on latest jsonDocs
+                        if (jsonDocCounts.chronicles > 0) {
                             currentPhase = 'chronicles';
-                        } else if (artifactCounts.outline_settings > 0) {
+                        } else if (jsonDocCounts.outline_settings > 0) {
                             currentPhase = 'outline_settings';
                         } else {
                             currentPhase = 'brainstorming';
@@ -75,7 +75,7 @@ export class ProjectService {
                     let genre = '';
 
                     // Try to get brainstorm params for metadata
-                    const brainstormParams = artifacts.find(a => a.schema_type === 'brainstorm_input_params');
+                    const brainstormParams = jsonDocs.find(a => a.schema_type === 'brainstorm_input_params');
                     if (brainstormParams) {
                         platform = brainstormParams.data.platform || '';
                         if (brainstormParams.data.genre_paths && brainstormParams.data.genre_paths.length > 0) {
@@ -86,9 +86,9 @@ export class ProjectService {
                     }
 
                     // Try to get some content for preview
-                    const userInput = artifacts.find(a => a.schema_type === 'brainstorm_idea');
-                    const brainstormIdea = artifacts.find(a => a.schema_type === 'brainstorm_idea');
-                    const outlineTitle = artifacts.find(a => a.schema_type === 'outline_settings');
+                    const userInput = jsonDocs.find(a => a.schema_type === 'brainstorm_idea');
+                    const brainstormIdea = jsonDocs.find(a => a.schema_type === 'brainstorm_idea');
+                    const outlineTitle = jsonDocs.find(a => a.schema_type === 'outline_settings');
 
                     if (outlineTitle) {
                         previewContent = outlineTitle.data.title;
@@ -108,7 +108,7 @@ export class ProjectService {
                         genre,
                         createdAt: project.created_at,
                         updatedAt: project.updated_at,
-                        artifactCounts
+                        jsonDocCounts
                     };
                 } catch (error) {
                     console.error(`Error getting project summary for ${project.id}:`, error);
@@ -122,7 +122,7 @@ export class ProjectService {
                         genre: '',
                         createdAt: project.created_at,
                         updatedAt: project.updated_at,
-                        artifactCounts: {
+                        jsonDocCounts: {
                             ideations: 0,
                             outline_settings: 0,
                             chronicles: 0,
@@ -176,7 +176,7 @@ export class ProjectService {
 
     /**
      * Completely wipe a project and all associated data
-     * This includes: artifacts, transforms, chat messages, project membership, and the project itself
+     * This includes: jsonDocs, transforms, chat messages, project membership, and the project itself
      * 
      * @param projectId - The project ID to wipe
      * @returns Promise<void>
@@ -235,12 +235,12 @@ export class ProjectService {
                 .execute();
             console.log(`[ProjectService] Deleted transforms for project ${projectId}`);
 
-            // 6. Delete all artifacts for this project
+            // 6. Delete all jsonDocs for this project
             await this.db
-                .deleteFrom('artifacts')
+                .deleteFrom('jsonDocs')
                 .where('project_id', '=', projectId)
                 .execute();
-            console.log(`[ProjectService] Deleted artifacts for project ${projectId}`);
+            console.log(`[ProjectService] Deleted jsonDocs for project ${projectId}`);
 
             // 7. Delete all chat messages for this project
             await this.db

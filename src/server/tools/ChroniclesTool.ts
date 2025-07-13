@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { TransformRepository } from '../transform-artifact-framework/TransformRepository';
-import { ArtifactRepository } from '../transform-artifact-framework/ArtifactRepository';
+import { TransformRepository } from '../transform-jsonDoc-framework/TransformRepository';
+import { JsonDocRepository } from '../transform-jsonDoc-framework/JsonDocRepository';
 import {
     ChroniclesInputSchema,
     ChroniclesInput,
@@ -10,16 +10,16 @@ import {
 import {
     executeStreamingTransform,
     StreamingTransformConfig
-} from '../transform-artifact-framework/StreamingTransformExecutor';
-import type { StreamingToolDefinition } from '../transform-artifact-framework/StreamingAgentFramework';
+} from '../transform-jsonDoc-framework/StreamingTransformExecutor';
+import type { StreamingToolDefinition } from '../transform-jsonDoc-framework/StreamingAgentFramework';
 
 const ChroniclesToolResultSchema = z.object({
-    outputArtifactId: z.string(),
+    outputJsonDocId: z.string(),
     finishReason: z.string()
 });
 
 interface ChroniclesToolResult {
-    outputArtifactId: string;
+    outputJsonDocId: string;
     finishReason: string;
 }
 
@@ -28,7 +28,7 @@ interface ChroniclesToolResult {
  */
 export function createChroniclesToolDefinition(
     transformRepo: TransformRepository,
-    artifactRepo: ArtifactRepository,
+    jsonDocRepo: JsonDocRepository,
     projectId: string,
     userId: string,
     cachingOptions?: {
@@ -41,33 +41,33 @@ export function createChroniclesToolDefinition(
 ): StreamingToolDefinition<ChroniclesInput, ChroniclesToolResult> {
     return {
         name: 'generate_chronicles',
-        description: '基于已确定的剧本框架生成时间顺序大纲（按时间顺序的故事发展阶段）。适用场景：用户已完成剧本框架，需要生成完整的时间发展脉络。必须使用项目背景信息中显示的完整outline settings artifact ID作为sourceArtifactId参数。',
+        description: '基于已确定的剧本框架生成时间顺序大纲（按时间顺序的故事发展阶段）。适用场景：用户已完成剧本框架，需要生成完整的时间发展脉络。必须使用项目背景信息中显示的完整outline settings jsonDoc ID作为sourceJsonDocId参数。',
         inputSchema: ChroniclesInputSchema,
         outputSchema: ChroniclesToolResultSchema,
         execute: async (params: ChroniclesInput, { toolCallId }): Promise<ChroniclesToolResult> => {
-            console.log(`[ChroniclesTool] Starting streaming chronicles generation for outline settings artifact ${params.sourceArtifactId}`);
+            console.log(`[ChroniclesTool] Starting streaming chronicles generation for outline settings jsonDoc ${params.sourceJsonDocId}`);
 
             // Extract outline settings data first
-            const outlineSettingsArtifact = await artifactRepo.getArtifact(params.sourceArtifactId);
-            if (!outlineSettingsArtifact) {
-                throw new Error('Outline settings artifact not found');
+            const outlineSettingsJsonDoc = await jsonDocRepo.getJsonDoc(params.sourceJsonDocId);
+            if (!outlineSettingsJsonDoc) {
+                throw new Error('Outline settings jsonDoc not found');
             }
 
-            // Verify user has access to this artifact's project
-            const hasAccess = await artifactRepo.userHasProjectAccess(userId, outlineSettingsArtifact.project_id);
+            // Verify user has access to this jsonDoc's project
+            const hasAccess = await jsonDocRepo.userHasProjectAccess(userId, outlineSettingsJsonDoc.project_id);
             if (!hasAccess) {
-                throw new Error('Access denied to outline settings artifact');
+                throw new Error('Access denied to outline settings jsonDoc');
             }
 
-            // Verify artifact is outline settings type
-            if (outlineSettingsArtifact.schema_type !== 'outline_settings') {
-                throw new Error(`Expected outline settings artifact, got: ${outlineSettingsArtifact.schema_type}`);
+            // Verify jsonDoc is outline settings type
+            if (outlineSettingsJsonDoc.schema_type !== 'outline_settings') {
+                throw new Error(`Expected outline settings jsonDoc, got: ${outlineSettingsJsonDoc.schema_type}`);
             }
 
             // Extract outline settings data
-            const outlineSettingsData = outlineSettingsArtifact.data;
+            const outlineSettingsData = outlineSettingsJsonDoc.data;
             if (!outlineSettingsData.title || !outlineSettingsData.genre || !outlineSettingsData.characters) {
-                throw new Error('Invalid outline settings artifact data');
+                throw new Error('Invalid outline settings jsonDoc data');
             }
 
             console.log(`[ChroniclesTool] Using outline settings: ${outlineSettingsData.title}`);
@@ -91,9 +91,9 @@ export function createChroniclesToolDefinition(
                         stageGuidance
                     });
                 },
-                // Extract source artifact for proper lineage
-                extractSourceArtifacts: (input) => [{
-                    artifactId: input.sourceArtifactId,
+                // Extract source jsonDoc for proper lineage
+                extractSourceJsonDocs: (input) => [{
+                    jsonDocId: input.sourceJsonDocId,
                     inputRole: 'source'
                 }]
             };
@@ -104,11 +104,11 @@ export function createChroniclesToolDefinition(
                 projectId,
                 userId,
                 transformRepo,
-                artifactRepo,
-                outputArtifactType: 'chronicles',
+                jsonDocRepo,
+                outputJsonDocType: 'chronicles',
                 transformMetadata: {
                     toolName: 'generate_chronicles',
-                    outline_settings_artifact_id: params.sourceArtifactId,
+                    outline_settings_jsonDoc_id: params.sourceJsonDocId,
                     outline_title: outlineSettingsData.title,
                     requirements: params.requirements
                 },
@@ -120,10 +120,10 @@ export function createChroniclesToolDefinition(
                 maxTokens: cachingOptions?.maxTokens
             });
 
-            console.log(`[ChroniclesTool] Successfully completed streaming chronicles generation with artifact ${result.outputArtifactId}`);
+            console.log(`[ChroniclesTool] Successfully completed streaming chronicles generation with jsonDoc ${result.outputJsonDocId}`);
 
             return {
-                outputArtifactId: result.outputArtifactId,
+                outputJsonDocId: result.outputJsonDocId,
                 finishReason: result.finishReason
             };
         },

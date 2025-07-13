@@ -7,7 +7,7 @@ const { Text } = Typography;
 
 interface ProjectCreationFormProps {
     projectId: string;
-    onCreated?: (artifactId: string) => void;
+    onCreated?: (jsonDocId: string) => void;
 }
 
 export const ProjectCreationForm: React.FC<ProjectCreationFormProps> = ({

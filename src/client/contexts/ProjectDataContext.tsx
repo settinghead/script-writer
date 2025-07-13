@@ -6,14 +6,14 @@ import { apiService } from '../services/apiService';
 import {
     buildLineageGraph,
     LineageGraph,
-    addLineageToArtifacts,
-    findLatestArtifactForPath,
-    getArtifactAtPath,
+    addLineageToJsonDocs,
+    findLatestJsonDocForPath,
+    getJsonDocAtPath,
     getLatestVersionForPath
-} from '../../common/transform-artifact-framework/lineageResolution';
+} from '../../common/transform-jsonDoc-framework/lineageResolution';
 import type {
     ProjectDataContextType,
-    ElectricArtifact,
+    ElectricJsonDoc,
     ElectricTransform,
     ElectricHumanTransform,
     ElectricTransformInput,
@@ -21,7 +21,7 @@ import type {
     ElectricLLMPrompt,
     ElectricLLMTransform,
     CreateTransformRequest,
-    UpdateArtifactRequest,
+    UpdateJsonDocRequest,
     HumanTransformRequest
 } from '../../common/types';
 
@@ -35,7 +35,7 @@ export interface EntityMutationState {
 }
 
 export interface MutationStateMap {
-    artifacts: Map<string, EntityMutationState>;
+    jsonDocs: Map<string, EntityMutationState>;
     transforms: Map<string, EntityMutationState>;
     humanTransforms: Map<string, EntityMutationState>;
 }
@@ -56,7 +56,7 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
 
     // Entity-specific mutation state tracking
     const [mutationStates, setMutationStates] = useState<MutationStateMap>({
-        artifacts: new Map(),
+        jsonDocs: new Map(),
         transforms: new Map(),
         humanTransforms: new Map()
     });
@@ -103,14 +103,14 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
     }).current;
 
     // Stable configuration objects to prevent unnecessary re-subscriptions
-    const artifactsConfig = useMemo(() => {
+    const jsonDocsConfig = useMemo(() => {
         return {
             ...electricConfig,
             params: {
-                table: 'artifacts',
+                table: 'jsonDocs',
                 where: projectWhereClause,
             },
-            onError: (error: any) => handleElectricError(error, 'artifacts'),
+            onError: (error: any) => handleElectricError(error, 'jsonDocs'),
             backoffOptions: {
                 initialDelay: 200,
                 maxDelay: 5000,
@@ -121,11 +121,11 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
     }, [electricConfig, projectWhereClause]); // Removed handleElectricError from deps
 
     // Electric SQL subscriptions
-    const { data: artifacts, isLoading: artifactsLoading, error: artifactsError } = useShape<ElectricArtifact & {
+    const { data: jsonDocs, isLoading: jsonDocsLoading, error: jsonDocsError } = useShape<ElectricJsonDoc & {
         [key: string]: any;
-    }>(artifactsConfig);
+    }>(jsonDocsConfig);
 
-    // Debug artifacts loading (removed for clarity)
+    // Debug jsonDocs loading (removed for clarity)
 
 
     const transformsConfig = useMemo(() => ({
@@ -227,11 +227,11 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
     const { data: llmTransforms, isLoading: llmTransformsLoading } = useShape<ElectricLLMTransform>(llmTransformsConfig);
 
     // Aggregate loading state
-    const isLoading = artifactsLoading || transformsLoading || humanTransformsLoading ||
+    const isLoading = jsonDocsLoading || transformsLoading || humanTransformsLoading ||
         transformInputsLoading || transformOutputsLoading || llmPromptsLoading || llmTransformsLoading;
 
     // Aggregate error state
-    const error = artifactsError || transformsError || null;
+    const error = jsonDocsError || transformsError || null;
     const isError = !!error;
 
     // Local state management functions
@@ -290,7 +290,7 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
                 let hasChanges = false;
                 const newStates = { ...prev };
 
-                (['artifacts', 'transforms', 'humanTransforms'] as const).forEach(entityType => {
+                (['jsonDocs', 'transforms', 'humanTransforms'] as const).forEach(entityType => {
                     const newMap = new Map(prev[entityType]);
 
                     for (const [entityId, state] of newMap.entries()) {
@@ -318,17 +318,17 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
     // Auto-cleanup local updates when Electric SQL data matches
     // This implements the optimistic state pattern from Electric SQL write guide
     useEffect(() => {
-        if (!artifacts) return;
+        if (!jsonDocs) return;
 
         const updatesToRemove: string[] = [];
 
         // Check each local update against the latest Electric SQL data
         localUpdates.forEach((localUpdate, key) => {
-            if (key.startsWith('artifact-')) {
-                const artifactId = key.replace('artifact-', '');
-                const baseArtifact = artifacts.find(a => a.id === artifactId);
+            if (key.startsWith('jsonDoc-')) {
+                const jsonDocId = key.replace('jsonDoc-', '');
+                const baseJsonDoc = jsonDocs.find(a => a.id === jsonDocId);
 
-                if (baseArtifact && localUpdate) {
+                if (baseJsonDoc && localUpdate) {
                     // Check if Electric SQL data already contains the local update changes
                     let electricDataMatches = true;
 
@@ -341,9 +341,9 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
                             localData = typeof localUpdate.data === 'string'
                                 ? JSON.parse(localUpdate.data)
                                 : localUpdate.data;
-                            electricData = typeof baseArtifact.data === 'string'
-                                ? JSON.parse(baseArtifact.data)
-                                : baseArtifact.data;
+                            electricData = typeof baseJsonDoc.data === 'string'
+                                ? JSON.parse(baseJsonDoc.data)
+                                : baseJsonDoc.data;
 
                             // Deep comparison of objects
                             if (JSON.stringify(localData) !== JSON.stringify(electricData)) {
@@ -352,7 +352,7 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
                         } catch (err) {
                             // If parsing fails, fall back to string comparison
                             const localDataStr = typeof localUpdate.data === 'string' ? localUpdate.data : JSON.stringify(localUpdate.data);
-                            const electricDataStr = baseArtifact.data;
+                            const electricDataStr = baseJsonDoc.data;
 
                             if (localDataStr !== electricDataStr) {
                                 electricDataMatches = false;
@@ -361,7 +361,7 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
                     }
 
                     if (electricDataMatches) {
-                        console.log(`[ProjectDataContext] Electric SQL data matches local update for ${artifactId}, scheduling cleanup`);
+                        console.log(`[ProjectDataContext] Electric SQL data matches local update for ${jsonDocId}, scheduling cleanup`);
                         updatesToRemove.push(key);
                     }
                 }
@@ -376,11 +376,11 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
                 return newMap;
             });
         }
-    }, [artifacts, localUpdates]);
+    }, [jsonDocs, localUpdates]);
 
     // Memoized lineage graph computation
     const lineageGraph = useMemo<LineageGraph | "pending">(() => {
-        if (!artifacts || !transforms || !humanTransforms || !transformInputs || !transformOutputs) {
+        if (!jsonDocs || !transforms || !humanTransforms || !transformInputs || !transformOutputs) {
             return "pending" as const;
         }
 
@@ -388,7 +388,7 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
 
 
         const graph = buildLineageGraph(
-            artifacts,
+            jsonDocs,
             transforms,
             humanTransforms,
             transformInputs,
@@ -397,7 +397,7 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
 
 
         return graph;
-    }, [artifacts, transforms, humanTransforms, transformInputs, transformOutputs]);
+    }, [jsonDocs, transforms, humanTransforms, transformInputs, transformOutputs]);
 
     // Remove brainstorm-specific logic - moved to brainstorm components
 
@@ -405,45 +405,45 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
     const selectors = useMemo(() => ({
         // NEW: Collection-aware selectors
         getIdeaCollections: () =>
-            artifacts?.filter(a => a.schema_type === 'brainstorm_collection' || a.type === 'brainstorm_idea_collection') || [],
+            jsonDocs?.filter(a => a.schema_type === 'brainstorm_collection' || a.type === 'brainstorm_idea_collection') || [],
 
-        getArtifactAtPath: (artifactId: string, artifactPath: string) => {
-            const artifact = artifacts?.find(a => a.id === artifactId);
-            if (!artifact) return null;
-            return getArtifactAtPath(artifact, artifactPath);
+        getJsonDocAtPath: (jsonDocId: string, jsonDocPath: string) => {
+            const jsonDoc = jsonDocs?.find(a => a.id === jsonDocId);
+            if (!jsonDoc) return null;
+            return getJsonDocAtPath(jsonDoc, jsonDocPath);
         },
 
-        getLatestVersionForPath: (artifactId: string, artifactPath: string) => {
+        getLatestVersionForPath: (jsonDocId: string, jsonDocPath: string) => {
             if (lineageGraph === "pending") {
                 return null;
             }
-            return getLatestVersionForPath(artifactId, artifactPath, lineageGraph);
+            return getLatestVersionForPath(jsonDocId, jsonDocPath, lineageGraph);
         },
 
 
         getLineageGraph: () => lineageGraph,
 
 
-        getArtifactById: (id: string) => {
+        getJsonDocById: (id: string) => {
             // Check local updates first, then Electric data
-            const localUpdate = localUpdates.get(`artifact-${id}`);
-            const baseArtifact = artifacts?.find(a => a.id === id);
-            let artifact = baseArtifact;
+            const localUpdate = localUpdates.get(`jsonDoc-${id}`);
+            const baseJsonDoc = jsonDocs?.find(a => a.id === id);
+            let jsonDoc = baseJsonDoc;
 
-            if (localUpdate && baseArtifact) {
-                // Always merge local updates with base artifact for display
+            if (localUpdate && baseJsonDoc) {
+                // Always merge local updates with base jsonDoc for display
                 // The cleanup logic is handled separately in useEffect
-                artifact = { ...baseArtifact, ...localUpdate };
+                jsonDoc = { ...baseJsonDoc, ...localUpdate };
             }
 
-            if (!artifact) return undefined;
+            if (!jsonDoc) return undefined;
 
             // Add lineage information
             if (lineageGraph === "pending") {
-                return artifact;
+                return jsonDoc;
             }
-            const artifactsWithLineage = addLineageToArtifacts([artifact], lineageGraph);
-            return artifactsWithLineage[0];
+            const jsonDocsWithLineage = addLineageToJsonDocs([jsonDoc], lineageGraph);
+            return jsonDocsWithLineage[0];
         },
 
         getTransformById: (id: string) => {
@@ -455,9 +455,9 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
             return baseTransform;
         },
 
-        getHumanTransformsForArtifact: (artifactId: string, path?: string) =>
+        getHumanTransformsForJsonDoc: (jsonDocId: string, path?: string) =>
             humanTransforms?.filter(ht =>
-                ht.source_artifact_id === artifactId &&
+                ht.source_jsonDoc_id === jsonDocId &&
                 (!path || ht.derivation_path === path)
             ) || [],
 
@@ -466,7 +466,7 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
 
         getTransformOutputsForTransform: (transformId: string) =>
             transformOutputs?.filter(to => to.transform_id === transformId) || []
-    }), [artifacts, transforms, humanTransforms, transformInputs, transformOutputs, localUpdates, lineageGraph]);
+    }), [jsonDocs, transforms, humanTransforms, transformInputs, transformOutputs, localUpdates, lineageGraph]);
 
     // Mutations with optimistic updates
     const createTransformMutation = useMutation({
@@ -506,14 +506,14 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
         }
     });
 
-    const updateArtifactMutation = useMutation({
-        mutationKey: ['update-artifact', projectId],
-        mutationFn: async (request: UpdateArtifactRequest) => {
-            // Set pending state for this specific artifact
-            setEntityMutationState('artifacts', request.artifactId, { status: 'pending' });
+    const updateJsonDocMutation = useMutation({
+        mutationKey: ['update-jsonDoc', projectId],
+        mutationFn: async (request: UpdateJsonDocRequest) => {
+            // Set pending state for this specific jsonDoc
+            setEntityMutationState('jsonDocs', request.jsonDocId, { status: 'pending' });
 
-            const response = await apiService.updateArtifact(request);
-            // await waitForElectricSync(request.artifactId, 'artifacts');
+            const response = await apiService.updateJsonDoc(request);
+            // await waitForElectricSync(request.jsonDocId, 'jsonDocs');
             return response;
         },
         onMutate: (request) => {
@@ -522,32 +522,32 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
                 ...(request.metadata && { metadata: request.metadata }),
                 updated_at: new Date().toISOString()
             };
-            addLocalUpdate(`artifact-${request.artifactId}`, optimisticUpdate);
+            addLocalUpdate(`jsonDoc-${request.jsonDocId}`, optimisticUpdate);
             return optimisticUpdate;
         },
         onSuccess: (data, variables, optimisticData) => {
-            setEntityMutationState('artifacts', variables.artifactId, { status: 'success' });
+            setEntityMutationState('jsonDocs', variables.jsonDocId, { status: 'success' });
             // Invalidate queries to trigger Electric SQL sync
-            queryClient.invalidateQueries({ queryKey: ['artifacts'] });
+            queryClient.invalidateQueries({ queryKey: ['jsonDocs'] });
             // Note: Local update will be automatically removed when Electric SQL data matches
         },
         onError: (error, variables, optimisticData) => {
-            removeLocalUpdate(`artifact-${variables.artifactId}`);
-            setEntityMutationState('artifacts', variables.artifactId, {
+            removeLocalUpdate(`jsonDoc-${variables.jsonDocId}`);
+            setEntityMutationState('jsonDocs', variables.jsonDocId, {
                 status: 'error',
                 error: error.message
             });
-            console.error('Failed to update artifact:', error);
+            console.error('Failed to update jsonDoc:', error);
         }
     });
 
     const createHumanTransformMutation = useMutation({
         mutationKey: ['create-human-transform', projectId],
         mutationFn: async (request: HumanTransformRequest) => {
-            // Set pending state for the source artifact (the one being transformed)
-            setEntityMutationState('artifacts', request.sourceArtifactId, { status: 'pending' });
+            // Set pending state for the source jsonDoc (the one being transformed)
+            setEntityMutationState('jsonDocs', request.sourceJsonDocId, { status: 'pending' });
 
-            const response = await fetch(`/api/artifacts/${request.sourceArtifactId}/human-transform`, {
+            const response = await fetch(`/api/jsonDocs/${request.sourceJsonDocId}/human-transform`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -570,15 +570,15 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
             // Wait for Electric sync
             // await Promise.all([
             //     waitForElectricSync(result.transform.id, 'transforms'),
-            //     waitForElectricSync(result.derivedArtifact.id, 'artifacts')
+            //     waitForElectricSync(result.derivedJsonDoc.id, 'jsonDocs')
             // ]);
 
             return result;
         },
         onMutate: (request) => {
-            // Create optimistic updates for both transform and derived artifact
+            // Create optimistic updates for both transform and derived jsonDoc
             const transformId = `temp-transform-${Date.now()}`;
-            const artifactId = `temp-artifact-${Date.now()}`;
+            const jsonDocId = `temp-jsonDoc-${Date.now()}`;
 
             const optimisticTransform = {
                 id: transformId,
@@ -592,8 +592,8 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
                 updated_at: new Date().toISOString()
             };
 
-            const optimisticArtifact = {
-                id: artifactId,
+            const optimisticJsonDoc = {
+                id: jsonDocId,
                 project_id: projectId,
                 type: 'user_input',
                 type_version: 'v1',
@@ -603,26 +603,26 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
             };
 
             addLocalUpdate(`transform-${transformId}`, optimisticTransform);
-            addLocalUpdate(`artifact-${artifactId}`, optimisticArtifact);
+            addLocalUpdate(`jsonDoc-${jsonDocId}`, optimisticJsonDoc);
 
-            return { transformId, artifactId, sourceArtifactId: request.sourceArtifactId };
+            return { transformId, jsonDocId, sourceJsonDocId: request.sourceJsonDocId };
         },
         onSuccess: (data, variables, optimisticData) => {
             if (optimisticData) {
                 removeLocalUpdate(`transform-${optimisticData.transformId}`);
-                removeLocalUpdate(`artifact-${optimisticData.artifactId}`);
-                // Set success state for the source artifact
-                setEntityMutationState('artifacts', optimisticData.sourceArtifactId, { status: 'success' });
+                removeLocalUpdate(`jsonDoc-${optimisticData.jsonDocId}`);
+                // Set success state for the source jsonDoc
+                setEntityMutationState('jsonDocs', optimisticData.sourceJsonDocId, { status: 'success' });
             }
             queryClient.invalidateQueries({ queryKey: ['transforms'] });
-            queryClient.invalidateQueries({ queryKey: ['artifacts'] });
+            queryClient.invalidateQueries({ queryKey: ['jsonDocs'] });
         },
         onError: (error, variables, optimisticData) => {
             if (optimisticData) {
                 removeLocalUpdate(`transform-${optimisticData.transformId}`);
-                removeLocalUpdate(`artifact-${optimisticData.artifactId}`);
-                // Set error state for the source artifact
-                setEntityMutationState('artifacts', optimisticData.sourceArtifactId, {
+                removeLocalUpdate(`jsonDoc-${optimisticData.jsonDocId}`);
+                // Set error state for the source jsonDoc
+                setEntityMutationState('jsonDocs', optimisticData.sourceJsonDocId, {
                     status: 'error',
                     error: error.message
                 });
@@ -634,7 +634,7 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
     // Context value
     const contextValue: ProjectDataContextType = {
         // Data
-        artifacts: artifacts || [],
+        jsonDocs: jsonDocs || [],
         transforms: transforms || [],
         humanTransforms: humanTransforms || [],
         transformInputs: transformInputs || [],
@@ -655,7 +655,7 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
 
         // Mutations
         createTransform: createTransformMutation,
-        updateArtifact: updateArtifactMutation,
+        updateJsonDoc: updateJsonDocMutation,
         createHumanTransform: createHumanTransformMutation,
 
         // Local state management

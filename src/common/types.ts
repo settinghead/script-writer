@@ -1,23 +1,23 @@
 import { z } from 'zod';
 import { UseMutationResult } from '@tanstack/react-query';
-import type { LineageGraph } from './transform-artifact-framework/lineageResolution.js';
+import type { LineageGraph } from './transform-jsonDoc-framework/lineageResolution.js';
 import type { ChroniclesStage } from './schemas/outlineSchemas.js';
 
 // ========== SHARED TYPES FOR CLIENT AND SERVER ==========
 
-// Base artifact interface
-export interface Artifact {
+// Base jsonDoc interface
+export interface JsonDoc {
     id: string;
     user_id: string;
 
-    // SCHEMA TYPE: What data structure/format does this artifact contain?
-    schema_type: TypedArtifact['schema_type'];
-    schema_version: TypedArtifact['schema_version'];
+    // SCHEMA TYPE: What data structure/format does this jsonDoc contain?
+    schema_type: TypedJsonDoc['schema_type'];
+    schema_version: TypedJsonDoc['schema_version'];
 
-    // ORIGIN TYPE: Who/what created this artifact?
+    // ORIGIN TYPE: Who/what created this jsonDoc?
     origin_type: 'ai_generated' | 'user_input';
 
-    data: any; // Will be refined by specific artifact types
+    data: any; // Will be refined by specific jsonDoc types
     metadata?: any;
     created_at: string;
 }
@@ -35,7 +35,7 @@ export interface Transform {
     created_at: string;
 }
 
-// ========== ARTIFACT DATA TYPE DEFINITIONS ==========
+// ========== JSONDOC DATA TYPE DEFINITIONS ==========
 
 // Brainstorm parameters
 export interface BrainstormParamsV1 {
@@ -53,7 +53,7 @@ export interface BrainstormIdeaV1 {
     confidence_score?: number;
 }
 
-// Brainstorm idea collection (NEW: single artifact containing multiple ideas)
+// Brainstorm idea collection (NEW: single jsonDoc containing multiple ideas)
 export interface BrainstormIdeaCollectionV1 {
     ideas: Array<{
         title: string;
@@ -72,14 +72,14 @@ export interface BrainstormIdeaCollectionV1 {
 export interface IdeaWithTitle {
     title: string;
     body: string;
-    artifactId?: string;
+    jsonDocId?: string;
 }
 
 // User input/selection (for user-modified or manually entered content)
 export interface UserInputV1 {
     text: string;
     source: 'manual' | 'modified_brainstorm';
-    source_artifact_id?: string;
+    source_jsonDoc_id?: string;
 }
 
 // Job parameters for brainstorming
@@ -102,7 +102,7 @@ export interface WorkflowCascadingParamsV1 {
 
 // Job parameters for chronological outline generation
 export interface ChronologicalOutlineJobParamsV1 {
-    sourceArtifactId: string;
+    sourceJsonDocId: string;
     totalEpisodes?: number;
     episodeDuration?: number;
     requestedAt: string;
@@ -120,7 +120,7 @@ export interface OutlineSessionV1 {
     created_at: string;
 }
 
-// Outline component artifacts
+// Outline component jsonDocs
 export interface OutlineTitleV1 {
     title: string;
 }
@@ -168,7 +168,7 @@ export interface OutlineSynopsisStageV1 {
 export interface EpisodeGenerationSessionV1 {
     id: string;
     outlineSessionId: string;
-    stageArtifactId: string;
+    stageJsonDocId: string;
     status: 'active' | 'completed' | 'failed';
     totalEpisodes: number;
     episodeDuration: number;
@@ -180,7 +180,7 @@ export interface EpisodeSynopsisV1 {
     briefSummary: string;
     keyEvents: string[];
     hooks: string;
-    stageArtifactId: string;
+    stageJsonDocId: string;
     episodeGenerationSessionId: string;
     // Script status tracking
     hasScript?: boolean;
@@ -196,7 +196,7 @@ export interface EpisodeSynopsisV1 {
 }
 
 export interface EpisodeGenerationParamsV1 {
-    stageArtifactId: string;
+    stageJsonDocId: string;
     numberOfEpisodes: number;
     stageSynopsis: string;
     customRequirements?: string;
@@ -228,42 +228,42 @@ export interface ChroniclesV1 {
 
 
 
-// ========== STRONGLY TYPED ARTIFACT INTERFACES ==========
+// ========== STRONGLY TYPED JSONDOC INTERFACES ==========
 
-// Discriminated union for strongly typed artifacts
-export type TypedArtifact =
-    | ArtifactWithData<'brainstorm_collection', 'v1', BrainstormIdeaCollectionV1>
-    | ArtifactWithData<'brainstorm_idea', 'v1', BrainstormIdeaV1>
-    | ArtifactWithData<'brainstorm_input_params', 'v1', BrainstormParamsV1>
-    | ArtifactWithData<'brainstorm_input', 'v1', BrainstormParamsV1>
-    | ArtifactWithData<'outline_settings', 'v1', OutlineSettingV1>
-    | ArtifactWithData<'chronicles', 'v1', ChroniclesV1>
-    | ArtifactWithData<'user_input', 'v1', UserInputV1>
-    | ArtifactWithData<'outline_title', 'v1', OutlineTitleV1>
-    | ArtifactWithData<'outline_genre', 'v1', OutlineGenreV1>
-    | ArtifactWithData<'outline_selling_points', 'v1', OutlineSellingPointsV1>
-    | ArtifactWithData<'outline_setting', 'v1', OutlineSettingV1>
-    | ArtifactWithData<'outline_synopsis', 'v1', OutlineSynopsisV1>
-    | ArtifactWithData<'outline_characters', 'v1', OutlineCharactersV1>
+// Discriminated union for strongly typed jsonDocs
+export type TypedJsonDoc =
+    | JsonDocWithData<'brainstorm_collection', 'v1', BrainstormIdeaCollectionV1>
+    | JsonDocWithData<'brainstorm_idea', 'v1', BrainstormIdeaV1>
+    | JsonDocWithData<'brainstorm_input_params', 'v1', BrainstormParamsV1>
+    | JsonDocWithData<'brainstorm_input', 'v1', BrainstormParamsV1>
+    | JsonDocWithData<'outline_settings', 'v1', OutlineSettingV1>
+    | JsonDocWithData<'chronicles', 'v1', ChroniclesV1>
+    | JsonDocWithData<'user_input', 'v1', UserInputV1>
+    | JsonDocWithData<'outline_title', 'v1', OutlineTitleV1>
+    | JsonDocWithData<'outline_genre', 'v1', OutlineGenreV1>
+    | JsonDocWithData<'outline_selling_points', 'v1', OutlineSellingPointsV1>
+    | JsonDocWithData<'outline_setting', 'v1', OutlineSettingV1>
+    | JsonDocWithData<'outline_synopsis', 'v1', OutlineSynopsisV1>
+    | JsonDocWithData<'outline_characters', 'v1', OutlineCharactersV1>
 
 
-// Helper type for creating strongly typed artifacts
-export interface ArtifactWithData<
-    SchemaType extends string, SchemaVersion extends string, Data> extends Omit<Artifact, 'schema_type' | 'schema_version' | 'data'> {
+// Helper type for creating strongly typed jsonDocs
+export interface JsonDocWithData<
+    SchemaType extends string, SchemaVersion extends string, Data> extends Omit<JsonDoc, 'schema_type' | 'schema_version' | 'data'> {
     schema_type: SchemaType;
     schema_version: SchemaVersion;
     data: Data;
 }
 
-// Helper function to get text content from any artifact type
-export function getArtifactTextContent(artifact: TypedArtifact): string {
-    if (artifact.schema_type === 'brainstorm_idea') {
-        return artifact.data.idea_text; // ✅ Correctly typed!
+// Helper function to get text content from any jsonDoc type
+export function getJsonDocTextContent(jsonDoc: TypedJsonDoc): string {
+    if (jsonDoc.schema_type === 'brainstorm_idea') {
+        return jsonDoc.data.idea_text; // ✅ Correctly typed!
     }
 
 
     // Fallback for unknown types
-    const data = artifact.data as any;
+    const data = jsonDoc.data as any;
     return data.idea_text || data.text || data.content || JSON.stringify(data, null, 2);
 }
 
@@ -294,7 +294,7 @@ export interface ProjectFlow {
     createdAt: string;
     updatedAt: string;
     sourceType: 'brainstorm' | 'direct_outline';
-    artifactCounts: {
+    jsonDocCounts: {
         ideas: number;
         outlines: number;
         episodes: number;
@@ -336,13 +336,13 @@ export interface Project {
 }
 
 // Electric SQL types for real-time subscriptions
-export interface ElectricArtifact {
+export interface ElectricJsonDoc {
     id: string;
     project_id: string;
 
     // NEW: Schema and origin types
-    schema_type: TypedArtifact['schema_type'];
-    schema_version: TypedArtifact['schema_version'];
+    schema_type: TypedJsonDoc['schema_type'];
+    schema_version: TypedJsonDoc['schema_version'];
     origin_type: 'ai_generated' | 'user_input';
 
     data: string;
@@ -352,8 +352,8 @@ export interface ElectricArtifact {
     streaming_status?: 'streaming' | 'completed' | 'failed' | 'cancelled';
 }
 
-// Extended artifact with lineage information
-export interface ElectricArtifactWithLineage extends ElectricArtifact {
+// Extended jsonDoc with lineage information
+export interface ElectricJsonDocWithLineage extends ElectricJsonDoc {
     sourceTransform?: {
         id: string;
         type: 'human' | 'llm';
@@ -385,9 +385,9 @@ export interface ElectricHumanTransform {
     action_type: string;
     interface_context?: string;
     change_description?: string;
-    source_artifact_id?: string;
+    source_jsonDoc_id?: string;
     derivation_path: string;
-    derived_artifact_id?: string;
+    derived_jsonDoc_id?: string;
     transform_name?: string;
     [key: string]: unknown;
 }
@@ -396,7 +396,7 @@ export interface ElectricTransformInput {
     id: number;
     project_id: string;
     transform_id: string;
-    artifact_id: string;
+    jsonDoc_id: string;
     input_role?: string;
     [key: string]: unknown;
 }
@@ -405,7 +405,7 @@ export interface ElectricTransformOutput {
     id: number;
     project_id: string;
     transform_id: string;
-    artifact_id: string;
+    jsonDoc_id: string;
     output_role?: string;
     [key: string]: unknown;
 }
@@ -465,8 +465,8 @@ export interface CreateTransformRequest {
     executionContext?: any;
 }
 
-export interface UpdateArtifactRequest {
-    artifactId: string;
+export interface UpdateJsonDocRequest {
+    jsonDocId: string;
     data?: any;
     text?: string;
     metadata?: any;
@@ -474,7 +474,7 @@ export interface UpdateArtifactRequest {
 
 export interface HumanTransformRequest {
     transformName: string;
-    sourceArtifactId: string;
+    sourceJsonDocId: string;
     derivationPath: string;
     fieldUpdates?: Record<string, any>;
 }
@@ -482,7 +482,7 @@ export interface HumanTransformRequest {
 // Project Data Context interface
 export interface ProjectDataContextType {
     // Data subscriptions
-    artifacts: ElectricArtifact[] | "pending" | "error";
+    jsonDocs: ElectricJsonDoc[] | "pending" | "error";
     transforms: ElectricTransform[] | "pending" | "error";
     humanTransforms: ElectricHumanTransform[] | "pending" | "error";
     transformInputs: ElectricTransformInput[] | "pending" | "error";
@@ -500,20 +500,20 @@ export interface ProjectDataContextType {
 
     // Selectors (memoized)
     // NEW: Collection-aware selectors
-    getIdeaCollections: () => ElectricArtifact[] | "pending" | "error";
-    getArtifactAtPath: (artifactId: string, artifactPath: string) => any | null;
-    getLatestVersionForPath: (artifactId: string, artifactPath: string) => string | null;
+    getIdeaCollections: () => ElectricJsonDoc[] | "pending" | "error";
+    getJsonDocAtPath: (jsonDocId: string, jsonDocPath: string) => any | null;
+    getLatestVersionForPath: (jsonDocId: string, jsonDocPath: string) => string | null;
 
     getLineageGraph: () => LineageGraph | "pending" | "error";
-    getArtifactById: (id: string) => ElectricArtifactWithLineage | undefined;
+    getJsonDocById: (id: string) => ElectricJsonDocWithLineage | undefined;
     getTransformById: (id: string) => ElectricTransform | undefined;
-    getHumanTransformsForArtifact: (artifactId: string, path?: string) => ElectricHumanTransform[] | "pending" | "error";
+    getHumanTransformsForJsonDoc: (jsonDocId: string, path?: string) => ElectricHumanTransform[] | "pending" | "error";
     getTransformInputsForTransform: (transformId: string) => ElectricTransformInput[] | "pending" | "error";
     getTransformOutputsForTransform: (transformId: string) => ElectricTransformOutput[] | "pending" | "error";
 
     // Mutations (TanStack Query + optimistic updates)
     createTransform: UseMutationResult<any, Error, CreateTransformRequest>;
-    updateArtifact: UseMutationResult<any, Error, UpdateArtifactRequest>;
+    updateJsonDoc: UseMutationResult<any, Error, UpdateJsonDocRequest>;
     createHumanTransform: UseMutationResult<any, Error, HumanTransformRequest>;
 
     // Local state management for optimistic updates
@@ -524,23 +524,23 @@ export interface ProjectDataContextType {
 
     // Mutation state management - expose maps directly for easy access
     mutationStates: {
-        artifacts: Map<string, { status: 'idle' | 'pending' | 'success' | 'error'; error?: string; timestamp?: number; }>;
+        jsonDocs: Map<string, { status: 'idle' | 'pending' | 'success' | 'error'; error?: string; timestamp?: number; }>;
         transforms: Map<string, { status: 'idle' | 'pending' | 'success' | 'error'; error?: string; timestamp?: number; }>;
         humanTransforms: Map<string, { status: 'idle' | 'pending' | 'success' | 'error'; error?: string; timestamp?: number; }>;
     };
-    setEntityMutationState: (entityType: 'artifacts' | 'transforms' | 'humanTransforms', entityId: string, state: { status: 'idle' | 'pending' | 'success' | 'error'; error?: string; timestamp?: number; }) => void;
-    clearEntityMutationState: (entityType: 'artifacts' | 'transforms' | 'humanTransforms', entityId: string) => void;
+    setEntityMutationState: (entityType: 'jsonDocs' | 'transforms' | 'humanTransforms', entityId: string, state: { status: 'idle' | 'pending' | 'success' | 'error'; error?: string; timestamp?: number; }) => void;
+    clearEntityMutationState: (entityType: 'jsonDocs' | 'transforms' | 'humanTransforms', entityId: string) => void;
 }
 
 // Existing types for backward compatibility...
-export interface BrainstormArtifactData {
+export interface BrainstormJsonDocData {
     ideas: Array<{
         title: string;
         body: string;
     }>;
 }
 
-export interface BrainstormArtifactMetadata {
+export interface BrainstormJsonDocMetadata {
     status?: 'streaming' | 'completed' | 'failed';
     chunkCount?: number;
     totalExpected?: number;

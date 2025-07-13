@@ -2,9 +2,9 @@ import React, { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { Typography, Space } from 'antd';
 import { useProjectData } from '../../contexts/ProjectDataContext';
-import { useYJSField } from '../../transform-artifact-framework/contexts/YJSArtifactContext';
-import { YJSTextField, YJSTextAreaField } from '../../transform-artifact-framework/components/YJSField';
-import { SectionWrapper, ArtifactDisplayWrapper } from '../shared';
+import { useYJSField } from '../../transform-jsonDoc-framework/contexts/YJSJsonDocContext';
+import { YJSTextField, YJSTextAreaField } from '../../transform-jsonDoc-framework/components/YJSField';
+import { SectionWrapper, JsonDocDisplayWrapper } from '../shared';
 
 const { Text } = Typography;
 
@@ -12,13 +12,13 @@ interface SingleBrainstormIdeaEditorProps {
     onViewOriginalIdeas?: () => void;
     isEditable?: boolean; // Global editability state from computation system
     currentStage?: string; // Current workflow stage
-    brainstormIdea?: any; // The artifact to display
+    brainstormIdea?: any; // The jsonDoc to display
     mode?: 'editable' | 'readonly'; // Display mode
 }
 
 /**
  * YJS-enabled editable form component for brainstorm ideas
- * This component is designed to be used within a YJSArtifactProvider
+ * This component is designed to be used within a YJSJsonDocProvider
  */
 const EditableBrainstormForm: React.FC = () => {
     return (
@@ -61,18 +61,18 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
     // If we have props from actionComputation, use them directly
     if (propsBrainstormIdea && propsBrainstormIdea.id) {
         const isEditable = propsIsEditable ?? false;
-        const effectiveArtifact = propsBrainstormIdea;
+        const effectiveJsonDoc = propsBrainstormIdea;
 
         return (
             <SectionWrapper
                 schemaType={"brainstorm_idea"}
                 title="初始创意"
                 sectionId="ideation-edit"
-                artifactId={effectiveArtifact.id}
+                jsonDocId={effectiveJsonDoc.id}
             >
                 <div style={{ marginTop: '24px', position: 'relative' }}>
-                    <ArtifactDisplayWrapper
-                        artifact={effectiveArtifact}
+                    <JsonDocDisplayWrapper
+                        jsonDoc={effectiveJsonDoc}
                         isEditable={isEditable}
                         title="选中的创意"
                         icon="💡"
@@ -87,38 +87,38 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
 
     // Otherwise, find the latest brainstorm idea from project data
     const latestBrainstormIdea = useMemo(() => {
-        if (!projectData || !projectData.artifacts || projectData.artifacts === "pending" || projectData.artifacts === "error") {
+        if (!projectData || !projectData.jsonDocs || projectData.jsonDocs === "pending" || projectData.jsonDocs === "error") {
             return null;
         }
 
-        const brainstormIdeaArtifacts = projectData.artifacts.filter(
-            (artifact: any) => artifact.schema_type === 'brainstorm_idea'
+        const brainstormIdeaJsonDocs = projectData.jsonDocs.filter(
+            (jsonDoc: any) => jsonDoc.schema_type === 'brainstorm_idea'
         );
 
-        if (brainstormIdeaArtifacts.length === 0) {
+        if (brainstormIdeaJsonDocs.length === 0) {
             return null;
         }
 
         // Sort by created_at and get the most recent one
-        const sortedArtifacts = brainstormIdeaArtifacts.sort(
+        const sortedJsonDocs = brainstormIdeaJsonDocs.sort(
             (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
 
-        return sortedArtifacts[0];
+        return sortedJsonDocs[0];
     }, [projectData]);
 
     // Determine editability for fallback mode
     const isEditable = useMemo(() => {
         if (!latestBrainstormIdea || currentStage !== 'idea_editing') return false;
 
-        // Check if this artifact has descendants (is used as input in any transform)
+        // Check if this jsonDoc has descendants (is used as input in any transform)
         if (projectData.transformInputs === "pending" || projectData.transformInputs === "error") {
             return false;
         }
 
         const transformInputs = projectData.transformInputs as any[];
         const hasDescendants = transformInputs.some(input =>
-            input.artifact_id === latestBrainstormIdea.id
+            input.jsonDoc_id === latestBrainstormIdea.id
         );
 
         // Only editable if it's user_input and has no descendants
@@ -130,11 +130,11 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
             schemaType={"brainstorm_idea"}
             title="初始创意"
             sectionId="ideation-edit"
-            artifactId={latestBrainstormIdea?.id}
+            jsonDocId={latestBrainstormIdea?.id}
         >
             <div style={{ marginTop: '24px', position: 'relative' }}>
-                <ArtifactDisplayWrapper
-                    artifact={latestBrainstormIdea}
+                <JsonDocDisplayWrapper
+                    jsonDoc={latestBrainstormIdea}
                     isEditable={isEditable}
                     title="当前创意"
                     icon="💡"

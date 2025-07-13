@@ -3,11 +3,11 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { ChroniclesDisplay } from '../ChroniclesDisplay';
 import { useProjectData } from '../../contexts/ProjectDataContext';
-import { useLineageResolution } from '../../transform-artifact-framework/useLineageResolution';
+import { useLineageResolution } from '../../transform-jsonDoc-framework/useLineageResolution';
 
 // Mock dependencies
 vi.mock('../../contexts/ProjectDataContext');
-vi.mock('../../transform-artifact-framework/useLineageResolution');
+vi.mock('../../transform-jsonDoc-framework/useLineageResolution');
 vi.mock('../shared', () => ({
     SectionWrapper: ({ children, title }: any) => (
         <div data-testid="section-wrapper">
@@ -16,12 +16,12 @@ vi.mock('../shared', () => ({
         </div>
     ),
 
-    ArtifactDisplayWrapper: ({ artifact, isEditable, title }: any) => (
-        <div data-testid="artifact-display-wrapper"
-            data-artifact-id={artifact?.id}
+    JsonDocDisplayWrapper: ({ jsonDoc, isEditable, title }: any) => (
+        <div data-testid="jsonDoc-display-wrapper"
+            data-jsonDoc-id={jsonDoc?.id}
             data-is-editable={isEditable}>
             <h3>{title}</h3>
-            <div>Artifact: {artifact?.id}</div>
+            <div>JsonDoc: {jsonDoc?.id}</div>
             <div>Editable: {isEditable ? 'Yes' : 'No'}</div>
         </div>
     )
@@ -34,8 +34,8 @@ const mockUseProjectData = vi.mocked(useProjectData);
 const mockUseLineageResolution = vi.mocked(useLineageResolution);
 
 describe('ChroniclesDisplay', () => {
-    const mockChroniclesArtifact = {
-        id: 'chronicles-artifact-id',
+    const mockChroniclesJsonDoc = {
+        id: 'chronicles-jsonDoc-id',
         project_id: 'test-project-id',
         schema_type: 'chronicles' as const,
         schema_version: 'v1' as const,
@@ -89,7 +89,7 @@ describe('ChroniclesDisplay', () => {
 
         // Default mock setup
         mockUseProjectData.mockReturnValue({
-            artifacts: [mockChroniclesArtifact],
+            jsonDocs: [mockChroniclesJsonDoc],
             transformInputs: [],
             isLoading: false,
             isError: false,
@@ -98,14 +98,14 @@ describe('ChroniclesDisplay', () => {
         } as any);
 
         mockUseLineageResolution.mockReturnValue({
-            latestArtifactId: 'chronicles-artifact-id',
+            latestJsonDocId: 'chronicles-jsonDoc-id',
             hasLineage: false,
             isLoading: false,
             error: null,
             resolvedPath: '$',
             lineagePath: [],
             depth: 1,
-            originalArtifactId: 'chronicles-artifact-id'
+            originalJsonDocId: 'chronicles-jsonDoc-id'
         });
     });
 
@@ -119,17 +119,17 @@ describe('ChroniclesDisplay', () => {
         // Check that the section wrapper is rendered
         expect(screen.getByTestId('section-wrapper')).toBeInTheDocument();
 
-        // Check that the artifact display wrapper is rendered
-        expect(screen.getByTestId('artifact-display-wrapper')).toBeInTheDocument();
+        // Check that the jsonDoc display wrapper is rendered
+        expect(screen.getByTestId('jsonDoc-display-wrapper')).toBeInTheDocument();
 
-        // Verify artifact ID is passed correctly
-        expect(screen.getByTestId('artifact-display-wrapper')).toHaveAttribute(
-            'data-artifact-id',
-            'chronicles-artifact-id'
+        // Verify jsonDoc ID is passed correctly
+        expect(screen.getByTestId('jsonDoc-display-wrapper')).toHaveAttribute(
+            'data-jsonDoc-id',
+            'chronicles-jsonDoc-id'
         );
 
-        // Check that it's not editable by default (ai_generated artifact)
-        expect(screen.getByTestId('artifact-display-wrapper')).toHaveAttribute(
+        // Check that it's not editable by default (ai_generated jsonDoc)
+        expect(screen.getByTestId('jsonDoc-display-wrapper')).toHaveAttribute(
             'data-is-editable',
             'false'
         );
@@ -137,14 +137,14 @@ describe('ChroniclesDisplay', () => {
         // Component should be rendered successfully
     });
 
-    it('should render chronicles as editable when artifact is user_input with no descendants', async () => {
-        const editableArtifact = {
-            ...mockChroniclesArtifact,
+    it('should render chronicles as editable when jsonDoc is user_input with no descendants', async () => {
+        const editableJsonDoc = {
+            ...mockChroniclesJsonDoc,
             origin_type: 'user_input'
         };
 
         mockUseProjectData.mockReturnValue({
-            artifacts: [editableArtifact],
+            jsonDocs: [editableJsonDoc],
             transformInputs: [], // No descendants
             isLoading: false,
             isError: false,
@@ -153,58 +153,58 @@ describe('ChroniclesDisplay', () => {
         } as any);
 
         mockUseLineageResolution.mockReturnValue({
-            latestArtifactId: editableArtifact.id,
+            latestJsonDocId: editableJsonDoc.id,
             hasLineage: false,
             isLoading: false,
             error: null,
             resolvedPath: '$',
             lineagePath: [],
             depth: 1,
-            originalArtifactId: editableArtifact.id
+            originalJsonDocId: editableJsonDoc.id
         });
 
         render(<ChroniclesDisplay />);
 
         await waitFor(() => {
-            expect(screen.getByTestId('artifact-display-wrapper')).toBeInTheDocument();
+            expect(screen.getByTestId('jsonDoc-display-wrapper')).toBeInTheDocument();
         });
 
         // Check that it's editable
-        expect(screen.getByTestId('artifact-display-wrapper')).toHaveAttribute(
+        expect(screen.getByTestId('jsonDoc-display-wrapper')).toHaveAttribute(
             'data-is-editable',
             'true'
         );
     });
 
     it('should use props when provided (from action computation)', async () => {
-        const propsArtifact = {
-            ...mockChroniclesArtifact,
-            id: 'props-artifact-id',
+        const propsJsonDoc = {
+            ...mockChroniclesJsonDoc,
+            id: 'props-jsonDoc-id',
             origin_type: 'user_input'
         };
 
-        render(<ChroniclesDisplay isEditable={true} chroniclesArtifact={propsArtifact} />);
+        render(<ChroniclesDisplay isEditable={true} chroniclesJsonDoc={propsJsonDoc} />);
 
         await waitFor(() => {
-            expect(screen.getByTestId('artifact-display-wrapper')).toBeInTheDocument();
+            expect(screen.getByTestId('jsonDoc-display-wrapper')).toBeInTheDocument();
         });
 
-        // Check that it uses the props artifact
-        expect(screen.getByTestId('artifact-display-wrapper')).toHaveAttribute(
-            'data-artifact-id',
-            'props-artifact-id'
+        // Check that it uses the props jsonDoc
+        expect(screen.getByTestId('jsonDoc-display-wrapper')).toHaveAttribute(
+            'data-jsonDoc-id',
+            'props-jsonDoc-id'
         );
 
         // Check that it's editable as specified in props
-        expect(screen.getByTestId('artifact-display-wrapper')).toHaveAttribute(
+        expect(screen.getByTestId('jsonDoc-display-wrapper')).toHaveAttribute(
             'data-is-editable',
             'true'
         );
     });
 
-    it('should return null when artifacts are pending', () => {
+    it('should return null when jsonDocs are pending', () => {
         mockUseProjectData.mockReturnValue({
-            artifacts: "pending",
+            jsonDocs: "pending",
             isLoading: true,
             isError: false,
             error: null
@@ -214,9 +214,9 @@ describe('ChroniclesDisplay', () => {
         expect(container.firstChild).toBeNull();
     });
 
-    it('should return null when artifacts are in error state', () => {
+    it('should return null when jsonDocs are in error state', () => {
         mockUseProjectData.mockReturnValue({
-            artifacts: "error",
+            jsonDocs: "error",
             isLoading: false,
             isError: true,
             error: new Error('Failed to load')
@@ -226,11 +226,11 @@ describe('ChroniclesDisplay', () => {
         expect(container.firstChild).toBeNull();
     });
 
-    it('should return null when no chronicles artifacts are found', () => {
+    it('should return null when no chronicles jsonDocs are found', () => {
         mockUseProjectData.mockReturnValue({
-            artifacts: [
+            jsonDocs: [
                 {
-                    id: 'other-artifact',
+                    id: 'other-jsonDoc',
                     schema_type: 'outline_settings',
                     type: 'outline_settings',
                     data: { title: 'Some outline' }
@@ -245,14 +245,14 @@ describe('ChroniclesDisplay', () => {
         expect(container.firstChild).toBeNull();
     });
 
-    it('should still render artifact display wrapper even with no stages', () => {
-        const artifactWithNoStages = {
-            ...mockChroniclesArtifact,
+    it('should still render jsonDoc display wrapper even with no stages', () => {
+        const jsonDocWithNoStages = {
+            ...mockChroniclesJsonDoc,
             data: { stages: [] }
         };
 
         mockUseProjectData.mockReturnValue({
-            artifacts: [artifactWithNoStages],
+            jsonDocs: [jsonDocWithNoStages],
             transformInputs: [],
             isLoading: false,
             isError: false,
@@ -261,18 +261,18 @@ describe('ChroniclesDisplay', () => {
 
         render(<ChroniclesDisplay />);
 
-        // Should still render the artifact display wrapper
-        expect(screen.getByTestId('artifact-display-wrapper')).toBeInTheDocument();
+        // Should still render the jsonDoc display wrapper
+        expect(screen.getByTestId('jsonDoc-display-wrapper')).toBeInTheDocument();
     });
 
     it('should handle string-formatted data correctly', () => {
-        const artifactWithStringData = {
-            ...mockChroniclesArtifact,
-            data: JSON.stringify(mockChroniclesArtifact.data)
+        const jsonDocWithStringData = {
+            ...mockChroniclesJsonDoc,
+            data: JSON.stringify(mockChroniclesJsonDoc.data)
         };
 
         mockUseProjectData.mockReturnValue({
-            artifacts: [artifactWithStringData],
+            jsonDocs: [jsonDocWithStringData],
             transformInputs: [],
             isLoading: false,
             isError: false,
@@ -281,15 +281,15 @@ describe('ChroniclesDisplay', () => {
 
         render(<ChroniclesDisplay />);
 
-        expect(screen.getByTestId('artifact-display-wrapper')).toBeInTheDocument();
-        expect(screen.getByTestId('artifact-display-wrapper')).toHaveAttribute(
-            'data-artifact-id',
-            'chronicles-artifact-id'
+        expect(screen.getByTestId('jsonDoc-display-wrapper')).toBeInTheDocument();
+        expect(screen.getByTestId('jsonDoc-display-wrapper')).toHaveAttribute(
+            'data-jsonDoc-id',
+            'chronicles-jsonDoc-id'
         );
     });
 
     it('should prioritize chronicles over legacy chronicles type', () => {
-        const legacyChroniclesArtifact = {
+        const legacyChroniclesJsonDoc = {
             id: 'legacy-chronicles',
             schema_type: null,
             type: 'chronicles',
@@ -298,7 +298,7 @@ describe('ChroniclesDisplay', () => {
             data: { stages: [{ title: 'Legacy stage' }] }
         };
 
-        const modernChroniclesArtifact = {
+        const modernChroniclesJsonDoc = {
             id: 'modern-chronicles',
             schema_type: 'chronicles',
             type: 'chronicles',
@@ -308,7 +308,7 @@ describe('ChroniclesDisplay', () => {
         };
 
         mockUseProjectData.mockReturnValue({
-            artifacts: [legacyChroniclesArtifact, modernChroniclesArtifact],
+            jsonDocs: [legacyChroniclesJsonDoc, modernChroniclesJsonDoc],
             transformInputs: [],
             isLoading: false,
             isError: false,
@@ -316,35 +316,35 @@ describe('ChroniclesDisplay', () => {
         } as any);
 
         mockUseLineageResolution.mockReturnValue({
-            latestArtifactId: 'modern-chronicles',
+            latestJsonDocId: 'modern-chronicles',
             hasLineage: false,
             isLoading: false,
             error: null,
             resolvedPath: '$',
             lineagePath: [],
             depth: 1,
-            originalArtifactId: 'modern-chronicles'
+            originalJsonDocId: 'modern-chronicles'
         });
 
         render(<ChroniclesDisplay />);
 
-        // Should use the modern chronicles artifact
-        expect(screen.getByTestId('artifact-display-wrapper')).toHaveAttribute(
-            'data-artifact-id',
+        // Should use the modern chronicles jsonDoc
+        expect(screen.getByTestId('jsonDoc-display-wrapper')).toHaveAttribute(
+            'data-jsonDoc-id',
             'modern-chronicles'
         );
     });
 
     it('should handle lineage resolution errors gracefully', () => {
         mockUseLineageResolution.mockReturnValue({
-            latestArtifactId: null,
+            latestJsonDocId: null,
             hasLineage: false,
             isLoading: false,
             error: new Error('Lineage resolution failed'),
             resolvedPath: '$',
             lineagePath: [],
             depth: 1,
-            originalArtifactId: 'chronicles-artifact-id'
+            originalJsonDocId: 'chronicles-jsonDoc-id'
         });
 
         render(<ChroniclesDisplay />);
@@ -355,14 +355,14 @@ describe('ChroniclesDisplay', () => {
 
     it('should return null while lineage is still loading', () => {
         mockUseLineageResolution.mockReturnValue({
-            latestArtifactId: null,
+            latestJsonDocId: null,
             hasLineage: false,
             isLoading: true,
             error: null,
             resolvedPath: '$',
             lineagePath: [],
             depth: 1,
-            originalArtifactId: 'chronicles-artifact-id'
+            originalJsonDocId: 'chronicles-jsonDoc-id'
         });
 
         const { container } = render(<ChroniclesDisplay />);
@@ -370,13 +370,13 @@ describe('ChroniclesDisplay', () => {
     });
 
     it('should handle corrupted JSON data gracefully', () => {
-        const artifactWithCorruptedData = {
-            ...mockChroniclesArtifact,
+        const jsonDocWithCorruptedData = {
+            ...mockChroniclesJsonDoc,
             data: 'invalid json {'
         };
 
         mockUseProjectData.mockReturnValue({
-            artifacts: [artifactWithCorruptedData],
+            jsonDocs: [jsonDocWithCorruptedData],
             transformInputs: [],
             isLoading: false,
             isError: false,
@@ -385,32 +385,32 @@ describe('ChroniclesDisplay', () => {
 
         render(<ChroniclesDisplay />);
 
-        // Should still render the artifact display wrapper even with corrupted data
-        expect(screen.getByTestId('artifact-display-wrapper')).toBeInTheDocument();
-        expect(screen.getByTestId('artifact-display-wrapper')).toHaveAttribute(
-            'data-artifact-id',
-            'chronicles-artifact-id'
+        // Should still render the jsonDoc display wrapper even with corrupted data
+        expect(screen.getByTestId('jsonDoc-display-wrapper')).toBeInTheDocument();
+        expect(screen.getByTestId('jsonDoc-display-wrapper')).toHaveAttribute(
+            'data-jsonDoc-id',
+            'chronicles-jsonDoc-id'
         );
     });
 
-    describe('artifact selection logic', () => {
-        it('should prefer AI-generated artifacts over user-input ones', () => {
-            const userInputArtifact = {
-                ...mockChroniclesArtifact,
+    describe('jsonDoc selection logic', () => {
+        it('should prefer AI-generated jsonDocs over user-input ones', () => {
+            const userInputJsonDoc = {
+                ...mockChroniclesJsonDoc,
                 id: 'user-input-chronicles',
                 origin_type: 'user_input',
                 created_at: '2025-01-01T00:00:00Z'
             };
 
-            const aiGeneratedArtifact = {
-                ...mockChroniclesArtifact,
+            const aiGeneratedJsonDoc = {
+                ...mockChroniclesJsonDoc,
                 id: 'ai-generated-chronicles',
                 origin_type: 'ai_generated',
                 created_at: '2025-01-01T01:00:00Z'
             };
 
             mockUseProjectData.mockReturnValue({
-                artifacts: [userInputArtifact, aiGeneratedArtifact],
+                jsonDocs: [userInputJsonDoc, aiGeneratedJsonDoc],
                 transformInputs: [],
                 isLoading: false,
                 isError: false,
@@ -418,41 +418,41 @@ describe('ChroniclesDisplay', () => {
             } as any);
 
             mockUseLineageResolution.mockReturnValue({
-                latestArtifactId: 'ai-generated-chronicles',
+                latestJsonDocId: 'ai-generated-chronicles',
                 hasLineage: false,
                 isLoading: false,
                 error: null,
                 resolvedPath: '$',
                 lineagePath: [],
                 depth: 1,
-                originalArtifactId: 'ai-generated-chronicles'
+                originalJsonDocId: 'ai-generated-chronicles'
             });
 
             render(<ChroniclesDisplay />);
 
-            expect(screen.getByTestId('artifact-display-wrapper')).toHaveAttribute(
-                'data-artifact-id',
+            expect(screen.getByTestId('jsonDoc-display-wrapper')).toHaveAttribute(
+                'data-jsonDoc-id',
                 'ai-generated-chronicles'
             );
         });
 
-        it('should fallback to earliest artifact when no AI-generated found', () => {
-            const laterArtifact = {
-                ...mockChroniclesArtifact,
+        it('should fallback to earliest jsonDoc when no AI-generated found', () => {
+            const laterJsonDoc = {
+                ...mockChroniclesJsonDoc,
                 id: 'later-chronicles',
                 origin_type: 'user_input',
                 created_at: '2025-01-01T02:00:00Z'
             };
 
-            const earlierArtifact = {
-                ...mockChroniclesArtifact,
+            const earlierJsonDoc = {
+                ...mockChroniclesJsonDoc,
                 id: 'earlier-chronicles',
                 origin_type: 'user_input',
                 created_at: '2025-01-01T01:00:00Z'
             };
 
             mockUseProjectData.mockReturnValue({
-                artifacts: [laterArtifact, earlierArtifact],
+                jsonDocs: [laterJsonDoc, earlierJsonDoc],
                 transformInputs: [],
                 isLoading: false,
                 isError: false,
@@ -460,20 +460,20 @@ describe('ChroniclesDisplay', () => {
             } as any);
 
             mockUseLineageResolution.mockReturnValue({
-                latestArtifactId: 'earlier-chronicles',
+                latestJsonDocId: 'earlier-chronicles',
                 hasLineage: false,
                 isLoading: false,
                 error: null,
                 resolvedPath: '$',
                 lineagePath: [],
                 depth: 1,
-                originalArtifactId: 'earlier-chronicles'
+                originalJsonDocId: 'earlier-chronicles'
             });
 
             render(<ChroniclesDisplay />);
 
-            expect(screen.getByTestId('artifact-display-wrapper')).toHaveAttribute(
-                'data-artifact-id',
+            expect(screen.getByTestId('jsonDoc-display-wrapper')).toHaveAttribute(
+                'data-jsonDoc-id',
                 'earlier-chronicles'
             );
         });

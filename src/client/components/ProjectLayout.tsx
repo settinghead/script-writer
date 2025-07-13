@@ -34,23 +34,23 @@ const ProjectContentRenderer: React.FC<{ projectId: string; scrollContainerRef: 
     });
 
     // ALL HOOKS MUST BE CALLED BEFORE ANY EARLY RETURNS
-    // Check if project has brainstorm input artifacts or brainstorm ideas
+    // Check if project has brainstorm input jsonDocs or brainstorm ideas
     const hasBrainstormInput = useMemo(() => {
-        if (!Array.isArray(projectData.artifacts) || projectData.artifacts.length === 0) {
+        if (!Array.isArray(projectData.jsonDocs) || projectData.jsonDocs.length === 0) {
             return false;
         }
 
-        // Look for brainstorm_input_params artifacts OR brainstorm idea artifacts
-        return projectData.artifacts.some((artifact) =>
-            artifact.schema_type === 'brainstorm_input_params' ||
-            artifact.schema_type === 'brainstorm_idea' ||
-            artifact.schema_type === 'brainstorm_collection'
+        // Look for brainstorm_input_params jsonDocs OR brainstorm idea jsonDocs
+        return projectData.jsonDocs.some((jsonDoc) =>
+            jsonDoc.schema_type === 'brainstorm_input_params' ||
+            jsonDoc.schema_type === 'brainstorm_idea' ||
+            jsonDoc.schema_type === 'brainstorm_collection'
         );
-    }, [projectData.artifacts]);
+    }, [projectData.jsonDocs]);
 
     // Check if project has brainstorm collections/results
     const hasBrainstormResults = useMemo(() => {
-        if (!Array.isArray(projectData.artifacts) || projectData.artifacts.length === 0) {
+        if (!Array.isArray(projectData.jsonDocs) || projectData.jsonDocs.length === 0) {
             return false;
         }
 
@@ -58,7 +58,7 @@ const ProjectContentRenderer: React.FC<{ projectId: string; scrollContainerRef: 
         const collections = projectData.getIdeaCollections();
 
         return collections.length > 0;
-    }, [projectData.artifacts, projectData.getIdeaCollections]);
+    }, [projectData.jsonDocs, projectData.getIdeaCollections]);
 
     // Compute unified workflow state - ALWAYS call this hook
     const workflowState = useMemo(() => {
@@ -90,8 +90,8 @@ const ProjectContentRenderer: React.FC<{ projectId: string; scrollContainerRef: 
                 <ProjectCreationForm
                     projectId={projectId}
                     onCreated={() => {
-                        // Artifact created, component will re-render with new data
-                        console.log('Brainstorm input artifact created');
+                        // JsonDoc created, component will re-render with new data
+                        console.log('Brainstorm input jsonDoc created');
                         // The component will automatically re-render when projectData updates
                     }}
                 />

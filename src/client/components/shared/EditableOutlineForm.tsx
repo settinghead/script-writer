@@ -1,14 +1,14 @@
 import React from 'react';
 import { Typography, Space } from 'antd';
 import { UserOutlined, HeartOutlined, StarOutlined, EnvironmentOutlined, TeamOutlined } from '@ant-design/icons';
-import { YJSTextField, YJSTextAreaField, YJSArrayOfStringField, YJSCharacterArray } from '../../transform-artifact-framework/components/YJSField';
-import { YJSSlateArrayOfStringField } from '../../transform-artifact-framework/components/YJSSlateArrayField';
+import { YJSTextField, YJSTextAreaField, YJSArrayOfStringField, YJSCharacterArray } from '../../transform-jsonDoc-framework/components/YJSField';
+import { YJSSlateArrayOfStringField } from '../../transform-jsonDoc-framework/components/YJSSlateArrayField';
 
 const { Text } = Typography;
 
 /**
  * YJS-enabled editable form component for outline settings
- * This component is designed to be used within a YJSArtifactProvider
+ * This component is designed to be used within a YJSJsonDocProvider
  * Uses the new subscription-based approach with useYJSField
  */
 export const EditableOutlineForm: React.FC = () => {

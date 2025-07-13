@@ -16,7 +16,7 @@ interface LLMTemplate {
 }
 
 interface TemplateContext {
-  artifacts?: Record<string, any>;
+  jsonDocs?: Record<string, any>;
   params?: Record<string, any>;
 }
 
@@ -65,8 +65,8 @@ export class TemplateService {
     }
 
     // 🔥 VALIDATION: Check for any unresolved template variables
-    // Only check for %%params.*%% and %%artifacts.*%% patterns
-    const unresolvedMatches = prompt.match(/%%((params|artifacts)\.[^%]+)%%/g);
+    // Only check for %%params.*%% and %%jsonDocs.*%% patterns
+    const unresolvedMatches = prompt.match(/%%((params|jsonDocs)\.[^%]+)%%/g);
     if (unresolvedMatches) {
       throw new Error(`Template contains unresolved variables: ${unresolvedMatches.join(', ')}`);
     }
@@ -75,7 +75,7 @@ export class TemplateService {
   }
 
   private resolveVariable(path: string, context: TemplateContext): string {
-    // Handle nested paths like "artifacts.brainstorm_input_params.genre"
+    // Handle nested paths like "jsonDocs.brainstorm_input_params.genre"
     const parts = path.split('.');
     let value: any = context;
 

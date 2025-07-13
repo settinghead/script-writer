@@ -1,12 +1,12 @@
 import { z } from 'zod';
-import { TransformRepository } from '../transform-artifact-framework/TransformRepository';
-import { ArtifactRepository } from '../transform-artifact-framework/ArtifactRepository';
+import { TransformRepository } from '../transform-jsonDoc-framework/TransformRepository';
+import { JsonDocRepository } from '../transform-jsonDoc-framework/JsonDocRepository';
 import { prepareAgentPromptContext } from '../../common/utils/agentContext';
 import { createBrainstormToolDefinition, createBrainstormEditToolDefinition } from '../tools/BrainstormTools';
 import { createOutlineSettingsToolDefinition } from '../tools/OutlineSettingsTool';
 import { createChroniclesToolDefinition } from '../tools/ChroniclesTool';
-import type { GeneralAgentRequest } from '../transform-artifact-framework/AgentService';
-import type { StreamingToolDefinition } from '../transform-artifact-framework/StreamingAgentFramework';
+import type { GeneralAgentRequest } from '../transform-jsonDoc-framework/AgentService';
+import type { StreamingToolDefinition } from '../transform-jsonDoc-framework/StreamingAgentFramework';
 
 // Simplified to just general type
 export type RequestType = 'general';
@@ -24,20 +24,20 @@ export interface AgentConfiguration {
  */
 export async function buildContextForRequestType(
     projectId: string,
-    artifactRepo: ArtifactRepository
+    jsonDocRepo: JsonDocRepository
 ): Promise<string> {
     // Get all project data for lineage resolution
-    const artifacts = await artifactRepo.getAllProjectArtifactsForLineage(projectId);
-    const transforms = await artifactRepo.getAllProjectTransformsForLineage(projectId);
-    const humanTransforms = await artifactRepo.getAllProjectHumanTransformsForLineage(projectId);
-    const transformInputs = await artifactRepo.getAllProjectTransformInputsForLineage(projectId);
-    const transformOutputs = await artifactRepo.getAllProjectTransformOutputsForLineage(projectId);
+    const jsonDocs = await jsonDocRepo.getAllProjectJsonDocsForLineage(projectId);
+    const transforms = await jsonDocRepo.getAllProjectTransformsForLineage(projectId);
+    const humanTransforms = await jsonDocRepo.getAllProjectHumanTransformsForLineage(projectId);
+    const transformInputs = await jsonDocRepo.getAllProjectTransformInputsForLineage(projectId);
+    const transformOutputs = await jsonDocRepo.getAllProjectTransformOutputsForLineage(projectId);
 
     console.log(`[ContextBuilder] Building context for request type: general`);
 
     // Always provide full context
     const fullContext = await prepareAgentPromptContext({
-        artifacts,
+        jsonDocs,
         transforms,
         humanTransforms,
         transformInputs,
@@ -71,24 +71,24 @@ ${context}
 
 ===工具选择示例 开始===
 示例1：生成新的故事创意
-用户请求："基于artifact ID abc123 的头脑风暴参数生成故事创意"
+用户请求："基于jsonDoc ID abc123 的头脑风暴参数生成故事创意"
 → 使用 generate_brainstorm_ideas 工具
-→ 参数：sourceArtifactId="abc123" otherRequirements="其他要求"
+→ 参数：sourceJsonDocId="abc123" otherRequirements="其他要求"
 
 示例2：基于现有创意生成剧本框架
-用户请求："基于artifact ID abc123 的故事创意，生成详细的剧本框架"
+用户请求："基于jsonDoc ID abc123 的故事创意，生成详细的剧本框架"
 → 使用 generate_outline_settings 工具
-→ 参数：sourceArtifactId="abc123"
+→ 参数：sourceJsonDocId="abc123"
 
 示例3：生成时间顺序大纲
 用户请求："基于剧本框架创建60集的时间顺序大纲"
 → 使用 generate_chronicles 工具
-→ 参数：sourceArtifactId="设定artifact的ID", totalEpisodes=60
+→ 参数：sourceJsonDocId="设定jsonDoc的ID", totalEpisodes=60
 
 示例4：编辑现有创意
 用户请求："修改第一个故事创意，增加悬疑元素"
 → 使用 edit_brainstorm_ideas 工具
-→ 参数：sourceArtifactId="集合artifact的ID", ideaIndex=0, editRequirements="增加悬疑元素"
+→ 参数：sourceJsonDocId="集合jsonDoc的ID", ideaIndex=0, editRequirements="增加悬疑元素"
 ===工具选择示例 结束===
 
 ===重要提示 开始===
@@ -126,7 +126,7 @@ ${context}
  */
 export function buildToolsForRequestType(
     transformRepo: TransformRepository,
-    artifactRepo: ArtifactRepository,
+    jsonDocRepo: JsonDocRepository,
     projectId: string,
     userId: string,
     cachingOptions?: {
@@ -139,10 +139,10 @@ export function buildToolsForRequestType(
 ): StreamingToolDefinition<any, any>[] {
     // Always provide all available tools
     return [
-        createBrainstormToolDefinition(transformRepo, artifactRepo, projectId, userId, cachingOptions),
-        createBrainstormEditToolDefinition(transformRepo, artifactRepo, projectId, userId, cachingOptions),
-        createOutlineSettingsToolDefinition(transformRepo, artifactRepo, projectId, userId, cachingOptions),
-        createChroniclesToolDefinition(transformRepo, artifactRepo, projectId, userId, cachingOptions)
+        createBrainstormToolDefinition(transformRepo, jsonDocRepo, projectId, userId, cachingOptions),
+        createBrainstormEditToolDefinition(transformRepo, jsonDocRepo, projectId, userId, cachingOptions),
+        createOutlineSettingsToolDefinition(transformRepo, jsonDocRepo, projectId, userId, cachingOptions),
+        createChroniclesToolDefinition(transformRepo, jsonDocRepo, projectId, userId, cachingOptions)
     ];
 }
 
@@ -153,7 +153,7 @@ export async function buildAgentConfiguration(
     request: GeneralAgentRequest,
     projectId: string,
     transformRepo: TransformRepository,
-    artifactRepo: ArtifactRepository,
+    jsonDocRepo: JsonDocRepository,
     userId: string,
     cachingOptions?: {
         enableCaching?: boolean;
@@ -169,7 +169,7 @@ export async function buildAgentConfiguration(
     console.log(`[AgentConfigBuilder] Using request type: ${requestType}`);
 
     // Build context
-    const context = await buildContextForRequestType(projectId, artifactRepo);
+    const context = await buildContextForRequestType(projectId, jsonDocRepo);
     console.log(`[AgentConfigBuilder] Built context (${context.length} chars): ${context.substring(0, 100)}...`);
 
     // Build prompt with few-shot examples
@@ -177,7 +177,7 @@ export async function buildAgentConfiguration(
     console.log(`[AgentConfigBuilder] Built prompt (${prompt.length} chars)`);
 
     // Build all available tools
-    const tools = buildToolsForRequestType(transformRepo, artifactRepo, projectId, userId, cachingOptions);
+    const tools = buildToolsForRequestType(transformRepo, jsonDocRepo, projectId, userId, cachingOptions);
     console.log(`[AgentConfigBuilder] Built ${tools.length} tools for request type`);
 
     const config = {

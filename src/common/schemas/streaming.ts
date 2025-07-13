@@ -86,7 +86,7 @@ export const EpisodeSchema = z.object({
     hooks: z.string().optional(),
     emotionDevelopments: z.array(EmotionDevelopmentSchema).optional(),
     relationshipDevelopments: z.array(RelationshipDevelopmentSchema).optional(),
-    stageArtifactId: z.string().optional(),
+    stageJsonDocId: z.string().optional(),
     episodeGenerationSessionId: z.string().optional()
 });
 
@@ -127,7 +127,7 @@ export const ScriptSchema = z.object({
 export const IdeaSchema = z.object({
     title: z.string(),
     body: z.string(),
-    artifactId: z.string().optional()
+    jsonDocId: z.string().optional()
 });
 
 export const IdeaArraySchema = z.array(IdeaSchema);

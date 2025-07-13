@@ -1,34 +1,34 @@
 import { db } from '../database/connection';
 import * as Y from 'yjs';
 
-async function initYJSDocument(artifactId: string) {
-    console.log(`Initializing YJS document for artifact: ${artifactId}`);
+async function initYJSDocument(jsonDocId: string) {
+    console.log(`Initializing YJS document for jsonDoc: ${jsonDocId}`);
 
-    // Get the artifact data
-    const artifact = await db
-        .selectFrom('artifacts')
+    // Get the jsonDoc data
+    const jsonDoc = await db
+        .selectFrom('jsonDocs')
         .selectAll()
-        .where('id', '=', artifactId)
+        .where('id', '=', jsonDocId)
         .executeTakeFirst();
 
-    if (!artifact) {
-        console.error(`Artifact not found: ${artifactId}`);
+    if (!jsonDoc) {
+        console.error(`JsonDoc not found: ${jsonDocId}`);
         return;
     }
 
-    console.log(`Found artifact:`, {
-        id: artifact.id,
-        schema_type: artifact.schema_type,
-        origin_type: artifact.origin_type
+    console.log(`Found jsonDoc:`, {
+        id: jsonDoc.id,
+        schema_type: jsonDoc.schema_type,
+        origin_type: jsonDoc.origin_type
     });
 
-    // Parse artifact data
-    let artifactData: any = {};
+    // Parse jsonDoc data
+    let jsonDocData: any = {};
     try {
-        artifactData = typeof artifact.data === 'string' ? JSON.parse(artifact.data) : artifact.data;
-        console.log(`Parsed artifact data:`, artifactData);
+        jsonDocData = typeof jsonDoc.data === 'string' ? JSON.parse(jsonDoc.data) : jsonDoc.data;
+        console.log(`Parsed jsonDoc data:`, jsonDocData);
     } catch (e) {
-        console.error(`Failed to parse artifact data:`, e);
+        console.error(`Failed to parse jsonDoc data:`, e);
         return;
     }
 
@@ -36,8 +36,8 @@ async function initYJSDocument(artifactId: string) {
     const doc = new Y.Doc();
     const yMap = doc.getMap('content');
 
-    // Initialize with artifact data
-    Object.entries(artifactData).forEach(([key, value]) => {
+    // Initialize with jsonDoc data
+    Object.entries(jsonDocData).forEach(([key, value]) => {
         if (typeof value === 'string') {
             const yText = new Y.Text();
             yText.insert(0, value);
@@ -73,41 +73,41 @@ async function initYJSDocument(artifactId: string) {
 
     // Check if YJS document already exists
     const existingDoc = await db
-        .selectFrom('artifact_yjs_documents')
+        .selectFrom('jsonDoc_yjs_documents')
         .selectAll()
-        .where('artifact_id', '=', artifactId)
+        .where('jsonDoc_id', '=', jsonDocId)
         .executeTakeFirst();
 
     if (existingDoc) {
         console.log(`YJS document already exists, updating...`);
         await db
-            .updateTable('artifact_yjs_documents')
+            .updateTable('jsonDoc_yjs_documents')
             .set({
                 document_state: Buffer.from(documentState),
                 updated_at: new Date().toISOString()
             })
-            .where('artifact_id', '=', artifactId)
+            .where('jsonDoc_id', '=', jsonDocId)
             .execute();
     } else {
         console.log(`Creating new YJS document...`);
         await db
-            .insertInto('artifact_yjs_documents')
+            .insertInto('jsonDoc_yjs_documents')
             .values({
-                artifact_id: artifactId,
-                project_id: artifact.project_id,
-                room_id: `artifact-${artifactId}`,
+                jsonDoc_id: jsonDocId,
+                project_id: jsonDoc.project_id,
+                room_id: `jsonDoc-${jsonDocId}`,
                 document_state: Buffer.from(documentState)
             })
             .execute();
     }
 
-    console.log(`YJS document initialized successfully for artifact: ${artifactId}`);
+    console.log(`YJS document initialized successfully for jsonDoc: ${jsonDocId}`);
 
     // Verify the document was saved correctly
     const savedDoc = await db
-        .selectFrom('artifact_yjs_documents')
+        .selectFrom('jsonDoc_yjs_documents')
         .selectAll()
-        .where('artifact_id', '=', artifactId)
+        .where('jsonDoc_id', '=', jsonDocId)
         .executeTakeFirst();
 
     if (savedDoc) {
@@ -136,10 +136,10 @@ async function initYJSDocument(artifactId: string) {
 }
 
 // Run the script
-const artifactId = process.argv[2];
-if (!artifactId) {
-    console.error('Usage: ./run-ts src/server/scripts/init-yjs-document.ts <artifact-id>');
+const jsonDocId = process.argv[2];
+if (!jsonDocId) {
+    console.error('Usage: ./run-ts src/server/scripts/init-yjs-document.ts <jsonDoc-id>');
     process.exit(1);
 }
 
-initYJSDocument(artifactId).catch(console.error); 
+initYJSDocument(jsonDocId).catch(console.error); 

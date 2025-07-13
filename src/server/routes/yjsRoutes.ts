@@ -18,7 +18,7 @@ type InvalidRequest = { isValid: false; error?: string };
 type ValidRequest = (Update | AwarenessUpdate) & { isValid: true };
 
 export type Update = {
-    artifact_id: string;
+    jsonDoc_id: string;
     update: Uint8Array;
 };
 
@@ -29,10 +29,10 @@ export type AwarenessUpdate = Update & {
 // Parse request helper (based on Electric YJS example)
 const parseRequest = async (req: express.Request): Promise<ValidRequest | InvalidRequest> => {
     const url = new URL(req.url, `http://${req.headers.host}`);
-    const artifact_id = url.searchParams.get('artifact_id');
+    const jsonDoc_id = url.searchParams.get('jsonDoc_id');
 
-    if (!artifact_id) {
-        return { isValid: false, error: 'artifact_id is required' };
+    if (!jsonDoc_id) {
+        return { isValid: false, error: 'jsonDoc_id is required' };
     }
 
     const client_id = url.searchParams.get('client_id') ?? undefined;
@@ -61,50 +61,50 @@ const parseRequest = async (req: express.Request): Promise<ValidRequest | Invali
     }
 
     if (client_id) {
-        return { isValid: true, artifact_id, client_id, update };
+        return { isValid: true, jsonDoc_id, client_id, update };
     } else {
-        return { isValid: true, artifact_id, update };
+        return { isValid: true, jsonDoc_id, update };
     }
 };
 
 // Save document update using raw SQL to avoid TypeScript issues
-async function saveUpdate({ artifact_id, update }: Update) {
-    const room_id = `artifact-${artifact_id}`;
+async function saveUpdate({ jsonDoc_id, update }: Update) {
+    const room_id = `jsonDoc-${jsonDoc_id}`;
 
-    // Get project_id from artifact
-    const artifact = await db
-        .selectFrom('artifacts')
+    // Get project_id from jsonDoc
+    const jsonDoc = await db
+        .selectFrom('jsonDocs')
         .select('project_id')
-        .where('id', '=', artifact_id)
+        .where('id', '=', jsonDoc_id)
         .executeTakeFirst();
 
-    if (!artifact) {
-        throw new Error(`Artifact not found: ${artifact_id}`);
+    if (!jsonDoc) {
+        throw new Error(`JsonDoc not found: ${jsonDoc_id}`);
     }
 
-    // Save the YJS update to artifact_yjs_documents
+    // Save the YJS update to jsonDoc_yjs_documents
     await db
-        .insertInto('artifact_yjs_documents')
+        .insertInto('jsonDoc_yjs_documents')
         .values({
-            artifact_id,
-            project_id: artifact.project_id,
+            jsonDoc_id,
+            project_id: jsonDoc.project_id,
             room_id,
             document_state: Buffer.from(update)
         })
         .execute();
 
-    // Auto-sync YJS document to artifact record
-    await syncYJSToArtifact(artifact_id);
+    // Auto-sync YJS document to jsonDoc record
+    await syncYJSToJsonDoc(jsonDoc_id);
 }
 
-// Helper function to sync YJS document to artifact
-const syncYJSToArtifact = async (artifactId: string) => {
+// Helper function to sync YJS document to jsonDoc
+const syncYJSToJsonDoc = async (jsonDocId: string) => {
     try {
-        // Get all YJS updates for this artifact
+        // Get all YJS updates for this jsonDoc
         const updates = await db
-            .selectFrom('artifact_yjs_documents')
+            .selectFrom('jsonDoc_yjs_documents')
             .select(['document_state', 'created_at'])
-            .where('artifact_id', '=', artifactId)
+            .where('jsonDoc_id', '=', jsonDocId)
             .orderBy('created_at', 'asc')
             .execute();
 
@@ -124,14 +124,14 @@ const syncYJSToArtifact = async (artifactId: string) => {
 
                 // Basic validation before applying
                 if (updateData.length === 0) {
-                    console.warn(`[YJS Sync] Skipping empty update for artifact ${artifactId}`);
+                    console.warn(`[YJS Sync] Skipping empty update for jsonDoc ${jsonDocId}`);
                     skippedCount++;
                     continue;
                 }
 
                 // Validate minimum size for YJS updates (should be at least a few bytes)
                 if (updateData.length < 10) {
-                    console.warn(`[YJS Sync] Skipping suspiciously small update (${updateData.length} bytes) for artifact ${artifactId}`);
+                    console.warn(`[YJS Sync] Skipping suspiciously small update (${updateData.length} bytes) for jsonDoc ${jsonDocId}`);
                     skippedCount++;
                     continue;
                 }
@@ -139,7 +139,7 @@ const syncYJSToArtifact = async (artifactId: string) => {
                 Y.applyUpdate(tempDoc, updateData);
                 updateCount++;
             } catch (error) {
-                console.warn(`[YJS Sync] Skipping corrupted update ${updateCount + skippedCount + 1} for artifact ${artifactId}:`, error instanceof Error ? error.message : String(error));
+                console.warn(`[YJS Sync] Skipping corrupted update ${updateCount + skippedCount + 1} for jsonDoc ${jsonDocId}:`, error instanceof Error ? error.message : String(error));
                 skippedCount++;
                 continue;
             }
@@ -188,28 +188,28 @@ const syncYJSToArtifact = async (artifactId: string) => {
             return;
         }
 
-        // Update the artifact in the database
+        // Update the jsonDoc in the database
         await db
-            .updateTable('artifacts')
+            .updateTable('jsonDocs')
             .set({
                 data: JSON.stringify(extractedData),
                 updated_at: new Date().toISOString()
             })
-            .where('id', '=', artifactId)
+            .where('id', '=', jsonDocId)
             .execute();
 
     } catch (error) {
-        console.error(`[YJS Sync] Error syncing YJS to artifact ${artifactId}:`, error);
+        console.error(`[YJS Sync] Error syncing YJS to jsonDoc ${jsonDocId}:`, error);
     }
 };
 
 // Helper function to clean up corrupted YJS documents
-const cleanupCorruptedDocuments = async (artifactId: string) => {
+const cleanupCorruptedDocuments = async (jsonDocId: string) => {
     try {
         const updates = await db
-            .selectFrom('artifact_yjs_documents')
+            .selectFrom('jsonDoc_yjs_documents')
             .select(['id', 'document_state', 'created_at'])
-            .where('artifact_id', '=', artifactId)
+            .where('jsonDoc_id', '=', jsonDocId)
             .orderBy('created_at', 'asc')
             .execute();
 
@@ -241,43 +241,43 @@ const cleanupCorruptedDocuments = async (artifactId: string) => {
 
         if (corruptedIds.length > 0) {
             await db
-                .deleteFrom('artifact_yjs_documents')
+                .deleteFrom('jsonDoc_yjs_documents')
                 .where('id', 'in', corruptedIds)
                 .execute();
         }
 
     } catch (error) {
-        console.error(`[YJS Cleanup] Error cleaning up corrupted documents for artifact ${artifactId}:`, error);
+        console.error(`[YJS Cleanup] Error cleaning up corrupted documents for jsonDoc ${jsonDocId}:`, error);
     }
 };
 
 // Save awareness update using raw SQL to avoid TypeScript issues
-async function upsertAwarenessUpdate({ artifact_id, client_id, update }: AwarenessUpdate) {
-    const room_id = `artifact-${artifact_id}`;
+async function upsertAwarenessUpdate({ jsonDoc_id, client_id, update }: AwarenessUpdate) {
+    const room_id = `jsonDoc-${jsonDoc_id}`;
 
-    // Get project_id from artifact
-    const artifact = await db
-        .selectFrom('artifacts')
+    // Get project_id from jsonDoc
+    const jsonDoc = await db
+        .selectFrom('jsonDocs')
         .select('project_id')
-        .where('id', '=', artifact_id)
+        .where('id', '=', jsonDoc_id)
         .executeTakeFirst();
 
-    if (!artifact) {
-        throw new Error(`Artifact not found: ${artifact_id}`);
+    if (!jsonDoc) {
+        throw new Error(`JsonDoc not found: ${jsonDoc_id}`);
     }
 
     // Use Kysely insertInto with onConflict for upsert
     await db
-        .insertInto('artifact_yjs_awareness')
+        .insertInto('jsonDoc_yjs_awareness')
         .values({
             client_id,
-            artifact_id,
-            project_id: artifact.project_id,
+            jsonDoc_id,
+            project_id: jsonDoc.project_id,
             room_id,
             update: Buffer.from(update)
         })
         .onConflict((oc) => oc
-            .columns(['client_id', 'artifact_id'])
+            .columns(['client_id', 'jsonDoc_id'])
             .doUpdateSet({
                 update: Buffer.from(update),
                 updated_at: sql`CURRENT_TIMESTAMP`
@@ -299,16 +299,16 @@ router.put('/update', async (req: any, res: any) => {
             return res.status(400).json({ error: parsedRequest.error || 'Invalid request' });
         }
 
-        const artifactId = parsedRequest.artifact_id;
+        const jsonDocId = parsedRequest.jsonDoc_id;
 
         // Validate update size (reasonable limits)
         if (parsedRequest.update.length > 1024 * 1024) { // 1MB limit
-            console.error(`YJS: Rejecting oversized update (${parsedRequest.update.length} bytes) for artifact ${artifactId}`);
+            console.error(`YJS: Rejecting oversized update (${parsedRequest.update.length} bytes) for jsonDoc ${jsonDocId}`);
             return res.status(400).json({ error: 'Update too large' });
         }
 
         if (parsedRequest.update.length === 0) {
-            console.error(`YJS: Rejecting empty update for artifact ${artifactId}`);
+            console.error(`YJS: Rejecting empty update for jsonDoc ${jsonDocId}`);
             return res.status(400).json({ error: 'Empty update' });
         }
 
@@ -328,7 +328,7 @@ router.put('/update', async (req: any, res: any) => {
             }
 
         } catch (validationError) {
-            console.error(`YJS: Update validation failed for artifact ${artifactId}:`, validationError);
+            console.error(`YJS: Update validation failed for jsonDoc ${jsonDocId}:`, validationError);
             console.error(`YJS: Update details - Size: ${parsedRequest.update.length} bytes`);
 
             return res.status(400).json({ error: 'Invalid YJS update format' });
@@ -349,26 +349,26 @@ router.put('/update', async (req: any, res: any) => {
 });
 
 // Load document endpoint - returns the current YJS document state
-router.get('/document/:artifactId', async (req: any, res: any) => {
+router.get('/document/:jsonDocId', async (req: any, res: any) => {
     try {
         const user = authMiddleware.getCurrentUser(req);
         if (!user) {
             return res.status(401).json({ error: 'Authentication required' });
         }
 
-        const artifactId = req.params.artifactId;
-        if (!artifactId) {
-            return res.status(400).json({ error: 'Artifact ID is required' });
+        const jsonDocId = req.params.jsonDocId;
+        if (!jsonDocId) {
+            return res.status(400).json({ error: 'JsonDoc ID is required' });
         }
 
         // First, clean up any corrupted documents
-        await cleanupCorruptedDocuments(artifactId);
+        await cleanupCorruptedDocuments(jsonDocId);
 
-        // Get all document updates for this artifact, ordered by creation time
+        // Get all document updates for this jsonDoc, ordered by creation time
         const updates = await db
-            .selectFrom('artifact_yjs_documents')
+            .selectFrom('jsonDoc_yjs_documents')
             .select('document_state')
-            .where('artifact_id', '=', artifactId)
+            .where('jsonDoc_id', '=', jsonDocId)
             .orderBy('created_at', 'asc')
             .execute();
 
@@ -387,13 +387,13 @@ router.get('/document/:artifactId', async (req: any, res: any) => {
 
                         // Basic validation
                         if (updateArray.length === 0) {
-                            console.warn(`[YJS Document] Skipping empty update for artifact ${artifactId}`);
+                            console.warn(`[YJS Document] Skipping empty update for jsonDoc ${jsonDocId}`);
                             skippedCount++;
                             continue;
                         }
 
                         if (updateArray.length < 10) {
-                            console.warn(`[YJS Document] Skipping suspiciously small update (${updateArray.length} bytes) for artifact ${artifactId}`);
+                            console.warn(`[YJS Document] Skipping suspiciously small update (${updateArray.length} bytes) for jsonDoc ${jsonDocId}`);
                             skippedCount++;
                             continue;
                         }
@@ -401,7 +401,7 @@ router.get('/document/:artifactId', async (req: any, res: any) => {
                         Y.applyUpdate(tempDoc, updateArray);
                         appliedCount++;
                     } catch (error) {
-                        console.warn(`[YJS Document] Failed to apply update for artifact ${artifactId}, skipping:`, error instanceof Error ? error.message : String(error));
+                        console.warn(`[YJS Document] Failed to apply update for jsonDoc ${jsonDocId}, skipping:`, error instanceof Error ? error.message : String(error));
                         skippedCount++;
                     }
                 }
@@ -426,19 +426,19 @@ router.get('/document/:artifactId', async (req: any, res: any) => {
 });
 
 // Add a cleanup endpoint for manual cleanup (dev-only)
-router.post('/cleanup/:artifactId', async (req: any, res: any) => {
+router.post('/cleanup/:jsonDocId', async (req: any, res: any) => {
     try {
         const user = authMiddleware.getCurrentUser(req);
         if (!user) {
             return res.status(401).json({ error: 'Authentication required' });
         }
 
-        const artifactId = req.params.artifactId;
-        if (!artifactId) {
-            return res.status(400).json({ error: 'Artifact ID is required' });
+        const jsonDocId = req.params.jsonDocId;
+        if (!jsonDocId) {
+            return res.status(400).json({ error: 'JsonDoc ID is required' });
         }
 
-        await cleanupCorruptedDocuments(artifactId);
+        await cleanupCorruptedDocuments(jsonDocId);
 
         res.json({ success: true, message: 'Cleanup completed' });
 

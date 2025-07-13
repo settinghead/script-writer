@@ -25,7 +25,7 @@ interface EpisodeExportData {
         stageNumber: number;
         stageSynopsis: string;
         numberOfEpisodes: number;
-        artifactId: string;
+        jsonDocId: string;
     };
     episodes: (EpisodeSynopsisV1 | EpisodeSynopsis)[];
     generatedAt: string;
@@ -39,7 +39,7 @@ interface MultiStageEpisodeExportData {
         stageNumber: number;
         stageSynopsis: string;
         numberOfEpisodes: number;
-        artifactId: string;
+        jsonDocId: string;
         episodes: (EpisodeSynopsisV1 | EpisodeSynopsis)[];
     }>;
     totalEpisodes: number;

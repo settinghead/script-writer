@@ -91,9 +91,9 @@ export async function up(db: Kysely<any>): Promise<void> {
     )
     .execute()
 
-  // Create artifacts table
+  // Create jsonDocs table
   await db.schema
-    .createTable('artifacts')
+    .createTable('jsonDocs')
     .addColumn('id', 'text', (col) => col.primaryKey())
     .addColumn('project_id', 'text', (col) =>
       col.references('projects.id').onDelete('cascade').notNull()
@@ -136,8 +136,8 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn('transform_id', 'text', (col) =>
       col.references('transforms.id').onDelete('cascade').notNull()
     )
-    .addColumn('artifact_id', 'text', (col) =>
-      col.references('artifacts.id').notNull()
+    .addColumn('jsonDoc_id', 'text', (col) =>
+      col.references('jsonDocs.id').notNull()
     )
     .addColumn('input_role', 'text')
     .execute()
@@ -146,7 +146,7 @@ export async function up(db: Kysely<any>): Promise<void> {
   await db.schema
     .createIndex('transform_inputs_unique')
     .on('transform_inputs')
-    .columns(['transform_id', 'artifact_id', 'input_role'])
+    .columns(['transform_id', 'jsonDoc_id', 'input_role'])
     .unique()
     .execute()
 
@@ -157,8 +157,8 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn('transform_id', 'text', (col) =>
       col.references('transforms.id').onDelete('cascade').notNull()
     )
-    .addColumn('artifact_id', 'text', (col) =>
-      col.references('artifacts.id').notNull()
+    .addColumn('jsonDoc_id', 'text', (col) =>
+      col.references('jsonDocs.id').notNull()
     )
     .addColumn('output_role', 'text')
     .execute()
@@ -167,7 +167,7 @@ export async function up(db: Kysely<any>): Promise<void> {
   await db.schema
     .createIndex('transform_outputs_unique')
     .on('transform_outputs')
-    .columns(['transform_id', 'artifact_id', 'output_role'])
+    .columns(['transform_id', 'jsonDoc_id', 'output_role'])
     .unique()
     .execute()
 
@@ -203,35 +203,35 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn('action_type', 'text', (col) => col.notNull())
     .addColumn('interface_context', 'text')
     .addColumn('change_description', 'text')
-    .addColumn('source_artifact_id', 'text', (col) =>
-      col.references('artifacts.id')
+    .addColumn('source_jsonDoc_id', 'text', (col) =>
+      col.references('jsonDocs.id')
     )
     .addColumn('derivation_path', 'text', (col) => col.defaultTo(''))
-    .addColumn('derived_artifact_id', 'text', (col) =>
-      col.references('artifacts.id')
+    .addColumn('derived_jsonDoc_id', 'text', (col) =>
+      col.references('jsonDocs.id')
     )
     .addColumn('transform_name', 'text')
     .execute()
 
   // Create unique constraint to prevent duplicate transforms
   await db.schema
-    .createIndex('unique_human_transform_per_artifact_path')
+    .createIndex('unique_human_transform_per_jsonDoc_path')
     .on('human_transforms')
-    .columns(['source_artifact_id', 'derivation_path'])
+    .columns(['source_jsonDoc_id', 'derivation_path'])
     .unique()
-    .where('source_artifact_id', 'is not', null)
+    .where('source_jsonDoc_id', 'is not', null)
     .execute()
 
   // Create performance indexes
   await db.schema
-    .createIndex('idx_artifacts_project_type')
-    .on('artifacts')
+    .createIndex('idx_jsonDocs_project_type')
+    .on('jsonDocs')
     .columns(['project_id', 'schema_type', 'schema_version'])
     .execute()
 
   await db.schema
-    .createIndex('idx_artifacts_project_created')
-    .on('artifacts')
+    .createIndex('idx_jsonDocs_project_created')
+    .on('jsonDocs')
     .columns(['project_id', 'created_at'])
     .execute()
 
@@ -244,20 +244,20 @@ export async function up(db: Kysely<any>): Promise<void> {
   await db.schema
     .createIndex('idx_human_transforms_derivation')
     .on('human_transforms')
-    .columns(['source_artifact_id', 'derivation_path'])
-    .where('source_artifact_id', 'is not', null)
+    .columns(['source_jsonDoc_id', 'derivation_path'])
+    .where('source_jsonDoc_id', 'is not', null)
     .execute()
 
-  // Create indexes for artifacts
+  // Create indexes for jsonDocs
   await db.schema
-    .createIndex('artifacts_schema_type_idx')
-    .on('artifacts')
+    .createIndex('jsonDocs_schema_type_idx')
+    .on('jsonDocs')
     .column('schema_type')
     .execute()
 
   await db.schema
-    .createIndex('artifacts_origin_type_idx')
-    .on('artifacts')
+    .createIndex('jsonDocs_origin_type_idx')
+    .on('jsonDocs')
     .column('origin_type')
     .execute()
 
@@ -274,8 +274,8 @@ export async function up(db: Kysely<any>): Promise<void> {
   `.execute(db)
 
   await sql`
-    CREATE TRIGGER update_artifacts_updated_at 
-    BEFORE UPDATE ON artifacts
+    CREATE TRIGGER update_jsonDocs_updated_at 
+    BEFORE UPDATE ON jsonDocs
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
   `.execute(db)
 
@@ -303,7 +303,7 @@ export async function down(db: Kysely<any>): Promise<void> {
   await sql`DROP TRIGGER IF EXISTS update_projects_updated_at ON projects`.execute(db)
   await sql`DROP TRIGGER IF EXISTS update_users_updated_at ON users`.execute(db)
   await sql`DROP TRIGGER IF EXISTS update_transforms_updated_at ON transforms`.execute(db)
-  await sql`DROP TRIGGER IF EXISTS update_artifacts_updated_at ON artifacts`.execute(db)
+  await sql`DROP TRIGGER IF EXISTS update_jsonDocs_updated_at ON jsonDocs`.execute(db)
   await sql`DROP FUNCTION IF EXISTS update_updated_at_column()`.execute(db)
 
   // Drop tables in reverse dependency order
@@ -313,7 +313,7 @@ export async function down(db: Kysely<any>): Promise<void> {
   await db.schema.dropTable('transform_outputs').execute()
   await db.schema.dropTable('transform_inputs').execute()
   await db.schema.dropTable('transforms').execute()
-  await db.schema.dropTable('artifacts').execute()
+  await db.schema.dropTable('jsonDocs').execute()
   await db.schema.dropTable('user_sessions').execute()
   await db.schema.dropTable('auth_providers').execute()
   await db.schema.dropTable('projects_users').execute()

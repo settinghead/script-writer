@@ -1,13 +1,13 @@
-import { TypedArtifact } from "@/common/types";
+import { TypedJsonDoc } from "@/common/types";
 
 
 class ApiService {
     private baseUrl = '/api';
 
 
-    // Artifacts - general
-    async createArtifact(type: string, data: any): Promise<any> {
-        const response = await fetch(`${this.baseUrl}/artifacts`, {
+    // JsonDocs - general
+    async createJsonDoc(type: string, data: any): Promise<any> {
+        const response = await fetch(`${this.baseUrl}/jsonDocs`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -15,21 +15,21 @@ class ApiService {
             body: JSON.stringify({ type, data })
         });
         if (!response.ok) {
-            throw new Error(`Failed to create artifact: ${response.status}`);
+            throw new Error(`Failed to create jsonDoc: ${response.status}`);
         }
         return response.json();
     }
 
-    async createHumanTransform(inputArtifacts: any[], transformType: string, outputArtifacts: any[], metadata?: any): Promise<any> {
+    async createHumanTransform(inputJsonDocs: any[], transformType: string, outputJsonDocs: any[], metadata?: any): Promise<any> {
         const response = await fetch(`${this.baseUrl}/transforms/human`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                input_artifacts: inputArtifacts,
+                input_jsonDocs: inputJsonDocs,
                 transform_type: transformType,
-                output_artifacts: outputArtifacts,
+                output_jsonDocs: outputJsonDocs,
                 metadata
             })
         });
@@ -87,13 +87,13 @@ class ApiService {
         return response.json();
     }
 
-    async updateArtifact(request: {
-        artifactId: string;
+    async updateJsonDoc(request: {
+        jsonDocId: string;
         data?: any;
         text?: string;
         metadata?: any;
     }): Promise<any> {
-        const response = await fetch(`${this.baseUrl}/artifacts/${request.artifactId}`, {
+        const response = await fetch(`${this.baseUrl}/jsonDocs/${request.jsonDocId}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json'
@@ -106,17 +106,17 @@ class ApiService {
             })
         });
         if (!response.ok) {
-            throw new Error(`Failed to update artifact: ${response.status}`);
+            throw new Error(`Failed to update jsonDoc: ${response.status}`);
         }
         return response.json();
     }
 
-    async getArtifact(artifactId: string): Promise<any> {
-        const response = await fetch(`${this.baseUrl}/artifacts/${artifactId}`, {
+    async getJsonDoc(jsonDocId: string): Promise<any> {
+        const response = await fetch(`${this.baseUrl}/jsonDocs/${jsonDocId}`, {
             credentials: 'include'
         });
         if (!response.ok) {
-            throw new Error(`Failed to fetch artifact: ${response.status}`);
+            throw new Error(`Failed to fetch jsonDoc: ${response.status}`);
         }
         return response.json();
     }
@@ -131,8 +131,8 @@ class ApiService {
         return response.json();
     }
 
-    async getHumanTransform(artifactId: string, path?: string): Promise<any> {
-        const url = new URL(`${this.baseUrl}/artifacts/${artifactId}/human-transform`, window.location.origin);
+    async getHumanTransform(jsonDocId: string, path?: string): Promise<any> {
+        const url = new URL(`${this.baseUrl}/jsonDocs/${jsonDocId}/human-transform`, window.location.origin);
         if (path) {
             url.searchParams.set('path', path);
         }
@@ -155,7 +155,7 @@ class ApiService {
     // ============================================================================
 
     async createBrainstormInput(projectId: string): Promise<any> {
-        const response = await fetch(`${this.baseUrl}/artifacts`, {
+        const response = await fetch(`${this.baseUrl}/jsonDocs`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -163,7 +163,7 @@ class ApiService {
             },
             body: JSON.stringify({
                 projectId,
-                schemaType: 'brainstorm_input_params' as TypedArtifact['schema_type'],
+                schemaType: 'brainstorm_input_params' as TypedJsonDoc['schema_type'],
                 data: {
                     initialInput: true // Explicitly mark as initial input to bypass validation
                 }
@@ -178,7 +178,7 @@ class ApiService {
     }
 
     async createManualBrainstormIdea(projectId: string): Promise<any> {
-        const response = await fetch(`${this.baseUrl}/artifacts`, {
+        const response = await fetch(`${this.baseUrl}/jsonDocs`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -186,7 +186,7 @@ class ApiService {
             },
             body: JSON.stringify({
                 projectId,
-                schemaType: 'brainstorm_idea' as TypedArtifact['schema_type'],
+                schemaType: 'brainstorm_idea' as TypedJsonDoc['schema_type'],
                 data: {
                     title: '新创意',
                     body: ''
@@ -201,8 +201,8 @@ class ApiService {
         return response.json();
     }
 
-    async deleteBrainstormInput(artifactId: string): Promise<void> {
-        const response = await fetch(`${this.baseUrl}/artifacts/${artifactId}`, {
+    async deleteBrainstormInput(jsonDocId: string): Promise<void> {
+        const response = await fetch(`${this.baseUrl}/jsonDocs/${jsonDocId}`, {
             method: 'DELETE',
             headers: {
                 'Authorization': 'Bearer debug-auth-token-script-writer-dev'
@@ -251,31 +251,31 @@ class ApiService {
         return response.json();
     }
 
-    async generateOutlineFromIdea(projectId: string, ideaArtifactId: string, title: string, requirements: string = ''): Promise<any> {
-        const content = `请基于创意生成剧本框架。源创意ID: ${ideaArtifactId}，标题: ${title}，要求: ${requirements || '无特殊要求'}`;
+    async generateOutlineFromIdea(projectId: string, ideaJsonDocId: string, title: string, requirements: string = ''): Promise<any> {
+        const content = `请基于创意生成剧本框架。源创意ID: ${ideaJsonDocId}，标题: ${title}，要求: ${requirements || '无特殊要求'}`;
 
         return this.sendChatMessage(projectId, content, {
-            sourceArtifactId: ideaArtifactId,
+            sourceJsonDocId: ideaJsonDocId,
             action: 'outline_generation',
             title,
             requirements
         });
     }
 
-    async generateChroniclesFromOutline(projectId: string, outlineArtifactId: string): Promise<any> {
-        const content = `请基于剧本框架生成时间顺序大纲。源剧本框架ID: ${outlineArtifactId}`;
+    async generateChroniclesFromOutline(projectId: string, outlineJsonDocId: string): Promise<any> {
+        const content = `请基于剧本框架生成时间顺序大纲。源剧本框架ID: ${outlineJsonDocId}`;
 
         return this.sendChatMessage(projectId, content, {
-            sourceArtifactId: outlineArtifactId,
+            sourceJsonDocId: outlineJsonDocId,
             action: 'chronicles_generation'
         });
     }
 
-    async generateEpisodesFromChronicles(projectId: string, chroniclesArtifactId: string): Promise<any> {
-        const content = `请基于时间顺序大纲生成剧本。源时间顺序大纲ID: ${chroniclesArtifactId}`;
+    async generateEpisodesFromChronicles(projectId: string, chroniclesJsonDocId: string): Promise<any> {
+        const content = `请基于时间顺序大纲生成剧本。源时间顺序大纲ID: ${chroniclesJsonDocId}`;
 
         return this.sendChatMessage(projectId, content, {
-            sourceArtifactId: chroniclesArtifactId,
+            sourceJsonDocId: chroniclesJsonDocId,
             action: 'episode_generation'
         });
     }

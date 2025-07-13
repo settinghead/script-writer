@@ -58,7 +58,7 @@ if (firstByte > 127) {
 
 ### 2. Improved Error Handling in Sync
 
-Updated the `syncYJSToArtifact` function to be more resilient:
+Updated the `syncYJSToJsonDoc` function to be more resilient:
 
 ```typescript
 // OLD: Stop processing on any error
@@ -77,8 +77,8 @@ catch (error) {
 ### 3. Data Cleanup
 
 Cleaned up corrupted YJS data that was created during debugging:
-- Removed corrupted document states from `artifact_yjs_documents`
-- Removed corrupted awareness states from `artifact_yjs_awareness`
+- Removed corrupted document states from `jsonDoc_yjs_documents`
+- Removed corrupted awareness states from `jsonDoc_yjs_awareness`
 
 ## Key Insights
 

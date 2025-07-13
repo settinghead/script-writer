@@ -3,7 +3,7 @@
  * Please do not edit it manually.
  */
 
-import { TypedArtifact } from "@/common/types";
+import { TypedJsonDoc } from "@/common/types";
 import type { ColumnType } from "kysely";
 
 export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
@@ -26,21 +26,21 @@ export type Numeric = ColumnType<string, number | string, number | string>;
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
-export interface Artifacts {
+export interface JsonDocs {
   created_at: Generated<Timestamp>;
   data: string;
   id: string;
   metadata: string | null;
   origin_type: string;
   project_id: string;
-  schema_type: TypedArtifact['schema_type'];
-  schema_version: TypedArtifact['schema_version'];
+  schema_type: TypedJsonDoc['schema_type'];
+  schema_version: TypedJsonDoc['schema_version'];
   streaming_status: Generated<string | null>;
   updated_at: Generated<Timestamp>;
 }
 
-export interface ArtifactYjsAwareness {
-  artifact_id: string;
+export interface JsonDocYjsAwareness {
+  jsonDoc_id: string;
   client_id: string;
   created_at: Generated<Timestamp | null>;
   project_id: Generated<string>;
@@ -49,8 +49,8 @@ export interface ArtifactYjsAwareness {
   updated_at: Generated<Timestamp | null>;
 }
 
-export interface ArtifactYjsDocuments {
-  artifact_id: string;
+export interface JsonDocYjsDocuments {
+  jsonDoc_id: string;
   created_at: Generated<Timestamp | null>;
   document_state: Buffer;
   id: Generated<number>;
@@ -97,10 +97,10 @@ export interface HumanTransforms {
   action_type: string;
   change_description: string | null;
   derivation_path: Generated<string | null>;
-  derived_artifact_id: string | null;
+  derived_jsonDoc_id: string | null;
   interface_context: string | null;
   project_id: string;
-  source_artifact_id: string | null;
+  source_jsonDoc_id: string | null;
   transform_id: string;
   transform_name: string | null;
 }
@@ -141,8 +141,8 @@ export interface ProjectsUsers {
 }
 
 export interface TransformInputs {
-  artifact_id: string;
-  artifact_path: Generated<string>;
+  jsonDoc_id: string;
+  jsonDoc_path: Generated<string>;
   id: Generated<number>;
   input_role: string | null;
   project_id: string;
@@ -150,7 +150,7 @@ export interface TransformInputs {
 }
 
 export interface TransformOutputs {
-  artifact_id: string;
+  jsonDoc_id: string;
   id: Generated<number>;
   output_role: string | null;
   project_id: string;
@@ -189,9 +189,9 @@ export interface UserSessions {
 }
 
 export interface DB {
-  artifact_yjs_awareness: ArtifactYjsAwareness;
-  artifact_yjs_documents: ArtifactYjsDocuments;
-  artifacts: Artifacts;
+  jsonDoc_yjs_awareness: JsonDocYjsAwareness;
+  jsonDoc_yjs_documents: JsonDocYjsDocuments;
+  jsonDocs: JsonDocs;
   auth_providers: AuthProviders;
   chat_messages_display: ChatMessagesDisplay;
   chat_messages_raw: ChatMessagesRaw;

@@ -8,6 +8,6 @@ export interface LLMTemplate {
 }
 
 export interface TemplateContext {
-    artifacts: Record<string, any>;    // Artifact data by role/key
+    jsonDocs: Record<string, any>;    // JsonDoc data by role/key
     params: Record<string, any>;       // Additional parameters
 } 

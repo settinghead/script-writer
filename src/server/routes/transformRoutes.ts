@@ -1,16 +1,16 @@
 import express from 'express';
 import { AuthMiddleware } from '../middleware/auth';
-import { ArtifactRepository } from '../transform-artifact-framework/ArtifactRepository';
-import { TransformRepository } from '../transform-artifact-framework/TransformRepository';
+import { JsonDocRepository } from '../transform-jsonDoc-framework/JsonDocRepository';
+import { TransformRepository } from '../transform-jsonDoc-framework/TransformRepository';
 
 export function createTransformRoutes(
     authMiddleware: AuthMiddleware,
-    artifactRepo: ArtifactRepository,
+    jsonDocRepo: JsonDocRepository,
     transformRepo: TransformRepository
 ) {
     const router = express.Router();
 
-    // Delete transform and its associated artifacts/records
+    // Delete transform and its associated jsonDocs/records
     router.delete('/:id', authMiddleware.authenticate, async (req: any, res: any) => {
         try {
             const { id: transformId } = req.params;
@@ -29,22 +29,22 @@ export function createTransformRoutes(
             }
 
             // Verify user has access to this transform's project
-            const hasAccess = await artifactRepo.userHasProjectAccess(user.id, transform.project_id);
+            const hasAccess = await jsonDocRepo.userHasProjectAccess(user.id, transform.project_id);
             if (!hasAccess) {
                 res.status(403).json({ error: 'Access denied' });
                 return;
             }
 
-            // Get all output artifacts for this transform
-            const outputArtifacts = await transformRepo.getTransformOutputs(transformId);
+            // Get all output jsonDocs for this transform
+            const outputJsonDocs = await transformRepo.getTransformOutputs(transformId);
 
-            // Validate that all output artifacts are leaf artifacts (no other transforms depend on them)
-            for (const output of outputArtifacts) {
-                const dependentTransforms = await transformRepo.getTransformInputsByArtifact(output.artifact_id);
+            // Validate that all output jsonDocs are leaf jsonDocs (no other transforms depend on them)
+            for (const output of outputJsonDocs) {
+                const dependentTransforms = await transformRepo.getTransformInputsByJsonDoc(output.jsonDoc_id);
                 if (dependentTransforms.length > 0) {
                     res.status(400).json({
-                        error: 'Cannot delete transform with non-leaf artifacts',
-                        details: `Artifact ${output.artifact_id} is used by other transforms`,
+                        error: 'Cannot delete transform with non-leaf jsonDocs',
+                        details: `JsonDoc ${output.jsonDoc_id} is used by other transforms`,
                         dependentTransforms: dependentTransforms.map(t => t.transform_id)
                     });
                     return;
@@ -52,12 +52,12 @@ export function createTransformRoutes(
             }
 
             // Start deletion process - ORDER MATTERS due to foreign key constraints
-            const deletedArtifactIds: string[] = [];
+            const deletedJsonDocIds: string[] = [];
 
-            // 1. Delete transform inputs (references artifacts and transform)
+            // 1. Delete transform inputs (references jsonDocs and transform)
             await transformRepo.deleteTransformInputs(transformId);
 
-            // 2. Delete transform outputs (references artifacts and transform)
+            // 2. Delete transform outputs (references jsonDocs and transform)
             await transformRepo.deleteTransformOutputs(transformId);
 
             // 3. Delete human transform record if it exists (references transform)
@@ -66,10 +66,10 @@ export function createTransformRoutes(
             // 4. Delete LLM transform record if it exists (references transform)
             await transformRepo.deleteLLMTransformByTransformId(transformId);
 
-            // 5. Now safe to delete output artifacts (no more foreign key references)
-            for (const output of outputArtifacts) {
-                await artifactRepo.deleteArtifact(output.artifact_id);
-                deletedArtifactIds.push(output.artifact_id);
+            // 5. Now safe to delete output jsonDocs (no more foreign key references)
+            for (const output of outputJsonDocs) {
+                await jsonDocRepo.deleteJsonDoc(output.jsonDoc_id);
+                deletedJsonDocIds.push(output.jsonDoc_id);
             }
 
             // 6. Finally, delete the transform itself
@@ -78,8 +78,8 @@ export function createTransformRoutes(
             res.json({
                 success: true,
                 deletedTransformId: transformId,
-                deletedArtifactIds,
-                message: `Transform ${transformId} and ${deletedArtifactIds.length} associated artifacts deleted successfully`
+                deletedJsonDocIds,
+                message: `Transform ${transformId} and ${deletedJsonDocIds.length} associated jsonDocs deleted successfully`
             });
 
         } catch (error: any) {

@@ -1,21 +1,21 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { Card, Button, Typography, Tag, Space, Collapse } from 'antd';
 import { BulbOutlined, RightOutlined } from '@ant-design/icons';
-import { YJSArtifactProvider, useYJSField } from '../transform-artifact-framework/contexts/YJSArtifactContext';
-import { YJSTextAreaField, YJSNumberField } from '../transform-artifact-framework/components/YJSField';
+import { YJSJsonDocProvider, useYJSField } from '../transform-jsonDoc-framework/contexts/YJSJsonDocContext';
+import { YJSTextAreaField, YJSNumberField } from '../transform-jsonDoc-framework/components/YJSField';
 import GenreSelectionPopup from './GenreSelectionPopup';
 import PlatformSelection from './PlatformSelection';
-import { TypedArtifact } from '@/common/types';
+import { TypedJsonDoc } from '@/common/types';
 
 const { Text, Title } = Typography;
 const { Panel } = Collapse;
 
 interface BrainstormInputEditorProps {
-    artifact: {
+    jsonDoc: {
         id: string;
-        schema_type: TypedArtifact['schema_type'];
-        schema_version: TypedArtifact['schema_version'];
-        origin_type: TypedArtifact['origin_type'];
+        schema_type: TypedJsonDoc['schema_type'];
+        schema_version: TypedJsonDoc['schema_version'];
+        origin_type: TypedJsonDoc['origin_type'];
         data: string;
         created_at: string;
     } | null;
@@ -271,11 +271,11 @@ const BrainstormInputForm: React.FC<{ minimized?: boolean }> = ({ minimized = fa
 
 // Main component
 const BrainstormInputEditor: React.FC<BrainstormInputEditorProps> = ({
-    artifact,
+    jsonDoc,
     isEditable = true,
     minimized = false
 }) => {
-    if (!artifact) {
+    if (!jsonDoc) {
         return (
             <Card style={{ backgroundColor: '#1a1a1a', border: '1px solid #434343' }}>
                 <Text type="secondary">未找到头脑风暴输入数据</Text>
@@ -284,9 +284,9 @@ const BrainstormInputEditor: React.FC<BrainstormInputEditorProps> = ({
     }
 
     return (
-        <YJSArtifactProvider artifactId={artifact.id}>
+        <YJSJsonDocProvider jsonDocId={jsonDoc.id}>
             <BrainstormInputForm minimized={minimized} />
-        </YJSArtifactProvider>
+        </YJSJsonDocProvider>
     );
 };
 

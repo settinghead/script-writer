@@ -9,12 +9,12 @@ async function checkYJSSchema() {
   try {
     console.log('🔍 Checking YJS table schema in database...\n');
 
-    // Check artifact_yjs_documents table structure
-    console.log('📋 artifact_yjs_documents table structure:');
+    // Check jsonDoc_yjs_documents table structure
+    console.log('📋 jsonDoc_yjs_documents table structure:');
     const docsColumns = await sql`
       SELECT column_name, data_type, is_nullable 
       FROM information_schema.columns 
-      WHERE table_name = 'artifact_yjs_documents' 
+      WHERE table_name = 'jsonDoc_yjs_documents' 
       ORDER BY ordinal_position
     `.execute(db);
 
@@ -22,12 +22,12 @@ async function checkYJSSchema() {
       console.log(`  - ${row.column_name}: ${row.data_type} (nullable: ${row.is_nullable})`);
     });
 
-    // Check artifact_yjs_awareness table structure
-    console.log('\n📋 artifact_yjs_awareness table structure:');
+    // Check jsonDoc_yjs_awareness table structure
+    console.log('\n📋 jsonDoc_yjs_awareness table structure:');
     const awarenessColumns = await sql`
       SELECT column_name, data_type, is_nullable 
       FROM information_schema.columns 
-      WHERE table_name = 'artifact_yjs_awareness' 
+      WHERE table_name = 'jsonDoc_yjs_awareness' 
       ORDER BY ordinal_position
     `.execute(db);
 
@@ -46,7 +46,7 @@ async function checkYJSSchema() {
       FROM information_schema.table_constraints tc
       JOIN information_schema.key_column_usage kcu 
         ON tc.constraint_name = kcu.constraint_name
-      WHERE tc.table_name IN ('artifact_yjs_documents', 'artifact_yjs_awareness')
+      WHERE tc.table_name IN ('jsonDoc_yjs_documents', 'jsonDoc_yjs_awareness')
       ORDER BY tc.table_name, tc.constraint_type
     `.execute(db);
 

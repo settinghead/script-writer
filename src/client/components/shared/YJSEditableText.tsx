@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Input, Typography } from 'antd';
-import { useYJSArtifact } from '../../transform-artifact-framework/hooks/useYJSArtifact';
+import { useYJSJsonDoc } from '../../transform-jsonDoc-framework/hooks/useYJSJsonDoc';
 
 const { Text } = Typography;
 
 export interface YJSEditableTextProps {
-    artifactId: string;
+    jsonDocId: string;
     field: string;
     value?: string;
     placeholder?: string;
@@ -18,7 +18,7 @@ export interface YJSEditableTextProps {
 }
 
 export const YJSEditableText: React.FC<YJSEditableTextProps> = ({
-    artifactId,
+    jsonDocId,
     field,
     value: externalValue,
     placeholder = '',
@@ -41,7 +41,7 @@ export const YJSEditableText: React.FC<YJSEditableTextProps> = ({
         isCollaborative,
         isLoading,
         error
-    } = useYJSArtifact(artifactId, {
+    } = useYJSJsonDoc(jsonDocId, {
         enableCollaboration
     });
 

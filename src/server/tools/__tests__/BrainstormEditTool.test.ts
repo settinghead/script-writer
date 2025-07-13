@@ -1,19 +1,19 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createBrainstormEditToolDefinition } from '../BrainstormTools';
-import { createMockArtifactRepository, createMockTransformRepository } from '../../../__tests__/mocks/databaseMocks';
+import { createMockJsonDocRepository, createMockTransformRepository } from '../../../__tests__/mocks/databaseMocks';
 
 describe('BrainstormEditTool (Unified Streaming Patch)', () => {
     let mockTransformRepo: any;
-    let mockArtifactRepo: any;
+    let mockJsonDocRepo: any;
     let brainstormEditTool: any;
 
     beforeEach(() => {
         mockTransformRepo = createMockTransformRepository();
-        mockArtifactRepo = createMockArtifactRepository();
+        mockJsonDocRepo = createMockJsonDocRepository();
 
         brainstormEditTool = createBrainstormEditToolDefinition(
             mockTransformRepo,
-            mockArtifactRepo,
+            mockJsonDocRepo,
             'test-project-1',
             'test-user-1',
             { enableCaching: false }
@@ -32,7 +32,7 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
 
         it('should accept valid input parameters', () => {
             const validInput = {
-                sourceArtifactId: 'test-artifact-id',
+                sourceJsonDocId: 'test-jsonDoc-id',
                 editRequirements: '增加悬疑元素',
                 agentInstructions: '保持原有风格',
                 ideaIndex: 0
@@ -44,7 +44,7 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
 
         it('should reject invalid input parameters', () => {
             const invalidInput = {
-                // Missing required sourceArtifactId
+                // Missing required sourceJsonDocId
                 editRequirements: '增加悬疑元素'
             };
 
@@ -54,66 +54,66 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
     });
 
     describe('Error Handling and Edge Cases', () => {
-        it('should handle missing source artifact errors', async () => {
+        it('should handle missing source jsonDoc errors', async () => {
             // Arrange
-            mockArtifactRepo.getArtifact.mockResolvedValue(null);
+            mockJsonDocRepo.getJsonDoc.mockResolvedValue(null);
 
             const input = {
-                sourceArtifactId: 'non-existent-artifact',
+                sourceJsonDocId: 'non-existent-jsonDoc',
                 editRequirements: '改进故事'
             };
 
             // Act & Assert
             await expect(brainstormEditTool.execute(input, { toolCallId: 'test-error' }))
-                .rejects.toThrow('Source artifact not found');
+                .rejects.toThrow('Source jsonDoc not found');
         });
 
         it('should handle access denied errors', async () => {
             // Arrange
-            mockArtifactRepo.getArtifact.mockResolvedValue({
-                id: 'restricted-artifact',
+            mockJsonDocRepo.getJsonDoc.mockResolvedValue({
+                id: 'restricted-jsonDoc',
                 schema_type: 'brainstorm_idea',
                 project_id: 'different-project', // Different project
                 data: { title: 'test', body: 'test' }
             });
 
             // Mock userHasProjectAccess to return false
-            mockArtifactRepo.userHasProjectAccess = vi.fn().mockResolvedValue(false);
+            mockJsonDocRepo.userHasProjectAccess = vi.fn().mockResolvedValue(false);
 
             const input = {
-                sourceArtifactId: 'restricted-artifact',
+                sourceJsonDocId: 'restricted-jsonDoc',
                 editRequirements: '改进故事'
             };
 
             // Act & Assert
             await expect(brainstormEditTool.execute(input, { toolCallId: 'test-access-error' }))
-                .rejects.toThrow('Access denied to source artifact');
+                .rejects.toThrow('Access denied to source jsonDoc');
         });
 
-        it('should handle unsupported artifact schema_type', async () => {
+        it('should handle unsupported jsonDoc schema_type', async () => {
             // Arrange
-            mockArtifactRepo.getArtifact.mockResolvedValue({
-                id: 'unsupported-artifact',
+            mockJsonDocRepo.getJsonDoc.mockResolvedValue({
+                id: 'unsupported-jsonDoc',
                 schema_type: 'unsupported_type',
                 project_id: 'test-project-1',
                 data: { some: 'data' }
             });
 
-            mockArtifactRepo.userHasProjectAccess = vi.fn().mockResolvedValue(true);
+            mockJsonDocRepo.userHasProjectAccess = vi.fn().mockResolvedValue(true);
 
             const input = {
-                sourceArtifactId: 'unsupported-artifact',
+                sourceJsonDocId: 'unsupported-jsonDoc',
                 editRequirements: '改进故事'
             };
 
             // Act & Assert
             await expect(brainstormEditTool.execute(input, { toolCallId: 'test-type-error' }))
-                .rejects.toThrow(/Unsupported source artifact/);
+                .rejects.toThrow(/Unsupported source jsonDoc/);
         });
 
         it('should handle invalid idea index for collections', async () => {
             // Arrange
-            mockArtifactRepo.getArtifact.mockResolvedValue({
+            mockJsonDocRepo.getJsonDoc.mockResolvedValue({
                 id: 'collection-invalid-index',
                 schema_type: 'brainstorm_collection',
                 project_id: 'test-project-1',
@@ -124,10 +124,10 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
                 }
             });
 
-            mockArtifactRepo.userHasProjectAccess = vi.fn().mockResolvedValue(true);
+            mockJsonDocRepo.userHasProjectAccess = vi.fn().mockResolvedValue(true);
 
             const input = {
-                sourceArtifactId: 'collection-invalid-index',
+                sourceJsonDocId: 'collection-invalid-index',
                 ideaIndex: 5, // Invalid index
                 editRequirements: '改进故事'
             };
@@ -138,11 +138,11 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
         });
     });
 
-    describe('Source Artifact Processing', () => {
-        it('should correctly extract data from brainstorm_idea artifacts', async () => {
+    describe('Source JsonDoc Processing', () => {
+        it('should correctly extract data from brainstorm_idea jsonDocs', async () => {
             // Arrange
-            const sourceArtifact = {
-                id: 'schema-artifact',
+            const sourceJsonDoc = {
+                id: 'schema-jsonDoc',
                 schema_type: 'brainstorm_idea',
                 project_id: 'test-project-1',
                 data: {
@@ -151,28 +151,28 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
                 }
             };
 
-            mockArtifactRepo.getArtifact.mockResolvedValue(sourceArtifact);
-            mockArtifactRepo.userHasProjectAccess = vi.fn().mockResolvedValue(true);
+            mockJsonDocRepo.getJsonDoc.mockResolvedValue(sourceJsonDoc);
+            mockJsonDocRepo.userHasProjectAccess = vi.fn().mockResolvedValue(true);
 
             // Mock the streaming transform executor to fail gracefully for testing
             const input = {
-                sourceArtifactId: 'schema-artifact',
+                sourceJsonDocId: 'schema-jsonDoc',
                 editRequirements: '测试处理'
             };
 
             try {
                 await brainstormEditTool.execute(input, { toolCallId: 'test-schema-extraction' });
             } catch (error) {
-                // We expect this to fail due to LLM mocking, but we can verify the artifact was accessed
-                expect(mockArtifactRepo.getArtifact).toHaveBeenCalledWith('schema-artifact');
-                expect(mockArtifactRepo.userHasProjectAccess).toHaveBeenCalledWith('test-user-1', 'test-project-1');
+                // We expect this to fail due to LLM mocking, but we can verify the jsonDoc was accessed
+                expect(mockJsonDocRepo.getJsonDoc).toHaveBeenCalledWith('schema-jsonDoc');
+                expect(mockJsonDocRepo.userHasProjectAccess).toHaveBeenCalledWith('test-user-1', 'test-project-1');
             }
         });
 
-        it('should correctly extract data from legacy brainstorm_idea artifacts', async () => {
+        it('should correctly extract data from legacy brainstorm_idea jsonDocs', async () => {
             // Arrange
-            const sourceArtifact = {
-                id: 'legacy-artifact',
+            const sourceJsonDoc = {
+                id: 'legacy-jsonDoc',
                 schema_type: 'brainstorm_idea',
                 project_id: 'test-project-1',
                 data: {
@@ -181,27 +181,27 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
                 }
             };
 
-            mockArtifactRepo.getArtifact.mockResolvedValue(sourceArtifact);
-            mockArtifactRepo.userHasProjectAccess = vi.fn().mockResolvedValue(true);
+            mockJsonDocRepo.getJsonDoc.mockResolvedValue(sourceJsonDoc);
+            mockJsonDocRepo.userHasProjectAccess = vi.fn().mockResolvedValue(true);
 
             const input = {
-                sourceArtifactId: 'legacy-artifact',
+                sourceJsonDocId: 'legacy-jsonDoc',
                 editRequirements: '测试传统格式处理'
             };
 
             try {
                 await brainstormEditTool.execute(input, { toolCallId: 'test-legacy-extraction' });
             } catch (error) {
-                // We expect this to fail due to LLM mocking, but we can verify the artifact was accessed
-                expect(mockArtifactRepo.getArtifact).toHaveBeenCalledWith('legacy-artifact');
-                expect(mockArtifactRepo.userHasProjectAccess).toHaveBeenCalledWith('test-user-1', 'test-project-1');
+                // We expect this to fail due to LLM mocking, but we can verify the jsonDoc was accessed
+                expect(mockJsonDocRepo.getJsonDoc).toHaveBeenCalledWith('legacy-jsonDoc');
+                expect(mockJsonDocRepo.userHasProjectAccess).toHaveBeenCalledWith('test-user-1', 'test-project-1');
             }
         });
 
-        it('should correctly extract data from collection artifacts with valid index', async () => {
+        it('should correctly extract data from collection jsonDocs with valid index', async () => {
             // Arrange
-            const sourceArtifact = {
-                id: 'collection-artifact',
+            const sourceJsonDoc = {
+                id: 'collection-jsonDoc',
                 schema_type: 'brainstorm_collection',
                 project_id: 'test-project-1',
                 data: {
@@ -212,11 +212,11 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
                 }
             };
 
-            mockArtifactRepo.getArtifact.mockResolvedValue(sourceArtifact);
-            mockArtifactRepo.userHasProjectAccess = vi.fn().mockResolvedValue(true);
+            mockJsonDocRepo.getJsonDoc.mockResolvedValue(sourceJsonDoc);
+            mockJsonDocRepo.userHasProjectAccess = vi.fn().mockResolvedValue(true);
 
             const input = {
-                sourceArtifactId: 'collection-artifact',
+                sourceJsonDocId: 'collection-jsonDoc',
                 ideaIndex: 1, // Valid index
                 editRequirements: '测试集合处理'
             };
@@ -224,9 +224,9 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
             try {
                 await brainstormEditTool.execute(input, { toolCallId: 'test-collection-extraction' });
             } catch (error) {
-                // We expect this to fail due to LLM mocking, but we can verify the artifact was accessed
-                expect(mockArtifactRepo.getArtifact).toHaveBeenCalledWith('collection-artifact');
-                expect(mockArtifactRepo.userHasProjectAccess).toHaveBeenCalledWith('test-user-1', 'test-project-1');
+                // We expect this to fail due to LLM mocking, but we can verify the jsonDoc was accessed
+                expect(mockJsonDocRepo.getJsonDoc).toHaveBeenCalledWith('collection-jsonDoc');
+                expect(mockJsonDocRepo.userHasProjectAccess).toHaveBeenCalledWith('test-user-1', 'test-project-1');
             }
         });
     });
@@ -248,7 +248,7 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
 
             // Test that all required fields are present
             const validInput = {
-                sourceArtifactId: 'test-id',
+                sourceJsonDocId: 'test-id',
                 editRequirements: 'test requirements'
             };
 
@@ -256,7 +256,7 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
 
             // Test that optional fields are accepted
             const validInputWithOptionals = {
-                sourceArtifactId: 'test-id',
+                sourceJsonDocId: 'test-id',
                 editRequirements: 'test requirements',
                 agentInstructions: 'test instructions',
                 ideaIndex: 0
@@ -273,7 +273,7 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
 
             // Test with expected output structure
             const validOutput = {
-                outputArtifactId: 'output-id',
+                outputJsonDocId: 'output-id',
                 finishReason: 'stop',
                 originalIdea: { title: 'original', body: 'original content' },
                 editedIdea: { title: 'edited', body: 'edited content' }
@@ -284,18 +284,18 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
     });
 
     describe('Repository Integration', () => {
-        it('should properly integrate with artifact repository', async () => {
+        it('should properly integrate with jsonDoc repository', async () => {
             // Arrange
-            mockArtifactRepo.getArtifact.mockResolvedValue({
-                id: 'test-artifact',
+            mockJsonDocRepo.getJsonDoc.mockResolvedValue({
+                id: 'test-jsonDoc',
                 schema_type: 'brainstorm_idea',
                 project_id: 'test-project-1',
                 data: { title: 'test', body: 'test' }
             });
-            mockArtifactRepo.userHasProjectAccess = vi.fn().mockResolvedValue(true);
+            mockJsonDocRepo.userHasProjectAccess = vi.fn().mockResolvedValue(true);
 
             const input = {
-                sourceArtifactId: 'test-artifact',
+                sourceJsonDocId: 'test-jsonDoc',
                 editRequirements: '测试仓库集成'
             };
 
@@ -303,28 +303,28 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
                 await brainstormEditTool.execute(input, { toolCallId: 'test-repo-integration' });
             } catch (error) {
                 // Verify repository methods were called correctly
-                expect(mockArtifactRepo.getArtifact).toHaveBeenCalledWith('test-artifact');
-                expect(mockArtifactRepo.userHasProjectAccess).toHaveBeenCalledWith('test-user-1', 'test-project-1');
+                expect(mockJsonDocRepo.getJsonDoc).toHaveBeenCalledWith('test-jsonDoc');
+                expect(mockJsonDocRepo.userHasProjectAccess).toHaveBeenCalledWith('test-user-1', 'test-project-1');
             }
         });
 
         it('should handle repository access control correctly', async () => {
             // Test that access control is properly enforced
-            mockArtifactRepo.getArtifact.mockResolvedValue({
-                id: 'protected-artifact',
+            mockJsonDocRepo.getJsonDoc.mockResolvedValue({
+                id: 'protected-jsonDoc',
                 schema_type: 'brainstorm_idea',
                 project_id: 'other-project',
                 data: { title: 'protected', body: 'protected content' }
             });
-            mockArtifactRepo.userHasProjectAccess = vi.fn().mockResolvedValue(false);
+            mockJsonDocRepo.userHasProjectAccess = vi.fn().mockResolvedValue(false);
 
             const input = {
-                sourceArtifactId: 'protected-artifact',
+                sourceJsonDocId: 'protected-jsonDoc',
                 editRequirements: '测试访问控制'
             };
 
             await expect(brainstormEditTool.execute(input, { toolCallId: 'test-access-control' }))
-                .rejects.toThrow('Access denied to source artifact');
+                .rejects.toThrow('Access denied to source jsonDoc');
         });
     });
 }); 

@@ -7,7 +7,7 @@ import { CharacterSchema } from './streaming';
 
 // Outline Settings Schemas
 export const OutlineSettingsInputSchema = z.object({
-    sourceArtifactId: z.string(),
+    sourceJsonDocId: z.string(),
     title: z.string().describe('故事标题'),
     requirements: z.string().describe('故事要求'),
 });
@@ -59,7 +59,7 @@ export const ChroniclesStageSchema = z.object({
 
 // Chronicles Schemas
 export const ChroniclesInputSchema = z.object({
-    sourceArtifactId: z.string(),
+    sourceJsonDocId: z.string(),
     requirements: z.string().optional()
 });
 

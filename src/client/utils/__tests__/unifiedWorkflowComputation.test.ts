@@ -3,30 +3,30 @@ import {
     computeWorkflowParameters,
     computeUnifiedWorkflowState
 } from '../actionComputation';
-import { ProjectDataContextType, TypedArtifact } from '../../../common/types';
-import { LineageGraph } from '../../../common/transform-artifact-framework/lineageResolution';
+import { ProjectDataContextType, TypedJsonDoc } from '../../../common/types';
+import { LineageGraph } from '../../../common/transform-jsonDoc-framework/lineageResolution';
 
 // Mock the lineage-based computation
 vi.mock('../lineageBasedActionComputation', () => ({
-    computeActionsFromLineage: vi.fn((lineageGraph, artifacts: TypedArtifact[]) => {
-        // Determine current stage based on artifacts and lineage graph
+    computeActionsFromLineage: vi.fn((lineageGraph, jsonDocs: TypedJsonDoc[]) => {
+        // Determine current stage based on jsonDocs and lineage graph
         let currentStage = 'initial';
 
-        if (artifacts && Array.isArray(artifacts)) {
-            const hasBrainstormInput = artifacts.some(a =>
+        if (jsonDocs && Array.isArray(jsonDocs)) {
+            const hasBrainstormInput = jsonDocs.some(a =>
                 a.schema_type === 'brainstorm_input_params'
             );
-            const hasBrainstormIdeas = artifacts.some(a =>
+            const hasBrainstormIdeas = jsonDocs.some(a =>
                 a.schema_type === 'brainstorm_idea'
             );
-            const hasOutlineSettings = artifacts.some(a =>
+            const hasOutlineSettings = jsonDocs.some(a =>
                 a.schema_type === 'outline_settings'
             );
-            const hasChronicles = artifacts.some(a =>
+            const hasChronicles = jsonDocs.some(a =>
                 a.schema_type === 'chronicles'
             );
 
-            // Determine stage based on most advanced artifact type present
+            // Determine stage based on most advanced jsonDoc type present
             if (hasChronicles) {
                 currentStage = 'chronicles_generation';
             } else if (hasOutlineSettings) {
@@ -34,7 +34,7 @@ vi.mock('../lineageBasedActionComputation', () => ({
             } else if (hasBrainstormIdeas) {
                 // Check if we have a leaf brainstorm idea (chosen idea) via lineage graph
                 if (lineageGraph && lineageGraph.nodes) {
-                    const leafBrainstormIdeas = artifacts.filter(a => {
+                    const leafBrainstormIdeas = jsonDocs.filter(a => {
                         if (a.schema_type === 'brainstorm_idea') {
                             const node = lineageGraph.nodes.get(a.id);
                             return node && node.isLeaf;
@@ -126,7 +126,7 @@ vi.mock('../lineageBasedActionComputation', () => ({
 
 // Mock project data helper
 const createMockProjectData = (overrides: Partial<ProjectDataContextType> = {}): ProjectDataContextType => ({
-    artifacts: [],
+    jsonDocs: [],
     transforms: [],
     humanTransforms: [],
     transformInputs: [],
@@ -143,7 +143,7 @@ const createMockProjectData = (overrides: Partial<ProjectDataContextType> = {}):
         rootNodes: new Set()
     },
     getIdeaCollections: () => [],
-    getArtifactAtPath: () => null,
+    getJsonDocAtPath: () => null,
     getLatestVersionForPath: () => null,
     getLineageGraph: () => ({
         nodes: new Map(),
@@ -151,20 +151,20 @@ const createMockProjectData = (overrides: Partial<ProjectDataContextType> = {}):
         paths: new Map(),
         rootNodes: new Set()
     }),
-    getArtifactById: () => undefined,
+    getJsonDocById: () => undefined,
     getTransformById: () => undefined,
-    getHumanTransformsForArtifact: () => [],
+    getHumanTransformsForJsonDoc: () => [],
     getTransformInputsForTransform: () => [],
     getTransformOutputsForTransform: () => [],
     createTransform: {} as any,
-    updateArtifact: {} as any,
+    updateJsonDoc: {} as any,
     createHumanTransform: {} as any,
     localUpdates: new Map(),
     addLocalUpdate: () => { },
     removeLocalUpdate: () => { },
     hasLocalUpdate: () => false,
     mutationStates: {
-        artifacts: new Map(),
+        jsonDocs: new Map(),
         transforms: new Map(),
         humanTransforms: new Map()
     },
@@ -177,7 +177,7 @@ describe('Unified Workflow Computation', () => {
     describe('computeWorkflowParameters', () => {
         it('should compute parameters for active project', () => {
             const mockProjectData = createMockProjectData({
-                artifacts: [{
+                jsonDocs: [{
                     id: 'brainstorm-input-1',
                     schema_type: 'brainstorm_input_params',
                     data: '{"platform": "douyin", "requirements": "test"}',
@@ -190,19 +190,19 @@ describe('Unified Workflow Computation', () => {
                     project_id: 'test-project',
                     created_at: '2024-01-01T00:00:00Z'
                 }] as any,
-                // Provide a proper lineage graph with the brainstorm input artifact
+                // Provide a proper lineage graph with the brainstorm input jsonDoc
                 lineageGraph: {
                     nodes: new Map([
                         ['brainstorm-input-1', {
-                            type: 'artifact' as const,
-                            artifactId: 'brainstorm-input-1',
+                            type: 'jsonDoc' as const,
+                            jsonDocId: 'brainstorm-input-1',
                             isLeaf: true,
                             depth: 0,
-                            artifactType: 'brainstorm_input_params',
+                            jsonDocType: 'brainstorm_input_params',
                             sourceTransform: 'none',
                             schemaType: 'brainstorm_input_params',
                             originType: 'user_input',
-                            artifact: { id: 'brainstorm-input-1' } as any,
+                            jsonDoc: { id: 'brainstorm-input-1' } as any,
                             createdAt: '2024-01-01T00:00:00Z'
                         }]
                     ]),
@@ -224,7 +224,7 @@ describe('Unified Workflow Computation', () => {
     describe('computeUnifiedWorkflowState', () => {
         it('should compute complete unified state', () => {
             const mockProjectData = createMockProjectData({
-                artifacts: [
+                jsonDocs: [
                     {
                         id: 'brainstorm-input-1',
                         schema_type: 'brainstorm_input_params',
@@ -242,27 +242,27 @@ describe('Unified Workflow Computation', () => {
                 lineageGraph: {
                     nodes: new Map([
                         ['brainstorm-input-1', {
-                            type: 'artifact' as const,
-                            artifactId: 'brainstorm-input-1',
+                            type: 'jsonDoc' as const,
+                            jsonDocId: 'brainstorm-input-1',
                             isLeaf: false,
                             depth: 0,
-                            artifactType: 'brainstorm_input_params',
+                            jsonDocType: 'brainstorm_input_params',
                             sourceTransform: 'none',
                             schemaType: 'brainstorm_input_params',
                             originType: 'user_input',
-                            artifact: { id: 'brainstorm-input-1' } as any,
+                            jsonDoc: { id: 'brainstorm-input-1' } as any,
                             createdAt: '2024-01-01T00:00:00Z'
                         }],
                         ['brainstorm-ideas-1', {
-                            type: 'artifact' as const,
-                            artifactId: 'brainstorm-ideas-1',
+                            type: 'jsonDoc' as const,
+                            jsonDocId: 'brainstorm-ideas-1',
                             isLeaf: true,
                             depth: 1,
-                            artifactType: 'brainstorm_idea',
+                            jsonDocType: 'brainstorm_idea',
                             sourceTransform: 'none',
                             schemaType: 'brainstorm_idea',
                             originType: 'ai_generated',
-                            artifact: { id: 'brainstorm-ideas-1' } as any,
+                            jsonDoc: { id: 'brainstorm-ideas-1' } as any,
                             createdAt: '2024-01-01T00:00:00Z'
                         }]
                     ]),
@@ -283,7 +283,7 @@ describe('Unified Workflow Computation', () => {
 
         it('should handle different workflow stages', () => {
             const mockProjectData = createMockProjectData({
-                artifacts: [
+                jsonDocs: [
                     {
                         id: 'brainstorm-input-1',
                         schema_type: 'brainstorm_input_params',
@@ -300,27 +300,27 @@ describe('Unified Workflow Computation', () => {
                 lineageGraph: {
                     nodes: new Map([
                         ['brainstorm-input-1', {
-                            type: 'artifact' as const,
-                            artifactId: 'brainstorm-input-1',
+                            type: 'jsonDoc' as const,
+                            jsonDocId: 'brainstorm-input-1',
                             isLeaf: false,
                             depth: 0,
-                            artifactType: 'brainstorm_input_params',
+                            jsonDocType: 'brainstorm_input_params',
                             sourceTransform: 'none',
                             schemaType: 'brainstorm_input_params',
                             originType: 'user_input',
-                            artifact: { id: 'brainstorm-input-1' } as any,
+                            jsonDoc: { id: 'brainstorm-input-1' } as any,
                             createdAt: '2024-01-01T00:00:00Z'
                         }],
                         ['brainstorm-ideas-1', {
-                            type: 'artifact' as const,
-                            artifactId: 'brainstorm-ideas-1',
+                            type: 'jsonDoc' as const,
+                            jsonDocId: 'brainstorm-ideas-1',
                             isLeaf: true,
                             depth: 1,
-                            artifactType: 'brainstorm_idea',
+                            jsonDocType: 'brainstorm_idea',
                             sourceTransform: 'none',
                             schemaType: 'brainstorm_idea',
                             originType: 'ai_generated',
-                            artifact: { id: 'brainstorm-ideas-1' } as any,
+                            jsonDoc: { id: 'brainstorm-ideas-1' } as any,
                             createdAt: '2024-01-01T00:00:00Z'
                         }]
                     ]),

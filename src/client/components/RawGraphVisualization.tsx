@@ -6,7 +6,7 @@ import dagre from 'dagre';
 import { useProjectData } from '../contexts/ProjectDataContext';
 import { AppColors, ColorUtils } from '../../common/theme/colors';
 import 'reactflow/dist/style.css';
-import { ElectricArtifact } from '@/common/types';
+import { ElectricJsonDoc } from '@/common/types';
 
 const { Text } = Typography;
 
@@ -38,10 +38,10 @@ const deleteTransform = async (transformId: string) => {
     }
 };
 
-// Delete artifact function
-const deleteArtifact = async (artifactId: string) => {
+// Delete jsonDoc function
+const deleteJsonDoc = async (jsonDocId: string) => {
     try {
-        const response = await fetch(`/api/artifacts/${artifactId}`, {
+        const response = await fetch(`/api/jsonDocs/${jsonDocId}`, {
             method: 'DELETE',
             headers: {
                 'Authorization': `Bearer debug-auth-token-script-writer-dev`,
@@ -51,44 +51,44 @@ const deleteArtifact = async (artifactId: string) => {
 
         if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to delete artifact');
+            throw new Error(errorData.error || 'Failed to delete jsonDoc');
         }
 
         const result = await response.json();
-        message.success(result.message || 'Artifact deleted successfully');
+        message.success(result.message || 'JsonDoc deleted successfully');
 
     } catch (error: any) {
-        console.error('Error deleting artifact:', error);
-        message.error(`Failed to delete artifact: ${error.message}`);
+        console.error('Error deleting jsonDoc:', error);
+        message.error(`Failed to delete jsonDoc: ${error.message}`);
     }
 };
 
 // Custom node components
-const ArtifactNode: React.FC<{
+const JsonDocNode: React.FC<{
     data: {
-        artifact: ElectricArtifact,
+        jsonDoc: ElectricJsonDoc,
         isLatest: boolean,
         originType: string
     }
 }> = ({ data }) => {
-    const { artifact, isLatest, originType } = data;
+    const { jsonDoc, isLatest, originType } = data;
 
     const handleDelete = (e: React.MouseEvent) => {
         e.stopPropagation();
-        deleteArtifact(artifact.id);
+        deleteJsonDoc(jsonDoc.id);
     };
 
     const getTypeColor = (type: string, originType?: string) => {
-        return ColorUtils.getArtifactColor(type, originType);
+        return ColorUtils.getJsonDocColor(type, originType);
     };
 
-    const typeColor = getTypeColor(artifact.schema_type, originType);
+    const typeColor = getTypeColor(jsonDoc.schema_type, originType);
     const borderColor = isLatest ? AppColors.status.latest : typeColor;
     const borderWidth = isLatest ? 3 : 2;
 
     let parsedData;
     try {
-        parsedData = typeof artifact.data === 'string' ? JSON.parse(artifact.data) : artifact.data;
+        parsedData = typeof jsonDoc.data === 'string' ? JSON.parse(jsonDoc.data) : jsonDoc.data;
     } catch {
         parsedData = { error: 'Invalid JSON' };
     }
@@ -121,20 +121,20 @@ const ArtifactNode: React.FC<{
                 title={<div style={{ fontSize: '11px' }}>
                     <div style={{ marginBottom: '12px' }}>
                         <div style={{ fontWeight: 'bold', color: '#1890ff', marginBottom: '4px' }}>
-                            Artifact Details
+                            JsonDoc Details
                         </div>
-                        <div><strong>ID:</strong> {artifact.id}</div>
-                        <div><strong>Project ID:</strong> {artifact.project_id}</div>
-                        <div><strong>Type:</strong> {artifact.schema_type}</div>
-                        <div><strong>Type Version:</strong> {artifact.schema_version}</div>
-                        {artifact.metadata && (
-                            <div><strong>Metadata:</strong> {typeof artifact.metadata === 'string' ? artifact.metadata : JSON.stringify(artifact.metadata)}</div>
+                        <div><strong>ID:</strong> {jsonDoc.id}</div>
+                        <div><strong>Project ID:</strong> {jsonDoc.project_id}</div>
+                        <div><strong>Type:</strong> {jsonDoc.schema_type}</div>
+                        <div><strong>Type Version:</strong> {jsonDoc.schema_version}</div>
+                        {jsonDoc.metadata && (
+                            <div><strong>Metadata:</strong> {typeof jsonDoc.metadata === 'string' ? jsonDoc.metadata : JSON.stringify(jsonDoc.metadata)}</div>
                         )}
-                        {artifact.streaming_status && (
-                            <div><strong>Streaming Status:</strong> {artifact.streaming_status}</div>
+                        {jsonDoc.streaming_status && (
+                            <div><strong>Streaming Status:</strong> {jsonDoc.streaming_status}</div>
                         )}
-                        <div><strong>Created:</strong> {new Date(artifact.created_at).toLocaleString()}</div>
-                        <div><strong>Updated:</strong> {new Date(artifact.updated_at || '').toLocaleString()}</div>
+                        <div><strong>Created:</strong> {new Date(jsonDoc.created_at).toLocaleString()}</div>
+                        <div><strong>Updated:</strong> {new Date(jsonDoc.updated_at || '').toLocaleString()}</div>
                     </div>
                     <div>
                         <div style={{ fontWeight: 'bold', color: '#52c41a', marginBottom: '4px' }}>
@@ -153,7 +153,7 @@ const ArtifactNode: React.FC<{
                             onClick={handleDelete}
                             style={{ fontSize: '12px' }}
                         >
-                            删除Artifact
+                            删除JsonDoc
                         </Button>
                     </div>
                 </div>}
@@ -168,7 +168,7 @@ const ArtifactNode: React.FC<{
                     }}>
                         <DatabaseOutlined style={{ color: typeColor }} />
                         <Text style={{ color: AppColors.text.white, fontWeight: 'bold', fontSize: '12px' }}>
-                            {artifact.schema_type}
+                            {jsonDoc.schema_type}
                         </Text>
                         {isLatest && (
                             <span style={{
@@ -184,16 +184,16 @@ const ArtifactNode: React.FC<{
                         )}
                     </div>
                     <Text style={{ color: AppColors.text.secondary, fontSize: '10px' }}>
-                        {artifact.schema_type}
+                        {jsonDoc.schema_type}
                     </Text>
                     <br />
                     <Text style={{ color: AppColors.text.tertiary, fontSize: '9px', fontStyle: 'italic' }}>
                         {(() => {
                             try {
-                                const data = typeof artifact.data === 'string' ? JSON.parse(artifact.data) : artifact.data;
+                                const data = typeof jsonDoc.data === 'string' ? JSON.parse(jsonDoc.data) : jsonDoc.data;
                                 let preview = '';
 
-                                if (artifact.schema_type === 'brainstorm_collection') {
+                                if (jsonDoc.schema_type === 'brainstorm_collection') {
                                     if (data.ideas && Array.isArray(data.ideas) && data.ideas.length > 0) {
                                         const firstIdea = data.ideas[0];
                                         const title = firstIdea.title || '';
@@ -201,10 +201,10 @@ const ArtifactNode: React.FC<{
                                     } else {
                                         preview = '创意集合';
                                     }
-                                } else if (artifact.schema_type === 'brainstorm_idea') {
+                                } else if (jsonDoc.schema_type === 'brainstorm_idea') {
                                     const title = data.title || '';
                                     preview = title.length > 25 ? `${title.substring(0, 25)}...` : title;
-                                } else if (artifact.schema_type === 'outline_settings') {
+                                } else if (jsonDoc.schema_type === 'outline_settings') {
                                     const outlineTitle = data.title || data.synopsis || '';
                                     preview = outlineTitle.length > 25 ? `${outlineTitle.substring(0, 25)}...` : outlineTitle;
                                 } else {
@@ -392,7 +392,7 @@ const TransformNode: React.FC<{ data: any }> = ({ data }) => {
 };
 
 const nodeTypes: NodeTypes = {
-    artifact: ArtifactNode,
+    jsonDoc: JsonDocNode,
     transform: TransformNode,
 };
 
@@ -403,7 +403,7 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'LR') => 
     dagreGraph.setGraph({ rankdir: direction, nodesep: 100, ranksep: 150 });
 
     nodes.forEach((node) => {
-        dagreGraph.setNode(node.id, { width: node.type === 'artifact' ? 240 : 140, height: node.type === 'artifact' ? 140 : 100 });
+        dagreGraph.setNode(node.id, { width: node.type === 'jsonDoc' ? 240 : 140, height: node.type === 'jsonDoc' ? 140 : 100 });
     });
 
     edges.forEach((edge) => {
@@ -417,8 +417,8 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'LR') => 
         node.targetPosition = Position.Left;
         node.sourcePosition = Position.Right;
         node.position = {
-            x: nodeWithPosition.x - (node.type === 'artifact' ? 120 : 70),
-            y: nodeWithPosition.y - (node.type === 'artifact' ? 70 : 50),
+            x: nodeWithPosition.x - (node.type === 'jsonDoc' ? 120 : 70),
+            y: nodeWithPosition.y - (node.type === 'jsonDoc' ? 70 : 50),
         };
     });
 
@@ -427,7 +427,7 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'LR') => 
 
 const RawGraphVisualization: React.FC = () => {
     const projectData = useProjectData();
-    const [showArtifacts, setShowArtifacts] = useState(true);
+    const [showJsonDocs, setShowJsonDocs] = useState(true);
     const [showTransforms, setShowTransforms] = useState(true);
     const [showHumanTransforms, setShowHumanTransforms] = useState(true);
     const [showLLMTransforms, setShowLLMTransforms] = useState(true);
@@ -435,7 +435,7 @@ const RawGraphVisualization: React.FC = () => {
     // Process lineage data and convert to React Flow format
     const { nodes: flowNodes, edges: flowEdges } = useMemo(() => {
         // Handle loading/error states
-        if (projectData.artifacts === "pending" ||
+        if (projectData.jsonDocs === "pending" ||
             projectData.transforms === "pending" ||
             projectData.humanTransforms === "pending" ||
             projectData.transformInputs === "pending" ||
@@ -444,7 +444,7 @@ const RawGraphVisualization: React.FC = () => {
             return { nodes: [], edges: [] };
         }
 
-        if (projectData.artifacts === "error" ||
+        if (projectData.jsonDocs === "error" ||
             projectData.transforms === "error" ||
             projectData.humanTransforms === "error" ||
             projectData.transformInputs === "error" ||
@@ -453,7 +453,7 @@ const RawGraphVisualization: React.FC = () => {
             return { nodes: [], edges: [] };
         }
 
-        if (!projectData.artifacts.length) {
+        if (!projectData.jsonDocs.length) {
             return { nodes: [], edges: [] };
         }
 
@@ -463,18 +463,18 @@ const RawGraphVisualization: React.FC = () => {
         const nodes: Node[] = [];
         const edges: Edge[] = [];
 
-        // Create artifact nodes
-        if (showArtifacts && Array.isArray(projectData.artifacts)) {
-            projectData.artifacts.forEach((artifact) => {
+        // Create jsonDoc nodes
+        if (showJsonDocs && Array.isArray(projectData.jsonDocs)) {
+            projectData.jsonDocs.forEach((jsonDoc) => {
                 // Check if this is the latest version in a lineage chain
-                const lineageNode = lineageGraph.nodes?.get(artifact.id);
+                const lineageNode = lineageGraph.nodes?.get(jsonDoc.id);
                 const isLatest = lineageNode?.isLeaf || false;
 
-                // Determine origin type by checking which transforms created this artifact
+                // Determine origin type by checking which transforms created this jsonDoc
                 let originType: string | undefined;
                 if (Array.isArray(projectData.transformOutputs)) {
                     const creatingTransform = projectData.transformOutputs
-                        .find((output: any) => output.artifact_id === artifact.id);
+                        .find((output: any) => output.jsonDoc_id === jsonDoc.id);
 
                     if (creatingTransform && Array.isArray(projectData.transforms)) {
                         const transform = projectData.transforms
@@ -485,15 +485,15 @@ const RawGraphVisualization: React.FC = () => {
                     }
                 }
 
-                // Special handling for user input artifacts
-                if (artifact.origin_type === 'user_input') {
+                // Special handling for user input jsonDocs
+                if (jsonDoc.origin_type === 'user_input') {
                     originType = 'human';
                 }
 
                 nodes.push({
-                    id: artifact.id,
-                    type: 'artifact',
-                    data: { artifact, isLatest, originType },
+                    id: jsonDoc.id,
+                    type: 'jsonDoc',
+                    data: { jsonDoc, isLatest, originType },
                     position: { x: 0, y: 0 }, // Will be set by layout
                 });
             });
@@ -513,7 +513,7 @@ const RawGraphVisualization: React.FC = () => {
                 if (Array.isArray(projectData.humanTransforms) && Array.isArray(projectData.transformInputs)) {
                     humanTransform = projectData.humanTransforms.find((ht: any) =>
                         Array.isArray(projectData.transformInputs) && projectData.transformInputs.some((ti: any) =>
-                            ti.transform_id === transform.id && ti.artifact_id === ht.source_artifact_id
+                            ti.transform_id === transform.id && ti.jsonDoc_id === ht.source_jsonDoc_id
                         )
                     );
                 }
@@ -525,16 +525,16 @@ const RawGraphVisualization: React.FC = () => {
                     position: { x: 0, y: 0 }, // Will be set by layout
                 });
 
-                // Create edges from input artifacts to transform
+                // Create edges from input jsonDocs to transform
                 if (Array.isArray(projectData.transformInputs)) {
                     const inputs = projectData.transformInputs.filter((ti: any) => ti.transform_id === transform.id);
                     const edgeColor = ColorUtils.getTransformColor(transform.type as 'human' | 'llm');
 
                     inputs.forEach((input: any) => {
-                        if (showArtifacts && Array.isArray(projectData.artifacts) && projectData.artifacts.some((a) => a.id === input.artifact_id)) {
+                        if (showJsonDocs && Array.isArray(projectData.jsonDocs) && projectData.jsonDocs.some((a) => a.id === input.jsonDoc_id)) {
                             edges.push({
-                                id: `${input.artifact_id}-${transform.id}`,
-                                source: input.artifact_id,
+                                id: `${input.jsonDoc_id}-${transform.id}`,
+                                source: input.jsonDoc_id,
                                 target: transform.id,
                                 type: 'default',
                                 style: { stroke: edgeColor, strokeWidth: 2 },
@@ -544,17 +544,17 @@ const RawGraphVisualization: React.FC = () => {
                     });
                 }
 
-                // Create edges from transform to output artifacts
+                // Create edges from transform to output jsonDocs
                 if (Array.isArray(projectData.transformOutputs)) {
                     const outputs = projectData.transformOutputs.filter((to: any) => to.transform_id === transform.id);
                     const edgeColor = ColorUtils.getTransformColor(transform.type as 'human' | 'llm');
 
                     outputs.forEach((output: any) => {
-                        if (showArtifacts && Array.isArray(projectData.artifacts) && projectData.artifacts.some((a) => a.id === output.artifact_id)) {
+                        if (showJsonDocs && Array.isArray(projectData.jsonDocs) && projectData.jsonDocs.some((a) => a.id === output.jsonDoc_id)) {
                             edges.push({
-                                id: `${transform.id}-${output.artifact_id}`,
+                                id: `${transform.id}-${output.jsonDoc_id}`,
                                 source: transform.id,
-                                target: output.artifact_id,
+                                target: output.jsonDoc_id,
                                 type: 'default',
                                 style: { stroke: edgeColor, strokeWidth: 2 },
                                 markerEnd: { type: MarkerType.ArrowClosed, color: edgeColor },
@@ -580,14 +580,14 @@ const RawGraphVisualization: React.FC = () => {
 
                     const edgeColor = ColorUtils.getTransformColor(transform.type as 'human' | 'llm');
 
-                    // Create edge from source artifact to transform (if both exist in nodes)
-                    if (humanTransform.source_artifact_id &&
-                        nodes.some(n => n.id === humanTransform.source_artifact_id) &&
+                    // Create edge from source jsonDoc to transform (if both exist in nodes)
+                    if (humanTransform.source_jsonDoc_id &&
+                        nodes.some(n => n.id === humanTransform.source_jsonDoc_id) &&
                         nodes.some(n => n.id === transform.id)) {
 
                         edges.push({
-                            id: `fallback-${humanTransform.source_artifact_id}-${transform.id}`,
-                            source: humanTransform.source_artifact_id,
+                            id: `fallback-${humanTransform.source_jsonDoc_id}-${transform.id}`,
+                            source: humanTransform.source_jsonDoc_id,
                             target: transform.id,
                             type: 'default',
                             style: { stroke: edgeColor, strokeWidth: 2 },
@@ -595,15 +595,15 @@ const RawGraphVisualization: React.FC = () => {
                         });
                     }
 
-                    // Create edge from transform to derived artifact (if both exist in nodes)
-                    if (humanTransform.derived_artifact_id &&
+                    // Create edge from transform to derived jsonDoc (if both exist in nodes)
+                    if (humanTransform.derived_jsonDoc_id &&
                         nodes.some(n => n.id === transform.id) &&
-                        nodes.some(n => n.id === humanTransform.derived_artifact_id)) {
+                        nodes.some(n => n.id === humanTransform.derived_jsonDoc_id)) {
 
                         edges.push({
-                            id: `fallback-${transform.id}-${humanTransform.derived_artifact_id}`,
+                            id: `fallback-${transform.id}-${humanTransform.derived_jsonDoc_id}`,
                             source: transform.id,
-                            target: humanTransform.derived_artifact_id,
+                            target: humanTransform.derived_jsonDoc_id,
                             type: 'default',
                             style: { stroke: edgeColor, strokeWidth: 2 },
                             markerEnd: { type: MarkerType.ArrowClosed, color: edgeColor },
@@ -636,13 +636,13 @@ const RawGraphVisualization: React.FC = () => {
 
         return getLayoutedElements(nodes, edges);
     }, [
-        projectData.artifacts,
+        projectData.jsonDocs,
         projectData.transforms,
         projectData.humanTransforms,
         projectData.transformInputs,
         projectData.transformOutputs,
         projectData.lineageGraph,
-        showArtifacts,
+        showJsonDocs,
         showTransforms,
         showHumanTransforms,
         showLLMTransforms
@@ -691,11 +691,11 @@ const RawGraphVisualization: React.FC = () => {
                 <Space direction="vertical" size="small">
                     <Text style={{ color: AppColors.text.white, fontWeight: 'bold' }}>显示选项</Text>
                     <Checkbox
-                        checked={showArtifacts}
-                        onChange={(e) => setShowArtifacts(e.target.checked)}
+                        checked={showJsonDocs}
+                        onChange={(e) => setShowJsonDocs(e.target.checked)}
                         style={{ color: AppColors.text.white }}
                     >
-                        <DatabaseOutlined /> Artifact ({projectData.artifacts.length})
+                        <DatabaseOutlined /> JsonDoc ({projectData.jsonDocs.length})
                     </Checkbox>
                     <Checkbox
                         checked={showTransforms}

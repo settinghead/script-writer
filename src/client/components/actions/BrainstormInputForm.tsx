@@ -9,35 +9,35 @@ import AIButton from '../shared/AIButton';
 const { Title } = Typography;
 
 interface BrainstormInputFormProps extends BaseActionProps {
-    brainstormArtifact: any;
+    brainstormJsonDoc: any;
 }
 
 // Support both old props and new ActionComponentProps
-type BrainstormInputFormPropsUnion = BrainstormInputFormProps | (ActionComponentProps & { brainstormArtifact?: any });
+type BrainstormInputFormPropsUnion = BrainstormInputFormProps | (ActionComponentProps & { brainstormJsonDoc?: any });
 
 const BrainstormInputForm: React.FC<BrainstormInputFormPropsUnion> = (props) => {
     const { projectId, onSuccess, onError } = props;
 
-    // Get brainstormArtifact from either old props or new artifacts structure
-    const brainstormArtifact = 'brainstormArtifact' in props
-        ? props.brainstormArtifact
-        : ('artifacts' in props ? props.artifacts.brainstormInput : null);
+    // Get brainstormJsonDoc from either old props or new jsonDocs structure
+    const brainstormJsonDoc = 'brainstormJsonDoc' in props
+        ? props.brainstormJsonDoc
+        : ('jsonDocs' in props ? props.jsonDocs.brainstormInput : null);
 
     const [isStarting, setIsStarting] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
 
     const handleStartBrainstorm = async () => {
-        if (isStarting || !brainstormArtifact) return;
+        if (isStarting || !brainstormJsonDoc) return;
 
         try {
-            // Get current artifact data
+            // Get current jsonDoc data
             let currentData;
             try {
-                currentData = typeof brainstormArtifact.data === 'string'
-                    ? JSON.parse(brainstormArtifact.data)
-                    : brainstormArtifact.data;
+                currentData = typeof brainstormJsonDoc.data === 'string'
+                    ? JSON.parse(brainstormJsonDoc.data)
+                    : brainstormJsonDoc.data;
             } catch (error) {
-                console.error('Failed to parse artifact data:', error);
+                console.error('Failed to parse jsonDoc data:', error);
                 message.error('无法读取头脑风暴参数');
                 return;
             }
@@ -56,11 +56,11 @@ const BrainstormInputForm: React.FC<BrainstormInputFormPropsUnion> = (props) => 
             setIsStarting(true);
 
             // Use apiService to send chat message
-            const userRequest = `基于artifact ID ${brainstormArtifact.id} 的头脑风暴参数，生成${currentData.numberOfIdeas || 3}个创意想法。平台：${currentData.platform}，类型：${currentData.genre}${currentData.other_requirements ? `，其他要求：${currentData.other_requirements}` : ''}`;
+            const userRequest = `基于jsonDoc ID ${brainstormJsonDoc.id} 的头脑风暴参数，生成${currentData.numberOfIdeas || 3}个创意想法。平台：${currentData.platform}，类型：${currentData.genre}${currentData.other_requirements ? `，其他要求：${currentData.other_requirements}` : ''}`;
 
             await apiService.sendChatMessage(projectId, userRequest, {
                 action: 'start_brainstorm',
-                artifactId: brainstormArtifact.id
+                jsonDocId: brainstormJsonDoc.id
             });
 
             message.success('头脑风暴已开始！请查看聊天面板了解进度。');
@@ -76,13 +76,13 @@ const BrainstormInputForm: React.FC<BrainstormInputFormPropsUnion> = (props) => 
     };
 
     const handleGoBack = async () => {
-        if (isDeleting || !brainstormArtifact) return;
+        if (isDeleting || !brainstormJsonDoc) return;
 
         try {
             setIsDeleting(true);
 
-            // Use apiService to delete the brainstorm input artifact
-            await apiService.deleteBrainstormInput(brainstormArtifact.id);
+            // Use apiService to delete the brainstorm input jsonDoc
+            await apiService.deleteBrainstormInput(brainstormJsonDoc.id);
 
             onSuccess?.(); // This will trigger a re-render and return to initial state
         } catch (error) {

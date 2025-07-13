@@ -1,11 +1,11 @@
 import { IdeationInputSchema, IdeationOutputSchema, IdeationInput, IdeationOutput } from '../../common/transform_schemas';
-import { TransformRepository } from '../transform-artifact-framework/TransformRepository';
-import { ArtifactRepository } from '../transform-artifact-framework/ArtifactRepository';
+import { TransformRepository } from '../transform-jsonDoc-framework/TransformRepository';
+import { JsonDocRepository } from '../transform-jsonDoc-framework/JsonDocRepository';
 import {
     executeStreamingTransform,
     StreamingTransformConfig,
     StreamingExecutionMode
-} from '../transform-artifact-framework/StreamingTransformExecutor';
+} from '../transform-jsonDoc-framework/StreamingTransformExecutor';
 
 import {
     BrainstormEditInputSchema,
@@ -13,12 +13,12 @@ import {
 
 } from '../../common/schemas/transforms';
 import { extractDataAtPath } from '../services/transform-instantiations/pathTransforms';
-import type { StreamingToolDefinition } from '../transform-artifact-framework/StreamingAgentFramework';
+import type { StreamingToolDefinition } from '../transform-jsonDoc-framework/StreamingAgentFramework';
 import { z } from 'zod';
-import { TypedArtifact } from '@/common/types';
+import { TypedJsonDoc } from '@/common/types';
 
 const BrainstormEditToolResultSchema = z.object({
-    outputArtifactId: z.string(),
+    outputJsonDocId: z.string(),
     finishReason: z.string(),
     originalIdea: z.object({
         title: z.string(),
@@ -31,42 +31,42 @@ const BrainstormEditToolResultSchema = z.object({
 });
 
 const BrainstormToolResultSchema = z.object({
-    outputArtifactId: z.string(),
+    outputJsonDocId: z.string(),
     finishReason: z.string()
 });
 
 export type BrainstormEditToolResult = z.infer<typeof BrainstormEditToolResultSchema>;
 
 /**
- * Extract source idea data from different artifact types
+ * Extract source idea data from different jsonDoc types
  */
 async function extractSourceIdeaData(
     params: BrainstormEditInput,
-    artifactRepo: ArtifactRepository,
+    jsonDocRepo: JsonDocRepository,
     userId: string
 ): Promise<{
     originalIdea: { title: string; body: string };
     targetPlatform: string;
     storyGenre: string;
 }> {
-    // Get source artifact and extract the idea to edit
-    const sourceArtifact = await artifactRepo.getArtifact(params.sourceArtifactId);
-    if (!sourceArtifact) {
-        throw new Error('Source artifact not found');
+    // Get source jsonDoc and extract the idea to edit
+    const sourceJsonDoc = await jsonDocRepo.getJsonDoc(params.sourceJsonDocId);
+    if (!sourceJsonDoc) {
+        throw new Error('Source jsonDoc not found');
     }
 
-    // Verify user has access to this artifact's project
-    const hasAccess = await artifactRepo.userHasProjectAccess(userId, sourceArtifact.project_id);
+    // Verify user has access to this jsonDoc's project
+    const hasAccess = await jsonDocRepo.userHasProjectAccess(userId, sourceJsonDoc.project_id);
     if (!hasAccess) {
-        throw new Error('Access denied to source artifact');
+        throw new Error('Access denied to source jsonDoc');
     }
 
-    const sourceData = sourceArtifact.data;
+    const sourceData = sourceJsonDoc.data;
     let originalIdea: { title: string; body: string };
     let targetPlatform = 'unknown';
     let storyGenre = 'unknown';
 
-    if (sourceArtifact.schema_type === 'brainstorm_collection') {
+    if (sourceJsonDoc.schema_type === 'brainstorm_collection') {
         const ideaPath = `$.ideas[${params.ideaIndex}]`;
         try {
             const extractedIdea = extractDataAtPath(sourceData, ideaPath);
@@ -85,10 +85,10 @@ async function extractSourceIdeaData(
         } catch (extractError) {
             throw new Error(`Failed to extract idea at index ${params.ideaIndex}: ${extractError instanceof Error ? extractError.message : String(extractError)}`);
         }
-    } else if (sourceArtifact.schema_type === 'brainstorm_idea') {
-        // Direct brainstorm idea artifact
+    } else if (sourceJsonDoc.schema_type === 'brainstorm_idea') {
+        // Direct brainstorm idea jsonDoc
         if (!sourceData.title || !sourceData.body) {
-            throw new Error('Invalid brainstorm idea artifact');
+            throw new Error('Invalid brainstorm idea jsonDoc');
         }
 
         originalIdea = {
@@ -96,13 +96,13 @@ async function extractSourceIdeaData(
             body: sourceData.body
         };
 
-        if (sourceArtifact.metadata) {
-            targetPlatform = sourceArtifact.metadata.platform || 'unknown';
-            storyGenre = sourceArtifact.metadata.genre || 'unknown';
+        if (sourceJsonDoc.metadata) {
+            targetPlatform = sourceJsonDoc.metadata.platform || 'unknown';
+            storyGenre = sourceJsonDoc.metadata.genre || 'unknown';
         }
-    } else if (sourceArtifact.origin_type === 'user_input') {
-        // User-edited artifact - extract from derived data
-        let derivedData = sourceArtifact.metadata?.derived_data;
+    } else if (sourceJsonDoc.origin_type === 'user_input') {
+        // User-edited jsonDoc - extract from derived data
+        let derivedData = sourceJsonDoc.metadata?.derived_data;
         if (!derivedData && sourceData.text) {
             try {
                 derivedData = JSON.parse(sourceData.text);
@@ -112,7 +112,7 @@ async function extractSourceIdeaData(
         }
 
         if (!derivedData || !derivedData.title || !derivedData.body) {
-            throw new Error('Invalid user input artifact');
+            throw new Error('Invalid user input jsonDoc');
         }
 
         originalIdea = {
@@ -120,16 +120,16 @@ async function extractSourceIdeaData(
             body: derivedData.body
         };
 
-        // Try to get platform/genre from original artifact metadata
-        if (sourceArtifact.metadata?.original_artifact_id) {
-            const originalArtifact = await artifactRepo.getArtifact(sourceArtifact.metadata.original_artifact_id);
-            if (originalArtifact?.metadata) {
-                targetPlatform = originalArtifact.metadata.platform || 'unknown';
-                storyGenre = originalArtifact.metadata.genre || 'unknown';
+        // Try to get platform/genre from original jsonDoc metadata
+        if (sourceJsonDoc.metadata?.original_jsonDoc_id) {
+            const originalJsonDoc = await jsonDocRepo.getJsonDoc(sourceJsonDoc.metadata.original_jsonDoc_id);
+            if (originalJsonDoc?.metadata) {
+                targetPlatform = originalJsonDoc.metadata.platform || 'unknown';
+                storyGenre = originalJsonDoc.metadata.genre || 'unknown';
             }
         }
     } else {
-        throw new Error(`Unsupported source artifact schema_type: ${sourceArtifact.schema_type}, origin_type: ${sourceArtifact.origin_type}`);
+        throw new Error(`Unsupported source jsonDoc schema_type: ${sourceJsonDoc.schema_type}, origin_type: ${sourceJsonDoc.origin_type}`);
     }
 
     return { originalIdea, targetPlatform, storyGenre };
@@ -143,7 +143,7 @@ async function extractSourceIdeaData(
  */
 export function createBrainstormEditToolDefinition(
     transformRepo: TransformRepository,
-    artifactRepo: ArtifactRepository,
+    jsonDocRepo: JsonDocRepository,
     projectId: string,
     userId: string,
     cachingOptions?: {
@@ -156,26 +156,26 @@ export function createBrainstormEditToolDefinition(
 ): StreamingToolDefinition<BrainstormEditInput, BrainstormEditToolResult> {
     return {
         name: 'edit_brainstorm_idea',
-        description: '使用JSON补丁方式编辑和改进现有故事创意。适用场景：用户对现有创意有具体的修改要求或改进建议。使用JSON Patch格式进行精确修改，只改变需要改变的部分，提高效率和准确性。重要：必须使用项目背景信息中显示的完整ID作为sourceArtifactId参数。支持各种编辑类型：内容扩展、风格调整、情节修改、结构调整等。',
+        description: '使用JSON补丁方式编辑和改进现有故事创意。适用场景：用户对现有创意有具体的修改要求或改进建议。使用JSON Patch格式进行精确修改，只改变需要改变的部分，提高效率和准确性。重要：必须使用项目背景信息中显示的完整ID作为sourceJsonDocId参数。支持各种编辑类型：内容扩展、风格调整、情节修改、结构调整等。',
         inputSchema: BrainstormEditInputSchema,
         outputSchema: BrainstormEditToolResultSchema,
         execute: async (params: BrainstormEditInput, { toolCallId }): Promise<BrainstormEditToolResult> => {
-            console.log(`[BrainstormEditTool] Starting unified patch edit for artifact ${params.sourceArtifactId}`);
+            console.log(`[BrainstormEditTool] Starting unified patch edit for jsonDoc ${params.sourceJsonDocId}`);
 
             // Extract source idea data for context
-            const { originalIdea, targetPlatform, storyGenre } = await extractSourceIdeaData(params, artifactRepo, userId);
+            const { originalIdea, targetPlatform, storyGenre } = await extractSourceIdeaData(params, jsonDocRepo, userId);
 
-            // Determine output artifact type based on source artifact type
-            const sourceArtifact = await artifactRepo.getArtifact(params.sourceArtifactId);
-            if (!sourceArtifact) {
-                throw new Error('Source artifact not found');
+            // Determine output jsonDoc type based on source jsonDoc type
+            const sourceJsonDoc = await jsonDocRepo.getJsonDoc(params.sourceJsonDocId);
+            if (!sourceJsonDoc) {
+                throw new Error('Source jsonDoc not found');
             }
 
-            let outputArtifactType: TypedArtifact['schema_type'];
-            if (sourceArtifact.schema_type === 'brainstorm_idea') {
-                outputArtifactType = 'brainstorm_idea'; // Use new schema type
+            let outputJsonDocType: TypedJsonDoc['schema_type'];
+            if (sourceJsonDoc.schema_type === 'brainstorm_idea') {
+                outputJsonDocType = 'brainstorm_idea'; // Use new schema type
             } else {
-                outputArtifactType = 'brainstorm_idea'; // Legacy type
+                outputJsonDocType = 'brainstorm_idea'; // Legacy type
             }
 
             // Create config for unified patch generation using existing edit template
@@ -191,8 +191,8 @@ export function createBrainstormEditToolDefinition(
                     editRequirements: input.editRequirements,
                     agentInstructions: input.agentInstructions || '请根据用户要求进行适当的改进和优化。'
                 }),
-                extractSourceArtifacts: (input) => [{
-                    artifactId: input.sourceArtifactId,
+                extractSourceJsonDocs: (input) => [{
+                    jsonDocId: input.sourceJsonDocId,
                     inputRole: 'source'
                 }]
             };
@@ -205,23 +205,23 @@ export function createBrainstormEditToolDefinition(
                     projectId,
                     userId,
                     transformRepo,
-                    artifactRepo,
-                    outputArtifactType,
+                    jsonDocRepo,
+                    outputJsonDocType,
                     executionMode: {
                         mode: 'patch',
-                        originalArtifact: originalIdea
+                        originalJsonDoc: originalIdea
                     },
                     transformMetadata: {
                         toolName: 'edit_brainstorm_idea',
-                        source_artifact_id: params.sourceArtifactId,
+                        source_jsonDoc_id: params.sourceJsonDocId,
                         idea_index: params.ideaIndex,
                         edit_requirements: params.editRequirements,
                         original_idea: originalIdea,
                         platform: targetPlatform,
                         genre: storyGenre,
                         method: 'unified_patch',
-                        source_artifact_type: sourceArtifact.schema_type,
-                        output_artifact_type: outputArtifactType
+                        source_jsonDoc_type: sourceJsonDoc.schema_type,
+                        output_jsonDoc_type: outputJsonDocType
                     },
                     enableCaching: cachingOptions?.enableCaching,
                     seed: cachingOptions?.seed,
@@ -230,14 +230,14 @@ export function createBrainstormEditToolDefinition(
                     maxTokens: cachingOptions?.maxTokens
                 });
 
-                // Get the final artifact to extract the edited idea
-                const finalArtifact = await artifactRepo.getArtifact(result.outputArtifactId);
-                const editedIdea = finalArtifact?.data || originalIdea;
+                // Get the final jsonDoc to extract the edited idea
+                const finalJsonDoc = await jsonDocRepo.getJsonDoc(result.outputJsonDocId);
+                const editedIdea = finalJsonDoc?.data || originalIdea;
 
-                console.log(`[BrainstormEditTool] Successfully completed unified patch edit with artifact ${result.outputArtifactId}`);
+                console.log(`[BrainstormEditTool] Successfully completed unified patch edit with jsonDoc ${result.outputJsonDocId}`);
 
                 return {
-                    outputArtifactId: result.outputArtifactId,
+                    outputJsonDocId: result.outputJsonDocId,
                     finishReason: result.finishReason,
                     originalIdea,
                     editedIdea: {
@@ -256,20 +256,20 @@ export function createBrainstormEditToolDefinition(
 
 
 
-// Tool execution result type - now returns single collection artifact ID
+// Tool execution result type - now returns single collection jsonDoc ID
 interface BrainstormToolResult {
-    outputArtifactId: string; // Single collection artifact ID
+    outputJsonDocId: string; // Single collection jsonDoc ID
     finishReason: string;
 }
 
 // Collection-based brainstorm tool - no longer needs individual idea caching
 
 /**
- * Extract brainstorm parameters from source artifact
+ * Extract brainstorm parameters from source jsonDoc
  */
 async function extractBrainstormParams(
-    sourceArtifactId: string,
-    artifactRepo: ArtifactRepository,
+    sourceJsonDocId: string,
+    jsonDocRepo: JsonDocRepository,
     userId: string
 ): Promise<{
     platform: string;
@@ -277,26 +277,26 @@ async function extractBrainstormParams(
     other_requirements: string;
     numberOfIdeas: number;
 }> {
-    // Get source artifact
-    const sourceArtifact = await artifactRepo.getArtifact(sourceArtifactId);
-    if (!sourceArtifact) {
-        throw new Error('Source artifact not found');
+    // Get source jsonDoc
+    const sourceJsonDoc = await jsonDocRepo.getJsonDoc(sourceJsonDocId);
+    if (!sourceJsonDoc) {
+        throw new Error('Source jsonDoc not found');
     }
 
-    // Verify user has access to this artifact's project
-    const hasAccess = await artifactRepo.userHasProjectAccess(userId, sourceArtifact.project_id);
+    // Verify user has access to this jsonDoc's project
+    const hasAccess = await jsonDocRepo.userHasProjectAccess(userId, sourceJsonDoc.project_id);
     if (!hasAccess) {
-        throw new Error('Access denied to source artifact');
+        throw new Error('Access denied to source jsonDoc');
     }
 
     // Parse source data
     let sourceData;
     try {
-        sourceData = typeof sourceArtifact.data === 'string'
-            ? JSON.parse(sourceArtifact.data)
-            : sourceArtifact.data;
+        sourceData = typeof sourceJsonDoc.data === 'string'
+            ? JSON.parse(sourceJsonDoc.data)
+            : sourceJsonDoc.data;
     } catch (error) {
-        throw new Error('Failed to parse source artifact data');
+        throw new Error('Failed to parse source jsonDoc data');
     }
 
     // Extract parameters
@@ -335,7 +335,7 @@ function buildRequirementsSection(params: {
 }
 
 /**
- * Transform LLM output (array of ideas) to collection artifact format
+ * Transform LLM output (array of ideas) to collection jsonDoc format
  */
 function transformToCollectionFormat(llmOutput: IdeationOutput, extractedParams: {
     platform: string;
@@ -367,7 +367,7 @@ function transformToCollectionFormat(llmOutput: IdeationOutput, extractedParams:
  */
 export function createBrainstormToolDefinition(
     transformRepo: TransformRepository,
-    artifactRepo: ArtifactRepository,
+    jsonDocRepo: JsonDocRepository,
     projectId: string,
     userId: string,
     cachingOptions?: {
@@ -384,8 +384,8 @@ export function createBrainstormToolDefinition(
         inputSchema: IdeationInputSchema,
         outputSchema: BrainstormToolResultSchema,
         execute: async (params: IdeationInput): Promise<BrainstormToolResult> => {
-            // Extract parameters from source artifact
-            const extractedParams = await extractBrainstormParams(params.sourceArtifactId, artifactRepo, userId);
+            // Extract parameters from source jsonDoc
+            const extractedParams = await extractBrainstormParams(params.sourceJsonDocId, jsonDocRepo, userId);
 
             // Create config with extracted parameters
             const config: StreamingTransformConfig<IdeationInput, IdeationOutput> = {
@@ -400,9 +400,9 @@ export function createBrainstormToolDefinition(
                     otherRequirements: input.otherRequirements
                 }),
                 transformLLMOutput: (llmOutput) => transformToCollectionFormat(llmOutput, extractedParams),
-                // Extract source artifact for proper lineage
-                extractSourceArtifacts: (input) => [{
-                    artifactId: input.sourceArtifactId,
+                // Extract source jsonDoc for proper lineage
+                extractSourceJsonDocs: (input) => [{
+                    jsonDocId: input.sourceJsonDocId,
                     inputRole: 'source'
                 }]
             };
@@ -413,14 +413,14 @@ export function createBrainstormToolDefinition(
                 projectId,
                 userId,
                 transformRepo,
-                artifactRepo,
-                outputArtifactType: 'brainstorm_collection',
+                jsonDocRepo,
+                outputJsonDocType: 'brainstorm_collection',
                 transformMetadata: {
                     toolName: 'generate_brainstorm_ideas',
                     platform: extractedParams.platform,
                     genre: extractedParams.genre,
                     numberOfIdeas: extractedParams.numberOfIdeas,
-                    source_artifact_id: params.sourceArtifactId,
+                    source_jsonDoc_id: params.sourceJsonDocId,
                     initialData: {
                         ideas: [],
                         platform: extractedParams.platform,
@@ -436,10 +436,10 @@ export function createBrainstormToolDefinition(
                 maxTokens: cachingOptions?.maxTokens
             });
 
-            console.log(`[BrainstormTool] Successfully completed brainstorm generation with artifact ${result.outputArtifactId}`);
+            console.log(`[BrainstormTool] Successfully completed brainstorm generation with jsonDoc ${result.outputJsonDocId}`);
 
             return {
-                outputArtifactId: result.outputArtifactId,
+                outputJsonDocId: result.outputJsonDocId,
                 finishReason: result.finishReason
             };
         }

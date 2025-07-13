@@ -1,18 +1,18 @@
 import { db } from '../database/connection';
 import * as Y from 'yjs';
 
-async function testYJSData(artifactId: string) {
-    console.log(`Testing YJS data for artifact: ${artifactId}`);
+async function testYJSData(jsonDocId: string) {
+    console.log(`Testing YJS data for jsonDoc: ${jsonDocId}`);
 
     // Test 1: Check if YJS document exists
     const yjsDoc = await db
-        .selectFrom('artifact_yjs_documents')
+        .selectFrom('jsonDoc_yjs_documents')
         .selectAll()
-        .where('artifact_id', '=', artifactId)
+        .where('jsonDoc_id', '=', jsonDocId)
         .executeTakeFirst();
 
     if (!yjsDoc) {
-        console.error(`❌ YJS document not found for artifact: ${artifactId}`);
+        console.error(`❌ YJS document not found for jsonDoc: ${jsonDocId}`);
         return;
     }
 
@@ -44,30 +44,30 @@ async function testYJSData(artifactId: string) {
 
     console.log(`✅ Extracted data:`, extractedData);
 
-    // Test 5: Compare with artifact data
-    const artifact = await db
-        .selectFrom('artifacts')
+    // Test 5: Compare with jsonDoc data
+    const jsonDoc = await db
+        .selectFrom('jsonDocs')
         .select('data')
-        .where('id', '=', artifactId)
+        .where('id', '=', jsonDocId)
         .executeTakeFirst();
 
-    if (artifact) {
-        const artifactData = JSON.parse(artifact.data);
-        console.log(`✅ Original artifact data:`, artifactData);
+    if (jsonDoc) {
+        const jsonDocData = JSON.parse(jsonDoc.data);
+        console.log(`✅ Original jsonDoc data:`, jsonDocData);
 
         // Compare fields
-        const fieldsMatch = Object.keys(artifactData).every(key => {
-            const match = extractedData[key] === artifactData[key];
+        const fieldsMatch = Object.keys(jsonDocData).every(key => {
+            const match = extractedData[key] === jsonDocData[key];
             if (!match) {
                 console.log(`❌ Field mismatch for ${key}:`);
-                console.log(`  Artifact: ${artifactData[key]}`);
+                console.log(`  JsonDoc: ${jsonDocData[key]}`);
                 console.log(`  YJS:      ${extractedData[key]}`);
             }
             return match;
         });
 
         if (fieldsMatch) {
-            console.log(`✅ All fields match between artifact and YJS data`);
+            console.log(`✅ All fields match between jsonDoc and YJS data`);
         } else {
             console.log(`❌ Some fields don't match`);
         }
@@ -75,10 +75,10 @@ async function testYJSData(artifactId: string) {
 }
 
 // Run the test
-const artifactId = process.argv[2];
-if (!artifactId) {
-    console.error('Usage: ./run-ts src/server/scripts/test-yjs-data.ts <artifact-id>');
+const jsonDocId = process.argv[2];
+if (!jsonDocId) {
+    console.error('Usage: ./run-ts src/server/scripts/test-yjs-data.ts <jsonDoc-id>');
     process.exit(1);
 }
 
-testYJSData(artifactId).catch(console.error); 
+testYJSData(jsonDocId).catch(console.error); 

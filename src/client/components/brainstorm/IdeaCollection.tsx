@@ -1,10 +1,10 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button, Typography } from 'antd';
-import { IdeaWithTitle } from '../../../common/transform-artifact-framework/lineageResolution';
+import { IdeaWithTitle } from '../../../common/transform-jsonDoc-framework/lineageResolution';
 import { ReasoningIndicator, SectionWrapper, } from '../shared';
 import { useProjectData } from '../../contexts/ProjectDataContext';
-import { useLatestBrainstormIdeas } from '../../transform-artifact-framework/useLineageResolution';
+import { useLatestBrainstormIdeas } from '../../transform-jsonDoc-framework/useLineageResolution';
 import { useChosenBrainstormIdea } from '../../hooks/useChosenBrainstormIdea';
 import { useActionItemsStore } from '../../stores/actionItemsStore';
 import { BrainstormIdeaEditor } from './BrainstormIdeaEditor';
@@ -29,31 +29,31 @@ const IdeaCardWrapper: React.FC<{
       return false;
     }
     return projectData.transformInputs.some(input =>
-      input.artifact_id === idea.artifactId
+      input.jsonDoc_id === idea.jsonDocId
     );
-  }, [projectData.transformInputs, idea.artifactId]);
+  }, [projectData.transformInputs, idea.jsonDocId]);
 
   // Check if this idea is the chosen one
-  // Handle both original artifacts (collection items) and edited artifacts (standalone)
+  // Handle both original jsonDocs (collection items) and edited jsonDocs (standalone)
   const isChosenIdea = chosenIdea && (
-    // Case 1: Original artifact comparison (for unedited ideas in collections)
-    (chosenIdea.originalArtifactId === idea.originalArtifactId &&
-      chosenIdea.originalArtifactPath === idea.artifactPath) ||
-    // Case 2: Edited artifact comparison (for edited ideas that became standalone)
-    (chosenIdea.editableArtifactId === idea.artifactId &&
-      idea.artifactPath === '$')
+    // Case 1: Original jsonDoc comparison (for unedited ideas in collections)
+    (chosenIdea.originalJsonDocId === idea.originalJsonDocId &&
+      chosenIdea.originalJsonDocPath === idea.jsonDocPath) ||
+    // Case 2: Edited jsonDoc comparison (for edited ideas that became standalone)
+    (chosenIdea.editableJsonDocId === idea.jsonDocId &&
+      idea.jsonDocPath === '$')
   );
 
   // Ensure we have the required fields - check after all hooks are called
-  if (!idea.artifactId || !idea.originalArtifactId || !idea.artifactPath) {
+  if (!idea.jsonDocId || !idea.originalJsonDocId || !idea.jsonDocPath) {
     return null;
   }
 
   return (
     <BrainstormIdeaEditor
-      artifactId={idea.artifactId}
-      artifactPath={idea.artifactPath}
-      originalCollectionId={idea.originalArtifactId}
+      jsonDocId={idea.jsonDocId}
+      jsonDocPath={idea.jsonDocPath}
+      originalCollectionId={idea.originalJsonDocId}
       index={index}
       isSelected={isSelected}
       isChosen={!!isChosenIdea}
@@ -170,9 +170,9 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
               ideas.push({
                 title: `想法 ${ideas.length + 1}`,
                 body: '内容加载中...',
-                artifactId: `${collection.id}-${i}`,
-                originalArtifactId: collection.id,
-                artifactPath: `$.ideas[${i}]`,
+                jsonDocId: `${collection.id}-${i}`,
+                originalJsonDocId: collection.id,
+                jsonDocPath: `$.ideas[${i}]`,
                 index: ideas.length
               });
             }
@@ -251,17 +251,17 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
 
     // Find the idea that was clicked
     const clickedIdea = ideas[index];
-    if (!clickedIdea || !clickedIdea.artifactId || !clickedIdea.artifactPath) {
+    if (!clickedIdea || !clickedIdea.jsonDocId || !clickedIdea.jsonDocPath) {
       console.warn('Invalid idea clicked:', clickedIdea);
       return;
     }
 
 
     // Store selection in action items store
-    store.setSelectedArtifactAndPath({
-      artifactId: clickedIdea.artifactId,
-      originalArtifactId: clickedIdea.originalArtifactId || clickedIdea.artifactId,
-      artifactPath: clickedIdea.artifactPath,
+    store.setSelectedJsonDocAndPath({
+      jsonDocId: clickedIdea.jsonDocId,
+      originalJsonDocId: clickedIdea.originalJsonDocId || clickedIdea.jsonDocId,
+      jsonDocPath: clickedIdea.jsonDocPath,
       index: index,
       title: clickedIdea.title
     });
@@ -274,26 +274,26 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
   }, []);
 
   // Determine selected idea index for visual feedback
-  // Match based on artifact ID and path, not just index
+  // Match based on jsonDoc ID and path, not just index
   const getIsIdeaSelected = useCallback((idea: IdeaWithTitle, index: number) => {
-    if (!store.selectedArtifactAndPath) return false;
+    if (!store.selectedJsonDocAndPath) return false;
 
-    const selected = store.selectedArtifactAndPath;
+    const selected = store.selectedJsonDocAndPath;
 
-    // First try to match by artifact ID and path (most precise)
-    if (selected.artifactId === idea.artifactId && selected.artifactPath === idea.artifactPath) {
+    // First try to match by jsonDoc ID and path (most precise)
+    if (selected.jsonDocId === idea.jsonDocId && selected.jsonDocPath === idea.jsonDocPath) {
       return true;
     }
 
-    // Fallback to original artifact ID and path matching (for collection items)
-    if (selected.originalArtifactId === idea.originalArtifactId &&
-      selected.artifactPath === idea.artifactPath) {
+    // Fallback to original jsonDoc ID and path matching (for collection items)
+    if (selected.originalJsonDocId === idea.originalJsonDocId &&
+      selected.jsonDocPath === idea.jsonDocPath) {
       return true;
     }
 
     // Final fallback to index matching (for backward compatibility)
     return selected.index === index;
-  }, [store.selectedArtifactAndPath]);
+  }, [store.selectedJsonDocAndPath]);
 
   // Show loading state during initial sync
   if (isConnecting) {
@@ -379,8 +379,8 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
               {inSelectionMode && !chosenIdea && (
                 <div className="text-center py-4 " style={{ padding: "12px 12px" }}>
                   <Text className="text-gray-400" >
-                    {store.selectedArtifactAndPath
-                      ? `已选择创意 ${store.selectedArtifactAndPath.index + 1}，请使用下方的操作面板确认选择`
+                    {store.selectedJsonDocAndPath
+                      ? `已选择创意 ${store.selectedJsonDocAndPath.index + 1}，请使用下方的操作面板确认选择`
                       : '点击选择一个创意想法继续开发'
                     }
                   </Text>
@@ -403,12 +403,12 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
               } style={{ padding: "12px 12px" }}>
                 {ideas.map((idea, index) => (
                   <IdeaCardWrapper
-                    key={`${idea.artifactId}-${index}`}
+                    key={`${idea.jsonDocId}-${index}`}
                     idea={idea}
                     index={index}
                     isSelected={getIsIdeaSelected(idea, index)}
                     chosenIdea={chosenIdea}
-                    ideaOutlines={ideaOutlines[idea.artifactId || ''] || []}
+                    ideaOutlines={ideaOutlines[idea.jsonDocId || ''] || []}
                     onIdeaClick={handleIdeaClick}
                     readOnly={readOnly}
                   />

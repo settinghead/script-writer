@@ -11,11 +11,11 @@ export {
     YJSEmotionArcsArray,
     YJSRelationshipDevelopmentsArray,
     YJSCharacterArray
-} from '../../transform-artifact-framework/components/YJSField';
+} from '../../transform-jsonDoc-framework/components/YJSField';
 
-export { YJSSlateArrayOfStringField } from '../../transform-artifact-framework/components/YJSSlateArrayField';
-export { ReadOnlyArtifactDisplay } from './ReadOnlyArtifactDisplay';
-export { ArtifactDisplayWrapper } from '../../transform-artifact-framework/components/ArtifactDisplayWrapper';
+export { YJSSlateArrayOfStringField } from '../../transform-jsonDoc-framework/components/YJSSlateArrayField';
+export { ReadOnlyJsonDocDisplay } from './ReadOnlyJsonDocDisplay';
+export { JsonDocDisplayWrapper } from '../../transform-jsonDoc-framework/components/JsonDocDisplayWrapper';
 export { EditableOutlineForm } from './EditableOutlineForm';
 export { default as EditableChroniclesForm } from './EditableChroniclesForm';
 export { default as AIButton } from './AIButton';

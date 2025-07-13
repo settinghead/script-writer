@@ -58,13 +58,13 @@ export const AppColors = {
 
 // Utility functions for common color operations
 export const ColorUtils = {
-    // Get appropriate color for transform/artifact type
+    // Get appropriate color for transform/jsonDoc type
     getTransformColor: (type: 'human' | 'llm') => {
         return type === 'human' ? AppColors.human.primary : AppColors.ai.primary;
     },
 
-    // Get appropriate color for artifact based on origin
-    getArtifactColor: (type: string, originType?: string) => {
+    // Get appropriate color for jsonDoc based on origin
+    getJsonDocColor: (type: string, originType?: string) => {
         // Input params get purple color
         if (type === 'brainstorm_input_params' || type === 'brainstorm_input_params' || type === 'outline_input' || type.includes('input')) {
             return AppColors.ai.tertiary;

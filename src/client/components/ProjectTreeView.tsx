@@ -12,7 +12,7 @@ import {
     SettingOutlined,
     ClockCircleOutlined
 } from '@ant-design/icons';
-import { useEffectiveBrainstormIdeas, useProjectInitialMode } from '../transform-artifact-framework/useLineageResolution';
+import { useEffectiveBrainstormIdeas, useProjectInitialMode } from '../transform-jsonDoc-framework/useLineageResolution';
 import { useProjectData } from '../contexts/ProjectDataContext';
 import { useCurrentSection, type CurrentSection } from '../hooks/useCurrentSection';
 import { useChosenBrainstormIdea } from '../hooks/useChosenBrainstormIdea';
@@ -81,9 +81,9 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
         return nodeSection === currentSection;
     }, [currentSection]);
 
-    // Strict artifact-based checks
-    const artifactChecks = useMemo(() => {
-        if (projectData.artifacts === "pending" || projectData.artifacts === "error") {
+    // Strict jsonDoc-based checks
+    const jsonDocChecks = useMemo(() => {
+        if (projectData.jsonDocs === "pending" || projectData.jsonDocs === "error") {
             return {
                 hasBrainstormIdeas: false,
                 hasBrainstormInput: false,
@@ -93,28 +93,28 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
             };
         }
 
-        // Check for brainstorm artifacts
+        // Check for brainstorm jsonDocs
         const hasBrainstormIdeas = ideas.length > 0;
 
         // Check for brainstorm tool input (creation step)
-        const hasBrainstormInput = projectData.artifacts.some(artifact =>
-            artifact.schema_type === 'brainstorm_input_params'
+        const hasBrainstormInput = projectData.jsonDocs.some(jsonDoc =>
+            jsonDoc.schema_type === 'brainstorm_input_params'
         );
 
         // Check for editable brainstorm idea (editing step)
-        const hasEditableBrainstormIdea = projectData.artifacts.some(artifact =>
-            (artifact.schema_type === 'brainstorm_idea') &&
-            artifact.origin_type === 'user_input'
+        const hasEditableBrainstormIdea = projectData.jsonDocs.some(jsonDoc =>
+            (jsonDoc.schema_type === 'brainstorm_idea') &&
+            jsonDoc.origin_type === 'user_input'
         );
 
-        // Check for outline settings artifacts
-        const hasOutlineSettings = projectData.artifacts.some(artifact =>
-            artifact.schema_type === 'outline_settings'
+        // Check for outline settings jsonDocs
+        const hasOutlineSettings = projectData.jsonDocs.some(jsonDoc =>
+            jsonDoc.schema_type === 'outline_settings'
         );
 
-        // Check for chronicles artifacts
-        const hasChronicles = projectData.artifacts.some(artifact =>
-            artifact.schema_type === 'chronicles'
+        // Check for chronicles jsonDocs
+        const hasChronicles = projectData.jsonDocs.some(jsonDoc =>
+            jsonDoc.schema_type === 'chronicles'
         );
 
         return {
@@ -124,15 +124,15 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
             hasOutlineSettings,
             hasChronicles
         };
-    }, [ideas, projectData.artifacts]);
+    }, [ideas, projectData.jsonDocs]);
 
-    // Build simplified tree data structure with main sections - only show sections with actual artifacts
+    // Build simplified tree data structure with main sections - only show sections with actual jsonDocs
     const treeData: ProjectTreeNode[] = useMemo(() => {
         if (ideasLoading || initialModeLoading) {
             return [];
         }
 
-        // If in initial mode (no artifacts), show empty tree
+        // If in initial mode (no jsonDocs), show empty tree
         if (isInitialMode) {
             return [];
         }
@@ -140,7 +140,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
         const sections: ProjectTreeNode[] = [];
 
         // 1. BRAINSTORM SECTION - only show if we have brainstorm ideas
-        if (artifactChecks.hasBrainstormIdeas) {
+        if (jsonDocChecks.hasBrainstormIdeas) {
             const brainstormHighlighted = shouldHighlightNode('#brainstorm-ideas');
             const brainstormChildren: ProjectTreeNode[] = [];
 
@@ -148,8 +148,8 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                 return sections;
             }
 
-            const artifacts = projectData.artifacts;
-            if (artifacts === "pending" || artifacts === "error") {
+            const jsonDocs = projectData.jsonDocs;
+            if (jsonDocs === "pending" || jsonDocs === "error") {
                 return sections;
             }
 
@@ -160,10 +160,10 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                 let isEdited = false;
 
                 try {
-                    const artifact = artifacts.find(a => a.id === idea.artifactId);
-                    if (artifact) {
-                        const data = JSON.parse(artifact.data);
-                        if (idea.artifactPath === '$') {
+                    const jsonDoc = jsonDocs.find(a => a.id === idea.jsonDocId);
+                    if (jsonDoc) {
+                        const data = JSON.parse(jsonDoc.data);
+                        if (idea.jsonDocPath === '$') {
                             ideaTitle = data.title || ideaTitle;
                         } else if (data.ideas && Array.isArray(data.ideas) && data.ideas[idea.index]) {
                             ideaTitle = data.ideas[idea.index].title || ideaTitle;
@@ -171,17 +171,17 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                     }
 
                     // Check if this is the chosen idea
-                    isChosen = chosenIdea?.originalArtifactId === idea.originalArtifactId &&
+                    isChosen = chosenIdea?.originalJsonDocId === idea.originalJsonDocId &&
                         chosenIdea?.index === idea.index;
 
                     // Check if edited
-                    isEdited = idea.artifactId !== idea.originalArtifactId;
+                    isEdited = idea.jsonDocId !== idea.originalJsonDocId;
                 } catch (error) {
                     console.error('Error parsing idea data:', error);
                 }
 
                 brainstormChildren.push({
-                    key: `brainstorm-idea-${idea.artifactId}-${idea.index}`,
+                    key: `brainstorm-idea-${idea.jsonDocId}-${idea.index}`,
                     title: (
                         <Space>
                             {isChosen && <StarFilled style={{ color: '#faad14', fontSize: '12px' }} />}
@@ -255,7 +255,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
         }
 
         // 2. IDEATION EDITING SECTION - only if there's a chosen idea AND it's editable
-        if (chosenIdea && artifactChecks.hasEditableBrainstormIdea) {
+        if (chosenIdea && jsonDocChecks.hasEditableBrainstormIdea) {
             const ideationHighlighted = shouldHighlightNode('#ideation-edit');
 
             const ideationSection: ProjectTreeNode = {
@@ -295,8 +295,8 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
             sections.push(ideationSection);
         }
 
-        // 3. OUTLINE SETTINGS SECTION - only show if outline settings artifacts exist
-        if (artifactChecks.hasOutlineSettings) {
+        // 3. OUTLINE SETTINGS SECTION - only show if outline settings jsonDocs exist
+        if (jsonDocChecks.hasOutlineSettings) {
             const outlineSettingsHighlighted = shouldHighlightNode('#outline-settings');
 
             const outlineSettingsSection: ProjectTreeNode = {
@@ -341,8 +341,8 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
             sections.push(outlineSettingsSection);
         }
 
-        // 4. CHRONICLES SECTION - only show if chronicles artifacts exist
-        if (artifactChecks.hasChronicles) {
+        // 4. CHRONICLES SECTION - only show if chronicles jsonDocs exist
+        if (jsonDocChecks.hasChronicles) {
             const chroniclesHighlighted = shouldHighlightNode('#chronicles');
 
             const chroniclesSection: ProjectTreeNode = {
@@ -388,7 +388,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
         }
 
         return sections;
-    }, [ideas, ideasLoading, initialModeLoading, isInitialMode, chosenIdea, artifactChecks, shouldHighlightNode, projectData.artifacts]);
+    }, [ideas, ideasLoading, initialModeLoading, isInitialMode, chosenIdea, jsonDocChecks, shouldHighlightNode, projectData.jsonDocs]);
 
     // Handle tree node selection - scroll to corresponding section
     const handleSelect = useCallback((selectedKeys: React.Key[], info: any) => {

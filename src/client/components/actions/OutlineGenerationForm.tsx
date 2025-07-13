@@ -22,15 +22,15 @@ const OutlineGenerationForm: React.FC<OutlineGenerationFormProps> = (props) => {
     const [isGenerating, setIsGenerating] = useState(false);
 
     // Get chosen idea from props (new way) or null (old way - will show nothing to do)
-    const chosenIdea = 'artifacts' in props ? props.artifacts.chosenIdea : null;
+    const chosenIdea = 'jsonDocs' in props ? props.jsonDocs.chosenIdea : null;
     const chosenIdeaLoading = false; // No longer needed with resolved props
 
     // Get the chosen brainstorm idea data (simplified with resolved props)
-    const { sourceArtifactId, ideaData } = useMemo(() => {
-        if (!chosenIdea) return { sourceArtifactId: null, ideaData: null };
+    const { sourceJsonDocId, ideaData } = useMemo(() => {
+        if (!chosenIdea) return { sourceJsonDocId: null, ideaData: null };
 
-        // EffectiveBrainstormIdea has artifactId property
-        const artifactId = chosenIdea.artifactId;
+        // EffectiveBrainstormIdea has jsonDocId property
+        const jsonDocId = chosenIdea.jsonDocId;
 
         // For new ActionComponentProps with resolved data, we need to get the actual idea data
         // This will be handled by the parent component that resolves the lineage
@@ -40,20 +40,20 @@ const OutlineGenerationForm: React.FC<OutlineGenerationFormProps> = (props) => {
             body: '创意详情将在此显示'
         };
 
-        return { sourceArtifactId: artifactId, ideaData };
+        return { sourceJsonDocId: jsonDocId, ideaData };
     }, [chosenIdea]);
 
     // Handle outline generation
     const handleGenerateOutline = useCallback(async (values: OutlineFormValues) => {
         console.log('[OutlineGenerationForm] Starting outline generation with:', {
-            sourceArtifactId,
+            sourceJsonDocId,
             projectId,
             values,
             ideaData
         });
 
-        if (!sourceArtifactId) {
-            console.error('[OutlineGenerationForm] No source artifact ID found');
+        if (!sourceJsonDocId) {
+            console.error('[OutlineGenerationForm] No source jsonDoc ID found');
             message.error('未找到选中的创意');
             return;
         }
@@ -62,7 +62,7 @@ const OutlineGenerationForm: React.FC<OutlineGenerationFormProps> = (props) => {
         try {
             await apiService.generateOutlineFromIdea(
                 projectId,
-                sourceArtifactId,
+                sourceJsonDocId,
                 values.title,
                 values.requirements || ''
             );
@@ -77,7 +77,7 @@ const OutlineGenerationForm: React.FC<OutlineGenerationFormProps> = (props) => {
         } finally {
             setIsGenerating(false);
         }
-    }, [sourceArtifactId, projectId, onSuccess, onError, ideaData]);
+    }, [sourceJsonDocId, projectId, onSuccess, onError, ideaData]);
 
     // Show loading state while chosen idea is loading
     if (chosenIdeaLoading) {
@@ -89,7 +89,7 @@ const OutlineGenerationForm: React.FC<OutlineGenerationFormProps> = (props) => {
     }
 
     // Show error if no chosen idea found
-    if (!chosenIdea || !sourceArtifactId) {
+    if (!chosenIdea || !sourceJsonDocId) {
         return (
             <div style={{ textAlign: 'center', }}>
                 <Text type="secondary">Nothing to do</Text>

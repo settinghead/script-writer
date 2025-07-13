@@ -2,20 +2,20 @@
 
 ## Framework Foundation
 
-### 1. Transform Artifact Framework
-- **ALL implementations MUST follow the Transform Artifact Framework** - see [TRANSFORM_ARTIFACT_FRAMEWORK.md](./TRANSFORM_ARTIFACT_FRAMEWORK.md) for detailed documentation
-- **ALWAYS respect the artifacts => transform => artifacts structure** when changing backend flow logic
-- Every data modification MUST be tracked through transforms with proper input/output artifact relationships
-- Artifacts are immutable - create new versions rather than modifying existing ones
+### 1. Transform JsonDoc Framework
+- **ALL implementations MUST follow the Transform JsonDoc Framework** - see [TRANSFORM_JSONDOC_FRAMEWORK.md](./TRANSFORM_JSONDOC_FRAMEWORK.md) for detailed documentation
+- **ALWAYS respect the jsonDocs => transform => jsonDocs structure** when changing backend flow logic
+- Every data modification MUST be tracked through transforms with proper input/output jsonDoc relationships
+- JsonDocs are immutable - create new versions rather than modifying existing ones
 - Use `TransformExecutor` for all data modifications that need traceability
 - Transforms must specify type ('llm' or 'human'), execution context, and status
 
 ### 2. API Design Philosophy
-- **DO NOT expose artifacts/transforms directly** in server routes - they are low-level constructs
-- **DO NOT make frontend interact with artifacts/transforms directly**
-- Create domain-specific endpoints (e.g., `/api/projects`) that abstract the underlying artifacts system
-- Frontend should work with business domain objects not raw artifacts
-- Use repository pattern to encapsulate artifact/transform operations
+- **DO NOT expose jsonDocs/transforms directly** in server routes - they are low-level constructs
+- **DO NOT make frontend interact with jsonDocs/transforms directly**
+- Create domain-specific endpoints (e.g., `/api/projects`) that abstract the underlying jsonDocs system
+- Frontend should work with business domain objects not raw jsonDocs
+- Use repository pattern to encapsulate jsonDoc/transform operations
 
 ## Security & Authentication
 
@@ -28,11 +28,11 @@
 
 ### 4. Project-Based Access Control
 - **Access control is managed through PROJECT MEMBERSHIP, NOT direct user ownership**
-- Artifacts and transforms DO NOT have user_id fields - they have project_id fields instead
+- JsonDocs and transforms DO NOT have user_id fields - they have project_id fields instead
 - Access control is managed through project membership via the projects_users table
-- Users can ONLY access artifacts/transforms within projects they are members of
-- **ALWAYS use artifactRepo.userHasProjectAccess(userId, projectId)** to validate access
-- **NEVER filter artifacts directly by user_id** - filter by project_id and validate project membership
+- Users can ONLY access jsonDocs/transforms within projects they are members of
+- **ALWAYS use jsonDocRepo.userHasProjectAccess(userId, projectId)** to validate access
+- **NEVER filter jsonDocs directly by user_id** - filter by project_id and validate project membership
 - WebSocket connections must verify project membership before allowing access
 - Debug endpoints must scope data to user's accessible projects only
 
@@ -47,7 +47,7 @@
 ### 6. Type Safety
 - Use strict TypeScript throughout both frontend and backend
 - **ALWAYS define shared types in `src/common/`** - whenever types can be shared between frontend and backend, they MUST be placed under `/src/common` for consistency and single source of truth
-- Define interfaces with version suffixes (e.g., `IdeaCollectionV1`) for artifact types
+- Define interfaces with version suffixes (e.g., `IdeaCollectionV1`) for jsonDoc types
 - Properly type all streaming services and API responses
 - Frontend-only types go in `src/client/types/`, backend-only types go in `src/server/types/`
 
@@ -65,7 +65,7 @@ src/
 └── server/               # Express backend
     ├── routes/           # API routes (domain-focused)
     ├── services/         # Business logic with transform execution
-    ├── repositories/     # Data access layer (artifacts/transforms)
+    ├── repositories/     # Data access layer (jsonDocs/transforms)
     └── middleware/       # Authentication and validation
 ```
 
@@ -86,15 +86,15 @@ src/
 ## Database & Performance
 
 ### 10. Database Operations
-- Use `ArtifactRepository` and `TransformRepository` for data access
-- **ALWAYS use project-based filtering** - artifacts/transforms have project_id, not user_id
+- Use `JsonDocRepository` and `TransformRepository` for data access
+- **ALWAYS use project-based filtering** - jsonDocs/transforms have project_id, not user_id
 - Validate project membership before any database operations
 - Use PostgreSQL + Electric SQL + Kysely architecture as documented in framework
 
 ## API Endpoint Patterns
 
 ### 11. Route Organization
-- Group routes by domain: `/api/projects`, `/api/chat`, `/api/artifacts`
+- Group routes by domain: `/api/projects`, `/api/chat`, `/api/jsonDocs`
 - Use RESTful conventions where appropriate
 - Streaming endpoints use agent-based patterns
 - Debug endpoints under `/debug/` (development only)
@@ -102,7 +102,7 @@ src/
 
 ### 12. Request/Response Patterns
 - Always validate input parameters
-- Return domain objects, not raw artifacts
+- Return domain objects, not raw jsonDocs
 - Include proper error handling with user-friendly messages
 - Use consistent response formats across endpoints
 - Include pagination for list endpoints
@@ -124,7 +124,7 @@ src/
 
 ### 15. Testing Framework
 - Use cache-based testing with Vitest for AI functionality
-- Follow patterns documented in TRANSFORM_ARTIFACT_FRAMEWORK.md
+- Follow patterns documented in TRANSFORM_JSONDOC_FRAMEWORK.md
 - Test with actual cached LLM responses for realistic validation
 - All tests should use project-based access control patterns
 - **ALWAYS use `npm test -- --run`** instead of `npm test` to avoid interactive watch mode that waits for key presses
@@ -135,7 +135,7 @@ src/
 
 ### 16. Debugging & Analytics
 - If a new flow is constructed or modified, test by creating a Node.js testing script that executes transforms
-- Use raw graph visualization for debugging artifact lineage
+- Use raw graph visualization for debugging jsonDoc lineage
 - Access via `?raw-graph=1` parameter for development debugging
 
 ## Data Validation
@@ -159,7 +159,7 @@ src/
 ## Framework Documentation Reference
 
 ### 19. Documentation Standards
-- **ALWAYS reference TRANSFORM_ARTIFACT_FRAMEWORK.md** for technical implementation details
+- **ALWAYS reference TRANSFORM_JSONDOC_FRAMEWORK.md** for technical implementation details
 - Use README.md for application-specific features and usage
 - Keep application code focused on Chinese short drama domain
 - Follow framework patterns for agent tools, streaming, and database operations
@@ -171,4 +171,4 @@ When the user asks to merge an implementation plan with an existing document:
 - Understand the rationale of the new features and document properly
 - Clean and remove any outdated content in the original documentation
 - Make sure all content is transferred over and properly documented, remove the plan document file
-- Reference TRANSFORM_ARTIFACT_FRAMEWORK.md for technical details, README.md for application usage
+- Reference TRANSFORM_JSONDOC_FRAMEWORK.md for technical details, README.md for application usage

@@ -41,7 +41,7 @@ interface ProjectSummary {
     genre?: string;
     createdAt: string;
     updatedAt: string;
-    artifactCounts: {
+    jsonDocCounts: {
         ideations: number;
         outlines: number;
         episodes: number;

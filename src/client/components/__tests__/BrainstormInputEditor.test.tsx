@@ -2,12 +2,12 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import BrainstormInputEditor from '../BrainstormInputEditor';
-import { useYJSField } from '../../transform-artifact-framework/contexts/YJSArtifactContext';
-import { TypedArtifact } from '@/common/types';
+import { useYJSField } from '../../transform-jsonDoc-framework/contexts/YJSJsonDocContext';
+import { TypedJsonDoc } from '@/common/types';
 
 // Mock the YJS context
-vi.mock('../../transform-artifact-framework/contexts/YJSArtifactContext', () => ({
-    YJSArtifactProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+vi.mock('../../transform-jsonDoc-framework/contexts/YJSJsonDocContext', () => ({
+    YJSJsonDocProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
     useYJSField: vi.fn(() => ({
         value: '',
         updateValue: vi.fn(),
@@ -29,18 +29,18 @@ vi.mock('../PlatformSelection', () => ({
 // Mock the project data context
 vi.mock('../../contexts/ProjectDataContext', () => ({
     useProjectData: vi.fn(() => ({
-        artifacts: [],
+        jsonDocs: [],
         isLoading: false,
         isError: false
     }))
 }));
 
 describe('BrainstormInputEditor', () => {
-    const mockArtifact = {
-        id: 'test-artifact-1',
-        schema_type: 'brainstorm_input_params' as TypedArtifact['schema_type'],
-        schema_version: 'v1' as TypedArtifact['schema_version'],
-        origin_type: 'ai_generated' as TypedArtifact['origin_type'],
+    const mockJsonDoc = {
+        id: 'test-jsonDoc-1',
+        schema_type: 'brainstorm_input_params' as TypedJsonDoc['schema_type'],
+        schema_version: 'v1' as TypedJsonDoc['schema_version'],
+        origin_type: 'ai_generated' as TypedJsonDoc['origin_type'],
         data: '{"platform": "douyin", "genre": "现代甜宠", "numberOfIdeas": 3, "other_requirements": "需要很多狗血和反转"}',
         created_at: '2024-01-01T00:00:00Z'
     };
@@ -50,7 +50,7 @@ describe('BrainstormInputEditor', () => {
     });
 
     it('should render in expanded mode by default', () => {
-        render(<BrainstormInputEditor artifact={mockArtifact} />);
+        render(<BrainstormInputEditor jsonDoc={mockJsonDoc} />);
 
         // Should show the full form title
         expect(screen.getByText('头脑风暴需求')).toBeInTheDocument();
@@ -63,7 +63,7 @@ describe('BrainstormInputEditor', () => {
     });
 
     it('should render in minimized mode when minimized prop is true', () => {
-        render(<BrainstormInputEditor artifact={mockArtifact} minimized={true} />);
+        render(<BrainstormInputEditor jsonDoc={mockJsonDoc} minimized={true} />);
 
         // Should show the collapsed panel structure
         expect(screen.getByRole('button')).toBeInTheDocument(); // Collapse header is a button
@@ -79,7 +79,7 @@ describe('BrainstormInputEditor', () => {
     });
 
     it('should expand when collapsed panel is clicked in minimized mode', () => {
-        render(<BrainstormInputEditor artifact={mockArtifact} minimized={true} />);
+        render(<BrainstormInputEditor jsonDoc={mockJsonDoc} minimized={true} />);
 
         // Find and click the collapse panel header (button)
         const collapseHeader = screen.getByRole('button');
@@ -103,20 +103,20 @@ describe('BrainstormInputEditor', () => {
             return mockData[path || ''] || { value: '', updateValue: vi.fn(), isInitialized: true };
         });
 
-        render(<BrainstormInputEditor artifact={mockArtifact} minimized={true} />);
+        render(<BrainstormInputEditor jsonDoc={mockJsonDoc} minimized={true} />);
 
         // Should show the summary includes platform info
         expect(screen.getByText(/douyin/)).toBeInTheDocument();
     });
 
-    it('should handle missing artifact gracefully', () => {
-        render(<BrainstormInputEditor artifact={null} />);
+    it('should handle missing jsonDoc gracefully', () => {
+        render(<BrainstormInputEditor jsonDoc={null} />);
 
         expect(screen.getByText('未找到头脑风暴输入数据')).toBeInTheDocument();
     });
 
     it('should show default fallback text when no data is available', () => {
-        render(<BrainstormInputEditor artifact={mockArtifact} minimized={true} />);
+        render(<BrainstormInputEditor jsonDoc={mockJsonDoc} minimized={true} />);
 
         // Should show the collapse panel with default title
         expect(screen.getByText('头脑风暴参数')).toBeInTheDocument();

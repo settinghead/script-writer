@@ -7,14 +7,14 @@ import {
     YJSArrayField,
     YJSEmotionArcsArray,
     YJSRelationshipDevelopmentsArray
-} from '../../transform-artifact-framework/components/YJSField';
-import { YJSSlateArrayOfStringField } from '../../transform-artifact-framework/components/YJSSlateArrayField';
-import { useYJSField } from '../../transform-artifact-framework/contexts/YJSArtifactContext';
+} from '../../transform-jsonDoc-framework/components/YJSField';
+import { YJSSlateArrayOfStringField } from '../../transform-jsonDoc-framework/components/YJSSlateArrayField';
+import { useYJSField } from '../../transform-jsonDoc-framework/contexts/YJSJsonDocContext';
 
 const { Title, Text } = Typography;
 
 interface EditableChroniclesFormProps {
-    // No props needed - gets data from YJSArtifactContext
+    // No props needed - gets data from YJSJsonDocContext
 }
 
 const EditableChroniclesForm: React.FC<EditableChroniclesFormProps> = memo(() => {

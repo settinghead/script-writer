@@ -3,48 +3,48 @@ import {
     isLeafNode,
     canBecomeEditable
 } from '../actionComputation';
-import { TypedArtifact } from '../../../common/types';
+import { TypedJsonDoc } from '../../../common/types';
 
 
 
 describe('actionComputation', () => {
     describe('isLeafNode', () => {
-        it('should return true for artifact with no descendants', () => {
+        it('should return true for jsonDoc with no descendants', () => {
             const transformInputs = [
-                { artifact_id: 'other-artifact', transform_id: 'transform-1' }
+                { jsonDoc_id: 'other-jsonDoc', transform_id: 'transform-1' }
             ];
-            expect(isLeafNode('test-artifact', transformInputs)).toBe(true);
+            expect(isLeafNode('test-jsonDoc', transformInputs)).toBe(true);
         });
 
-        it('should return false for artifact with descendants', () => {
+        it('should return false for jsonDoc with descendants', () => {
             const transformInputs = [
-                { artifact_id: 'test-artifact', transform_id: 'transform-1' }
+                { jsonDoc_id: 'test-jsonDoc', transform_id: 'transform-1' }
             ];
-            expect(isLeafNode('test-artifact', transformInputs)).toBe(false);
+            expect(isLeafNode('test-jsonDoc', transformInputs)).toBe(false);
         });
 
         it('should return true for empty transform inputs', () => {
-            expect(isLeafNode('test-artifact', [])).toBe(true);
+            expect(isLeafNode('test-jsonDoc', [])).toBe(true);
         });
     });
 
     describe('canBecomeEditable', () => {
         it('should return true for AI-generated leaf node', () => {
-            const artifact = { id: 'test', origin_type: 'ai_generated' } as TypedArtifact;
+            const jsonDoc = { id: 'test', origin_type: 'ai_generated' } as TypedJsonDoc;
             const transformInputs: any[] = [];
-            expect(canBecomeEditable(artifact, transformInputs)).toBe(true);
+            expect(canBecomeEditable(jsonDoc, transformInputs)).toBe(true);
         });
 
-        it('should return false for user input artifact', () => {
-            const artifact = { id: 'test', origin_type: 'user_input' } as TypedArtifact;
+        it('should return false for user input jsonDoc', () => {
+            const jsonDoc = { id: 'test', origin_type: 'user_input' } as TypedJsonDoc;
             const transformInputs: any[] = [];
-            expect(canBecomeEditable(artifact, transformInputs)).toBe(false);
+            expect(canBecomeEditable(jsonDoc, transformInputs)).toBe(false);
         });
 
-        it('should return false for artifact with descendants', () => {
-            const artifact = { id: 'test', origin_type: 'ai_generated' } as TypedArtifact;
-            const transformInputs = [{ artifact_id: 'test', transform_id: 'transform-1' }];
-            expect(canBecomeEditable(artifact, transformInputs)).toBe(false);
+        it('should return false for jsonDoc with descendants', () => {
+            const jsonDoc = { id: 'test', origin_type: 'ai_generated' } as TypedJsonDoc;
+            const transformInputs = [{ jsonDoc_id: 'test', transform_id: 'transform-1' }];
+            expect(canBecomeEditable(jsonDoc, transformInputs)).toBe(false);
         });
     });
 }); 

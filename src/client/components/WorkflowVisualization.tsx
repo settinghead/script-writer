@@ -15,9 +15,9 @@ import {
     Position,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { useWorkflowNodes } from '../transform-artifact-framework/useLineageResolution';
+import { useWorkflowNodes } from '../transform-jsonDoc-framework/useLineageResolution';
 import { useCurrentSection, type CurrentSection } from '../hooks/useCurrentSection';
-import type { WorkflowNode } from '../../common/transform-artifact-framework/lineageResolution';
+import type { WorkflowNode } from '../../common/transform-jsonDoc-framework/lineageResolution';
 
 
 

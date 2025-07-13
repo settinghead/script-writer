@@ -27,8 +27,8 @@ export const useProjectData = (projectId: string) => {
     enabled: !!projectId,
   });
 
-  // Note: Outline and stage data now comes from project artifacts via Electric SQL
-  // Legacy queries removed as they're replaced by the artifact-based system
+  // Note: Outline and stage data now comes from project jsonDocs via Electric SQL
+  // Legacy queries removed as they're replaced by the jsonDoc-based system
 
   // Sync fetched data with Zustand store
   useEffect(() => {

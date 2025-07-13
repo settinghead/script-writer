@@ -1,6 +1,6 @@
 // Use dynamic imports for YJS to fix ES module compatibility
 import { db } from '../database/connection';
-import { ArtifactRepository } from '../transform-artifact-framework/ArtifactRepository';
+import { JsonDocRepository } from '../transform-jsonDoc-framework/JsonDocRepository';
 
 type Database = typeof db;
 
@@ -13,7 +13,7 @@ type YText = any;
 export interface YJSDocumentState {
     room_id: string;
     project_id: string;
-    artifact_id: string;
+    jsonDoc_id: string;
     document_state: Buffer;
     created_at: Date | string | null;
     updated_at: Date | string | null;
@@ -23,7 +23,7 @@ export interface YJSAwarenessUpdate {
     client_id: string;
     room_id: string;
     project_id: string;
-    artifact_id: string;
+    jsonDoc_id: string;
     update: Buffer;
     created_at?: Date | string | null;
     updated_at: Date | string | null;
@@ -36,7 +36,7 @@ export class YJSService {
 
     constructor(
         private db: Database,
-        private artifactRepo: ArtifactRepository
+        private jsonDocRepo: JsonDocRepository
     ) { }
 
     /**
@@ -49,12 +49,12 @@ export class YJSService {
     }
 
     /**
-     * Get or create YJS document for an artifact
+     * Get or create YJS document for an jsonDoc
      */
-    async getOrCreateDocument(artifactId: string, projectId: string): Promise<YDoc> {
+    async getOrCreateDocument(jsonDocId: string, projectId: string): Promise<YDoc> {
         await this.initializeYJS();
 
-        const roomId = `artifact-${artifactId}`;
+        const roomId = `jsonDoc-${jsonDocId}`;
 
         // Return existing document if already loaded
         if (this.documents.has(roomId)) {
@@ -69,15 +69,15 @@ export class YJSService {
         if (existingState) {
             this.Y.applyUpdate(doc, existingState.document_state);
         } else {
-            // Initialize with artifact data
-            await this.initializeDocumentFromArtifact(doc, artifactId, projectId);
+            // Initialize with jsonDoc data
+            await this.initializeDocumentFromJsonDoc(doc, jsonDocId, projectId);
             // Save initial state
-            await this.saveDocumentState(roomId, projectId, artifactId, doc);
+            await this.saveDocumentState(roomId, projectId, jsonDocId, doc);
         }
 
         // Set up persistence on changes
         doc.on('update', (update: Uint8Array) => {
-            this.scheduleDocumentPersistence(roomId, projectId, artifactId, doc);
+            this.scheduleDocumentPersistence(roomId, projectId, jsonDocId, doc);
         });
 
         this.documents.set(roomId, doc);
@@ -85,33 +85,33 @@ export class YJSService {
     }
 
     /**
-     * Initialize YJS document with artifact data
+     * Initialize YJS document with jsonDoc data
      */
-    private async initializeDocumentFromArtifact(
+    private async initializeDocumentFromJsonDoc(
         doc: YDoc,
-        artifactId: string,
+        jsonDocId: string,
         projectId: string
     ): Promise<void> {
-        const artifact = await this.artifactRepo.getArtifact(artifactId, projectId);
-        if (!artifact) {
-            throw new Error(`Artifact ${artifactId} not found`);
+        const jsonDoc = await this.jsonDocRepo.getJsonDoc(jsonDocId, projectId);
+        if (!jsonDoc) {
+            throw new Error(`JsonDoc ${jsonDocId} not found`);
         }
 
-        let artifactData: any;
+        let jsonDocData: any;
         try {
-            artifactData = typeof artifact.data === 'string'
-                ? JSON.parse(artifact.data)
-                : artifact.data;
+            jsonDocData = typeof jsonDoc.data === 'string'
+                ? JSON.parse(jsonDoc.data)
+                : jsonDoc.data;
         } catch (error) {
-            console.error('Failed to parse artifact data:', error);
-            artifactData = {};
+            console.error('Failed to parse jsonDoc data:', error);
+            jsonDocData = {};
         }
 
-        // Initialize YJS structures based on artifact data
+        // Initialize YJS structures based on jsonDoc data
         const yMap = doc.getMap('content');
 
         // Recursively populate YJS structures
-        this.populateYJSFromObject(yMap, artifactData);
+        this.populateYJSFromObject(yMap, jsonDocData);
     }
 
     /**
@@ -213,7 +213,7 @@ export class YJSService {
     private scheduleDocumentPersistence(
         roomId: string,
         projectId: string,
-        artifactId: string,
+        jsonDocId: string,
         doc: YDoc
     ): void {
         // Clear existing timer
@@ -223,7 +223,7 @@ export class YJSService {
 
         // Schedule new persistence
         const timer = setTimeout(async () => {
-            await this.saveDocumentState(roomId, projectId, artifactId, doc);
+            await this.saveDocumentState(roomId, projectId, jsonDocId, doc);
             this.persistenceTimers.delete(roomId);
         }, 1000); // 1 second debounce
 
@@ -236,18 +236,18 @@ export class YJSService {
     private async saveDocumentState(
         roomId: string,
         projectId: string,
-        artifactId: string,
+        jsonDocId: string,
         doc: YDoc
     ): Promise<void> {
         try {
             const state = this.Y.encodeStateAsUpdate(doc);
             const now = new Date().toISOString();
 
-            await this.db.insertInto('artifact_yjs_documents')
+            await this.db.insertInto('jsonDoc_yjs_documents')
                 .values({
                     room_id: roomId,
                     project_id: projectId,
-                    artifact_id: artifactId,
+                    jsonDoc_id: jsonDocId,
                     document_state: Buffer.from(state),
                     created_at: now,
                     updated_at: now
@@ -270,7 +270,7 @@ export class YJSService {
      */
     private async loadDocumentState(roomId: string): Promise<YJSDocumentState | null> {
         try {
-            const result = await this.db.selectFrom('artifact_yjs_documents')
+            const result = await this.db.selectFrom('jsonDoc_yjs_documents')
                 .selectAll()
                 .where('room_id', '=', roomId)
                 .executeTakeFirst();
@@ -289,18 +289,18 @@ export class YJSService {
         clientId: string,
         roomId: string,
         projectId: string,
-        artifactId: string,
+        jsonDocId: string,
         update: Buffer
     ): Promise<void> {
         try {
             const now = new Date().toISOString();
 
-            await this.db.insertInto('artifact_yjs_awareness')
+            await this.db.insertInto('jsonDoc_yjs_awareness')
                 .values({
                     client_id: clientId,
                     room_id: roomId,
                     project_id: projectId,
-                    artifact_id: artifactId,
+                    jsonDoc_id: jsonDocId,
                     update: update,
                     updated_at: now
                 })
@@ -322,7 +322,7 @@ export class YJSService {
      */
     async getAwarenessUpdates(roomId: string): Promise<YJSAwarenessUpdate[]> {
         try {
-            const results = await this.db.selectFrom('artifact_yjs_awareness')
+            const results = await this.db.selectFrom('jsonDoc_yjs_awareness')
                 .selectAll()
                 .where('room_id', '=', roomId)
                 .execute();
@@ -338,7 +338,7 @@ export class YJSService {
      * Create transform from YJS changes (for audit trail)
      */
     async createTransformFromYJSChanges(
-        artifactId: string,
+        jsonDocId: string,
         projectId: string,
         userId: string,
         doc: YDoc
@@ -350,7 +350,7 @@ export class YJSService {
             // Create human transform for audit trail
             // This will be implemented when we integrate with the transform system
             console.log('Creating transform from YJS changes:', {
-                artifactId,
+                jsonDocId,
                 projectId,
                 userId,
                 updatedData
@@ -363,8 +363,8 @@ export class YJSService {
     /**
      * Cleanup document and timers
      */
-    cleanupDocument(artifactId: string): void {
-        const roomId = `artifact-${artifactId}`;
+    cleanupDocument(jsonDocId: string): void {
+        const roomId = `jsonDoc-${jsonDocId}`;
 
         // Clear persistence timer
         if (this.persistenceTimers.has(roomId)) {
@@ -383,8 +383,8 @@ export class YJSService {
     /**
      * Get document update for synchronization
      */
-    getDocumentUpdate(artifactId: string): Uint8Array | null {
-        const roomId = `artifact-${artifactId}`;
+    getDocumentUpdate(jsonDocId: string): Uint8Array | null {
+        const roomId = `jsonDoc-${jsonDocId}`;
         const doc = this.documents.get(roomId);
 
         if (!doc) return null;
@@ -395,8 +395,8 @@ export class YJSService {
     /**
      * Apply update to document
      */
-    applyUpdateToDocument(artifactId: string, update: Uint8Array): void {
-        const roomId = `artifact-${artifactId}`;
+    applyUpdateToDocument(jsonDocId: string, update: Uint8Array): void {
+        const roomId = `jsonDoc-${jsonDocId}`;
         const doc = this.documents.get(roomId);
 
         if (!doc) return;

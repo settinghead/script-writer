@@ -1,6 +1,6 @@
 import React from 'react';
 import { Typography } from 'antd';
-import { YJSTextField, YJSTextAreaField, YJSArrayField, YJSEmotionArcsArray, YJSRelationshipDevelopmentsArray } from '../../transform-artifact-framework/components/YJSField';
+import { YJSTextField, YJSTextAreaField, YJSArrayField, YJSEmotionArcsArray, YJSRelationshipDevelopmentsArray } from '../../transform-jsonDoc-framework/components/YJSField';
 
 const { Title, Text } = Typography;
 

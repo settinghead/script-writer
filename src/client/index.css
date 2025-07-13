@@ -311,7 +311,7 @@ body {
 
 
 
-/* Custom animations for ArtifactEditor */
+/* Custom animations for JsonDocEditor */
 @keyframes glow {
   0% {
     box-shadow: 0 0 5px rgba(34, 197, 94, 0.5);

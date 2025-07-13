@@ -6,16 +6,16 @@ import { AuthDatabase } from './database/auth';
 import { createAuthMiddleware } from './middleware/auth';
 import { createAuthRoutes } from './routes/auth';
 import yjsRoutes from './routes/yjsRoutes';
-import { ArtifactRepository } from './transform-artifact-framework/ArtifactRepository.js';
-import { TransformRepository } from './transform-artifact-framework/TransformRepository.js';
+import { JsonDocRepository } from './transform-jsonDoc-framework/JsonDocRepository.js';
+import { TransformRepository } from './transform-jsonDoc-framework/TransformRepository.js';
 
 import { db } from './database/connection';
 
 import { ProjectService } from './services/ProjectService.js';
-import { ProjectRepository } from './transform-artifact-framework/ProjectRepository.js';
-import { AgentService } from './transform-artifact-framework/AgentService.js';
-import { ChatMessageRepository } from './transform-artifact-framework/ChatMessageRepository.js';
-import { ChatService } from './transform-artifact-framework/ChatService.js';
+import { ProjectRepository } from './transform-jsonDoc-framework/ProjectRepository.js';
+import { AgentService } from './transform-jsonDoc-framework/AgentService.js';
+import { ChatMessageRepository } from './transform-jsonDoc-framework/ChatMessageRepository.js';
+import { ChatService } from './transform-jsonDoc-framework/ChatService.js';
 
 
 dotenv.config();
@@ -23,7 +23,7 @@ dotenv.config();
 const PORT = parseInt(process.env.PORT || "4600");
 const app = express();
 
-// Configure body parser with increased size limits for large artifact data
+// Configure body parser with increased size limits for large jsonDoc data
 app.use(express.json({ limit: '50mb' })); // Increase JSON body size limit
 app.use(express.urlencoded({ limit: '50mb', extended: true })); // Also increase URL-encoded body limit
 app.use(cookieParser()); // Middleware to parse cookies
@@ -35,14 +35,14 @@ const authMiddleware = createAuthMiddleware(authDB);
 // Test users can be seeded manually with: npm run seed
 
 // Initialize repositories
-const artifactRepo = new ArtifactRepository(db);
+const jsonDocRepo = new JsonDocRepository(db);
 const transformRepo = new TransformRepository(db);
 const projectRepo = new ProjectRepository(db);
 
 
 // Initialize services with unified streaming
 const projectService = new ProjectService(db);
-const agentService = new AgentService(transformRepo, artifactRepo);
+const agentService = new AgentService(transformRepo, jsonDocRepo);
 
 // Initialize chat services
 const chatMessageRepo = new ChatMessageRepository(db);
@@ -73,7 +73,7 @@ createAPIRoutes(
   app,
   authDB,
   authMiddleware,
-  artifactRepo,
+  jsonDocRepo,
   transformRepo,
   projectRepo,
   chatMessageRepo,
@@ -117,7 +117,7 @@ app.post("/api/transforms/:transformId/stop",
       }
 
       // Check if user has access to the project containing this transform
-      const hasAccess = await artifactRepo.userHasProjectAccess(user.id, transform.project_id);
+      const hasAccess = await jsonDocRepo.userHasProjectAccess(user.id, transform.project_id);
       if (!hasAccess) {
         return res.status(403).json({ error: "Access denied - user not member of project" });
       }
@@ -150,44 +150,44 @@ app.post("/api/transforms/:transformId/stop",
   }
 );
 
-// ========== ARTIFACT ENDPOINTS ==========
+// ========== JSONDOC ENDPOINTS ==========
 
-// Helper function to find brainstorm_input_params in artifact lineage
-async function findBrainstormParamsInLineage(userId: string, sourceArtifactId: string) {
+// Helper function to find brainstorm_input_params in jsonDoc lineage
+async function findBrainstormParamsInLineage(userId: string, sourceJsonDocId: string) {
   const userTransforms = await transformRepo.getUserTransforms(userId);
-  const visitedArtifacts = new Set<string>();
-  const artifactsToCheck = [sourceArtifactId];
+  const visitedJsonDocs = new Set<string>();
+  const jsonDocsToCheck = [sourceJsonDocId];
   const brainstormParams: any[] = [];
 
-  while (artifactsToCheck.length > 0) {
-    const currentArtifactId = artifactsToCheck.shift()!;
+  while (jsonDocsToCheck.length > 0) {
+    const currentJsonDocId = jsonDocsToCheck.shift()!;
 
-    if (visitedArtifacts.has(currentArtifactId)) {
+    if (visitedJsonDocs.has(currentJsonDocId)) {
       continue;
     }
-    visitedArtifacts.add(currentArtifactId);
+    visitedJsonDocs.add(currentJsonDocId);
 
-    const artifact = await artifactRepo.getArtifact(currentArtifactId);
-    if (artifact) {
-      // Verify user has access to this artifact's project
-      const hasAccess = await artifactRepo.userHasProjectAccess(userId, artifact.project_id);
+    const jsonDoc = await jsonDocRepo.getJsonDoc(currentJsonDocId);
+    if (jsonDoc) {
+      // Verify user has access to this jsonDoc's project
+      const hasAccess = await jsonDocRepo.userHasProjectAccess(userId, jsonDoc.project_id);
       if (!hasAccess) {
-        continue; // Skip artifacts user doesn't have access to
+        continue; // Skip jsonDocs user doesn't have access to
       }
-      if (artifact.schema_type === 'brainstorm_input_params') {
-        brainstormParams.push(artifact);
+      if (jsonDoc.schema_type === 'brainstorm_input_params') {
+        brainstormParams.push(jsonDoc);
       }
     }
 
-    // Find transforms that have this artifact as output (going backwards in lineage)
+    // Find transforms that have this jsonDoc as output (going backwards in lineage)
     for (const transform of userTransforms) {
       const outputs = await transformRepo.getTransformOutputs(transform.id);
-      if (outputs.some(output => output.artifact_id === currentArtifactId)) {
-        // This transform produced the current artifact, check its inputs
+      if (outputs.some(output => output.jsonDoc_id === currentJsonDocId)) {
+        // This transform produced the current jsonDoc, check its inputs
         const inputs = await transformRepo.getTransformInputs(transform.id);
         for (const input of inputs) {
-          if (!visitedArtifacts.has(input.artifact_id)) {
-            artifactsToCheck.push(input.artifact_id);
+          if (!visitedJsonDocs.has(input.jsonDoc_id)) {
+            jsonDocsToCheck.push(input.jsonDoc_id);
           }
         }
       }
@@ -207,22 +207,22 @@ async function findBrainstormParamsForSession(userId: string, sessionId: string)
     t.execution_context?.episode_session_id === sessionId
   );
 
-  const relatedArtifactIds = new Set<string>();
+  const relatedJsonDocIds = new Set<string>();
 
-  // Collect all input and output artifacts from session transforms
+  // Collect all input and output jsonDocs from session transforms
   for (const transform of sessionTransforms) {
     const inputs = await transformRepo.getTransformInputs(transform.id);
     const outputs = await transformRepo.getTransformOutputs(transform.id);
 
-    inputs.forEach(i => relatedArtifactIds.add(i.artifact_id));
-    outputs.forEach(o => relatedArtifactIds.add(o.artifact_id));
+    inputs.forEach(i => relatedJsonDocIds.add(i.jsonDoc_id));
+    outputs.forEach(o => relatedJsonDocIds.add(o.jsonDoc_id));
   }
 
-  // Now find brainstorm_input_params in the lineage of these artifacts
+  // Now find brainstorm_input_params in the lineage of these jsonDocs
   const brainstormParams: any[] = [];
 
-  for (const artifactId of relatedArtifactIds) {
-    const lineageBrainstormParams = await findBrainstormParamsInLineage(userId, artifactId);
+  for (const jsonDocId of relatedJsonDocIds) {
+    const lineageBrainstormParams = await findBrainstormParamsInLineage(userId, jsonDocId);
     for (const param of lineageBrainstormParams) {
       if (!brainstormParams.some(existing => existing.id === param.id)) {
         brainstormParams.push(param);
@@ -233,8 +233,8 @@ async function findBrainstormParamsForSession(userId: string, sessionId: string)
   return brainstormParams;
 }
 
-// Get artifacts with optional filtering and workflow lineage support
-app.get("/api/artifacts",
+// Get jsonDocs with optional filtering and workflow lineage support
+app.get("/api/jsonDocs",
   authMiddleware.authenticate,
   async (req: any, res: any) => {
     const user = authMiddleware.getCurrentUser(req);
@@ -247,51 +247,51 @@ app.get("/api/artifacts",
         type,
         type_version,
         limit = 50,
-        sourceArtifactId,
+        sourceJsonDocId,
         sessionId
       } = req.query;
 
-      let artifacts: any[] = [];
+      let jsonDocs: any[] = [];
 
       if (type === 'brainstorm_input_params') {
         // Special handling for brainstorm_input_params with lineage tracing
-        if (sourceArtifactId) {
-          // Find brainstorm_input_params in the lineage of this source artifact
-          artifacts = await findBrainstormParamsInLineage(user.id, sourceArtifactId);
+        if (sourceJsonDocId) {
+          // Find brainstorm_input_params in the lineage of this source jsonDoc
+          jsonDocs = await findBrainstormParamsInLineage(user.id, sourceJsonDocId);
         } else if (sessionId) {
           // Find brainstorm_input_params for a specific session (outline or episode)
-          artifacts = await findBrainstormParamsForSession(user.id, sessionId);
+          jsonDocs = await findBrainstormParamsForSession(user.id, sessionId);
         } else {
           // Fallback to all brainstorm_input_params for the user
-          artifacts = await artifactRepo.getUserArtifacts(user.id);
-          artifacts = artifacts.filter(a => a.schema_type === type);
+          jsonDocs = await jsonDocRepo.getUserJsonDocs(user.id);
+          jsonDocs = jsonDocs.filter(a => a.schema_type === type);
         }
       } else {
-        // Regular artifact fetching
-        artifacts = await artifactRepo.getUserArtifacts(user.id);
+        // Regular jsonDoc fetching
+        jsonDocs = await jsonDocRepo.getUserJsonDocs(user.id);
 
         // Apply filters
         if (type) {
-          artifacts = artifacts.filter(a => a.schema_type === type);
+          jsonDocs = jsonDocs.filter(a => a.schema_type === type);
         }
       }
 
       if (type_version) {
-        artifacts = artifacts.filter(a => a.schema_version === type_version);
+        jsonDocs = jsonDocs.filter(a => a.schema_version === type_version);
       }
 
       // Sort by created_at descending (most recent first)
-      artifacts = artifacts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      jsonDocs = jsonDocs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       // Limit results
-      artifacts = artifacts.slice(0, parseInt(limit as string));
+      jsonDocs = jsonDocs.slice(0, parseInt(limit as string));
 
-      res.json(artifacts);
+      res.json(jsonDocs);
 
     } catch (error: any) {
-      console.error('Error fetching artifacts:', error);
+      console.error('Error fetching jsonDocs:', error);
       res.status(500).json({
-        error: "Failed to fetch artifacts",
+        error: "Failed to fetch jsonDocs",
         details: error.message,
         timestamp: new Date().toISOString()
       });
@@ -305,7 +305,7 @@ app.get("/api/artifacts",
 
 
 
-// ========== ARTIFACT ENDPOINTS ===========
+// ========== JSONDOC ENDPOINTS ===========
 
 // Handle client-side routing fallback
 // This must be the last route to catch all unmatched routes

@@ -1,9 +1,9 @@
 export interface IdeaWithTitle {
   title: string
   body: string
-  artifactId?: string
-  originalArtifactId?: string  // For lineage resolution - the original artifact ID for transform lookup
-  artifactPath: string        // NEW: JSONPath within collection artifacts (e.g., '$.ideas[0]', '$' for root)
+  jsonDocId?: string
+  originalJsonDocId?: string  // For lineage resolution - the original jsonDoc ID for transform lookup
+  jsonDocPath: string        // NEW: JSONPath within collection jsonDocs (e.g., '$.ideas[0]', '$' for root)
   index?: number  // For consistent ordering
   debugInfo?: string; // DEBUG: Add debug info property
 }

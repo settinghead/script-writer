@@ -1,11 +1,11 @@
 import { useMemo } from 'react';
 import { useProjectData } from '../contexts/ProjectDataContext';
-import { buildLineageGraph, findEffectiveBrainstormIdeas } from '../../common/transform-artifact-framework/lineageResolution';
+import { buildLineageGraph, findEffectiveBrainstormIdeas } from '../../common/transform-jsonDoc-framework/lineageResolution';
 
 interface ChosenBrainstormIdea {
-    originalArtifactId: string;
-    originalArtifactPath: string;
-    editableArtifactId: string;
+    originalJsonDocId: string;
+    originalJsonDocPath: string;
+    editableJsonDocId: string;
     index: number;
     isFromCollection: boolean;
 }
@@ -14,7 +14,7 @@ interface ChosenBrainstormIdea {
  * Hook to detect when a brainstorm idea has been "chosen" for editing
  * An idea is chosen when it has both:
  * 1. A human transform (user clicked to edit)
- * 2. A user_input artifact (actual editable version exists)
+ * 2. A user_input jsonDoc (actual editable version exists)
  */
 export function useChosenBrainstormIdea(): {
     chosenIdea: ChosenBrainstormIdea | null;
@@ -42,10 +42,10 @@ export function useChosenBrainstormIdea(): {
                         humanTransform.transform_name.includes('edit'))) {
 
 
-                    if (humanTransform.derived_artifact_id) {
-                        const derivedArtifact = projectData.getArtifactById(humanTransform.derived_artifact_id);
+                    if (humanTransform.derived_jsonDoc_id) {
+                        const derivedJsonDoc = projectData.getJsonDocById(humanTransform.derived_jsonDoc_id);
 
-                        if (derivedArtifact && (derivedArtifact.schema_type === 'brainstorm_idea')) {
+                        if (derivedJsonDoc && (derivedJsonDoc.schema_type === 'brainstorm_idea')) {
                             // Extract index from derivation path
                             let index = 0;
                             let isFromCollection = false;
@@ -62,9 +62,9 @@ export function useChosenBrainstormIdea(): {
 
                             return {
                                 chosenIdea: {
-                                    originalArtifactId: humanTransform.source_artifact_id!,
-                                    originalArtifactPath: humanTransform.derivation_path || '$',
-                                    editableArtifactId: derivedArtifact.id,
+                                    originalJsonDocId: humanTransform.source_jsonDoc_id!,
+                                    originalJsonDocPath: humanTransform.derivation_path || '$',
+                                    editableJsonDocId: derivedJsonDoc.id,
                                     index,
                                     isFromCollection
                                 },
@@ -88,8 +88,8 @@ export function useChosenBrainstormIdea(): {
         projectData.isLoading,
         projectData.humanTransforms,
         // Remove unstable function references from dependencies
-        // The getArtifactById function should be stable, but we'll rely on the artifacts array instead
-        projectData.artifacts
+        // The getJsonDocById function should be stable, but we'll rely on the jsonDocs array instead
+        projectData.jsonDocs
     ]);
 
     return result;

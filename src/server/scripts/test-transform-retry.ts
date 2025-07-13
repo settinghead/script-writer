@@ -1,13 +1,13 @@
-import { StreamingTransformExecutor } from '../transform-artifact-framework/StreamingTransformExecutor';
-import { TransformRepository } from '../transform-artifact-framework/TransformRepository';
-import { ArtifactRepository } from '../transform-artifact-framework/ArtifactRepository';
+import { StreamingTransformExecutor } from '../transform-jsonDoc-framework/StreamingTransformExecutor';
+import { TransformRepository } from '../transform-jsonDoc-framework/TransformRepository';
+import { JsonDocRepository } from '../transform-jsonDoc-framework/JsonDocRepository';
 import { OutlineSettingsInputSchema, OutlineSettingsOutputSchema } from '../../common/schemas/outlineSchemas';
 import { db } from '../database/connection';
 
 async function testTransformRetry() {
     console.log('🧪 Testing transform retry mechanism...');
     const transformRepo = new TransformRepository(db);
-    const artifactRepo = new ArtifactRepository(db);
+    const jsonDocRepo = new JsonDocRepository(db);
 
     const projectId = 'test-project-123';
     const userId = 'test-user-1';
@@ -33,7 +33,7 @@ async function testTransformRetry() {
     };
 
     const input = {
-        sourceArtifactId: 'test-artifact-123',
+        sourceJsonDocId: 'test-jsonDoc-123',
         title: 'Test Outline',
         requirements: 'Test requirements'
     };
@@ -47,8 +47,8 @@ async function testTransformRetry() {
             projectId,
             userId,
             transformRepo,
-            artifactRepo,
-            outputArtifactType: 'outline_settings',
+            jsonDocRepo,
+            outputJsonDocType: 'outline_settings',
             transformMetadata: {
                 test: true
             }

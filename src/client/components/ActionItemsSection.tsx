@@ -26,13 +26,13 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
             return null;
         }
 
-        if (!Array.isArray(projectData.artifacts) || !Array.isArray(projectData.transforms)) {
+        if (!Array.isArray(projectData.jsonDocs) || !Array.isArray(projectData.transforms)) {
             return null;
         }
 
         // Check if data has actually changed
         const currentData = {
-            artifacts: projectData.artifacts,
+            jsonDocs: projectData.jsonDocs,
             transforms: projectData.transforms,
             transformInputs: projectData.transformInputs,
             transformOutputs: projectData.transformOutputs,
@@ -41,7 +41,7 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
 
         // Simple deep equality check for arrays
         const dataChanged =
-            JSON.stringify(currentData.artifacts) !== JSON.stringify(prevProjectDataRef.current.artifacts) ||
+            JSON.stringify(currentData.jsonDocs) !== JSON.stringify(prevProjectDataRef.current.jsonDocs) ||
             JSON.stringify(currentData.transforms) !== JSON.stringify(prevProjectDataRef.current.transforms) ||
             JSON.stringify(currentData.transformInputs) !== JSON.stringify(prevProjectDataRef.current.transformInputs) ||
             JSON.stringify(currentData.transformOutputs) !== JSON.stringify(prevProjectDataRef.current.transformOutputs) ||
@@ -59,7 +59,7 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
         return result;
     }, [
         projectData.isLoading,
-        projectData.artifacts?.length,
+        projectData.jsonDocs?.length,
         projectData.transforms?.length,
         projectData.transformInputs?.length,
         projectData.transformOutputs?.length,

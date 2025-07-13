@@ -1,5 +1,5 @@
 import * as express from 'express';
-import { ChatService, SendMessageRequest } from '../transform-artifact-framework/ChatService';
+import { ChatService, SendMessageRequest } from '../transform-jsonDoc-framework/ChatService';
 import { AuthMiddleware } from '../middleware/auth';
 
 export function createChatRoutes(

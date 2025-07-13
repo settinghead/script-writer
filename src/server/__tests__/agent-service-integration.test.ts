@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { AgentService } from '../transform-artifact-framework/AgentService';
-import { createMockArtifactRepository, createMockTransformRepository } from '../../__tests__/mocks/databaseMocks';
+import { AgentService } from '../transform-jsonDoc-framework/AgentService';
+import { createMockJsonDocRepository, createMockTransformRepository } from '../../__tests__/mocks/databaseMocks';
 
 // Mock the lineage utilities since they require complex database state
 vi.mock('../../common/utils/lineageResolution', () => ({
@@ -9,8 +9,8 @@ vi.mock('../../common/utils/lineageResolution', () => ({
         edges: new Map(),
         rootNodes: new Set()
     })),
-    findLatestArtifact: vi.fn(() => ({
-        artifactId: 'test-artifact-id',
+    findLatestJsonDoc: vi.fn(() => ({
+        jsonDocId: 'test-jsonDoc-id',
         depth: 1,
         lineagePath: []
     })),
@@ -33,15 +33,15 @@ vi.mock('../../common/utils/lineageResolution', () => ({
         {
             title: '误爱成宠',
             body: '霸道总裁与普通员工的甜宠故事...',
-            artifactId: 'test-artifact-1',
-            originalArtifactId: 'test-artifact-1'
+            jsonDocId: 'test-jsonDoc-1',
+            originalJsonDocId: 'test-jsonDoc-1'
         }
     ])
 }));
 
 describe('AgentService Integration', () => {
     let mockTransformRepo: any;
-    let mockArtifactRepo: any;
+    let mockJsonDocRepo: any;
     let mockChatMessageRepo: any;
     let agentService: AgentService;
 
@@ -51,7 +51,7 @@ describe('AgentService Integration', () => {
 
     beforeEach(() => {
         mockTransformRepo = createMockTransformRepository();
-        mockArtifactRepo = createMockArtifactRepository();
+        mockJsonDocRepo = createMockJsonDocRepository();
 
         // Mock ChatMessageRepository
         mockChatMessageRepo = {
@@ -73,13 +73,13 @@ describe('AgentService Integration', () => {
         };
 
         // Setup AgentService
-        agentService = new AgentService(mockTransformRepo, mockArtifactRepo);
+        agentService = new AgentService(mockTransformRepo, mockJsonDocRepo);
         agentService.setChatMessageRepository(mockChatMessageRepo);
 
         // Setup basic mock responses
-        let artifactIdCounter = 1;
-        mockArtifactRepo.createArtifact.mockImplementation(() => ({
-            id: `artifact-${artifactIdCounter++}-${Date.now()}`
+        let jsonDocIdCounter = 1;
+        mockJsonDocRepo.createJsonDoc.mockImplementation(() => ({
+            id: `jsonDoc-${jsonDocIdCounter++}-${Date.now()}`
         }));
 
         let transformIdCounter = 1;
@@ -96,22 +96,22 @@ describe('AgentService Integration', () => {
 
             // Simulate repository calls that would happen during tool execution
             // Always check project access first (simulates the real flow)
-            const hasAccess = await mockArtifactRepo.userHasProjectAccess(userId, projectId);
+            const hasAccess = await mockJsonDocRepo.userHasProjectAccess(userId, projectId);
             if (!hasAccess) {
                 throw new Error('Access denied: User does not have access to this project');
             }
 
             // Simulate request-specific repository calls
             if (request.userRequest?.includes('改进') || request.userRequest?.includes('edit')) {
-                // For edit requests, simulate the repository call to get existing artifacts
-                await mockArtifactRepo.getArtifactsByType(projectId, 'brainstorm_idea_collection');
+                // For edit requests, simulate the repository call to get existing jsonDocs
+                await mockJsonDocRepo.getJsonDocsByType(projectId, 'brainstorm_idea_collection');
             } else if (request.userRequest?.includes('大纲') || request.userRequest?.includes('outline')) {
-                // For outline requests, simulate getting artifacts for context
-                await mockArtifactRepo.getArtifactsByType(projectId, 'brainstorm_idea_collection');
-                await mockArtifactRepo.getArtifactsByType(projectId, 'brainstorm_idea');
+                // For outline requests, simulate getting jsonDocs for context
+                await mockJsonDocRepo.getJsonDocsByType(projectId, 'brainstorm_idea_collection');
+                await mockJsonDocRepo.getJsonDocsByType(projectId, 'brainstorm_idea');
             } else if (request.userRequest?.includes('分析')) {
                 // For analysis requests, simulate context gathering
-                await mockArtifactRepo.getArtifactsByType(projectId, 'brainstorm_idea_collection');
+                await mockJsonDocRepo.getJsonDocsByType(projectId, 'brainstorm_idea_collection');
             }
 
             // Call the original method
@@ -119,13 +119,13 @@ describe('AgentService Integration', () => {
 
             // Simulate tool execution side effects - these can throw errors
             // When the agent "calls" tools, we simulate the repository calls that would happen
-            await mockArtifactRepo.createArtifact();
+            await mockJsonDocRepo.createJsonDoc();
             await mockTransformRepo.createTransform();
 
             return result;
         };
 
-        mockArtifactRepo.userHasProjectAccess.mockResolvedValue(true);
+        mockJsonDocRepo.userHasProjectAccess.mockResolvedValue(true);
         mockChatMessageRepo.createMessage.mockResolvedValue({ id: 'chat-msg-1' });
         mockChatMessageRepo.createUserMessage.mockResolvedValue({ id: 'user-msg-1' });
         mockChatMessageRepo.createAssistantMessage.mockResolvedValue({ id: 'assistant-msg-1' });
@@ -144,7 +144,7 @@ describe('AgentService Integration', () => {
 
     it('should handle brainstorm generation with natural language request', async () => {
         // Arrange
-        mockArtifactRepo.getArtifactsByType.mockResolvedValue([]);
+        mockJsonDocRepo.getJsonDocsByType.mockResolvedValue([]);
 
         const brainstormRequest = {
             userRequest: '请帮我为一个现代都市甜宠剧生成一些创意故事想法。我想要男主是霸道总裁，女主是普通职场女性的设定。',
@@ -172,14 +172,14 @@ describe('AgentService Integration', () => {
         // Verify chat message was created
         expect(mockChatMessageRepo.createUserMessage).toHaveBeenCalled();
 
-        // Verify artifact creation was called
-        expect(mockArtifactRepo.createArtifact).toHaveBeenCalled();
+        // Verify jsonDoc creation was called
+        expect(mockJsonDocRepo.createJsonDoc).toHaveBeenCalled();
         expect(mockTransformRepo.createTransform).toHaveBeenCalled();
     });
 
     it('should handle brainstorm editing with context awareness', async () => {
         // Arrange - Mock existing brainstorm ideas
-        const existingBrainstormArtifacts = [
+        const existingBrainstormJsonDocs = [
             {
                 id: 'existing-brainstorm-1',
                 type: 'brainstorm_idea_collection',
@@ -203,8 +203,8 @@ describe('AgentService Integration', () => {
             }
         ];
 
-        mockArtifactRepo.getArtifactsByType.mockResolvedValue(existingBrainstormArtifacts);
-        mockArtifactRepo.getArtifact.mockResolvedValue(existingBrainstormArtifacts[0]);
+        mockJsonDocRepo.getJsonDocsByType.mockResolvedValue(existingBrainstormJsonDocs);
+        mockJsonDocRepo.getJsonDoc.mockResolvedValue(existingBrainstormJsonDocs[0]);
 
         const editRequest = {
             userRequest: '请帮我改进第一个故事创意。我希望增加一些职场竞争的元素，让女主更加独立自强。',
@@ -229,20 +229,20 @@ describe('AgentService Integration', () => {
 
         // Assert - Verify side effects
 
-        // Verify existing artifacts were queried
-        expect(mockArtifactRepo.getArtifactsByType).toHaveBeenCalledWith(
+        // Verify existing jsonDocs were queried
+        expect(mockJsonDocRepo.getJsonDocsByType).toHaveBeenCalledWith(
             TEST_PROJECT_ID,
             'brainstorm_idea_collection'
         );
 
-        // Verify new artifact and transform were created
-        expect(mockArtifactRepo.createArtifact).toHaveBeenCalled();
+        // Verify new jsonDoc and transform were created
+        expect(mockJsonDocRepo.createJsonDoc).toHaveBeenCalled();
         expect(mockTransformRepo.createTransform).toHaveBeenCalled();
     });
 
     it('should handle outline generation from existing ideas', async () => {
         // Arrange - Mock existing brainstorm and edited ideas
-        const existingBrainstormArtifacts = [
+        const existingBrainstormJsonDocs = [
             {
                 id: 'brainstorm-idea-1',
                 type: 'brainstorm_idea',
@@ -258,18 +258,18 @@ describe('AgentService Integration', () => {
             }
         ];
 
-        mockArtifactRepo.getArtifactsByType.mockImplementation((projectId: string, type: string) => {
+        mockJsonDocRepo.getJsonDocsByType.mockImplementation((projectId: string, type: string) => {
             if (type === 'brainstorm_idea_collection') {
                 return Promise.resolve([]);
             } else if (type === 'brainstorm_idea') {
-                return Promise.resolve(existingBrainstormArtifacts);
+                return Promise.resolve(existingBrainstormJsonDocs);
             } else if (type === 'outline_response') {
                 return Promise.resolve([]);
             }
             return Promise.resolve([]);
         });
 
-        mockArtifactRepo.getArtifact.mockResolvedValue(existingBrainstormArtifacts[0]);
+        mockJsonDocRepo.getJsonDoc.mockResolvedValue(existingBrainstormJsonDocs[0]);
 
         const outlineRequest = {
             userRequest: '我想要基于刚才编辑过的第一个故事创意来生成一个详细的时间顺序大纲。请创建一个80集的现代都市甜宠剧大纲。',
@@ -294,13 +294,13 @@ describe('AgentService Integration', () => {
 
         // Assert - Verify side effects
 
-        // Verify artifact lookup was performed
-        expect(mockArtifactRepo.getArtifactsByType).toHaveBeenCalled();
+        // Verify jsonDoc lookup was performed
+        expect(mockJsonDocRepo.getJsonDocsByType).toHaveBeenCalled();
     });
 
     it('should handle chat message creation and updates', async () => {
         // Arrange
-        mockArtifactRepo.getArtifactsByType.mockResolvedValue([]);
+        mockJsonDocRepo.getJsonDocsByType.mockResolvedValue([]);
 
         const request = {
             userRequest: '生成一些故事创意',
@@ -324,9 +324,9 @@ describe('AgentService Integration', () => {
     });
 
     it('should handle errors gracefully and update failed status', async () => {
-        // Arrange - Force an error in artifact creation
-        mockArtifactRepo.createArtifact.mockRejectedValue(new Error('Database error'));
-        mockArtifactRepo.getArtifactsByType.mockResolvedValue([]);
+        // Arrange - Force an error in jsonDoc creation
+        mockJsonDocRepo.createJsonDoc.mockRejectedValue(new Error('Database error'));
+        mockJsonDocRepo.getJsonDocsByType.mockResolvedValue([]);
 
         const request = {
             userRequest: '生成故事创意',
@@ -343,12 +343,12 @@ describe('AgentService Integration', () => {
         )).rejects.toThrow('Database error');
 
         // Verify error handling was attempted
-        expect(mockArtifactRepo.createArtifact).toHaveBeenCalled();
+        expect(mockJsonDocRepo.createJsonDoc).toHaveBeenCalled();
     });
 
     it('should validate project access before processing requests', async () => {
         // Arrange - Deny project access
-        mockArtifactRepo.userHasProjectAccess.mockResolvedValue(false);
+        mockJsonDocRepo.userHasProjectAccess.mockResolvedValue(false);
 
         const request = {
             userRequest: '生成故事创意',
@@ -365,7 +365,7 @@ describe('AgentService Integration', () => {
         )).rejects.toThrow();
 
         // Verify access check was performed
-        expect(mockArtifactRepo.userHasProjectAccess).toHaveBeenCalledWith(
+        expect(mockJsonDocRepo.userHasProjectAccess).toHaveBeenCalledWith(
             TEST_USER_ID,
             TEST_PROJECT_ID
         );
@@ -373,7 +373,7 @@ describe('AgentService Integration', () => {
 
     it('should handle different context types appropriately', async () => {
         // Test general context
-        mockArtifactRepo.getArtifactsByType.mockResolvedValue([]);
+        mockJsonDocRepo.getJsonDocsByType.mockResolvedValue([]);
 
         const generalRequest = {
             userRequest: '帮我分析一下这个故事的优缺点',
@@ -389,7 +389,7 @@ describe('AgentService Integration', () => {
         );
 
         // Verify that general context was handled (should complete without error)
-        expect(mockArtifactRepo.userHasProjectAccess).toHaveBeenCalled();
+        expect(mockJsonDocRepo.userHasProjectAccess).toHaveBeenCalled();
 
         // Test brainstorm context
         const brainstormRequest = {
@@ -406,6 +406,6 @@ describe('AgentService Integration', () => {
         );
 
         // Verify that brainstorm context was handled (should complete without error)
-        expect(mockArtifactRepo.userHasProjectAccess).toHaveBeenCalled();
+        expect(mockJsonDocRepo.userHasProjectAccess).toHaveBeenCalled();
     });
 }); 
