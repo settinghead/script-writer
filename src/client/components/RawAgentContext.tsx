@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, Typography, Tabs, Spin, Alert, Select, Button, Space, Form, Input, Divider } from 'antd';
-import { ToolOutlined, BugOutlined, FileTextOutlined, DatabaseOutlined } from '@ant-design/icons';
+import { ToolOutlined, BugOutlined, FileTextOutlined, DatabaseOutlined, SaveOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useProjectData } from '../contexts/ProjectDataContext';
 import { useDebounce } from '../hooks/useDebounce';
+import { useDebugParams } from '../hooks/useDebugParams';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;

@@ -195,12 +195,64 @@ export function createAdminRoutes(
                 return;
             }
 
-            // Use centralized prompt generation from TemplateService
-            const result = await templateService.generatePromptForDebugging(
-                toolName,
-                templateName,
-                { jsondocs, additionalParams }
-            );
+            // Get the template using the same method as tools
+            const template = templateService.getTemplate(templateName);
+
+            // Prepare context data exactly like tools do
+            let jsondocData: any[] = [];
+            if (jsondocs && jsondocs.length > 0) {
+                // Fetch actual jsondoc content from database (same as tools do)
+                for (const jsondocRef of jsondocs) {
+                    const jsondocId = jsondocRef.jsondocId || jsondocRef.id;
+                    if (jsondocId) {
+                        try {
+                            const jsondoc = await jsondocRepo.getJsondoc(jsondocId);
+                            if (jsondoc) {
+                                // Check user has access to this jsondoc's project
+                                const hasAccess = await jsondocRepo.userHasProjectAccess(userId, jsondoc.project_id);
+                                if (hasAccess) {
+                                    jsondocData.push({
+                                        id: jsondoc.id,
+                                        type: jsondoc.schema_type,
+                                        data: jsondoc.data
+                                    });
+                                }
+                            }
+                        } catch (error) {
+                            console.warn(`Failed to fetch jsondoc ${jsondocId}:`, error);
+                        }
+                    }
+                }
+            }
+
+            // Use the exact same template rendering as tools
+            const finalPrompt = await templateService.renderTemplate(template, {
+                params: additionalParams,
+                jsondocs: jsondocData
+            });
+
+            // Prepare response in the same format as before (for frontend compatibility)
+            const result = {
+                success: true,
+                tool: {
+                    name: toolName,
+                    description: `Debug prompt generation for ${toolName}`,
+                    templatePath: templateName
+                },
+                input: {
+                    jsondocs,
+                    additionalParams
+                },
+                templateVariables: {
+                    params: additionalParams ? JSON.stringify(additionalParams, null, 2) : 'No additional parameters provided',
+                    jsondocs: jsondocData.length > 0 ? JSON.stringify(jsondocData, null, 2) : 'No jsondocs provided'
+                },
+                fieldTitles: {
+                    params: 'Input Parameters',
+                    jsondocs: 'Referenced Jsondocs'
+                },
+                prompt: finalPrompt
+            };
 
             res.json(result);
 
