@@ -42,7 +42,43 @@ const createReactFlowNode = (workflowNode: WorkflowNode, currentSection: Current
                 gradient: 'linear-gradient(135deg, #52c41a 0%, #73d13d 50%, #95de64 100%)',
                 shadow: 'rgba(82, 196, 26, 0.3)'
             },
+            brainstorm_input_params: {
+                gradient: 'linear-gradient(135deg, #1890ff 0%, #40a9ff 50%, #69c0ff 100%)',
+                shadow: 'rgba(24, 144, 255, 0.3)'
+            },
+            user_input: {
+                gradient: 'linear-gradient(135deg, #52c41a 0%, #73d13d 50%, #95de64 100%)',
+                shadow: 'rgba(82, 196, 26, 0.3)'
+            },
+            outline_title: {
+                gradient: 'linear-gradient(135deg, #722ed1 0%, #9254de 50%, #b37feb 100%)',
+                shadow: 'rgba(114, 46, 209, 0.3)'
+            },
+            outline_genre: {
+                gradient: 'linear-gradient(135deg, #722ed1 0%, #9254de 50%, #b37feb 100%)',
+                shadow: 'rgba(114, 46, 209, 0.3)'
+            },
+            outline_selling_points: {
+                gradient: 'linear-gradient(135deg, #722ed1 0%, #9254de 50%, #b37feb 100%)',
+                shadow: 'rgba(114, 46, 209, 0.3)'
+            },
+            outline_setting: {
+                gradient: 'linear-gradient(135deg, #722ed1 0%, #9254de 50%, #b37feb 100%)',
+                shadow: 'rgba(114, 46, 209, 0.3)'
+            },
+            outline_synopsis: {
+                gradient: 'linear-gradient(135deg, #722ed1 0%, #9254de 50%, #b37feb 100%)',
+                shadow: 'rgba(114, 46, 209, 0.3)'
+            },
+            outline_characters: {
+                gradient: 'linear-gradient(135deg, #722ed1 0%, #9254de 50%, #b37feb 100%)',
+                shadow: 'rgba(114, 46, 209, 0.3)'
+            },
             outline: {
+                gradient: 'linear-gradient(135deg, #722ed1 0%, #9254de 50%, #b37feb 100%)',
+                shadow: 'rgba(114, 46, 209, 0.3)'
+            },
+            outline_settings: {
                 gradient: 'linear-gradient(135deg, #722ed1 0%, #9254de 50%, #b37feb 100%)',
                 shadow: 'rgba(114, 46, 209, 0.3)'
             },
@@ -73,6 +109,42 @@ const createReactFlowNode = (workflowNode: WorkflowNode, currentSection: Current
             brainstorm_idea: {
                 gradient: 'linear-gradient(135deg, #454545 0%, #555555 50%, #656565 100%)',
                 shadow: 'rgba(69, 69, 69, 0.2)'
+            },
+            brainstorm_input_params: {
+                gradient: 'linear-gradient(135deg, #404040 0%, #505050 50%, #606060 100%)',
+                shadow: 'rgba(64, 64, 64, 0.2)'
+            },
+            user_input: {
+                gradient: 'linear-gradient(135deg, #454545 0%, #555555 50%, #656565 100%)',
+                shadow: 'rgba(69, 69, 69, 0.2)'
+            },
+            outline_title: {
+                gradient: 'linear-gradient(135deg, #484848 0%, #585858 50%, #686868 100%)',
+                shadow: 'rgba(72, 72, 72, 0.2)'
+            },
+            outline_genre: {
+                gradient: 'linear-gradient(135deg, #484848 0%, #585858 50%, #686868 100%)',
+                shadow: 'rgba(72, 72, 72, 0.2)'
+            },
+            outline_selling_points: {
+                gradient: 'linear-gradient(135deg, #484848 0%, #585858 50%, #686868 100%)',
+                shadow: 'rgba(72, 72, 72, 0.2)'
+            },
+            outline_setting: {
+                gradient: 'linear-gradient(135deg, #484848 0%, #585858 50%, #686868 100%)',
+                shadow: 'rgba(72, 72, 72, 0.2)'
+            },
+            outline_synopsis: {
+                gradient: 'linear-gradient(135deg, #484848 0%, #585858 50%, #686868 100%)',
+                shadow: 'rgba(72, 72, 72, 0.2)'
+            },
+            outline_characters: {
+                gradient: 'linear-gradient(135deg, #484848 0%, #585858 50%, #686868 100%)',
+                shadow: 'rgba(72, 72, 72, 0.2)'
+            },
+            outline_settings: {
+                gradient: 'linear-gradient(135deg, #484848 0%, #585858 50%, #686868 100%)',
+                shadow: 'rgba(72, 72, 72, 0.2)'
             },
             outline: {
                 gradient: 'linear-gradient(135deg, #484848 0%, #585858 50%, #686868 100%)',
@@ -127,7 +199,16 @@ const createReactFlowNode = (workflowNode: WorkflowNode, currentSection: Current
             brainstorm_input: '📝',
             brainstorm_collection: '💡',
             brainstorm_idea: '📝',
+            brainstorm_input_params: '📝',
+            user_input: '📝',
             outline: '📋',
+            outline_settings: '📋',
+            outline_title: '📋',
+            outline_genre: '📋',
+            outline_selling_points: '📋',
+            outline_setting: '📋',
+            outline_synopsis: '📋',
+            outline_characters: '📋',
             chronicles: '📚',
             episode: '🎬',
             script: '📄'

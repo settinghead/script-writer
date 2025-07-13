@@ -35,7 +35,15 @@ export function createAdminRoutes(
                 userId
             );
 
-            // Format tools for admin display
+            // Map tool names to template names for frontend compatibility
+            const toolToTemplate: Record<string, string> = {
+                'generate_brainstorm_ideas': 'brainstorming',
+                'edit_brainstorm_idea': 'brainstorm_edit',
+                'generate_outline_settings': 'outline_settings',
+                'generate_chronicles': 'chronicles'
+            };
+
+            // Format tools for admin display (matching frontend Tool interface)
             const toolList = tools.map(tool => {
                 // Safely extract schema properties for display
                 let inputProperties: Record<string, any> = {};
@@ -65,10 +73,8 @@ export function createAdminRoutes(
                         type: 'object',
                         properties: inputProperties
                     },
-                    outputSchema: {
-                        type: 'object',
-                        description: 'Tool execution result'
-                    }
+                    templatePath: toolToTemplate[tool.name] || 'unknown',
+                    hasCustomTemplateVariables: tool.name === 'edit_brainstorm_idea' // Only brainstorm edit has custom logic
                 };
             });
 
@@ -99,6 +105,7 @@ export function createAdminRoutes(
             });
 
             res.json({
+                success: true,
                 tools: toolList,
                 templates: templates,
                 totalTools: toolList.length,
@@ -119,7 +126,7 @@ export function createAdminRoutes(
         try {
             const { toolName } = req.params;
 
-            // Map tool names to template names
+            // Map tool names to template names (reuse the mapping from above)
             const toolToTemplate: Record<string, string> = {
                 'generate_brainstorm_ideas': 'brainstorming',
                 'edit_brainstorm_idea': 'brainstorm_edit',
@@ -159,24 +166,93 @@ export function createAdminRoutes(
         }
     });
 
-    // POST /api/admin/tools/:toolName/prompt - Execute tool and show prompt (for debugging)
+    // POST /api/admin/tools/:toolName/prompt - Generate prompt for debugging
     router.post('/tools/:toolName/prompt', authMiddleware.authenticate, async (req: Request, res: Response) => {
         try {
             const { toolName } = req.params;
-            const { params, jsondocs } = req.body;
+            const { jsondocs, additionalParams } = req.body;
+            const userId = req.user?.id;
 
-            res.json({
-                message: 'Tool prompt execution is for debugging only',
-                toolName,
-                receivedParams: params,
-                receivedJsondocs: jsondocs,
-                note: 'Use the regular agent endpoints for actual tool execution'
-            });
+            if (!userId) {
+                res.status(401).json({ error: 'User not authenticated' });
+                return;
+            }
+
+            // Map tool names to template names
+            const toolToTemplate: Record<string, string> = {
+                'generate_brainstorm_ideas': 'brainstorming',
+                'edit_brainstorm_idea': 'brainstorm_edit',
+                'generate_outline_settings': 'outline_settings',
+                'generate_chronicles': 'chronicles'
+            };
+
+            const templateName = toolToTemplate[toolName];
+            if (!templateName) {
+                res.status(404).json({
+                    error: 'Tool not found or no template mapping',
+                    availableTools: Object.keys(toolToTemplate)
+                });
+                return;
+            }
+
+            // Get the template
+            const template = templateService.getTemplate(templateName);
+
+            // Prepare template variables using default schema-driven extraction
+            const templateVariables: Record<string, string> = {};
+
+            // Add params section
+            if (additionalParams) {
+                templateVariables['params'] = Object.entries(additionalParams)
+                    .map(([key, value]) => `${key}: ${value}`)
+                    .join('\n');
+            } else {
+                templateVariables['params'] = 'No additional parameters provided';
+            }
+
+            // Add jsondocs section
+            if (jsondocs && jsondocs.length > 0) {
+                // For debugging, we'll just show the jsondoc IDs and types
+                templateVariables['jsondocs'] = jsondocs
+                    .map((doc: any) => `- ${doc.jsondocId} (${doc.schemaType})`)
+                    .join('\n');
+            } else {
+                templateVariables['jsondocs'] = 'No jsondocs provided';
+            }
+
+            // Generate the final prompt by replacing template variables
+            let finalPrompt = template.promptTemplate;
+            for (const [key, value] of Object.entries(templateVariables)) {
+                const placeholder = `%%${key}%%`;
+                finalPrompt = finalPrompt.replace(new RegExp(placeholder, 'g'), value);
+            }
+
+            // Prepare response in the format expected by frontend
+            const result = {
+                success: true,
+                tool: {
+                    name: toolName,
+                    description: `Debug prompt generation for ${toolName}`,
+                    templatePath: templateName
+                },
+                input: {
+                    jsondocs,
+                    additionalParams
+                },
+                templateVariables,
+                fieldTitles: {
+                    params: 'Input Parameters',
+                    jsondocs: 'Referenced Jsondocs'
+                },
+                prompt: finalPrompt
+            };
+
+            res.json(result);
 
         } catch (error) {
-            console.error('Error executing tool prompt:', error);
+            console.error('Error generating prompt:', error);
             res.status(500).json({
-                error: 'Failed to execute tool prompt',
+                error: 'Failed to generate prompt',
                 details: error instanceof Error ? error.message : String(error)
             });
         }
@@ -204,17 +280,17 @@ export function createAdminRoutes(
             const jsondocs = await jsondocRepo.getProjectJsondocs(projectId);
 
             res.json({
+                success: true,
                 projectId,
                 jsondocs: jsondocs.map((jsondoc: any) => ({
                     id: jsondoc.id,
-                    schema_type: jsondoc.schema_type,
-                    schema_version: jsondoc.schema_version,
-                    origin_type: jsondoc.origin_type,
-                    streaming_status: jsondoc.streaming_status,
-                    created_at: jsondoc.created_at,
-                    // Include a preview of the data
+                    schemaType: jsondoc.schema_type,
+                    schemaVersion: jsondoc.schema_version,
+                    originType: jsondoc.origin_type,
+                    createdAt: jsondoc.created_at,
+                    // Include a preview of the data as a string
                     dataPreview: typeof jsondoc.data === 'object'
-                        ? Object.keys(jsondoc.data || {}).slice(0, 5)
+                        ? Object.keys(jsondoc.data || {}).slice(0, 5).join(', ')
                         : 'non-object'
                 }))
             });

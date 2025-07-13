@@ -518,8 +518,8 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
             // Show brainstorm ideas for selection
             if (context.brainstormIdeas.length > 0) {
                 components.push({
-                    id: 'idea-colletion',
-                    component: getComponentById('idea-colletion'),
+                    id: 'idea-collection',
+                    component: getComponentById('idea-collection'),
                     mode: context.hasActiveTransforms ? 'readonly' : 'editable',
                     props: {
                         ideas: context.brainstormIdeas,
@@ -554,8 +554,8 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
             // Show brainstorm ideas in readonly mode for reference (only for AI path)
             if (context.brainstormIdeas.length > 0 && !context.isManualPath) {
                 components.push({
-                    id: 'idea-colletion',
-                    component: getComponentById('idea-colletion'),
+                    id: 'idea-collection',
+                    component: getComponentById('idea-collection'),
                     mode: 'readonly',
                     props: {
                         ideas: context.brainstormIdeas,
