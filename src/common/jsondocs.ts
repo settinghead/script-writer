@@ -5,7 +5,6 @@ export * from './types';
 import { JsondocSchemaRegistry } from './schemas/jsondocs';
 import type { TypedJsondoc } from './types';
 
-// ========== LEGACY: These will be removed once migration is complete ==========
 
 // Project-related interfaces
 export interface Project {
