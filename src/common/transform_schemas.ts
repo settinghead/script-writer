@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { JsondocReferencesSchema } from './schemas/common';
 
 // =================================================================================
 // INPUT SCHEMAS (Represents the "params" for a transform)
@@ -9,7 +10,7 @@ import { z } from 'zod';
  * This schema validates the data provided by the user to generate story ideas.
  */
 export const IdeationInputSchema = z.object({
-  sourceJsondocId: z.string().min(1, '源jsondoc ID不能为空').describe('源头脑风暴参数jsondoc ID，包含所有生成参数'),
+  jsondocs: JsondocReferencesSchema.describe('引用的jsondoc列表，包含头脑风暴参数等'),
   otherRequirements: z.string().describe('其他要求，如故事类型、内容、故事风格等'),
 });
 

@@ -45,10 +45,11 @@ export function createChroniclesToolDefinition(
         inputSchema: ChroniclesInputSchema,
         outputSchema: ChroniclesToolResultSchema,
         execute: async (params: ChroniclesInput, { toolCallId }): Promise<ChroniclesToolResult> => {
-            console.log(`[ChroniclesTool] Starting streaming chronicles generation for outline settings jsondoc ${params.sourceJsondocId}`);
+            const sourceJsondocRef = params.jsondocs[0];
+            console.log(`[ChroniclesTool] Starting streaming chronicles generation for outline settings jsondoc ${sourceJsondocRef.jsondocId}`);
 
             // Extract outline settings data first
-            const outlineSettingsJsondoc = await jsondocRepo.getJsondoc(params.sourceJsondocId);
+            const outlineSettingsJsondoc = await jsondocRepo.getJsondoc(sourceJsondocRef.jsondocId);
             if (!outlineSettingsJsondoc) {
                 throw new Error('Outline settings jsondoc not found');
             }
@@ -93,7 +94,7 @@ export function createChroniclesToolDefinition(
                 },
                 // Extract source jsondoc for proper lineage
                 extractSourceJsondocs: (input) => [{
-                    jsondocId: input.sourceJsondocId,
+                    jsondocId: input.jsondocs[0].jsondocId,
                     inputRole: 'source'
                 }]
             };
@@ -108,7 +109,7 @@ export function createChroniclesToolDefinition(
                 outputJsondocType: 'chronicles',
                 transformMetadata: {
                     toolName: 'generate_chronicles',
-                    outline_settings_jsondoc_id: params.sourceJsondocId,
+                    outline_settings_jsondoc_id: sourceJsondocRef.jsondocId,
                     outline_title: outlineSettingsData.title,
                     requirements: params.requirements
                 },

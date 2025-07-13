@@ -49,7 +49,11 @@ describe('BrainstormTool', () => {
         mockTransformRepo.createTransform.mockResolvedValue({ id: 'new-transform-1' });
 
         const input: IdeationInput = {
-            sourceJsondocId: 'test-brainstorm-input-1',
+            jsondocs: [{
+                jsondocId: 'test-brainstorm-input-1',
+                description: '头脑风暴参数',
+                schemaType: 'brainstorm_input_params'
+            }],
             otherRequirements: '快节奏，高颜值主角'
         };
 
@@ -87,7 +91,11 @@ describe('BrainstormTool', () => {
         });
 
         const input: IdeationInput = {
-            sourceJsondocId: 'test-brainstorm-input-2',
+            jsondocs: [{
+                jsondocId: 'test-brainstorm-input-2',
+                description: '头脑风暴参数',
+                schemaType: 'brainstorm_input_params'
+            }],
             otherRequirements: '反转剧情'
         };
 
@@ -117,7 +125,11 @@ describe('BrainstormTool', () => {
         mockTransformRepo.addTransformInputs.mockRejectedValue(new Error('Database error'));
 
         const input: IdeationInput = {
-            sourceJsondocId: 'test-brainstorm-input-1',
+            jsondocs: [{
+                jsondocId: 'test-brainstorm-input-1',
+                description: '头脑风暴参数',
+                schemaType: 'brainstorm_input_params'
+            }],
             otherRequirements: '快节奏，高颜值主角'
         };
 

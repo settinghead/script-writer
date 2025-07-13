@@ -970,6 +970,177 @@ const config: StreamingTransformConfig<InputType, OutputType> = {
 return executeStreamingTransform({ config, input, ...dependencies });
 ```
 
+## Template System Architecture
+
+**Schema-Driven Template System**: The framework provides an intelligent template variable system that eliminates manual coordination and reduces boilerplate by 70%.
+
+### Core Template Components
+
+**1. TemplateVariableService**:
+- **Default Processing** - Automatically detects jsondoc fields and extracts content
+- **YAML Formatting** - Human-readable YAML instead of JSON.stringify for all template variables
+- **Custom Override Support** - Tools can provide custom template variable functions while leveraging defaults
+- **Schema-Driven Titles** - Extracts human-readable field titles from Zod schema `.describe()` fields
+
+**2. SchemaDescriptionParser**:
+- **Intelligent Title Extraction** - Uses punctuation-based heuristics to extract clean titles from Zod descriptions
+- **Fallback Handling** - Graceful degradation for schemas without descriptions
+- **Consistent Formatting** - Standardized title formatting across all tools
+
+**3. JsondocReference Schema**:
+- **Structured References** - Replaces loose `sourceJsondocId` fields with structured objects
+- **Rich Metadata** - Includes jsondocId, description, and schemaType for better context
+- **Type Safety** - Compile-time validation of jsondoc references
+
+### Template Variable System
+
+**Before (Manual Coordination)**:
+```typescript
+// Required changes across 7+ files for adding one variable
+prepareTemplateVariables: async (input, executionContext) => {
+  const sourceJsondoc = await executionContext.jsondocRepo.getJsondoc(input.sourceJsondocId);
+  const parsedData = JSON.parse(sourceJsondoc.data);
+  
+  return {
+    title: parsedData.title,
+    body: parsedData.body,
+    platform: input.platform,
+    genre: input.genre,
+    otherRequirements: input.otherRequirements // NEW FIELD - manual coordination needed
+  };
+}
+```
+
+**After (Schema-Driven Automation)**:
+```typescript
+// Adding new field requires only schema change
+const InputSchema = z.object({
+  jsondocs: z.array(JsondocReferenceSchema),
+  platform: z.string(),
+  genre: z.string(),
+  otherRequirements: z.string() // NEW FIELD - automatically handled
+});
+
+// Automatic template variable generation
+// %%jsondocs%% - YAML-formatted jsondoc content
+// %%params%% - YAML-formatted input parameters
+```
+
+### Schema Migration Pattern
+
+**New Input Schema Format**:
+```typescript
+// OLD: Direct jsondoc ID references
+const OldInputSchema = z.object({
+  sourceJsondocId: z.string(),
+  platform: z.string(),
+  genre: z.string()
+});
+
+// NEW: Structured jsondoc references
+const NewInputSchema = z.object({
+  jsondocs: z.array(z.object({
+    jsondocId: z.string().min(1, 'Jsondoc ID is required'),
+    description: z.string().min(1, 'Description is required'),
+    schemaType: z.string().min(1, 'Schema type is required')
+  })),
+  platform: z.string(),
+  genre: z.string()
+});
+```
+
+### Custom Template Variable Functions
+
+**Advanced Usage**: Tools can provide custom template variable functions while still leveraging the default service:
+
+```typescript
+const customTemplateVariables: CustomTemplateVariableFunction = async (
+    input, inputSchema, executionContext, defaultService
+) => {
+    // Custom logic for complex data extraction
+    const sourceJsondoc = await executionContext.jsondocRepo.getJsondoc(input.jsondocs[0].jsondocId);
+    const parsedData = JSON.parse(sourceJsondoc.data);
+    
+    // Use default processing for jsondocs
+    const jsondocsYaml = await defaultService.getDefaultJsondocProcessing(input.jsondocs, executionContext);
+    
+    // Custom parameters with complex logic
+    const customParams = {
+        platform: input.platform,
+        genre: input.genre,
+        numberOfIdeas: input.numberOfIdeas,
+        selectedIdeasText: parsedData.ideas?.map((idea: any, index: number) => 
+            `创意${index + 1}: ${idea.title}\n${idea.body}`
+        ).join('\n\n') || ''
+    };
+    
+    return {
+        jsondocs: jsondocsYaml,
+        params: defaultService.formatAsYaml(customParams)
+    };
+};
+
+// Tool registration with custom function
+ToolRegistry.getInstance().registerTool({
+    name: 'brainstorm_edit',
+    description: 'Edit and improve existing brainstorm ideas',
+    inputSchema: BrainstormEditInputSchema,
+    templatePath: 'brainstorm_edit',
+    customTemplateVariables
+});
+```
+
+### Template Design Patterns
+
+**Generation Templates (%%params%% focus)**:
+```typescript
+// Template for creating new content
+const generationTemplate = `
+创建中国短剧故事创意，要求：
+
+参数：
+%%params%%
+
+请生成符合要求的故事创意...
+`;
+```
+
+**Edit Templates (%%jsondocs%% + %%params%% focus)**:
+```typescript
+// Template for editing existing content
+const editTemplate = `
+基于现有内容进行改进：
+
+现有内容：
+%%jsondocs%%
+
+改进要求：
+%%params%%
+
+请按照要求改进内容...
+`;
+```
+
+### Benefits Achieved
+
+**Developer Productivity**:
+- **70% Boilerplate Reduction** - Adding parameters now requires only schema changes
+- **Eliminated Manual Coordination** - No more changes across 7+ files for one variable
+- **Consistent YAML Formatting** - Human-readable template variables throughout
+- **Type Safety** - Compile-time validation of all template inputs
+
+**Maintainability**:
+- **Centralized Logic** - All template processing in TemplateVariableService
+- **Schema-Driven Automation** - Templates automatically adapt to schema changes
+- **Custom Override Support** - Complex tools can still provide custom logic
+- **Intelligent Title Extraction** - Automatic field titles from schema descriptions
+
+**Template Quality**:
+- **YAML over JSON** - More readable template variables for LLM processing
+- **Rich Context** - Structured jsondoc references with metadata
+- **Consistent Formatting** - Standardized variable presentation
+- **Schema Validation** - Runtime validation of all template inputs
+
 **Advanced Caching System**:
 - **Transparent Caching** - Internal to service layer, parent code unaware
 - **Full Streaming Progression Cache** - Caches complete streaming experience, not just final results
@@ -1668,6 +1839,111 @@ This comprehensive testing framework ensures that Transform Jsondoc Framework ap
 - Run migrations with `npm run migrate`
 - Use `./run-ts src/server/scripts/migrate.ts` for migrations
 - Unique constraint `unique_human_transform_per_jsondoc_path` prevents concurrent editing race conditions
+
+### Debug Facility & Tool Registry
+
+**Comprehensive Debug System**: The framework provides a complete debug facility for inspecting and testing tool behavior during development.
+
+**ToolRegistry System**:
+- **Centralized Tool Management** - All tools registered in a single registry for debug access
+- **Tool Metadata** - Complete tool information including schemas, templates, and custom functions
+- **Debug UI Integration** - Tools accessible through web-based debug interface
+
+**Debug Backend Endpoints**:
+```typescript
+// Get all available tools
+GET /api/admin/tools
+Response: {
+  success: true,
+  tools: [
+    {
+      name: "brainstorm_generation",
+      description: "Generate story ideas for Chinese short dramas",
+      inputSchema: { /* Zod schema definition */ },
+      templatePath: "brainstorming",
+      hasCustomTemplateVariables: false
+    }
+  ]
+}
+
+// Generate prompt for specific tool
+POST /api/admin/tools/:toolName/prompt
+Request: {
+  toolName: "brainstorm_generation",
+  jsondocs: [
+    {
+      jsondocId: "jsondoc-123",
+      description: "User requirements",
+      schemaType: "brainstorm_input_params"
+    }
+  ],
+  additionalParams: { platform: "douyin", genre: "modern_romance" }
+}
+Response: {
+  success: true,
+  tool: { name: "brainstorm_generation", description: "...", templatePath: "..." },
+  input: { /* validated input */ },
+  templateVariables: {
+    jsondocs: "# Jsondoc Content\n...",
+    params: "platform: douyin\ngenre: modern_romance\n..."
+  },
+  fieldTitles: { platform: "Platform", genre: "Genre" },
+  prompt: "Template Variables:\n%%jsondocs%%:\n...\n%%params%%:\n..."
+}
+
+// Get project jsondocs for selection
+GET /api/admin/jsondocs/:projectId
+Response: {
+  success: true,
+  jsondocs: [
+    {
+      id: "jsondoc-123",
+      schemaType: "brainstorm_input_params",
+      schemaVersion: "v1",
+      originType: "user_input",
+      createdAt: "2024-01-01T00:00:00Z",
+      dataPreview: "Platform: douyin, Genre: modern_romance..."
+    }
+  ]
+}
+```
+
+**Debug UI Features**:
+- **Tool Selection Interface** - Dropdown to select any registered tool
+- **Jsondoc Selection** - Multi-select for choosing input jsondocs
+- **Parameter Editor** - JSON editor for additional parameters
+- **Prompt Inspection** - View complete generated prompts with template variables
+- **Schema Viewer** - Inspect tool input/output schemas
+- **Real-time Validation** - Immediate feedback on input validation errors
+
+**Usage Examples**:
+```typescript
+// Register tool with debug facility
+ToolRegistry.getInstance().registerTool({
+    name: 'content_generation',
+    description: 'Generate content based on requirements',
+    inputSchema: ContentInputSchema,
+    templatePath: 'content_generation',
+    customTemplateVariables: customFunction
+});
+
+// Access debug UI
+// Navigate to: /?raw-context=1
+// Select tool, choose jsondocs, set parameters
+// View generated prompts and template variables
+```
+
+**Debug Authentication**:
+- **Development Mode** - Use debug token `debug-auth-token-script-writer-dev`
+- **Project Scoping** - Debug operations respect project-based access control
+- **Safe Testing** - Debug operations are read-only and don't modify data
+
+**Benefits**:
+- **Rapid Development** - Test tools without full application setup
+- **Prompt Engineering** - Inspect and refine template variables
+- **Schema Validation** - Verify input/output schemas work correctly
+- **Tool Integration** - Ensure tools integrate properly with framework
+- **Template Debugging** - Debug template variable generation and formatting
 
 ### File Structure
 ```

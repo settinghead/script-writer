@@ -16,6 +16,10 @@ import { extractDataAtPath } from '../services/transform-instantiations/pathTran
 import type { StreamingToolDefinition } from '../transform-jsondoc-framework/StreamingAgentFramework';
 import { z } from 'zod';
 import { TypedJsondoc } from '@/common/types';
+import { TemplateVariableService, TemplateExecutionContext, CustomTemplateVariableFunction } from '../services/TemplateVariableService';
+import { ToolRegistry } from '../services/ToolRegistry';
+import { createJsondocReference, JsondocReference } from '../../common/schemas/common';
+import { ZodSchema } from 'zod';
 
 const BrainstormEditToolResultSchema = z.object({
     outputJsondocId: z.string(),
@@ -49,8 +53,9 @@ async function extractSourceIdeaData(
     targetPlatform: string;
     storyGenre: string;
 }> {
-    // Get source jsondoc and extract the idea to edit
-    const sourceJsondoc = await jsondocRepo.getJsondoc(params.sourceJsondocId);
+    // Get the first jsondoc from the array (primary source)
+    const sourceJsondocRef = params.jsondocs[0];
+    const sourceJsondoc = await jsondocRepo.getJsondoc(sourceJsondocRef.jsondocId);
     if (!sourceJsondoc) {
         throw new Error('Source jsondoc not found');
     }
@@ -160,13 +165,14 @@ export function createBrainstormEditToolDefinition(
         inputSchema: BrainstormEditInputSchema,
         outputSchema: BrainstormEditToolResultSchema,
         execute: async (params: BrainstormEditInput, { toolCallId }): Promise<BrainstormEditToolResult> => {
-            console.log(`[BrainstormEditTool] Starting unified patch edit for jsondoc ${params.sourceJsondocId}`);
+            const sourceJsondocRef = params.jsondocs[0];
+            console.log(`[BrainstormEditTool] Starting unified patch edit for jsondoc ${sourceJsondocRef.jsondocId}`);
 
             // Extract source idea data for context
             const { originalIdea, targetPlatform, storyGenre } = await extractSourceIdeaData(params, jsondocRepo, userId);
 
             // Determine output jsondoc type based on source jsondoc type
-            const sourceJsondoc = await jsondocRepo.getJsondoc(params.sourceJsondocId);
+            const sourceJsondoc = await jsondocRepo.getJsondoc(sourceJsondocRef.jsondocId);
             if (!sourceJsondoc) {
                 throw new Error('Source jsondoc not found');
             }
@@ -192,7 +198,7 @@ export function createBrainstormEditToolDefinition(
                     agentInstructions: input.agentInstructions || '请根据用户要求进行适当的改进和优化。'
                 }),
                 extractSourceJsondocs: (input) => [{
-                    jsondocId: input.sourceJsondocId,
+                    jsondocId: input.jsondocs[0].jsondocId,
                     inputRole: 'source'
                 }]
             };
@@ -213,7 +219,7 @@ export function createBrainstormEditToolDefinition(
                     },
                     transformMetadata: {
                         toolName: 'edit_brainstorm_idea',
-                        source_jsondoc_id: params.sourceJsondocId,
+                        source_jsondoc_id: sourceJsondocRef.jsondocId,
                         idea_index: params.ideaIndex,
                         edit_requirements: params.editRequirements,
                         original_idea: originalIdea,
@@ -385,7 +391,8 @@ export function createBrainstormToolDefinition(
         outputSchema: BrainstormToolResultSchema,
         execute: async (params: IdeationInput): Promise<BrainstormToolResult> => {
             // Extract parameters from source jsondoc
-            const extractedParams = await extractBrainstormParams(params.sourceJsondocId, jsondocRepo, userId);
+            const sourceJsondocRef = params.jsondocs[0];
+            const extractedParams = await extractBrainstormParams(sourceJsondocRef.jsondocId, jsondocRepo, userId);
 
             // Create config with extracted parameters
             const config: StreamingTransformConfig<IdeationInput, IdeationOutput> = {
@@ -402,7 +409,7 @@ export function createBrainstormToolDefinition(
                 transformLLMOutput: (llmOutput) => transformToCollectionFormat(llmOutput, extractedParams),
                 // Extract source jsondoc for proper lineage
                 extractSourceJsondocs: (input) => [{
-                    jsondocId: input.sourceJsondocId,
+                    jsondocId: input.jsondocs[0].jsondocId,
                     inputRole: 'source'
                 }]
             };
@@ -420,7 +427,7 @@ export function createBrainstormToolDefinition(
                     platform: extractedParams.platform,
                     genre: extractedParams.genre,
                     numberOfIdeas: extractedParams.numberOfIdeas,
-                    source_jsondoc_id: params.sourceJsondocId,
+                    source_jsondoc_id: sourceJsondocRef.jsondocId,
                     initialData: {
                         ideas: [],
                         platform: extractedParams.platform,
@@ -444,4 +451,93 @@ export function createBrainstormToolDefinition(
             };
         }
     };
-} 
+}
+
+// Add custom template variable functions at the end of the file
+const templateVariableService = new TemplateVariableService();
+
+// Custom template variable function for brainstorm editing
+const brainstormEditCustomTemplateVariables: CustomTemplateVariableFunction = async (
+    input: BrainstormEditInput,
+    inputSchema: ZodSchema,
+    executionContext: TemplateExecutionContext,
+    defaultService: TemplateVariableService
+) => {
+    const sourceJsondocRef = input.jsondocs[0];
+    const sourceJsondoc = await executionContext.jsondocRepo.getJsondoc(sourceJsondocRef.jsondocId);
+
+    if (!sourceJsondoc) {
+        throw new Error('Source jsondoc not found');
+    }
+
+    // Extract source idea data
+    const { originalIdea, targetPlatform, storyGenre } = await extractSourceIdeaData(
+        input,
+        executionContext.jsondocRepo,
+        executionContext.userId
+    );
+
+    // Use default processing for jsondocs
+    const jsondocsYaml = await defaultService.getDefaultJsondocProcessing(input.jsondocs, executionContext);
+
+    // Create custom parameters
+    const customParams = {
+        originalIdea,
+        targetPlatform,
+        storyGenre,
+        editRequirements: input.editRequirements,
+        agentInstructions: input.agentInstructions || '请根据用户要求进行适当的改进和优化。'
+    };
+
+    return {
+        jsondocs: jsondocsYaml,
+        params: defaultService.formatAsYaml(customParams)
+    };
+};
+
+// Custom template variable function for brainstorm generation
+const brainstormGenerationCustomTemplateVariables: CustomTemplateVariableFunction = async (
+    input: IdeationInput,
+    inputSchema: ZodSchema,
+    executionContext: TemplateExecutionContext,
+    defaultService: TemplateVariableService
+) => {
+    const sourceJsondocRef = input.jsondocs[0];
+    const extractedParams = await extractBrainstormParams(sourceJsondocRef.jsondocId, executionContext.jsondocRepo, executionContext.userId);
+
+    // Use default processing for jsondocs
+    const jsondocsYaml = await defaultService.getDefaultJsondocProcessing(input.jsondocs, executionContext);
+
+    // Create custom parameters
+    const customParams = {
+        ...extractedParams,
+        requirementsSection: buildRequirementsSection(extractedParams),
+        otherRequirements: input.otherRequirements
+    };
+
+    return {
+        jsondocs: jsondocsYaml,
+        params: defaultService.formatAsYaml(customParams)
+    };
+};
+
+// Register tools with the ToolRegistry
+const toolRegistry = ToolRegistry.getInstance();
+
+// Register brainstorm edit tool
+toolRegistry.registerTool({
+    name: 'edit_brainstorm_idea',
+    description: '使用JSON补丁方式编辑和改进现有故事创意',
+    inputSchema: BrainstormEditInputSchema,
+    templatePath: 'src/server/services/templates/brainstormEdit.ts',
+    customTemplateVariables: brainstormEditCustomTemplateVariables
+});
+
+// Register brainstorm generation tool
+toolRegistry.registerTool({
+    name: 'generate_brainstorm_ideas',
+    description: '基于用户参数生成多个故事创意',
+    inputSchema: IdeationInputSchema,
+    templatePath: 'src/server/services/templates/brainstorming.ts',
+    customTemplateVariables: brainstormGenerationCustomTemplateVariables
+}); 

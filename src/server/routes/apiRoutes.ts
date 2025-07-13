@@ -49,7 +49,7 @@ export function createAPIRoutes(
     app.use('/api/yjs', yjsRoutes);
 
     // Mount admin routes (dev-only)
-    app.use('/api/admin', createAdminRoutes(transformRepo, jsondocRepo));
+    app.use('/api/admin', createAdminRoutes(jsondocRepo, authMiddleware));
 
     // Catch-all for unmatched API routes - return 404 instead of falling through to ViteExpress
     app.use(/^\/api\/.*$/, (req, res) => {

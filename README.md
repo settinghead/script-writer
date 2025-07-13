@@ -49,15 +49,21 @@ A collaborative Chinese short drama script writing application built on the [Tra
 
 ### 🤖 Intelligent Agent System
 
-Built on the [Transform Jsondoc Framework](./TRANSFORM_JSONDOC_FRAMEWORK.md) agent architecture:
+Built on the [Transform Jsondoc Framework](./TRANSFORM_JSONDOC_FRAMEWORK.md) agent architecture with the new **Schema-Driven Template System**:
 
 **Available Tools**:
 - ✅ **Brainstorm Generation** - Creates new story ideas with platform-specific optimization
-- ✅ **Brainstorm Editing** - AI-powered content modification with context awareness
-- ✅ **Outline Settings Generation** - Character development, story foundation, and commercial positioning
+- ✅ **Brainstorm Editing** - AI-powered content modification using JSON Patch operations
+- ✅ **Outline Settings Generation** - Character development, story foundation, and commercial positioning  
 - ✅ **Chronicles Generation** - Chronological story timeline and episode progression
 - ✅ **Episode Script Generation** - Agent-based generation with Electric SQL integration
 - ✅ **Conversational Response** - General chat with project context
+
+**Template System Benefits**:
+- **70% Boilerplate Reduction** - Adding new parameters requires only schema changes
+- **YAML-Formatted Variables** - Human-readable template variables (%%jsondocs%%, %%params%%)
+- **Schema-Driven Automation** - Automatic template variable generation from Zod schemas
+- **Custom Override Support** - Complex tools maintain custom logic while leveraging defaults
 
 **Agent Capabilities**:
 - **Dual-Mode Operation** - Automatically detects generation vs editing requests
@@ -73,9 +79,11 @@ Agent Analysis: Detects edit request, enriches with context
 ↓
 Tool Selection: Chooses BrainstormEditTool over BrainstormTool
 ↓
-Context Preparation: Current ideas + platform requirements + user instructions
+Template Processing: Automatic YAML formatting of jsondocs and parameters
+  %%jsondocs%%: Current story ideas in YAML format
+  %%params%%: User requirements and platform constraints in YAML
 ↓
-LLM Transform: Generates improved versions with modern tech elements
+LLM Transform: Generates JSON Patch operations for targeted improvements
 ↓
 Jsondoc Creation: Creates new jsondocs with proper lineage tracking
 ↓
@@ -949,6 +957,34 @@ npm run dev
 - `./run-ts <script>` - Run TypeScript scripts with proper configuration
 - `psql -h localhost -U postgres -d script_writer` - Direct database access
 
+## Debug Facility
+
+觅光助创 includes a comprehensive debug facility for inspecting and testing AI tools during development:
+
+**Access Debug UI**:
+- Navigate to `/?raw-context=1` in your browser
+- Login with debug token: `Authorization: Bearer debug-auth-token-script-writer-dev`
+
+**Debug Features**:
+- **Tool Selection** - Choose from all registered AI tools (brainstorm, outline, chronicles, etc.)
+- **Jsondoc Selection** - Multi-select jsondocs from your project as tool inputs
+- **Parameter Editor** - JSON editor for additional tool parameters
+- **Prompt Inspection** - View complete generated prompts with YAML template variables
+- **Schema Viewer** - Inspect tool input/output schemas and validation rules
+- **Real-time Validation** - Immediate feedback on input validation errors
+
+**Example Debug Workflow**:
+1. Select "brainstorm_edit" tool from dropdown
+2. Choose existing brainstorm ideas as input jsondocs
+3. Add parameters: `{"userRequest": "让这些故事更现代一些，加入科技元素"}`
+4. View generated prompt with %%jsondocs%% and %%params%% variables
+5. Inspect YAML-formatted template variables for LLM processing
+
+**Debug API Endpoints**:
+- `GET /api/admin/tools` - List all registered tools
+- `POST /api/admin/tools/:toolName/prompt` - Generate prompt for inspection
+- `GET /api/admin/jsondocs/:projectId` - Get project jsondocs for selection
+
 ## API Reference
 
 ### Authentication
@@ -1067,9 +1103,9 @@ POST /api/jsondocs/outline-jsondoc-id/human-transform
 
 ### Adding New Content Types
 
-1. **Define Schema** - Create Zod schema in `src/common/schemas/`
-2. **Create Template** - Add prompt template in `src/server/services/templates/`
-3. **Build Tool** - Implement using streaming framework pattern
+1. **Define Schema** - Create Zod schema in `src/common/schemas/` using `JsondocReferenceSchema` pattern
+2. **Create Template** - Add prompt template using %%jsondocs%% and %%params%% variables
+3. **Register Tool** - Register with ToolRegistry (automatic template variable generation)
 4. **Add UI Components** - Create React components with Ant Design
 5. **Integrate SectionWrapper** - Use `SectionWrapper` for consistent section management
 6. **Add YJS Support** - Implement YJS field components for real-time collaboration
@@ -1082,10 +1118,18 @@ When adding new content types to the script writing workflow:
 **Step 1: Define Content Schema**
 ```typescript
 // In src/common/schemas/jsondocs.ts
-export const NewContentSchema = z.object({
+export const NewContentInputSchema = z.object({
+  jsondocs: z.array(JsondocReferenceSchema),  // Use structured references
+  platform: z.enum(['douyin', 'kuaishou', 'xiaohongshu']),
+  genre: z.string(),
+  target_audience: z.string(),
+  requirements: z.string()
+});
+
+export const NewContentOutputSchema = z.object({
   title: z.string(),
   content: z.string(),
-  platform: z.enum(['douyin', 'kuaishou', 'xiaohongshu']),
+  platform: z.string(),
   genre: z.string(),
   target_audience: z.string()
 });
@@ -1093,27 +1137,45 @@ export const NewContentSchema = z.object({
 // Add to JsondocSchemaRegistry
 export const JsondocSchemaRegistry = {
   // ... existing schemas
-  'new_content': NewContentSchema
+  'new_content': NewContentOutputSchema,
+  'new_content_input': NewContentInputSchema
 } as const;
 ```
 
-**Step 2: Create Template**
+**Step 2: Create Template (Schema-Driven)**
 ```typescript
 // In src/server/services/templates/
 export const newContentTemplate = `
-Generate Chinese short drama content following 去脸谱化 principles:
-1. Avoid stereotypical characters and plots
-2. Include modern, diverse perspectives
-3. Platform: {{platform}}
-4. Genre: {{genre}}
-5. Target Audience: {{target_audience}}
+基于现有内容生成中国短剧内容，遵循去脸谱化原则：
 
-Content Requirements:
-{{requirements}}
+现有内容：
+%%jsondocs%%
+
+生成参数：
+%%params%%
+
+要求：
+1. 避免刻板印象的角色和情节
+2. 包含现代、多元化的视角
+3. 符合平台特点和目标受众
+
+请生成符合要求的内容...
 `;
 ```
 
-**Step 3: Add YJS Components**
+**Step 3: Register Tool (Automatic Template Variables)**
+```typescript
+// In src/server/tools/ or tool registration
+ToolRegistry.getInstance().registerTool({
+    name: 'new_content_generation',
+    description: 'Generate new content for Chinese short dramas',
+    inputSchema: NewContentInputSchema,
+    templatePath: 'new_content_generation',
+    // No custom prepareTemplateVariables needed - automatic YAML generation
+});
+```
+
+**Step 4: Add YJS Components**
 ```typescript
 // In src/client/components/shared/
 export const NewContentEditor: React.FC<{ jsondocId: string }> = ({ jsondocId }) => {
@@ -1127,7 +1189,7 @@ export const NewContentEditor: React.FC<{ jsondocId: string }> = ({ jsondocId })
 };
 ```
 
-**Step 4: Add Action Component**
+**Step 5: Add Action Component**
 ```typescript
 // In src/client/components/actions/
 export const NewContentAction: React.FC<BaseActionProps> = ({ 
@@ -1152,7 +1214,7 @@ export const NewContentAction: React.FC<BaseActionProps> = ({
 };
 ```
 
-**Step 5: Update Workflow Logic**
+**Step 6: Update Workflow Logic**
 ```typescript
 // In src/client/utils/actionComputation.ts
 // Add new stage detection for the content type
@@ -1173,9 +1235,17 @@ if (hasNewContentPrerequisites && isLeafNode(prerequisiteJsondoc)) {
 
 // Update TypedJsondoc type to include new content type
 export type TypedJsondoc = 
-  | JsondocWithData<'new_content', 'v1', NewContentV1>
+  | JsondocWithData<'new_content', 'v1', NewContentOutputV1>
+  | JsondocWithData<'new_content_input', 'v1', NewContentInputV1>
   | ... // existing types
 ```
+
+**Template System Benefits for Script Writers**:
+- **Simplified Development** - Adding new Chinese drama content types requires minimal code
+- **Automatic YAML Formatting** - Template variables are human-readable for better LLM processing  
+- **Schema-Driven Validation** - Input/output automatically validated against JsondocSchemaRegistry
+- **去脸谱化 Integration** - Anti-stereotyping requirements built into all template processing
+- **Platform Optimization** - Automatic handling of 抖音, 快手, 小红书 specific requirements
 
 ### Chinese Drama Content Guidelines
 
@@ -1198,22 +1268,38 @@ export type TypedJsondoc =
 
 ### Custom Prompt Development
 
-All prompts emphasize 去脸谱化 (de-stereotyping) requirements:
+All prompts use the new schema-driven template system with automatic YAML formatting:
 
 ```typescript
-// Example template
+// Modern template with automatic template variables
 export const brainstormTemplate = `
-Generate Chinese short drama ideas that follow 去脸谱化 principles:
-1. Avoid stereotypical characters and plots
-2. Include modern, diverse perspectives
-3. Create complex character motivations
-4. Challenge traditional genre expectations
+生成中国短剧故事创意，遵循去脸谱化原则：
 
-Platform: {{platform}}
-Genre: {{genre}}
-Requirements: {{requirements}}
+用户需求：
+%%jsondocs%%
+
+生成参数：
+%%params%%
+
+要求：
+1. 避免刻板印象的角色和情节
+2. 包含现代、多元化的视角
+3. 创造复杂的角色动机
+4. 挑战传统类型期望
+
+请生成符合要求的故事创意...
 `;
+
+// Schema automatically generates YAML variables:
+// %%jsondocs%% - User requirements in YAML format
+// %%params%% - Platform, genre, numberOfIdeas in YAML format
 ```
+
+**Template Variable Benefits**:
+- **YAML over JSON** - More readable for LLM processing
+- **Automatic Generation** - No manual template variable coordination
+- **Schema Integration** - Variables automatically match input schemas
+- **Chinese Optimization** - Better handling of Chinese text in YAML format
 
 ## Production Deployment
 

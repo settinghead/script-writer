@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { CharacterSchema } from './streaming';
+import { JsondocReferencesSchema } from './common';
 
 // ===========================================
 // OUTLINE SETTINGS SCHEMAS
@@ -7,7 +8,7 @@ import { CharacterSchema } from './streaming';
 
 // Outline Settings Schemas
 export const OutlineSettingsInputSchema = z.object({
-    sourceJsondocId: z.string(),
+    jsondocs: JsondocReferencesSchema.describe('引用的jsondoc列表，包含故事创意等'),
     title: z.string().describe('故事标题'),
     requirements: z.string().describe('故事要求'),
 });
@@ -59,7 +60,7 @@ export const ChroniclesStageSchema = z.object({
 
 // Chronicles Schemas
 export const ChroniclesInputSchema = z.object({
-    sourceJsondocId: z.string(),
+    jsondocs: JsondocReferencesSchema.describe('引用的jsondoc列表，包含大纲设置等'),
     requirements: z.string().optional()
 });
 

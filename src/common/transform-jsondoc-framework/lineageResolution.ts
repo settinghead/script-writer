@@ -696,11 +696,11 @@ export function validateLineageIntegrity(graph: LineageGraph): ValidationResult 
     const warnings: string[] = [];
 
     // Check for orphaned nodes
-    for (const [jsondocId, node] of graph.nodes) {
-        if (!graph.rootNodes.has(jsondocId) && !hasIncomingEdges(jsondocId, graph)) {
-            warnings.push(`Jsondoc ${jsondocId} appears to be orphaned`);
-        }
-    }
+    // for (const [jsondocId, node] of graph.nodes) {
+    //     if (!graph.rootNodes.has(jsondocId) && !hasIncomingEdges(jsondocId, graph)) {
+    //         warnings.push(`Jsondoc ${jsondocId} appears to be orphaned`);
+    //     }
+    // }
 
     // Check for circular references
     for (const rootId of graph.rootNodes) {

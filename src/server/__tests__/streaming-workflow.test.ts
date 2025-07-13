@@ -97,7 +97,11 @@ describe('Streaming Workflow Tests', () => {
         );
 
         const outlineSettingsResult = await outlineSettingsTool.execute({
-            sourceJsondocId: mockBrainstormJsondoc.id,
+            jsondocs: [{
+                jsondocId: mockBrainstormJsondoc.id,
+                description: '故事创意',
+                schemaType: 'brainstorm_idea'
+            }],
             title: '都市甜宠剧本框架',
             requirements: '创建详细的角色设定和商业定位'
         }, { toolCallId: 'test-outline-settings' });
@@ -151,7 +155,11 @@ describe('Streaming Workflow Tests', () => {
         );
 
         const chroniclesResult = await chroniclesTool.execute({
-            sourceJsondocId: mockOutlineSettingsJsondoc.id,
+            jsondocs: [{
+                jsondocId: mockOutlineSettingsJsondoc.id,
+                description: '剧本框架设定',
+                schemaType: 'outline_settings'
+            }],
             requirements: '创建完整的时序发展脉络'
         }, { toolCallId: 'test-chronicles' });
 

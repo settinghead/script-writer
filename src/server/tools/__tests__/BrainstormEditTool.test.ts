@@ -32,7 +32,11 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
 
         it('should accept valid input parameters', () => {
             const validInput = {
-                sourceJsondocId: 'test-jsondoc-id',
+                jsondocs: [{
+                    jsondocId: 'test-jsondoc-id',
+                    description: '测试故事创意',
+                    schemaType: 'brainstorm_idea'
+                }],
                 editRequirements: '增加悬疑元素',
                 agentInstructions: '保持原有风格',
                 ideaIndex: 0
@@ -44,7 +48,7 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
 
         it('should reject invalid input parameters', () => {
             const invalidInput = {
-                // Missing required sourceJsondocId
+                // Missing required jsondocs
                 editRequirements: '增加悬疑元素'
             };
 
@@ -59,7 +63,11 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
             mockJsondocRepo.getJsondoc.mockResolvedValue(null);
 
             const input = {
-                sourceJsondocId: 'non-existent-jsondoc',
+                jsondocs: [{
+                    jsondocId: 'non-existent-jsondoc',
+                    description: '不存在的故事创意',
+                    schemaType: 'brainstorm_idea'
+                }],
                 editRequirements: '改进故事'
             };
 
@@ -81,7 +89,11 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
             mockJsondocRepo.userHasProjectAccess = vi.fn().mockResolvedValue(false);
 
             const input = {
-                sourceJsondocId: 'restricted-jsondoc',
+                jsondocs: [{
+                    jsondocId: 'restricted-jsondoc',
+                    description: '受限制的故事创意',
+                    schemaType: 'brainstorm_idea'
+                }],
                 editRequirements: '改进故事'
             };
 
@@ -102,7 +114,11 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
             mockJsondocRepo.userHasProjectAccess = vi.fn().mockResolvedValue(true);
 
             const input = {
-                sourceJsondocId: 'unsupported-jsondoc',
+                jsondocs: [{
+                    jsondocId: 'unsupported-jsondoc',
+                    description: '不支持的数据类型',
+                    schemaType: 'unsupported_type'
+                }],
                 editRequirements: '改进故事'
             };
 
@@ -127,7 +143,11 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
             mockJsondocRepo.userHasProjectAccess = vi.fn().mockResolvedValue(true);
 
             const input = {
-                sourceJsondocId: 'collection-invalid-index',
+                jsondocs: [{
+                    jsondocId: 'collection-invalid-index',
+                    description: '故事创意集合',
+                    schemaType: 'brainstorm_collection'
+                }],
                 ideaIndex: 5, // Invalid index
                 editRequirements: '改进故事'
             };
@@ -156,7 +176,11 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
 
             // Mock the streaming transform executor to fail gracefully for testing
             const input = {
-                sourceJsondocId: 'schema-jsondoc',
+                jsondocs: [{
+                    jsondocId: 'schema-jsondoc',
+                    description: '测试故事创意',
+                    schemaType: 'brainstorm_idea'
+                }],
                 editRequirements: '测试处理'
             };
 
@@ -185,7 +209,11 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
             mockJsondocRepo.userHasProjectAccess = vi.fn().mockResolvedValue(true);
 
             const input = {
-                sourceJsondocId: 'legacy-jsondoc',
+                jsondocs: [{
+                    jsondocId: 'legacy-jsondoc',
+                    description: '传统格式故事创意',
+                    schemaType: 'brainstorm_idea'
+                }],
                 editRequirements: '测试传统格式处理'
             };
 
@@ -216,7 +244,11 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
             mockJsondocRepo.userHasProjectAccess = vi.fn().mockResolvedValue(true);
 
             const input = {
-                sourceJsondocId: 'collection-jsondoc',
+                jsondocs: [{
+                    jsondocId: 'collection-jsondoc',
+                    description: '故事创意集合',
+                    schemaType: 'brainstorm_collection'
+                }],
                 ideaIndex: 1, // Valid index
                 editRequirements: '测试集合处理'
             };
@@ -248,7 +280,11 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
 
             // Test that all required fields are present
             const validInput = {
-                sourceJsondocId: 'test-id',
+                jsondocs: [{
+                    jsondocId: 'test-id',
+                    description: '测试故事创意',
+                    schemaType: 'brainstorm_idea'
+                }],
                 editRequirements: 'test requirements'
             };
 
@@ -256,7 +292,11 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
 
             // Test that optional fields are accepted
             const validInputWithOptionals = {
-                sourceJsondocId: 'test-id',
+                jsondocs: [{
+                    jsondocId: 'test-id',
+                    description: '测试故事创意',
+                    schemaType: 'brainstorm_idea'
+                }],
                 editRequirements: 'test requirements',
                 agentInstructions: 'test instructions',
                 ideaIndex: 0
@@ -295,7 +335,11 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
             mockJsondocRepo.userHasProjectAccess = vi.fn().mockResolvedValue(true);
 
             const input = {
-                sourceJsondocId: 'test-jsondoc',
+                jsondocs: [{
+                    jsondocId: 'test-jsondoc',
+                    description: '测试故事创意',
+                    schemaType: 'brainstorm_idea'
+                }],
                 editRequirements: '测试仓库集成'
             };
 
@@ -319,7 +363,11 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
             mockJsondocRepo.userHasProjectAccess = vi.fn().mockResolvedValue(false);
 
             const input = {
-                sourceJsondocId: 'protected-jsondoc',
+                jsondocs: [{
+                    jsondocId: 'protected-jsondoc',
+                    description: '受保护的故事创意',
+                    schemaType: 'brainstorm_idea'
+                }],
                 editRequirements: '测试访问控制'
             };
 

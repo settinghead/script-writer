@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { OutlineSettingsInputSchema, OutlineSettingsOutputSchema, ChroniclesInputSchema, ChroniclesOutputSchema } from './outlineSchemas';
 import { BrainstormToolInputSchema } from './jsondocs';
+import { JsondocReferencesSchema } from './common';
 
 // Base transform definition
 export const BaseTransformDefinition = z.object({
@@ -84,7 +85,7 @@ export type LLMTransformDefinition = z.infer<typeof LLMTransformDefinitionSchema
 // Input schema for brainstorm editing
 export const BrainstormEditInputSchema = z.object({
   ideaIndex: z.number().min(0).optional().describe('要编辑的故事创意在集合中的索引位置（从0开始）'),
-  sourceJsondocId: z.string().min(1, 'Source jsondoc ID不能为空').describe('要编辑的故事创意所在的source jsondoc ID，从项目背景信息中获取'),
+  jsondocs: JsondocReferencesSchema.describe('引用的jsondoc列表，包含要编辑的故事创意等'),
   editRequirements: z.string().min(1, '编辑要求不能为空').describe('具体的编辑要求，如：扩展内容、调整风格、修改情节、增加元素等'),
   agentInstructions: z.string().optional().describe('来自智能体的额外指导信息，用于更好地理解编辑意图')
 });
@@ -198,7 +199,7 @@ export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinitio
 
 // Generic edit input schema for path-based editing
 export const GenericEditInputSchema = z.object({
-  sourceJsondocId: z.string().min(1, '源内容ID不能为空'),
+  jsondocs: JsondocReferencesSchema.describe('引用的jsondoc列表，包含要编辑的源内容'),
   jsondocPath: z.string().min(1, '路径不能为空'),
   editRequirements: z.string().min(1, '编辑要求不能为空'),
   agentInstructions: z.string().optional()

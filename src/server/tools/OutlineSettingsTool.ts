@@ -45,13 +45,14 @@ export function createOutlineSettingsToolDefinition(
         inputSchema: OutlineSettingsInputSchema,
         outputSchema: OutlineSettingsToolResultSchema,
         execute: async (params: OutlineSettingsInput, { toolCallId }): Promise<OutlineSettingsToolResult> => {
-            console.log(`[OutlineSettingsTool] Starting streaming outline settings generation for jsondoc ${params.sourceJsondocId}`);
+            const sourceJsondocRef = params.jsondocs[0];
+            console.log(`[OutlineSettingsTool] Starting streaming outline settings generation for jsondoc ${sourceJsondocRef.jsondocId}`);
             console.log(`[OutlineSettingsTool] Input params:`, JSON.stringify(params, null, 2));
 
             // Extract source idea data first
-            const sourceJsondoc = await jsondocRepo.getJsondoc(params.sourceJsondocId);
+            const sourceJsondoc = await jsondocRepo.getJsondoc(sourceJsondocRef.jsondocId);
             if (!sourceJsondoc) {
-                console.error(`[OutlineSettingsTool] Source jsondoc not found: ${params.sourceJsondocId}`);
+                console.error(`[OutlineSettingsTool] Source jsondoc not found: ${sourceJsondocRef.jsondocId}`);
                 throw new Error('Source brainstorm idea not found');
             }
 
@@ -144,7 +145,7 @@ export function createOutlineSettingsToolDefinition(
                 },
                 // Extract source jsondoc for proper lineage
                 extractSourceJsondocs: (input) => [{
-                    jsondocId: input.sourceJsondocId,
+                    jsondocId: input.jsondocs[0].jsondocId,
                     inputRole: 'source'
                 }]
             };
@@ -178,7 +179,7 @@ export function createOutlineSettingsToolDefinition(
                     outputJsondocType: 'outline_settings',
                     transformMetadata: {
                         toolName: 'generate_outline_settings',
-                        source_jsondoc_id: params.sourceJsondocId,
+                        source_jsondoc_id: sourceJsondocRef.jsondocId,
                         source_idea_title: displayTitle,
                         title: params.title,
                         requirements: params.requirements

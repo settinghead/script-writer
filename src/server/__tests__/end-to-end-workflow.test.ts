@@ -124,7 +124,11 @@ describe('End-to-End Workflow Tests', () => {
         );
 
         const brainstormInput = {
-            sourceJsondocId: 'test-brainstorm-input',
+            jsondocs: [{
+                jsondocId: 'test-brainstorm-input',
+                description: '头脑风暴参数',
+                schemaType: 'brainstorm_input_params'
+            }],
             otherRequirements: '生成3个故事创意'
         };
 
@@ -147,7 +151,11 @@ describe('End-to-End Workflow Tests', () => {
         );
 
         const outlineSettingsInput = {
-            sourceJsondocId: brainstormResult.outputJsondocId,
+            jsondocs: [{
+                jsondocId: brainstormResult.outputJsondocId,
+                description: '故事创意',
+                schemaType: 'brainstorm_idea_collection'
+            }],
             title: '现代甜宠故事设定',
             requirements: '创建详细的剧本框架，包括角色背景和商业定位'
         };
@@ -171,7 +179,11 @@ describe('End-to-End Workflow Tests', () => {
         );
 
         const chroniclesInput = {
-            sourceJsondocId: outlineSettingsResult.outputJsondocId,
+            jsondocs: [{
+                jsondocId: outlineSettingsResult.outputJsondocId,
+                description: '大纲设置',
+                schemaType: 'outline_settings'
+            }],
             requirements: '创建按时间顺序的故事发展脉络'
         };
 
