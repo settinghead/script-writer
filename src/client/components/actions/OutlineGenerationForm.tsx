@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { Typography, Form, Input, InputNumber, Select, message } from 'antd';
-import { FileTextOutlined } from '@ant-design/icons';
+import { FileTextOutlined, RightOutlined } from '@ant-design/icons';
 import { BaseActionProps } from './index';
 import { ActionComponentProps } from '../../utils/lineageBasedActionComputation';
 import { apiService } from '../../services/apiService';
@@ -110,7 +110,7 @@ const OutlineGenerationForm: React.FC<OutlineGenerationFormProps> = (props) => {
                     height: '40px'
                 }}
             >
-                {isGenerating ? '生成中...' : '生成剧本框架'}
+                {isGenerating ? '生成中...' : <> 生成剧本框架 <RightOutlined /></>}
             </AIButton>
         </div>
     );
