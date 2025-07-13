@@ -244,7 +244,7 @@ describe('AgentService Integration', () => {
         // Arrange - Mock existing brainstorm and edited ideas
         const existingBrainstormJsondocs = [
             {
-                id: 'brainstorm-idea-1',
+                id: 'idea-1',
                 type: 'brainstorm_idea',
                 project_id: TEST_PROJECT_ID,
                 data: {

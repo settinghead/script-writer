@@ -518,8 +518,8 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
             // Show brainstorm ideas for selection
             if (context.brainstormIdeas.length > 0) {
                 components.push({
-                    id: 'brainstorm-idea-colletion',
-                    component: getComponentById('brainstorm-idea-colletion'),
+                    id: 'idea-colletion',
+                    component: getComponentById('idea-colletion'),
                     mode: context.hasActiveTransforms ? 'readonly' : 'editable',
                     props: {
                         ideas: context.brainstormIdeas,
@@ -554,8 +554,8 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
             // Show brainstorm ideas in readonly mode for reference (only for AI path)
             if (context.brainstormIdeas.length > 0 && !context.isManualPath) {
                 components.push({
-                    id: 'brainstorm-idea-colletion',
-                    component: getComponentById('brainstorm-idea-colletion'),
+                    id: 'idea-colletion',
+                    component: getComponentById('idea-colletion'),
                     mode: 'readonly',
                     props: {
                         ideas: context.brainstormIdeas,
@@ -570,8 +570,8 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
             // Show chosen idea editor (if we have one)
             if (context.chosenIdea) {
                 components.push({
-                    id: 'single-brainstorm-idea-editor',
-                    component: getComponentById('single-brainstorm-idea-editor'),
+                    id: 'single-idea-editor',
+                    component: getComponentById('single-idea-editor'),
                     mode: context.hasActiveTransforms ? 'readonly' : 'editable',
                     props: {
                         brainstormIdea: context.chosenIdea, // Fixed: use brainstormIdea instead of idea
@@ -586,8 +586,8 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
                 console.warn('[computeDisplayComponents] idea_editing stage but no chosenIdea found - should be brainstorm_selection');
                 if (context.brainstormIdeas.length > 0) {
                     components.push({
-                        id: 'single-brainstorm-idea-editor',
-                        component: getComponentById('single-brainstorm-idea-editor'),
+                        id: 'single-idea-editor',
+                        component: getComponentById('single-idea-editor'),
                         mode: context.hasActiveTransforms ? 'readonly' : 'editable',
                         props: {
                             brainstormIdea: context.brainstormIdeas[0],
@@ -623,8 +623,8 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
             // Only show chosen idea editor (not the collection)
             if (context.chosenIdea) {
                 components.push({
-                    id: 'single-brainstorm-idea-editor',
-                    component: getComponentById('single-brainstorm-idea-editor'),
+                    id: 'single-idea-editor',
+                    component: getComponentById('single-idea-editor'),
                     mode: 'readonly',
                     props: {
                         brainstormIdea: context.chosenIdea, // Fixed: use brainstormIdea instead of idea
@@ -679,8 +679,8 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
             // Only show chosen idea editor (not the collection)
             if (context.chosenIdea) {
                 components.push({
-                    id: 'single-brainstorm-idea-editor',
-                    component: getComponentById('single-brainstorm-idea-editor'),
+                    id: 'single-idea-editor',
+                    component: getComponentById('single-idea-editor'),
                     mode: 'readonly',
                     props: {
                         brainstormIdea: context.chosenIdea, // Fixed: use brainstormIdea instead of idea
@@ -742,8 +742,8 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
             // Only show chosen idea editor (not the collection)
             if (context.chosenIdea) {
                 components.push({
-                    id: 'single-brainstorm-idea-editor',
-                    component: getComponentById('single-brainstorm-idea-editor'),
+                    id: 'single-idea-editor',
+                    component: getComponentById('single-idea-editor'),
                     mode: 'readonly',
                     props: {
                         idea: context.chosenIdea,

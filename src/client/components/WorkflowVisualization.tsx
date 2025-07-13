@@ -104,7 +104,7 @@ const createReactFlowNode = (workflowNode: WorkflowNode, currentSection: Current
 
         // Map navigation targets to sections
         const sectionMap: Record<string, CurrentSection> = {
-            '#brainstorm-ideas': 'brainstorm-ideas',
+            '#ideas': 'ideas',
             '#outline-settings': 'outline-settings',
             '#chronicles': 'chronicles'
         };

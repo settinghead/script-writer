@@ -232,7 +232,7 @@ describe('Unified Workflow Computation', () => {
                         created_at: '2024-01-01T00:00:00Z'
                     },
                     {
-                        id: 'brainstorm-ideas-1',
+                        id: 'ideas-1',
                         schema_type: 'brainstorm_idea',
                         data: '{"title": "Test Idea", "body": "Test body"}',
                         created_at: '2024-01-01T00:00:00Z'
@@ -253,16 +253,16 @@ describe('Unified Workflow Computation', () => {
                             jsondoc: { id: 'brainstorm-input-1' } as any,
                             createdAt: '2024-01-01T00:00:00Z'
                         }],
-                        ['brainstorm-ideas-1', {
+                        ['ideas-1', {
                             type: 'jsondoc' as const,
-                            jsondocId: 'brainstorm-ideas-1',
+                            jsondocId: 'ideas-1',
                             isLeaf: true,
                             depth: 1,
                             jsondocType: 'brainstorm_idea',
                             sourceTransform: 'none',
                             schemaType: 'brainstorm_idea',
                             originType: 'ai_generated',
-                            jsondoc: { id: 'brainstorm-ideas-1' } as any,
+                            jsondoc: { id: 'ideas-1' } as any,
                             createdAt: '2024-01-01T00:00:00Z'
                         }]
                     ]),
@@ -291,7 +291,7 @@ describe('Unified Workflow Computation', () => {
                         created_at: '2024-01-01T00:00:00Z'
                     },
                     {
-                        id: 'brainstorm-ideas-1',
+                        id: 'ideas-1',
                         schema_type: 'brainstorm_idea',
                         data: '{"title": "Test Idea", "body": "Test body"}',
                         created_at: '2024-01-01T00:00:00Z'
@@ -311,16 +311,16 @@ describe('Unified Workflow Computation', () => {
                             jsondoc: { id: 'brainstorm-input-1' } as any,
                             createdAt: '2024-01-01T00:00:00Z'
                         }],
-                        ['brainstorm-ideas-1', {
+                        ['ideas-1', {
                             type: 'jsondoc' as const,
-                            jsondocId: 'brainstorm-ideas-1',
+                            jsondocId: 'ideas-1',
                             isLeaf: true,
                             depth: 1,
                             jsondocType: 'brainstorm_idea',
                             sourceTransform: 'none',
                             schemaType: 'brainstorm_idea',
                             originType: 'ai_generated',
-                            jsondoc: { id: 'brainstorm-ideas-1' } as any,
+                            jsondoc: { id: 'ideas-1' } as any,
                             createdAt: '2024-01-01T00:00:00Z'
                         }]
                     ]),

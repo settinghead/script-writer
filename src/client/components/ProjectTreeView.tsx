@@ -49,7 +49,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
         // For ideation section, only highlight when we're specifically in the ideation area
         if (navigationTarget === '#ideation-edit') {
             // First check - if we're currently in brainstorm section, don't highlight ideation
-            if (currentSection === 'brainstorm-ideas') {
+            if (currentSection === 'ideas') {
                 return false;
             }
 
@@ -72,7 +72,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
 
         // For other sections, use the standard mapping
         const navigationTargetToSection: Record<string, CurrentSection> = {
-            '#brainstorm-ideas': 'brainstorm-ideas',
+            '#ideas': 'ideas',
             '#outline-settings': 'outline-settings',
             '#chronicles': 'chronicles'
         };
@@ -141,7 +141,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
 
         // 1. BRAINSTORM SECTION - only show if we have brainstorm ideas
         if (jsondocChecks.hasBrainstormIdeas) {
-            const brainstormHighlighted = shouldHighlightNode('#brainstorm-ideas');
+            const brainstormHighlighted = shouldHighlightNode('#ideas');
             const brainstormChildren: ProjectTreeNode[] = [];
 
             if (ideas === "pending" || ideas === "error") {
@@ -181,7 +181,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                 }
 
                 brainstormChildren.push({
-                    key: `brainstorm-idea-${idea.jsondocId}-${idea.index}`,
+                    key: `idea-${idea.jsondocId}-${idea.index}`,
                     title: (
                         <Space>
                             {isChosen && <StarFilled style={{ color: '#faad14', fontSize: '12px' }} />}
@@ -202,7 +202,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                         color: brainstormHighlighted ? '#1890ff' : '#888'
                     }} />,
                     selectable: true,
-                    navigationTarget: '#brainstorm-ideas'
+                    navigationTarget: '#ideas'
                 });
             });
 
@@ -247,7 +247,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                     filter: brainstormHighlighted ? 'drop-shadow(0 0 4px rgba(24, 144, 255, 0.6))' : 'none'
                 }} />,
                 selectable: true,
-                navigationTarget: '#brainstorm-ideas',
+                navigationTarget: '#ideas',
                 children: brainstormChildren.length > 0 ? brainstormChildren : undefined
             };
 

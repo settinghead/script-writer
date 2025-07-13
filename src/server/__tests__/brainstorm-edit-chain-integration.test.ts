@@ -407,7 +407,7 @@ describe('Brainstorm Edit Chain Integration Test', () => {
 
         // Verify that SingleBrainstormIdeaEditor is included
         const singleIdeaEditor = displayComponents.find((component: any) =>
-            component.id === 'single-brainstorm-idea-editor'
+            component.id === 'single-idea-editor'
         );
         expect(singleIdeaEditor).toBeTruthy();
         expect(singleIdeaEditor?.mode).toBe('editable');
@@ -416,7 +416,7 @@ describe('Brainstorm Edit Chain Integration Test', () => {
 
         // Verify that ProjectBrainstormPage is NOT included in manual path idea_editing stage
         const brainstormPage = displayComponents.find((component: any) =>
-            component.id === 'brainstorm-idea-colletion'
+            component.id === 'idea-colletion'
         );
         expect(brainstormPage).toBeFalsy(); // Should NOT be present in manual path
 
@@ -468,7 +468,7 @@ describe('Brainstorm Edit Chain Integration Test', () => {
         const activeTransformComponents = activeTransformWorkflowState.displayComponents;
 
         const disabledSingleIdeaEditor = activeTransformComponents.find((component: any) =>
-            component.id === 'single-brainstorm-idea-editor'
+            component.id === 'single-idea-editor'
         );
         expect(disabledSingleIdeaEditor).toBeTruthy();
         expect(disabledSingleIdeaEditor?.props.isEditable).toBe(false); // Should be disabled

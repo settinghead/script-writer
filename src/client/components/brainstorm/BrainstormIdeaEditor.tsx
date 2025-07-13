@@ -64,7 +64,7 @@ export const BrainstormIdeaEditor: React.FC<{
                 cursor: isClickable ? 'pointer' : 'default',
                 ...props.style
             }}
-            className={`brainstorm-idea-card ${isClickable ? 'clickable' : ''} ${isSelected ? 'selected' : ''} ${isChosen ? 'chosen' : ''}`}
+            className={`idea-card ${isClickable ? 'clickable' : ''} ${isSelected ? 'selected' : ''} ${isChosen ? 'chosen' : ''}`}
         >
             {/* Status indicator */}
             <div style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>

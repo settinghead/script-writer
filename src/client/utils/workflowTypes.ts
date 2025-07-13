@@ -13,8 +13,8 @@ export type ComponentDisplayState =
 export type ComponentId =
     | 'project-creation-form'
     | 'brainstorm-input-editor'
-    | 'brainstorm-idea-colletion'
-    | 'single-brainstorm-idea-editor'
+    | 'idea-collection'
+    | 'single-idea-editor'
     | 'outline-settings-display'
     | 'chronicles-display';
 

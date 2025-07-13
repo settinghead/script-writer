@@ -330,7 +330,7 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
     <SectionWrapper
       schemaType={"brainstorm_collection"}
       title="头脑风暴"
-      sectionId="brainstorm-ideas"
+      sectionId="ideas"
     >
       <div className={`${isCollapsedView ? 'bg-gray-900' : 'min-h-screen bg-gray-900'} text-white`}>
         <div className={`container mx-auto px-4 ${isCollapsedView ? 'py-4' : 'py-8'}`}>

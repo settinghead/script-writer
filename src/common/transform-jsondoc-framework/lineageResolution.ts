@@ -1496,7 +1496,7 @@ function createBrainstormOnlyWorkflow(jsondocs: ElectricJsondoc[]): WorkflowNode
             // AI-generated collection - user needs to select from ideas
             nodeType = 'brainstorm_collection';
             title = '创意构思';
-            navigationTarget = '#brainstorm-ideas';
+            navigationTarget = '#ideas';
         }
     } else if (brainstormInputs.length > 0) {
         // Case 2: Only input exists (no collection yet) -> user is in input stage
@@ -1529,7 +1529,7 @@ function createBrainstormOnlyWorkflow(jsondocs: ElectricJsondoc[]): WorkflowNode
             // AI-generated collection or other types
             nodeType = 'brainstorm_collection';
             title = '创意构思';
-            navigationTarget = '#brainstorm-ideas';
+            navigationTarget = '#ideas';
         }
     } else {
         // No brainstorm jsondocs found
@@ -1693,7 +1693,7 @@ function createWorkflowNodeFromJsondoc(
     if (jsondoc.schema_type === 'brainstorm_collection') {
         nodeType = 'brainstorm_collection';
         title = '创意构思';
-        navigationTarget = '#brainstorm-ideas';
+        navigationTarget = '#ideas';
     } else if (jsondoc.schema_type === 'brainstorm_idea') {
         nodeType = 'brainstorm_idea';
 
