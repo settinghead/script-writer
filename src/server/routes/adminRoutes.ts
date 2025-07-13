@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
 import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
+import { ProjectRepository } from '../transform-jsondoc-framework/ProjectRepository';
 import { buildToolsForRequestType } from '../services/AgentRequestBuilder';
 import { TemplateService } from '../services/templates/TemplateService';
 
@@ -10,7 +11,8 @@ import { TemplateService } from '../services/templates/TemplateService';
 export function createAdminRoutes(
     jsondocRepo: JsondocRepository,
     authMiddleware: any,
-    transformRepo?: TransformRepository
+    transformRepo: TransformRepository,
+    projectRepo: ProjectRepository
 ) {
     const router = Router();
     const templateService = new TemplateService();
@@ -163,6 +165,183 @@ export function createAdminRoutes(
                 error: 'Failed to get template prompt',
                 details: error instanceof Error ? error.message : String(error)
             });
+        }
+    });
+
+    // POST /api/admin/tools/:toolName/dry-run - Execute tool in dry run mode with SSE streaming
+    router.post('/tools/:toolName/dry-run', authMiddleware.authenticate, async (req: Request, res: Response) => {
+        try {
+            const { toolName } = req.params;
+            const { jsondocs, additionalParams } = req.body;
+            const userId = req.user?.id;
+
+            if (!userId) {
+                res.status(401).json({ error: 'User not authenticated' });
+                return;
+            }
+
+            // Set up SSE headers
+            res.writeHead(200, {
+                'Content-Type': 'text/event-stream',
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Headers': 'Cache-Control'
+            });
+
+            // Helper function to send SSE data
+            const sendSSE = (event: string, data: any) => {
+                res.write(`event: ${event}\n`);
+                res.write(`data: ${JSON.stringify(data)}\n\n`);
+            };
+
+            // Map tool names to their instantiation functions
+            const toolMap: Record<string, any> = {
+                'generate_brainstorm_ideas': async (projectId: string, userId: string) => {
+                    const { createBrainstormToolDefinition } = await import('../tools/BrainstormTools.js');
+                    return createBrainstormToolDefinition(transformRepo, jsondocRepo, projectId, userId);
+                },
+                'edit_brainstorm_idea': async (projectId: string, userId: string) => {
+                    const { createBrainstormEditToolDefinition } = await import('../tools/BrainstormTools.js');
+                    return createBrainstormEditToolDefinition(transformRepo, jsondocRepo, projectId, userId);
+                },
+                'generate_outline_settings': async (projectId: string, userId: string) => {
+                    const { createOutlineSettingsToolDefinition } = await import('../tools/OutlineSettingsTool.js');
+                    return createOutlineSettingsToolDefinition(transformRepo, jsondocRepo, projectId, userId);
+                },
+                'generate_chronicles': async (projectId: string, userId: string) => {
+                    const { createChroniclesToolDefinition } = await import('../tools/ChroniclesTool.js');
+                    return createChroniclesToolDefinition(transformRepo, jsondocRepo, projectId, userId);
+                }
+            };
+
+            const toolLoader = toolMap[toolName];
+            if (!toolLoader) {
+                sendSSE('error', { message: `Tool '${toolName}' not found` });
+                res.end();
+                return;
+            }
+
+            sendSSE('status', { message: 'Loading tool...', toolName });
+
+            // Get a default project ID for dry run (use first accessible project)
+            const projects = await projectRepo.getUserProjects(userId);
+            if (projects.length === 0) {
+                sendSSE('error', { message: 'No accessible projects found' });
+                res.end();
+                return;
+            }
+            const projectId = projects[0].id;
+
+            // Load the tool definition
+            const toolDefinition = await toolLoader(projectId, userId);
+
+            // Prepare input data
+            const input: any = { ...additionalParams };
+
+            // Add jsondoc references if provided
+            if (jsondocs && Array.isArray(jsondocs)) {
+                input.jsondocs = jsondocs.map((j: any) => ({
+                    jsondocId: j.jsondocId,
+                    description: j.description || j.schemaType || 'input_data',
+                    schemaType: j.schemaType || 'unknown'
+                }));
+            }
+
+            sendSSE('status', { message: 'Executing tool in non-persistence mode...', input });
+
+            // Import the executeStreamingTransform function directly
+            const { executeStreamingTransform } = await import('../transform-jsondoc-framework/StreamingTransformExecutor.js');
+
+            // Get the tool's configuration by examining its structure
+            // We'll need to create a custom streaming execution with dryRun: true
+            let config: any;
+            let transformMetadata: any;
+            let outputJsondocType: 'brainstorm_collection' | 'brainstorm_idea' | 'outline_settings' | 'chronicles';
+
+            // Extract configuration based on tool type
+            if (toolName === 'generate_brainstorm_ideas') {
+                const { IdeationInputSchema, IdeationOutputSchema } = await import('@/common/transform_schemas.js');
+                config = {
+                    templateName: 'brainstorming',
+                    inputSchema: IdeationInputSchema,
+                    outputSchema: IdeationOutputSchema
+                };
+                outputJsondocType = 'brainstorm_collection';
+                transformMetadata = {
+                    toolName: 'generate_brainstorm_ideas',
+                    platform: 'unknown',
+                    genre: 'unknown',
+                    numberOfIdeas: 2
+                };
+            } else if (toolName === 'edit_brainstorm_idea') {
+                const { BrainstormEditInputSchema } = await import('@/common/schemas/transforms.js');
+                const { IdeationOutputSchema } = await import('@/common/transform_schemas.js');
+                config = {
+                    templateName: 'brainstorm_edit',
+                    inputSchema: BrainstormEditInputSchema,
+                    outputSchema: IdeationOutputSchema
+                };
+                outputJsondocType = 'brainstorm_idea';
+                transformMetadata = { toolName: 'edit_brainstorm_idea' };
+            } else if (toolName === 'generate_outline_settings') {
+                // Import outline schemas
+                const { OutlineSettingsInputSchema, OutlineSettingsOutputSchema } = await import('@/common/schemas/outlineSchemas.js');
+                config = {
+                    templateName: 'outline_settings',
+                    inputSchema: OutlineSettingsInputSchema,
+                    outputSchema: OutlineSettingsOutputSchema
+                };
+                outputJsondocType = 'outline_settings';
+                transformMetadata = { toolName: 'generate_outline_settings' };
+            } else if (toolName === 'generate_chronicles') {
+                // Import chronicles schemas
+                const { ChroniclesInputSchema, ChroniclesOutputSchema } = await import('@/common/schemas/outlineSchemas.js');
+                config = {
+                    templateName: 'chronicles',
+                    inputSchema: ChroniclesInputSchema,
+                    outputSchema: ChroniclesOutputSchema
+                };
+                outputJsondocType = 'chronicles';
+                transformMetadata = { toolName: 'generate_chronicles' };
+            } else {
+                sendSSE('error', { message: `Unsupported tool for non-persistence run: ${toolName}` });
+                res.end();
+                return;
+            }
+
+            // Execute the streaming transform with dryRun: true
+            const result = await executeStreamingTransform({
+                config,
+                input,
+                projectId,
+                userId,
+                transformRepo,
+                jsondocRepo,
+                outputJsondocType,
+                transformMetadata,
+                dryRun: true  // This will skip database operations but still call LLM
+            });
+
+            sendSSE('result', {
+                message: 'Non-persistence run completed successfully',
+                result,
+                toolName,
+                input
+            });
+
+        } catch (error) {
+            console.error(`[AdminRoutes] Dry run error for ${req.params.toolName}:`, error);
+            const sendSSE = (event: string, data: any) => {
+                res.write(`event: ${event}\n`);
+                res.write(`data: ${JSON.stringify(data)}\n\n`);
+            };
+            sendSSE('error', {
+                message: error instanceof Error ? error.message : 'Unknown error',
+                toolName: req.params.toolName
+            });
+        } finally {
+            res.end();
         }
     });
 

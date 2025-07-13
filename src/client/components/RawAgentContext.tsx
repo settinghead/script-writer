@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, Typography, Tabs, Spin, Alert, Select, Button, Space, Form, Input, Divider } from 'antd';
-import { ToolOutlined, BugOutlined, FileTextOutlined, DatabaseOutlined, SaveOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons';
+import { ToolOutlined, BugOutlined, FileTextOutlined, DatabaseOutlined, SaveOutlined, DeleteOutlined, ReloadOutlined, PlayCircleOutlined } from '@ant-design/icons';
 import { useProjectData } from '../contexts/ProjectDataContext';
 import { useDebounce } from '../hooks/useDebounce';
 import { useDebugParams } from '../hooks/useDebugParams';
@@ -83,6 +83,11 @@ const RawAgentContext: React.FC<RawAgentContextProps> = ({ projectId }) => {
     const [promptResult, setPromptResult] = useState<PromptResult | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // Dry run state
+    const [dryRunLoading, setDryRunLoading] = useState(false);
+    const [dryRunResults, setDryRunResults] = useState<any[]>([]);
+    const [dryRunStatus, setDryRunStatus] = useState<'idle' | 'running' | 'completed' | 'error'>('idle');
 
     // Use the debug params hook for persistence
     const {
@@ -271,6 +276,95 @@ const RawAgentContext: React.FC<RawAgentContextProps> = ({ projectId }) => {
         }
     }, [debouncedRequestPayload]);
 
+    // Dry run function
+    const runDryRun = useCallback(async () => {
+        if (!selectedTool || selectedJsondocs.length === 0) return;
+
+        setDryRunLoading(true);
+        setDryRunResults([]);
+        setDryRunStatus('running');
+        setError(null);
+
+        try {
+            let parsedParams = {};
+            try {
+                if (additionalParams.trim()) {
+                    parsedParams = JSON.parse(additionalParams);
+                }
+            } catch (e) {
+                throw new Error('Invalid JSON in additional parameters');
+            }
+
+            const selectedJsondocData = selectedJsondocs.map(id => {
+                const jsondoc = jsondocs.find(j => j.id === id);
+                return {
+                    jsondocId: id,
+                    description: jsondoc?.schemaType || 'unknown',
+                    schemaType: jsondoc?.schemaType || 'unknown'
+                };
+            });
+
+            // Use fetch for POST with SSE
+            const response = await fetch(`/api/admin/tools/${selectedTool}/dry-run`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer debug-auth-token-script-writer-dev',
+                    'Accept': 'text/event-stream'
+                },
+                body: JSON.stringify({
+                    jsondocs: selectedJsondocData,
+                    additionalParams: parsedParams
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const reader = response.body?.getReader();
+            if (!reader) {
+                throw new Error('No response body');
+            }
+
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        try {
+                            const data = JSON.parse(line.substring(6));
+                            setDryRunResults(prev => [...prev, {
+                                timestamp: new Date().toLocaleTimeString(),
+                                data
+                            }]);
+
+                            if (data.message === 'Dry run completed successfully') {
+                                setDryRunStatus('completed');
+                            }
+                        } catch (e) {
+                            console.warn('Failed to parse SSE data:', line);
+                        }
+                    }
+                }
+            }
+
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Unknown error');
+            setDryRunStatus('error');
+        } finally {
+            setDryRunLoading(false);
+        }
+    }, [selectedTool, selectedJsondocs, additionalParams, jsondocs]);
+
     const renderCodeBlock = (content: string, maxHeight = '400px') => (
         <div style={{
             fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace',
@@ -396,6 +490,59 @@ const RawAgentContext: React.FC<RawAgentContextProps> = ({ projectId }) => {
                 </Form.Item>
             </Form>
 
+            {/* Persistence Controls */}
+            <div style={{ marginTop: 16 }}>
+                <Divider />
+                <Space>
+                    <Button
+                        icon={<ReloadOutlined />}
+                        onClick={loadParams}
+                        size="small"
+                        loading={paramsLoading}
+                    >
+                        重新加载
+                    </Button>
+                    <Button
+                        icon={<DeleteOutlined />}
+                        onClick={clearParams}
+                        size="small"
+                        danger
+                        loading={paramsLoading}
+                    >
+                        清除参数
+                    </Button>
+                    <Button
+                        icon={<PlayCircleOutlined />}
+                        onClick={runDryRun}
+                        size="small"
+                        loading={dryRunLoading}
+                        disabled={!selectedTool || selectedJsondocs.length === 0}
+                        style={{ backgroundColor: '#52c41a', borderColor: '#52c41a', color: 'white' }}
+                    >
+                        执行干运行
+                    </Button>
+                </Space>
+
+                {paramsError && (
+                    <Alert
+                        message="参数保存错误"
+                        description={paramsError}
+                        type="warning"
+                        style={{ marginTop: 8 }}
+                        closable
+                    />
+                )}
+
+                {paramsLoading && (
+                    <div style={{ marginTop: 8 }}>
+                        <Text type="secondary" style={{ fontSize: '12px' }}>
+                            <Spin size="small" style={{ marginRight: 4 }} />
+                            正在处理参数...
+                        </Text>
+                    </div>
+                )}
+            </div>
+
             {loading && (
                 <Alert
                     message="正在生成提示词..."
@@ -483,6 +630,52 @@ const RawAgentContext: React.FC<RawAgentContextProps> = ({ projectId }) => {
                 }}>
                     <FileTextOutlined style={{ fontSize: '48px', marginBottom: '16px' }} />
                     <Text type="secondary">选择工具和数据源后，结果将在此显示</Text>
+                </div>
+            )}
+
+            {/* Dry Run Results */}
+            {dryRunResults.length > 0 && (
+                <div style={{ marginTop: 24 }}>
+                    <Title level={4} style={{ display: 'flex', alignItems: 'center', color: '#fff', marginBottom: 16 }}>
+                        <PlayCircleOutlined style={{ marginRight: 8 }} />
+                        干运行结果
+                        {dryRunLoading && <Spin size="small" style={{ marginLeft: 8 }} />}
+                        <Text type="secondary" style={{ marginLeft: 8, fontSize: '14px' }}>
+                            ({dryRunStatus === 'running' ? '运行中...' :
+                                dryRunStatus === 'completed' ? '已完成' :
+                                    dryRunStatus === 'error' ? '错误' : '空闲'})
+                        </Text>
+                    </Title>
+
+                    <div style={{
+                        maxHeight: '400px',
+                        overflow: 'auto',
+                        backgroundColor: '#1a1a1a',
+                        border: '1px solid #434343',
+                        borderRadius: '6px'
+                    }}>
+                        {dryRunResults.map((event, index) => (
+                            <div key={index} style={{
+                                marginBottom: '8px',
+                                padding: '12px',
+                                backgroundColor: index % 2 === 0 ? '#262626' : '#1a1a1a',
+                                borderBottom: index < dryRunResults.length - 1 ? '1px solid #434343' : 'none'
+                            }}>
+                                <Text code style={{ fontSize: '11px', color: '#888' }}>
+                                    [{event.timestamp}]
+                                </Text>
+                                <pre style={{
+                                    margin: '4px 0 0 0',
+                                    fontSize: '12px',
+                                    whiteSpace: 'pre-wrap',
+                                    color: '#e6e6e6',
+                                    fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace'
+                                }}>
+                                    {JSON.stringify(event.data, null, 2)}
+                                </pre>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             )}
         </div>

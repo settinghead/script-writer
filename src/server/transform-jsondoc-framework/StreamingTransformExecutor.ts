@@ -80,6 +80,8 @@ export interface StreamingTransformParams<TInput, TOutput> {
     maxTokens?: number;  // LLM max tokens
     // NEW: Execution mode for patch vs full-object generation
     executionMode?: StreamingExecutionMode;
+    // NEW: Dry run mode - no database operations
+    dryRun?: boolean;  // Skip all database operations (default: false)
 }
 
 /**
@@ -125,7 +127,8 @@ export class StreamingTransformExecutor {
             temperature,
             topP,
             maxTokens,
-            executionMode
+            executionMode,
+            dryRun = false
         } = params;
 
         let transformId: string | null = null;
@@ -141,7 +144,7 @@ export class StreamingTransformExecutor {
                 const validatedInput = config.inputSchema.parse(input);
 
                 // 2. Create transform for this execution (or update existing one on retry)
-                if (!transformId) {
+                if (!dryRun && !transformId) {
                     const transform = await transformRepo.createTransform(
                         projectId,
                         'llm',
@@ -155,7 +158,7 @@ export class StreamingTransformExecutor {
                         }
                     );
                     transformId = transform.id;
-                } else {
+                } else if (!dryRun && transformId) {
                     // Update retry count on existing transform
                     await transformRepo.updateTransform(transformId, {
                         status: 'running',
@@ -167,10 +170,12 @@ export class StreamingTransformExecutor {
                             ...transformMetadata
                         }
                     });
+                } else if (dryRun) {
+                    console.log(`[StreamingTransformExecutor] Dry run: Skipping transform creation/update for ${config.templateName}`);
                 }
 
                 // 3. Handle input jsondocs: both source jsondocs and tool input (only on first attempt)
-                if (retryCount === 0) {
+                if (!dryRun && retryCount === 0) {
                     const transformInputs: Array<{ jsondocId: string; inputRole: string }> = [];
 
                     // 3a. Extract source jsondocs from input.jsondocs array
@@ -199,11 +204,15 @@ export class StreamingTransformExecutor {
                     }
 
                     // 3c. Add all transform inputs at once
-                    await transformRepo.addTransformInputs(transformId, transformInputs, projectId);
+                    if (!dryRun && transformId) {
+                        await transformRepo.addTransformInputs(transformId, transformInputs, projectId);
+                    } else if (dryRun) {
+                        console.log(`[StreamingTransformExecutor] Dry run: Skipping transform inputs for ${config.templateName}`);
+                    }
                 }
 
                 // 4. Create initial output jsondoc in streaming state (only on first attempt)
-                if (!outputJsondocId) {
+                if (!dryRun && !outputJsondocId) {
                     let initialData: any;
                     if (executionMode?.mode === 'patch') {
                         // In patch mode, start with the original jsondoc data
@@ -229,6 +238,8 @@ export class StreamingTransformExecutor {
                         'ai_generated'
                     );
                     outputJsondocId = outputJsondoc.id;
+                } else if (dryRun) {
+                    console.log(`[StreamingTransformExecutor] Dry run: Skipping initial output jsondoc creation for ${config.templateName}`);
                 }
 
                 // 5. Template rendering
@@ -245,10 +256,12 @@ export class StreamingTransformExecutor {
                 const finalPrompt = await this.templateService.renderTemplate(template, templateContext);
 
                 // 6. Store the prompt (only on first attempt)
-                if (retryCount === 0) {
+                if (!dryRun && retryCount === 0 && transformId) {
                     await transformRepo.addLLMPrompts(transformId, [
                         { promptText: finalPrompt, promptRole: 'primary' }
                     ], projectId);
+                } else if (dryRun) {
+                    console.log(`[StreamingTransformExecutor] Dry run: Skipping LLM prompt for ${config.templateName}`);
                 }
 
                 // 7. Execute streaming with internal retry (this handles LLM-level retries)
@@ -297,29 +310,33 @@ export class StreamingTransformExecutor {
                                     : partialData;
                             }
 
-                            await jsondocRepo.updateJsondoc(
-                                outputJsondocId,
-                                jsondocData,
-                                {
-                                    chunk_count: chunkCount,
-                                    last_updated: new Date().toISOString(),
-                                    update_count: ++updateCount,
-                                    retry_count: retryCount,
-                                    execution_mode: executionMode?.mode || 'full-object'
-                                }
-                            );
+                            if (!dryRun && outputJsondocId) {
+                                await jsondocRepo.updateJsondoc(
+                                    outputJsondocId,
+                                    jsondocData,
+                                    {
+                                        chunk_count: chunkCount,
+                                        last_updated: new Date().toISOString(),
+                                        update_count: ++updateCount,
+                                        retry_count: retryCount,
+                                        execution_mode: executionMode?.mode || 'full-object'
+                                    }
+                                );
 
-                            // Link output jsondoc to transform eagerly on first update
-                            if (!outputLinked) {
-                                try {
-                                    await transformRepo.addTransformOutputs(transformId, [
-                                        { jsondocId: outputJsondocId, outputRole: 'generated_output' }
-                                    ], projectId);
-                                    outputLinked = true;
-                                } catch (linkError) {
-                                    console.warn(`[StreamingTransformExecutor] Failed to link output jsondoc during streaming:`, linkError);
-                                    // Don't throw - we'll retry at completion
+                                // Link output jsondoc to transform eagerly on first update
+                                if (!outputLinked && transformId) {
+                                    try {
+                                        await transformRepo.addTransformOutputs(transformId, [
+                                            { jsondocId: outputJsondocId, outputRole: 'generated_output' }
+                                        ], projectId);
+                                        outputLinked = true;
+                                    } catch (linkError) {
+                                        console.warn(`[StreamingTransformExecutor] Failed to link output jsondoc during streaming:`, linkError);
+                                        // Don't throw - we'll retry at completion
+                                    }
                                 }
+                            } else if (dryRun) {
+                                console.log(`[StreamingTransformExecutor] Dry run: Skipping jsondoc update for ${config.templateName} at chunk ${chunkCount}`);
                             }
                         } catch (updateError) {
                             console.warn(`[StreamingTransformExecutor] Failed to update jsondoc at chunk ${chunkCount}:`, updateError);
@@ -358,50 +375,58 @@ export class StreamingTransformExecutor {
                         : finalValidatedData;
                 }
 
-                await jsondocRepo.updateJsondoc(
-                    outputJsondocId,
-                    finalJsondocData,
-                    {
-                        chunk_count: chunkCount,
-                        completed_at: new Date().toISOString(),
-                        total_updates: updateCount + 1,
-                        retry_count: retryCount
-                    },
-                    'completed'  // Mark as completed to trigger validation
-                );
+                if (!dryRun && outputJsondocId) {
+                    await jsondocRepo.updateJsondoc(
+                        outputJsondocId,
+                        finalJsondocData,
+                        {
+                            chunk_count: chunkCount,
+                            completed_at: new Date().toISOString(),
+                            total_updates: updateCount + 1,
+                            retry_count: retryCount
+                        },
+                        'completed'  // Mark as completed to trigger validation
+                    );
 
-                // 10. Link output jsondoc to transform (if not already linked during streaming)
-                if (!outputLinked) {
-                    await transformRepo.addTransformOutputs(transformId, [
-                        { jsondocId: outputJsondocId, outputRole: 'generated_output' }
-                    ], projectId);
+                    // 10. Link output jsondoc to transform (if not already linked during streaming)
+                    if (!outputLinked && transformId) {
+                        await transformRepo.addTransformOutputs(transformId, [
+                            { jsondocId: outputJsondocId, outputRole: 'generated_output' }
+                        ], projectId);
+                    }
+
+                    // 11. Store LLM metadata (simplified - we don't have detailed usage from streaming)
+                    if (transformId) {
+                        await transformRepo.addLLMTransform({
+                            transform_id: transformId,
+                            model_name: 'streaming_model',
+                            raw_response: JSON.stringify(finalValidatedData), // Store LLM output, not transformed
+                            token_usage: null,
+                            project_id: projectId
+                        });
+                    }
+
+                    // 12. Mark transform as completed
+                    if (transformId) {
+                        await transformRepo.updateTransform(transformId, {
+                            status: 'completed',
+                            execution_context: {
+                                template_name: config.templateName,
+                                completed_at: new Date().toISOString(),
+                                output_jsondoc_id: outputJsondocId,
+                                total_chunks: chunkCount,
+                                total_updates: updateCount + 1,
+                                retry_count: retryCount,
+                                max_retries: maxRetries
+                            }
+                        });
+                    }
+                } else if (dryRun) {
+                    console.log(`[StreamingTransformExecutor] Dry run: Skipping all database operations for ${config.templateName}`);
                 }
 
-                // 11. Store LLM metadata (simplified - we don't have detailed usage from streaming)
-                await transformRepo.addLLMTransform({
-                    transform_id: transformId,
-                    model_name: 'streaming_model',
-                    raw_response: JSON.stringify(finalValidatedData), // Store LLM output, not transformed
-                    token_usage: null,
-                    project_id: projectId
-                });
-
-                // 12. Mark transform as completed
-                await transformRepo.updateTransform(transformId, {
-                    status: 'completed',
-                    execution_context: {
-                        template_name: config.templateName,
-                        completed_at: new Date().toISOString(),
-                        output_jsondoc_id: outputJsondocId,
-                        total_chunks: chunkCount,
-                        total_updates: updateCount + 1,
-                        retry_count: retryCount,
-                        max_retries: maxRetries
-                    }
-                });
-
                 return {
-                    outputJsondocId,
+                    outputJsondocId: outputJsondocId || 'dry-run-no-output',
                     finishReason: 'stop'
                 };
 
@@ -415,7 +440,7 @@ export class StreamingTransformExecutor {
                     console.error(`[StreamingTransformExecutor] All ${maxRetries + 1} attempts failed for ${config.templateName}`);
 
                     // Update transform status to failed
-                    if (transformId) {
+                    if (!dryRun && transformId) {
                         try {
                             await transformRepo.updateTransform(transformId, {
                                 status: 'failed',
