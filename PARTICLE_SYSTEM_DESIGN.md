@@ -1,17 +1,17 @@
 # Particle System Design
 
-A semantic indexing and @mention system for the Transform JsonDoc Framework, enabling intelligent context construction and enhanced AI agent interactions through particle-based content retrieval.
+A semantic indexing and @mention system for the Transform Jsondoc Framework, enabling intelligent context construction and enhanced AI agent interactions through particle-based content retrieval.
 
 ## Overview
 
-The Particle System provides semantic indexing of jsonDoc content fragments (particles) with pgvector-based similarity search, enabling powerful @mention functionality in chat interfaces and intelligent context construction for AI agents.
+The Particle System provides semantic indexing of jsondoc content fragments (particles) with pgvector-based similarity search, enabling powerful @mention functionality in chat interfaces and intelligent context construction for AI agents.
 
 **Key Features**:
 - **Semantic Indexing** - Automatic particle extraction and embedding generation
 - **@Mention Integration** - Ant Design Mentions component with fuzzy + semantic search
 - **Context Construction** - Enhanced AI agent context with relevant particle retrieval
 - **Real-time Updates** - PostgreSQL triggers with event bus for instant particle synchronization
-- **Lineage-Aware** - Only active (leaf) jsonDocs generate @mention-able particles
+- **Lineage-Aware** - Only active (leaf) jsondocs generate @mention-able particles
 - **Chinese-Optimized** - Qwen/DeepSeek embeddings for Chinese content understanding
 
 ## Architecture Overview
@@ -22,13 +22,13 @@ Since Electric SQL doesn't support backend subscriptions, we use **PostgreSQL tr
 
 ```sql
 -- Trigger function to notify particle updates
-CREATE OR REPLACE FUNCTION notify_jsonDoc_change()
+CREATE OR REPLACE FUNCTION notify_jsondoc_change()
 RETURNS TRIGGER AS $$
 BEGIN
-    -- Notify the application about jsonDoc changes
-    PERFORM pg_notify('jsonDoc_changed', 
+    -- Notify the application about jsondoc changes
+    PERFORM pg_notify('jsondoc_changed', 
         json_build_object(
-            'jsonDoc_id', COALESCE(NEW.id, OLD.id),
+            'jsondoc_id', COALESCE(NEW.id, OLD.id),
             'project_id', COALESCE(NEW.project_id, OLD.project_id),
             'operation', TG_OP,
             'timestamp', extract(epoch from now())
@@ -39,10 +39,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Attach trigger to jsonDocs table
-CREATE TRIGGER jsonDoc_change_trigger
-    AFTER INSERT OR UPDATE OR DELETE ON jsonDocs
-    FOR EACH ROW EXECUTE FUNCTION notify_jsonDoc_change();
+-- Attach trigger to jsondocs table
+CREATE TRIGGER jsondoc_change_trigger
+    AFTER INSERT OR UPDATE OR DELETE ON jsondocs
+    FOR EACH ROW EXECUTE FUNCTION notify_jsondoc_change();
 ```
 
 ### **Event Bus Architecture**
@@ -62,33 +62,33 @@ class ParticleEventBus extends EventEmitter {
     
     private async setupDatabaseListener() {
         // Listen for PostgreSQL notifications
-        await this.dbConnection.listen('jsonDoc_changed', (payload: string) => {
+        await this.dbConnection.listen('jsondoc_changed', (payload: string) => {
             const data = JSON.parse(payload);
-            this.handleJsonDocChange(data);
+            this.handleJsondocChange(data);
         });
     }
     
-    private async handleJsonDocChange(data: any) {
-        const { jsonDoc_id, project_id, operation } = data;
+    private async handleJsondocChange(data: any) {
+        const { jsondoc_id, project_id, operation } = data;
         
         // Debounce rapid changes
-        this.debouncedParticleUpdate(jsonDoc_id, project_id, operation);
+        this.debouncedParticleUpdate(jsondoc_id, project_id, operation);
     }
     
     private debouncedParticleUpdate = debounce(async (
-        jsonDocId: string, 
+        jsondocId: string, 
         projectId: string, 
         operation: string
     ) => {
         try {
             if (operation === 'DELETE') {
-                await this.particleService.deleteParticlesByJsonDoc(jsonDocId);
+                await this.particleService.deleteParticlesByJsondoc(jsondocId);
             } else {
-                await this.particleService.updateParticlesForJsonDoc(jsonDocId, projectId);
+                await this.particleService.updateParticlesForJsondoc(jsondocId, projectId);
             }
             
             // Emit event for any listeners
-            this.emit('particles_updated', { jsonDocId, projectId, operation });
+            this.emit('particles_updated', { jsondocId, projectId, operation });
         } catch (error) {
             console.error('Failed to update particles:', error);
         }
@@ -108,7 +108,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 -- Particle storage with pgvector
 CREATE TABLE particles (
     id TEXT PRIMARY KEY,
-    jsonDoc_id TEXT NOT NULL REFERENCES jsonDocs(id) ON DELETE CASCADE,
+    jsondoc_id TEXT NOT NULL REFERENCES jsondocs(id) ON DELETE CASCADE,
     project_id TEXT NOT NULL,
     path TEXT NOT NULL,
     type TEXT NOT NULL,
@@ -123,7 +123,7 @@ CREATE TABLE particles (
 
 -- Performance indexes
 CREATE INDEX idx_particles_project_active ON particles(project_id, is_active);
-CREATE INDEX idx_particles_jsonDoc ON particles(jsonDoc_id);
+CREATE INDEX idx_particles_jsondoc ON particles(jsondoc_id);
 CREATE INDEX idx_particles_type ON particles(type);
 CREATE INDEX idx_particles_embedding ON particles USING ivfflat (embedding vector_cosine_ops);
 
@@ -143,21 +143,21 @@ export class ParticleService {
         private particleExtractor: ParticleExtractor
     ) {}
     
-    async updateParticlesForJsonDoc(jsonDocId: string, projectId: string): Promise<void> {
-        const jsonDoc = await this.getJsonDoc(jsonDocId);
-        if (!jsonDoc) return;
+    async updateParticlesForJsondoc(jsondocId: string, projectId: string): Promise<void> {
+        const jsondoc = await this.getJsondoc(jsondocId);
+        if (!jsondoc) return;
         
-        // Check if jsonDoc is active (leaf in lineage)
-        const isActive = await this.isJsonDocActive(jsonDocId);
+        // Check if jsondoc is active (leaf in lineage)
+        const isActive = await this.isJsondocActive(jsondocId);
         
-        // Extract particles from jsonDoc
-        const particles = await this.particleExtractor.extractParticles(jsonDoc);
+        // Extract particles from jsondoc
+        const particles = await this.particleExtractor.extractParticles(jsondoc);
         
         // Update database
         await this.db.transaction(async (tx) => {
             // Delete existing particles
             await tx.deleteFrom('particles')
-                .where('jsonDoc_id', '=', jsonDocId)
+                .where('jsondoc_id', '=', jsondocId)
                 .execute();
             
             if (isActive && particles.length > 0) {
@@ -165,7 +165,7 @@ export class ParticleService {
                 await tx.insertInto('particles')
                     .values(particles.map(p => ({
                         ...p,
-                        jsonDoc_id: jsonDocId,
+                        jsondoc_id: jsondocId,
                         project_id: projectId,
                         is_active: true
                     })))
@@ -193,12 +193,12 @@ export class ParticleService {
         return results.map(this.formatSearchResult);
     }
     
-    private async isJsonDocActive(jsonDocId: string): Promise<boolean> {
-        // Check if jsonDoc is a leaf in the lineage (no dependents)
+    private async isJsondocActive(jsondocId: string): Promise<boolean> {
+        // Check if jsondoc is a leaf in the lineage (no dependents)
         const dependents = await this.db
             .selectFrom('transform_inputs')
             .select('id')
-            .where('jsonDoc_id', '=', jsonDocId)
+            .where('jsondoc_id', '=', jsondocId)
             .limit(1)
             .execute();
         
@@ -209,7 +209,7 @@ export class ParticleService {
 
 #### 3. **Particle Extractor**
 ```typescript
-// Extract particles from jsonDocs based on schema type
+// Extract particles from jsondocs based on schema type
 export class ParticleExtractor {
     private extractors: Map<string, ParticleExtractorFunction> = new Map();
     
@@ -223,15 +223,15 @@ export class ParticleExtractor {
         this.extractors.set('chronicles', this.extractChroniclesParticles);
     }
     
-    async extractParticles(jsonDoc: JsonDoc): Promise<ParticleData[]> {
-        const extractor = this.extractors.get(jsonDoc.schema_type);
+    async extractParticles(jsondoc: Jsondoc): Promise<ParticleData[]> {
+        const extractor = this.extractors.get(jsondoc.schema_type);
         if (!extractor) return [];
         
-        return await extractor.call(this, jsonDoc);
+        return await extractor.call(this, jsondoc);
     }
     
-    private async extractBrainstormParticles(jsonDoc: JsonDoc): Promise<ParticleData[]> {
-        const data = jsonDoc.data;
+    private async extractBrainstormParticles(jsondoc: Jsondoc): Promise<ParticleData[]> {
+        const data = jsondoc.data;
         const particles: ParticleData[] = [];
         
         if (data.ideas && Array.isArray(data.ideas)) {
@@ -242,7 +242,7 @@ export class ParticleExtractor {
                 const contentText = `${idea.title}\n${idea.body}`;
                 
                 particles.push({
-                    id: `${jsonDoc.id}_idea_${i}`,
+                    id: `${jsondoc.id}_idea_${i}`,
                     path: `$.ideas[${i}]`,
                     type: '创意',
                     title,
@@ -256,8 +256,8 @@ export class ParticleExtractor {
         return particles;
     }
     
-    private async extractOutlineParticles(jsonDoc: JsonDoc): Promise<ParticleData[]> {
-        const data = jsonDoc.data;
+    private async extractOutlineParticles(jsondoc: Jsondoc): Promise<ParticleData[]> {
+        const data = jsondoc.data;
         const particles: ParticleData[] = [];
         
         // Extract characters
@@ -268,7 +268,7 @@ export class ParticleExtractor {
                 const contentText = `${character.name} - ${character.description}`;
                 
                 particles.push({
-                    id: `${jsonDoc.id}_character_${i}`,
+                    id: `${jsondoc.id}_character_${i}`,
                     path: `$.characters[${i}]`,
                     type: '人物',
                     title,
@@ -286,7 +286,7 @@ export class ParticleExtractor {
                 const title = point.length > 20 ? point.substring(0, 20) + '...' : point;
                 
                 particles.push({
-                    id: `${jsonDoc.id}_selling_point_${i}`,
+                    id: `${jsondoc.id}_selling_point_${i}`,
                     path: `$.selling_points[${i}]`,
                     type: '卖点',
                     title,
@@ -300,8 +300,8 @@ export class ParticleExtractor {
         return particles;
     }
     
-    private async extractChroniclesParticles(jsonDoc: JsonDoc): Promise<ParticleData[]> {
-        const data = jsonDoc.data;
+    private async extractChroniclesParticles(jsondoc: Jsondoc): Promise<ParticleData[]> {
+        const data = jsondoc.data;
         const particles: ParticleData[] = [];
         
         if (data.stages && Array.isArray(data.stages)) {
@@ -311,7 +311,7 @@ export class ParticleExtractor {
                 const contentText = `${stage.title}\n${stage.stageSynopsis}`;
                 
                 particles.push({
-                    id: `${jsonDoc.id}_stage_${i}`,
+                    id: `${jsondoc.id}_stage_${i}`,
                     path: `$.stages[${i}]`,
                     type: '阶段',
                     title,
@@ -337,7 +337,7 @@ router.get('/particles/search', authMiddleware.authenticate, async (req, res) =>
     const user = authMiddleware.getCurrentUser(req);
     
     // Verify project access
-    const hasAccess = await jsonDocRepo.userHasProjectAccess(user.id, projectId);
+    const hasAccess = await jsondocRepo.userHasProjectAccess(user.id, projectId);
     if (!hasAccess) {
         return res.status(403).json({ error: 'Access denied' });
     }
@@ -432,7 +432,7 @@ export async function initializeParticleSystem(db: Kysely<DB>) {
     // Setup event bus for real-time updates
     const eventBus = new ParticleEventBus(db, particleService);
     
-    // Initial particle extraction for existing jsonDocs
+    // Initial particle extraction for existing jsondocs
     await particleService.initializeAllParticles();
     
     return { particleService, eventBus };
@@ -479,12 +479,12 @@ export class ChatContextBuilder {
 
 ## Key Benefits
 
-1. **Real-time Synchronization**: PostgreSQL triggers ensure particles update immediately when jsonDocs change
+1. **Real-time Synchronization**: PostgreSQL triggers ensure particles update immediately when jsondocs change
 2. **Performance**: Debounced updates prevent excessive processing during rapid edits
 3. **Scalability**: pgvector provides efficient similarity search for large datasets
 4. **Chinese-Optimized**: Qwen/DeepSeek embeddings understand Chinese content nuances
-5. **Lineage-Aware**: Only active (leaf) jsonDocs generate @mention-able particles
-6. **Framework Integration**: Seamlessly integrates with existing Transform JsonDoc Framework
+5. **Lineage-Aware**: Only active (leaf) jsondocs generate @mention-able particles
+6. **Framework Integration**: Seamlessly integrates with existing Transform Jsondoc Framework
 
 ## Migration Strategy
 

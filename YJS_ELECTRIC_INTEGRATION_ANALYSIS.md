@@ -425,24 +425,24 @@ const updateShapeState = (name: 'operations' | 'awareness', offset: Offset, hand
 
 ## Recommendations for Script-Writer Integration
 
-### 1. JsonDoc-Level YJS Integration
+### 1. Jsondoc-Level YJS Integration
 
 **Current Challenge:**
-The script-writer uses immutable jsonDocs with transform chains. YJS expects mutable shared documents.
+The script-writer uses immutable jsondocs with transform chains. YJS expects mutable shared documents.
 
 **Recommended Approach:**
-Implement YJS at the **jsonDoc content level** rather than the jsonDoc metadata level:
+Implement YJS at the **jsondoc content level** rather than the jsondoc metadata level:
 
 ```typescript
-// Each jsonDoc gets its own YJS document for content editing
-interface JsonDocYJSDocument {
-  jsonDocId: string;
+// Each jsondoc gets its own YJS document for content editing
+interface JsondocYJSDocument {
+  jsondocId: string;
   yjsDoc: Y.Doc;
   contentType: 'text' | 'json' | 'structured';
   lastSyncedVersion: string;
 }
 
-// YJS document per jsonDoc type
+// YJS document per jsondoc type
 const brainstormIdeaDoc = new Y.Doc();
 const outlineDoc = new Y.Doc();
 const chroniclesDoc = new Y.Doc();
@@ -451,13 +451,13 @@ const chroniclesDoc = new Y.Doc();
 ### 2. Hybrid Architecture: Transform Framework + YJS
 
 **Maintain Transform Framework for:**
-- JsonDoc versioning and lineage
+- Jsondoc versioning and lineage
 - AI-generated content creation
-- Cross-jsonDoc dependencies
+- Cross-jsondoc dependencies
 - Audit trails and history
 
 **Use YJS for:**
-- Real-time collaborative editing of jsonDoc content
+- Real-time collaborative editing of jsondoc content
 - Live cursor presence and awareness
 - Conflict resolution during simultaneous edits
 - Offline editing with sync on reconnect
@@ -465,60 +465,60 @@ const chroniclesDoc = new Y.Doc();
 ### 3. Database Schema Design
 
 ```sql
--- Extend existing jsonDocs table
-ALTER TABLE jsonDocs ADD COLUMN yjs_room_id TEXT;
-ALTER TABLE jsonDocs ADD COLUMN yjs_enabled BOOLEAN DEFAULT FALSE;
+-- Extend existing jsondocs table
+ALTER TABLE jsondocs ADD COLUMN yjs_room_id TEXT;
+ALTER TABLE jsondocs ADD COLUMN yjs_enabled BOOLEAN DEFAULT FALSE;
 
--- YJS document updates per jsonDoc
-CREATE TABLE jsonDoc_yjs_updates (
+-- YJS document updates per jsondoc
+CREATE TABLE jsondoc_yjs_updates (
   id SERIAL PRIMARY KEY,
-  jsonDoc_id TEXT NOT NULL REFERENCES jsonDocs(id),
+  jsondoc_id TEXT NOT NULL REFERENCES jsondocs(id),
   room_id TEXT NOT NULL,
   update BYTEA NOT NULL,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
--- YJS awareness per jsonDoc editing session
-CREATE TABLE jsonDoc_yjs_awareness (
+-- YJS awareness per jsondoc editing session
+CREATE TABLE jsondoc_yjs_awareness (
   client_id TEXT,
-  jsonDoc_id TEXT NOT NULL REFERENCES jsonDocs(id),
+  jsondoc_id TEXT NOT NULL REFERENCES jsondocs(id),
   room_id TEXT NOT NULL,
   update BYTEA NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (client_id, jsonDoc_id)
+  PRIMARY KEY (client_id, jsondoc_id)
 );
 
 -- Auto-cleanup stale awareness
-CREATE OR REPLACE FUNCTION gc_jsonDoc_awareness_timeouts()
+CREATE OR REPLACE FUNCTION gc_jsondoc_awareness_timeouts()
 RETURNS TRIGGER AS $$
 BEGIN
-    DELETE FROM jsonDoc_yjs_awareness
+    DELETE FROM jsondoc_yjs_awareness
     WHERE updated_at < (CURRENT_TIMESTAMP - INTERVAL '30 seconds') 
-    AND jsonDoc_id = NEW.jsonDoc_id;
+    AND jsondoc_id = NEW.jsondoc_id;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER gc_jsonDoc_awareness_trigger
-AFTER INSERT OR UPDATE ON jsonDoc_yjs_awareness
+CREATE TRIGGER gc_jsondoc_awareness_trigger
+AFTER INSERT OR UPDATE ON jsondoc_yjs_awareness
 FOR EACH ROW
-EXECUTE FUNCTION gc_jsonDoc_awareness_timeouts();
+EXECUTE FUNCTION gc_jsondoc_awareness_timeouts();
 ```
 
 ### 4. Component Integration Strategy
 
-**Enhanced JsonDocEditor with YJS:**
+**Enhanced JsondocEditor with YJS:**
 
 ```typescript
-interface YJSJsonDocEditorProps {
-  jsonDocId: string;
+interface YJSJsondocEditorProps {
+  jsondocId: string;
   fields: FieldConfig[];
   enableCollaboration?: boolean;
   onSaveToTransformFramework?: (data: any) => void;
 }
 
-const YJSJsonDocEditor: React.FC<YJSJsonDocEditorProps> = ({
-  jsonDocId,
+const YJSJsondocEditor: React.FC<YJSJsondocEditorProps> = ({
+  jsondocId,
   fields,
   enableCollaboration = true,
   onSaveToTransformFramework
@@ -531,7 +531,7 @@ const YJSJsonDocEditor: React.FC<YJSJsonDocEditorProps> = ({
     if (enableCollaboration) {
       const electricProvider = new ElectricProvider(
         electricUrl,
-        `jsonDoc-${jsonDocId}`,
+        `jsondoc-${jsondocId}`,
         yjsDoc,
         { awareness, connect: true }
       );
@@ -541,7 +541,7 @@ const YJSJsonDocEditor: React.FC<YJSJsonDocEditorProps> = ({
         electricProvider.destroy();
       };
     }
-  }, [jsonDocId, enableCollaboration]);
+  }, [jsondocId, enableCollaboration]);
 
   // Sync YJS changes back to Transform Framework periodically
   useEffect(() => {
@@ -555,7 +555,7 @@ const YJSJsonDocEditor: React.FC<YJSJsonDocEditorProps> = ({
   }, [yjsDoc, fields, onSaveToTransformFramework]);
 
   return (
-    <div className="yjs-jsonDoc-editor">
+    <div className="yjs-jsondoc-editor">
       {fields.map((field) => (
         <YJSField
           key={field.field}
@@ -651,16 +651,16 @@ const YJSArrayField: React.FC<{
 const SingleBrainstormIdeaEditor: React.FC<Props> = ({ isEditable }) => {
   const handleYJSSync = useCallback((yjsData: any) => {
     // Sync YJS changes back to Transform Framework
-    projectData.updateJsonDoc.mutate({
-      jsonDocId: latestJsonDocId,
+    projectData.updateJsondoc.mutate({
+      jsondocId: latestJsondocId,
       data: yjsData
     });
-  }, [latestJsonDocId]);
+  }, [latestJsondocId]);
 
   if (isEditable) {
     return (
-      <YJSJsonDocEditor
-        jsonDocId={latestJsonDocId}
+      <YJSJsondocEditor
+        jsondocId={latestJsondocId}
         fields={BRAINSTORM_IDEA_FIELDS}
         enableCollaboration={true}
         onSaveToTransformFramework={handleYJSSync}
@@ -674,11 +674,11 @@ const SingleBrainstormIdeaEditor: React.FC<Props> = ({ isEditable }) => {
 
 **2. Enhanced ChronicleStageCard:**
 ```typescript
-const ChronicleStageCard: React.FC<Props> = ({ chroniclesJsonDocId, stagePath }) => {
+const ChronicleStageCard: React.FC<Props> = ({ chroniclesJsondocId, stagePath }) => {
   if (isEditable) {
     return (
-      <YJSJsonDocEditor
-        jsonDocId={effectiveJsonDoc.id}
+      <YJSJsondocEditor
+        jsondocId={effectiveJsondoc.id}
         fields={CHRONICLE_STAGE_FIELDS}
         enableCollaboration={true}
         onSaveToTransformFramework={(data) => {
@@ -698,11 +698,11 @@ const ChronicleStageCard: React.FC<Props> = ({ chroniclesJsonDocId, stagePath })
 **Phase 1: Infrastructure Setup**
 1. Add YJS database tables and triggers
 2. Install YJS dependencies (`yjs`, `y-protocols`, `@electric-sql/y-electric`)
-3. Create ElectricProvider for jsonDoc editing
+3. Create ElectricProvider for jsondoc editing
 4. Implement basic YJS text field component
 
 **Phase 2: Component Integration**
-1. Enhance JsonDocEditor with YJS support
+1. Enhance JsondocEditor with YJS support
 2. Add collaboration awareness UI
 3. Implement field-specific YJS components (text, array, object)
 4. Add sync mechanisms between YJS and Transform Framework
@@ -716,13 +716,13 @@ const ChronicleStageCard: React.FC<Props> = ({ chroniclesJsonDocId, stagePath })
 ### 8. Benefits for Script-Writer
 
 **Immediate Benefits:**
-- **Real-time Collaboration** - Multiple users can edit jsonDocs simultaneously
+- **Real-time Collaboration** - Multiple users can edit jsondocs simultaneously
 - **Live Cursors** - See where other users are editing in real-time
 - **Conflict Resolution** - Automatic merge of simultaneous edits
 - **Offline Support** - Continue editing when disconnected, sync when reconnected
 
 **Framework Preservation:**
-- **Immutable JsonDocs** - Transform Framework history preserved
+- **Immutable Jsondocs** - Transform Framework history preserved
 - **AI Integration** - YJS doesn't interfere with AI-generated content
 - **Audit Trails** - Complete lineage tracking maintained
 - **Version Control** - Snapshots and rollback capabilities preserved
@@ -733,4 +733,4 @@ const ChronicleStageCard: React.FC<Props> = ({ chroniclesJsonDocId, stagePath })
 - **Seamless Sync** - Changes appear instantly across all clients
 - **Robust Offline** - Work continues during network interruptions
 
-This hybrid approach combines the best of both worlds: the robust jsonDoc management and AI integration of the Transform Framework with the real-time collaborative editing capabilities of YJS + Electric SQL. 
+This hybrid approach combines the best of both worlds: the robust jsondoc management and AI integration of the Transform Framework with the real-time collaborative editing capabilities of YJS + Electric SQL. 

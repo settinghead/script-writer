@@ -1,15 +1,15 @@
 import React, { useMemo } from 'react';
 import { useProjectData } from '../../contexts/ProjectDataContext';
-import { TypedJsonDoc } from '@/common/types';
+import { TypedJsondoc } from '@/common/types';
 
 
 interface SectionWrapperProps {
-    schemaType: TypedJsonDoc['schema_type'];
+    schemaType: TypedJsondoc['schema_type'];
     title: React.ReactNode;
     children: React.ReactNode;
     sectionId?: string;
-    // Optional override for jsonDoc resolution
-    jsonDocId?: string;
+    // Optional override for jsondoc resolution
+    jsondocId?: string;
     // Optional override for mode detection
     mode?: 'normal' | 'loading' | 'failed';
 }
@@ -19,61 +19,61 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
     title,
     children,
     sectionId,
-    jsonDocId,
+    jsondocId,
     mode: overrideMode
 }) => {
     const projectData = useProjectData();
-    const jsonDocs = projectData.jsonDocs;
+    const jsondocs = projectData.jsondocs;
     const transforms = projectData.transforms;
     const transformInputs = projectData.transformInputs;
     const transformOutputs = projectData.transformOutputs;
-    const getJsonDocById = projectData.getJsonDocById;
+    const getJsondocById = projectData.getJsondocById;
 
-    // Find the deepest/latest jsonDoc of the specified schema type
-    const latestJsonDoc = useMemo(() => {
-        if (jsonDocs === "pending" || jsonDocs === "error" || transformInputs === "pending" || transformInputs === "error" || transformOutputs === "pending" || transformOutputs === "error") {
+    // Find the deepest/latest jsondoc of the specified schema type
+    const latestJsondoc = useMemo(() => {
+        if (jsondocs === "pending" || jsondocs === "error" || transformInputs === "pending" || transformInputs === "error" || transformOutputs === "pending" || transformOutputs === "error") {
             return null;
         }
 
-        if (jsonDocId) {
-            // Use provided jsonDoc ID
-            return getJsonDocById(jsonDocId);
+        if (jsondocId) {
+            // Use provided jsondoc ID
+            return getJsondocById(jsondocId);
         }
 
-        // Find all jsonDocs of the specified schema type
-        const matchingJsonDocs = jsonDocs.filter(jsonDoc =>
-            jsonDoc.schema_type === schemaType
+        // Find all jsondocs of the specified schema type
+        const matchingJsondocs = jsondocs.filter(jsondoc =>
+            jsondoc.schema_type === schemaType
         );
 
-        if (matchingJsonDocs.length === 0) {
+        if (matchingJsondocs.length === 0) {
             return null;
         }
 
-        // For each jsonDoc, check if it has descendants (is used as input to other transforms)
-        const jsonDocsWithDescendantInfo = matchingJsonDocs.map(jsonDoc => {
+        // For each jsondoc, check if it has descendants (is used as input to other transforms)
+        const jsondocsWithDescendantInfo = matchingJsondocs.map(jsondoc => {
             const hasDescendants = transformInputs.some(input =>
-                input.jsonDoc_id === jsonDoc.id
+                input.jsondoc_id === jsondoc.id
             );
-            return { jsonDoc, hasDescendants };
+            return { jsondoc, hasDescendants };
         });
 
         // Prefer leaf nodes (no descendants) as they represent the latest version
-        const leafJsonDocs = jsonDocsWithDescendantInfo.filter(item => !item.hasDescendants);
+        const leafJsondocs = jsondocsWithDescendantInfo.filter(item => !item.hasDescendants);
 
-        if (leafJsonDocs.length > 0) {
-            // Sort leaf jsonDocs by creation date (most recent first)
-            leafJsonDocs.sort((a, b) =>
-                new Date(b.jsonDoc.created_at).getTime() - new Date(a.jsonDoc.created_at).getTime()
+        if (leafJsondocs.length > 0) {
+            // Sort leaf jsondocs by creation date (most recent first)
+            leafJsondocs.sort((a, b) =>
+                new Date(b.jsondoc.created_at).getTime() - new Date(a.jsondoc.created_at).getTime()
             );
-            return leafJsonDocs[0].jsonDoc;
+            return leafJsondocs[0].jsondoc;
         }
 
-        // If no leaf jsonDocs, use the most recent jsonDoc
-        matchingJsonDocs.sort((a, b) =>
+        // If no leaf jsondocs, use the most recent jsondoc
+        matchingJsondocs.sort((a, b) =>
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
-        return matchingJsonDocs[0];
-    }, [schemaType, jsonDocId, jsonDocs, transformInputs, getJsonDocById]);
+        return matchingJsondocs[0];
+    }, [schemaType, jsondocId, jsondocs, transformInputs, getJsondocById]);
 
     // Determine the mode based on transform status
     const detectedMode = useMemo(() => {
@@ -81,8 +81,8 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
             return overrideMode;
         }
 
-        if (!latestJsonDoc) {
-            // No jsonDoc exists, check if there's a running transform that would produce this type
+        if (!latestJsondoc) {
+            // No jsondoc exists, check if there's a running transform that would produce this type
             if (transforms === "pending" || transforms === "error") {
                 return 'loading';
             }
@@ -99,8 +99,8 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
                     output.transform_id === transform.id
                 );
                 return outputs.some(output => {
-                    const outputJsonDoc = getJsonDocById(output.jsonDoc_id);
-                    return outputJsonDoc?.schema_type === schemaType;
+                    const outputJsondoc = getJsondocById(output.jsondoc_id);
+                    return outputJsondoc?.schema_type === schemaType;
                 });
             });
 
@@ -136,9 +136,9 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
             return 'loading';
         }
 
-        // JsonDoc exists, check the transform that created it
+        // Jsondoc exists, check the transform that created it
         const creatingTransformOutput = transformOutputs.find(output =>
-            output.jsonDoc_id === latestJsonDoc.id
+            output.jsondoc_id === latestJsondoc.id
         );
 
         if (creatingTransformOutput) {
@@ -159,9 +159,9 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
             }
         }
 
-        // Check if there are any running transforms that use this jsonDoc as input
+        // Check if there are any running transforms that use this jsondoc as input
         // (indicating an update/edit is in progress)
-        const runningTransformsUsingJsonDoc = transforms.filter(transform => {
+        const runningTransformsUsingJsondoc = transforms.filter(transform => {
             if (transform.status !== 'running' && transform.status !== 'pending') {
                 return false;
             }
@@ -173,15 +173,15 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
             const inputs = transformInputs.filter(input =>
                 input.transform_id === transform.id
             );
-            return inputs.some(input => input.jsonDoc_id === latestJsonDoc.id);
+            return inputs.some(input => input.jsondoc_id === latestJsondoc.id);
         });
 
-        if (runningTransformsUsingJsonDoc.length > 0) {
+        if (runningTransformsUsingJsondoc.length > 0) {
             return 'loading';
         }
 
         return 'normal';
-    }, [overrideMode, latestJsonDoc, transforms, transformOutputs, transformInputs, getJsonDocById, schemaType]);
+    }, [overrideMode, latestJsondoc, transforms, transformOutputs, transformInputs, getJsondocById, schemaType]);
 
     // Generate section ID
     const finalSectionId = sectionId || `section-${schemaType.replace('_schema', '').replace('_', '-')}`;

@@ -2,27 +2,27 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createBrainstormToolDefinition } from '../tools/BrainstormTools';
 import { createOutlineSettingsToolDefinition } from '../tools/OutlineSettingsTool';
 import { createChroniclesToolDefinition } from '../tools/ChroniclesTool';
-import { JsonDocRepository } from '../transform-jsonDoc-framework/JsonDocRepository';
-import { TransformRepository } from '../transform-jsonDoc-framework/TransformRepository';
-import { createMockJsonDocRepository, createMockTransformRepository } from '../../__tests__/mocks/databaseMocks';
-import { TypedJsonDoc } from '@/common/types';
+import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
+import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
+import { createMockJsondocRepository, createMockTransformRepository } from '../../__tests__/mocks/databaseMocks';
+import { TypedJsondoc } from '@/common/types';
 
 describe('End-to-End Workflow Tests', () => {
-    let mockJsonDocRepo: any;
+    let mockJsondocRepo: any;
     let mockTransformRepo: any;
     const testProjectId = 'test-project-123';
     const testUserId = 'test-user-456';
 
     beforeEach(() => {
-        mockJsonDocRepo = createMockJsonDocRepository();
+        mockJsondocRepo = createMockJsondocRepository();
         mockTransformRepo = createMockTransformRepository();
 
-        // Setup mock getJsonDoc to return proper jsonDoc data
-        mockJsonDocRepo.getJsonDoc.mockImplementation(async (id: string) => {
+        // Setup mock getJsondoc to return proper jsondoc data
+        mockJsondocRepo.getJsondoc.mockImplementation(async (id: string) => {
             if (!id) return null;
 
-            // Check for outline settings first (mock-jsonDoc-2 should be outline settings)
-            if (id === 'mock-jsonDoc-2' || id === 'mock-jsonDoc-3' || id === 'mock-jsonDoc-4' || id.includes('outline')) {
+            // Check for outline settings first (mock-jsondoc-2 should be outline settings)
+            if (id === 'mock-jsondoc-2' || id === 'mock-jsondoc-3' || id === 'mock-jsondoc-4' || id.includes('outline')) {
                 return {
                     id: id,
                     project_id: testProjectId,
@@ -51,15 +51,15 @@ describe('End-to-End Workflow Tests', () => {
                             }
                         ]
                     },
-                    schema_type: 'outline_settings' as TypedJsonDoc['schema_type'],
+                    schema_type: 'outline_settings' as TypedJsondoc['schema_type'],
                     origin_type: 'ai_generated'
                 };
-            } else if (id.includes('brainstorm') || id === 'mock-jsonDoc-1') {
+            } else if (id.includes('brainstorm') || id === 'mock-jsondoc-1') {
                 // Return brainstorm_idea with user_input schema (from human transform)
                 return {
                     id: id,
                     project_id: testProjectId,
-                    schema_type: 'brainstorm_idea' as TypedJsonDoc['schema_type'],
+                    schema_type: 'brainstorm_idea' as TypedJsondoc['schema_type'],
                     data: {
                         title: '现代都市甜宠',
                         body: '一个关于都市白领的甜宠故事，男女主角在职场相遇，经历误会后走到一起'
@@ -73,11 +73,11 @@ describe('End-to-End Workflow Tests', () => {
                     }
                 };
             } else if (id.includes('input') || id === 'test-brainstorm-input') {
-                // Return brainstorm input jsonDoc
+                // Return brainstorm input jsondoc
                 return {
                     id: id,
                     project_id: testProjectId,
-                    schema_type: 'brainstorm_input_params' as TypedJsonDoc['schema_type'],
+                    schema_type: 'brainstorm_input_params' as TypedJsondoc['schema_type'],
                     data: {
                         platform: '抖音',
                         genre: '现代甜宠',
@@ -90,11 +90,11 @@ describe('End-to-End Workflow Tests', () => {
             return null;
         });
 
-        // Setup mock createJsonDoc to return sequential IDs
-        let jsonDocCounter = 1;
-        mockJsonDocRepo.createJsonDoc.mockImplementation(async () => {
-            const jsonDocId = `mock-jsonDoc-${jsonDocCounter++}`;
-            return { id: jsonDocId };
+        // Setup mock createJsondoc to return sequential IDs
+        let jsondocCounter = 1;
+        mockJsondocRepo.createJsondoc.mockImplementation(async () => {
+            const jsondocId = `mock-jsondoc-${jsondocCounter++}`;
+            return { id: jsondocId };
         });
 
         // Setup mock createTransform to return sequential IDs
@@ -117,14 +117,14 @@ describe('End-to-End Workflow Tests', () => {
         // Step 1: Generate brainstorm ideas
         const brainstormTool = createBrainstormToolDefinition(
             mockTransformRepo,
-            mockJsonDocRepo,
+            mockJsondocRepo,
             testProjectId,
             testUserId,
             cachingOptions
         );
 
         const brainstormInput = {
-            sourceJsonDocId: 'test-brainstorm-input',
+            sourceJsondocId: 'test-brainstorm-input',
             otherRequirements: '生成3个故事创意'
         };
 
@@ -132,22 +132,22 @@ describe('End-to-End Workflow Tests', () => {
         const brainstormResult = await brainstormTool.execute(brainstormInput, { toolCallId: 'test-brainstorm' });
 
         expect(brainstormResult).toBeDefined();
-        expect(brainstormResult.outputJsonDocId).toBeDefined();
+        expect(brainstormResult.outputJsondocId).toBeDefined();
         expect(brainstormResult.finishReason).toBeDefined();
 
-        console.log(`✅ Brainstorm completed: ${brainstormResult.outputJsonDocId}`);
+        console.log(`✅ Brainstorm completed: ${brainstormResult.outputJsondocId}`);
 
         // Step 2: Generate outline settings from brainstorm
         const outlineSettingsTool = createOutlineSettingsToolDefinition(
             mockTransformRepo,
-            mockJsonDocRepo,
+            mockJsondocRepo,
             testProjectId,
             testUserId,
             cachingOptions
         );
 
         const outlineSettingsInput = {
-            sourceJsonDocId: brainstormResult.outputJsonDocId,
+            sourceJsondocId: brainstormResult.outputJsondocId,
             title: '现代甜宠故事设定',
             requirements: '创建详细的剧本框架，包括角色背景和商业定位'
         };
@@ -156,22 +156,22 @@ describe('End-to-End Workflow Tests', () => {
         const outlineSettingsResult = await outlineSettingsTool.execute(outlineSettingsInput, { toolCallId: 'test-outline-settings' });
 
         expect(outlineSettingsResult).toBeDefined();
-        expect(outlineSettingsResult.outputJsonDocId).toBeDefined();
+        expect(outlineSettingsResult.outputJsondocId).toBeDefined();
         expect(outlineSettingsResult.finishReason).toBeDefined();
 
-        console.log(`✅ Outline settings completed: ${outlineSettingsResult.outputJsonDocId}`);
+        console.log(`✅ Outline settings completed: ${outlineSettingsResult.outputJsondocId}`);
 
         // Step 3: Generate chronicles from outline settings
         const chroniclesTool = createChroniclesToolDefinition(
             mockTransformRepo,
-            mockJsonDocRepo,
+            mockJsondocRepo,
             testProjectId,
             testUserId,
             cachingOptions
         );
 
         const chroniclesInput = {
-            sourceJsonDocId: outlineSettingsResult.outputJsonDocId,
+            sourceJsondocId: outlineSettingsResult.outputJsondocId,
             requirements: '创建按时间顺序的故事发展脉络'
         };
 
@@ -179,23 +179,23 @@ describe('End-to-End Workflow Tests', () => {
         const chroniclesResult = await chroniclesTool.execute(chroniclesInput, { toolCallId: 'test-chronicles' });
 
         expect(chroniclesResult).toBeDefined();
-        expect(chroniclesResult.outputJsonDocId).toBeDefined();
+        expect(chroniclesResult.outputJsondocId).toBeDefined();
         expect(chroniclesResult.finishReason).toBeDefined();
 
-        console.log(`✅ Chronicles completed: ${chroniclesResult.outputJsonDocId}`);
+        console.log(`✅ Chronicles completed: ${chroniclesResult.outputJsondocId}`);
 
         // Verify the complete workflow chain
         console.log('🔗 Verifying workflow chain...');
 
-        // Check that all jsonDocs were created
-        expect(brainstormResult.outputJsonDocId).toBeDefined();
-        expect(outlineSettingsResult.outputJsonDocId).toBeDefined();
-        expect(chroniclesResult.outputJsonDocId).toBeDefined();
+        // Check that all jsondocs were created
+        expect(brainstormResult.outputJsondocId).toBeDefined();
+        expect(outlineSettingsResult.outputJsondocId).toBeDefined();
+        expect(chroniclesResult.outputJsondocId).toBeDefined();
 
-        // Verify they're all different jsonDocs
-        expect(brainstormResult.outputJsonDocId).not.toBe(outlineSettingsResult.outputJsonDocId);
-        expect(outlineSettingsResult.outputJsonDocId).not.toBe(chroniclesResult.outputJsonDocId);
-        expect(brainstormResult.outputJsonDocId).not.toBe(chroniclesResult.outputJsonDocId);
+        // Verify they're all different jsondocs
+        expect(brainstormResult.outputJsondocId).not.toBe(outlineSettingsResult.outputJsondocId);
+        expect(outlineSettingsResult.outputJsondocId).not.toBe(chroniclesResult.outputJsondocId);
+        expect(brainstormResult.outputJsondocId).not.toBe(chroniclesResult.outputJsondocId);
 
         console.log('✅ Complete workflow test passed!');
     });
@@ -208,7 +208,7 @@ describe('End-to-End Workflow Tests', () => {
         // Test brainstorm tool
         const brainstormTool = createBrainstormToolDefinition(
             mockTransformRepo,
-            mockJsonDocRepo,
+            mockJsondocRepo,
             testProjectId,
             testUserId,
             cachingOptions
@@ -221,7 +221,7 @@ describe('End-to-End Workflow Tests', () => {
         // Test outline settings tool
         const outlineSettingsTool = createOutlineSettingsToolDefinition(
             mockTransformRepo,
-            mockJsonDocRepo,
+            mockJsondocRepo,
             testProjectId,
             testUserId,
             cachingOptions
@@ -234,7 +234,7 @@ describe('End-to-End Workflow Tests', () => {
         // Test chronicles tool
         const chroniclesTool = createChroniclesToolDefinition(
             mockTransformRepo,
-            mockJsonDocRepo,
+            mockJsondocRepo,
             testProjectId,
             testUserId,
             cachingOptions

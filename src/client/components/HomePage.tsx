@@ -28,7 +28,7 @@ interface ProjectSummary {
     genre?: string;
     createdAt: string;
     updatedAt: string;
-    jsonDocCounts: {
+    jsondocCounts: {
         ideations: number;
         outlines: number;
         episodes: number;
@@ -480,17 +480,17 @@ const HomePage: React.FC = () => {
 
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
                                         <Space size="small">
-                                            {project.jsonDocCounts.ideations > 0 && (
-                                                <Tag style={{ fontSize: '11px' }}>{project.jsonDocCounts.ideations}个想法</Tag>
+                                            {project.jsondocCounts.ideations > 0 && (
+                                                <Tag style={{ fontSize: '11px' }}>{project.jsondocCounts.ideations}个想法</Tag>
                                             )}
-                                            {project.jsonDocCounts.outlines > 0 && (
-                                                <Tag style={{ fontSize: '11px' }}>{project.jsonDocCounts.outlines}个大纲</Tag>
+                                            {project.jsondocCounts.outlines > 0 && (
+                                                <Tag style={{ fontSize: '11px' }}>{project.jsondocCounts.outlines}个大纲</Tag>
                                             )}
-                                            {project.jsonDocCounts.episodes > 0 && (
-                                                <Tag style={{ fontSize: '11px' }}>{project.jsonDocCounts.episodes}集大纲</Tag>
+                                            {project.jsondocCounts.episodes > 0 && (
+                                                <Tag style={{ fontSize: '11px' }}>{project.jsondocCounts.episodes}集大纲</Tag>
                                             )}
-                                            {project.jsonDocCounts.scripts > 0 && (
-                                                <Tag style={{ fontSize: '11px' }}>{project.jsonDocCounts.scripts}个剧本</Tag>
+                                            {project.jsondocCounts.scripts > 0 && (
+                                                <Tag style={{ fontSize: '11px' }}>{project.jsondocCounts.scripts}个剧本</Tag>
                                             )}
                                         </Space>
                                         <Text type="secondary" style={{ fontSize: '11px' }}>

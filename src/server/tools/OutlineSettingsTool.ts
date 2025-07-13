@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { TransformRepository } from '../transform-jsonDoc-framework/TransformRepository';
-import { JsonDocRepository } from '../transform-jsonDoc-framework/JsonDocRepository';
+import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
+import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
 import {
     OutlineSettingsInputSchema,
     OutlineSettingsInput,
@@ -10,16 +10,16 @@ import {
 import {
     executeStreamingTransform,
     StreamingTransformConfig
-} from '../transform-jsonDoc-framework/StreamingTransformExecutor';
-import type { StreamingToolDefinition } from '../transform-jsonDoc-framework/StreamingAgentFramework';
+} from '../transform-jsondoc-framework/StreamingTransformExecutor';
+import type { StreamingToolDefinition } from '../transform-jsondoc-framework/StreamingAgentFramework';
 
 const OutlineSettingsToolResultSchema = z.object({
-    outputJsonDocId: z.string(),
+    outputJsondocId: z.string(),
     finishReason: z.string()
 });
 
 interface OutlineSettingsToolResult {
-    outputJsonDocId: string;
+    outputJsondocId: string;
     finishReason: string;
 }
 
@@ -28,7 +28,7 @@ interface OutlineSettingsToolResult {
  */
 export function createOutlineSettingsToolDefinition(
     transformRepo: TransformRepository,
-    jsonDocRepo: JsonDocRepository,
+    jsondocRepo: JsondocRepository,
     projectId: string,
     userId: string,
     cachingOptions?: {
@@ -41,74 +41,74 @@ export function createOutlineSettingsToolDefinition(
 ): StreamingToolDefinition<OutlineSettingsInput, OutlineSettingsToolResult> {
     return {
         name: 'generate_outline_settings',
-        description: '基于选定的故事创意生成剧本框架（人物角色、故事背景、商业定位等），为后续时间顺序大纲奠定基础。适用场景：用户已有满意的故事创意，需要先确定基础设定再进行时序发展。必须使用项目背景信息中显示的完整jsonDoc ID作为sourceJsonDocId参数。',
+        description: '基于选定的故事创意生成剧本框架（人物角色、故事背景、商业定位等），为后续时间顺序大纲奠定基础。适用场景：用户已有满意的故事创意，需要先确定基础设定再进行时序发展。必须使用项目背景信息中显示的完整jsondoc ID作为sourceJsondocId参数。',
         inputSchema: OutlineSettingsInputSchema,
         outputSchema: OutlineSettingsToolResultSchema,
         execute: async (params: OutlineSettingsInput, { toolCallId }): Promise<OutlineSettingsToolResult> => {
-            console.log(`[OutlineSettingsTool] Starting streaming outline settings generation for jsonDoc ${params.sourceJsonDocId}`);
+            console.log(`[OutlineSettingsTool] Starting streaming outline settings generation for jsondoc ${params.sourceJsondocId}`);
             console.log(`[OutlineSettingsTool] Input params:`, JSON.stringify(params, null, 2));
 
             // Extract source idea data first
-            const sourceJsonDoc = await jsonDocRepo.getJsonDoc(params.sourceJsonDocId);
-            if (!sourceJsonDoc) {
-                console.error(`[OutlineSettingsTool] Source jsonDoc not found: ${params.sourceJsonDocId}`);
+            const sourceJsondoc = await jsondocRepo.getJsondoc(params.sourceJsondocId);
+            if (!sourceJsondoc) {
+                console.error(`[OutlineSettingsTool] Source jsondoc not found: ${params.sourceJsondocId}`);
                 throw new Error('Source brainstorm idea not found');
             }
 
-            console.log(`[OutlineSettingsTool] Found source jsonDoc:`, {
-                id: sourceJsonDoc.id,
-                schema_version: sourceJsonDoc.schema_version,
-                schema_type: sourceJsonDoc.schema_type,
-                origin_type: sourceJsonDoc.origin_type,
-                project_id: sourceJsonDoc.project_id
+            console.log(`[OutlineSettingsTool] Found source jsondoc:`, {
+                id: sourceJsondoc.id,
+                schema_version: sourceJsondoc.schema_version,
+                schema_type: sourceJsondoc.schema_type,
+                origin_type: sourceJsondoc.origin_type,
+                project_id: sourceJsondoc.project_id
             });
 
-            // Verify user has access to this jsonDoc's project
-            const hasAccess = await jsonDocRepo.userHasProjectAccess(userId, sourceJsonDoc.project_id);
+            // Verify user has access to this jsondoc's project
+            const hasAccess = await jsondocRepo.userHasProjectAccess(userId, sourceJsondoc.project_id);
             if (!hasAccess) {
-                throw new Error('Access denied to source jsonDoc');
+                throw new Error('Access denied to source jsondoc');
             }
 
-            // Extract source content - flexible approach that works with any jsonDoc
-            console.log(`[OutlineSettingsTool] Processing jsonDoc type: ${sourceJsonDoc.schema_type}, schema_type: ${sourceJsonDoc.schema_type}`);
-            console.log(`[OutlineSettingsTool] Source jsonDoc data:`, typeof sourceJsonDoc.data === 'object' ?
-                `{${Object.keys(sourceJsonDoc.data || {}).join(', ')}} (${JSON.stringify(sourceJsonDoc.data).length} chars)` :
-                sourceJsonDoc.data);
-            console.log(`[OutlineSettingsTool] Source jsonDoc metadata:`, typeof sourceJsonDoc.metadata === 'object' ?
-                `{${Object.keys(sourceJsonDoc.metadata || {}).join(', ')}} (${JSON.stringify(sourceJsonDoc.metadata).length} chars)` :
-                sourceJsonDoc.metadata);
+            // Extract source content - flexible approach that works with any jsondoc
+            console.log(`[OutlineSettingsTool] Processing jsondoc type: ${sourceJsondoc.schema_type}, schema_type: ${sourceJsondoc.schema_type}`);
+            console.log(`[OutlineSettingsTool] Source jsondoc data:`, typeof sourceJsondoc.data === 'object' ?
+                `{${Object.keys(sourceJsondoc.data || {}).join(', ')}} (${JSON.stringify(sourceJsondoc.data).length} chars)` :
+                sourceJsondoc.data);
+            console.log(`[OutlineSettingsTool] Source jsondoc metadata:`, typeof sourceJsondoc.metadata === 'object' ?
+                `{${Object.keys(sourceJsondoc.metadata || {}).join(', ')}} (${JSON.stringify(sourceJsondoc.metadata).length} chars)` :
+                sourceJsondoc.metadata);
 
             // Create a comprehensive source content by combining all available information
             let sourceContent = '';
 
-            // Add basic jsonDoc info
-            sourceContent += `JsonDoc Type: ${sourceJsonDoc.schema_type}\n`;
-            sourceContent += `Schema Type: ${sourceJsonDoc.schema_type || 'N/A'}\n`;
-            sourceContent += `Origin: ${sourceJsonDoc.origin_type || 'N/A'}\n\n`;
+            // Add basic jsondoc info
+            sourceContent += `Jsondoc Type: ${sourceJsondoc.schema_type}\n`;
+            sourceContent += `Schema Type: ${sourceJsondoc.schema_type || 'N/A'}\n`;
+            sourceContent += `Origin: ${sourceJsondoc.origin_type || 'N/A'}\n\n`;
 
             // Add main data content
-            sourceContent += `Main Content:\n${JSON.stringify(sourceJsonDoc.data, null, 2)}\n\n`;
+            sourceContent += `Main Content:\n${JSON.stringify(sourceJsondoc.data, null, 2)}\n\n`;
 
             // Add metadata if available and contains useful info
-            if (sourceJsonDoc.metadata && Object.keys(sourceJsonDoc.metadata).length > 0) {
-                sourceContent += `Metadata:\n${JSON.stringify(sourceJsonDoc.metadata, null, 2)}\n\n`;
+            if (sourceJsondoc.metadata && Object.keys(sourceJsondoc.metadata).length > 0) {
+                sourceContent += `Metadata:\n${JSON.stringify(sourceJsondoc.metadata, null, 2)}\n\n`;
             }
 
             // Try to extract a title for logging purposes (best effort)
             let displayTitle = 'Unknown';
             try {
-                if (sourceJsonDoc.data && typeof sourceJsonDoc.data === 'object') {
-                    if ('title' in sourceJsonDoc.data) {
-                        displayTitle = String(sourceJsonDoc.data.title);
-                    } else if (sourceJsonDoc.metadata?.derived_data?.title) {
-                        displayTitle = String(sourceJsonDoc.metadata.derived_data.title);
+                if (sourceJsondoc.data && typeof sourceJsondoc.data === 'object') {
+                    if ('title' in sourceJsondoc.data) {
+                        displayTitle = String(sourceJsondoc.data.title);
+                    } else if (sourceJsondoc.metadata?.derived_data?.title) {
+                        displayTitle = String(sourceJsondoc.metadata.derived_data.title);
                     }
                 }
             } catch (e) {
                 // Ignore extraction errors, use default
             }
 
-            console.log(`[OutlineSettingsTool] Using source content for jsonDoc: ${displayTitle}`);
+            console.log(`[OutlineSettingsTool] Using source content for jsondoc: ${displayTitle}`);
             console.log(`[OutlineSettingsTool] Source content length: ${sourceContent.length} characters`);
 
             // Create streaming config with extracted data
@@ -142,16 +142,16 @@ export function createOutlineSettingsToolDefinition(
                     });
                     return templateVars;
                 },
-                // Extract source jsonDoc for proper lineage
-                extractSourceJsonDocs: (input) => [{
-                    jsonDocId: input.sourceJsonDocId,
+                // Extract source jsondoc for proper lineage
+                extractSourceJsondocs: (input) => [{
+                    jsondocId: input.sourceJsondocId,
                     inputRole: 'source'
                 }]
             };
 
             console.log(`[OutlineSettingsTool] Starting executeStreamingTransform with config:`, {
                 templateName: config.templateName,
-                outputJsonDocType: 'outline_settings',
+                outputJsondocType: 'outline_settings',
                 projectId,
                 userId,
                 enableCaching: cachingOptions?.enableCaching
@@ -159,7 +159,7 @@ export function createOutlineSettingsToolDefinition(
 
             console.log(`[OutlineSettingsTool] About to call executeStreamingTransform with parameters:`);
             console.log(`[OutlineSettingsTool] - templateName: ${config.templateName}`);
-            console.log(`[OutlineSettingsTool] - outputJsonDocType: outline_settings`);
+            console.log(`[OutlineSettingsTool] - outputJsondocType: outline_settings`);
             console.log(`[OutlineSettingsTool] - projectId: ${projectId}`);
             console.log(`[OutlineSettingsTool] - userId: ${userId}`);
             console.log(`[OutlineSettingsTool] - enableCaching: ${cachingOptions?.enableCaching}`);
@@ -174,11 +174,11 @@ export function createOutlineSettingsToolDefinition(
                     projectId,
                     userId,
                     transformRepo,
-                    jsonDocRepo,
-                    outputJsonDocType: 'outline_settings',
+                    jsondocRepo,
+                    outputJsondocType: 'outline_settings',
                     transformMetadata: {
                         toolName: 'generate_outline_settings',
-                        source_jsonDoc_id: params.sourceJsonDocId,
+                        source_jsondoc_id: params.sourceJsondocId,
                         source_idea_title: displayTitle,
                         title: params.title,
                         requirements: params.requirements
@@ -192,7 +192,7 @@ export function createOutlineSettingsToolDefinition(
                 });
                 console.log(`[OutlineSettingsTool] executeStreamingTransform completed successfully`);
                 console.log(`[OutlineSettingsTool] Result:`, {
-                    outputJsonDocId: result.outputJsonDocId,
+                    outputJsondocId: result.outputJsondocId,
                     finishReason: result.finishReason
                 });
             } catch (error) {
@@ -203,10 +203,10 @@ export function createOutlineSettingsToolDefinition(
                 throw error;
             }
 
-            console.log(`[OutlineSettingsTool] Successfully completed streaming outline settings generation with jsonDoc ${result.outputJsonDocId}`);
+            console.log(`[OutlineSettingsTool] Successfully completed streaming outline settings generation with jsondoc ${result.outputJsondocId}`);
 
             return {
-                outputJsonDocId: result.outputJsonDocId,
+                outputJsondocId: result.outputJsondocId,
                 finishReason: result.finishReason
             };
         },

@@ -2,38 +2,38 @@ import React, { useMemo } from 'react';
 import { Card, Typography, Space } from 'antd';
 import { ChroniclesOutput } from '../../common/schemas/outlineSchemas';
 import { useProjectData } from '../contexts/ProjectDataContext';
-import { useLineageResolution } from '../transform-jsonDoc-framework/useLineageResolution';
-import { SectionWrapper, JsonDocDisplayWrapper } from './shared';
+import { useLineageResolution } from '../transform-jsondoc-framework/useLineageResolution';
+import { SectionWrapper, JsondocDisplayWrapper } from './shared';
 import EditableChroniclesForm from './shared/EditableChroniclesForm';
 
 const { Text } = Typography;
 
 interface ChroniclesDisplayProps {
     isEditable?: boolean;
-    chroniclesJsonDoc?: any;
+    chroniclesJsondoc?: any;
 }
 
 export const ChroniclesDisplay: React.FC<ChroniclesDisplayProps> = ({
     isEditable: propsIsEditable,
-    chroniclesJsonDoc: propsChroniclesJsonDoc
+    chroniclesJsondoc: propsChroniclesJsondoc
 }) => {
     const projectData = useProjectData();
 
     // If props are provided (from action computation), use them directly
-    if (propsChroniclesJsonDoc) {
+    if (propsChroniclesJsondoc) {
         const isEditable = propsIsEditable ?? false;
-        const effectiveJsonDoc = propsChroniclesJsonDoc;
+        const effectiveJsondoc = propsChroniclesJsondoc;
 
         return (
             <SectionWrapper
                 schemaType={"chronicles"}
                 title="时间顺序大纲"
                 sectionId="chronicles"
-                jsonDocId={effectiveJsonDoc?.id}
+                jsondocId={effectiveJsondoc?.id}
             >
                 <div style={{ marginTop: '24px' }}>
-                    <JsonDocDisplayWrapper
-                        jsonDoc={effectiveJsonDoc}
+                    <JsondocDisplayWrapper
+                        jsondoc={effectiveJsondoc}
                         isEditable={isEditable}
                         title="时间顺序大纲"
                         icon="📅"
@@ -46,28 +46,28 @@ export const ChroniclesDisplay: React.FC<ChroniclesDisplayProps> = ({
         );
     }
 
-    // Fallback: Find chronicles jsonDoc from project data
-    const { jsonDocs, isLoading, isError, error } = projectData;
+    // Fallback: Find chronicles jsondoc from project data
+    const { jsondocs, isLoading, isError, error } = projectData;
 
-    if (jsonDocs === "pending" || jsonDocs === "error") {
+    if (jsondocs === "pending" || jsondocs === "error") {
         return null;
     }
 
-    // Find the root chronicles jsonDoc using lineage resolution approach
-    const rootChroniclesJsonDoc = useMemo(() => {
+    // Find the root chronicles jsondoc using lineage resolution approach
+    const rootChroniclesJsondoc = useMemo(() => {
         // First try: Look for chronicles
-        const chroniclesJsonDocs = jsonDocs.filter(jsonDoc =>
-            jsonDoc.schema_type === 'chronicles' &&
-            jsonDoc.data
+        const chroniclesJsondocs = jsondocs.filter(jsondoc =>
+            jsondoc.schema_type === 'chronicles' &&
+            jsondoc.data
         );
 
 
 
-        // Third try: Look for any jsonDoc that might contain chronicles data
-        const possibleChroniclesJsonDocs = jsonDocs.filter(jsonDoc => {
-            if (!jsonDoc.data) return false;
+        // Third try: Look for any jsondoc that might contain chronicles data
+        const possibleChroniclesJsondocs = jsondocs.filter(jsondoc => {
+            if (!jsondoc.data) return false;
             try {
-                const data = typeof jsonDoc.data === 'string' ? JSON.parse(jsonDoc.data) : jsonDoc.data;
+                const data = typeof jsondoc.data === 'string' ? JSON.parse(jsondoc.data) : jsondoc.data;
                 return data.stages && Array.isArray(data.stages);
             } catch {
                 return false;
@@ -75,19 +75,19 @@ export const ChroniclesDisplay: React.FC<ChroniclesDisplayProps> = ({
         });
 
         // Use the most specific match first
-        let candidateJsonDocs = chroniclesJsonDocs;
+        let candidateJsondocs = chroniclesJsondocs;
 
-        if (candidateJsonDocs.length === 0) {
-            candidateJsonDocs = possibleChroniclesJsonDocs;
+        if (candidateJsondocs.length === 0) {
+            candidateJsondocs = possibleChroniclesJsondocs;
         }
 
-        if (candidateJsonDocs.length === 0) {
+        if (candidateJsondocs.length === 0) {
             return null;
         }
 
-        // Find the AI-generated jsonDoc (should be the root of the lineage chain)
-        const aiGenerated = candidateJsonDocs.find(jsonDoc =>
-            jsonDoc.origin_type === 'ai_generated'
+        // Find the AI-generated jsondoc (should be the root of the lineage chain)
+        const aiGenerated = candidateJsondocs.find(jsondoc =>
+            jsondoc.origin_type === 'ai_generated'
         );
 
         if (aiGenerated) {
@@ -95,54 +95,54 @@ export const ChroniclesDisplay: React.FC<ChroniclesDisplayProps> = ({
         }
 
         // Fallback: if no AI-generated found, sort by creation time and get the earliest
-        const sorted = [...candidateJsonDocs].sort((a, b) =>
+        const sorted = [...candidateJsondocs].sort((a, b) =>
             new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         );
         const fallback = sorted[0];
         return fallback;
-    }, [jsonDocs, isLoading, isError, error]);
+    }, [jsondocs, isLoading, isError, error]);
 
     // Use lineage resolution to get the latest version of the chronicles
     const r = useLineageResolution({
-        sourceJsonDocId: rootChroniclesJsonDoc?.id || null,
+        sourceJsondocId: rootChroniclesJsondoc?.id || null,
         path: '$',
-        options: { enabled: !!rootChroniclesJsonDoc }
+        options: { enabled: !!rootChroniclesJsondoc }
     });
 
     if (r === "pending" || r === "error") {
         return null;
     }
 
-    const { latestJsonDocId, hasLineage, isLoading: lineageLoading, error: lineageError } = r;
+    const { latestJsondocId, hasLineage, isLoading: lineageLoading, error: lineageError } = r;
 
-    // Get the effective chronicles jsonDoc
-    const effectiveChroniclesJsonDoc = useMemo(() => {
-        if (!latestJsonDocId) {
+    // Get the effective chronicles jsondoc
+    const effectiveChroniclesJsondoc = useMemo(() => {
+        if (!latestJsondocId) {
             return null;
         }
-        const jsonDoc = jsonDocs.find(a => a.id === latestJsonDocId);
+        const jsondoc = jsondocs.find(a => a.id === latestJsondocId);
 
-        // Use the latest jsonDoc directly (no more individual stage handling)
-        return jsonDoc;
-    }, [latestJsonDocId, jsonDocs]);
+        // Use the latest jsondoc directly (no more individual stage handling)
+        return jsondoc;
+    }, [latestJsondocId, jsondocs]);
 
     // Determine editability for fallback mode
     const isEditable = useMemo(() => {
-        if (!effectiveChroniclesJsonDoc) return false;
+        if (!effectiveChroniclesJsondoc) return false;
 
-        // Check if this jsonDoc has descendants (is used as input in any transform)
+        // Check if this jsondoc has descendants (is used as input in any transform)
         if (projectData.transformInputs === "pending" || projectData.transformInputs === "error") {
             return false;
         }
 
         const transformInputs = Array.isArray(projectData.transformInputs) ? projectData.transformInputs : [];
         const hasDescendants = transformInputs.some((input: any) =>
-            input.jsonDoc_id === effectiveChroniclesJsonDoc.id
+            input.jsondoc_id === effectiveChroniclesJsondoc.id
         );
 
         // Only editable if it's user_input and has no descendants
-        return effectiveChroniclesJsonDoc.origin_type === 'user_input' && !hasDescendants;
-    }, [effectiveChroniclesJsonDoc, projectData.transformInputs]);
+        return effectiveChroniclesJsondoc.origin_type === 'user_input' && !hasDescendants;
+    }, [effectiveChroniclesJsondoc, projectData.transformInputs]);
 
     if (projectData.isLoading || lineageLoading) {
         return null;
@@ -156,7 +156,7 @@ export const ChroniclesDisplay: React.FC<ChroniclesDisplayProps> = ({
         );
     }
 
-    if (!effectiveChroniclesJsonDoc) {
+    if (!effectiveChroniclesJsondoc) {
         return null;
     }
 
@@ -165,11 +165,11 @@ export const ChroniclesDisplay: React.FC<ChroniclesDisplayProps> = ({
             schemaType={"chronicles"}
             title="时间顺序大纲"
             sectionId="chronicles"
-            jsonDocId={effectiveChroniclesJsonDoc?.id}
+            jsondocId={effectiveChroniclesJsondoc?.id}
         >
             <div style={{ marginTop: '24px' }}>
-                <JsonDocDisplayWrapper
-                    jsonDoc={effectiveChroniclesJsonDoc}
+                <JsondocDisplayWrapper
+                    jsondoc={effectiveChroniclesJsondoc}
                     isEditable={isEditable}
                     title="时间顺序大纲"
                     icon="📅"

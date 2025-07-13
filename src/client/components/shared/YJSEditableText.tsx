@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Input, Typography } from 'antd';
-import { useYJSJsonDoc } from '../../transform-jsonDoc-framework/hooks/useYJSJsonDoc';
+import { useYJSJsondoc } from '../../transform-jsondoc-framework/hooks/useYJSJsondoc';
 
 const { Text } = Typography;
 
 export interface YJSEditableTextProps {
-    jsonDocId: string;
+    jsondocId: string;
     field: string;
     value?: string;
     placeholder?: string;
@@ -18,7 +18,7 @@ export interface YJSEditableTextProps {
 }
 
 export const YJSEditableText: React.FC<YJSEditableTextProps> = ({
-    jsonDocId,
+    jsondocId,
     field,
     value: externalValue,
     placeholder = '',
@@ -41,7 +41,7 @@ export const YJSEditableText: React.FC<YJSEditableTextProps> = ({
         isCollaborative,
         isLoading,
         error
-    } = useYJSJsonDoc(jsonDocId, {
+    } = useYJSJsondoc(jsondocId, {
         enableCollaboration
     });
 

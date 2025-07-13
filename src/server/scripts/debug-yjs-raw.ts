@@ -1,15 +1,15 @@
 import { db } from '../database/connection';
 
 async function debugYJSRaw() {
-    const jsonDocId = 'da5238e0-8c10-489e-bf4e-65402b3884a2';
+    const jsondocId = 'da5238e0-8c10-489e-bf4e-65402b3884a2';
 
     console.log('=== Debug YJS Raw Data ===');
 
     // Get the latest update
     const updates = await db
-        .selectFrom('jsonDoc_yjs_documents')
+        .selectFrom('jsondoc_yjs_documents')
         .selectAll()
-        .where('jsonDoc_id', '=', jsonDocId)
+        .where('jsondoc_id', '=', jsondocId)
         .orderBy('created_at', 'desc')
         .limit(3)
         .execute();

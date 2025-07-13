@@ -19,7 +19,7 @@ export const DebugPanels: React.FC<DebugPanelsProps> = ({ projectId }) => {
 
     // Check for YJS debug mode
     const showYJSDebug = searchParams.get('yjs-debug') === '1';
-    const jsonDocId = searchParams.get('jsonDoc-id');
+    const jsondocId = searchParams.get('jsondoc-id');
 
     // Don't render anything if no debug mode is active
     if (!showRawGraph && !showRawChat && !showRawContext && !showScrollDemo && !showYJSDebug) {
@@ -41,9 +41,9 @@ export const DebugPanels: React.FC<DebugPanelsProps> = ({ projectId }) => {
     } else if (showScrollDemo) {
         debugTitle = '滚动位置保存演示';
         debugContent = <ScrollPositionDemo />;
-    } else if (showYJSDebug && jsonDocId) {
+    } else if (showYJSDebug && jsondocId) {
         debugTitle = 'YJS调试信息';
-        debugContent = <YJSDebugComponent jsonDocId={jsonDocId} />;
+        debugContent = <YJSDebugComponent jsondocId={jsondocId} />;
     }
 
     return (
@@ -87,7 +87,7 @@ export const DebugPanels: React.FC<DebugPanelsProps> = ({ projectId }) => {
                         newSearchParams.delete('raw-context');
                         newSearchParams.delete('yjs-demo');
                         newSearchParams.delete('yjs-debug');
-                        newSearchParams.delete('jsonDoc-id');
+                        newSearchParams.delete('jsondoc-id');
                         newSearchParams.delete('scroll-demo');
                         setSearchParams(newSearchParams);
                     }}

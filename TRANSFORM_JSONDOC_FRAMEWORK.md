@@ -1,14 +1,14 @@
-# Transform JsonDoc Framework
+# Transform Jsondoc Framework
 
-A comprehensive data transformation and jsonDoc management framework with intelligent agent orchestration, real-time collaboration, and complete audit trail capabilities built on PostgreSQL + Electric SQL + TypeScript.
+A comprehensive data transformation and jsondoc management framework with intelligent agent orchestration, real-time collaboration, and complete audit trail capabilities built on PostgreSQL + Electric SQL + TypeScript.
 
 ## Overview
 
-The Transform JsonDoc Framework provides a sophisticated foundation for applications requiring intelligent content processing, immutable data management, and real-time collaboration capabilities.
+The Transform Jsondoc Framework provides a sophisticated foundation for applications requiring intelligent content processing, immutable data management, and real-time collaboration capabilities.
 
 **Key Features**:
 - **Intelligent Agent Orchestration** - Context-aware agents with tool-based decision making
-- **Immutable JsonDoc Management** - Complete audit trail with flexible editing capabilities  
+- **Immutable Jsondoc Management** - Complete audit trail with flexible editing capabilities  
 - **Real-time Synchronization** - Electric SQL integration for instant cross-client updates
 - **Schema-Driven Architecture** - Type-safe operations with Zod validation throughout
 - **Advanced Caching System** - Development-optimized streaming response caching
@@ -16,37 +16,37 @@ The Transform JsonDoc Framework provides a sophisticated foundation for applicat
 
 ## Core Concepts
 
-### Understanding JsonDocs and Transforms
+### Understanding Jsondocs and Transforms
 
 At its heart, the framework operates on two fundamental concepts that work together to create a complete data transformation system:
 
-#### **JsonDocs: The Data Containers**
-Think of jsonDocs as **immutable snapshots of content** at specific points in time. Like taking a photograph, once an jsonDoc is created, it never changes. This could be:
+#### **Jsondocs: The Data Containers**
+Think of jsondocs as **immutable snapshots of content** at specific points in time. Like taking a photograph, once an jsondoc is created, it never changes. This could be:
 
 - **A user's initial story idea** - "I want a romance story about a chef"
 - **AI-generated content** - A detailed story outline created by an AI model
 - **User-edited content** - The same outline after the user modified character names
 - **Processed data** - A script generated from the outline
 
-Each jsonDoc contains:
+Each jsondoc contains:
 - **The actual data** (story text, character details, etc.)
 - **Metadata** about when it was created and by what process
 - **Type information** that defines its structure and purpose
 
 #### **Transforms: The Change Agents**
-Transforms are **the processes that create new jsonDocs from existing ones**. They're like functions that take input jsonDocs and produce output jsonDocs, but with complete tracking of what happened and why.
+Transforms are **the processes that create new jsondocs from existing ones**. They're like functions that take input jsondocs and produce output jsondocs, but with complete tracking of what happened and why.
 
 The framework recognizes two fundamentally different types of transforms:
 
 ### **Human Transforms: When People Edit Content**
 
-**What they are**: Human transforms occur when a person directly edits, modifies, or derives content from existing jsonDocs through user interfaces.
+**What they are**: Human transforms occur when a person directly edits, modifies, or derives content from existing jsondocs through user interfaces.
 
 **How they work**:
 - User sees AI-generated content in an editing interface
 - User makes changes (edit text, select options, modify fields)
-- System creates a new "user_input" jsonDoc with the changes
-- The original AI-generated jsonDoc remains unchanged
+- System creates a new "user_input" jsondoc with the changes
+- The original AI-generated jsondoc remains unchanged
 - A human transform links the original to the edited version
 
 **Key characteristics**:
@@ -59,7 +59,7 @@ The framework recognizes two fundamentally different types of transforms:
 ```
 AI generates: "Character: John, a shy baker"
 User edits to: "Character: Maria, a confident chef"
-Result: New jsonDoc with user's version + transform tracking the change
+Result: New jsondoc with user's version + transform tracking the change
 ```
 
 **Technical implementation**:
@@ -68,7 +68,7 @@ Result: New jsonDoc with user's version + transform tracking the change
 const humanTransform = {
   type: 'human',
   trigger: 'user_edit',
-  input_jsonDocs: [originalAIContent],
+  input_jsondocs: [originalAIContent],
   edit_path: '/characters/0/name',
   user_id: 'user-123',
   streaming_status: 'completed'
@@ -77,13 +77,13 @@ const humanTransform = {
 
 ### **Machine Transforms: When AI Processes Content**
 
-**What they are**: Machine transforms occur when AI models, algorithms, or automated processes generate new content from existing jsonDocs.
+**What they are**: Machine transforms occur when AI models, algorithms, or automated processes generate new content from existing jsondocs.
 
 **How they work**:
-- System analyzes existing jsonDocs (user requirements, previous content)
+- System analyzes existing jsondocs (user requirements, previous content)
 - AI model processes the input using prompts and context
 - AI generates new content (stories, outlines, scripts)
-- System creates new "ai_generated" jsonDocs with the output
+- System creates new "ai_generated" jsondocs with the output
 - Machine transform links inputs to outputs with full execution details
 
 **Key characteristics**:
@@ -97,7 +97,7 @@ const humanTransform = {
 User request: "Create a story about a chef"
 AI processes: Requirements + genre preferences + platform constraints
 AI generates: Full story outline with characters, plot, and episodes
-Result: New "ai_generated" jsonDoc + transform tracking the process
+Result: New "ai_generated" jsondoc + transform tracking the process
 ```
 
 **Technical implementation**:
@@ -106,7 +106,7 @@ Result: New "ai_generated" jsonDoc + transform tracking the process
 const machineTransform = {
   type: 'llm',
   trigger: 'agent_request',
-  input_jsonDocs: [userRequest, contextJsonDocs],
+  input_jsondocs: [userRequest, contextJsondocs],
   model: 'gpt-4',
   prompt_template: 'story_generation',
   streaming_status: 'active'
@@ -135,21 +135,21 @@ The real power emerges when human and machine transforms work together in iterat
 
 ### **Origin Types: Understanding Content Sources**
 
-Every jsonDoc has an `origin_type` that indicates how it was created:
+Every jsondoc has an `origin_type` that indicates how it was created:
 
 - **`ai_generated`** - Created by machine transforms (LLM, algorithms)
 - **`user_input`** - Created by human transforms (direct user edits)
-- **`decomposed_from_collection`** - Extracted from larger jsonDocs for individual editing
+- **`decomposed_from_collection`** - Extracted from larger jsondocs for individual editing
 
 **Why origin types matter**:
-- **Edit permissions** - Only user_input jsonDocs can be directly modified
+- **Edit permissions** - Only user_input jsondocs can be directly modified
 - **UI behavior** - Different interfaces for AI vs human content
 - **Data collection** - Track human preferences and corrections
 - **Quality control** - Prevent accidental corruption of AI outputs
 
 ### **Schema Types: Understanding Content Structure**
 
-JsonDocs also have `schema_type` that defines their data structure:
+Jsondocs also have `schema_type` that defines their data structure:
 
 - **`brainstorm_collection`** - Multiple story ideas grouped together
 - **`brainstorm_idea`** - Individual story idea
@@ -160,41 +160,41 @@ JsonDocs also have `schema_type` that defines their data structure:
 - **`chronicles_input`** - Input parameters for chronicles generation
 
 **Why schema types matter**:
-- **Validation** - Ensure data integrity and type safety via JsonDocSchemaRegistry
+- **Validation** - Ensure data integrity and type safety via JsondocSchemaRegistry
 - **UI generation** - Automatically create appropriate editing interfaces
 - **Transform compatibility** - Match inputs/outputs correctly
 - **Evolution** - Version schemas as requirements change
 
-### **TypedJsonDoc System**
+### **TypedJsondoc System**
 
-The framework uses a sophisticated TypeScript typing system with `TypedJsonDoc`:
+The framework uses a sophisticated TypeScript typing system with `TypedJsondoc`:
 
 ```typescript
-// TypedJsonDoc is a discriminated union based on schema_type
-export type TypedJsonDoc =
-    | JsonDocWithData<'brainstorm_collection', 'v1', BrainstormIdeaCollectionV1>
-    | JsonDocWithData<'brainstorm_idea', 'v1', BrainstormIdeaV1>
-    | JsonDocWithData<'brainstorm_input_params', 'v1', BrainstormParamsV1>
-    | JsonDocWithData<'outline_settings', 'v1', OutlineSettingsV1>
-    | JsonDocWithData<'chronicles', 'v1', ChroniclesV1>
+// TypedJsondoc is a discriminated union based on schema_type
+export type TypedJsondoc =
+    | JsondocWithData<'brainstorm_collection', 'v1', BrainstormIdeaCollectionV1>
+    | JsondocWithData<'brainstorm_idea', 'v1', BrainstormIdeaV1>
+    | JsondocWithData<'brainstorm_input_params', 'v1', BrainstormParamsV1>
+    | JsondocWithData<'outline_settings', 'v1', OutlineSettingsV1>
+    | JsondocWithData<'chronicles', 'v1', ChroniclesV1>
     // ... more types
 
-// Each jsonDoc has strongly typed data based on its schema_type
-export interface JsonDocWithData<
+// Each jsondoc has strongly typed data based on its schema_type
+export interface JsondocWithData<
     SchemaType extends string, 
     SchemaVersion extends string, 
     Data
-> extends Omit<JsonDoc, 'schema_type' | 'schema_version' | 'data'> {
+> extends Omit<Jsondoc, 'schema_type' | 'schema_version' | 'data'> {
     schema_type: SchemaType;
     schema_version: SchemaVersion;
     data: Data;
 }
 ```
 
-**Benefits of TypedJsonDoc**:
-- **Type Safety** - Compile-time validation of jsonDoc data structures
-- **IntelliSense** - Full IDE support for jsonDoc properties
-- **Runtime Validation** - Zod schema validation via JsonDocSchemaRegistry
+**Benefits of TypedJsondoc**:
+- **Type Safety** - Compile-time validation of jsondoc data structures
+- **IntelliSense** - Full IDE support for jsondoc properties
+- **Runtime Validation** - Zod schema validation via JsondocSchemaRegistry
 - **Versioning** - Built-in support for schema evolution
 
 ### **Migration from Legacy Typing System**
@@ -202,23 +202,23 @@ export interface JsonDocWithData<
 The framework recently underwent a major typing refactoring to improve type safety and developer experience:
 
 **What Changed**:
-- **Removed `jsonDoc.type` field** - Replaced with `schema_type` and `origin_type`
+- **Removed `jsondoc.type` field** - Replaced with `schema_type` and `origin_type`
 - **Removed `type_version` field** - Replaced with `schema_version`
 - **Consolidated schema names** - Cleaner, more consistent naming (e.g., `brainstorm_idea_collection` → `brainstorm_collection`)
-- **Introduced TypedJsonDoc** - Discriminated union types for compile-time safety
-- **Centralized JsonDocSchemaRegistry** - Single source of truth for all schema validation
+- **Introduced TypedJsondoc** - Discriminated union types for compile-time safety
+- **Centralized JsondocSchemaRegistry** - Single source of truth for all schema validation
 
 **Database Migration**:
 ```sql
--- Migration 20241201_008_refactor_jsonDoc_types.ts
+-- Migration 20241201_008_refactor_jsondoc_types.ts
 -- Added new columns
-ALTER TABLE jsonDocs ADD COLUMN schema_type TEXT;
-ALTER TABLE jsonDocs ADD COLUMN schema_version TEXT;
-ALTER TABLE jsonDocs ADD COLUMN origin_type TEXT;
+ALTER TABLE jsondocs ADD COLUMN schema_type TEXT;
+ALTER TABLE jsondocs ADD COLUMN schema_version TEXT;
+ALTER TABLE jsondocs ADD COLUMN origin_type TEXT;
 
 -- Migrated existing data
-UPDATE jsonDocs SET schema_type = type, schema_version = type_version;
-UPDATE jsonDocs SET origin_type = CASE 
+UPDATE jsondocs SET schema_type = type, schema_version = type_version;
+UPDATE jsondocs SET origin_type = CASE 
   WHEN type = 'user_input' THEN 'user_input' 
   ELSE 'ai_generated' 
 END;
@@ -227,22 +227,22 @@ END;
 **Code Migration Pattern**:
 ```typescript
 // OLD: Legacy typing
-interface OldJsonDoc {
+interface OldJsondoc {
   type: string;
   type_version: string;
   data: any;
 }
 
-// NEW: TypedJsonDoc system
-interface NewJsonDoc {
-  schema_type: TypedJsonDoc['schema_type'];
+// NEW: TypedJsondoc system
+interface NewJsondoc {
+  schema_type: TypedJsondoc['schema_type'];
   schema_version: string;
   origin_type: 'ai_generated' | 'user_input';
   data: any; // Strongly typed based on schema_type
 }
 
 // Usage
-const jsonDoc: TypedJsonDoc = {
+const jsondoc: TypedJsondoc = {
   schema_type: 'brainstorm_collection',
   schema_version: 'v1',
   origin_type: 'ai_generated',
@@ -251,21 +251,21 @@ const jsonDoc: TypedJsonDoc = {
 ```
 
 **Benefits of Migration**:
-- **Stronger Type Safety** - Compile-time validation of jsonDoc structures
-- **Better Developer Experience** - IntelliSense and autocomplete for jsonDoc properties
-- **Centralized Validation** - Single JsonDocSchemaRegistry for all schema definitions
+- **Stronger Type Safety** - Compile-time validation of jsondoc structures
+- **Better Developer Experience** - IntelliSense and autocomplete for jsondoc properties
+- **Centralized Validation** - Single JsondocSchemaRegistry for all schema definitions
 - **Cleaner Architecture** - Separation of concerns between schema structure and origin source
 
 **Remaining Cleanup**:
 The migration maintains backward compatibility by keeping the old `type` and `type_version` columns. Future work includes:
 - Remove deprecated columns in a future migration
-- Update remaining references to `jsonDoc.type` in client code
+- Update remaining references to `jsondoc.type` in client code
 - Complete migration of all `type_version` references to `schema_version`
-- Standardize all schema validation to use JsonDocSchemaRegistry
+- Standardize all schema validation to use JsondocSchemaRegistry
 
 ### **The Immutability Principle**
 
-**Core rule**: Once created, jsonDocs never change. All modifications create new jsonDocs.
+**Core rule**: Once created, jsondocs never change. All modifications create new jsondocs.
 
 **Why immutability**:
 - **Complete history** - Never lose previous versions
@@ -273,7 +273,7 @@ The migration maintains backward compatibility by keeping the old `type` and `ty
 - **Collaboration safety** - Multiple users can work without conflicts
 - **Debugging power** - Trace any issue through the complete chain
 
-**The one exception**: During streaming, AI can update jsonDocs in real-time for better UX, but this is carefully controlled and only for active generation processes.
+**The one exception**: During streaming, AI can update jsondocs in real-time for better UX, but this is carefully controlled and only for active generation processes.
 
 ### **Putting It All Together**
 
@@ -285,15 +285,15 @@ The framework creates a **living history** of content creation where:
 
 This enables applications that are not just functional, but continuously improving through the natural interaction between human creativity and machine intelligence.
 
-## Core Paradigm: JsonDoc → Transform → JsonDoc
+## Core Paradigm: Jsondoc → Transform → Jsondoc
 
 ### The Fundamental Pattern
 
-The Transform JsonDoc Framework is built on a single, powerful paradigm: **JsonDoc → Transform → JsonDoc**. Every data modification flows through this pattern, creating an immutable chain of transformations that preserves complete history while enabling flexible editing.
+The Transform Jsondoc Framework is built on a single, powerful paradigm: **Jsondoc → Transform → Jsondoc**. Every data modification flows through this pattern, creating an immutable chain of transformations that preserves complete history while enabling flexible editing.
 
 **Core Concept**:
 ```
-Input JsonDoc(s) → Transform (Human or LLM) → Output JsonDoc(s)
+Input Jsondoc(s) → Transform (Human or LLM) → Output Jsondoc(s)
 ```
 
 This simple pattern underlies all data operations in the framework, from simple edits to complex AI-powered content generation.
@@ -301,7 +301,7 @@ This simple pattern underlies all data operations in the framework, from simple 
 ### Why This Paradigm?
 
 #### 1. **Immutability by Design**
-Unlike traditional CRUD systems that overwrite data, every change creates new jsonDocs while preserving the original. This provides:
+Unlike traditional CRUD systems that overwrite data, every change creates new jsondocs while preserving the original. This provides:
 
 - **Complete Audit Trail** - Every version of every piece of content is preserved
 - **Reproducible Operations** - Any sequence of transformations can be replayed exactly
@@ -329,19 +329,19 @@ The framework derives application logic through lineage tree traversal:
 **Latest Version Resolution**:
 ```typescript
 // Always work with the most recent version
-const effectiveJsonDoc = await resolveLatestVersion(originalJsonDocId);
+const effectiveJsondoc = await resolveLatestVersion(originalJsondocId);
 ```
 
 **Dependency Tracking**:
 ```typescript
 // Understand what needs updating when something changes
-const affectedJsonDocs = await findDependentJsonDocs(changedJsonDocId);
+const affectedJsondocs = await findDependentJsondocs(changedJsondocId);
 ```
 
 **Conflict Resolution**:
 ```typescript
 // Handle multiple edits intelligently
-const mergedResult = await resolveBranchingEdits(conflictingJsonDocs);
+const mergedResult = await resolveBranchingEdits(conflictingJsondocs);
 ```
 
 ### The Streaming Exception
@@ -350,26 +350,26 @@ The framework maintains strict immutability with one carefully designed exceptio
 
 **Why the Exception?**
 - **Real-time UX** - Users expect immediate feedback during AI generation
-- **Performance** - Avoid creating thousands of intermediate jsonDocs during streaming
+- **Performance** - Avoid creating thousands of intermediate jsondocs during streaming
 - **Resource Management** - Streaming generates massive amounts of transient data
 - **Practical Necessity** - The intermediate steps aren't valuable to preserve
 
 **How It Works**:
 ```typescript
-// During streaming, output jsonDocs can be updated in-place
+// During streaming, output jsondocs can be updated in-place
 if (transform.streaming_status === 'active') {
-  await updateJsonDocInPlace(outputJsonDoc, newChunk);
+  await updateJsondocInPlace(outputJsondoc, newChunk);
 } else {
   // Normal immutable operation
-  await createNewJsonDoc(transformedData);
+  await createNewJsondoc(transformedData);
 }
 ```
 
 **Safe Streaming**:
-- Only **pending** transforms can update their output jsonDocs
-- Only **leaf-level** jsonDocs (no dependents) can be streamed
-- Stream completion **finalizes** the jsonDoc as immutable
-- **Human transforms** to user_input jsonDocs can stream for live editing
+- Only **pending** transforms can update their output jsondocs
+- Only **leaf-level** jsondocs (no dependents) can be streamed
+- Stream completion **finalizes** the jsondoc as immutable
+- **Human transforms** to user_input jsondocs can stream for live editing
 
 ### Transform Types & Triggers
 
@@ -381,7 +381,7 @@ Triggered by AI agents, API calls, or automated processes:
 const machineTransform = {
   type: 'llm',
   trigger: 'agent_request',
-  input_jsonDocs: [userRequest, contextJsonDocs],
+  input_jsondocs: [userRequest, contextJsondocs],
   model: 'gpt-4',
   prompt_template: 'content_generation',
   streaming_status: 'active'
@@ -394,14 +394,14 @@ Triggered by direct user interactions through edit interfaces:
 const humanTransform = {
   type: 'human', 
   trigger: 'user_edit',
-  input_jsonDocs: [originalContent],
+  input_jsondocs: [originalContent],
   edit_path: '/items/0/title',
   user_id: 'user-123',
   streaming_status: 'completed'
 };
 ```
 
-**Key Implementation Detail**: Human transforms are typically triggered through edit interfaces (like those in `jsonDocRoutes.ts`) that allow users to modify specific fields or sections of AI-generated content, creating new `user_input` jsonDocs while preserving the original AI-generated versions.
+**Key Implementation Detail**: Human transforms are typically triggered through edit interfaces (like those in `jsondocRoutes.ts`) that allow users to modify specific fields or sections of AI-generated content, creating new `user_input` jsondocs while preserving the original AI-generated versions.
 
 ### Practical Benefits
 
@@ -428,19 +428,19 @@ const humanTransform = {
 Consider a typical content creation workflow showing the interplay between human and machine transforms:
 
 ```
-1. User Request JsonDoc ("Create a romance story about a chef")
+1. User Request Jsondoc ("Create a romance story about a chef")
    ↓ (MACHINE Transform - AI brainstorming)
 2. AI-Generated Ideas Collection (3 story concepts)
    ↓ (HUMAN Transform - user selects idea #2 via edit interface)  
-3. User-Selected Idea JsonDoc (origin_type: user_input)
+3. User-Selected Idea Jsondoc (origin_type: user_input)
    ↓ (MACHINE Transform - AI outline generation)
-4. AI Story Outline JsonDoc (detailed plot, characters, episodes)
+4. AI Story Outline Jsondoc (detailed plot, characters, episodes)
    ↓ (HUMAN Transform - user edits character name "John" → "Maria")
-5. User-Refined Outline JsonDoc (origin_type: user_input)
+5. User-Refined Outline Jsondoc (origin_type: user_input)
    ↓ (MACHINE Transform - AI script generation)
-6. AI Episode Script JsonDoc (full dialogue and scenes)
+6. AI Episode Script Jsondoc (full dialogue and scenes)
    ↓ (HUMAN Transform - user refines dialogue in specific scenes)
-7. User-Polished Script JsonDoc (origin_type: user_input)
+7. User-Polished Script Jsondoc (origin_type: user_input)
 ```
 
 **What this demonstrates**:
@@ -462,11 +462,11 @@ This paradigm transforms complex content creation workflows into simple, traceab
 ## Core Architecture Principles
 
 ### 1. Implementation Requirements
-- **ALWAYS respect the jsonDoc → transform → jsonDoc structure** when implementing data flow logic
-- Every data modification MUST be tracked through transforms with proper input/output jsonDoc relationships
+- **ALWAYS respect the jsondoc → transform → jsondoc structure** when implementing data flow logic
+- Every data modification MUST be tracked through transforms with proper input/output jsondoc relationships
 - Use `TransformExecutor` for all data modifications that need traceability
 - Transforms must specify type ('llm' or 'human'), execution context, and status
-- **Streaming Exception Rule**: Only pending transforms can update their output jsonDocs in-place during streaming
+- **Streaming Exception Rule**: Only pending transforms can update their output jsondocs in-place during streaming
 
 ### 2. Agent-Driven Operations
 All major operations flow through a context-aware agent framework:
@@ -477,39 +477,39 @@ All major operations flow through a context-aware agent framework:
 
 **Agent Workflow**:
 ```
-User Request → Agent Analysis → Context Enrichment → Tool Selection → Execution → JsonDoc Creation
+User Request → Agent Analysis → Context Enrichment → Tool Selection → Execution → Jsondoc Creation
 ```
 
 ### 3. Lineage Resolution & Type System
 **Technical Implementation**: Advanced graph traversal and type management for flexible editing while maintaining immutability.
 
 **Lineage Resolution Algorithm**:
-- **Latest Version Detection** - Automatically resolve to most recent jsonDoc in edit chains
+- **Latest Version Detection** - Automatically resolve to most recent jsondoc in edit chains
 - **Branch Merging** - Handle multiple simultaneous edits to the same content
-- **Collection Decomposition** - Break collections into individual jsonDocs for granular editing
+- **Collection Decomposition** - Break collections into individual jsondocs for granular editing
 - **Dependency Tracking** - Understand cascading effects of changes
 
 **Dual-Type Architecture**:
 - **Schema Types** (`schema_type`) - Define data structure (e.g., `brainstorm_collection`, `outline_settings`)
 - **Origin Types** (`origin_type`) - Define creation source (`ai_generated`, `user_input`, `decomposed_from_collection`)
 - **Editability Logic** - Use origin_type to determine edit permissions and UI behavior
-- **Versioned Validation** - All transforms validated against Zod schemas via JsonDocSchemaRegistry
-- **TypedJsonDoc System** - Discriminated union types for compile-time type safety
+- **Versioned Validation** - All transforms validated against Zod schemas via JsondocSchemaRegistry
+- **TypedJsondoc System** - Discriminated union types for compile-time type safety
 
 ### 4. Hierarchical Context Architecture
 **Parent-Child Context Pattern**: Use parent contexts with child contexts only when human transforms exist, avoiding complex data merging.
 
 **Context Hierarchy Principles**:
-- **Parent Context** - Chronicles jsonDoc (for all stages) or collection jsonDocs (for all items)
-- **Child Context** - Individual stage/item jsonDocs (only for stages/items that have human transforms)
+- **Parent Context** - Chronicles jsondoc (for all stages) or collection jsondocs (for all items)
+- **Child Context** - Individual stage/item jsondocs (only for stages/items that have human transforms)
 - **Path-Based Field Access** - For unedited content, use parent context with specific paths (e.g., `stages[0]`)
 - **Conditional Context Creation** - Child contexts should only exist when there's actual override data to manage
 
 **Lineage-Based Context Selection**:
 ```typescript
-// Determine which jsonDoc to use based on lineage
-const hasHumanTransform = useLineageResolution(parentJsonDocId, itemPath);
-const contextJsonDocId = hasHumanTransform ? childJsonDocId : parentJsonDocId;
+// Determine which jsondoc to use based on lineage
+const hasHumanTransform = useLineageResolution(parentJsondocId, itemPath);
+const contextJsondocId = hasHumanTransform ? childJsondocId : parentJsondocId;
 const contextPath = hasHumanTransform ? '$' : itemPath;
 ```
 
@@ -573,7 +573,7 @@ const useFieldSubscription = (path: string) => {
 **Implementation Pattern**:
 - **Entire Cards Clickable** - Not just edit buttons, but entire read-only cards should be clickable
 - **Human Transform Creation** - Click handlers create human transforms with appropriate derivation paths
-- **Automatic Mode Switching** - Components automatically switch from read-only to editable based on jsonDoc origin_type
+- **Automatic Mode Switching** - Components automatically switch from read-only to editable based on jsondoc origin_type
 - **Visual Feedback** - Clear indicators for read-only vs editable states
 
 **Transform Creation Example**:
@@ -581,17 +581,17 @@ const useFieldSubscription = (path: string) => {
 const handleCreateEditableVersion = useCallback(async () => {
   projectData.createHumanTransform.mutate({
     transformName: 'edit_collection_item',
-    sourceJsonDocId: parentJsonDocId,
+    sourceJsondocId: parentJsondocId,
     derivationPath: `$.items[${itemIndex}]`,
     fieldUpdates: {}
   });
-}, [projectData, parentJsonDocId, itemIndex]);
+}, [projectData, parentJsondocId, itemIndex]);
 ```
 
 ### 8. Field Name Consistency Principle
-**Schema-UI Alignment**: Ensure UI field names exactly match jsonDoc data structure field names.
+**Schema-UI Alignment**: Ensure UI field names exactly match jsondoc data structure field names.
 
-**Critical Rule**: UI components must use the exact field names from the jsonDoc schema, not assumed or convenient names.
+**Critical Rule**: UI components must use the exact field names from the jsondoc schema, not assumed or convenient names.
 
 **Common Mistake**:
 ```typescript
@@ -603,9 +603,9 @@ const handleCreateEditableVersion = useCallback(async () => {
 ```
 
 **Validation Process**:
-1. **Check JsonDoc Data** - Always verify actual field names in stored jsonDocs
+1. **Check Jsondoc Data** - Always verify actual field names in stored jsondocs
 2. **Match Schema Definitions** - Ensure UI field paths match Zod schema field names
-3. **Test with Real Data** - Use actual jsonDoc data for testing, not mock data
+3. **Test with Real Data** - Use actual jsondoc data for testing, not mock data
 4. **Debug with API Calls** - Use `curl` or API inspection to verify data structure
 
 ## Database Architecture
@@ -617,14 +617,14 @@ const handleCreateEditableVersion = useCallback(async () => {
 
 **Core Tables**:
 ```sql
--- Enhanced jsonDocs with dual-type system
-CREATE TABLE jsonDocs (
+-- Enhanced jsondocs with dual-type system
+CREATE TABLE jsondocs (
   id TEXT PRIMARY KEY,
   project_id TEXT NOT NULL,
   schema_type TEXT NOT NULL,        -- Data structure type (e.g., 'brainstorm_collection')
   schema_version TEXT NOT NULL,     -- Schema version (e.g., 'v1')
   origin_type TEXT NOT NULL,        -- Creation source ('ai_generated', 'user_input')
-  data TEXT NOT NULL,               -- JSON data validated by JsonDocSchemaRegistry
+  data TEXT NOT NULL,               -- JSON data validated by JsondocSchemaRegistry
   streaming_status TEXT DEFAULT 'completed',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -644,30 +644,30 @@ CREATE TABLE transforms (
 CREATE TABLE transform_inputs (
   id TEXT PRIMARY KEY,
   transform_id TEXT NOT NULL,
-  jsonDoc_id TEXT NOT NULL,
-  jsonDoc_path TEXT DEFAULT '',
+  jsondoc_id TEXT NOT NULL,
+  jsondoc_path TEXT DEFAULT '',
   FOREIGN KEY (transform_id) REFERENCES transforms(id),
-  FOREIGN KEY (jsonDoc_id) REFERENCES jsonDocs(id)
+  FOREIGN KEY (jsondoc_id) REFERENCES jsondocs(id)
 );
 
 CREATE TABLE transform_outputs (
   id TEXT PRIMARY KEY,
   transform_id TEXT NOT NULL,
-  jsonDoc_id TEXT NOT NULL,
+  jsondoc_id TEXT NOT NULL,
   FOREIGN KEY (transform_id) REFERENCES transforms(id),
-  FOREIGN KEY (jsonDoc_id) REFERENCES jsonDocs(id)
+  FOREIGN KEY (jsondoc_id) REFERENCES jsondocs(id)
 );
 
 -- Human transforms with concurrent protection
 CREATE TABLE human_transforms (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
-  input_jsonDoc_id TEXT NOT NULL,
-  output_jsonDoc_id TEXT NOT NULL,
+  input_jsondoc_id TEXT NOT NULL,
+  output_jsondoc_id TEXT NOT NULL,
   path TEXT NOT NULL,
   transform_name TEXT,
-  CONSTRAINT unique_human_transform_per_jsonDoc_path 
-    UNIQUE (input_jsonDoc_id, path)
+  CONSTRAINT unique_human_transform_per_jsondoc_path 
+    UNIQUE (input_jsondoc_id, path)
 );
 
 -- Project-based access control
@@ -708,7 +708,7 @@ The framework supports two distinct execution modes for AI-powered content gener
 
 **How It Works**:
 - LLM generates complete new content objects
-- Output jsonDoc starts empty and gets progressively filled during streaming
+- Output jsondoc starts empty and gets progressively filled during streaming
 - Used for brainstorming, outline generation, chronicles creation
 - Template prompts ask for complete structured responses
 
@@ -722,11 +722,11 @@ The framework supports two distinct execution modes for AI-powered content gener
 // Full-object mode - starts with empty structure
 executionMode: { mode: 'full-object' }
 
-// Initial jsonDoc data is empty/minimal
-initialData = this.createInitialJsonDocData(outputJsonDocType);
+// Initial jsondoc data is empty/minimal
+initialData = this.createInitialJsondocData(outputJsondocType);
 
 // LLM generates complete content
-finalJsonDocData = config.transformLLMOutput 
+finalJsondocData = config.transformLLMOutput 
   ? config.transformLLMOutput(llmOutput, input)
   : llmOutput;
 ```
@@ -737,7 +737,7 @@ finalJsonDocData = config.transformLLMOutput
 
 **How It Works**:
 - LLM generates JSON Patch operations (RFC 6902 standard)
-- Output jsonDoc starts with a copy of the original content
+- Output jsondoc starts with a copy of the original content
 - Patches are applied incrementally during streaming
 - Only modified fields change, preserving the rest of the content
 
@@ -769,16 +769,16 @@ finalJsonDocData = config.transformLLMOutput
 // Patch mode - starts with original content
 executionMode: { 
   mode: 'patch', 
-  originalJsonDoc: sourceContent 
+  originalJsondoc: sourceContent 
 }
 
-// Initial jsonDoc data is copy of original
-initialData = deepClone(executionMode.originalJsonDoc);
+// Initial jsondoc data is copy of original
+initialData = deepClone(executionMode.originalJsondoc);
 
 // Apply patches during streaming
-finalJsonDocData = await this.applyPatchesToOriginal(
+finalJsondocData = await this.applyPatchesToOriginal(
   llmOutput, 
-  originalJsonDoc, 
+  originalJsondoc, 
   templateName, 
   retryCount
 );
@@ -816,7 +816,7 @@ if (failedPatches.length === 0) {
 
 **Automatic Mode Detection**:
 - **Full-Object Mode**: Used by default for generation tools
-- **Patch Mode**: Explicitly enabled for editing tools with `extractSourceJsonDocs`
+- **Patch Mode**: Explicitly enabled for editing tools with `extractSourceJsondocs`
 
 **Template Design**:
 - **Generation Templates**: Prompt for complete content structures
@@ -825,15 +825,15 @@ if (failedPatches.length === 0) {
 **Performance Benefits**:
 - **Patch Mode**: Faster processing, preserves unchanged content, better user experience
 - **Full-Object Mode**: Simpler implementation, complete content control
-- **Streaming Updates**: Both modes support real-time jsonDoc updates during generation
+- **Streaming Updates**: Both modes support real-time jsondoc updates during generation
 
 **Metadata Tracking**:
 ```typescript
 transformMetadata: {
   execution_mode: executionMode?.mode || 'full-object',
   method: 'unified_patch', // or 'full_generation'
-  source_jsonDoc_type: sourceJsonDoc.type,
-  output_jsonDoc_type: outputJsonDocType,
+  source_jsondoc_type: sourceJsondoc.type,
+  output_jsondoc_type: outputJsondocType,
   retry_count: retryCount,
   patch_success: boolean
 }
@@ -891,7 +891,7 @@ outputSchema: JsonPatchOperationsSchema
 **Template Selection Logic**:
 ```typescript
 // Automatic template selection based on tool type
-if (config.extractSourceJsonDocs && executionMode?.mode === 'patch') {
+if (config.extractSourceJsondocs && executionMode?.mode === 'patch') {
   // Use patch-mode template (e.g., 'brainstorm_edit')
   templateName = 'brainstorm_edit';
 } else {
@@ -1002,16 +1002,16 @@ export const useProjectData = (projectId: string) => {
   );
 
   // Real-time sync via Electric SQL
-  const { results: jsonDocs } = useShape({
+  const { results: jsondocs } = useShape({
     url: '/api/electric/v1/shape',
-    table: 'jsonDocs', 
+    table: 'jsondocs', 
     where: `project_id = '${projectId}'`
   });
 
   // Client state via Zustand
   const { uiState, setUIState } = useProjectStore();
 
-  return { project, jsonDocs, uiState };
+  return { project, jsondocs, uiState };
 };
 ```
 
@@ -1026,7 +1026,7 @@ Following the [Electric SQL write guide patterns](https://electric-sql.com/docs/
 
 **Smart State Synchronization**:
 - **Edit Preservation** - Local edits are protected during optimistic state updates
-- **Fresh Data Fetching** - Save operations always use current jsonDoc data to prevent stale closures
+- **Fresh Data Fetching** - Save operations always use current jsondoc data to prevent stale closures
 - **Conditional Prop Syncing** - Props only update local state when not actively saving
 
 **Race Condition Prevention**:
@@ -1052,10 +1052,10 @@ if (pendingSaveRef.current && pendingSaveRef.current !== valueToSave) {
 ## Schema System
 
 ### Zod Schema Definitions
-**JsonDocSchemaRegistry System**:
+**JsondocSchemaRegistry System**:
 ```typescript
-// Centralized schema registry in src/common/schemas/jsonDocs.ts
-export const JsonDocSchemaRegistry = {
+// Centralized schema registry in src/common/schemas/jsondocs.ts
+export const JsondocSchemaRegistry = {
   // Brainstorm schemas
   'brainstorm_collection': z.object({
     ideas: z.array(IdeaSchema),
@@ -1118,8 +1118,8 @@ export class SchemaTransformExecutor {
       context
     );
     
-    // 3. Validate output against JsonDocSchemaRegistry
-    const outputSchema = JsonDocSchemaRegistry[transformDef.outputType];
+    // 3. Validate output against JsondocSchemaRegistry
+    const outputSchema = JsondocSchemaRegistry[transformDef.outputType];
     return outputSchema.parse(result);
   }
   
@@ -1150,8 +1150,8 @@ async function validateProjectAccess(userId: string, projectId: string): Promise
   return !!membership;
 }
 
-// Always use jsonDocRepo.userHasProjectAccess(userId, projectId) to validate access
-// Never filter jsonDocs directly by user_id
+// Always use jsondocRepo.userHasProjectAccess(userId, projectId) to validate access
+// Never filter jsondocs directly by user_id
 ```
 
 ### Authentication Requirements
@@ -1172,42 +1172,42 @@ async function validateProjectAccess(userId: string, projectId: string): Promise
 ### Graph Traversal Algorithm
 **Always Edit Latest Version**:
 ```typescript
-export async function resolveEffectiveJsonDocs(
-  inputJsonDocIds: string[],
+export async function resolveEffectiveJsondocs(
+  inputJsondocIds: string[],
   projectId: string
-): Promise<JsonDocWithLineage[]> {
+): Promise<JsondocWithLineage[]> {
   
   // 1. Build complete lineage graph
   const graph = await buildLineageGraph(projectId);
   
-  // 2. For each input jsonDoc, find the latest effective version
-  const resolvedJsonDocs = [];
+  // 2. For each input jsondoc, find the latest effective version
+  const resolvedJsondocs = [];
   
-  for (const jsonDocId of inputJsonDocIds) {
-    // Find leaf jsonDocs that derive from this input
-    const leafJsonDocs = findLeafJsonDocs(graph, jsonDocId);
+  for (const jsondocId of inputJsondocIds) {
+    // Find leaf jsondocs that derive from this input
+    const leafJsondocs = findLeafJsondocs(graph, jsondocId);
     
-    if (leafJsonDocs.length > 0) {
-      // Use the most recent leaf jsonDoc
-      const latestLeaf = leafJsonDocs.sort((a, b) => 
+    if (leafJsondocs.length > 0) {
+      // Use the most recent leaf jsondoc
+      const latestLeaf = leafJsondocs.sort((a, b) => 
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       )[0];
       
-      resolvedJsonDocs.push(latestLeaf);
+      resolvedJsondocs.push(latestLeaf);
     } else {
       // No derivatives, use original
-      resolvedJsonDocs.push(await getJsonDoc(jsonDocId));
+      resolvedJsondocs.push(await getJsondoc(jsondocId));
     }
   }
   
-  return resolvedJsonDocs;
+  return resolvedJsondocs;
 }
 ```
 
 **Lineage Resolution Examples**:
 ```
 Simple Chain:
-JsonDoc A → Human Transform → JsonDoc B (leaf)
+Jsondoc A → Human Transform → Jsondoc B (leaf)
 User edits A → System resolves to B → User edits latest version
 
 Complex Branching:
@@ -1221,12 +1221,12 @@ Collection → [Item 1] → Human Edit → User Input → AI Edit → Enhanced I
 ### Repository Pattern
 **Data Access Layer**:
 ```typescript
-export class JsonDocRepository {
+export class JsondocRepository {
   constructor(private db: Database) {}
   
-  async createJsonDoc(data: CreateJsonDocData): Promise<JsonDoc> {
+  async createJsondoc(data: CreateJsondocData): Promise<Jsondoc> {
     return this.db
-      .insertInto('jsonDocs')
+      .insertInto('jsondocs')
       .values({
         id: generateId(),
         project_id: data.projectId,
@@ -1246,7 +1246,7 @@ export class JsonDocRepository {
 ```typescript
 export class ProjectService {
   constructor(
-    private jsonDocRepo: JsonDocRepository,
+    private jsondocRepo: JsondocRepository,
     private transformRepo: TransformRepository,
     private chatService: ChatService
   ) {}
@@ -1255,8 +1255,8 @@ export class ProjectService {
     // 1. Create project
     const project = await this.createProjectRecord(userId, data);
     
-    // 2. Set up initial jsonDocs
-    await this.initializeProjectJsonDocs(project.id);
+    // 2. Set up initial jsondocs
+    await this.initializeProjectJsondocs(project.id);
     
     // 3. Create welcome chat message
     await this.chatService.addSystemMessage(project.id, 'Welcome to your new project!');
@@ -1270,7 +1270,7 @@ export class ProjectService {
 
 ### React Component Testing Architecture
 
-The Transform JsonDoc Framework includes a comprehensive testing system specifically designed for React components with YJS integration, real-time collaboration, and complex jsonDoc management scenarios.
+The Transform Jsondoc Framework includes a comprehensive testing system specifically designed for React components with YJS integration, real-time collaboration, and complex jsondoc management scenarios.
 
 **Framework Benefits**:
 - **🚀 Fast Execution** - Mocked dependencies eliminate external service calls
@@ -1320,8 +1320,8 @@ const mockValue = vi.fn();
 const mockIsInitialized = vi.fn();
 
 // Mock the YJS context
-vi.mock('../../../contexts/YJSJsonDocContext', () => ({
-    YJSJsonDocProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+vi.mock('../../../contexts/YJSJsondocContext', () => ({
+    YJSJsondocProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
     useYJSField: vi.fn((path: string) => ({
         value: mockValue(path),
         updateValue: mockUpdateField,
@@ -1548,10 +1548,10 @@ describe('Complex Component States', () => {
 ```
 src/
 ├── client/
-│   └── transform-jsonDoc-framework/
+│   └── transform-jsondoc-framework/
 │       └── __tests__/
 │           ├── YJSField.test.tsx           # YJS component tests
-│           ├── JsonDocEditor.test.tsx     # JsonDoc editor tests
+│           ├── JsondocEditor.test.tsx     # Jsondoc editor tests
 │           ├── LineageResolution.test.tsx  # Lineage resolution tests
 │           └── README.md                   # Testing documentation
 ```
@@ -1564,7 +1564,7 @@ src/
 npm test -- --run
 
 # Run specific test file
-npm test -- --run src/client/transform-jsonDoc-framework/__tests__/YJSField.test.tsx
+npm test -- --run src/client/transform-jsondoc-framework/__tests__/YJSField.test.tsx
 
 # Run tests in watch mode (for development)
 npm test
@@ -1601,15 +1601,15 @@ npm test -- --coverage
 
 ### Integration with Framework Components
 
-**Testing JsonDoc Editor Components**:
+**Testing Jsondoc Editor Components**:
 ```typescript
-describe('JsonDocEditor Integration', () => {
+describe('JsondocEditor Integration', () => {
     it('creates human transforms when editing', async () => {
         const mockCreateTransform = vi.fn();
         
         render(
-            <JsonDocEditor
-                jsonDocId="test-jsonDoc"
+            <JsondocEditor
+                jsondocId="test-jsondoc"
                 transformName="edit_transform"
                 fields={[
                     { field: 'title', component: 'input' },
@@ -1633,9 +1633,9 @@ describe('JsonDocEditor Integration', () => {
 **Testing Lineage Resolution**:
 ```typescript
 describe('Lineage Resolution Testing', () => {
-    it('resolves to latest jsonDoc version', () => {
+    it('resolves to latest jsondoc version', () => {
         const mockLineageData = {
-            latestJsonDocId: 'latest-jsonDoc-123',
+            latestJsondocId: 'latest-jsondoc-123',
             hasLineage: true,
             depth: 2
         };
@@ -1645,15 +1645,15 @@ describe('Lineage Resolution Testing', () => {
             useLineageResolution: () => mockLineageData
         }));
         
-        render(<ComponentUsingLineage sourceJsonDocId="original-jsonDoc" />);
+        render(<ComponentUsingLineage sourceJsondocId="original-jsondoc" />);
         
-        // Verify component uses latest jsonDoc
-        expect(screen.getByText('latest-jsonDoc-123')).toBeInTheDocument();
+        // Verify component uses latest jsondoc
+        expect(screen.getByText('latest-jsondoc-123')).toBeInTheDocument();
     });
 });
 ```
 
-This comprehensive testing framework ensures that Transform JsonDoc Framework applications maintain high quality, reliability, and user experience while supporting complex real-time collaboration and jsonDoc management scenarios.
+This comprehensive testing framework ensures that Transform Jsondoc Framework applications maintain high quality, reliability, and user experience while supporting complex real-time collaboration and jsondoc management scenarios.
 
 ## Development Tools
 
@@ -1664,10 +1664,10 @@ This comprehensive testing framework ensures that Transform JsonDoc Framework ap
 - run-ts can only run typescript files. DO NOT run inline scripts. Always write down the script in TS file(s).
 
 ### Database Operations
-- Use `JsonDocRepository` and `TransformRepository` for data access
+- Use `JsondocRepository` and `TransformRepository` for data access
 - Run migrations with `npm run migrate`
 - Use `./run-ts src/server/scripts/migrate.ts` for migrations
-- Unique constraint `unique_human_transform_per_jsonDoc_path` prevents concurrent editing race conditions
+- Unique constraint `unique_human_transform_per_jsondoc_path` prevents concurrent editing race conditions
 
 ### File Structure
 ```
@@ -1683,7 +1683,7 @@ src/
 └── server/               # Express backend
     ├── routes/           # API routes (domain-focused)
     ├── services/         # Business logic with transform execution
-    ├── repositories/     # Data access layer (jsonDocs/transforms)
+    ├── repositories/     # Data access layer (jsondocs/transforms)
     └── middleware/       # Authentication and validation
 ```
 
@@ -1717,7 +1717,7 @@ export type ContentOutput = z.infer<typeof ContentOutputSchema>;
 ```typescript
 export function createContentTool(
   transformRepo: TransformRepository,
-  jsonDocRepo: JsonDocRepository,
+  jsondocRepo: JsondocRepository,
   projectId: string,
   userId: string,
   options: { enableCaching?: boolean } = {}
@@ -1745,14 +1745,14 @@ export function createContentTool(
         config,
         input: params,
         transformRepo,
-        jsonDocRepo,
+        jsondocRepo,
         projectId,
         userId,
         options
       });
 
       return {
-        jsonDocId: result.outputJsonDoc.id,
+        jsondocId: result.outputJsondoc.id,
         transformId: result.transform.id,
         status: 'completed'
       };
@@ -1764,10 +1764,10 @@ export function createContentTool(
 **3. Frontend Hook** (following the `useProjectData.ts` pattern):
 ```typescript
 export const useContentGeneration = (projectId: string) => {
-  // Real-time jsonDoc synchronization via Electric SQL
-  const { results: jsonDocs } = useShape({
+  // Real-time jsondoc synchronization via Electric SQL
+  const { results: jsondocs } = useShape({
     url: '/api/electric/v1/shape',
-    table: 'jsonDocs',
+    table: 'jsondocs',
     where: `project_id = '${projectId}' AND schema_type = 'content'`,
     headers: {
       Authorization: `Bearer ${token}`
@@ -1792,7 +1792,7 @@ export const useContentGeneration = (projectId: string) => {
 
   return {
     project,
-    jsonDocs: jsonDocs || [],
+    jsondocs: jsondocs || [],
     generateContent
   };
 };
@@ -1801,7 +1801,7 @@ export const useContentGeneration = (projectId: string) => {
 **4. UI Component**:
 ```typescript
 export const ContentGenerator: React.FC<{ projectId: string }> = ({ projectId }) => {
-  const { jsonDocs, generateContent } = useContentGeneration(projectId);
+  const { jsondocs, generateContent } = useContentGeneration(projectId);
   const [form] = Form.useForm();
 
   const handleGenerate = async (values: ContentInput) => {
@@ -1831,10 +1831,10 @@ export const ContentGenerator: React.FC<{ projectId: string }> = ({ projectId })
 
       <div style={{ marginTop: '24px' }}>
         <h3>Generated Content</h3>
-        {jsonDocs.map(jsonDoc => {
-          const content = JSON.parse(jsonDoc.data);
+        {jsondocs.map(jsondoc => {
+          const content = JSON.parse(jsondoc.data);
           return (
-            <Card key={jsonDoc.id} style={{ marginBottom: '16px' }}>
+            <Card key={jsondoc.id} style={{ marginBottom: '16px' }}>
               <Typography.Title level={4}>{content.title}</Typography.Title>
               <Typography.Paragraph>{content.content}</Typography.Paragraph>
               <Typography.Text type="secondary">
@@ -1855,7 +1855,7 @@ This example demonstrates the complete framework lifecycle: schema definition, t
 
 ### Project Data Hook (`useProjectData`)
 
-The `useProjectData` hook from `ProjectDataContext` provides access to all raw jsonDocs and transforms with real-time Electric SQL synchronization:
+The `useProjectData` hook from `ProjectDataContext` provides access to all raw jsondocs and transforms with real-time Electric SQL synchronization:
 
 ```typescript
 // Basic usage - get all project data
@@ -1864,7 +1864,7 @@ const useContentViewer = (projectId: string) => {
 
   // Access raw data from Electric SQL
   const { 
-    jsonDocs,           // All jsonDocs in the project
+    jsondocs,           // All jsondocs in the project
     transforms,          // All transforms (LLM and human)  
     humanTransforms,     // Human-specific transforms with derivation paths
     transformInputs,     // Transform input relationships
@@ -1876,16 +1876,16 @@ const useContentViewer = (projectId: string) => {
   // Mutations for data modification
   const {
     createHumanTransform,  // Create human edits
-    updateJsonDoc,        // Update jsonDoc data
+    updateJsondoc,        // Update jsondoc data
     mutationStates         // Track mutation status
   } = projectData;
 
-  // Find specific jsonDoc types
-  const brainstormCollections = jsonDocs.filter(a => 
+  // Find specific jsondoc types
+  const brainstormCollections = jsondocs.filter(a => 
     a.schema_type === 'brainstorm_collection'
   );
 
-  const outlineJsonDocs = jsonDocs.filter(a => 
+  const outlineJsondocs = jsondocs.filter(a => 
     a.schema_type === 'outline'
   );
 
@@ -1896,7 +1896,7 @@ const useContentViewer = (projectId: string) => {
 
   return {
     brainstormCollections,
-    outlineJsonDocs,
+    outlineJsondocs,
     activeTransforms,
     isLoading,
     error
@@ -1906,13 +1906,13 @@ const useContentViewer = (projectId: string) => {
 
 **Advanced Project Data Usage - Transform Tracking:**
 ```typescript
-const useTransformHistory = (jsonDocId: string) => {
+const useTransformHistory = (jsondocId: string) => {
   const projectData = useProjectData();
 
   const transformHistory = useMemo(() => {
-    // Find all transforms that produced this jsonDoc
+    // Find all transforms that produced this jsondoc
     const producingTransforms = projectData.transformOutputs
-      .filter(output => output.jsonDoc_id === jsonDocId)
+      .filter(output => output.jsondoc_id === jsondocId)
       .map(output => {
         const transform = projectData.transforms.find(t => t.id === output.transform_id);
         const humanTransform = projectData.humanTransforms.find(ht => ht.transform_id === output.transform_id);
@@ -1927,7 +1927,7 @@ const useTransformHistory = (jsonDocId: string) => {
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
     return producingTransforms;
-  }, [jsonDocId, projectData.transforms, projectData.transformOutputs, projectData.humanTransforms]);
+  }, [jsondocId, projectData.transforms, projectData.transformOutputs, projectData.humanTransforms]);
 
   return transformHistory;
 };
@@ -1935,19 +1935,19 @@ const useTransformHistory = (jsonDocId: string) => {
 
 ### Lineage Resolution Hook (`useLineageResolution`)
 
-The `useLineageResolution` hook provides intelligent jsonDoc resolution following the jsonDoc → transform → jsonDoc paradigm:
+The `useLineageResolution` hook provides intelligent jsondoc resolution following the jsondoc → transform → jsondoc paradigm:
 
 ```typescript
-// Basic lineage resolution - find latest version of an jsonDoc
-const useLatestJsonDocVersion = (sourceJsonDocId: string, path: string = '$') => {
+// Basic lineage resolution - find latest version of an jsondoc
+const useLatestJsondocVersion = (sourceJsondocId: string, path: string = '$') => {
   const lineageResult = useLineageResolution({
-    sourceJsonDocId,
+    sourceJsondocId,
     path,
-    options: { enabled: !!sourceJsonDocId }
+    options: { enabled: !!sourceJsondocId }
   });
 
   return {
-    latestJsonDocId: lineageResult.latestJsonDocId,
+    latestJsondocId: lineageResult.latestJsondocId,
     hasBeenEdited: lineageResult.hasLineage,
     editDepth: lineageResult.depth,
     isLoading: lineageResult.isLoading,
@@ -1960,7 +1960,7 @@ const useBrainstormIdeaResolution = (collectionId: string, ideaIndex: number) =>
   const path = `$.ideas[${ideaIndex}]`;
   
   const {
-    latestJsonDocId,
+    latestJsondocId,
     resolvedPath,
     lineagePath,
     depth,
@@ -1968,7 +1968,7 @@ const useBrainstormIdeaResolution = (collectionId: string, ideaIndex: number) =>
     isLoading,
     error
   } = useLineageResolution({
-    sourceJsonDocId: collectionId,
+    sourceJsondocId: collectionId,
     path,
     options: { enabled: !!collectionId }
   });
@@ -1981,7 +1981,7 @@ const useBrainstormIdeaResolution = (collectionId: string, ideaIndex: number) =>
   }, [depth, hasLineage]);
 
   return {
-    ideaJsonDocId: latestJsonDocId,
+    ideaJsondocId: latestJsondocId,
     editStatus,
     editDepth: depth,
     lineageChain: lineagePath,
@@ -2001,15 +2001,15 @@ const BrainstormIdeaCard: React.FC<{ collectionId: string, ideaIndex: number }> 
   
   // Resolve to latest version of this idea
   const {
-    ideaJsonDocId,
+    ideaJsondocId,
     editStatus,
     editDepth,
     isLoading
   } = useBrainstormIdeaResolution(collectionId, ideaIndex);
 
-  // Get the actual jsonDoc data
-  const ideaJsonDoc = projectData.getJsonDocById(ideaJsonDocId);
-  const ideaData = ideaJsonDoc ? JSON.parse(ideaJsonDoc.data) : null;
+  // Get the actual jsondoc data
+  const ideaJsondoc = projectData.getJsondocById(ideaJsondocId);
+  const ideaData = ideaJsondoc ? JSON.parse(ideaJsondoc.data) : null;
 
   if (isLoading) {
     return <Skeleton active />;
@@ -2059,8 +2059,8 @@ const useBrainstormIdeasWithResolution = () => {
     return latestIdeas.map((idea, index) => ({
       ...idea,
       displayIndex: index,
-      isFromCollection: idea.originalJsonDocId !== idea.jsonDocId,
-      editLevel: idea.jsonDocPath === '$' ? 'standalone' : 'collection-item'
+      isFromCollection: idea.originalJsondocId !== idea.jsondocId,
+      editLevel: idea.jsondocPath === '$' ? 'standalone' : 'collection-item'
     }));
   }, [latestIdeas]);
 
@@ -2074,26 +2074,26 @@ const useBrainstormIdeasWithResolution = () => {
 };
 ```
 
-### JsonDoc Editor Component (`JsonDocEditor`)
+### Jsondoc Editor Component (`JsondocEditor`)
 
-The `JsonDocEditor` provides a comprehensive editing interface that respects the immutability paradigm:
+The `JsondocEditor` provides a comprehensive editing interface that respects the immutability paradigm:
 
 ```typescript
 // Basic usage - edit a brainstorm idea
-const BrainstormIdeaEditor: React.FC<{ jsonDocId: string }> = ({ jsonDocId }) => {
-  const [activeJsonDocId, setActiveJsonDocId] = useState(jsonDocId);
+const BrainstormIdeaEditor: React.FC<{ jsondocId: string }> = ({ jsondocId }) => {
+  const [activeJsondocId, setActiveJsondocId] = useState(jsondocId);
 
   return (
-    <JsonDocEditor
-      jsonDocId={activeJsonDocId}
+    <JsondocEditor
+      jsondocId={activeJsondocId}
       transformName="brainstorm_idea_edit" // Transform schema name
       fields={[
         { field: 'title', component: 'input', maxLength: 100, placeholder: '输入创意标题' },
         { field: 'body', component: 'textarea', rows: 6, placeholder: '详细描述创意内容' }
       ]}
-      onTransition={(newJsonDocId) => {
-        // When user clicks to edit, transition to the new editable jsonDoc
-        setActiveJsonDocId(newJsonDocId);
+      onTransition={(newJsondocId) => {
+        // When user clicks to edit, transition to the new editable jsondoc
+        setActiveJsondocId(newJsondocId);
       }}
       onSaveSuccess={() => {
         message.success('保存成功');
@@ -2110,31 +2110,31 @@ const CollectionItemEditor: React.FC<{
   collectionId: string, 
   itemIndex: number 
 }> = ({ collectionId, itemIndex }) => {
-  const [editingJsonDocId, setEditingJsonDocId] = useState<string | null>(null);
+  const [editingJsondocId, setEditingJsondocId] = useState<string | null>(null);
   const itemPath = `$.ideas[${itemIndex}]`;
 
   // Resolve to latest version
-  const { latestJsonDocId } = useLineageResolution({
-    sourceJsonDocId: collectionId,
+  const { latestJsondocId } = useLineageResolution({
+    sourceJsondocId: collectionId,
     path: itemPath,
     options: { enabled: true }
   });
 
-  const targetJsonDocId = editingJsonDocId || latestJsonDocId || collectionId;
+  const targetJsondocId = editingJsondocId || latestJsondocId || collectionId;
 
   return (
-    <JsonDocEditor
-      jsonDocId={targetJsonDocId}
-      sourceJsonDocId={collectionId}  // Original collection
+    <JsondocEditor
+      jsondocId={targetJsondocId}
+      sourceJsondocId={collectionId}  // Original collection
       path={itemPath}                  // Path within collection
       transformName="collection_item_edit"
       fields={[
         { field: 'title', component: 'input', maxLength: 100 },
         { field: 'body', component: 'textarea', rows: 4 }
       ]}
-      onTransition={(newJsonDocId) => {
-        // User started editing - switch to the new editable jsonDoc
-        setEditingJsonDocId(newJsonDocId);
+      onTransition={(newJsondocId) => {
+        // User started editing - switch to the new editable jsondoc
+        setEditingJsondocId(newJsondocId);
       }}
       onSaveSuccess={() => {
         message.success('创意已更新');
@@ -2145,7 +2145,7 @@ const CollectionItemEditor: React.FC<{
 };
 ```
 
-**Complex JsonDoc Editor - Multi-field with Validation:**
+**Complex Jsondoc Editor - Multi-field with Validation:**
 ```typescript
 const OutlineEditor: React.FC<{ outlineId: string }> = ({ outlineId }) => {
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
@@ -2167,8 +2167,8 @@ const OutlineEditor: React.FC<{ outlineId: string }> = ({ outlineId }) => {
 
   return (
     <div className="outline-editor-container">
-      <JsonDocEditor
-        jsonDocId={outlineId}
+      <JsondocEditor
+        jsondocId={outlineId}
         transformName="outline_edit"
         fields={[
           { 
@@ -2231,14 +2231,14 @@ const ProjectWorkspace: React.FC<{ projectId: string }> = ({ projectId }) => {
   // Track active editing states
   const [activeEditingSessions, setActiveEditingSessions] = useState<Set<string>>(new Set());
 
-  const handleStartEditing = useCallback((jsonDocId: string) => {
-    setActiveEditingSessions(prev => new Set(prev).add(jsonDocId));
+  const handleStartEditing = useCallback((jsondocId: string) => {
+    setActiveEditingSessions(prev => new Set(prev).add(jsondocId));
   }, []);
 
-  const handleFinishEditing = useCallback((jsonDocId: string) => {
+  const handleFinishEditing = useCallback((jsondocId: string) => {
     setActiveEditingSessions(prev => {
       const newSet = new Set(prev);
-      newSet.delete(jsonDocId);
+      newSet.delete(jsondocId);
       return newSet;
     });
   }, []);
@@ -2273,24 +2273,24 @@ const ProjectWorkspace: React.FC<{ projectId: string }> = ({ projectId }) => {
       <Card title="创意想法" className="mb-6">
         <Row gutter={[16, 16]}>
           {effectiveIdeas.map((idea, index) => {
-            const isEditing = activeEditingSessions.has(idea.jsonDocId);
+            const isEditing = activeEditingSessions.has(idea.jsondocId);
             
             return (
-              <Col xs={24} md={12} lg={8} key={`${idea.jsonDocId}-${idea.jsonDocPath}`}>
-                <JsonDocEditor
-                  jsonDocId={idea.jsonDocId}
-                  sourceJsonDocId={idea.originalJsonDocId}
-                  path={idea.jsonDocPath}
+              <Col xs={24} md={12} lg={8} key={`${idea.jsondocId}-${idea.jsondocPath}`}>
+                <JsondocEditor
+                  jsondocId={idea.jsondocId}
+                  sourceJsondocId={idea.originalJsondocId}
+                  path={idea.jsondocPath}
                   transformName="brainstorm_idea_edit"
                   fields={[
                     { field: 'title', component: 'input', maxLength: 100 },
                     { field: 'body', component: 'textarea', rows: 4 }
                   ]}
-                  onTransition={(newJsonDocId) => {
-                    handleStartEditing(newJsonDocId);
+                  onTransition={(newJsondocId) => {
+                    handleStartEditing(newJsondocId);
                   }}
                   onSaveSuccess={() => {
-                    handleFinishEditing(idea.jsonDocId);
+                    handleFinishEditing(idea.jsondocId);
                     message.success(`创意 ${index + 1} 已保存`);
                   }}
                   statusLabel={`创意 ${index + 1}`}
@@ -2304,10 +2304,10 @@ const ProjectWorkspace: React.FC<{ projectId: string }> = ({ projectId }) => {
       </Card>
 
       {/* Show active mutations */}
-      {projectData.mutationStates.jsonDocs.size > 0 && (
+      {projectData.mutationStates.jsondocs.size > 0 && (
         <Card title="保存状态" size="small">
           <div className="text-sm text-gray-600">
-            正在保存 {projectData.mutationStates.jsonDocs.size} 个更改...
+            正在保存 {projectData.mutationStates.jsondocs.size} 个更改...
           </div>
         </Card>
       )}
@@ -2316,7 +2316,7 @@ const ProjectWorkspace: React.FC<{ projectId: string }> = ({ projectId }) => {
 };
 ```
 
-These examples demonstrate the complete integration of the Transform JsonDoc Framework's frontend components, showing how lineage resolution, project data management, and jsonDoc editing work together to provide a seamless user experience while maintaining the immutable jsonDoc → transform → jsonDoc paradigm.
+These examples demonstrate the complete integration of the Transform Jsondoc Framework's frontend components, showing how lineage resolution, project data management, and jsondoc editing work together to provide a seamless user experience while maintaining the immutable jsondoc → transform → jsondoc paradigm.
 
 ## Centralized Action Items System
 
@@ -2328,9 +2328,9 @@ The framework supports a sophisticated centralized action system that separates 
 
 **Bottom Actions for Workflow** - All workflow actions (buttons, forms, parameters) are centralized in a bottom section for consistent user experience
 
-**Linear Progression** - Actions follow strict linear workflow progression based on jsonDoc lineage and project state
+**Linear Progression** - Actions follow strict linear workflow progression based on jsondoc lineage and project state
 
-**Smart State Management** - Actions automatically appear/disappear based on current project state and available jsonDocs
+**Smart State Management** - Actions automatically appear/disappear based on current project state and available jsondocs
 
 ### Action Items Architecture
 
@@ -2338,7 +2338,7 @@ The framework supports a sophisticated centralized action system that separates 
 - **ActionItemsSection Component** - Sticky bottom section that displays all available actions
 - **Action Computation Logic** - `computeParamsAndActions()` function analyzes project state and determines available actions
 - **Global State Management** - Action store with localStorage persistence for form data and selections
-- **Linear Workflow Detection** - Automatic stage detection based on jsonDoc lineage analysis
+- **Linear Workflow Detection** - Automatic stage detection based on jsondoc lineage analysis
 
 **Action Components Pattern**:
 ```typescript
@@ -2370,8 +2370,8 @@ interface ComputedActions {
 ```
 
 **Smart Action Logic**:
-- **Leaf Node Detection** - Actions only appear when jsonDocs are "leaf nodes" (no descendants in transform chain)
-- **Dependency Validation** - Each action validates required predecessor jsonDocs exist
+- **Leaf Node Detection** - Actions only appear when jsondocs are "leaf nodes" (no descendants in transform chain)
+- **Dependency Validation** - Each action validates required predecessor jsondocs exist
 - **Loading State Management** - Actions hide during active transforms to prevent conflicts
 - **Error State Handling** - Failed transforms show retry options and error messages
 
@@ -2397,16 +2397,16 @@ export const computeParamsAndActions = (projectData: ProjectDataContextType): Co
   return { actions, currentStage, hasActiveTransforms: false };
 };
 
-// Stage detection based on jsonDoc lineage
+// Stage detection based on jsondoc lineage
 const detectCurrentStage = (projectData: ProjectDataContextType): string => {
-  // Analyze jsonDoc lineage to determine current workflow stage
-  const leafJsonDocs = findLeafJsonDocs(projectData.jsonDocs, projectData.transformInputs);
-  const jsonDocTypes = leafJsonDocs.map(a => a.schema_type);
+  // Analyze jsondoc lineage to determine current workflow stage
+  const leafJsondocs = findLeafJsondocs(projectData.jsondocs, projectData.transformInputs);
+  const jsondocTypes = leafJsondocs.map(a => a.schema_type);
   
-  // Return appropriate stage based on available jsonDocs
-  if (jsonDocTypes.includes('final_output')) return 'completed';
-  if (jsonDocTypes.includes('processed_content_')) return 'processing';
-  if (jsonDocTypes.includes('user_input')) return 'input_ready';
+  // Return appropriate stage based on available jsondocs
+  if (jsondocTypes.includes('final_output')) return 'completed';
+  if (jsondocTypes.includes('processed_content_')) return 'processing';
+  if (jsondocTypes.includes('user_input')) return 'input_ready';
   return 'initial';
 };
 ```
@@ -2497,7 +2497,7 @@ export const ActionItemsSection: React.FC<{ projectId: string }> = ({ projectId 
 - **Preserved Editing** - Main content area remains focused on editing and viewing
 - **Workflow Guidance** - Clear progression through linear workflow stages
 - **State Persistence** - No lost form data or selections during navigation
-- **Framework Agnostic** - Can be adapted to any workflow with jsonDoc lineage
+- **Framework Agnostic** - Can be adapted to any workflow with jsondoc lineage
 
 ### Development Guidelines
 
@@ -2505,7 +2505,7 @@ export const ActionItemsSection: React.FC<{ projectId: string }> = ({ projectId 
 - **Keep Actions Small** - Action components should focus on buttons, forms, and immediate parameters
 - **Avoid Large Text Editing** - Large text fields belong in the main content area, not action items
 - **Use BaseActionProps** - All action components must extend `BaseActionProps` interface
-- **Validate Prerequisites** - Check for required jsonDocs before enabling actions
+- **Validate Prerequisites** - Check for required jsondocs before enabling actions
 - **Handle Loading States** - Show loading indicators during action execution
 - **Provide Clear Feedback** - Use success/error callbacks for user feedback
 
@@ -2515,37 +2515,37 @@ export const ActionItemsSection: React.FC<{ projectId: string }> = ({ projectId 
 
 ## YJS Integration for Real-time Collaboration
 
-The Transform JsonDoc Framework integrates YJS (Yjs) for real-time collaborative editing while maintaining the immutable jsonDoc → transform → jsonDoc paradigm.
+The Transform Jsondoc Framework integrates YJS (Yjs) for real-time collaborative editing while maintaining the immutable jsondoc → transform → jsondoc paradigm.
 
 ### Architecture Integration
 
 **Hybrid Approach**:
-- **JsonDocs remain immutable** - YJS operates on temporary collaborative documents
-- **Transform creation** - Collaborative changes trigger jsonDoc updates via transforms
+- **Jsondocs remain immutable** - YJS operates on temporary collaborative documents
+- **Transform creation** - Collaborative changes trigger jsondoc updates via transforms
 - **Audit trail preservation** - All changes tracked through transform system
 - **Conflict resolution** - YJS handles real-time conflicts, transforms handle persistence
 
 ### YJS Document Structure
 
 ```typescript
-// YJS document mirrors jsonDoc structure
+// YJS document mirrors jsondoc structure
 const doc = new Y.Doc();
 const yMap = doc.getMap('content');
 const yText = doc.getText('description');
 const yArray = doc.getArray('items');
 
-// Sync with jsonDoc data
-yMap.set('title', jsonDoc.data.title);
-yText.insert(0, jsonDoc.data.description);
+// Sync with jsondoc data
+yMap.set('title', jsondoc.data.title);
+yText.insert(0, jsondoc.data.description);
 ```
 
 ### Database Schema for YJS
 
 ```sql
--- YJS document storage per jsonDoc
-CREATE TABLE jsonDoc_yjs_documents (
+-- YJS document storage per jsondoc
+CREATE TABLE jsondoc_yjs_documents (
   id SERIAL PRIMARY KEY,
-  jsonDoc_id TEXT NOT NULL REFERENCES jsonDocs(id),
+  jsondoc_id TEXT NOT NULL REFERENCES jsondocs(id),
   room_id TEXT NOT NULL UNIQUE,
   document_state BYTEA, -- Encoded YJS document state
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
@@ -2553,7 +2553,7 @@ CREATE TABLE jsonDoc_yjs_documents (
 );
 
 -- YJS updates (for Electric SQL streaming)
-CREATE TABLE jsonDoc_yjs_updates (
+CREATE TABLE jsondoc_yjs_updates (
   id SERIAL PRIMARY KEY,
   room_id TEXT NOT NULL,
   project_id TEXT NOT NULL, -- For access control
@@ -2563,7 +2563,7 @@ CREATE TABLE jsonDoc_yjs_updates (
 );
 
 -- YJS awareness (user presence)
-CREATE TABLE jsonDoc_yjs_awareness (
+CREATE TABLE jsondoc_yjs_awareness (
   client_id TEXT,
   room_id TEXT NOT NULL,
   project_id TEXT NOT NULL, -- For access control
@@ -2578,12 +2578,12 @@ CREATE TABLE jsonDoc_yjs_awareness (
 **Context-Based Architecture**: The framework uses a context-based approach for YJS integration:
 
 ```typescript
-// Context provider for jsonDoc-level YJS management
-<YJSJsonDocProvider jsonDocId={jsonDocId}>
+// Context provider for jsondoc-level YJS management
+<YJSJsondocProvider jsondocId={jsondocId}>
   <YJSTextField path="title" placeholder="输入标题..." />
   <YJSArrayField path="themes" placeholder="每行一个主题..." />
   <YJSTextField path="characters.male_lead.name" placeholder="男主姓名..." />
-</YJSJsonDocProvider>
+</YJSJsondocProvider>
 ```
 
 **Key Features**:
@@ -2610,7 +2610,7 @@ yText.observe((event) => {
   if (event.transaction.local) {
     // Local change - create human transform
     createHumanTransform({
-      sourceJsonDocId: jsonDoc.id,
+      sourceJsondocId: jsondoc.id,
       changes: extractChanges(event),
       collaborativeSession: doc.guid
     });
@@ -2621,16 +2621,16 @@ yText.observe((event) => {
 ### Benefits for Framework Applications
 
 - **Real-time UX** - Immediate visual feedback during collaboration
-- **Preserved Immutability** - JsonDoc history remains complete
+- **Preserved Immutability** - Jsondoc history remains complete
 - **Scalable Collaboration** - Support for multiple simultaneous editors
 - **Framework Compatibility** - Works with existing transform patterns
 
 ### YJS-Enhanced Frontend Components
 
-**Collaborative JsonDoc Editor**:
+**Collaborative Jsondoc Editor**:
 ```typescript
-const CollaborativeJsonDocEditor = ({ jsonDocId, field }) => {
-  const { doc, provider, isConnected } = useYJSJsonDoc(jsonDocId);
+const CollaborativeJsondocEditor = ({ jsondocId, field }) => {
+  const { doc, provider, isConnected } = useYJSJsondoc(jsondocId);
   const yText = doc.getText(field);
   
   return (
@@ -2640,7 +2640,7 @@ const CollaborativeJsonDocEditor = ({ jsonDocId, field }) => {
       onSave={(content) => {
         // Create transform when collaboration session ends
         createHumanTransform({
-          sourceJsonDocId: jsonDocId,
+          sourceJsondocId: jsondocId,
           fieldUpdates: { [field]: content }
         });
       }}
@@ -2663,9 +2663,9 @@ const CollaborativeJsonDocEditor = ({ jsonDocId, field }) => {
 - **Simpler component API**: Path-based field access instead of YJS document manipulation
 - **Better error handling**: Context handles malformed data and missing paths
 - **Optimistic updates**: Immediate UI feedback with automatic conflict resolution
-- **Unified state**: Single context manages all YJS operations for an jsonDoc
+- **Unified state**: Single context manages all YJS operations for an jsondoc
 - **Developer experience**: Easy to use, no YJS knowledge required for component authors
 
 ## Summary
 
-The Transform JsonDoc Framework provides a complete foundation for sophisticated data transformation applications with intelligent agent orchestration, immutable jsonDoc management, real-time collaboration via YJS, and enterprise-grade development tooling. Applications built on this framework benefit from automatic lineage tracking, type-safe operations, advanced caching, and seamless real-time collaborative editing while maintaining focus on domain-specific business logic. 
+The Transform Jsondoc Framework provides a complete foundation for sophisticated data transformation applications with intelligent agent orchestration, immutable jsondoc management, real-time collaboration via YJS, and enterprise-grade development tooling. Applications built on this framework benefit from automatic lineage tracking, type-safe operations, advanced caching, and seamless real-time collaborative editing while maintaining focus on domain-specific business logic. 

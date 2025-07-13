@@ -14,7 +14,7 @@ import {
 } from './transform-instantiations/pathTransforms';
 
 type InstantiationFunction = (
-  sourceJsonDocData: any,
+  sourceJsondocData: any,
   derivationPath: string
 ) => any;
 
@@ -50,9 +50,9 @@ export class TransformInstantiationRegistry {
 
   executeInstantiation(
     transformName: string,
-    sourceJsonDocData: any,
+    sourceJsondocData: any,
     derivationPath: string,
-    sourceJsonDocId: string
+    sourceJsondocId: string
   ): any {
     const definition = HUMAN_TRANSFORM_DEFINITIONS[transformName];
     if (!definition) {
@@ -64,11 +64,11 @@ export class TransformInstantiationRegistry {
       throw new Error(`Instantiation function not found: ${definition.instantiationFunction}`);
     }
 
-    const result = instantiationFn(sourceJsonDocData, derivationPath);
+    const result = instantiationFn(sourceJsondocData, derivationPath);
 
-    // Add source jsonDoc ID to metadata if applicable
+    // Add source jsondoc ID to metadata if applicable
     if (result.source_metadata) {
-      result.source_metadata.source_jsonDoc_id = sourceJsonDocId;
+      result.source_metadata.source_jsondoc_id = sourceJsondocId;
     }
 
     return result;

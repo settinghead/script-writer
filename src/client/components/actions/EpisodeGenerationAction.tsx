@@ -16,7 +16,7 @@ const EpisodeGenerationAction: React.FC<EpisodeGenerationActionProps> = (props) 
     const [isGenerating, setIsGenerating] = useState(false);
 
     // Get chronicles from props (new way) or null (old way)
-    const latestChronicles = 'jsonDocs' in props ? props.jsonDocs.chronicles : null;
+    const latestChronicles = 'jsondocs' in props ? props.jsondocs.chronicles : null;
 
     // Handle episode generation
     const handleGenerateEpisodes = useCallback(async () => {

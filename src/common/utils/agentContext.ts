@@ -2,11 +2,11 @@ import {
     buildLineageGraph,
     LineageGraph,
     LineageNode,
-    LineageNodeJsonDoc,
+    LineageNodeJsondoc,
     LineageNodeTransform
-} from '../transform-jsonDoc-framework/lineageResolution';
+} from '../transform-jsondoc-framework/lineageResolution';
 import type {
-    ElectricJsonDoc,
+    ElectricJsondoc,
     ElectricTransform,
     ElectricHumanTransform,
     ElectricTransformInput,
@@ -14,7 +14,7 @@ import type {
 } from '../types';
 
 export interface ProjectDataForContext {
-    jsonDocs: ElectricJsonDoc[];
+    jsondocs: ElectricJsondoc[];
     transforms: ElectricTransform[];
     humanTransforms: ElectricHumanTransform[];
     transformInputs: ElectricTransformInput[];
@@ -26,18 +26,18 @@ interface NarrativeEvent {
     type: 'initial_content' | 'ai_generation' | 'user_edit';
     description: string;
     details: string;
-    jsonDoc?: LineageNodeJsonDoc;
+    jsondoc?: LineageNodeJsondoc;
     transform?: LineageNodeTransform;
 }
 
 /**
- * Convert an jsonDoc to a readable context string based on its type
+ * Convert an jsondoc to a readable context string based on its type
  */
-function jsonDocToContextString(jsonDoc: ElectricJsonDoc, maxLength: number = 200): string {
+function jsondocToContextString(jsondoc: ElectricJsondoc, maxLength: number = 200): string {
     try {
-        const data = JSON.parse(jsonDoc.data);
+        const data = JSON.parse(jsondoc.data);
 
-        switch (jsonDoc.schema_type) {
+        switch (jsondoc.schema_type) {
             case 'brainstorm_collection':
                 if (data.ideas && Array.isArray(data.ideas)) {
                     const ideaDescriptions = data.ideas.map((idea: any) => {
@@ -91,7 +91,7 @@ function jsonDocToContextString(jsonDoc: ElectricJsonDoc, maxLength: number = 20
 
     } catch (error) {
         // If JSON parsing fails, return raw data (truncated)
-        const rawData = jsonDoc.data.toString();
+        const rawData = jsondoc.data.toString();
         return rawData.length > maxLength ? rawData.substring(0, maxLength) + '...' : rawData;
     }
 }
@@ -105,7 +105,7 @@ export async function prepareAgentPromptContext(
 ): Promise<string> {
     // Build the lineage graph
     const lineageGraph = buildLineageGraph(
-        projectData.jsonDocs,
+        projectData.jsondocs,
         projectData.transforms,
         projectData.humanTransforms,
         projectData.transformInputs,
@@ -117,37 +117,37 @@ export async function prepareAgentPromptContext(
 
     // Process all nodes in the graph
     for (const [nodeId, node] of lineageGraph.nodes) {
-        if (node.type === 'jsonDoc') {
-            const jsonDocNode = node as LineageNodeJsonDoc;
+        if (node.type === 'jsondoc') {
+            const jsondocNode = node as LineageNodeJsondoc;
 
-            if (jsonDocNode.jsonDoc.origin_type === 'user_input') {
+            if (jsondocNode.jsondoc.origin_type === 'user_input') {
                 // This is initial user input
                 events.push({
-                    timestamp: jsonDocNode.createdAt,
+                    timestamp: jsondocNode.createdAt,
                     type: 'initial_content',
-                    description: `项目开始：用户修改了${jsonDocNode.jsonDoc.schema_type}`,
-                    details: jsonDocToContextString(jsonDocNode.jsonDoc),
-                    jsonDoc: jsonDocNode
+                    description: `项目开始：用户修改了${jsondocNode.jsondoc.schema_type}`,
+                    details: jsondocToContextString(jsondocNode.jsondoc),
+                    jsondoc: jsondocNode
                 });
-            } else if (jsonDocNode.sourceTransform !== "none") {
+            } else if (jsondocNode.sourceTransform !== "none") {
                 // This is AI-generated content
-                const sourceTransform = jsonDocNode.sourceTransform as LineageNodeTransform;
+                const sourceTransform = jsondocNode.sourceTransform as LineageNodeTransform;
                 if (sourceTransform.transformType === 'llm') {
                     events.push({
-                        timestamp: jsonDocNode.createdAt,
+                        timestamp: jsondocNode.createdAt,
                         type: 'ai_generation',
-                        description: `AI生成的${jsonDocNode.jsonDoc.schema_type}`,
-                        details: jsonDocToContextString(jsonDocNode.jsonDoc),
-                        jsonDoc: jsonDocNode,
+                        description: `AI生成的${jsondocNode.jsondoc.schema_type}`,
+                        details: jsondocToContextString(jsondocNode.jsondoc),
+                        jsondoc: jsondocNode,
                         transform: sourceTransform
                     });
                 } else if (sourceTransform.transformType === 'human') {
                     events.push({
-                        timestamp: jsonDocNode.createdAt,
+                        timestamp: jsondocNode.createdAt,
                         type: 'user_edit',
-                        description: `用户编辑${jsonDocNode.jsonDoc.schema_type}`,
-                        details: jsonDocToContextString(jsonDocNode.jsonDoc),
-                        jsonDoc: jsonDocNode,
+                        description: `用户编辑${jsondocNode.jsondoc.schema_type}`,
+                        details: jsondocToContextString(jsondocNode.jsondoc),
+                        jsondoc: jsondocNode,
                         transform: sourceTransform
                     });
                 }
@@ -171,7 +171,7 @@ export async function prepareAgentPromptContext(
         for (const event of initialEvents) {
             narrative += `• ${event.description}\n`;
             narrative += `  内容：${event.details}\n`;
-            narrative += `  (JsonDoc ID: ${event.jsonDoc?.jsonDocId})\n\n`;
+            narrative += `  (Jsondoc ID: ${event.jsondoc?.jsondocId})\n\n`;
         }
     }
 
@@ -181,16 +181,16 @@ export async function prepareAgentPromptContext(
         for (const event of aiEvents) {
             let description = `• ${new Date(event.timestamp).toLocaleString('zh-CN')} - `;
 
-            if (event.transform && event.transform.sourceJsonDocs.length > 0) {
-                const sourceIds = event.transform.sourceJsonDocs.map(a => a.jsonDocId).join(', ');
-                description += `AI根据[${sourceIds}]，生成了以下${event.jsonDoc?.jsonDoc.schema_type}`;
+            if (event.transform && event.transform.sourceJsondocs.length > 0) {
+                const sourceIds = event.transform.sourceJsondocs.map(a => a.jsondocId).join(', ');
+                description += `AI根据[${sourceIds}]，生成了以下${event.jsondoc?.jsondoc.schema_type}`;
             } else {
                 description += event.description;
             }
 
             narrative += description + '\n';
             narrative += `  内容：${event.details}\n`;
-            narrative += `  (JsonDoc ID: ${event.jsonDoc?.jsonDocId})\n\n`;
+            narrative += `  (Jsondoc ID: ${event.jsondoc?.jsondocId})\n\n`;
         }
     }
 
@@ -200,16 +200,16 @@ export async function prepareAgentPromptContext(
         for (const event of userEvents) {
             let description = `• ${new Date(event.timestamp).toLocaleString('zh-CN')} - `;
 
-            if (event.transform && event.transform.sourceJsonDocs.length > 0) {
-                const sourceIds = event.transform.sourceJsonDocs.map(a => a.jsonDocId).join(', ');
-                description += `用户基于[${sourceIds}]，编辑了${event.jsonDoc?.jsonDoc.schema_type}`;
+            if (event.transform && event.transform.sourceJsondocs.length > 0) {
+                const sourceIds = event.transform.sourceJsondocs.map(a => a.jsondocId).join(', ');
+                description += `用户基于[${sourceIds}]，编辑了${event.jsondoc?.jsondoc.schema_type}`;
             } else {
                 description += event.description;
             }
 
             narrative += description + '\n';
             narrative += `  内容：${event.details}\n`;
-            narrative += `  (JsonDoc ID: ${event.jsonDoc?.jsonDocId})\n\n`;
+            narrative += `  (Jsondoc ID: ${event.jsondoc?.jsondocId})\n\n`;
         }
     }
 
@@ -218,11 +218,11 @@ export async function prepareAgentPromptContext(
     narrative += `项目目前有 ${lineageGraph.nodes.size} 个最新版本的内容：\n`;
 
     const leafNodes = Array.from(lineageGraph.nodes.values())
-        .filter(node => node.type === 'jsonDoc' && node.isLeaf)
-        .map(node => node as LineageNodeJsonDoc);
+        .filter(node => node.type === 'jsondoc' && node.isLeaf)
+        .map(node => node as LineageNodeJsondoc);
 
-    for (const jsonDoc of leafNodes) {
-        narrative += `• ${jsonDoc.jsonDoc.schema_type}[${jsonDoc.jsonDocId}] - ${jsonDocToContextString(jsonDoc.jsonDoc)}\n`;
+    for (const jsondoc of leafNodes) {
+        narrative += `• ${jsondoc.jsondoc.schema_type}[${jsondoc.jsondocId}] - ${jsondocToContextString(jsondoc.jsondoc)}\n`;
     }
 
     return narrative;

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useProjectData } from '../contexts/ProjectDataContext';
-import { TypedJsonDoc } from '@/common/types';
+import { TypedJsondoc } from '@/common/types';
 
 interface UseChroniclesDescendantsResult {
     hasChroniclesDescendants: boolean;
@@ -8,11 +8,11 @@ interface UseChroniclesDescendantsResult {
     isLoading: boolean;
 }
 
-export const useChroniclesDescendants = (outlineSettingsJsonDocId: string): UseChroniclesDescendantsResult => {
+export const useChroniclesDescendants = (outlineSettingsJsondocId: string): UseChroniclesDescendantsResult => {
     const projectData = useProjectData();
 
     const result = useMemo((): UseChroniclesDescendantsResult => {
-        if (!outlineSettingsJsonDocId || !projectData.transformInputs || !projectData.jsonDocs) {
+        if (!outlineSettingsJsondocId || !projectData.transformInputs || !projectData.jsondocs) {
             return {
                 hasChroniclesDescendants: false,
                 latestChronicles: null,
@@ -20,16 +20,16 @@ export const useChroniclesDescendants = (outlineSettingsJsonDocId: string): UseC
             };
         }
 
-        // Get all outline settings jsonDocs in the lineage chain
-        if (!Array.isArray(projectData.jsonDocs)) return { hasChroniclesDescendants: false, latestChronicles: null, isLoading: false };
-        const allOutlineSettingsJsonDocs = projectData.jsonDocs.filter((jsonDoc) =>
-            jsonDoc.schema_type === 'outline_settings' && jsonDoc.data
+        // Get all outline settings jsondocs in the lineage chain
+        if (!Array.isArray(projectData.jsondocs)) return { hasChroniclesDescendants: false, latestChronicles: null, isLoading: false };
+        const allOutlineSettingsJsondocs = projectData.jsondocs.filter((jsondoc) =>
+            jsondoc.schema_type === 'outline_settings' && jsondoc.data
         );
 
-        // Find transforms that use ANY outline settings jsonDoc as input (lineage-aware)
+        // Find transforms that use ANY outline settings jsondoc as input (lineage-aware)
         if (!Array.isArray(projectData.transformInputs)) return { hasChroniclesDescendants: false, latestChronicles: null, isLoading: false };
         const relatedTransforms = projectData.transformInputs.filter((input) =>
-            allOutlineSettingsJsonDocs.some((jsonDoc) => jsonDoc.id === input.jsonDoc_id)
+            allOutlineSettingsJsondocs.some((jsondoc) => jsondoc.id === input.jsondoc_id)
         );
 
         if (relatedTransforms.length === 0) {
@@ -40,21 +40,21 @@ export const useChroniclesDescendants = (outlineSettingsJsonDocId: string): UseC
             };
         }
 
-        // Find chronicles jsonDocs created by these transforms
+        // Find chronicles jsondocs created by these transforms
         if (!Array.isArray(projectData.transformOutputs)) return { hasChroniclesDescendants: false, latestChronicles: null, isLoading: false };
-        const chroniclesJsonDocs = projectData.jsonDocs.filter((jsonDoc) =>
-            (jsonDoc.schema_type === 'chronicles') &&
+        const chroniclesJsondocs = projectData.jsondocs.filter((jsondoc) =>
+            (jsondoc.schema_type === 'chronicles') &&
             relatedTransforms.some((transform) => {
                 if (!Array.isArray(projectData.transformOutputs)) return false;
                 const outputs = projectData.transformOutputs.filter((output) =>
                     output.transform_id === transform.transform_id
                 );
-                return outputs.some((output) => output.jsonDoc_id === jsonDoc.id);
+                return outputs.some((output) => output.jsondoc_id === jsondoc.id);
             })
         );
 
-        if (chroniclesJsonDocs.length === 0) {
-            // console.log(`[useChroniclesDescendants] No chronicles found for outline settings jsonDoc: ${outlineSettingsJsonDocId}`);
+        if (chroniclesJsondocs.length === 0) {
+            // console.log(`[useChroniclesDescendants] No chronicles found for outline settings jsondoc: ${outlineSettingsJsondocId}`);
             return {
                 hasChroniclesDescendants: false,
                 latestChronicles: null,
@@ -62,10 +62,10 @@ export const useChroniclesDescendants = (outlineSettingsJsonDocId: string): UseC
             };
         }
 
-        // console.log(`[useChroniclesDescendants] Found ${chroniclesJsonDocs.length} chronicles for outline settings jsonDoc: ${outlineSettingsJsonDocId}`);
+        // console.log(`[useChroniclesDescendants] Found ${chroniclesJsondocs.length} chronicles for outline settings jsondoc: ${outlineSettingsJsondocId}`);
 
         // Sort by creation time and get the latest
-        const sortedChronicles = [...chroniclesJsonDocs].sort((a, b) =>
+        const sortedChronicles = [...chroniclesJsondocs].sort((a, b) =>
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
 
@@ -95,7 +95,7 @@ export const useChroniclesDescendants = (outlineSettingsJsonDocId: string): UseC
             },
             isLoading: false
         };
-    }, [outlineSettingsJsonDocId, projectData.transformInputs, projectData.jsonDocs, projectData.transformOutputs]);
+    }, [outlineSettingsJsondocId, projectData.transformInputs, projectData.jsondocs, projectData.transformOutputs]);
 
     return result;
 }; 

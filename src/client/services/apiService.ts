@@ -1,13 +1,13 @@
-import { TypedJsonDoc } from "@/common/types";
+import { TypedJsondoc } from "@/common/types";
 
 
 class ApiService {
     private baseUrl = '/api';
 
 
-    // JsonDocs - general
-    async createJsonDoc(type: string, data: any): Promise<any> {
-        const response = await fetch(`${this.baseUrl}/jsonDocs`, {
+    // Jsondocs - general
+    async createJsondoc(type: string, data: any): Promise<any> {
+        const response = await fetch(`${this.baseUrl}/jsondocs`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -15,21 +15,21 @@ class ApiService {
             body: JSON.stringify({ type, data })
         });
         if (!response.ok) {
-            throw new Error(`Failed to create jsonDoc: ${response.status}`);
+            throw new Error(`Failed to create jsondoc: ${response.status}`);
         }
         return response.json();
     }
 
-    async createHumanTransform(inputJsonDocs: any[], transformType: string, outputJsonDocs: any[], metadata?: any): Promise<any> {
+    async createHumanTransform(inputJsondocs: any[], transformType: string, outputJsondocs: any[], metadata?: any): Promise<any> {
         const response = await fetch(`${this.baseUrl}/transforms/human`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                input_jsonDocs: inputJsonDocs,
+                input_jsondocs: inputJsondocs,
                 transform_type: transformType,
-                output_jsonDocs: outputJsonDocs,
+                output_jsondocs: outputJsondocs,
                 metadata
             })
         });
@@ -87,13 +87,13 @@ class ApiService {
         return response.json();
     }
 
-    async updateJsonDoc(request: {
-        jsonDocId: string;
+    async updateJsondoc(request: {
+        jsondocId: string;
         data?: any;
         text?: string;
         metadata?: any;
     }): Promise<any> {
-        const response = await fetch(`${this.baseUrl}/jsonDocs/${request.jsonDocId}`, {
+        const response = await fetch(`${this.baseUrl}/jsondocs/${request.jsondocId}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json'
@@ -106,17 +106,17 @@ class ApiService {
             })
         });
         if (!response.ok) {
-            throw new Error(`Failed to update jsonDoc: ${response.status}`);
+            throw new Error(`Failed to update jsondoc: ${response.status}`);
         }
         return response.json();
     }
 
-    async getJsonDoc(jsonDocId: string): Promise<any> {
-        const response = await fetch(`${this.baseUrl}/jsonDocs/${jsonDocId}`, {
+    async getJsondoc(jsondocId: string): Promise<any> {
+        const response = await fetch(`${this.baseUrl}/jsondocs/${jsondocId}`, {
             credentials: 'include'
         });
         if (!response.ok) {
-            throw new Error(`Failed to fetch jsonDoc: ${response.status}`);
+            throw new Error(`Failed to fetch jsondoc: ${response.status}`);
         }
         return response.json();
     }
@@ -131,8 +131,8 @@ class ApiService {
         return response.json();
     }
 
-    async getHumanTransform(jsonDocId: string, path?: string): Promise<any> {
-        const url = new URL(`${this.baseUrl}/jsonDocs/${jsonDocId}/human-transform`, window.location.origin);
+    async getHumanTransform(jsondocId: string, path?: string): Promise<any> {
+        const url = new URL(`${this.baseUrl}/jsondocs/${jsondocId}/human-transform`, window.location.origin);
         if (path) {
             url.searchParams.set('path', path);
         }
@@ -155,7 +155,7 @@ class ApiService {
     // ============================================================================
 
     async createBrainstormInput(projectId: string): Promise<any> {
-        const response = await fetch(`${this.baseUrl}/jsonDocs`, {
+        const response = await fetch(`${this.baseUrl}/jsondocs`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -163,7 +163,7 @@ class ApiService {
             },
             body: JSON.stringify({
                 projectId,
-                schemaType: 'brainstorm_input_params' as TypedJsonDoc['schema_type'],
+                schemaType: 'brainstorm_input_params' as TypedJsondoc['schema_type'],
                 data: {
                     initialInput: true // Explicitly mark as initial input to bypass validation
                 }
@@ -178,7 +178,7 @@ class ApiService {
     }
 
     async createManualBrainstormIdea(projectId: string): Promise<any> {
-        const response = await fetch(`${this.baseUrl}/jsonDocs`, {
+        const response = await fetch(`${this.baseUrl}/jsondocs`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -186,7 +186,7 @@ class ApiService {
             },
             body: JSON.stringify({
                 projectId,
-                schemaType: 'brainstorm_idea' as TypedJsonDoc['schema_type'],
+                schemaType: 'brainstorm_idea' as TypedJsondoc['schema_type'],
                 data: {
                     title: '新创意',
                     body: ''
@@ -201,8 +201,8 @@ class ApiService {
         return response.json();
     }
 
-    async deleteBrainstormInput(jsonDocId: string): Promise<void> {
-        const response = await fetch(`${this.baseUrl}/jsonDocs/${jsonDocId}`, {
+    async deleteBrainstormInput(jsondocId: string): Promise<void> {
+        const response = await fetch(`${this.baseUrl}/jsondocs/${jsondocId}`, {
             method: 'DELETE',
             headers: {
                 'Authorization': 'Bearer debug-auth-token-script-writer-dev'
@@ -251,31 +251,31 @@ class ApiService {
         return response.json();
     }
 
-    async generateOutlineFromIdea(projectId: string, ideaJsonDocId: string, title: string, requirements: string = ''): Promise<any> {
-        const content = `请基于创意生成剧本框架。源创意ID: ${ideaJsonDocId}，标题: ${title}，要求: ${requirements || '无特殊要求'}`;
+    async generateOutlineFromIdea(projectId: string, ideaJsondocId: string, title: string, requirements: string = ''): Promise<any> {
+        const content = `请基于创意生成剧本框架。源创意ID: ${ideaJsondocId}，标题: ${title}，要求: ${requirements || '无特殊要求'}`;
 
         return this.sendChatMessage(projectId, content, {
-            sourceJsonDocId: ideaJsonDocId,
+            sourceJsondocId: ideaJsondocId,
             action: 'outline_generation',
             title,
             requirements
         });
     }
 
-    async generateChroniclesFromOutline(projectId: string, outlineJsonDocId: string): Promise<any> {
-        const content = `请基于剧本框架生成时间顺序大纲。源剧本框架ID: ${outlineJsonDocId}`;
+    async generateChroniclesFromOutline(projectId: string, outlineJsondocId: string): Promise<any> {
+        const content = `请基于剧本框架生成时间顺序大纲。源剧本框架ID: ${outlineJsondocId}`;
 
         return this.sendChatMessage(projectId, content, {
-            sourceJsonDocId: outlineJsonDocId,
+            sourceJsondocId: outlineJsondocId,
             action: 'chronicles_generation'
         });
     }
 
-    async generateEpisodesFromChronicles(projectId: string, chroniclesJsonDocId: string): Promise<any> {
-        const content = `请基于时间顺序大纲生成剧本。源时间顺序大纲ID: ${chroniclesJsonDocId}`;
+    async generateEpisodesFromChronicles(projectId: string, chroniclesJsondocId: string): Promise<any> {
+        const content = `请基于时间顺序大纲生成剧本。源时间顺序大纲ID: ${chroniclesJsondocId}`;
 
         return this.sendChatMessage(projectId, content, {
-            sourceJsonDocId: chroniclesJsonDocId,
+            sourceJsondocId: chroniclesJsondocId,
             action: 'episode_generation'
         });
     }

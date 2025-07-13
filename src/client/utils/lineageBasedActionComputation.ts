@@ -5,9 +5,9 @@ import {
     findMainWorkflowPath,
     type EffectiveBrainstormIdea,
     type WorkflowNode
-} from '../../common/transform-jsonDoc-framework/lineageResolution';
+} from '../../common/transform-jsondoc-framework/lineageResolution';
 import type {
-    ElectricJsonDoc,
+    ElectricJsondoc,
     ElectricTransform,
     ElectricHumanTransform,
     ElectricTransformInput,
@@ -50,13 +50,13 @@ export interface ActionComponentProps {
     onSuccess?: (result?: any) => void;
     onError?: (error: Error) => void;
 
-    // Resolved jsonDocs (no more parsing needed)
-    jsonDocs: {
+    // Resolved jsondocs (no more parsing needed)
+    jsondocs: {
         brainstormIdeas?: EffectiveBrainstormIdea[];
         chosenIdea?: EffectiveBrainstormIdea;
-        outlineSettings?: ElectricJsonDoc;
-        chronicles?: ElectricJsonDoc;
-        brainstormInput?: ElectricJsonDoc;
+        outlineSettings?: ElectricJsondoc;
+        chronicles?: ElectricJsondoc;
+        brainstormInput?: ElectricJsondoc;
     };
 
     // Workflow context
@@ -72,12 +72,12 @@ export interface ActionComponentProps {
 
 // Lineage-based action context
 export interface LineageBasedActionContext {
-    // Resolved jsonDocs from lineage traversal
+    // Resolved jsondocs from lineage traversal
     effectiveBrainstormIdeas: EffectiveBrainstormIdea[];
     chosenBrainstormIdea: EffectiveBrainstormIdea | null;
-    latestOutlineSettings: ElectricJsonDoc | null;
-    latestChronicles: ElectricJsonDoc | null;
-    brainstormInput: ElectricJsonDoc | null;
+    latestOutlineSettings: ElectricJsondoc | null;
+    latestChronicles: ElectricJsondoc | null;
+    brainstormInput: ElectricJsondoc | null;
 
     // Workflow state
     currentStage: WorkflowStage;
@@ -105,7 +105,7 @@ export interface ComputedActions {
  */
 export function computeActionsFromLineage(
     lineageGraph: LineageGraph,
-    jsonDocs: ElectricJsonDoc[],
+    jsondocs: ElectricJsondoc[],
     transforms: ElectricTransform[],
     humanTransforms: ElectricHumanTransform[],
     transformInputs: ElectricTransformInput[],
@@ -116,7 +116,7 @@ export function computeActionsFromLineage(
     // 1. Build workflow context from lineage traversal
     const actionContext = buildActionContextFromLineage(
         lineageGraph,
-        jsonDocs,
+        jsondocs,
         transforms,
         humanTransforms,
         transformInputs,
@@ -130,17 +130,17 @@ export function computeActionsFromLineage(
     if (currentStage === 'brainstorm_selection') {
         // First check: if we have a chosen idea, move to idea_editing stage
         if (actionContext.chosenBrainstormIdea) {
-            console.log('[computeActionsFromLineage] Found chosen idea, overriding stage to idea_editing:', actionContext.chosenBrainstormIdea.jsonDocId);
+            console.log('[computeActionsFromLineage] Found chosen idea, overriding stage to idea_editing:', actionContext.chosenBrainstormIdea.jsondocId);
             currentStage = 'idea_editing';
         } else {
             // Second check: if we have leaf brainstorm ideas that indicate the user has moved to idea_editing stage
             const leafBrainstormIdeas = actionContext.leafNodes.filter(nodeId => {
                 const node = lineageGraph.nodes.get(nodeId);
-                if (node?.type !== 'jsonDoc') return false;
+                if (node?.type !== 'jsondoc') return false;
 
-                const jsonDoc = jsonDocs.find(a => a.id === nodeId);
-                return jsonDoc && (
-                    jsonDoc.schema_type === 'brainstorm_idea'
+                const jsondoc = jsondocs.find(a => a.id === nodeId);
+                return jsondoc && (
+                    jsondoc.schema_type === 'brainstorm_idea'
                 );
             });
 
@@ -152,7 +152,7 @@ export function computeActionsFromLineage(
         }
     }
 
-    // 4. Fallback logic: if no workflow nodes but we have brainstorm input jsonDoc, set to brainstorm_input stage
+    // 4. Fallback logic: if no workflow nodes but we have brainstorm input jsondoc, set to brainstorm_input stage
     if (currentStage === 'initial' && actionContext.brainstormInput) {
         currentStage = 'brainstorm_input';
     }
@@ -181,7 +181,7 @@ export function computeActionsFromLineage(
  */
 function buildActionContextFromLineage(
     lineageGraph: LineageGraph,
-    jsonDocs: ElectricJsonDoc[],
+    jsondocs: ElectricJsondoc[],
     transforms: ElectricTransform[],
     humanTransforms: ElectricHumanTransform[],
     transformInputs: ElectricTransformInput[],
@@ -189,14 +189,14 @@ function buildActionContextFromLineage(
 ): Omit<LineageBasedActionContext, 'currentStage'> {
     // Use existing functions from lineageResolution.ts
     const effectiveBrainstormIdeas = extractEffectiveBrainstormIdeas(
-        jsonDocs,
+        jsondocs,
         transforms,
         humanTransforms,
         transformInputs,
         transformOutputs
     );
 
-    const workflowNodes = findMainWorkflowPath(jsonDocs, lineageGraph);
+    const workflowNodes = findMainWorkflowPath(jsondocs, lineageGraph);
 
     // Find chosen idea (leaf brainstorm idea that's ready for next stage)
     let chosenBrainstormIdea = findChosenIdeaFromLineage(effectiveBrainstormIdeas, lineageGraph);
@@ -208,23 +208,23 @@ function buildActionContextFromLineage(
 
 
 
-    // Find latest jsonDocs using lineage resolution
-    const latestOutlineSettings = findLatestJsonDocByType(
+    // Find latest jsondocs using lineage resolution
+    const latestOutlineSettings = findLatestJsondocByType(
         lineageGraph,
-        jsonDocs,
+        jsondocs,
         'outline_settings'
     );
 
-    const latestChronicles = findLatestJsonDocByType(
+    const latestChronicles = findLatestJsondocByType(
         lineageGraph,
-        jsonDocs,
+        jsondocs,
         'chronicles'
     );
 
-    // Find brainstorm input jsonDoc
-    const brainstormInput = findLatestJsonDocByType(
+    // Find brainstorm input jsondoc
+    const brainstormInput = findLatestJsondocByType(
         lineageGraph,
-        jsonDocs,
+        jsondocs,
         'brainstorm_input_params'
     );
 
@@ -289,8 +289,8 @@ function generateActionsForStage(
 
     const actions: ActionItem[] = [];
 
-    // Build common jsonDocs and context for ActionComponentProps
-    const commonJsonDocs = {
+    // Build common jsondocs and context for ActionComponentProps
+    const commonJsondocs = {
         brainstormIdeas: context.effectiveBrainstormIdeas,
         chosenIdea: context.chosenBrainstormIdea,
         outlineSettings: context.latestOutlineSettings,
@@ -313,7 +313,7 @@ function generateActionsForStage(
                 description: '使用AI辅助生成创意想法',
                 component: BrainstormCreationActions,
                 props: {
-                    jsonDocs: commonJsonDocs,
+                    jsondocs: commonJsondocs,
                     workflowContext: commonWorkflowContext
                 },
                 enabled: true,
@@ -330,8 +330,8 @@ function generateActionsForStage(
                     description: '基于上方填写的参数开始生成创意',
                     component: BrainstormInputForm,
                     props: {
-                        brainstormJsonDoc: context.brainstormInput, // For backward compatibility
-                        jsonDocs: commonJsonDocs,
+                        brainstormJsondoc: context.brainstormInput, // For backward compatibility
+                        jsondocs: commonJsondocs,
                         workflowContext: commonWorkflowContext
                     },
                     enabled: true,
@@ -348,7 +348,7 @@ function generateActionsForStage(
                 description: '从生成的创意中选择一个继续开发',
                 component: BrainstormIdeaSelection,
                 props: {
-                    jsonDocs: commonJsonDocs,
+                    jsondocs: commonJsondocs,
                     workflowContext: commonWorkflowContext
                 },
                 enabled: true,
@@ -364,7 +364,7 @@ function generateActionsForStage(
                 description: '基于选中的创意生成详细大纲',
                 component: OutlineGenerationForm,
                 props: {
-                    jsonDocs: commonJsonDocs,
+                    jsondocs: commonJsondocs,
                     workflowContext: commonWorkflowContext
                 },
                 enabled: true,
@@ -380,7 +380,7 @@ function generateActionsForStage(
                 description: '基于大纲生成分集概要',
                 component: ChroniclesGenerationAction,
                 props: {
-                    jsonDocs: commonJsonDocs,
+                    jsondocs: commonJsondocs,
                     workflowContext: commonWorkflowContext
                 },
                 enabled: true,
@@ -396,7 +396,7 @@ function generateActionsForStage(
                 description: '基于分集概要生成具体剧本',
                 component: EpisodeGenerationAction,
                 props: {
-                    jsonDocs: commonJsonDocs,
+                    jsondocs: commonJsondocs,
                     workflowContext: commonWorkflowContext
                 },
                 enabled: true,
@@ -434,48 +434,48 @@ function getStageDescription(stage: WorkflowStage): string {
 // ============================================================================
 
 /**
- * Find the latest jsonDoc of a specific type using lineage depth
+ * Find the latest jsondoc of a specific type using lineage depth
  */
-function findLatestJsonDocByType(
+function findLatestJsondocByType(
     lineageGraph: LineageGraph,
-    jsonDocs: ElectricJsonDoc[],
+    jsondocs: ElectricJsondoc[],
     schemaType: string
-): ElectricJsonDoc | null {
-    // Find all jsonDocs of this type
-    const candidateJsonDocs = jsonDocs.filter(a =>
+): ElectricJsondoc | null {
+    // Find all jsondocs of this type
+    const candidateJsondocs = jsondocs.filter(a =>
         a.schema_type === schemaType
     );
 
-    if (candidateJsonDocs.length === 0) return null;
+    if (candidateJsondocs.length === 0) return null;
 
-    // Filter to only include jsonDocs that are in the lineage graph (canonical jsonDocs)
-    const canonicalJsonDocs = candidateJsonDocs.filter(jsonDoc => {
-        const node = lineageGraph.nodes.get(jsonDoc.id);
+    // Filter to only include jsondocs that are in the lineage graph (canonical jsondocs)
+    const canonicalJsondocs = candidateJsondocs.filter(jsondoc => {
+        const node = lineageGraph.nodes.get(jsondoc.id);
         return node != null;
     });
 
-    if (canonicalJsonDocs.length === 0) return null;
+    if (canonicalJsondocs.length === 0) return null;
 
-    // Find leaf nodes (jsonDocs without descendants) from canonical set
-    const leafJsonDocs = canonicalJsonDocs.filter(jsonDoc => {
-        const node = lineageGraph.nodes.get(jsonDoc.id);
+    // Find leaf nodes (jsondocs without descendants) from canonical set
+    const leafJsondocs = canonicalJsondocs.filter(jsondoc => {
+        const node = lineageGraph.nodes.get(jsondoc.id);
         return node && node.isLeaf;
     });
 
-    if (leafJsonDocs.length > 0) {
-        // Prioritize user_input jsonDocs, then by most recent
-        leafJsonDocs.sort((a, b) => {
+    if (leafJsondocs.length > 0) {
+        // Prioritize user_input jsondocs, then by most recent
+        leafJsondocs.sort((a, b) => {
             // First priority: user_input origin type
             if (a.origin_type === 'user_input' && b.origin_type !== 'user_input') return -1;
             if (b.origin_type === 'user_input' && a.origin_type !== 'user_input') return 1;
             // Second priority: most recent
             return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
         });
-        return leafJsonDocs[0];
+        return leafJsondocs[0];
     } else {
         // Fallback to most recent from canonical set if no leaf nodes found
-        canonicalJsonDocs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-        return canonicalJsonDocs[0];
+        canonicalJsondocs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        return canonicalJsondocs[0];
     }
 }
 
@@ -488,16 +488,16 @@ function findChosenIdeaFromLineage(
 ): EffectiveBrainstormIdea | null {
     // Find the idea that's a leaf node (ready for next stage)
     for (const idea of effectiveBrainstormIdeas) {
-        const node = lineageGraph.nodes.get(idea.jsonDocId);
+        const node = lineageGraph.nodes.get(idea.jsondocId);
         if (node && node.isLeaf) {
             // CRITICAL FIX: Only consider standalone ideas as "chosen"
-            // Ideas from collections (jsonDocPath !== '$') should not be auto-chosen
+            // Ideas from collections (jsondocPath !== '$') should not be auto-chosen
             // even if the collection is a leaf node - user needs to explicitly select one
-            if (idea.jsonDocPath === '$') {
-                // This is a standalone brainstorm idea jsonDoc, can be chosen
+            if (idea.jsondocPath === '$') {
+                // This is a standalone brainstorm idea jsondoc, can be chosen
                 return idea;
             }
-            // Ideas from collections (jsonDocPath like '$.ideas[0]') are not auto-chosen
+            // Ideas from collections (jsondocPath like '$.ideas[0]') are not auto-chosen
         }
     }
 
@@ -510,9 +510,9 @@ function findChosenIdeaFromLineage(
 function findAllLeafNodes(lineageGraph: LineageGraph): string[] {
     const leafNodes: string[] = [];
 
-    for (const [jsonDocId, node] of lineageGraph.nodes) {
+    for (const [jsondocId, node] of lineageGraph.nodes) {
         if (node.isLeaf) {
-            leafNodes.push(jsonDocId);
+            leafNodes.push(jsondocId);
         }
     }
 

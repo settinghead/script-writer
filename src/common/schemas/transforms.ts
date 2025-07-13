@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { OutlineSettingsInputSchema, OutlineSettingsOutputSchema, ChroniclesInputSchema, ChroniclesOutputSchema } from './outlineSchemas';
-import { BrainstormToolInputSchema } from './jsonDocs';
+import { BrainstormToolInputSchema } from './jsondocs';
 
 // Base transform definition
 export const BaseTransformDefinition = z.object({
@@ -60,8 +60,8 @@ export function getTransformDefinition(name: string) {
 export const HumanTransformDefinitionSchema = z.object({
   name: z.string(),
   description: z.string(),
-  sourceJsonDocType: z.string(),
-  targetJsonDocType: z.string(),
+  sourceJsondocType: z.string(),
+  targetJsondocType: z.string(),
   pathPattern: z.string(), // Regex pattern for valid paths
   instantiationFunction: z.string()
 });
@@ -84,7 +84,7 @@ export type LLMTransformDefinition = z.infer<typeof LLMTransformDefinitionSchema
 // Input schema for brainstorm editing
 export const BrainstormEditInputSchema = z.object({
   ideaIndex: z.number().min(0).optional().describe('要编辑的故事创意在集合中的索引位置（从0开始）'),
-  sourceJsonDocId: z.string().min(1, 'Source jsonDoc ID不能为空').describe('要编辑的故事创意所在的source jsonDoc ID，从项目背景信息中获取'),
+  sourceJsondocId: z.string().min(1, 'Source jsondoc ID不能为空').describe('要编辑的故事创意所在的source jsondoc ID，从项目背景信息中获取'),
   editRequirements: z.string().min(1, '编辑要求不能为空').describe('具体的编辑要求，如：扩展内容、调整风格、修改情节、增加元素等'),
   agentInstructions: z.string().optional().describe('来自智能体的额外指导信息，用于更好地理解编辑意图')
 });
@@ -129,8 +129,8 @@ export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinitio
   'create_brainstorm_input': {
     name: 'create_brainstorm_input',
     description: 'Create brainstorm input parameters',
-    sourceJsonDocType: '*', // Can be created from any source or standalone
-    targetJsonDocType: 'brainstorm_input_params',
+    sourceJsondocType: '*', // Can be created from any source or standalone
+    targetJsondocType: 'brainstorm_input_params',
     pathPattern: '^\\$$', // Root path for new creation
     instantiationFunction: 'createBrainstormToolInput'
   },
@@ -138,59 +138,59 @@ export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinitio
   'edit_brainstorm_collection_idea': {
     name: 'edit_brainstorm_collection_idea',
     description: 'Edit individual idea within brainstorm collection',
-    sourceJsonDocType: 'brainstorm_collection',
-    targetJsonDocType: 'brainstorm_idea',
+    sourceJsondocType: 'brainstorm_collection',
+    targetJsondocType: 'brainstorm_idea',
     pathPattern: '^\\$.ideas\\[\\d+\\]$', // JSONPath for ideas[n]
     instantiationFunction: 'createBrainstormIdeaFromPath'
   },
 
 
 
-  'edit_jsonDoc_field': {
-    name: 'edit_jsonDoc_field',
+  'edit_jsondoc_field': {
+    name: 'edit_jsondoc_field',
     description: 'Generic field editing using JSONPath',
-    sourceJsonDocType: '*', // Any jsonDoc type
-    targetJsonDocType: '*', // Flexible output type
+    sourceJsondocType: '*', // Any jsondoc type
+    targetJsondocType: '*', // Flexible output type
     pathPattern: '^\\$\\.[a-zA-Z_][a-zA-Z0-9_]*.*$', // Any valid JSONPath
     instantiationFunction: 'createFieldEditFromPath'
   },
   'brainstorm_to_outline': {
     name: 'brainstorm_to_outline',
     description: 'Convert a brainstorm idea to outline input',
-    sourceJsonDocType: 'brainstorm_idea',
-    targetJsonDocType: 'outline_input',
+    sourceJsondocType: 'brainstorm_idea',
+    targetJsondocType: 'outline_input',
     pathPattern: '^\\$$', // Root path indicator ($)
     instantiationFunction: 'createOutlineInputFromBrainstormIdea'
   },
   'edit_brainstorm_idea': {
     name: 'edit_brainstorm_idea',
     description: 'Edit entire brainstorm idea object',
-    sourceJsonDocType: 'brainstorm_idea',
-    targetJsonDocType: 'brainstorm_idea',
+    sourceJsondocType: 'brainstorm_idea',
+    targetJsondocType: 'brainstorm_idea',
     pathPattern: '^\\$$', // Root path indicator ($)
     instantiationFunction: 'createBrainstormIdeaFromBrainstormIdea'
   },
   'edit_brainstorm_idea_field': {
     name: 'edit_brainstorm_idea_field',
     description: 'Edit individual fields of brainstorm ideas',
-    sourceJsonDocType: 'brainstorm_idea',
-    targetJsonDocType: 'brainstorm_idea',
+    sourceJsondocType: 'brainstorm_idea',
+    targetJsondocType: 'brainstorm_idea',
     pathPattern: '^(title|body)$', // Matches title or body fields
     instantiationFunction: 'createUserInputFromBrainstormField'
   },
   'edit_outline_settings': {
     name: 'edit_outline_settings',
     description: 'Edit outline settings with fine-grained field tracking',
-    sourceJsonDocType: 'outline_settings',
-    targetJsonDocType: 'outline_settings',
+    sourceJsondocType: 'outline_settings',
+    targetJsondocType: 'outline_settings',
     pathPattern: '^\\$(\\..*)?$', // Root or any path like $.title, $.characters[0].name, etc.
     instantiationFunction: 'createOutlineSettingsFromOutlineSettings'
   },
   'edit_chronicles': {
     name: 'edit_chronicles',
     description: 'Edit chronicles document with whole-document editing',
-    sourceJsonDocType: 'chronicles',
-    targetJsonDocType: 'chronicles',
+    sourceJsondocType: 'chronicles',
+    targetJsondocType: 'chronicles',
     pathPattern: '^\\$(\\..*)?$', // Root or any path like $.stages[0].title, $.stages[1].event, etc.
     instantiationFunction: 'createChroniclesFromChronicles'
   }
@@ -198,8 +198,8 @@ export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinitio
 
 // Generic edit input schema for path-based editing
 export const GenericEditInputSchema = z.object({
-  sourceJsonDocId: z.string().min(1, '源内容ID不能为空'),
-  jsonDocPath: z.string().min(1, '路径不能为空'),
+  sourceJsondocId: z.string().min(1, '源内容ID不能为空'),
+  jsondocPath: z.string().min(1, '路径不能为空'),
   editRequirements: z.string().min(1, '编辑要求不能为空'),
   agentInstructions: z.string().optional()
 });
@@ -223,10 +223,10 @@ export const LLM_TRANSFORM_DEFINITIONS: Record<string, LLMTransformDefinition> =
     inputSchema: BrainstormEditInputSchema,
     outputSchema: BrainstormEditOutputSchema
   },
-  'llm_edit_jsonDoc_path': {
-    name: 'llm_edit_jsonDoc_path',
+  'llm_edit_jsondoc_path': {
+    name: 'llm_edit_jsondoc_path',
     description: 'Generic AI editing using JSONPath',
-    inputTypes: ['*'], // Any jsonDoc type
+    inputTypes: ['*'], // Any jsondoc type
     outputType: '*', // Flexible output type
     templateName: 'genericEdit',
     inputSchema: GenericEditInputSchema,

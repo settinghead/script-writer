@@ -325,7 +325,7 @@ class ComprehensiveLogger:
             f.write("├── 02_golden_examples/   - Golden examples analysis\n")
             f.write("├── 03_optimization_process/ - Step-by-step process\n")
             f.write("├── 04_evaluation_results/   - Performance evaluations\n")
-            f.write("├── 05_final_models/         - Saved model jsonDocs\n")
+            f.write("├── 05_final_models/         - Saved model jsondocs\n")
             f.write("├── 06_prompts_comparison/   - Model prompts\n")
             f.write("├── 07_error_logs/           - Error logs\n")
             f.write("└── 08_performance_metrics/  - Performance data\n\n")
@@ -848,7 +848,7 @@ def save_optimized_model(module, name: str, score: float, detailed_scores: Dict[
             
             model_info = mlflow.dspy.log_model(
                 module,
-                jsonDoc_path="model",
+                jsondoc_path="model",
                 input_example=input_example
             )
             

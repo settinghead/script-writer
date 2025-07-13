@@ -2,14 +2,14 @@ import React, { HTMLAttributes } from 'react';
 import { Card, Typography } from 'antd';
 import { StarFilled } from '@ant-design/icons';
 import { useProjectData } from '../../contexts/ProjectDataContext';
-import { getJsonDocAtPath } from '../../../common/transform-jsonDoc-framework/lineageResolution';
+import { getJsondocAtPath } from '../../../common/transform-jsondoc-framework/lineageResolution';
 import './BrainstormIdeaCard.css';
 
 const { Text } = Typography;
 
 export const BrainstormIdeaEditor: React.FC<{
-    jsonDocId: string;
-    jsonDocPath: string;
+    jsondocId: string;
+    jsondocPath: string;
     originalCollectionId: string;
     index: number;
     isSelected: boolean;
@@ -17,19 +17,19 @@ export const BrainstormIdeaEditor: React.FC<{
     hasEditableDescendants: boolean;
     ideaOutlines: any[];
     onIdeaClick: (collectionId: string, index: number) => void;
-} & HTMLAttributes<HTMLDivElement>> = ({ jsonDocId, jsonDocPath, originalCollectionId, index, isSelected, isChosen, hasEditableDescendants, onIdeaClick, ...props }) => {
+} & HTMLAttributes<HTMLDivElement>> = ({ jsondocId, jsondocPath, originalCollectionId, index, isSelected, isChosen, hasEditableDescendants, onIdeaClick, ...props }) => {
     const projectData = useProjectData();
 
-    // Get the jsonDoc data to display
-    const jsonDoc = projectData.getJsonDocById(jsonDocId);
+    // Get the jsondoc data to display
+    const jsondoc = projectData.getJsondocById(jsondocId);
     let ideaData: any = null;
 
-    if (jsonDoc) {
+    if (jsondoc) {
         try {
-            const parsedData = JSON.parse(jsonDoc.data);
-            ideaData = jsonDocPath === '$' ? parsedData : getJsonDocAtPath(jsonDoc, jsonDocPath);
+            const parsedData = JSON.parse(jsondoc.data);
+            ideaData = jsondocPath === '$' ? parsedData : getJsondocAtPath(jsondoc, jsondocPath);
         } catch (error) {
-            console.warn('Failed to parse jsonDoc data:', error);
+            console.warn('Failed to parse jsondoc data:', error);
         }
     }
 
@@ -41,15 +41,15 @@ export const BrainstormIdeaEditor: React.FC<{
     const title = ideaData.title || `创意 ${index + 1}`;
     const body = ideaData.body || '';
 
-    // Check if this is a derived jsonDoc (has been edited)
-    const hasBeenEdited = jsonDoc?.origin_type === 'user_input' || jsonDoc?.isEditable || false;
+    // Check if this is a derived jsondoc (has been edited)
+    const hasBeenEdited = jsondoc?.origin_type === 'user_input' || jsondoc?.isEditable || false;
 
     // Determine if this idea is clickable
     const isClickable = !isChosen && !hasEditableDescendants;
 
     return (
         <Card
-            key={`${jsonDocId}-${index}`}
+            key={`${jsondocId}-${index}`}
             styles={{ body: { padding: '12px' } }}
             hoverable={false} // Disable Ant Design's built-in hover to use our custom CSS
             onClick={() => isClickable && onIdeaClick(originalCollectionId, index)}

@@ -3,11 +3,11 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { ChroniclesDisplay } from '../ChroniclesDisplay';
 import { useProjectData } from '../../contexts/ProjectDataContext';
-import { useLineageResolution } from '../../transform-jsonDoc-framework/useLineageResolution';
+import { useLineageResolution } from '../../transform-jsondoc-framework/useLineageResolution';
 
 // Mock dependencies
 vi.mock('../../contexts/ProjectDataContext');
-vi.mock('../../transform-jsonDoc-framework/useLineageResolution');
+vi.mock('../../transform-jsondoc-framework/useLineageResolution');
 vi.mock('../shared', () => ({
     SectionWrapper: ({ children, title }: any) => (
         <div data-testid="section-wrapper">
@@ -16,12 +16,12 @@ vi.mock('../shared', () => ({
         </div>
     ),
 
-    JsonDocDisplayWrapper: ({ jsonDoc, isEditable, title }: any) => (
-        <div data-testid="jsonDoc-display-wrapper"
-            data-jsonDoc-id={jsonDoc?.id}
+    JsondocDisplayWrapper: ({ jsondoc, isEditable, title }: any) => (
+        <div data-testid="jsondoc-display-wrapper"
+            data-jsondoc-id={jsondoc?.id}
             data-is-editable={isEditable}>
             <h3>{title}</h3>
-            <div>JsonDoc: {jsonDoc?.id}</div>
+            <div>Jsondoc: {jsondoc?.id}</div>
             <div>Editable: {isEditable ? 'Yes' : 'No'}</div>
         </div>
     )
@@ -34,8 +34,8 @@ const mockUseProjectData = vi.mocked(useProjectData);
 const mockUseLineageResolution = vi.mocked(useLineageResolution);
 
 describe('ChroniclesDisplay', () => {
-    const mockChroniclesJsonDoc = {
-        id: 'chronicles-jsonDoc-id',
+    const mockChroniclesJsondoc = {
+        id: 'chronicles-jsondoc-id',
         project_id: 'test-project-id',
         schema_type: 'chronicles' as const,
         schema_version: 'v1' as const,
@@ -89,7 +89,7 @@ describe('ChroniclesDisplay', () => {
 
         // Default mock setup
         mockUseProjectData.mockReturnValue({
-            jsonDocs: [mockChroniclesJsonDoc],
+            jsondocs: [mockChroniclesJsondoc],
             transformInputs: [],
             isLoading: false,
             isError: false,
@@ -98,14 +98,14 @@ describe('ChroniclesDisplay', () => {
         } as any);
 
         mockUseLineageResolution.mockReturnValue({
-            latestJsonDocId: 'chronicles-jsonDoc-id',
+            latestJsondocId: 'chronicles-jsondoc-id',
             hasLineage: false,
             isLoading: false,
             error: null,
             resolvedPath: '$',
             lineagePath: [],
             depth: 1,
-            originalJsonDocId: 'chronicles-jsonDoc-id'
+            originalJsondocId: 'chronicles-jsondoc-id'
         });
     });
 
@@ -119,17 +119,17 @@ describe('ChroniclesDisplay', () => {
         // Check that the section wrapper is rendered
         expect(screen.getByTestId('section-wrapper')).toBeInTheDocument();
 
-        // Check that the jsonDoc display wrapper is rendered
-        expect(screen.getByTestId('jsonDoc-display-wrapper')).toBeInTheDocument();
+        // Check that the jsondoc display wrapper is rendered
+        expect(screen.getByTestId('jsondoc-display-wrapper')).toBeInTheDocument();
 
-        // Verify jsonDoc ID is passed correctly
-        expect(screen.getByTestId('jsonDoc-display-wrapper')).toHaveAttribute(
-            'data-jsonDoc-id',
-            'chronicles-jsonDoc-id'
+        // Verify jsondoc ID is passed correctly
+        expect(screen.getByTestId('jsondoc-display-wrapper')).toHaveAttribute(
+            'data-jsondoc-id',
+            'chronicles-jsondoc-id'
         );
 
-        // Check that it's not editable by default (ai_generated jsonDoc)
-        expect(screen.getByTestId('jsonDoc-display-wrapper')).toHaveAttribute(
+        // Check that it's not editable by default (ai_generated jsondoc)
+        expect(screen.getByTestId('jsondoc-display-wrapper')).toHaveAttribute(
             'data-is-editable',
             'false'
         );
@@ -137,14 +137,14 @@ describe('ChroniclesDisplay', () => {
         // Component should be rendered successfully
     });
 
-    it('should render chronicles as editable when jsonDoc is user_input with no descendants', async () => {
-        const editableJsonDoc = {
-            ...mockChroniclesJsonDoc,
+    it('should render chronicles as editable when jsondoc is user_input with no descendants', async () => {
+        const editableJsondoc = {
+            ...mockChroniclesJsondoc,
             origin_type: 'user_input'
         };
 
         mockUseProjectData.mockReturnValue({
-            jsonDocs: [editableJsonDoc],
+            jsondocs: [editableJsondoc],
             transformInputs: [], // No descendants
             isLoading: false,
             isError: false,
@@ -153,58 +153,58 @@ describe('ChroniclesDisplay', () => {
         } as any);
 
         mockUseLineageResolution.mockReturnValue({
-            latestJsonDocId: editableJsonDoc.id,
+            latestJsondocId: editableJsondoc.id,
             hasLineage: false,
             isLoading: false,
             error: null,
             resolvedPath: '$',
             lineagePath: [],
             depth: 1,
-            originalJsonDocId: editableJsonDoc.id
+            originalJsondocId: editableJsondoc.id
         });
 
         render(<ChroniclesDisplay />);
 
         await waitFor(() => {
-            expect(screen.getByTestId('jsonDoc-display-wrapper')).toBeInTheDocument();
+            expect(screen.getByTestId('jsondoc-display-wrapper')).toBeInTheDocument();
         });
 
         // Check that it's editable
-        expect(screen.getByTestId('jsonDoc-display-wrapper')).toHaveAttribute(
+        expect(screen.getByTestId('jsondoc-display-wrapper')).toHaveAttribute(
             'data-is-editable',
             'true'
         );
     });
 
     it('should use props when provided (from action computation)', async () => {
-        const propsJsonDoc = {
-            ...mockChroniclesJsonDoc,
-            id: 'props-jsonDoc-id',
+        const propsJsondoc = {
+            ...mockChroniclesJsondoc,
+            id: 'props-jsondoc-id',
             origin_type: 'user_input'
         };
 
-        render(<ChroniclesDisplay isEditable={true} chroniclesJsonDoc={propsJsonDoc} />);
+        render(<ChroniclesDisplay isEditable={true} chroniclesJsondoc={propsJsondoc} />);
 
         await waitFor(() => {
-            expect(screen.getByTestId('jsonDoc-display-wrapper')).toBeInTheDocument();
+            expect(screen.getByTestId('jsondoc-display-wrapper')).toBeInTheDocument();
         });
 
-        // Check that it uses the props jsonDoc
-        expect(screen.getByTestId('jsonDoc-display-wrapper')).toHaveAttribute(
-            'data-jsonDoc-id',
-            'props-jsonDoc-id'
+        // Check that it uses the props jsondoc
+        expect(screen.getByTestId('jsondoc-display-wrapper')).toHaveAttribute(
+            'data-jsondoc-id',
+            'props-jsondoc-id'
         );
 
         // Check that it's editable as specified in props
-        expect(screen.getByTestId('jsonDoc-display-wrapper')).toHaveAttribute(
+        expect(screen.getByTestId('jsondoc-display-wrapper')).toHaveAttribute(
             'data-is-editable',
             'true'
         );
     });
 
-    it('should return null when jsonDocs are pending', () => {
+    it('should return null when jsondocs are pending', () => {
         mockUseProjectData.mockReturnValue({
-            jsonDocs: "pending",
+            jsondocs: "pending",
             isLoading: true,
             isError: false,
             error: null
@@ -214,9 +214,9 @@ describe('ChroniclesDisplay', () => {
         expect(container.firstChild).toBeNull();
     });
 
-    it('should return null when jsonDocs are in error state', () => {
+    it('should return null when jsondocs are in error state', () => {
         mockUseProjectData.mockReturnValue({
-            jsonDocs: "error",
+            jsondocs: "error",
             isLoading: false,
             isError: true,
             error: new Error('Failed to load')
@@ -226,11 +226,11 @@ describe('ChroniclesDisplay', () => {
         expect(container.firstChild).toBeNull();
     });
 
-    it('should return null when no chronicles jsonDocs are found', () => {
+    it('should return null when no chronicles jsondocs are found', () => {
         mockUseProjectData.mockReturnValue({
-            jsonDocs: [
+            jsondocs: [
                 {
-                    id: 'other-jsonDoc',
+                    id: 'other-jsondoc',
                     schema_type: 'outline_settings',
                     type: 'outline_settings',
                     data: { title: 'Some outline' }
@@ -245,14 +245,14 @@ describe('ChroniclesDisplay', () => {
         expect(container.firstChild).toBeNull();
     });
 
-    it('should still render jsonDoc display wrapper even with no stages', () => {
-        const jsonDocWithNoStages = {
-            ...mockChroniclesJsonDoc,
+    it('should still render jsondoc display wrapper even with no stages', () => {
+        const jsondocWithNoStages = {
+            ...mockChroniclesJsondoc,
             data: { stages: [] }
         };
 
         mockUseProjectData.mockReturnValue({
-            jsonDocs: [jsonDocWithNoStages],
+            jsondocs: [jsondocWithNoStages],
             transformInputs: [],
             isLoading: false,
             isError: false,
@@ -261,18 +261,18 @@ describe('ChroniclesDisplay', () => {
 
         render(<ChroniclesDisplay />);
 
-        // Should still render the jsonDoc display wrapper
-        expect(screen.getByTestId('jsonDoc-display-wrapper')).toBeInTheDocument();
+        // Should still render the jsondoc display wrapper
+        expect(screen.getByTestId('jsondoc-display-wrapper')).toBeInTheDocument();
     });
 
     it('should handle string-formatted data correctly', () => {
-        const jsonDocWithStringData = {
-            ...mockChroniclesJsonDoc,
-            data: JSON.stringify(mockChroniclesJsonDoc.data)
+        const jsondocWithStringData = {
+            ...mockChroniclesJsondoc,
+            data: JSON.stringify(mockChroniclesJsondoc.data)
         };
 
         mockUseProjectData.mockReturnValue({
-            jsonDocs: [jsonDocWithStringData],
+            jsondocs: [jsondocWithStringData],
             transformInputs: [],
             isLoading: false,
             isError: false,
@@ -281,15 +281,15 @@ describe('ChroniclesDisplay', () => {
 
         render(<ChroniclesDisplay />);
 
-        expect(screen.getByTestId('jsonDoc-display-wrapper')).toBeInTheDocument();
-        expect(screen.getByTestId('jsonDoc-display-wrapper')).toHaveAttribute(
-            'data-jsonDoc-id',
-            'chronicles-jsonDoc-id'
+        expect(screen.getByTestId('jsondoc-display-wrapper')).toBeInTheDocument();
+        expect(screen.getByTestId('jsondoc-display-wrapper')).toHaveAttribute(
+            'data-jsondoc-id',
+            'chronicles-jsondoc-id'
         );
     });
 
     it('should prioritize chronicles over legacy chronicles type', () => {
-        const legacyChroniclesJsonDoc = {
+        const legacyChroniclesJsondoc = {
             id: 'legacy-chronicles',
             schema_type: null,
             type: 'chronicles',
@@ -298,7 +298,7 @@ describe('ChroniclesDisplay', () => {
             data: { stages: [{ title: 'Legacy stage' }] }
         };
 
-        const modernChroniclesJsonDoc = {
+        const modernChroniclesJsondoc = {
             id: 'modern-chronicles',
             schema_type: 'chronicles',
             type: 'chronicles',
@@ -308,7 +308,7 @@ describe('ChroniclesDisplay', () => {
         };
 
         mockUseProjectData.mockReturnValue({
-            jsonDocs: [legacyChroniclesJsonDoc, modernChroniclesJsonDoc],
+            jsondocs: [legacyChroniclesJsondoc, modernChroniclesJsondoc],
             transformInputs: [],
             isLoading: false,
             isError: false,
@@ -316,35 +316,35 @@ describe('ChroniclesDisplay', () => {
         } as any);
 
         mockUseLineageResolution.mockReturnValue({
-            latestJsonDocId: 'modern-chronicles',
+            latestJsondocId: 'modern-chronicles',
             hasLineage: false,
             isLoading: false,
             error: null,
             resolvedPath: '$',
             lineagePath: [],
             depth: 1,
-            originalJsonDocId: 'modern-chronicles'
+            originalJsondocId: 'modern-chronicles'
         });
 
         render(<ChroniclesDisplay />);
 
-        // Should use the modern chronicles jsonDoc
-        expect(screen.getByTestId('jsonDoc-display-wrapper')).toHaveAttribute(
-            'data-jsonDoc-id',
+        // Should use the modern chronicles jsondoc
+        expect(screen.getByTestId('jsondoc-display-wrapper')).toHaveAttribute(
+            'data-jsondoc-id',
             'modern-chronicles'
         );
     });
 
     it('should handle lineage resolution errors gracefully', () => {
         mockUseLineageResolution.mockReturnValue({
-            latestJsonDocId: null,
+            latestJsondocId: null,
             hasLineage: false,
             isLoading: false,
             error: new Error('Lineage resolution failed'),
             resolvedPath: '$',
             lineagePath: [],
             depth: 1,
-            originalJsonDocId: 'chronicles-jsonDoc-id'
+            originalJsondocId: 'chronicles-jsondoc-id'
         });
 
         render(<ChroniclesDisplay />);
@@ -355,14 +355,14 @@ describe('ChroniclesDisplay', () => {
 
     it('should return null while lineage is still loading', () => {
         mockUseLineageResolution.mockReturnValue({
-            latestJsonDocId: null,
+            latestJsondocId: null,
             hasLineage: false,
             isLoading: true,
             error: null,
             resolvedPath: '$',
             lineagePath: [],
             depth: 1,
-            originalJsonDocId: 'chronicles-jsonDoc-id'
+            originalJsondocId: 'chronicles-jsondoc-id'
         });
 
         const { container } = render(<ChroniclesDisplay />);
@@ -370,13 +370,13 @@ describe('ChroniclesDisplay', () => {
     });
 
     it('should handle corrupted JSON data gracefully', () => {
-        const jsonDocWithCorruptedData = {
-            ...mockChroniclesJsonDoc,
+        const jsondocWithCorruptedData = {
+            ...mockChroniclesJsondoc,
             data: 'invalid json {'
         };
 
         mockUseProjectData.mockReturnValue({
-            jsonDocs: [jsonDocWithCorruptedData],
+            jsondocs: [jsondocWithCorruptedData],
             transformInputs: [],
             isLoading: false,
             isError: false,
@@ -385,32 +385,32 @@ describe('ChroniclesDisplay', () => {
 
         render(<ChroniclesDisplay />);
 
-        // Should still render the jsonDoc display wrapper even with corrupted data
-        expect(screen.getByTestId('jsonDoc-display-wrapper')).toBeInTheDocument();
-        expect(screen.getByTestId('jsonDoc-display-wrapper')).toHaveAttribute(
-            'data-jsonDoc-id',
-            'chronicles-jsonDoc-id'
+        // Should still render the jsondoc display wrapper even with corrupted data
+        expect(screen.getByTestId('jsondoc-display-wrapper')).toBeInTheDocument();
+        expect(screen.getByTestId('jsondoc-display-wrapper')).toHaveAttribute(
+            'data-jsondoc-id',
+            'chronicles-jsondoc-id'
         );
     });
 
-    describe('jsonDoc selection logic', () => {
-        it('should prefer AI-generated jsonDocs over user-input ones', () => {
-            const userInputJsonDoc = {
-                ...mockChroniclesJsonDoc,
+    describe('jsondoc selection logic', () => {
+        it('should prefer AI-generated jsondocs over user-input ones', () => {
+            const userInputJsondoc = {
+                ...mockChroniclesJsondoc,
                 id: 'user-input-chronicles',
                 origin_type: 'user_input',
                 created_at: '2025-01-01T00:00:00Z'
             };
 
-            const aiGeneratedJsonDoc = {
-                ...mockChroniclesJsonDoc,
+            const aiGeneratedJsondoc = {
+                ...mockChroniclesJsondoc,
                 id: 'ai-generated-chronicles',
                 origin_type: 'ai_generated',
                 created_at: '2025-01-01T01:00:00Z'
             };
 
             mockUseProjectData.mockReturnValue({
-                jsonDocs: [userInputJsonDoc, aiGeneratedJsonDoc],
+                jsondocs: [userInputJsondoc, aiGeneratedJsondoc],
                 transformInputs: [],
                 isLoading: false,
                 isError: false,
@@ -418,41 +418,41 @@ describe('ChroniclesDisplay', () => {
             } as any);
 
             mockUseLineageResolution.mockReturnValue({
-                latestJsonDocId: 'ai-generated-chronicles',
+                latestJsondocId: 'ai-generated-chronicles',
                 hasLineage: false,
                 isLoading: false,
                 error: null,
                 resolvedPath: '$',
                 lineagePath: [],
                 depth: 1,
-                originalJsonDocId: 'ai-generated-chronicles'
+                originalJsondocId: 'ai-generated-chronicles'
             });
 
             render(<ChroniclesDisplay />);
 
-            expect(screen.getByTestId('jsonDoc-display-wrapper')).toHaveAttribute(
-                'data-jsonDoc-id',
+            expect(screen.getByTestId('jsondoc-display-wrapper')).toHaveAttribute(
+                'data-jsondoc-id',
                 'ai-generated-chronicles'
             );
         });
 
-        it('should fallback to earliest jsonDoc when no AI-generated found', () => {
-            const laterJsonDoc = {
-                ...mockChroniclesJsonDoc,
+        it('should fallback to earliest jsondoc when no AI-generated found', () => {
+            const laterJsondoc = {
+                ...mockChroniclesJsondoc,
                 id: 'later-chronicles',
                 origin_type: 'user_input',
                 created_at: '2025-01-01T02:00:00Z'
             };
 
-            const earlierJsonDoc = {
-                ...mockChroniclesJsonDoc,
+            const earlierJsondoc = {
+                ...mockChroniclesJsondoc,
                 id: 'earlier-chronicles',
                 origin_type: 'user_input',
                 created_at: '2025-01-01T01:00:00Z'
             };
 
             mockUseProjectData.mockReturnValue({
-                jsonDocs: [laterJsonDoc, earlierJsonDoc],
+                jsondocs: [laterJsondoc, earlierJsondoc],
                 transformInputs: [],
                 isLoading: false,
                 isError: false,
@@ -460,20 +460,20 @@ describe('ChroniclesDisplay', () => {
             } as any);
 
             mockUseLineageResolution.mockReturnValue({
-                latestJsonDocId: 'earlier-chronicles',
+                latestJsondocId: 'earlier-chronicles',
                 hasLineage: false,
                 isLoading: false,
                 error: null,
                 resolvedPath: '$',
                 lineagePath: [],
                 depth: 1,
-                originalJsonDocId: 'earlier-chronicles'
+                originalJsondocId: 'earlier-chronicles'
             });
 
             render(<ChroniclesDisplay />);
 
-            expect(screen.getByTestId('jsonDoc-display-wrapper')).toHaveAttribute(
-                'data-jsonDoc-id',
+            expect(screen.getByTestId('jsondoc-display-wrapper')).toHaveAttribute(
+                'data-jsondoc-id',
                 'earlier-chronicles'
             );
         });

@@ -10,8 +10,8 @@ async function findProjectWithData() {
 
     console.log('Projects found:');
     for (const project of projects) {
-        const jsonDocCount = await db
-            .selectFrom('jsonDocs')
+        const jsondocCount = await db
+            .selectFrom('jsondocs')
             .select(db.fn.count('id').as('count'))
             .where('project_id', '=', project.id)
             .executeTakeFirst();
@@ -22,7 +22,7 @@ async function findProjectWithData() {
             .where('project_id', '=', project.id)
             .executeTakeFirst();
 
-        console.log(`- ${project.id}: ${jsonDocCount?.count || 0} jsonDocs, ${transformCount?.count || 0} transforms`);
+        console.log(`- ${project.id}: ${jsondocCount?.count || 0} jsondocs, ${transformCount?.count || 0} transforms`);
     }
 
     process.exit(0);

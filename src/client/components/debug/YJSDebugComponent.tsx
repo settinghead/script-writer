@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Typography, Space, Divider } from 'antd';
-import { useYJSJsonDoc } from '../../transform-jsonDoc-framework/hooks/useYJSJsonDoc';
-import { YJSJsonDocProvider, useYJSField } from '../../transform-jsonDoc-framework/contexts/YJSJsonDocContext';
+import { useYJSJsondoc } from '../../transform-jsondoc-framework/hooks/useYJSJsondoc';
+import { YJSJsondocProvider, useYJSField } from '../../transform-jsondoc-framework/contexts/YJSJsondocContext';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -36,24 +36,24 @@ const YJSFieldTester: React.FC = () => {
 };
 
 // Main debug component
-export const YJSDebugComponent: React.FC<{ jsonDocId: string }> = ({ jsonDocId }) => {
+export const YJSDebugComponent: React.FC<{ jsondocId: string }> = ({ jsondocId }) => {
     const [hookData, setHookData] = useState<any>(null);
-    const { data, jsonDoc, isLoading, error, isConnected, updateField } = useYJSJsonDoc(jsonDocId);
+    const { data, jsondoc, isLoading, error, isConnected, updateField } = useYJSJsondoc(jsondocId);
 
     useEffect(() => {
         setHookData({
             data,
-            jsonDoc: jsonDoc ? {
-                id: jsonDoc.id,
-                schema_type: jsonDoc.schema_type,
-                origin_type: jsonDoc.origin_type,
-                data: jsonDoc.data
+            jsondoc: jsondoc ? {
+                id: jsondoc.id,
+                schema_type: jsondoc.schema_type,
+                origin_type: jsondoc.origin_type,
+                data: jsondoc.data
             } : null,
             isLoading,
             error,
             isConnected
         });
-    }, [data, jsonDoc, isLoading, error, isConnected]);
+    }, [data, jsondoc, isLoading, error, isConnected]);
 
     return (
         <Card title="YJS Debug Information" style={{ margin: '20px' }}>
@@ -74,8 +74,8 @@ export const YJSDebugComponent: React.FC<{ jsonDocId: string }> = ({ jsonDocId }
                         <pre>{JSON.stringify(data, null, 2)}</pre>
                     </Paragraph>
                     <Paragraph>
-                        <Text strong>JsonDoc Data:</Text>
-                        <pre>{JSON.stringify(jsonDoc?.data, null, 2)}</pre>
+                        <Text strong>Jsondoc Data:</Text>
+                        <pre>{JSON.stringify(jsondoc?.data, null, 2)}</pre>
                     </Paragraph>
                 </div>
 
@@ -83,9 +83,9 @@ export const YJSDebugComponent: React.FC<{ jsonDocId: string }> = ({ jsonDocId }
 
                 <div>
                     <Title level={4}>YJS Field Access Test</Title>
-                    <YJSJsonDocProvider jsonDocId={jsonDocId}>
+                    <YJSJsondocProvider jsondocId={jsondocId}>
                         <YJSFieldTester />
-                    </YJSJsonDocProvider>
+                    </YJSJsondocProvider>
                 </div>
             </Space>
         </Card>

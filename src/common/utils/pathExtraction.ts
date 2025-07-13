@@ -1,5 +1,5 @@
 /**
- * Path extraction utilities for jsonDoc derivation
+ * Path extraction utilities for jsondoc derivation
  * Handles JSON paths like "ideas[0].title" or "[1].body"
  */
 

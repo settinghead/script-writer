@@ -33,7 +33,7 @@ vi.mock('../server/database/connection', () => ({
 }));
 
 // Mock LLM Configuration - correct path
-vi.mock('../server/transform-jsonDoc-framework/LLMConfig', () => ({
+vi.mock('../server/transform-jsondoc-framework/LLMConfig', () => ({
     getLLMCredentials: vi.fn().mockReturnValue({
         apiKey: 'test-api-key',
         baseUrl: 'https://test-api.example.com',
@@ -69,7 +69,7 @@ vi.mock('./LLMConfig', () => ({
 // Note: Mock multiple possible import paths since different files import it differently
 vi.mock('../common/utils/lineageResolution', () => ({
     buildLineageGraph: vi.fn().mockReturnValue({}),
-    findLatestJsonDoc: vi.fn().mockReturnValue({ jsonDocId: 'test-brainstorm-1' }),
+    findLatestJsondoc: vi.fn().mockReturnValue({ jsondocId: 'test-brainstorm-1' }),
     extractEffectiveBrainstormIdeas: vi.fn().mockReturnValue([
         {
             title: '误爱成宠',
@@ -84,8 +84,8 @@ vi.mock('../common/utils/lineageResolution', () => ({
         {
             title: '误爱成宠',
             body: '霸道总裁与普通员工的甜宠故事...',
-            jsonDocId: 'test-brainstorm-1',
-            originalJsonDocId: 'test-brainstorm-1'
+            jsondocId: 'test-brainstorm-1',
+            originalJsondocId: 'test-brainstorm-1'
         }
     ])
 }));
@@ -93,7 +93,7 @@ vi.mock('../common/utils/lineageResolution', () => ({
 // Also mock for the relative import path used by agentContext.ts
 vi.mock('../../common/utils/lineageResolution', () => ({
     buildLineageGraph: vi.fn().mockReturnValue({}),
-    findLatestJsonDoc: vi.fn().mockReturnValue({ jsonDocId: 'test-brainstorm-1' }),
+    findLatestJsondoc: vi.fn().mockReturnValue({ jsondocId: 'test-brainstorm-1' }),
     extractEffectiveBrainstormIdeas: vi.fn().mockReturnValue([
         {
             title: '误爱成宠',
@@ -108,8 +108,8 @@ vi.mock('../../common/utils/lineageResolution', () => ({
         {
             title: '误爱成宠',
             body: '霸道总裁与普通员工的甜宠故事...',
-            jsonDocId: 'test-brainstorm-1',
-            originalJsonDocId: 'test-brainstorm-1'
+            jsondocId: 'test-brainstorm-1',
+            originalJsondocId: 'test-brainstorm-1'
         }
     ])
 }));

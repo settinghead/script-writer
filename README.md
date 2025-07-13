@@ -1,10 +1,10 @@
 # 觅光助创
 
-A collaborative Chinese short drama script writing application built on the [Transform JsonDoc Framework](./TRANSFORM_JSONDOC_FRAMEWORK.md). Features AI-powered brainstorming, intelligent outline generation, and real-time collaboration for creating compelling short drama content.
+A collaborative Chinese short drama script writing application built on the [Transform Jsondoc Framework](./TRANSFORM_JSONDOC_FRAMEWORK.md). Features AI-powered brainstorming, intelligent outline generation, and real-time collaboration for creating compelling short drama content.
 
 ## Overview
 
-觅光助创 combines AI-powered content generation with sophisticated editing workflows specifically designed for Chinese short drama production. The application leverages the Transform JsonDoc Framework to provide intelligent agents, real-time collaboration, and complete content audit trails.
+觅光助创 combines AI-powered content generation with sophisticated editing workflows specifically designed for Chinese short drama production. The application leverages the Transform Jsondoc Framework to provide intelligent agents, real-time collaboration, and complete content audit trails.
 
 **Key Features**:
 - **AI-Powered Script Creation** - From initial brainstorming to complete episode scripts
@@ -43,13 +43,13 @@ A collaborative Chinese short drama script writing application built on the [Tra
 - **Complete Field Editing** - All stage fields editable: title, synopsis, events, emotion arcs, relationship developments, insights
 
 **Episode Generation (分集规划)**:
-- **Agent-Based Generation** - Powered by Transform JsonDoc Framework
+- **Agent-Based Generation** - Powered by Transform Jsondoc Framework
 - **Context-Aware** - Maintains story consistency across episodes
 - **User Feedback Integration** - Captures and utilizes episode-specific feedback
 
 ### 🤖 Intelligent Agent System
 
-Built on the [Transform JsonDoc Framework](./TRANSFORM_JSONDOC_FRAMEWORK.md) agent architecture:
+Built on the [Transform Jsondoc Framework](./TRANSFORM_JSONDOC_FRAMEWORK.md) agent architecture:
 
 **Available Tools**:
 - ✅ **Brainstorm Generation** - Creates new story ideas with platform-specific optimization
@@ -77,7 +77,7 @@ Context Preparation: Current ideas + platform requirements + user instructions
 ↓
 LLM Transform: Generates improved versions with modern tech elements
 ↓
-JsonDoc Creation: Creates new jsonDocs with proper lineage tracking
+Jsondoc Creation: Creates new jsondocs with proper lineage tracking
 ↓
 UI Update: Real-time display with edit indicators
 ```
@@ -235,7 +235,7 @@ export function computeUnifiedWorkflowState(
 **Component Mode Logic**:
 - **hasActiveTransforms** determines readonly vs editable modes
 - **Priority-based ordering** (1, 2, 3...) for consistent component sequence
-- **JsonDoc existence** determines component visibility
+- **Jsondoc existence** determines component visibility
 - **Stage progression** determines which components show
 
 ### Integration Benefits
@@ -319,19 +319,19 @@ The application supports two distinct paths for script creation, each optimized 
 觅光助创 uses a sophisticated dual-computation system for intelligent workflow management:
 
 ### Lineage-Based Action Computation (Primary)
-**Modern Approach**: Uses jsonDoc lineage graphs to determine current workflow state and available actions.
+**Modern Approach**: Uses jsondoc lineage graphs to determine current workflow state and available actions.
 
 **Key Features**:
-- **JsonDoc Lineage Analysis** - Traces relationships between all project jsonDocs
+- **Jsondoc Lineage Analysis** - Traces relationships between all project jsondocs
 - **Workflow Node Detection** - Automatically identifies current position in workflow
-- **Smart Path Resolution** - Finds the main workflow path through complex jsonDoc relationships
+- **Smart Path Resolution** - Finds the main workflow path through complex jsondoc relationships
 - **Auto-Selection Logic** - Automatically treats single effective ideas as "chosen" for streamlined progression
 
 **Technical Implementation**:
 ```typescript
 // Lineage-based computation flow
-const lineageGraph = buildLineageGraph(jsonDocs, transforms, ...);
-const workflowNodes = findMainWorkflowPath(jsonDocs, lineageGraph);
+const lineageGraph = buildLineageGraph(jsondocs, transforms, ...);
+const workflowNodes = findMainWorkflowPath(jsondocs, lineageGraph);
 const currentStage = detectStageFromWorkflowNodes(workflowNodes);
 const actions = computeActionsFromLineage(currentStage, context);
 ```
@@ -350,7 +350,7 @@ const actions = computeActionsFromLineage(currentStage, context);
 
 **Smart Action Generation**:
 - **Context-Aware Actions** - Only shows relevant next steps based on current stage
-- **Prerequisite Validation** - Ensures all required jsonDocs exist before enabling actions
+- **Prerequisite Validation** - Ensures all required jsondocs exist before enabling actions
 - **Active Transform Handling** - Disables actions during streaming/processing states
 - **Priority Ordering** - Actions displayed in logical workflow order
 
@@ -364,8 +364,8 @@ const actions = computeActionsFromLineage(currentStage, context);
 
 **Robust Computation**:
 - **Graceful Degradation** - Falls back to legacy computation when lineage analysis fails
-- **Data Validation** - Validates jsonDoc structure before processing
-- **Edge Case Handling** - Handles malformed data, missing jsonDocs, and concurrent edits
+- **Data Validation** - Validates jsondoc structure before processing
+- **Edge Case Handling** - Handles malformed data, missing jsondocs, and concurrent edits
 - **Debug Logging** - Comprehensive logging for troubleshooting workflow issues
 
 **Production Reliability**:
@@ -380,7 +380,7 @@ This dual-computation system ensures that users always see the correct workflow 
 
 **Project-Based Organization**:
 - **Project Hierarchy** - Project → Episodes → Scripts structure
-- **JsonDoc Lineage** - Complete audit trail of all content modifications
+- **Jsondoc Lineage** - Complete audit trail of all content modifications
 - **Version Control** - Edit history with "always edit latest" principle
 - **Collaborative Editing** - YJS-powered real-time collaborative editing with conflict resolution
 
@@ -396,7 +396,7 @@ This dual-computation system ensures that users always see the correct workflow 
 觅光助创 supports real-time collaborative editing powered by YJS (Yjs) + Electric SQL:
 
 ### Collaboration Features
-- **Live Collaborative Editing** - Multiple users can edit jsonDocs simultaneously
+- **Live Collaborative Editing** - Multiple users can edit jsondocs simultaneously
 - **Conflict-Free Synchronization** - CRDT-based conflict resolution
 - **Optimistic Updates** - Immediate UI feedback with automatic conflict resolution
 - **Path-Based Field Access** - Edit any nested field using JSON paths
@@ -414,18 +414,18 @@ This dual-computation system ensures that users always see the correct workflow 
 
 **Context-Based Editing**:
 ```typescript
-// Enable YJS for jsonDoc editing
-<YJSJsonDocProvider jsonDocId={jsonDocId}>
+// Enable YJS for jsondoc editing
+<YJSJsondocProvider jsondocId={jsondocId}>
   <YJSTextField path="title" placeholder="输入标题..." />
   <YJSArrayField path="themes" placeholder="每行一个主题..." />
   <YJSTextField path="characters.male_lead.name" placeholder="男主姓名..." />
-</YJSJsonDocProvider>
+</YJSJsondocProvider>
 ```
 
 **YJS Hook Usage**:
 ```typescript
 // Access YJS document directly
-const { doc, provider, isConnected } = useYJSJsonDoc(jsonDocId);
+const { doc, provider, isConnected } = useYJSJsondoc(jsondocId);
 
 // Edit text collaboratively
 const yText = doc.getText('content');
@@ -467,7 +467,7 @@ yText.insert(0, 'Hello collaborative world!');
 ## Technical Architecture
 
 ### Framework Foundation
-觅光助创 is built on the **Transform JsonDoc Framework**. For detailed technical documentation, see [TRANSFORM_JSONDOC_FRAMEWORK.md](./TRANSFORM_JSONDOC_FRAMEWORK.md).
+觅光助创 is built on the **Transform Jsondoc Framework**. For detailed technical documentation, see [TRANSFORM_JSONDOC_FRAMEWORK.md](./TRANSFORM_JSONDOC_FRAMEWORK.md).
 
 **Key Framework Benefits**:
 - **Immutable Content History** - All edits tracked with complete lineage
@@ -477,7 +477,7 @@ yText.insert(0, 'Hello collaborative world!');
 
 ### Script-Writer Transform Usage
 
-觅光助创 leverages the Transform JsonDoc Framework's dual-mode execution system with TypedJsonDoc validation for optimal content creation and editing workflows:
+觅光助创 leverages the Transform Jsondoc Framework's dual-mode execution system with TypedJsondoc validation for optimal content creation and editing workflows:
 
 **Content Generation (Full-Object Mode)**:
 - **Story Brainstorming** - Generate complete collections of story ideas
@@ -512,28 +512,28 @@ yText.insert(0, 'Hello collaborative world!');
 - **Streaming Framework** - Unified pattern for all AI tools
 - **Template System** - Chinese short drama specific prompts
 - **Electric SQL Proxy** - Authenticated real-time data access
-- **YJS Service** - Document creation, persistence, and jsonDoc conversion
+- **YJS Service** - Document creation, persistence, and jsondoc conversion
 
 **Database (PostgreSQL + Electric SQL)**:
 - **Project-Based Access Control** - All content scoped to projects
-- **TypedJsonDoc System** - Immutable content with schema_type and origin_type fields
-- **JsonDocSchemaRegistry** - Centralized Zod validation for all jsonDoc types
+- **TypedJsondoc System** - Immutable content with schema_type and origin_type fields
+- **JsondocSchemaRegistry** - Centralized Zod validation for all jsondoc types
 - **Transform Tracking** - Complete audit trail of all modifications
 - **YJS Tables** - Real-time collaborative document storage and updates
 
 ### Script Writing UI Components
 
-觅光助创 uses specialized UI components designed for Chinese short drama script creation, built on the Transform JsonDoc Framework's editing capabilities.
+觅光助创 uses specialized UI components designed for Chinese short drama script creation, built on the Transform Jsondoc Framework's editing capabilities.
 
 **Unified Section Management**:
 - **SectionWrapper** - Consistent section rendering with automatic status detection for all content areas
-- **Automatic JsonDoc Resolution** - Finds latest versions in editing chains (AI-generated → human-edited)
+- **Automatic Jsondoc Resolution** - Finds latest versions in editing chains (AI-generated → human-edited)
 - **Smart Status Detection** - Loading/failed/normal states based on transform status
 - **Visual Indicators** - Clear feedback for editing states and completion status
 
 **Specialized Editing Components**:
-- **BrainstormIdeaEditor** - Multi-idea editing with TypedJsonDoc validation
-- **OutlineSettingsDisplay** - Character development using JsonDocSchemaRegistry
+- **BrainstormIdeaEditor** - Multi-idea editing with TypedJsondoc validation
+- **OutlineSettingsDisplay** - Character development using JsondocSchemaRegistry
 - **ChroniclesDisplay** - Chronological story timeline with schema-validated editing
 - **ChronicleStageCard** - Individual stage editing with typed field validation
 
@@ -547,7 +547,7 @@ yText.insert(0, 'Hello collaborative world!');
 
 **Brainstorm Schema**:
 ```typescript
-export const JsonDocSchemaRegistry = {
+export const JsondocSchemaRegistry = {
   'brainstorm_collection': z.object({
     ideas: z.array(IdeaSchema),
     platform: z.string(),
@@ -560,13 +560,13 @@ export const JsonDocSchemaRegistry = {
 export const IdeaSchema = z.object({
   title: z.string(),
   body: z.string(),
-  jsonDocId: z.string().optional()
+  jsondocId: z.string().optional()
 });
 ```
 
 **Outline Settings Schema**:
 ```typescript
-export const JsonDocSchemaRegistry = {
+export const JsondocSchemaRegistry = {
   'outline_settings': OutlineSettingsOutputSchema,
   'outline_settings_input': OutlineSettingsInputSchema,
   // ... other schemas
@@ -604,7 +604,7 @@ export const CharacterSchema = z.object({
 
 **Chronicles Schema**:
 ```typescript
-export const JsonDocSchemaRegistry = {
+export const JsondocSchemaRegistry = {
   'chronicles': ChroniclesOutputSchema,
   'chronicles_input': ChroniclesInputSchema,
   // ... other schemas
@@ -636,12 +636,12 @@ export const ChroniclesStageSchema = z.object({
   insights: z.array(z.string())
 });
 
-// Used in JsonDocSchemaRegistry for validation
+// Used in JsondocSchemaRegistry for validation
 export type ChroniclesStage = z.infer<typeof ChroniclesStageSchema>;
 ```
 
 **Whole-Document Editing**:
-- **Complete Chronicles Editing** - Chronicles are edited as complete documents using the JsonDocDisplayWrapper pattern
+- **Complete Chronicles Editing** - Chronicles are edited as complete documents using the JsondocDisplayWrapper pattern
 - **Click-to-Edit Interface** - Clicking on any chronicle section enters whole-document editing mode
 - **YJS-Powered Collaboration** - Real-time collaborative editing with automatic conflict resolution
 - **Comprehensive Field Access** - All chronicle fields (stages, titles, synopses, etc.) available in single editing session
@@ -654,16 +654,16 @@ export type ChroniclesStage = z.infer<typeof ChroniclesStageSchema>;
   - Event descriptions  
   - Emotion arcs and relationship developments
   - Story insights and character development
-- **Visual Consistency** - Consistent with other jsonDoc editing patterns in the application
+- **Visual Consistency** - Consistent with other jsondoc editing patterns in the application
 
 **Technical Implementation**:
 ```typescript
-// Whole-document editing with JsonDocDisplayWrapper
-<JsonDocDisplayWrapper
-  jsonDoc={chroniclesJsonDoc}
+// Whole-document editing with JsondocDisplayWrapper
+<JsondocDisplayWrapper
+  jsondoc={chroniclesJsondoc}
   isEditable={isEditable}
   title="时间顺序大纲"
-  readOnlyComponent={ReadOnlyJsonDocDisplay}
+  readOnlyComponent={ReadOnlyJsondocDisplay}
   editableComponent={EditableChroniclesForm}
 />
 
@@ -674,8 +674,8 @@ const { value: stages, updateValue: setStages } = useYJSField<any[]>('stages');
 **Benefits**:
 - **Simplified Workflow** - Single editing session for entire chronicle
 - **Better Collaboration** - Real-time editing with multiple users
-- **Consistent UX** - Matches other jsonDoc editing patterns
-- **Reduced Complexity** - No need to manage individual stage jsonDocs
+- **Consistent UX** - Matches other jsondoc editing patterns
+- **Reduced Complexity** - No need to manage individual stage jsondocs
 - **Improved Performance** - Fewer database operations and transform chains
 
 ## Chinese Short Drama UI/UX Principles
@@ -810,8 +810,8 @@ if (pendingSaveRef.current && pendingSaveRef.current !== valueToSave) {
 **Principle**: Generate editing interfaces automatically from content schemas while maintaining Chinese-specific optimizations.
 
 **Implementation**:
-- **TypedJsonDoc Integration** - Automatically choose appropriate input components based on schema_type
-- **JsonDocSchemaRegistry Validation** - Real-time validation using centralized Zod schemas
+- **TypedJsondoc Integration** - Automatically choose appropriate input components based on schema_type
+- **JsondocSchemaRegistry Validation** - Real-time validation using centralized Zod schemas
 - **Chinese Text Optimization** - Proper handling of Chinese character input
 - **Platform-Specific Validation** - Built-in validation for different social media platforms
 - **Genre-Aware Forms** - Different form layouts for different drama types
@@ -825,7 +825,7 @@ if (pendingSaveRef.current && pendingSaveRef.current !== valueToSave) {
 **Principle**: Present only relevant actions based on current workflow state and available content.
 
 **Implementation**:
-- **Lineage-Based Action Computation** - Analyze jsonDoc relationships to determine available actions
+- **Lineage-Based Action Computation** - Analyze jsondoc relationships to determine available actions
 - **Stage Detection** - Automatically identify current position in creative workflow
 - **Prerequisite Validation** - Only show actions when required content exists
 - **Priority Ordering** - Display actions in logical workflow sequence
@@ -840,12 +840,12 @@ if (pendingSaveRef.current && pendingSaveRef.current !== valueToSave) {
 
 **Implementation**:
 - **Purple/Violet Theme** - All AI-related elements use purple gradients and colors
-  - AI-generated content (jsonDocs with `origin_type: 'llm'`)
+  - AI-generated content (jsondocs with `origin_type: 'llm'`)
   - Buttons that trigger AI operations (brainstorm generation, outline creation, etc.)
   - AI agent indicators and streaming states
   - AI-powered tools and features
 - **Green Theme** - All human-related elements use green gradients and colors
-  - Human-edited content (jsonDocs with `origin_type: 'human'`)
+  - Human-edited content (jsondocs with `origin_type: 'human'`)
   - Buttons that create human transforms (editing, manual input, etc.)
   - User input fields and manual content creation
   - Human editing indicators and states
@@ -870,7 +870,7 @@ human: {
 **Component Examples**:
 - **AIButton** - Purple gradient button for AI operations like "生成创意", "生成大纲"
 - **HumanButton** - Green gradient button for human actions like "确认选择并开始编辑", "保存修改"
-- **JsonDoc Borders** - Purple borders for AI-generated content, green borders for human-edited content
+- **Jsondoc Borders** - Purple borders for AI-generated content, green borders for human-edited content
 - **Status Indicators** - Consistent color coding for transform types and content origins
 
 **Benefits**:
@@ -996,21 +996,21 @@ fetch('/api/chat', {
 ```
 
 ### Content Management
-- `POST /api/jsonDocs/:id/human-transform` - Execute human edit transform (supports chronicle stage editing, field edits, etc.)
-- `GET /api/jsonDocs` - List jsonDocs with filtering
+- `POST /api/jsondocs/:id/human-transform` - Execute human edit transform (supports chronicle stage editing, field edits, etc.)
+- `GET /api/jsondocs` - List jsondocs with filtering
 - `GET /api/projects/:projectId/outline-settings` - Get outline settings for brainstorm ideas
 - `GET /api/projects/:projectId/chronicles` - Get chronicles for outline settings
 
 ### YJS Collaboration
-- `GET /api/yjs/jsonDoc/:jsonDocId` - Get jsonDoc data for YJS initialization
-- `PUT /api/yjs/jsonDoc/:jsonDocId` - Update jsonDoc from YJS changes
+- `GET /api/yjs/jsondoc/:jsondocId` - Get jsondoc data for YJS initialization
+- `PUT /api/yjs/jsondoc/:jsondocId` - Update jsondoc from YJS changes
 - `POST /api/yjs/update` - Handle YJS document updates
 - `POST /api/yjs/awareness` - Handle YJS awareness updates
 
 **Human Transform Examples**:
 ```bash
 # Create editable chronicle stage
-POST /api/jsonDocs/chronicles-jsonDoc-id/human-transform
+POST /api/jsondocs/chronicles-jsondoc-id/human-transform
 {
   "transformName": "edit_chronicles_stage",
   "derivationPath": "$.stages[0]",
@@ -1018,7 +1018,7 @@ POST /api/jsonDocs/chronicles-jsonDoc-id/human-transform
 }
 
 # Edit specific fields in outline settings
-POST /api/jsonDocs/outline-jsonDoc-id/human-transform
+POST /api/jsondocs/outline-jsondoc-id/human-transform
 {
   "transformName": "edit_outline_field",
   "derivationPath": "$.title",
@@ -1060,7 +1060,7 @@ POST /api/jsonDocs/outline-jsonDoc-id/human-transform
 
 ### Contributing Guidelines
 
-1. **Follow Framework Patterns** - Use Transform JsonDoc Framework conventions
+1. **Follow Framework Patterns** - Use Transform Jsondoc Framework conventions
 2. **Maintain Chinese Focus** - All content generation should target Chinese audiences
 3. **Test Comprehensively** - Use cache-based testing for AI features
 4. **Document Templates** - All prompt templates should be well-documented
@@ -1081,7 +1081,7 @@ When adding new content types to the script writing workflow:
 
 **Step 1: Define Content Schema**
 ```typescript
-// In src/common/schemas/jsonDocs.ts
+// In src/common/schemas/jsondocs.ts
 export const NewContentSchema = z.object({
   title: z.string(),
   content: z.string(),
@@ -1090,8 +1090,8 @@ export const NewContentSchema = z.object({
   target_audience: z.string()
 });
 
-// Add to JsonDocSchemaRegistry
-export const JsonDocSchemaRegistry = {
+// Add to JsondocSchemaRegistry
+export const JsondocSchemaRegistry = {
   // ... existing schemas
   'new_content': NewContentSchema
 } as const;
@@ -1116,13 +1116,13 @@ Content Requirements:
 **Step 3: Add YJS Components**
 ```typescript
 // In src/client/components/shared/
-export const NewContentEditor: React.FC<{ jsonDocId: string }> = ({ jsonDocId }) => {
+export const NewContentEditor: React.FC<{ jsondocId: string }> = ({ jsondocId }) => {
   return (
-    <YJSJsonDocProvider jsonDocId={jsonDocId}>
+    <YJSJsondocProvider jsondocId={jsondocId}>
       <YJSTextField path="title" placeholder="输入标题..." />
       <YJSTextAreaField path="content" placeholder="输入内容..." />
       <YJSArrayField path="tags" placeholder="每行一个标签..." />
-    </YJSJsonDocProvider>
+    </YJSJsondocProvider>
   );
 };
 ```
@@ -1156,7 +1156,7 @@ export const NewContentAction: React.FC<BaseActionProps> = ({
 ```typescript
 // In src/client/utils/actionComputation.ts
 // Add new stage detection for the content type
-if (hasNewContentPrerequisites && isLeafNode(prerequisiteJsonDoc)) {
+if (hasNewContentPrerequisites && isLeafNode(prerequisiteJsondoc)) {
   return {
     actions: [{
       id: 'generate-new-content',
@@ -1171,9 +1171,9 @@ if (hasNewContentPrerequisites && isLeafNode(prerequisiteJsonDoc)) {
   };
 }
 
-// Update TypedJsonDoc type to include new content type
-export type TypedJsonDoc = 
-  | JsonDocWithData<'new_content', 'v1', NewContentV1>
+// Update TypedJsondoc type to include new content type
+export type TypedJsondoc = 
+  | JsondocWithData<'new_content', 'v1', NewContentV1>
   | ... // existing types
 ```
 
@@ -1256,7 +1256,7 @@ docker compose -f docker-compose.prod.yml up -d
 
 ## Framework Documentation
 
-For detailed technical documentation about the underlying Transform JsonDoc Framework, including agent architecture, database schemas, and development patterns, see [TRANSFORM_JSONDOC_FRAMEWORK.md](./TRANSFORM_JSONDOC_FRAMEWORK.md).
+For detailed technical documentation about the underlying Transform Jsondoc Framework, including agent architecture, database schemas, and development patterns, see [TRANSFORM_JSONDOC_FRAMEWORK.md](./TRANSFORM_JSONDOC_FRAMEWORK.md).
 
 ### Chat Interface Architecture
 

@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { buildLineageGraph, findLatestJsonDoc, findMainWorkflowPath } from '../../common/transform-jsonDoc-framework/lineageResolution';
+import { buildLineageGraph, findLatestJsondoc, findMainWorkflowPath } from '../../common/transform-jsondoc-framework/lineageResolution';
 import { computeActionsFromLineage } from '../../client/utils/lineageBasedActionComputation';
 import type {
-    ElectricJsonDoc,
+    ElectricJsondoc,
     ElectricTransform,
     ElectricHumanTransform,
     ElectricTransformInput,
@@ -16,10 +16,10 @@ describe('Brainstorm Edit Chain Integration Test', () => {
         // Test constants
         const projectId = 'test-project-1';
 
-        // Step 1: Create initial brainstorm_idea jsonDoc
-        const jsonDocs: ElectricJsonDoc[] = [
+        // Step 1: Create initial brainstorm_idea jsondoc
+        const jsondocs: ElectricJsondoc[] = [
             {
-                id: 'jsonDoc-1',
+                id: 'jsondoc-1',
                 project_id: projectId,
                 schema_type: 'brainstorm_idea',
                 schema_version: 'v1',
@@ -34,7 +34,7 @@ describe('Brainstorm Edit Chain Integration Test', () => {
             }
         ];
 
-        console.log('✅ Step 1: Created initial brainstorm_idea jsonDoc:', jsonDocs[0].id);
+        console.log('✅ Step 1: Created initial brainstorm_idea jsondoc:', jsondocs[0].id);
 
         // Step 2: LLM transform changes style
         const transforms: ElectricTransform[] = [
@@ -56,9 +56,9 @@ describe('Brainstorm Edit Chain Integration Test', () => {
             }
         ];
 
-        // Add edited jsonDoc from LLM transform
-        jsonDocs.push({
-            id: 'jsonDoc-2',
+        // Add edited jsondoc from LLM transform
+        jsondocs.push({
+            id: 'jsondoc-2',
             project_id: projectId,
             schema_type: 'brainstorm_idea',
             schema_version: 'v1',
@@ -72,7 +72,7 @@ describe('Brainstorm Edit Chain Integration Test', () => {
             updated_at: '2024-01-01T10:05:00Z',
         });
 
-        console.log('✅ Step 2: LLM transform created edited jsonDoc:', jsonDocs[1].id);
+        console.log('✅ Step 2: LLM transform created edited jsondoc:', jsondocs[1].id);
 
         // Step 3: Human transform for manual edits
         transforms.push({
@@ -96,16 +96,16 @@ describe('Brainstorm Edit Chain Integration Test', () => {
                 action_type: 'manual_edit',
                 interface_context: 'brainstorm_editor',
                 change_description: '用户手动调整了角色设定和情节发展',
-                source_jsonDoc_id: 'jsonDoc-2',
+                source_jsondoc_id: 'jsondoc-2',
                 derivation_path: '$',
-                derived_jsonDoc_id: 'jsonDoc-3',
+                derived_jsondoc_id: 'jsondoc-3',
                 transform_name: 'manual_character_adjustment'
             }
         ];
 
-        // Add manually edited jsonDoc
-        jsonDocs.push({
-            id: 'jsonDoc-3',
+        // Add manually edited jsondoc
+        jsondocs.push({
+            id: 'jsondoc-3',
             project_id: projectId,
             schema_type: 'brainstorm_idea',
             schema_version: 'v1',
@@ -119,7 +119,7 @@ describe('Brainstorm Edit Chain Integration Test', () => {
             updated_at: '2024-01-01T10:10:00Z',
         });
 
-        console.log('✅ Step 3: Human transform created manually edited jsonDoc:', jsonDocs[2].id);
+        console.log('✅ Step 3: Human transform created manually edited jsondoc:', jsondocs[2].id);
 
         // Step 4: Second LLM transform extends the story
         transforms.push({
@@ -139,9 +139,9 @@ describe('Brainstorm Edit Chain Integration Test', () => {
             })
         });
 
-        // Add final extended jsonDoc
-        jsonDocs.push({
-            id: 'jsonDoc-4',
+        // Add final extended jsondoc
+        jsondocs.push({
+            id: 'jsondoc-4',
             project_id: projectId,
             schema_type: 'brainstorm_idea',
             schema_version: 'v1',
@@ -155,7 +155,7 @@ describe('Brainstorm Edit Chain Integration Test', () => {
             updated_at: '2024-01-01T10:15:00Z',
         });
 
-        console.log('✅ Step 4: Second LLM transform created extended jsonDoc:', jsonDocs[3].id);
+        console.log('✅ Step 4: Second LLM transform created extended jsondoc:', jsondocs[3].id);
 
         // Step 5: Create transform inputs and outputs to link the chain
         const transformInputs: ElectricTransformInput[] = [
@@ -163,21 +163,21 @@ describe('Brainstorm Edit Chain Integration Test', () => {
                 id: 1,
                 project_id: projectId,
                 transform_id: 'transform-1',
-                jsonDoc_id: 'jsonDoc-1',
+                jsondoc_id: 'jsondoc-1',
                 input_role: 'source'
             },
             {
                 id: 2,
                 project_id: projectId,
                 transform_id: 'transform-2',
-                jsonDoc_id: 'jsonDoc-2',
+                jsondoc_id: 'jsondoc-2',
                 input_role: 'source'
             },
             {
                 id: 3,
                 project_id: projectId,
                 transform_id: 'transform-3',
-                jsonDoc_id: 'jsonDoc-3',
+                jsondoc_id: 'jsondoc-3',
                 input_role: 'source'
             }
         ];
@@ -187,21 +187,21 @@ describe('Brainstorm Edit Chain Integration Test', () => {
                 id: 1,
                 project_id: projectId,
                 transform_id: 'transform-1',
-                jsonDoc_id: 'jsonDoc-2',
+                jsondoc_id: 'jsondoc-2',
                 output_role: 'result'
             },
             {
                 id: 2,
                 project_id: projectId,
                 transform_id: 'transform-2',
-                jsonDoc_id: 'jsonDoc-3',
+                jsondoc_id: 'jsondoc-3',
                 output_role: 'result'
             },
             {
                 id: 3,
                 project_id: projectId,
                 transform_id: 'transform-3',
-                jsonDoc_id: 'jsonDoc-4',
+                jsondoc_id: 'jsondoc-4',
                 output_role: 'result'
             }
         ];
@@ -210,7 +210,7 @@ describe('Brainstorm Edit Chain Integration Test', () => {
 
         // Step 6: Build lineage graph and verify structure
         const lineageGraph = buildLineageGraph(
-            jsonDocs,
+            jsondocs,
             transforms,
             humanTransforms,
             transformInputs,
@@ -218,25 +218,25 @@ describe('Brainstorm Edit Chain Integration Test', () => {
         );
 
         // Verify lineage graph structure
-        expect(lineageGraph.nodes.size).toBe(7); // 4 jsonDocs + 3 transforms
+        expect(lineageGraph.nodes.size).toBe(7); // 4 jsondocs + 3 transforms
         expect(lineageGraph.paths.size).toBeGreaterThan(0);
 
         console.log('✅ Step 6: Built lineage graph with', lineageGraph.nodes.size, 'nodes');
 
         // Step 7: Test lineage resolution functions
-        const latestJsonDocResult = findLatestJsonDoc('jsonDoc-1', '$', lineageGraph, jsonDocs);
-        expect(latestJsonDocResult.jsonDocId).toBe('jsonDoc-4');
+        const latestJsondocResult = findLatestJsondoc('jsondoc-1', '$', lineageGraph, jsondocs);
+        expect(latestJsondocResult.jsondocId).toBe('jsondoc-4');
 
-        const mainPath = findMainWorkflowPath(jsonDocs, lineageGraph);
+        const mainPath = findMainWorkflowPath(jsondocs, lineageGraph);
         expect(mainPath).toBeDefined();
         expect(mainPath.length).toBeGreaterThan(0);
 
-        console.log('✅ Step 7: Verified lineage resolution - latest jsonDoc:', latestJsonDocResult.jsonDocId);
+        console.log('✅ Step 7: Verified lineage resolution - latest jsondoc:', latestJsondocResult.jsondocId);
 
         // Step 8: Test action computation
         const availableActions = computeActionsFromLineage(
             lineageGraph,
-            jsonDocs,
+            jsondocs,
             transforms,
             humanTransforms,
             transformInputs,
@@ -250,14 +250,14 @@ describe('Brainstorm Edit Chain Integration Test', () => {
 
         console.log('✅ Step 8: Computed available actions:', availableActions.actions.length, 'actions');
 
-        // Step 9: Verify the complete jsonDoc chain
-        const sortedJsonDocs = jsonDocs
+        // Step 9: Verify the complete jsondoc chain
+        const sortedJsondocs = jsondocs
             .filter(a => a.schema_type === 'brainstorm_idea')
             .sort((a, b) => a.created_at.localeCompare(b.created_at));
 
-        expect(sortedJsonDocs).toHaveLength(4);
-        expect(sortedJsonDocs[0].id).toBe('jsonDoc-1');
-        expect(sortedJsonDocs[3].id).toBe('jsonDoc-4');
+        expect(sortedJsondocs).toHaveLength(4);
+        expect(sortedJsondocs[0].id).toBe('jsondoc-1');
+        expect(sortedJsondocs[3].id).toBe('jsondoc-4');
 
         // Verify transform types in sequence
         const sortedTransforms = transforms.sort((a, b) => a.created_at.localeCompare(b.created_at));
@@ -265,18 +265,18 @@ describe('Brainstorm Edit Chain Integration Test', () => {
         expect(sortedTransforms[1].type).toBe('human');
         expect(sortedTransforms[2].type).toBe('llm');
 
-        console.log('✅ Step 9: Verified complete jsonDoc chain');
+        console.log('✅ Step 9: Verified complete jsondoc chain');
 
         // Step 10: Test lineage graph node relationships
-        const jsonDoc1Node = lineageGraph.nodes.get('jsonDoc-1');
-        const jsonDoc4Node = lineageGraph.nodes.get('jsonDoc-4');
+        const jsondoc1Node = lineageGraph.nodes.get('jsondoc-1');
+        const jsondoc4Node = lineageGraph.nodes.get('jsondoc-4');
 
-        expect(jsonDoc1Node?.type).toBe('jsonDoc');
-        expect(jsonDoc4Node?.type).toBe('jsonDoc');
+        expect(jsondoc1Node?.type).toBe('jsondoc');
+        expect(jsondoc4Node?.type).toBe('jsondoc');
 
-        if (jsonDoc1Node?.type === 'jsonDoc' && jsonDoc4Node?.type === 'jsonDoc') {
-            expect(jsonDoc1Node.sourceTransform).toBe('none'); // Root jsonDoc
-            expect(jsonDoc4Node.sourceTransform).not.toBe('none'); // Has source transform
+        if (jsondoc1Node?.type === 'jsondoc' && jsondoc4Node?.type === 'jsondoc') {
+            expect(jsondoc1Node.sourceTransform).toBe('none'); // Root jsondoc
+            expect(jsondoc4Node.sourceTransform).not.toBe('none'); // Has source transform
         }
 
         console.log('✅ Step 10: Verified lineage graph node relationships');
@@ -284,16 +284,16 @@ describe('Brainstorm Edit Chain Integration Test', () => {
         // Final verification: Display complete chain summary
         console.log('🎉 Integration test completed successfully!');
         console.log('📊 Summary:');
-        console.log('  - JsonDocs created:', jsonDocs.length);
+        console.log('  - Jsondocs created:', jsondocs.length);
         console.log('  - Transforms executed:', transforms.length);
         console.log('  - Human transforms:', humanTransforms.length);
         console.log('  - Lineage nodes:', lineageGraph.nodes.size);
         console.log('  - Available actions:', availableActions.actions.length);
 
-        console.log('🔗 JsonDoc Chain:');
-        sortedJsonDocs.forEach((jsonDoc, index) => {
-            const data = JSON.parse(jsonDoc.data);
-            console.log(`  ${index + 1}. ${jsonDoc.id} (${jsonDoc.origin_type}): "${data.title}"`);
+        console.log('🔗 Jsondoc Chain:');
+        sortedJsondocs.forEach((jsondoc, index) => {
+            const data = JSON.parse(jsondoc.data);
+            console.log(`  ${index + 1}. ${jsondoc.id} (${jsondoc.origin_type}): "${data.title}"`);
         });
 
         console.log('⚡ Transform Sequence:');
@@ -304,44 +304,44 @@ describe('Brainstorm Edit Chain Integration Test', () => {
         // Step 11: Test UI display logic for SingleBrainstormIdeaEditor
         console.log('✅ Step 11: Testing UI display logic...');
 
-        // Test case 1: AI-generated jsonDoc with no descendants (canBecomeEditable = true)
-        const aiGeneratedNoDescendants = jsonDocs.find(a => a.id === 'jsonDoc-4');
+        // Test case 1: AI-generated jsondoc with no descendants (canBecomeEditable = true)
+        const aiGeneratedNoDescendants = jsondocs.find(a => a.id === 'jsondoc-4');
         expect(aiGeneratedNoDescendants?.origin_type).toBe('ai_generated');
-        const jsonDoc4HasDescendants = transformInputs.some(input => input.jsonDoc_id === 'jsonDoc-4');
-        expect(jsonDoc4HasDescendants).toBe(false); // Should be clickable to edit
-        console.log('  - AI-generated jsonDoc (jsonDoc-4): canBecomeEditable = true');
+        const jsondoc4HasDescendants = transformInputs.some(input => input.jsondoc_id === 'jsondoc-4');
+        expect(jsondoc4HasDescendants).toBe(false); // Should be clickable to edit
+        console.log('  - AI-generated jsondoc (jsondoc-4): canBecomeEditable = true');
 
-        // Test case 2: User-input jsonDoc with no descendants (isEditable = true)
-        const userInputNoDescendants = jsonDocs.find(a => a.id === 'jsonDoc-3');
+        // Test case 2: User-input jsondoc with no descendants (isEditable = true)
+        const userInputNoDescendants = jsondocs.find(a => a.id === 'jsondoc-3');
         expect(userInputNoDescendants?.origin_type).toBe('user_input');
-        const jsonDoc3HasDescendants = transformInputs.some(input => input.jsonDoc_id === 'jsonDoc-3');
-        expect(jsonDoc3HasDescendants).toBe(true); // Has descendants, not editable
-        console.log('  - User-input jsonDoc (jsonDoc-3): has descendants, read-only');
+        const jsondoc3HasDescendants = transformInputs.some(input => input.jsondoc_id === 'jsondoc-3');
+        expect(jsondoc3HasDescendants).toBe(true); // Has descendants, not editable
+        console.log('  - User-input jsondoc (jsondoc-3): has descendants, read-only');
 
-        // Test case 3: AI-generated jsonDoc with descendants (read-only)
-        const aiGeneratedWithDescendants = jsonDocs.find(a => a.id === 'jsonDoc-2');
+        // Test case 3: AI-generated jsondoc with descendants (read-only)
+        const aiGeneratedWithDescendants = jsondocs.find(a => a.id === 'jsondoc-2');
         expect(aiGeneratedWithDescendants?.origin_type).toBe('ai_generated');
-        const jsonDoc2HasDescendants = transformInputs.some(input => input.jsonDoc_id === 'jsonDoc-2');
-        expect(jsonDoc2HasDescendants).toBe(true); // Has descendants, read-only
-        console.log('  - AI-generated jsonDoc (jsonDoc-2): has descendants, read-only');
+        const jsondoc2HasDescendants = transformInputs.some(input => input.jsondoc_id === 'jsondoc-2');
+        expect(jsondoc2HasDescendants).toBe(true); // Has descendants, read-only
+        console.log('  - AI-generated jsondoc (jsondoc-2): has descendants, read-only');
 
-        // Test case 4: Initial jsonDoc with descendants (read-only)
-        const initialJsonDoc = jsonDocs.find(a => a.id === 'jsonDoc-1');
-        expect(initialJsonDoc?.origin_type).toBe('user_input');
-        const jsonDoc1HasDescendants = transformInputs.some(input => input.jsonDoc_id === 'jsonDoc-1');
-        expect(jsonDoc1HasDescendants).toBe(true); // Has descendants, read-only
-        console.log('  - Initial jsonDoc (jsonDoc-1): has descendants, read-only');
+        // Test case 4: Initial jsondoc with descendants (read-only)
+        const initialJsondoc = jsondocs.find(a => a.id === 'jsondoc-1');
+        expect(initialJsondoc?.origin_type).toBe('user_input');
+        const jsondoc1HasDescendants = transformInputs.some(input => input.jsondoc_id === 'jsondoc-1');
+        expect(jsondoc1HasDescendants).toBe(true); // Has descendants, read-only
+        console.log('  - Initial jsondoc (jsondoc-1): has descendants, read-only');
 
         // Verify UI state logic
-        const uiStates = jsonDocs.map(jsonDoc => {
-            const hasDescendants = transformInputs.some(input => input.jsonDoc_id === jsonDoc.id);
-            const isEditable = jsonDoc.origin_type === 'user_input' && !hasDescendants;
-            const canBecomeEditable = jsonDoc.origin_type === 'ai_generated' && !hasDescendants;
+        const uiStates = jsondocs.map(jsondoc => {
+            const hasDescendants = transformInputs.some(input => input.jsondoc_id === jsondoc.id);
+            const isEditable = jsondoc.origin_type === 'user_input' && !hasDescendants;
+            const canBecomeEditable = jsondoc.origin_type === 'ai_generated' && !hasDescendants;
             const isReadOnly = hasDescendants;
 
             return {
-                jsonDocId: jsonDoc.id,
-                originType: jsonDoc.origin_type,
+                jsondocId: jsondoc.id,
+                originType: jsondoc.origin_type,
                 hasDescendants,
                 isEditable,
                 canBecomeEditable,
@@ -352,14 +352,14 @@ describe('Brainstorm Edit Chain Integration Test', () => {
 
         console.log('  - UI States:');
         uiStates.forEach(state => {
-            console.log(`    ${state.jsonDocId}: ${state.displayMode} (${state.originType})`);
+            console.log(`    ${state.jsondocId}: ${state.displayMode} (${state.originType})`);
         });
 
         // Verify the chain shows the correct progression
-        expect(uiStates[0].displayMode).toBe('readonly'); // jsonDoc-1: initial, has descendants
-        expect(uiStates[1].displayMode).toBe('readonly'); // jsonDoc-2: AI-generated, has descendants  
-        expect(uiStates[2].displayMode).toBe('readonly'); // jsonDoc-3: user-input, has descendants
-        expect(uiStates[3].displayMode).toBe('clickable'); // jsonDoc-4: AI-generated, no descendants
+        expect(uiStates[0].displayMode).toBe('readonly'); // jsondoc-1: initial, has descendants
+        expect(uiStates[1].displayMode).toBe('readonly'); // jsondoc-2: AI-generated, has descendants  
+        expect(uiStates[2].displayMode).toBe('readonly'); // jsondoc-3: user-input, has descendants
+        expect(uiStates[3].displayMode).toBe('clickable'); // jsondoc-4: AI-generated, no descendants
 
         // Step 12: Test actual display component computation
         console.log('✅ Step 12: Testing display component computation...');
@@ -369,7 +369,7 @@ describe('Brainstorm Edit Chain Integration Test', () => {
 
         // Create mock project data context with minimal required properties
         const mockProjectData = {
-            jsonDocs,
+            jsondocs,
             transforms,
             humanTransforms,
             transformInputs,
@@ -385,8 +385,8 @@ describe('Brainstorm Edit Chain Integration Test', () => {
         console.log(`  - Detected current stage: ${workflowState.parameters.currentStage}`);
         expect(workflowState.parameters.currentStage).toBe('idea_editing'); // Should be in idea editing stage
 
-        // Test brainstorm idea jsonDocs detection
-        const brainstormIdeas = jsonDocs.filter(a =>
+        // Test brainstorm idea jsondocs detection
+        const brainstormIdeas = jsondocs.filter(a =>
             a.schema_type === 'brainstorm_idea'
         );
         console.log(`  - Found ${brainstormIdeas.length} brainstorm ideas`);
@@ -394,12 +394,12 @@ describe('Brainstorm Edit Chain Integration Test', () => {
 
         // Test chosen brainstorm idea detection (leaf node without descendants)
         const chosenIdea = brainstormIdeas.find(idea => {
-            const hasDescendants = transformInputs.some(input => input.jsonDoc_id === idea.id);
+            const hasDescendants = transformInputs.some(input => input.jsondoc_id === idea.id);
             return !hasDescendants;
         });
         console.log(`  - Chosen idea: ${chosenIdea?.id || 'none'}`);
         expect(chosenIdea).toBeTruthy();
-        expect(chosenIdea?.id).toBe('jsonDoc-4'); // Latest jsonDoc with no descendants
+        expect(chosenIdea?.id).toBe('jsondoc-4'); // Latest jsondoc with no descendants
 
         // Test display components computation
         const displayComponents = workflowState.displayComponents;
@@ -412,7 +412,7 @@ describe('Brainstorm Edit Chain Integration Test', () => {
         expect(singleIdeaEditor).toBeTruthy();
         expect(singleIdeaEditor?.mode).toBe('editable');
         expect(singleIdeaEditor?.props.brainstormIdea).toBeTruthy();
-        expect(singleIdeaEditor?.props.brainstormIdea.jsonDocId).toBe('jsonDoc-4');
+        expect(singleIdeaEditor?.props.brainstormIdea.jsondocId).toBe('jsondoc-4');
 
         // Verify that ProjectBrainstormPage is NOT included in manual path idea_editing stage
         const brainstormPage = displayComponents.find((component: any) =>
@@ -477,11 +477,11 @@ describe('Brainstorm Edit Chain Integration Test', () => {
         console.log('✅ Step 13: Active transforms correctly disable editability');
 
         // Assert final expectations
-        expect(jsonDocs).toHaveLength(4);
+        expect(jsondocs).toHaveLength(4);
         expect(transforms).toHaveLength(3);
         expect(humanTransforms).toHaveLength(1);
         expect(lineageGraph.nodes.size).toBe(7);
-        expect(latestJsonDocResult.jsonDocId).toBe('jsonDoc-4');
+        expect(latestJsondocResult.jsondocId).toBe('jsondoc-4');
         expect(displayComponents.length).toBeGreaterThan(0);
         expect(singleIdeaEditor).toBeDefined();
     });

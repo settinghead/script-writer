@@ -18,7 +18,7 @@ type InvalidRequest = { isValid: false; error?: string };
 type ValidRequest = (Update | AwarenessUpdate) & { isValid: true };
 
 export type Update = {
-    jsonDoc_id: string;
+    jsondoc_id: string;
     update: Uint8Array;
 };
 
@@ -29,10 +29,10 @@ export type AwarenessUpdate = Update & {
 // Parse request helper (based on Electric YJS example)
 const parseRequest = async (req: express.Request): Promise<ValidRequest | InvalidRequest> => {
     const url = new URL(req.url, `http://${req.headers.host}`);
-    const jsonDoc_id = url.searchParams.get('jsonDoc_id');
+    const jsondoc_id = url.searchParams.get('jsondoc_id');
 
-    if (!jsonDoc_id) {
-        return { isValid: false, error: 'jsonDoc_id is required' };
+    if (!jsondoc_id) {
+        return { isValid: false, error: 'jsondoc_id is required' };
     }
 
     const client_id = url.searchParams.get('client_id') ?? undefined;
@@ -61,50 +61,50 @@ const parseRequest = async (req: express.Request): Promise<ValidRequest | Invali
     }
 
     if (client_id) {
-        return { isValid: true, jsonDoc_id, client_id, update };
+        return { isValid: true, jsondoc_id, client_id, update };
     } else {
-        return { isValid: true, jsonDoc_id, update };
+        return { isValid: true, jsondoc_id, update };
     }
 };
 
 // Save document update using raw SQL to avoid TypeScript issues
-async function saveUpdate({ jsonDoc_id, update }: Update) {
-    const room_id = `jsonDoc-${jsonDoc_id}`;
+async function saveUpdate({ jsondoc_id, update }: Update) {
+    const room_id = `jsondoc-${jsondoc_id}`;
 
-    // Get project_id from jsonDoc
-    const jsonDoc = await db
-        .selectFrom('jsonDocs')
+    // Get project_id from jsondoc
+    const jsondoc = await db
+        .selectFrom('jsondocs')
         .select('project_id')
-        .where('id', '=', jsonDoc_id)
+        .where('id', '=', jsondoc_id)
         .executeTakeFirst();
 
-    if (!jsonDoc) {
-        throw new Error(`JsonDoc not found: ${jsonDoc_id}`);
+    if (!jsondoc) {
+        throw new Error(`Jsondoc not found: ${jsondoc_id}`);
     }
 
-    // Save the YJS update to jsonDoc_yjs_documents
+    // Save the YJS update to jsondoc_yjs_documents
     await db
-        .insertInto('jsonDoc_yjs_documents')
+        .insertInto('jsondoc_yjs_documents')
         .values({
-            jsonDoc_id,
-            project_id: jsonDoc.project_id,
+            jsondoc_id,
+            project_id: jsondoc.project_id,
             room_id,
             document_state: Buffer.from(update)
         })
         .execute();
 
-    // Auto-sync YJS document to jsonDoc record
-    await syncYJSToJsonDoc(jsonDoc_id);
+    // Auto-sync YJS document to jsondoc record
+    await syncYJSToJsondoc(jsondoc_id);
 }
 
-// Helper function to sync YJS document to jsonDoc
-const syncYJSToJsonDoc = async (jsonDocId: string) => {
+// Helper function to sync YJS document to jsondoc
+const syncYJSToJsondoc = async (jsondocId: string) => {
     try {
-        // Get all YJS updates for this jsonDoc
+        // Get all YJS updates for this jsondoc
         const updates = await db
-            .selectFrom('jsonDoc_yjs_documents')
+            .selectFrom('jsondoc_yjs_documents')
             .select(['document_state', 'created_at'])
-            .where('jsonDoc_id', '=', jsonDocId)
+            .where('jsondoc_id', '=', jsondocId)
             .orderBy('created_at', 'asc')
             .execute();
 
@@ -124,14 +124,14 @@ const syncYJSToJsonDoc = async (jsonDocId: string) => {
 
                 // Basic validation before applying
                 if (updateData.length === 0) {
-                    console.warn(`[YJS Sync] Skipping empty update for jsonDoc ${jsonDocId}`);
+                    console.warn(`[YJS Sync] Skipping empty update for jsondoc ${jsondocId}`);
                     skippedCount++;
                     continue;
                 }
 
                 // Validate minimum size for YJS updates (should be at least a few bytes)
                 if (updateData.length < 10) {
-                    console.warn(`[YJS Sync] Skipping suspiciously small update (${updateData.length} bytes) for jsonDoc ${jsonDocId}`);
+                    console.warn(`[YJS Sync] Skipping suspiciously small update (${updateData.length} bytes) for jsondoc ${jsondocId}`);
                     skippedCount++;
                     continue;
                 }
@@ -139,7 +139,7 @@ const syncYJSToJsonDoc = async (jsonDocId: string) => {
                 Y.applyUpdate(tempDoc, updateData);
                 updateCount++;
             } catch (error) {
-                console.warn(`[YJS Sync] Skipping corrupted update ${updateCount + skippedCount + 1} for jsonDoc ${jsonDocId}:`, error instanceof Error ? error.message : String(error));
+                console.warn(`[YJS Sync] Skipping corrupted update ${updateCount + skippedCount + 1} for jsondoc ${jsondocId}:`, error instanceof Error ? error.message : String(error));
                 skippedCount++;
                 continue;
             }
@@ -188,28 +188,28 @@ const syncYJSToJsonDoc = async (jsonDocId: string) => {
             return;
         }
 
-        // Update the jsonDoc in the database
+        // Update the jsondoc in the database
         await db
-            .updateTable('jsonDocs')
+            .updateTable('jsondocs')
             .set({
                 data: JSON.stringify(extractedData),
                 updated_at: new Date().toISOString()
             })
-            .where('id', '=', jsonDocId)
+            .where('id', '=', jsondocId)
             .execute();
 
     } catch (error) {
-        console.error(`[YJS Sync] Error syncing YJS to jsonDoc ${jsonDocId}:`, error);
+        console.error(`[YJS Sync] Error syncing YJS to jsondoc ${jsondocId}:`, error);
     }
 };
 
 // Helper function to clean up corrupted YJS documents
-const cleanupCorruptedDocuments = async (jsonDocId: string) => {
+const cleanupCorruptedDocuments = async (jsondocId: string) => {
     try {
         const updates = await db
-            .selectFrom('jsonDoc_yjs_documents')
+            .selectFrom('jsondoc_yjs_documents')
             .select(['id', 'document_state', 'created_at'])
-            .where('jsonDoc_id', '=', jsonDocId)
+            .where('jsondoc_id', '=', jsondocId)
             .orderBy('created_at', 'asc')
             .execute();
 
@@ -241,43 +241,43 @@ const cleanupCorruptedDocuments = async (jsonDocId: string) => {
 
         if (corruptedIds.length > 0) {
             await db
-                .deleteFrom('jsonDoc_yjs_documents')
+                .deleteFrom('jsondoc_yjs_documents')
                 .where('id', 'in', corruptedIds)
                 .execute();
         }
 
     } catch (error) {
-        console.error(`[YJS Cleanup] Error cleaning up corrupted documents for jsonDoc ${jsonDocId}:`, error);
+        console.error(`[YJS Cleanup] Error cleaning up corrupted documents for jsondoc ${jsondocId}:`, error);
     }
 };
 
 // Save awareness update using raw SQL to avoid TypeScript issues
-async function upsertAwarenessUpdate({ jsonDoc_id, client_id, update }: AwarenessUpdate) {
-    const room_id = `jsonDoc-${jsonDoc_id}`;
+async function upsertAwarenessUpdate({ jsondoc_id, client_id, update }: AwarenessUpdate) {
+    const room_id = `jsondoc-${jsondoc_id}`;
 
-    // Get project_id from jsonDoc
-    const jsonDoc = await db
-        .selectFrom('jsonDocs')
+    // Get project_id from jsondoc
+    const jsondoc = await db
+        .selectFrom('jsondocs')
         .select('project_id')
-        .where('id', '=', jsonDoc_id)
+        .where('id', '=', jsondoc_id)
         .executeTakeFirst();
 
-    if (!jsonDoc) {
-        throw new Error(`JsonDoc not found: ${jsonDoc_id}`);
+    if (!jsondoc) {
+        throw new Error(`Jsondoc not found: ${jsondoc_id}`);
     }
 
     // Use Kysely insertInto with onConflict for upsert
     await db
-        .insertInto('jsonDoc_yjs_awareness')
+        .insertInto('jsondoc_yjs_awareness')
         .values({
             client_id,
-            jsonDoc_id,
-            project_id: jsonDoc.project_id,
+            jsondoc_id,
+            project_id: jsondoc.project_id,
             room_id,
             update: Buffer.from(update)
         })
         .onConflict((oc) => oc
-            .columns(['client_id', 'jsonDoc_id'])
+            .columns(['client_id', 'jsondoc_id'])
             .doUpdateSet({
                 update: Buffer.from(update),
                 updated_at: sql`CURRENT_TIMESTAMP`
@@ -299,16 +299,16 @@ router.put('/update', async (req: any, res: any) => {
             return res.status(400).json({ error: parsedRequest.error || 'Invalid request' });
         }
 
-        const jsonDocId = parsedRequest.jsonDoc_id;
+        const jsondocId = parsedRequest.jsondoc_id;
 
         // Validate update size (reasonable limits)
         if (parsedRequest.update.length > 1024 * 1024) { // 1MB limit
-            console.error(`YJS: Rejecting oversized update (${parsedRequest.update.length} bytes) for jsonDoc ${jsonDocId}`);
+            console.error(`YJS: Rejecting oversized update (${parsedRequest.update.length} bytes) for jsondoc ${jsondocId}`);
             return res.status(400).json({ error: 'Update too large' });
         }
 
         if (parsedRequest.update.length === 0) {
-            console.error(`YJS: Rejecting empty update for jsonDoc ${jsonDocId}`);
+            console.error(`YJS: Rejecting empty update for jsondoc ${jsondocId}`);
             return res.status(400).json({ error: 'Empty update' });
         }
 
@@ -328,7 +328,7 @@ router.put('/update', async (req: any, res: any) => {
             }
 
         } catch (validationError) {
-            console.error(`YJS: Update validation failed for jsonDoc ${jsonDocId}:`, validationError);
+            console.error(`YJS: Update validation failed for jsondoc ${jsondocId}:`, validationError);
             console.error(`YJS: Update details - Size: ${parsedRequest.update.length} bytes`);
 
             return res.status(400).json({ error: 'Invalid YJS update format' });
@@ -349,26 +349,26 @@ router.put('/update', async (req: any, res: any) => {
 });
 
 // Load document endpoint - returns the current YJS document state
-router.get('/document/:jsonDocId', async (req: any, res: any) => {
+router.get('/document/:jsondocId', async (req: any, res: any) => {
     try {
         const user = authMiddleware.getCurrentUser(req);
         if (!user) {
             return res.status(401).json({ error: 'Authentication required' });
         }
 
-        const jsonDocId = req.params.jsonDocId;
-        if (!jsonDocId) {
-            return res.status(400).json({ error: 'JsonDoc ID is required' });
+        const jsondocId = req.params.jsondocId;
+        if (!jsondocId) {
+            return res.status(400).json({ error: 'Jsondoc ID is required' });
         }
 
         // First, clean up any corrupted documents
-        await cleanupCorruptedDocuments(jsonDocId);
+        await cleanupCorruptedDocuments(jsondocId);
 
-        // Get all document updates for this jsonDoc, ordered by creation time
+        // Get all document updates for this jsondoc, ordered by creation time
         const updates = await db
-            .selectFrom('jsonDoc_yjs_documents')
+            .selectFrom('jsondoc_yjs_documents')
             .select('document_state')
-            .where('jsonDoc_id', '=', jsonDocId)
+            .where('jsondoc_id', '=', jsondocId)
             .orderBy('created_at', 'asc')
             .execute();
 
@@ -387,13 +387,13 @@ router.get('/document/:jsonDocId', async (req: any, res: any) => {
 
                         // Basic validation
                         if (updateArray.length === 0) {
-                            console.warn(`[YJS Document] Skipping empty update for jsonDoc ${jsonDocId}`);
+                            console.warn(`[YJS Document] Skipping empty update for jsondoc ${jsondocId}`);
                             skippedCount++;
                             continue;
                         }
 
                         if (updateArray.length < 10) {
-                            console.warn(`[YJS Document] Skipping suspiciously small update (${updateArray.length} bytes) for jsonDoc ${jsonDocId}`);
+                            console.warn(`[YJS Document] Skipping suspiciously small update (${updateArray.length} bytes) for jsondoc ${jsondocId}`);
                             skippedCount++;
                             continue;
                         }
@@ -401,7 +401,7 @@ router.get('/document/:jsonDocId', async (req: any, res: any) => {
                         Y.applyUpdate(tempDoc, updateArray);
                         appliedCount++;
                     } catch (error) {
-                        console.warn(`[YJS Document] Failed to apply update for jsonDoc ${jsonDocId}, skipping:`, error instanceof Error ? error.message : String(error));
+                        console.warn(`[YJS Document] Failed to apply update for jsondoc ${jsondocId}, skipping:`, error instanceof Error ? error.message : String(error));
                         skippedCount++;
                     }
                 }
@@ -426,19 +426,19 @@ router.get('/document/:jsonDocId', async (req: any, res: any) => {
 });
 
 // Add a cleanup endpoint for manual cleanup (dev-only)
-router.post('/cleanup/:jsonDocId', async (req: any, res: any) => {
+router.post('/cleanup/:jsondocId', async (req: any, res: any) => {
     try {
         const user = authMiddleware.getCurrentUser(req);
         if (!user) {
             return res.status(401).json({ error: 'Authentication required' });
         }
 
-        const jsonDocId = req.params.jsonDocId;
-        if (!jsonDocId) {
-            return res.status(400).json({ error: 'JsonDoc ID is required' });
+        const jsondocId = req.params.jsondocId;
+        if (!jsondocId) {
+            return res.status(400).json({ error: 'Jsondoc ID is required' });
         }
 
-        await cleanupCorruptedDocuments(jsonDocId);
+        await cleanupCorruptedDocuments(jsondocId);
 
         res.json({ success: true, message: 'Cleanup completed' });
 

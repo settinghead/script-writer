@@ -1,18 +1,18 @@
 import { Express } from 'express';
 import { AuthDatabase } from '../database/auth';
 import { createAuthMiddleware } from '../middleware/auth';
-import { JsonDocRepository } from '../transform-jsonDoc-framework/JsonDocRepository';
-import { TransformRepository } from '../transform-jsonDoc-framework/TransformRepository';
-import { ProjectRepository } from '../transform-jsonDoc-framework/ProjectRepository';
-import { ChatMessageRepository } from '../transform-jsonDoc-framework/ChatMessageRepository';
+import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
+import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
+import { ProjectRepository } from '../transform-jsondoc-framework/ProjectRepository';
+import { ChatMessageRepository } from '../transform-jsondoc-framework/ChatMessageRepository';
 import { ProjectService } from '../services/ProjectService';
-import { AgentService } from '../transform-jsonDoc-framework/AgentService';
-import { ChatService } from '../transform-jsonDoc-framework/ChatService';
+import { AgentService } from '../transform-jsondoc-framework/AgentService';
+import { ChatService } from '../transform-jsondoc-framework/ChatService';
 
 // Import route creators
-import { createElectricProxyRoutes } from '../transform-jsonDoc-framework/electricProxy';
+import { createElectricProxyRoutes } from '../transform-jsondoc-framework/electricProxy';
 import { createProjectRoutes } from './projectRoutes';
-import { createJsonDocRoutes } from './jsonDocRoutes';
+import { createJsondocRoutes } from './jsondocRoutes';
 import { createTransformRoutes } from './transformRoutes';
 import { createChatRoutes } from './chatRoutes';
 import { createAdminRoutes } from './adminRoutes';
@@ -22,7 +22,7 @@ export function createAPIRoutes(
     app: Express,
     authDB: AuthDatabase,
     authMiddleware: ReturnType<typeof createAuthMiddleware>,
-    jsonDocRepo: JsonDocRepository,
+    jsondocRepo: JsondocRepository,
     transformRepo: TransformRepository,
     projectRepo: ProjectRepository,
     chatMessageRepo: ChatMessageRepository,
@@ -31,16 +31,16 @@ export function createAPIRoutes(
     chatService: ChatService
 ) {
     // Mount Electric proxy routes (BEFORE other routes to avoid conflicts)
-    app.use('/api/electric', createElectricProxyRoutes(authDB, jsonDocRepo));
+    app.use('/api/electric', createElectricProxyRoutes(authDB, jsondocRepo));
 
     // Mount project routes
     app.use('/api/projects', createProjectRoutes(authMiddleware, projectService, agentService));
 
-    // Mount jsonDoc routes
-    app.use('/api/jsonDocs', createJsonDocRoutes(authMiddleware, jsonDocRepo, transformRepo));
+    // Mount jsondoc routes
+    app.use('/api/jsondocs', createJsondocRoutes(authMiddleware, jsondocRepo, transformRepo));
 
     // Mount transform routes
-    app.use('/api/transforms', createTransformRoutes(authMiddleware, jsonDocRepo, transformRepo));
+    app.use('/api/transforms', createTransformRoutes(authMiddleware, jsondocRepo, transformRepo));
 
     // Mount chat routes
     app.use('/api/chat', createChatRoutes(authMiddleware, chatService));
@@ -49,7 +49,7 @@ export function createAPIRoutes(
     app.use('/api/yjs', yjsRoutes);
 
     // Mount admin routes (dev-only)
-    app.use('/api/admin', createAdminRoutes(transformRepo, jsonDocRepo));
+    app.use('/api/admin', createAdminRoutes(transformRepo, jsondocRepo));
 
     // Catch-all for unmatched API routes - return 404 instead of falling through to ViteExpress
     app.use(/^\/api\/.*$/, (req, res) => {

@@ -9,7 +9,7 @@ import { z } from 'zod';
  * This schema validates the data provided by the user to generate story ideas.
  */
 export const IdeationInputSchema = z.object({
-  sourceJsonDocId: z.string().min(1, '源jsonDoc ID不能为空').describe('源头脑风暴参数jsonDoc ID，包含所有生成参数'),
+  sourceJsondocId: z.string().min(1, '源jsondoc ID不能为空').describe('源头脑风暴参数jsondoc ID，包含所有生成参数'),
   otherRequirements: z.string().describe('其他要求，如故事类型、内容、故事风格等'),
 });
 
@@ -20,7 +20,7 @@ export type IdeationInput = z.infer<typeof IdeationInputSchema>;
 
 
 // =================================================================================
-// OUTPUT SCHEMAS (Represents the "data" of an output jsonDoc)
+// OUTPUT SCHEMAS (Represents the "data" of an output jsondoc)
 // =================================================================================
 
 /**

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import { JsonDocRepository } from '../transform-jsonDoc-framework/JsonDocRepository';
-import { ProjectRepository } from '../transform-jsonDoc-framework/ProjectRepository';
+import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
+import { ProjectRepository } from '../transform-jsondoc-framework/ProjectRepository';
 import { db } from '../database/connection';
 
 const TEST_PROJECT_ID = 'c4516b01-9485-4646-bf29-30f86558cef9';
@@ -12,7 +12,7 @@ async function testYJSFix() {
 
     try {
         // Initialize repositories
-        const jsonDocRepo = new JsonDocRepository(db);
+        const jsondocRepo = new JsondocRepository(db);
         const projectRepo = new ProjectRepository(db);
 
         // Verify project exists
@@ -24,8 +24,8 @@ async function testYJSFix() {
 
         console.log('✅ Project found:', project.name);
 
-        // Create a test brainstorm jsonDoc
-        const testJsonDoc = await jsonDocRepo.createJsonDoc(
+        // Create a test brainstorm jsondoc
+        const testJsondoc = await jsondocRepo.createJsondoc(
             TEST_PROJECT_ID,
             'brainstorm_idea',
             {
@@ -41,21 +41,21 @@ async function testYJSFix() {
             'ai_generated'
         );
 
-        console.log('✅ Test jsonDoc created:', testJsonDoc.id);
+        console.log('✅ Test jsondoc created:', testJsondoc.id);
 
-        // Test the jsonDoc can be retrieved
-        const retrievedJsonDocs = await jsonDocRepo.getJsonDocsByIds([testJsonDoc.id]);
-        const retrievedJsonDoc = retrievedJsonDocs[0];
-        if (!retrievedJsonDoc) {
-            console.error('❌ Failed to retrieve test jsonDoc');
+        // Test the jsondoc can be retrieved
+        const retrievedJsondocs = await jsondocRepo.getJsondocsByIds([testJsondoc.id]);
+        const retrievedJsondoc = retrievedJsondocs[0];
+        if (!retrievedJsondoc) {
+            console.error('❌ Failed to retrieve test jsondoc');
             return;
         }
 
-        console.log('✅ Test jsonDoc retrieved successfully');
-        console.log('📝 JsonDoc data:', JSON.parse(retrievedJsonDoc.data));
+        console.log('✅ Test jsondoc retrieved successfully');
+        console.log('📝 Jsondoc data:', JSON.parse(retrievedJsondoc.data));
 
         // Test YJS document creation endpoint
-        const response = await fetch(`http://localhost:4600/api/yjs/jsonDoc/${testJsonDoc.id}`, {
+        const response = await fetch(`http://localhost:4600/api/yjs/jsondoc/${testJsondoc.id}`, {
             method: 'GET',
             headers: {
                 'Authorization': 'Bearer debug-auth-token-script-writer-dev'
@@ -73,14 +73,14 @@ async function testYJSFix() {
         console.log('');
         console.log('📋 Test Summary:');
         console.log(`   - Project: ${project.name}`);
-        console.log(`   - JsonDoc ID: ${testJsonDoc.id}`);
+        console.log(`   - Jsondoc ID: ${testJsondoc.id}`);
         console.log(`   - Test URL: https://localhost:4610/projects/${TEST_PROJECT_ID}`);
         console.log('');
         console.log('🔍 To manually test the fix:');
         console.log('   1. Open https://localhost:4610/projects/' + TEST_PROJECT_ID);
         console.log('   2. Look for the YJS Demo component');
         console.log('   3. Check browser console for infinite loop messages');
-        console.log('   4. The jsonDoc should load without continuous re-initialization');
+        console.log('   4. The jsondoc should load without continuous re-initialization');
 
     } catch (error) {
         console.error('❌ Test failed:', error);

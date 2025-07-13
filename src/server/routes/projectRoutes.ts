@@ -1,6 +1,6 @@
 import express from 'express';
 import { ProjectService } from '../services/ProjectService';
-import { AgentService, GeneralAgentRequestSchema } from '../transform-jsonDoc-framework/AgentService';
+import { AgentService, GeneralAgentRequestSchema } from '../transform-jsondoc-framework/AgentService';
 
 export function createProjectRoutes(
     authMiddleware: any,

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { JsonDocSchemaRegistry, BrainstormToolInputSchema } from '../../../common/schemas/jsonDocs';
+import { JsondocSchemaRegistry, BrainstormToolInputSchema } from '../../../common/schemas/jsondocs';
 import {
   OutlineSettingsInputSchema,
   OutlineSettingsOutputSchema,
@@ -8,7 +8,7 @@ import {
 } from '../../../common/schemas/outlineSchemas';
 
 // Get the schemas from the registry
-const BrainstormIdeaSchema = JsonDocSchemaRegistry.brainstorm_idea;
+const BrainstormIdeaSchema = JsondocSchemaRegistry.brainstorm_idea;
 
 
 // Type definitions based on schemas
@@ -48,10 +48,10 @@ function extractDataAtPath(sourceData: any, path: string): any {
  * Create brainstorm idea from brainstorm idea (for editing)
  */
 export function createBrainstormIdeaFromBrainstormIdea(
-  sourceJsonDocData: any,
+  sourceJsondocData: any,
   derivationPath: string
 ): BrainstormIdea {
-  const ideaData = extractDataAtPath(sourceJsonDocData, derivationPath) as BrainstormIdea;
+  const ideaData = extractDataAtPath(sourceJsondocData, derivationPath) as BrainstormIdea;
 
   if (!ideaData || typeof ideaData.title !== 'string' || typeof ideaData.body !== 'string') {
     throw new Error(`Invalid brainstorm idea data at path ${derivationPath}`);
@@ -68,10 +68,10 @@ export function createBrainstormIdeaFromBrainstormIdea(
  * Create user input from brainstorm idea (for editing)
  */
 export function createUserInputFromBrainstormIdea(
-  sourceJsonDocData: any,
+  sourceJsondocData: any,
   derivationPath: string
 ): any {
-  const ideaData = extractDataAtPath(sourceJsonDocData, derivationPath);
+  const ideaData = extractDataAtPath(sourceJsondocData, derivationPath);
 
   if (!ideaData) {
     throw new Error(`No data found at path ${derivationPath}`);
@@ -81,7 +81,7 @@ export function createUserInputFromBrainstormIdea(
   return {
     text: typeof ideaData === 'string' ? ideaData : JSON.stringify(ideaData),
     source: 'modified_brainstorm',
-    source_jsonDoc_id: undefined // Will be set by the executor
+    source_jsondoc_id: undefined // Will be set by the executor
   };
 }
 
@@ -89,10 +89,10 @@ export function createUserInputFromBrainstormIdea(
  * Create user input from brainstorm field (for editing specific fields)
  */
 export function createUserInputFromBrainstormField(
-  sourceJsonDocData: any,
+  sourceJsondocData: any,
   derivationPath: string
 ): any {
-  const fieldData = extractDataAtPath(sourceJsonDocData, derivationPath);
+  const fieldData = extractDataAtPath(sourceJsondocData, derivationPath);
 
   if (fieldData === null || fieldData === undefined) {
     throw new Error(`No data found at path ${derivationPath}`);
@@ -102,14 +102,14 @@ export function createUserInputFromBrainstormField(
   return {
     text: typeof fieldData === 'string' ? fieldData : JSON.stringify(fieldData),
     source: 'modified_brainstorm',
-    source_jsonDoc_id: undefined // Will be set by the executor
+    source_jsondoc_id: undefined // Will be set by the executor
   };
 }
 
 
-export const createOutlineSettingsTransform = (sourceJsonDocId: string) => {
+export const createOutlineSettingsTransform = (sourceJsondocId: string) => {
   return {
-    sourceJsonDocId,
+    sourceJsondocId,
     targetPath: '$[outline_settings]',
     inputSchema: OutlineSettingsInputSchema,
     outputSchema: OutlineSettingsOutputSchema,
@@ -117,9 +117,9 @@ export const createOutlineSettingsTransform = (sourceJsonDocId: string) => {
   };
 };
 
-export const createChroniclesTransform = (sourceJsonDocId: string) => {
+export const createChroniclesTransform = (sourceJsondocId: string) => {
   return {
-    sourceJsonDocId,
+    sourceJsondocId,
     targetPath: '$[chronicles]',
     inputSchema: ChroniclesInputSchema,
     outputSchema: ChroniclesOutputSchema,
@@ -131,11 +131,11 @@ export const createChroniclesTransform = (sourceJsonDocId: string) => {
  * Create brainstorm tool input parameters (for new project creation)
  */
 export function createBrainstormToolInput(
-  sourceJsonDocData: any,
+  sourceJsondocData: any,
   derivationPath: string
 ): BrainstormToolInput {
   // For new creation, provide default values
-  // This function is called when creating a new brainstorm input jsonDoc
+  // This function is called when creating a new brainstorm input jsondoc
   return {
     platform: '抖音',
     genre: '',
@@ -150,10 +150,10 @@ export function createBrainstormToolInput(
  * Returns the outline settings data directly (no wrapper)
  */
 export function createOutlineSettingsFromOutlineSettings(
-  sourceJsonDocData: any,
+  sourceJsondocData: any,
   derivationPath: string
 ): any {
-  const outlineSettingsData = extractDataAtPath(sourceJsonDocData, derivationPath);
+  const outlineSettingsData = extractDataAtPath(sourceJsondocData, derivationPath);
 
   if (!outlineSettingsData || typeof outlineSettingsData !== 'object') {
     throw new Error(`Invalid outline settings data at path ${derivationPath}`);
@@ -175,10 +175,10 @@ export function createOutlineSettingsFromOutlineSettings(
  * Returns the chronicles data directly (no wrapper)
  */
 export function createChroniclesFromChronicles(
-  sourceJsonDocData: any,
+  sourceJsondocData: any,
   derivationPath: string
 ): any {
-  const chroniclesData = extractDataAtPath(sourceJsonDocData, derivationPath);
+  const chroniclesData = extractDataAtPath(sourceJsondocData, derivationPath);
 
   if (!chroniclesData || typeof chroniclesData !== 'object') {
     throw new Error(`Invalid chronicles data at path ${derivationPath}`);

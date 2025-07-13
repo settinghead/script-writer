@@ -1,6 +1,6 @@
 import { vi } from 'vitest';
 import { CacheReader, CachedResponse } from '../utils/cacheReader';
-import { generateCacheKey, generateSchemaHash, CacheKeyParams } from '../../common/transform-jsonDoc-framework/cacheKeyGenerator';
+import { generateCacheKey, generateSchemaHash, CacheKeyParams } from '../../common/transform-jsondoc-framework/cacheKeyGenerator';
 import { z } from 'zod';
 
 const cacheReader = new CacheReader();
@@ -151,7 +151,7 @@ function createStreamTextFromCache(cachedResponse: CachedResponse) {
     // Convert chunks to the format expected by AI SDK fullStream
     const streamEvents = [
         { type: 'tool-call', toolName: 'brainstorm', toolCallId: 'tool-call-1', args: { platform: 'tv', requirements: '现代都市甜宠剧' } },
-        { type: 'tool-result', toolCallId: 'tool-call-1', result: { outputJsonDocId: 'test-brainstorm-output' } },
+        { type: 'tool-result', toolCallId: 'tool-call-1', result: { outputJsondocId: 'test-brainstorm-output' } },
         ...chunks.map(chunk => ({
             type: 'text-delta',
             textDelta: chunk.data
@@ -166,7 +166,7 @@ function createStreamTextFromCache(cachedResponse: CachedResponse) {
             { toolName: 'brainstorm', args: { platform: 'tv', requirements: '现代都市甜宠剧' } }
         ]),
         toolResults: Promise.resolve([
-            { toolCallId: 'tool-call-1', result: { outputJsonDocId: 'test-brainstorm-output' } }
+            { toolCallId: 'tool-call-1', result: { outputJsondocId: 'test-brainstorm-output' } }
         ])
     };
 }
@@ -242,7 +242,7 @@ function createFallbackStreamText(options?: { onToolCall?: (toolName: string, ar
     return {
         fullStream: createAsyncIterator([
             { type: 'tool-call', toolName, toolCallId: 'tool-call-1', args },
-            { type: 'tool-result', toolCallId: 'tool-call-1', result: { outputJsonDocId: 'test-brainstorm-output' } },
+            { type: 'tool-result', toolCallId: 'tool-call-1', result: { outputJsondocId: 'test-brainstorm-output' } },
             { type: 'text-delta', textDelta: 'I have generated some brainstorm ideas for you.' }
         ]),
         finishReason: Promise.resolve('stop'),
@@ -251,7 +251,7 @@ function createFallbackStreamText(options?: { onToolCall?: (toolName: string, ar
             { toolName, args }
         ]),
         toolResults: Promise.resolve([
-            { toolCallId: 'tool-call-1', result: { outputJsonDocId: 'test-brainstorm-output' } }
+            { toolCallId: 'tool-call-1', result: { outputJsondocId: 'test-brainstorm-output' } }
         ])
     };
 }

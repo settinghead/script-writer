@@ -8,7 +8,7 @@ interface OutlineSessionData {
 
 // Types based on existing EpisodeContext
 export interface Stage {
-  jsonDocId: string;
+  jsondocId: string;
   stageNumber: number;
   stageSynopsis: string;
   numberOfEpisodes: number;
@@ -38,7 +38,7 @@ interface ProjectData {
   description?: string;
   outline: OutlineSessionData | null;
   stages: Stage[];
-  episodes: Record<string, StageEpisodeState>; // Keyed by stage jsonDocId
+  episodes: Record<string, StageEpisodeState>; // Keyed by stage jsondocId
   expandedKeys: string[];
   selectedStageId: string | null;
   selectedEpisodeId: string | null;

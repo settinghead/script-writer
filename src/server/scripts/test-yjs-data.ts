@@ -1,18 +1,18 @@
 import { db } from '../database/connection';
 import * as Y from 'yjs';
 
-async function testYJSData(jsonDocId: string) {
-    console.log(`Testing YJS data for jsonDoc: ${jsonDocId}`);
+async function testYJSData(jsondocId: string) {
+    console.log(`Testing YJS data for jsondoc: ${jsondocId}`);
 
     // Test 1: Check if YJS document exists
     const yjsDoc = await db
-        .selectFrom('jsonDoc_yjs_documents')
+        .selectFrom('jsondoc_yjs_documents')
         .selectAll()
-        .where('jsonDoc_id', '=', jsonDocId)
+        .where('jsondoc_id', '=', jsondocId)
         .executeTakeFirst();
 
     if (!yjsDoc) {
-        console.error(`❌ YJS document not found for jsonDoc: ${jsonDocId}`);
+        console.error(`❌ YJS document not found for jsondoc: ${jsondocId}`);
         return;
     }
 
@@ -44,30 +44,30 @@ async function testYJSData(jsonDocId: string) {
 
     console.log(`✅ Extracted data:`, extractedData);
 
-    // Test 5: Compare with jsonDoc data
-    const jsonDoc = await db
-        .selectFrom('jsonDocs')
+    // Test 5: Compare with jsondoc data
+    const jsondoc = await db
+        .selectFrom('jsondocs')
         .select('data')
-        .where('id', '=', jsonDocId)
+        .where('id', '=', jsondocId)
         .executeTakeFirst();
 
-    if (jsonDoc) {
-        const jsonDocData = JSON.parse(jsonDoc.data);
-        console.log(`✅ Original jsonDoc data:`, jsonDocData);
+    if (jsondoc) {
+        const jsondocData = JSON.parse(jsondoc.data);
+        console.log(`✅ Original jsondoc data:`, jsondocData);
 
         // Compare fields
-        const fieldsMatch = Object.keys(jsonDocData).every(key => {
-            const match = extractedData[key] === jsonDocData[key];
+        const fieldsMatch = Object.keys(jsondocData).every(key => {
+            const match = extractedData[key] === jsondocData[key];
             if (!match) {
                 console.log(`❌ Field mismatch for ${key}:`);
-                console.log(`  JsonDoc: ${jsonDocData[key]}`);
+                console.log(`  Jsondoc: ${jsondocData[key]}`);
                 console.log(`  YJS:      ${extractedData[key]}`);
             }
             return match;
         });
 
         if (fieldsMatch) {
-            console.log(`✅ All fields match between jsonDoc and YJS data`);
+            console.log(`✅ All fields match between jsondoc and YJS data`);
         } else {
             console.log(`❌ Some fields don't match`);
         }
@@ -75,10 +75,10 @@ async function testYJSData(jsonDocId: string) {
 }
 
 // Run the test
-const jsonDocId = process.argv[2];
-if (!jsonDocId) {
-    console.error('Usage: ./run-ts src/server/scripts/test-yjs-data.ts <jsonDoc-id>');
+const jsondocId = process.argv[2];
+if (!jsondocId) {
+    console.error('Usage: ./run-ts src/server/scripts/test-yjs-data.ts <jsondoc-id>');
     process.exit(1);
 }
 
-testYJSData(jsonDocId).catch(console.error); 
+testYJSData(jsondocId).catch(console.error); 

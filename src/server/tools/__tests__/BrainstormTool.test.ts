@@ -1,21 +1,21 @@
 import { describe, it, expect, beforeEach, } from 'vitest';
 import { BrainstormEditToolResult, createBrainstormToolDefinition } from '../BrainstormTools';
-import { createMockJsonDocRepository, createMockTransformRepository } from '../../../__tests__/mocks/databaseMocks';
-import { TypedJsonDoc } from '@/common/types';
+import { createMockJsondocRepository, createMockTransformRepository } from '../../../__tests__/mocks/databaseMocks';
+import { TypedJsondoc } from '@/common/types';
 import { IdeationInput } from '@/common/transform_schemas';
-import { StreamingToolDefinition } from '@/server/transform-jsonDoc-framework/StreamingAgentFramework';
+import { StreamingToolDefinition } from '@/server/transform-jsondoc-framework/StreamingAgentFramework';
 
 describe('BrainstormTool', () => {
     let mockTransformRepo: any;
-    let mockJsonDocRepo: any;
+    let mockJsondocRepo: any;
     let brainstormTool: StreamingToolDefinition<IdeationInput, BrainstormEditToolResult>;
 
     beforeEach(() => {
         mockTransformRepo = createMockTransformRepository();
-        mockJsonDocRepo = createMockJsonDocRepository();
+        mockJsondocRepo = createMockJsondocRepository();
 
-        // Setup mock getJsonDoc to return proper brainstorm input jsonDoc
-        mockJsonDocRepo.getJsonDoc.mockImplementation(async (id: string) => {
+        // Setup mock getJsondoc to return proper brainstorm input jsondoc
+        mockJsondocRepo.getJsondoc.mockImplementation(async (id: string) => {
             if (id === 'test-brainstorm-input-1' || id === 'test-brainstorm-input-2') {
                 return {
                     id: id,
@@ -26,9 +26,9 @@ describe('BrainstormTool', () => {
                         other_requirements: '快节奏，高颜值主角',
                         numberOfIdeas: 3
                     },
-                    schema_type: 'brainstorm_input_params' as TypedJsonDoc['schema_type'],
+                    schema_type: 'brainstorm_input_params' as TypedJsondoc['schema_type'],
                     schema_version: 'v1',
-                    origin_type: 'user_input' as TypedJsonDoc['origin_type']
+                    origin_type: 'user_input' as TypedJsondoc['origin_type']
                 };
             }
             return null;
@@ -36,7 +36,7 @@ describe('BrainstormTool', () => {
 
         brainstormTool = createBrainstormToolDefinition(
             mockTransformRepo,
-            mockJsonDocRepo,
+            mockJsondocRepo,
             'test-project-1',
             'test-user-1',
             { enableCaching: false } // Disable caching for predictable tests
@@ -45,11 +45,11 @@ describe('BrainstormTool', () => {
 
     it('should generate brainstorm ideas using cached LLM responses', async () => {
         // Arrange
-        mockJsonDocRepo.createJsonDoc.mockResolvedValue({ id: 'new-jsonDoc-1' });
+        mockJsondocRepo.createJsondoc.mockResolvedValue({ id: 'new-jsondoc-1' });
         mockTransformRepo.createTransform.mockResolvedValue({ id: 'new-transform-1' });
 
         const input: IdeationInput = {
-            sourceJsonDocId: 'test-brainstorm-input-1',
+            sourceJsondocId: 'test-brainstorm-input-1',
             otherRequirements: '快节奏，高颜值主角'
         };
 
@@ -57,37 +57,37 @@ describe('BrainstormTool', () => {
         const result = await brainstormTool.execute(input, { toolCallId: 'test-call-1' });
 
         // Assert
-        expect(result.outputJsonDocId).toBe('new-jsonDoc-1');
+        expect(result.outputJsondocId).toBe('new-jsondoc-1');
         expect(result.finishReason).toBe('stop');
-        expect(mockJsonDocRepo.createJsonDoc).toHaveBeenCalled();
+        expect(mockJsondocRepo.createJsondoc).toHaveBeenCalled();
     });
 
     it('should handle different platform inputs', async () => {
         // Arrange
-        mockJsonDocRepo.createJsonDoc.mockResolvedValue({ id: 'new-jsonDoc-2' });
+        mockJsondocRepo.createJsondoc.mockResolvedValue({ id: 'new-jsondoc-2' });
         mockTransformRepo.createTransform.mockResolvedValue({ id: 'new-transform-2' });
 
         // Setup different input data
-        mockJsonDocRepo.getJsonDoc.mockImplementation(async (id: string) => {
+        mockJsondocRepo.getJsondoc.mockImplementation(async (id: string) => {
             if (id === 'test-brainstorm-input-2') {
                 return {
                     id: id,
                     project_id: 'test-project-1',
-                    schema_type: 'brainstorm_input_params' as TypedJsonDoc['schema_type'],
+                    schema_type: 'brainstorm_input_params' as TypedJsondoc['schema_type'],
                     data: {
                         platform: 'YouTube',
                         genre: '悬疑',
                         other_requirements: '反转剧情',
                         numberOfIdeas: 3
                     },
-                    origin_type: 'user_input' as TypedJsonDoc['origin_type']
+                    origin_type: 'user_input' as TypedJsondoc['origin_type']
                 };
             }
             return null;
         });
 
         const input: IdeationInput = {
-            sourceJsonDocId: 'test-brainstorm-input-2',
+            sourceJsondocId: 'test-brainstorm-input-2',
             otherRequirements: '反转剧情'
         };
 
@@ -95,9 +95,9 @@ describe('BrainstormTool', () => {
         const result = await brainstormTool.execute(input, { toolCallId: 'test-call-2' });
 
         // Assert
-        expect(result.outputJsonDocId).toBe('new-jsonDoc-2');
+        expect(result.outputJsondocId).toBe('new-jsondoc-2');
         expect(result.finishReason).toBe('stop');
-        expect(mockJsonDocRepo.createJsonDoc).toHaveBeenCalled();
+        expect(mockJsondocRepo.createJsondoc).toHaveBeenCalled();
     });
 
     it('should validate input parameters correctly', () => {
@@ -111,13 +111,13 @@ describe('BrainstormTool', () => {
 
     it('should handle repository errors gracefully', async () => {
         // Arrange - Mock all repository methods to throw errors
-        mockJsonDocRepo.getJsonDoc.mockRejectedValue(new Error('Database error'));
-        mockJsonDocRepo.createJsonDoc.mockRejectedValue(new Error('Database error'));
+        mockJsondocRepo.getJsondoc.mockRejectedValue(new Error('Database error'));
+        mockJsondocRepo.createJsondoc.mockRejectedValue(new Error('Database error'));
         mockTransformRepo.createTransform.mockRejectedValue(new Error('Database error'));
         mockTransformRepo.addTransformInputs.mockRejectedValue(new Error('Database error'));
 
         const input: IdeationInput = {
-            sourceJsonDocId: 'test-brainstorm-input-1',
+            sourceJsondocId: 'test-brainstorm-input-1',
             otherRequirements: '快节奏，高颜值主角'
         };
 

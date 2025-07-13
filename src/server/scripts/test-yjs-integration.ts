@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { db } from '../database/connection';
-import { JsonDocRepository } from '../transform-jsonDoc-framework/JsonDocRepository';
+import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
 import { YJSService } from '../services/YJSService';
 import { ProjectService } from '../services/ProjectService';
 
@@ -13,8 +13,8 @@ async function testYJSIntegration() {
 
     try {
         // Initialize services
-        const jsonDocRepo = new JsonDocRepository(db);
-        const yjsService = new YJSService(db, jsonDocRepo);
+        const jsondocRepo = new JsondocRepository(db);
+        const yjsService = new YJSService(db, jsondocRepo);
         const projectService = new ProjectService(db);
 
         console.log('✅ Services initialized successfully');
@@ -29,9 +29,9 @@ async function testYJSIntegration() {
             console.log('⏭️  Test project already exists or creation failed:', error instanceof Error ? error.message : 'Unknown error');
         }
 
-        // Test 1: Create a test jsonDoc
-        console.log('\n📝 Test 1: Creating test jsonDoc...');
-        const testJsonDoc = await jsonDocRepo.createJsonDoc(
+        // Test 1: Create a test jsondoc
+        console.log('\n📝 Test 1: Creating test jsondoc...');
+        const testJsondoc = await jsondocRepo.createJsondoc(
             testProjectId,
             'brainstorm_idea',
             {
@@ -45,11 +45,11 @@ async function testYJSIntegration() {
             'user_input'
         );
 
-        console.log('✅ Test jsonDoc created:', testJsonDoc.id);
+        console.log('✅ Test jsondoc created:', testJsondoc.id);
 
         // Test 2: Initialize YJS document
         console.log('\n📄 Test 2: Initializing YJS document...');
-        const doc = await yjsService.getOrCreateDocument(testJsonDoc.id, testProjectId);
+        const doc = await yjsService.getOrCreateDocument(testJsondoc.id, testProjectId);
         console.log('✅ YJS document initialized successfully');
 
         // Test 3: Read initial content
@@ -79,7 +79,7 @@ async function testYJSIntegration() {
         await new Promise(resolve => setTimeout(resolve, 1100));
 
         // Create a new document instance to test loading from database
-        const doc2 = await yjsService.getOrCreateDocument(testJsonDoc.id, testProjectId);
+        const doc2 = await yjsService.getOrCreateDocument(testJsondoc.id, testProjectId);
         const yMap2 = doc2.getMap('content');
         const persistedContent = yjsService.convertYJSToObject(yMap2);
 
@@ -90,30 +90,30 @@ async function testYJSIntegration() {
         const testUpdate = Buffer.from('test-awareness-update');
         await yjsService.saveAwarenessUpdate(
             'test-client-1',
-            `jsonDoc-${testJsonDoc.id}`,
+            `jsondoc-${testJsondoc.id}`,
             testProjectId,
-            testJsonDoc.id,
+            testJsondoc.id,
             testUpdate
         );
 
-        const awarenessUpdates = await yjsService.getAwarenessUpdates(`jsonDoc-${testJsonDoc.id}`);
+        const awarenessUpdates = await yjsService.getAwarenessUpdates(`jsondoc-${testJsondoc.id}`);
         console.log('✅ Awareness updates saved and retrieved:', awarenessUpdates.length);
 
         // Test 7: Cleanup
         console.log('\n🧹 Test 7: Cleaning up...');
-        yjsService.cleanupDocument(testJsonDoc.id);
+        yjsService.cleanupDocument(testJsondoc.id);
 
         // Clean up YJS data from database first
-        await db.deleteFrom('jsonDoc_yjs_documents')
-            .where('jsonDoc_id', '=', testJsonDoc.id)
+        await db.deleteFrom('jsondoc_yjs_documents')
+            .where('jsondoc_id', '=', testJsondoc.id)
             .execute();
 
-        await db.deleteFrom('jsonDoc_yjs_awareness')
-            .where('room_id', '=', `jsonDoc-${testJsonDoc.id}`)
+        await db.deleteFrom('jsondoc_yjs_awareness')
+            .where('room_id', '=', `jsondoc-${testJsondoc.id}`)
             .execute();
 
         // Clean up test data
-        await jsonDocRepo.deleteJsonDoc(testJsonDoc.id, testProjectId);
+        await jsondocRepo.deleteJsondoc(testJsondoc.id, testProjectId);
 
         console.log('✅ Cleanup completed');
 

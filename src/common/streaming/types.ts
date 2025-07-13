@@ -1,5 +1,5 @@
 export interface StreamingRequest<TParams = any> {
-    jsonDocIds: string[];              // Input jsonDoc IDs
+    jsondocIds: string[];              // Input jsondoc IDs
     templateId: string;                 // Template to use
     templateParams?: TParams;           // Additional params for template
     modelName?: string;                 // LLM model to use
@@ -80,7 +80,7 @@ export interface SceneV1 {
 
 export interface EpisodeScriptV1 {
     episodeNumber: number;
-    stageJsonDocId: string;
+    stageJsondocId: string;
     episodeGenerationSessionId: string;
 
     // Script content
@@ -93,6 +93,6 @@ export interface EpisodeScriptV1 {
     generatedAt: string;
 
     // Source references
-    episodeSynopsisJsonDocId: string;
+    episodeSynopsisJsondocId: string;
     userRequirements?: string;
 } 

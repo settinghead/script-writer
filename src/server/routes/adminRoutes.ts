@@ -1,8 +1,8 @@
 import express from 'express';
-import { TransformRepository } from '../transform-jsonDoc-framework/TransformRepository';
-import { JsonDocRepository } from '../transform-jsonDoc-framework/JsonDocRepository';
+import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
+import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
 import { buildAgentConfiguration } from '../services/AgentRequestBuilder';
-import { GeneralAgentRequestSchema } from '../transform-jsonDoc-framework/AgentService';
+import { GeneralAgentRequestSchema } from '../transform-jsondoc-framework/AgentService';
 
 // Dev-only middleware - simple check for development environment
 function devOnly(req: any, res: any, next: any) {
@@ -14,7 +14,7 @@ function devOnly(req: any, res: any, next: any) {
 
 export function createAdminRoutes(
     transformRepo: TransformRepository,
-    jsonDocRepo: JsonDocRepository
+    jsondocRepo: JsondocRepository
 ) {
     const router = express.Router();
 
@@ -54,7 +54,7 @@ export function createAdminRoutes(
                 validation.data,
                 projectId as string,
                 transformRepo,
-                jsonDocRepo,
+                jsondocRepo,
                 userId as string
             );
 

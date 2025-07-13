@@ -5,14 +5,14 @@ async function cleanAllYJSData() {
 
     // Delete all YJS documents
     const docResult = await db
-        .deleteFrom('jsonDoc_yjs_documents')
+        .deleteFrom('jsondoc_yjs_documents')
         .execute();
 
     console.log('Deleted', docResult.length, 'YJS document records');
 
     // Delete all YJS awareness
     const awarenessResult = await db
-        .deleteFrom('jsonDoc_yjs_awareness')
+        .deleteFrom('jsondoc_yjs_awareness')
         .execute();
 
     console.log('Deleted', awarenessResult.length, 'YJS awareness records');

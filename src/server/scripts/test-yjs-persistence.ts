@@ -1,21 +1,21 @@
 import { db } from '../database/connection';
 
 async function testYJSPersistence() {
-    const jsonDocId = 'da5238e0-8c10-489e-bf4e-65402b3884a2';
+    const jsondocId = 'da5238e0-8c10-489e-bf4e-65402b3884a2';
 
     console.log('=== Testing YJS Persistence ===');
 
     // 1. Check what's in the database
     console.log('\n1. Database content:');
     const updates = await db
-        .selectFrom('jsonDoc_yjs_documents')
+        .selectFrom('jsondoc_yjs_documents')
         .selectAll()
-        .where('jsonDoc_id', '=', jsonDocId)
+        .where('jsondoc_id', '=', jsondocId)
         .orderBy('created_at', 'desc')
         .limit(5)
         .execute();
 
-    console.log(`Found ${updates.length} updates for jsonDoc ${jsonDocId}`);
+    console.log(`Found ${updates.length} updates for jsondoc ${jsondocId}`);
     updates.forEach((update, i) => {
         console.log(`  Update ${i + 1}: ${update.document_state?.length || 0} bytes, created: ${update.created_at}`);
     });
@@ -66,18 +66,18 @@ async function testYJSPersistence() {
         }
     }
 
-    // 3. Check original jsonDoc data
-    console.log('\n3. Original jsonDoc data:');
-    const jsonDoc = await db
-        .selectFrom('jsonDocs')
+    // 3. Check original jsondoc data
+    console.log('\n3. Original jsondoc data:');
+    const jsondoc = await db
+        .selectFrom('jsondocs')
         .select(['id', 'data'])
-        .where('id', '=', jsonDocId)
+        .where('id', '=', jsondocId)
         .executeTakeFirst();
 
-    if (jsonDoc) {
-        console.log('Original jsonDoc data:', JSON.stringify(jsonDoc.data, null, 2));
+    if (jsondoc) {
+        console.log('Original jsondoc data:', JSON.stringify(jsondoc.data, null, 2));
     } else {
-        console.log('JsonDoc not found');
+        console.log('Jsondoc not found');
     }
 }
 

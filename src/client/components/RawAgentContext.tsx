@@ -23,7 +23,7 @@ interface AgentDebugData {
     contextData: {
         context: string;
         requestType: string;
-        jsonDocs?: any[];
+        jsondocs?: any[];
         transforms?: any[];
         humanTransforms?: any[];
         transformInputs?: any[];
@@ -34,7 +34,7 @@ interface AgentDebugData {
 
 const RawAgentContext: React.FC<RawAgentContextProps> = ({ projectId }) => {
     const {
-        jsonDocs,
+        jsondocs,
         transforms,
         humanTransforms,
         transformInputs,
@@ -57,7 +57,7 @@ const RawAgentContext: React.FC<RawAgentContextProps> = ({ projectId }) => {
     const [agentContext, setAgentContext] = useState<string | null>(null);
 
     useEffect(() => {
-        if (isLoading || !jsonDocs.length) {
+        if (isLoading || !jsondocs.length) {
             setAgentContext(null);
             return;
         }
@@ -65,7 +65,7 @@ const RawAgentContext: React.FC<RawAgentContextProps> = ({ projectId }) => {
         const generateContext = async () => {
             try {
                 const context = await prepareAgentPromptContext({
-                    jsonDocs: Array.isArray(jsonDocs) ? jsonDocs : [],
+                    jsondocs: Array.isArray(jsondocs) ? jsondocs : [],
                     transforms: Array.isArray(transforms) ? transforms : [],
                     humanTransforms: Array.isArray(humanTransforms) ? humanTransforms : [],
                     transformInputs: Array.isArray(transformInputs) ? transformInputs : [],
@@ -79,7 +79,7 @@ const RawAgentContext: React.FC<RawAgentContextProps> = ({ projectId }) => {
         };
 
         generateContext();
-    }, [jsonDocs, transforms, humanTransforms, transformInputs, transformOutputs, isLoading, projectId]);
+    }, [jsondocs, transforms, humanTransforms, transformInputs, transformOutputs, isLoading, projectId]);
 
     const fetchDebugData = async (requestText: string) => {
         if (!requestText.trim()) {

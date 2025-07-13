@@ -4,7 +4,7 @@ import { CheckOutlined, EditOutlined, RightOutlined } from '@ant-design/icons';
 import { BaseActionProps } from './index';
 import { useProjectData } from '../../contexts/ProjectDataContext';
 import { useActionItemsStore } from '../../stores/actionItemsStore';
-import { getJsonDocAtPath } from '../../../common/transform-jsonDoc-framework/lineageResolution';
+import { getJsondocAtPath } from '../../../common/transform-jsondoc-framework/lineageResolution';
 import { HumanButton } from '../shared';
 
 const { Text, Title } = Typography;
@@ -14,65 +14,65 @@ const BrainstormIdeaSelection: React.FC<BaseActionProps> = ({ projectId, onSucce
     const projectData = useProjectData();
     const store = useActionItemsStore(projectId);
 
-    // Independently extract the title from the selected jsonDoc
+    // Independently extract the title from the selected jsondoc
     const selectedIdeaTitle = useMemo(() => {
-        if (!store.selectedJsonDocAndPath) return '';
+        if (!store.selectedJsondocAndPath) return '';
 
-        const { jsonDocId, jsonDocPath } = store.selectedJsonDocAndPath;
+        const { jsondocId, jsondocPath } = store.selectedJsondocAndPath;
 
-        // Get the jsonDoc from project data
-        const jsonDoc = projectData.getJsonDocById(jsonDocId);
-        if (!jsonDoc) return '';
+        // Get the jsondoc from project data
+        const jsondoc = projectData.getJsondocById(jsondocId);
+        if (!jsondoc) return '';
 
         try {
-            const parsedData = JSON.parse(jsonDoc.data);
+            const parsedData = JSON.parse(jsondoc.data);
 
-            if (jsonDocPath === '$') {
-                // Standalone jsonDoc - use the title directly
+            if (jsondocPath === '$') {
+                // Standalone jsondoc - use the title directly
                 return parsedData.title || '';
             } else {
-                // Collection jsonDoc - extract from the specific path
-                const ideaData = getJsonDocAtPath(jsonDoc, jsonDocPath);
+                // Collection jsondoc - extract from the specific path
+                const ideaData = getJsondocAtPath(jsondoc, jsondocPath);
                 return ideaData?.title || '';
             }
         } catch (error) {
-            console.warn('Failed to parse jsonDoc data for title extraction:', error);
+            console.warn('Failed to parse jsondoc data for title extraction:', error);
             return '';
         }
-    }, [store.selectedJsonDocAndPath, projectData]);
+    }, [store.selectedJsondocAndPath, projectData]);
 
     // Handle confirm selection and create human transform
     const handleConfirmSelection = useCallback(async () => {
-        if (!store.selectedJsonDocAndPath || isCreatingTransform) {
+        if (!store.selectedJsondocAndPath || isCreatingTransform) {
             return;
         }
 
-        const selectedIdea = store.selectedJsonDocAndPath;
+        const selectedIdea = store.selectedJsondocAndPath;
         setIsCreatingTransform(true);
 
         try {
-            // Determine the correct transform parameters based on jsonDoc type
+            // Determine the correct transform parameters based on jsondoc type
             let transformName: string;
-            let sourceJsonDocId: string;
+            let sourceJsondocId: string;
             let derivationPath: string;
 
-            if (selectedIdea.jsonDocPath === '$') {
+            if (selectedIdea.jsondocPath === '$') {
                 // This is a standalone brainstorm idea (derived from collection or original)
                 transformName = 'edit_brainstorm_idea';
-                sourceJsonDocId = selectedIdea.jsonDocId;
+                sourceJsondocId = selectedIdea.jsondocId;
                 derivationPath = '$';
             } else {
                 // This is an item within a collection (original collection item)
                 transformName = 'edit_brainstorm_collection_idea';
-                sourceJsonDocId = selectedIdea.originalJsonDocId || selectedIdea.jsonDocId;
-                derivationPath = selectedIdea.jsonDocPath;
+                sourceJsondocId = selectedIdea.originalJsondocId || selectedIdea.jsondocId;
+                derivationPath = selectedIdea.jsondocPath;
             }
 
             // Create human transform to start editing
             await new Promise((resolve, reject) => {
                 projectData.createHumanTransform.mutate({
                     transformName,
-                    sourceJsonDocId,
+                    sourceJsondocId,
                     derivationPath,
                     fieldUpdates: {} // Start with empty updates
                 }, {
@@ -95,10 +95,10 @@ const BrainstormIdeaSelection: React.FC<BaseActionProps> = ({ projectId, onSucce
         } finally {
             setIsCreatingTransform(false);
         }
-    }, [store.selectedJsonDocAndPath, projectData.createHumanTransform, onSuccess, onError, isCreatingTransform]);
+    }, [store.selectedJsondocAndPath, projectData.createHumanTransform, onSuccess, onError, isCreatingTransform]);
 
     // Show error state if no selection
-    if (!store.selectedJsonDocAndPath) {
+    if (!store.selectedJsondocAndPath) {
         return (
             <Alert
                 message="请选择一个创意"
@@ -130,7 +130,7 @@ const BrainstormIdeaSelection: React.FC<BaseActionProps> = ({ projectId, onSucce
 
                     <Text strong style={{ color: '#fff', fontSize: '16px' }}>
                         <CheckOutlined />
-                        创意 "{selectedIdeaTitle || `第${(store.selectedJsonDocAndPath.index || 0) + 1}个创意`}"
+                        创意 "{selectedIdeaTitle || `第${(store.selectedJsondocAndPath.index || 0) + 1}个创意`}"
                     </Text>
                 </div>
 

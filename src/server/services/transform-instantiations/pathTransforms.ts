@@ -1,7 +1,7 @@
-import { JsonDocSchemaRegistry } from '../../../common/schemas/jsonDocs';
+import { JsondocSchemaRegistry } from '../../../common/schemas/jsondocs';
 
 // Get the schema from the registry
-const BrainstormIdeaSchema = JsonDocSchemaRegistry.brainstorm_idea;
+const BrainstormIdeaSchema = JsondocSchemaRegistry.brainstorm_idea;
 
 // Export the schema for use by other modules
 export { BrainstormIdeaSchema };
@@ -41,7 +41,7 @@ export function extractDataAtPath(sourceData: any, path: string): any {
         if (normalizedSourceData[field] !== undefined) {
             return normalizedSourceData[field];
         }
-        throw new Error(`Field ${field} not found in jsonDoc`);
+        throw new Error(`Field ${field} not found in jsondoc`);
     }
 
     throw new Error(`Unsupported JSONPath: ${path}`);
@@ -49,15 +49,15 @@ export function extractDataAtPath(sourceData: any, path: string): any {
 
 // Create BrainstormIdea from JSONPath extraction
 export function createBrainstormIdeaFromPath(
-    sourceJsonDocData: any,
-    jsonDocPath: string
+    sourceJsondocData: any,
+    jsondocPath: string
 ): any {
-    const extractedData = extractDataAtPath(sourceJsonDocData, jsonDocPath);
+    const extractedData = extractDataAtPath(sourceJsondocData, jsondocPath);
 
     // Validate that extracted data matches BrainstormIdea schema
     const result = BrainstormIdeaSchema.safeParse(extractedData);
     if (!result.success) {
-        throw new Error(`Data at path ${jsonDocPath} does not match BrainstormIdea schema: ${result.error.message}`);
+        throw new Error(`Data at path ${jsondocPath} does not match BrainstormIdea schema: ${result.error.message}`);
     }
 
     return result.data;
@@ -65,18 +65,18 @@ export function createBrainstormIdeaFromPath(
 
 // Generic field extraction using JSONPath
 export function createFieldEditFromPath(
-    sourceJsonDocData: any,
-    jsonDocPath: string
+    sourceJsondocData: any,
+    jsondocPath: string
 ): any {
-    return extractDataAtPath(sourceJsonDocData, jsonDocPath);
+    return extractDataAtPath(sourceJsondocData, jsondocPath);
 }
 
 // Update existing functions to handle both collections and individual ideas
 export function createOutlineInputFromPath(
-    sourceJsonDocData: any,
-    jsonDocPath: string = '$'
+    sourceJsondocData: any,
+    jsondocPath: string = '$'
 ): any {
-    const extractedData = extractDataAtPath(sourceJsonDocData, jsonDocPath);
+    const extractedData = extractDataAtPath(sourceJsondocData, jsondocPath);
 
     // Convert brainstorm idea to outline input format
     if (extractedData.title && extractedData.body) {
@@ -85,8 +85,8 @@ export function createOutlineInputFromPath(
             source_metadata: {
                 original_idea_title: extractedData.title,
                 original_idea_body: extractedData.body,
-                derivation_path: jsonDocPath,
-                source_jsonDoc_id: '' // Will be filled by caller
+                derivation_path: jsondocPath,
+                source_jsondoc_id: '' // Will be filled by caller
             }
         };
     }

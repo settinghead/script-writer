@@ -16,7 +16,7 @@ const ChroniclesGenerationAction: React.FC<ChroniclesGenerationActionProps> = (p
     const [isGenerating, setIsGenerating] = useState(false);
 
     // Get outline settings from props (new way) or null (old way)
-    const latestOutlineSettings = 'jsonDocs' in props ? props.jsonDocs.outlineSettings : null;
+    const latestOutlineSettings = 'jsondocs' in props ? props.jsondocs.outlineSettings : null;
 
     // Handle chronicles generation
     const handleGenerateChronicles = useCallback(async () => {

@@ -1,34 +1,34 @@
 import { db } from '../database/connection';
 import * as Y from 'yjs';
 
-async function initYJSDocument(jsonDocId: string) {
-    console.log(`Initializing YJS document for jsonDoc: ${jsonDocId}`);
+async function initYJSDocument(jsondocId: string) {
+    console.log(`Initializing YJS document for jsondoc: ${jsondocId}`);
 
-    // Get the jsonDoc data
-    const jsonDoc = await db
-        .selectFrom('jsonDocs')
+    // Get the jsondoc data
+    const jsondoc = await db
+        .selectFrom('jsondocs')
         .selectAll()
-        .where('id', '=', jsonDocId)
+        .where('id', '=', jsondocId)
         .executeTakeFirst();
 
-    if (!jsonDoc) {
-        console.error(`JsonDoc not found: ${jsonDocId}`);
+    if (!jsondoc) {
+        console.error(`Jsondoc not found: ${jsondocId}`);
         return;
     }
 
-    console.log(`Found jsonDoc:`, {
-        id: jsonDoc.id,
-        schema_type: jsonDoc.schema_type,
-        origin_type: jsonDoc.origin_type
+    console.log(`Found jsondoc:`, {
+        id: jsondoc.id,
+        schema_type: jsondoc.schema_type,
+        origin_type: jsondoc.origin_type
     });
 
-    // Parse jsonDoc data
-    let jsonDocData: any = {};
+    // Parse jsondoc data
+    let jsondocData: any = {};
     try {
-        jsonDocData = typeof jsonDoc.data === 'string' ? JSON.parse(jsonDoc.data) : jsonDoc.data;
-        console.log(`Parsed jsonDoc data:`, jsonDocData);
+        jsondocData = typeof jsondoc.data === 'string' ? JSON.parse(jsondoc.data) : jsondoc.data;
+        console.log(`Parsed jsondoc data:`, jsondocData);
     } catch (e) {
-        console.error(`Failed to parse jsonDoc data:`, e);
+        console.error(`Failed to parse jsondoc data:`, e);
         return;
     }
 
@@ -36,8 +36,8 @@ async function initYJSDocument(jsonDocId: string) {
     const doc = new Y.Doc();
     const yMap = doc.getMap('content');
 
-    // Initialize with jsonDoc data
-    Object.entries(jsonDocData).forEach(([key, value]) => {
+    // Initialize with jsondoc data
+    Object.entries(jsondocData).forEach(([key, value]) => {
         if (typeof value === 'string') {
             const yText = new Y.Text();
             yText.insert(0, value);
@@ -73,41 +73,41 @@ async function initYJSDocument(jsonDocId: string) {
 
     // Check if YJS document already exists
     const existingDoc = await db
-        .selectFrom('jsonDoc_yjs_documents')
+        .selectFrom('jsondoc_yjs_documents')
         .selectAll()
-        .where('jsonDoc_id', '=', jsonDocId)
+        .where('jsondoc_id', '=', jsondocId)
         .executeTakeFirst();
 
     if (existingDoc) {
         console.log(`YJS document already exists, updating...`);
         await db
-            .updateTable('jsonDoc_yjs_documents')
+            .updateTable('jsondoc_yjs_documents')
             .set({
                 document_state: Buffer.from(documentState),
                 updated_at: new Date().toISOString()
             })
-            .where('jsonDoc_id', '=', jsonDocId)
+            .where('jsondoc_id', '=', jsondocId)
             .execute();
     } else {
         console.log(`Creating new YJS document...`);
         await db
-            .insertInto('jsonDoc_yjs_documents')
+            .insertInto('jsondoc_yjs_documents')
             .values({
-                jsonDoc_id: jsonDocId,
-                project_id: jsonDoc.project_id,
-                room_id: `jsonDoc-${jsonDocId}`,
+                jsondoc_id: jsondocId,
+                project_id: jsondoc.project_id,
+                room_id: `jsondoc-${jsondocId}`,
                 document_state: Buffer.from(documentState)
             })
             .execute();
     }
 
-    console.log(`YJS document initialized successfully for jsonDoc: ${jsonDocId}`);
+    console.log(`YJS document initialized successfully for jsondoc: ${jsondocId}`);
 
     // Verify the document was saved correctly
     const savedDoc = await db
-        .selectFrom('jsonDoc_yjs_documents')
+        .selectFrom('jsondoc_yjs_documents')
         .selectAll()
-        .where('jsonDoc_id', '=', jsonDocId)
+        .where('jsondoc_id', '=', jsondocId)
         .executeTakeFirst();
 
     if (savedDoc) {
@@ -136,10 +136,10 @@ async function initYJSDocument(jsonDocId: string) {
 }
 
 // Run the script
-const jsonDocId = process.argv[2];
-if (!jsonDocId) {
-    console.error('Usage: ./run-ts src/server/scripts/init-yjs-document.ts <jsonDoc-id>');
+const jsondocId = process.argv[2];
+if (!jsondocId) {
+    console.error('Usage: ./run-ts src/server/scripts/init-yjs-document.ts <jsondoc-id>');
     process.exit(1);
 }
 
-initYJSDocument(jsonDocId).catch(console.error); 
+initYJSDocument(jsondocId).catch(console.error); 

@@ -2,20 +2,20 @@
 
 ## Framework Foundation
 
-### 1. Transform JsonDoc Framework
-- **ALL implementations MUST follow the Transform JsonDoc Framework** - see [TRANSFORM_JSONDOC_FRAMEWORK.md](./TRANSFORM_JSONDOC_FRAMEWORK.md) for detailed documentation
-- **ALWAYS respect the jsonDocs => transform => jsonDocs structure** when changing backend flow logic
-- Every data modification MUST be tracked through transforms with proper input/output jsonDoc relationships
-- JsonDocs are immutable - create new versions rather than modifying existing ones
+### 1. Transform Jsondoc Framework
+- **ALL implementations MUST follow the Transform Jsondoc Framework** - see [TRANSFORM_JSONDOC_FRAMEWORK.md](./TRANSFORM_JSONDOC_FRAMEWORK.md) for detailed documentation
+- **ALWAYS respect the jsondocs => transform => jsondocs structure** when changing backend flow logic
+- Every data modification MUST be tracked through transforms with proper input/output jsondoc relationships
+- Jsondocs are immutable - create new versions rather than modifying existing ones
 - Use `TransformExecutor` for all data modifications that need traceability
 - Transforms must specify type ('llm' or 'human'), execution context, and status
 
 ### 2. API Design Philosophy
-- **DO NOT expose jsonDocs/transforms directly** in server routes - they are low-level constructs
-- **DO NOT make frontend interact with jsonDocs/transforms directly**
-- Create domain-specific endpoints (e.g., `/api/projects`) that abstract the underlying jsonDocs system
-- Frontend should work with business domain objects not raw jsonDocs
-- Use repository pattern to encapsulate jsonDoc/transform operations
+- **DO NOT expose jsondocs/transforms directly** in server routes - they are low-level constructs
+- **DO NOT make frontend interact with jsondocs/transforms directly**
+- Create domain-specific endpoints (e.g., `/api/projects`) that abstract the underlying jsondocs system
+- Frontend should work with business domain objects not raw jsondocs
+- Use repository pattern to encapsulate jsondoc/transform operations
 
 ## Security & Authentication
 
@@ -28,11 +28,11 @@
 
 ### 4. Project-Based Access Control
 - **Access control is managed through PROJECT MEMBERSHIP, NOT direct user ownership**
-- JsonDocs and transforms DO NOT have user_id fields - they have project_id fields instead
+- Jsondocs and transforms DO NOT have user_id fields - they have project_id fields instead
 - Access control is managed through project membership via the projects_users table
-- Users can ONLY access jsonDocs/transforms within projects they are members of
-- **ALWAYS use jsonDocRepo.userHasProjectAccess(userId, projectId)** to validate access
-- **NEVER filter jsonDocs directly by user_id** - filter by project_id and validate project membership
+- Users can ONLY access jsondocs/transforms within projects they are members of
+- **ALWAYS use jsondocRepo.userHasProjectAccess(userId, projectId)** to validate access
+- **NEVER filter jsondocs directly by user_id** - filter by project_id and validate project membership
 - WebSocket connections must verify project membership before allowing access
 - Debug endpoints must scope data to user's accessible projects only
 
@@ -47,7 +47,7 @@
 ### 6. Type Safety
 - Use strict TypeScript throughout both frontend and backend
 - **ALWAYS define shared types in `src/common/`** - whenever types can be shared between frontend and backend, they MUST be placed under `/src/common` for consistency and single source of truth
-- Define interfaces with version suffixes (e.g., `IdeaCollectionV1`) for jsonDoc types
+- Define interfaces with version suffixes (e.g., `IdeaCollectionV1`) for jsondoc types
 - Properly type all streaming services and API responses
 - Frontend-only types go in `src/client/types/`, backend-only types go in `src/server/types/`
 
@@ -65,7 +65,7 @@ src/
 └── server/               # Express backend
     ├── routes/           # API routes (domain-focused)
     ├── services/         # Business logic with transform execution
-    ├── repositories/     # Data access layer (jsonDocs/transforms)
+    ├── repositories/     # Data access layer (jsondocs/transforms)
     └── middleware/       # Authentication and validation
 ```
 
@@ -86,15 +86,15 @@ src/
 ## Database & Performance
 
 ### 10. Database Operations
-- Use `JsonDocRepository` and `TransformRepository` for data access
-- **ALWAYS use project-based filtering** - jsonDocs/transforms have project_id, not user_id
+- Use `JsondocRepository` and `TransformRepository` for data access
+- **ALWAYS use project-based filtering** - jsondocs/transforms have project_id, not user_id
 - Validate project membership before any database operations
 - Use PostgreSQL + Electric SQL + Kysely architecture as documented in framework
 
 ## API Endpoint Patterns
 
 ### 11. Route Organization
-- Group routes by domain: `/api/projects`, `/api/chat`, `/api/jsonDocs`
+- Group routes by domain: `/api/projects`, `/api/chat`, `/api/jsondocs`
 - Use RESTful conventions where appropriate
 - Streaming endpoints use agent-based patterns
 - Debug endpoints under `/debug/` (development only)
@@ -102,7 +102,7 @@ src/
 
 ### 12. Request/Response Patterns
 - Always validate input parameters
-- Return domain objects, not raw jsonDocs
+- Return domain objects, not raw jsondocs
 - Include proper error handling with user-friendly messages
 - Use consistent response formats across endpoints
 - Include pagination for list endpoints
@@ -135,7 +135,7 @@ src/
 
 ### 16. Debugging & Analytics
 - If a new flow is constructed or modified, test by creating a Node.js testing script that executes transforms
-- Use raw graph visualization for debugging jsonDoc lineage
+- Use raw graph visualization for debugging jsondoc lineage
 - Access via `?raw-graph=1` parameter for development debugging
 
 ## Data Validation

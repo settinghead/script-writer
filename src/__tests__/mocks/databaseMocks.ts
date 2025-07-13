@@ -22,30 +22,30 @@ export function createMockKyselyDatabase() {
 
 let mockIdCounter = 1;
 
-export function createMockJsonDocRepository() {
+export function createMockJsondocRepository() {
     return {
-        getJsonDoc: vi.fn(),
-        createJsonDoc: vi.fn().mockImplementation(async (projectIdOrData: any, type?: string, data?: any, version?: string, metadata?: any, streamingStatus?: string, originType?: string) => {
-            const jsonDocId = `mock-jsonDoc-${mockIdCounter++}`;
+        getJsondoc: vi.fn(),
+        createJsondoc: vi.fn().mockImplementation(async (projectIdOrData: any, type?: string, data?: any, version?: string, metadata?: any, streamingStatus?: string, originType?: string) => {
+            const jsondocId = `mock-jsondoc-${mockIdCounter++}`;
 
             // Handle both call signatures: old style (object) and new style (parameters)
             if (typeof projectIdOrData === 'object' && !type) {
-                // Old style: createJsonDoc(data)
-                const jsonDocData = projectIdOrData;
+                // Old style: createJsondoc(data)
+                const jsondocData = projectIdOrData;
                 return {
-                    id: jsonDocId,
-                    project_id: jsonDocData.projectId,
-                    schema_type: jsonDocData.schemaType,
-                    origin_type: jsonDocData.originType,
-                    data: JSON.stringify(jsonDocData.data),
+                    id: jsondocId,
+                    project_id: jsondocData.projectId,
+                    schema_type: jsondocData.schemaType,
+                    origin_type: jsondocData.originType,
+                    data: JSON.stringify(jsondocData.data),
                     streaming_status: 'completed',
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString()
                 };
             } else {
-                // New style: createJsonDoc(projectId, type, data, ...)
+                // New style: createJsondoc(projectId, type, data, ...)
                 return {
-                    id: jsonDocId,
+                    id: jsondocId,
                     project_id: projectIdOrData,
                     schema_type: type,
                     origin_type: originType || 'ai_generated',
@@ -56,18 +56,18 @@ export function createMockJsonDocRepository() {
                 };
             }
         }),
-        updateJsonDoc: vi.fn().mockResolvedValue({}),
+        updateJsondoc: vi.fn().mockResolvedValue({}),
         getLatestBrainstormIdeas: vi.fn(),
-        getProjectJsonDocs: vi.fn(),
-        getProjectJsonDocsByType: vi.fn(),
-        getJsonDocsByType: vi.fn(),
-        getAllProjectJsonDocsForLineage: vi.fn().mockResolvedValue([]),
+        getProjectJsondocs: vi.fn(),
+        getProjectJsondocsByType: vi.fn(),
+        getJsondocsByType: vi.fn(),
+        getAllProjectJsondocsForLineage: vi.fn().mockResolvedValue([]),
         getAllProjectTransformsForLineage: vi.fn().mockResolvedValue([]),
         getAllProjectHumanTransformsForLineage: vi.fn().mockResolvedValue([]),
         getAllProjectTransformInputsForLineage: vi.fn().mockResolvedValue([]),
         getAllProjectTransformOutputsForLineage: vi.fn().mockResolvedValue([]),
         userHasProjectAccess: vi.fn().mockResolvedValue(true),
-        rowToJsonDoc: vi.fn()
+        rowToJsondoc: vi.fn()
     };
 }
 
