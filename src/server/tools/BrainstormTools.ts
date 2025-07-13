@@ -1,25 +1,20 @@
-import { IdeationInputSchema, IdeationOutputSchema, IdeationInput, IdeationOutput } from '../../common/transform_schemas';
-import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
+import { z } from 'zod';
 import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
-import {
-    executeStreamingTransform,
-    StreamingTransformConfig,
-    StreamingExecutionMode
-} from '../transform-jsondoc-framework/StreamingTransformExecutor';
-
+import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
+import { StreamingTransformConfig, executeStreamingTransform } from '../transform-jsondoc-framework/StreamingTransformExecutor';
 import {
     BrainstormEditInputSchema,
-    BrainstormEditInput,
-
-} from '../../common/schemas/transforms';
-import { extractDataAtPath } from '../services/transform-instantiations/pathTransforms';
+    BrainstormEditInput
+} from '@/common/schemas/transforms';
+import {
+    IdeationInputSchema,
+    IdeationInput,
+    IdeationOutput,
+    IdeationOutputSchema
+} from '@/common/transform_schemas';
 import type { StreamingToolDefinition } from '../transform-jsondoc-framework/StreamingAgentFramework';
-import { z } from 'zod';
-import { TypedJsondoc } from '@/common/types';
-import { TemplateVariableService, TemplateExecutionContext, CustomTemplateVariableFunction } from '../services/TemplateVariableService';
-import { ToolRegistry } from '../services/ToolRegistry';
-import { createJsondocReference, JsondocReference } from '../../common/schemas/common';
-import { ZodSchema } from 'zod';
+import { extractDataAtPath } from '../services/transform-instantiations/pathTransforms';
+import { TypedJsondoc } from '@/common/jsondocs';
 
 const BrainstormEditToolResultSchema = z.object({
     outputJsondocId: z.string(),
@@ -189,18 +184,7 @@ export function createBrainstormEditToolDefinition(
                 templateName: 'brainstorm_edit',
                 inputSchema: BrainstormEditInputSchema,
                 outputSchema: z.any(), // JSON patch output schema
-                prepareTemplateVariables: (input) => ({
-                    originalTitle: originalIdea.title,
-                    originalBody: originalIdea.body,
-                    targetPlatform: targetPlatform,
-                    storyGenre: storyGenre,
-                    editRequirements: input.editRequirements,
-                    agentInstructions: input.agentInstructions || '请根据用户要求进行适当的改进和优化。'
-                }),
-                extractSourceJsondocs: (input) => [{
-                    jsondocId: input.jsondocs[0].jsondocId,
-                    inputRole: 'source'
-                }]
+                // No custom prepareTemplateVariables - use default schema-driven extraction
             };
 
             try {
@@ -398,20 +382,8 @@ export function createBrainstormToolDefinition(
             const config: StreamingTransformConfig<IdeationInput, IdeationOutput> = {
                 templateName: 'brainstorming',
                 inputSchema: IdeationInputSchema,
-                outputSchema: IdeationOutputSchema,
-                prepareTemplateVariables: (input) => ({
-                    genre: extractedParams.genre,
-                    platform: extractedParams.platform,
-                    numberOfIdeas: extractedParams.numberOfIdeas.toString(),
-                    requirementsSection: buildRequirementsSection(extractedParams),
-                    otherRequirements: input.otherRequirements
-                }),
-                transformLLMOutput: (llmOutput) => transformToCollectionFormat(llmOutput, extractedParams),
-                // Extract source jsondoc for proper lineage
-                extractSourceJsondocs: (input) => [{
-                    jsondocId: input.jsondocs[0].jsondocId,
-                    inputRole: 'source'
-                }]
+                outputSchema: IdeationOutputSchema
+                // No custom prepareTemplateVariables - use default schema-driven extraction
             };
 
             const result = await executeStreamingTransform({
@@ -451,93 +423,4 @@ export function createBrainstormToolDefinition(
             };
         }
     };
-}
-
-// Add custom template variable functions at the end of the file
-const templateVariableService = new TemplateVariableService();
-
-// Custom template variable function for brainstorm editing
-const brainstormEditCustomTemplateVariables: CustomTemplateVariableFunction = async (
-    input: BrainstormEditInput,
-    inputSchema: ZodSchema,
-    executionContext: TemplateExecutionContext,
-    defaultService: TemplateVariableService
-) => {
-    const sourceJsondocRef = input.jsondocs[0];
-    const sourceJsondoc = await executionContext.jsondocRepo.getJsondoc(sourceJsondocRef.jsondocId);
-
-    if (!sourceJsondoc) {
-        throw new Error('Source jsondoc not found');
-    }
-
-    // Extract source idea data
-    const { originalIdea, targetPlatform, storyGenre } = await extractSourceIdeaData(
-        input,
-        executionContext.jsondocRepo,
-        executionContext.userId
-    );
-
-    // Use default processing for jsondocs
-    const jsondocsYaml = await defaultService.getDefaultJsondocProcessing(input.jsondocs, executionContext);
-
-    // Create custom parameters
-    const customParams = {
-        originalIdea,
-        targetPlatform,
-        storyGenre,
-        editRequirements: input.editRequirements,
-        agentInstructions: input.agentInstructions || '请根据用户要求进行适当的改进和优化。'
-    };
-
-    return {
-        jsondocs: jsondocsYaml,
-        params: defaultService.formatAsYaml(customParams)
-    };
-};
-
-// Custom template variable function for brainstorm generation
-const brainstormGenerationCustomTemplateVariables: CustomTemplateVariableFunction = async (
-    input: IdeationInput,
-    inputSchema: ZodSchema,
-    executionContext: TemplateExecutionContext,
-    defaultService: TemplateVariableService
-) => {
-    const sourceJsondocRef = input.jsondocs[0];
-    const extractedParams = await extractBrainstormParams(sourceJsondocRef.jsondocId, executionContext.jsondocRepo, executionContext.userId);
-
-    // Use default processing for jsondocs
-    const jsondocsYaml = await defaultService.getDefaultJsondocProcessing(input.jsondocs, executionContext);
-
-    // Create custom parameters
-    const customParams = {
-        ...extractedParams,
-        requirementsSection: buildRequirementsSection(extractedParams),
-        otherRequirements: input.otherRequirements
-    };
-
-    return {
-        jsondocs: jsondocsYaml,
-        params: defaultService.formatAsYaml(customParams)
-    };
-};
-
-// Register tools with the ToolRegistry
-const toolRegistry = ToolRegistry.getInstance();
-
-// Register brainstorm edit tool
-toolRegistry.registerTool({
-    name: 'edit_brainstorm_idea',
-    description: '使用JSON补丁方式编辑和改进现有故事创意',
-    inputSchema: BrainstormEditInputSchema,
-    templatePath: 'src/server/services/templates/brainstormEdit.ts',
-    customTemplateVariables: brainstormEditCustomTemplateVariables
-});
-
-// Register brainstorm generation tool
-toolRegistry.registerTool({
-    name: 'generate_brainstorm_ideas',
-    description: '基于用户参数生成多个故事创意',
-    inputSchema: IdeationInputSchema,
-    templatePath: 'src/server/services/templates/brainstorming.ts',
-    customTemplateVariables: brainstormGenerationCustomTemplateVariables
-}); 
+} 

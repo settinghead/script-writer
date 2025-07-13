@@ -43,16 +43,26 @@ export function createCachedStreamObjectMock() {
             console.warn(`No cached response found for key: ${cacheKey.substring(0, 8)}...`);
             const prompt = options.messages?.map(m => m.content).join('\n') || 'default-prompt';
             console.log(`[Mock] Checking prompt for fallback detection: ${prompt.substring(0, 200)}...`);
-            console.log(`[Mock] Contains 'Chronological Outline'?`, prompt.includes('Chronological Outline'));
-            console.log(`[Mock] Contains '剧本框架'?`, prompt.includes('剧本框架'));
-            console.log(`[Mock] Contains 'Story Settings'?`, prompt.includes('Story Settings'));
-            // Check for outline settings first - when asking to CREATE a story settings/framework
-            if (prompt.includes('outline_settings') || prompt.includes('template: outline_settings') || prompt.includes('templateName: outline_settings') || (prompt.includes('剧本框架') && prompt.includes('Story Settings')) || (prompt.includes('Story Settings') && !prompt.includes('Chronological Outline'))) {
-                console.log('[Mock] Using outline settings fallback');
+            console.log(`[Mock] Contains 'outline_settings'?`, prompt.includes('outline_settings'));
+            console.log(`[Mock] Contains 'chronicles'?`, prompt.includes('chronicles'));
+            console.log(`[Mock] Contains '时间线编年史'?`, prompt.includes('时间线编年史'));
+            console.log(`[Mock] Contains '大纲设置'?`, prompt.includes('大纲设置'));
+            console.log(`[Mock] Contains '故事创意'?`, prompt.includes('故事创意'));
+            console.log(`[Mock] Contains '时间顺序'?`, prompt.includes('时间顺序'));
+
+            // Check for template names first - most specific patterns
+            if (prompt.includes('templateName: outline_settings') || prompt.includes('template: outline_settings')) {
+                console.log('[Mock] Using outline settings fallback (template name match)');
                 return createFallbackOutlineObject();
-            } else if (prompt.includes('chronicles') || prompt.includes('template: chronicles') || prompt.includes('templateName: chronicles') || (prompt.includes('Chronological Outline') && prompt.includes('创作一个**时间顺序大纲')) || (prompt.includes('时间顺序大纲') && (prompt.includes('创作一个**时间顺序大纲') || prompt.includes('请创作一个**时间顺序大纲'))) || prompt.includes('时间顺序') || prompt.includes('timeline') || prompt.includes('stages')) {
-                console.log('[Mock] Using chronicles fallback');
+            } else if (prompt.includes('templateName: chronicles') || prompt.includes('template: chronicles')) {
+                console.log('[Mock] Using chronicles fallback (template name match)');
                 return createFallbackChroniclesObject();
+            } else if (prompt.includes('时间顺序大纲') || prompt.includes('时间线编年史') || prompt.includes('timeline') || prompt.includes('时间顺序') || prompt.includes('编年史')) {
+                console.log('[Mock] Using chronicles fallback (content match)');
+                return createFallbackChroniclesObject();
+            } else if (prompt.includes('大纲设置') || (prompt.includes('故事创意') && prompt.includes('制定详细的大纲设置'))) {
+                console.log('[Mock] Using outline settings fallback (content match)');
+                return createFallbackOutlineObject();
             } else if (prompt.includes('outline') || prompt.includes('Outline') || prompt.includes('大纲')) {
                 console.log('[Mock] Using generic outline fallback');
                 return createFallbackOutlineObject();
@@ -351,8 +361,7 @@ function createFallbackChroniclesObject() {
 
     return {
         partialObjectStream: createAsyncIterator([
-            { stages: mockChroniclesData.stages.slice(0, 1) },
-            mockChroniclesData
+            mockChroniclesData  // Just return the complete data directly
         ]),
         object: Promise.resolve(mockChroniclesData),
         baseStream: createMockBaseStream(mockChroniclesData)
@@ -416,10 +425,11 @@ function createFallbackOutlineObject() {
         ]
     };
 
+    console.log('[Mock] Creating outline fallback with data:', JSON.stringify(mockOutlineSettingsData, null, 2));
+
     return {
         partialObjectStream: createAsyncIterator([
-            { title: "误爱成宠" },
-            mockOutlineSettingsData
+            mockOutlineSettingsData  // Just return the complete data directly
         ]),
         object: Promise.resolve(mockOutlineSettingsData),
         baseStream: createMockBaseStream(mockOutlineSettingsData)
@@ -428,6 +438,7 @@ function createFallbackOutlineObject() {
 
 async function* createAsyncIterator<T>(items: T[]) {
     for (const item of items) {
+        console.log('[Mock] Yielding item:', JSON.stringify(item, null, 2));
         yield item;
     }
 } 

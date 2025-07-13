@@ -117,37 +117,8 @@ export function createOutlineSettingsToolDefinition(
             const config: StreamingTransformConfig<OutlineSettingsInput, OutlineSettingsOutput> = {
                 templateName: 'outline_settings',
                 inputSchema: OutlineSettingsInputSchema,
-                outputSchema: OutlineSettingsOutputSchema,
-                prepareTemplateVariables: (input) => {
-                    // Use default values for template variables that aren't in the input schema
-                    const episodeInfo = `总共60集，每集2分钟`; // Default episode configuration
-                    const platform = '抖音'; // Default platform
-                    const genre = '现代甜宠'; // Default genre
-
-                    const templateVars = {
-                        userInput: sourceContent, // Use the comprehensive source content
-                        totalEpisodes: '60',
-                        episodeInfo: episodeInfo,
-                        platform: platform,
-                        genre: genre,
-                        requirements: input.requirements || '无特殊要求'
-                    };
-
-                    console.log(`[OutlineSettingsTool] Prepared template variables:`, {
-                        userInput: `${templateVars.userInput.substring(0, 200)}... (${templateVars.userInput.length} chars total)`,
-                        totalEpisodes: templateVars.totalEpisodes,
-                        episodeInfo: templateVars.episodeInfo,
-                        platform: templateVars.platform,
-                        genre: templateVars.genre,
-                        requirements: templateVars.requirements
-                    });
-                    return templateVars;
-                },
-                // Extract source jsondoc for proper lineage
-                extractSourceJsondocs: (input) => [{
-                    jsondocId: input.jsondocs[0].jsondocId,
-                    inputRole: 'source'
-                }]
+                outputSchema: OutlineSettingsOutputSchema
+                // No custom prepareTemplateVariables - use default schema-driven extraction
             };
 
             console.log(`[OutlineSettingsTool] Starting executeStreamingTransform with config:`, {

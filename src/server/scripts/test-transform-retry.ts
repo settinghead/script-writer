@@ -18,12 +18,15 @@ async function testTransformRetry() {
         inputSchema: OutlineSettingsInputSchema,
         outputSchema: OutlineSettingsOutputSchema,
         prepareTemplateVariables: (input: any) => ({
-            userInput: 'Test story idea',
-            totalEpisodes: '60',
-            episodeInfo: '总共60集，每集2分钟',
-            platform: '抖音',
-            genre: '现代甜宠',
-            requirements: '无特殊要求'
+            params: {
+                userInput: 'Test story idea',
+                totalEpisodes: '60',
+                episodeInfo: '总共60集，每集2分钟',
+                platform: '抖音',
+                genre: '现代甜宠',
+                requirements: '无特殊要求'
+            },
+            jsondocs: {}
         }),
         // Mock LLM output that will fail schema validation (missing required fields)
         transformLLMOutput: (llmOutput: any, input: any) => ({

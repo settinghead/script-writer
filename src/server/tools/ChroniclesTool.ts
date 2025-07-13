@@ -77,26 +77,8 @@ export function createChroniclesToolDefinition(
             const config: StreamingTransformConfig<ChroniclesInput, ChroniclesOutput> = {
                 templateName: 'chronicles',
                 inputSchema: ChroniclesInputSchema,
-                outputSchema: ChroniclesOutputSchema,
-                prepareTemplateVariables: (input) => {
-                    // Use default values for template variables
-                    const recommendedStages = 8; // Default stage count
-                    const stageGuidance = `请创建${recommendedStages}个左右的故事阶段（60集适合${recommendedStages}个阶段）`;
-
-                    // Stringify the complete outline settings for the template
-                    const outlineSettingsJson = JSON.stringify(outlineSettingsData, null, 2);
-
-                    return ({
-                        outlineSettingsJson,
-                        requirements: input.requirements || '无特殊要求',
-                        stageGuidance
-                    });
-                },
-                // Extract source jsondoc for proper lineage
-                extractSourceJsondocs: (input) => [{
-                    jsondocId: input.jsondocs[0].jsondocId,
-                    inputRole: 'source'
-                }]
+                outputSchema: ChroniclesOutputSchema
+                // No custom prepareTemplateVariables - use default schema-driven extraction
             };
 
             const result = await executeStreamingTransform({

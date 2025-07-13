@@ -6,6 +6,7 @@ import { TransformRepository } from './TransformRepository';
 import { JsondocRepository } from './JsondocRepository';
 import { applyPatch, deepClone, Operation } from 'fast-json-patch';
 import { TypedJsondoc } from '@/common/jsondocs';
+import { dump } from 'js-yaml';
 
 /**
  * Configuration for a streaming transform - minimal interface that tools provide
@@ -14,15 +15,41 @@ export interface StreamingTransformConfig<TInput, TOutput> {
     templateName: string;  // 'brainstorming', 'brainstorm_edit', 'outline'
     inputSchema: z.ZodSchema<TInput>;
     outputSchema: z.ZodSchema<TOutput>;
-    prepareTemplateVariables: (input: TInput, context?: any) => Record<string, string>;
-    transformLLMOutput?: (llmOutput: TOutput, input: TInput) => any;  // Optional: transform LLM output to final jsondoc format
+    // OPTIONAL: Custom template variables function. If not provided, uses default schema-driven extraction
+    prepareTemplateVariables?: (input: TInput, context?: any) => { params?: any; jsondocs?: any } | Promise<{ params?: any; jsondocs?: any }>;
+    transformLLMOutput?: (llmOutput: TOutput, input: TInput) => any;  // Optional: transform LLM output before saving
+}
 
-    // NEW: Optional function to extract source jsondoc IDs from tool input
-    // Return array of {jsondocId, inputRole} for linking existing jsondocs as transform inputs
-    extractSourceJsondocs?: (input: TInput) => Array<{
-        jsondocId: string;
-        inputRole: string;  // e.g., 'source', 'reference', 'context'
-    }>;
+/**
+ * Default template variable extraction - automatically extracts all fields from input schema and jsondocs
+ */
+async function defaultPrepareTemplateVariables<TInput>(
+    input: TInput,
+    jsondocRepo: JsondocRepository
+): Promise<{ params: any; jsondocs: any }> {
+    // Extract all input parameters (excluding jsondocs array)
+    const params = { ...input };
+    delete (params as any).jsondocs;
+
+    // Extract jsondoc data
+    const jsondocs: Record<string, any> = {};
+
+    if ((input as any).jsondocs && Array.isArray((input as any).jsondocs)) {
+        for (const jsondocRef of (input as any).jsondocs) {
+            const jsondoc = await jsondocRepo.getJsondoc(jsondocRef.jsondocId);
+            if (jsondoc) {
+                // Use description as key, fallback to schema type or jsondoc ID
+                const key = jsondocRef.description || jsondocRef.schemaType || jsondocRef.jsondocId;
+                jsondocs[key] = {
+                    description: jsondocRef.description,
+                    schemaType: jsondocRef.schemaType,
+                    data: jsondoc.data
+                };
+            }
+        }
+    }
+
+    return { params, jsondocs };
 }
 
 /**
@@ -146,15 +173,18 @@ export class StreamingTransformExecutor {
                 if (retryCount === 0) {
                     const transformInputs: Array<{ jsondocId: string; inputRole: string }> = [];
 
-                    // 3a. Link source jsondocs if specified by the tool
-                    if (config.extractSourceJsondocs) {
-                        const sourceJsondocs = config.extractSourceJsondocs(validatedInput);
-                        transformInputs.push(...sourceJsondocs);
+                    // 3a. Extract source jsondocs from input.jsondocs array
+                    if ((validatedInput as any).jsondocs && Array.isArray((validatedInput as any).jsondocs)) {
+                        for (const jsondocRef of (validatedInput as any).jsondocs) {
+                            transformInputs.push({
+                                jsondocId: jsondocRef.jsondocId,
+                                inputRole: jsondocRef.description || 'source'
+                            });
+                        }
                     }
 
                     // 3b. Create tool input jsondoc from tool parameters (only if we don't have source jsondocs)
-                    // For tools that use source jsondocs, we don't need a separate tool input jsondoc
-                    if (!config.extractSourceJsondocs || config.extractSourceJsondocs(validatedInput).length === 0) {
+                    if (transformInputs.length === 0) {
                         const inputJsondocType = this.getInputJsondocType(config.templateName);
                         const inputJsondoc = await jsondocRepo.createJsondoc(
                             projectId,
@@ -207,12 +237,12 @@ export class StreamingTransformExecutor {
                     throw new Error(`Template '${config.templateName}' not found`);
                 }
 
+                // NEW: Get template context directly from prepareTemplateVariables
+                const templateContext = config.prepareTemplateVariables
+                    ? await config.prepareTemplateVariables(validatedInput, { jsondocRepo })
+                    : await defaultPrepareTemplateVariables(validatedInput, jsondocRepo);
 
-                const templateVariables = config.prepareTemplateVariables(validatedInput);
-
-                const finalPrompt = await this.templateService.renderTemplate(template, {
-                    params: templateVariables
-                });
+                const finalPrompt = await this.templateService.renderTemplate(template, templateContext);
 
                 // 6. Store the prompt (only on first attempt)
                 if (retryCount === 0) {

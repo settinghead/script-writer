@@ -2,8 +2,9 @@ import { brainstormingTemplate } from './brainstorming.js';
 import { brainstormEditTemplate } from './brainstormEdit.js';
 import { outlineSettingsTemplate } from './outlineSettings.js';
 import { chroniclesTemplate } from './chronicles.js';
-import { generateEpisodeSpecificInstructions, episodeSynopsisGenerationTemplate } from './episodeSynopsisGeneration.js';
-import { scriptGenerationTemplate, generateScriptEpisodeSpecificInstructions } from './scriptGeneration.js';
+import { episodeSynopsisGenerationTemplate } from './episodeSynopsisGeneration.js';
+import { scriptGenerationTemplate } from './scriptGeneration.js';
+import { dump } from 'js-yaml';
 
 // Define types locally to avoid path issues
 interface LLMTemplate {
@@ -12,103 +13,60 @@ interface LLMTemplate {
   promptTemplate: string;
   outputFormat: string;
   responseWrapper?: string;
-  variables: string[];
 }
 
+// Template context for the new generic format
 interface TemplateContext {
-  jsondocs?: Record<string, any>;
-  params?: Record<string, any>;
+  params?: any;
+  jsondocs?: any;
 }
 
 export class TemplateService {
-  private templates = new Map<string, LLMTemplate>();
+  private templates: Map<string, LLMTemplate> = new Map();
 
   constructor() {
-    this.initializeTemplates();
+    // Register all templates
+    this.registerTemplate(brainstormingTemplate);
+    this.registerTemplate(brainstormEditTemplate);
+    this.registerTemplate(outlineSettingsTemplate);
+    this.registerTemplate(chroniclesTemplate);
+    this.registerTemplate(episodeSynopsisGenerationTemplate);
+    this.registerTemplate(scriptGenerationTemplate);
   }
 
-  private initializeTemplates() {
-    // Register brainstorming template
-    this.templates.set('brainstorming', brainstormingTemplate);
-
-    // Register brainstorm edit template
-    this.templates.set('brainstorm_edit', brainstormEditTemplate);
-
-    // Legacy outline template removed - now using split outline settings + chronicles
-
-    // NEW: Register split outline templates
-    this.templates.set('outline_settings', outlineSettingsTemplate);
-    this.templates.set('chronicles', chroniclesTemplate);
-
-    // Register episode synopsis generation template
-    this.templates.set('episode_synopsis_generation', episodeSynopsisGenerationTemplate);
-
-    // Register script generation template
-    this.templates.set('script_generation', scriptGenerationTemplate);
+  private registerTemplate(template: LLMTemplate) {
+    this.templates.set(template.id, template);
   }
 
-  getTemplate(templateId: string): LLMTemplate | undefined {
-    return this.templates.get(templateId);
+  getTemplate(templateId: string): LLMTemplate {
+    const template = this.templates.get(templateId);
+    if (!template) {
+      throw new Error(`Template not found: ${templateId}`);
+    }
+    return template;
   }
 
-  async renderTemplate(
-    template: LLMTemplate,
-    context: TemplateContext
-  ): Promise<string> {
-    let prompt = template.promptTemplate;
+  async renderTemplate(template: LLMTemplate, context: TemplateContext): Promise<string> {
+    let result = template.promptTemplate;
 
-    // Replace variables with context values using %% delimiters
-    for (const variable of template.variables) {
-      const value = this.resolveVariable(variable, context);
-      // Use global replace to replace all occurrences
-      prompt = prompt.split(`%%${variable}%%`).join(value);
+    // Replace %%params%% with YAML-formatted parameters
+    if (context.params) {
+      const paramsYaml = dump(context.params, {
+        indent: 2,
+        lineWidth: -1 // Disable line wrapping
+      }).trim();
+      result = result.replace(/%%params%%/g, paramsYaml);
     }
 
-    // 🔥 VALIDATION: Check for any unresolved template variables
-    // Only check for %%params.*%% and %%jsondocs.*%% patterns
-    const unresolvedMatches = prompt.match(/%%((params|jsondocs)\.[^%]+)%%/g);
-    if (unresolvedMatches) {
-      throw new Error(`Template contains unresolved variables: ${unresolvedMatches.join(', ')}`);
+    // Replace %%jsondocs%% with YAML-formatted jsondoc data
+    if (context.jsondocs) {
+      const jsondocsYaml = dump(context.jsondocs, {
+        indent: 2,
+        lineWidth: -1 // Disable line wrapping
+      }).trim();
+      result = result.replace(/%%jsondocs%%/g, jsondocsYaml);
     }
 
-    return prompt;
-  }
-
-  private resolveVariable(path: string, context: TemplateContext): string {
-    // Handle nested paths like "jsondocs.brainstorm_input_params.genre"
-    const parts = path.split('.');
-    let value: any = context;
-
-    for (const part of parts) {
-      value = value?.[part];
-    }
-
-    // 🔥 FIXED: Don't return empty string for missing values - throw error instead
-    if (value === undefined || value === null) {
-      throw new Error(`Required template variable '${path}' is missing or null in context`);
-    }
-
-    return value.toString();
-  }
-
-  async renderPromptTemplates(messages: Array<{ role: string; content: string }>): Promise<Array<{ role: string; content: string }>> {
-    // For now, just return messages as-is since we don't have complex template rendering
-    return messages;
-  }
-
-  /**
-   * Generate episode-specific instructions based on the episode range being generated
-   * This is extensible for future special episode requirements
-   */
-  generateEpisodeSpecificInstructions(startingEpisode: number, endingEpisode: number): string {
-    return generateEpisodeSpecificInstructions(startingEpisode, endingEpisode);
-  }
-
-  /**
-   * Generate script-specific instructions for individual episode script generation
-   * This provides episode-specific guidance for script writing
-   */
-  generateScriptEpisodeSpecificInstructions(episodeNumber: number): string {
-    return generateScriptEpisodeSpecificInstructions(episodeNumber);
+    return result;
   }
 } 
