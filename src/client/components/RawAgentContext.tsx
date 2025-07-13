@@ -80,12 +80,24 @@ const isJsondocCompatible = (jsondocType: string, toolName: string): boolean => 
 const RawAgentContext: React.FC<RawAgentContextProps> = ({ projectId }) => {
     const [tools, setTools] = useState<Tool[]>([]);
     const [jsondocs, setJsondocs] = useState<JsondocInfo[]>([]);
-    const [selectedTool, setSelectedTool] = useState<string>('');
-    const [selectedJsondocs, setSelectedJsondocs] = useState<string[]>([]);
-    const [additionalParams, setAdditionalParams] = useState<string>('{}');
     const [promptResult, setPromptResult] = useState<PromptResult | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // Use the debug params hook for persistence
+    const {
+        selectedTool,
+        selectedJsondocs,
+        additionalParams,
+        setSelectedTool,
+        setSelectedJsondocs,
+        setAdditionalParams,
+        saveParams,
+        loadParams,
+        clearParams,
+        isLoading: paramsLoading,
+        error: paramsError
+    } = useDebugParams({ projectId });
 
     // Create request payload for debouncing
     const requestPayload = useMemo(() => {
