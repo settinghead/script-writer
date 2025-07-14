@@ -322,7 +322,7 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
 
     // If props provide ideas, use them (for read-only mode)
     if (propsIdeas && propsIdeas.length > 0) {
-      console.log('[IdeaCollection] Using ideas from props:', propsIdeas.length);
+
       return propsIdeas;
     }
 

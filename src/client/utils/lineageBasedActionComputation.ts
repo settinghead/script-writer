@@ -145,7 +145,7 @@ export function computeActionsFromLineage(
             });
 
             if (leafBrainstormIdeas.length > 0) {
-                console.log('[computeActionsFromLineage] Found leaf brainstorm ideas, overriding stage to idea_editing:', leafBrainstormIdeas.length);
+
                 // User has created/edited brainstorm ideas, move to idea_editing stage
                 currentStage = 'idea_editing';
             }
