@@ -4,6 +4,7 @@ import { LLMService } from './LLMService';
 import { CachedLLMService, getCachedLLMService } from './CachedLLMService';
 import { TransformRepository } from './TransformRepository';
 import { JsondocRepository } from './JsondocRepository';
+import { ParticleTemplateProcessor } from '../services/ParticleTemplateProcessor';
 import { applyPatch, deepClone, Operation } from 'fast-json-patch';
 import { TypedJsondoc } from '@/common/jsondocs';
 import { dump } from 'js-yaml';
@@ -102,8 +103,8 @@ export class StreamingTransformExecutor {
     private llmService: LLMService;
     private cachedLLMService: CachedLLMService;
 
-    constructor() {
-        this.templateService = new TemplateService();
+    constructor(particleProcessor?: ParticleTemplateProcessor) {
+        this.templateService = new TemplateService(particleProcessor);
         this.llmService = new LLMService();
         this.cachedLLMService = getCachedLLMService();
     }
@@ -256,7 +257,11 @@ export class StreamingTransformExecutor {
                     ? await config.prepareTemplateVariables(validatedInput, { jsondocRepo })
                     : await defaultPrepareTemplateVariables(validatedInput, jsondocRepo);
 
-                const finalPrompt = await this.templateService.renderTemplate(template, templateContext);
+                const finalPrompt = await this.templateService.renderTemplate(
+                    template,
+                    templateContext,
+                    { projectId, userId } // Particle context
+                );
 
                 // 6. Store the prompt (only on first attempt)
                 if (!dryRun && retryCount === 0 && transformId) {
@@ -735,6 +740,10 @@ export class StreamingTransformExecutor {
 export async function executeStreamingTransform<TInput, TOutput>(
     params: StreamingTransformParams<TInput, TOutput>
 ): Promise<StreamingTransformResult> {
-    const executor = new StreamingTransformExecutor();
+    // Try to get global particle processor if available
+    const { getParticleTemplateProcessor } = await import('../services/ParticleSystemInitializer.js');
+    const particleProcessor = getParticleTemplateProcessor() || undefined;
+
+    const executor = new StreamingTransformExecutor(particleProcessor);
     return executor.executeStreamingTransform(params);
 } 

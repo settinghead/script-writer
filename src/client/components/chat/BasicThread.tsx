@@ -371,7 +371,7 @@ export const BasicThread: React.FC<BasicThreadProps> = ({ projectId }) => {
                     borderTop: '1px solid rgba(255, 255, 255, 0.1)'
                 }}
             >
-                <ChatInput onSend={handleSendMessage} disabled={isLoading} />
+                <ChatInput onSend={handleSendMessage} disabled={isLoading} projectId={projectId} />
             </div>
         </div>
     );

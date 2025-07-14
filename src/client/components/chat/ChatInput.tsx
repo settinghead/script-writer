@@ -1,31 +1,30 @@
-import React, { useState, useRef, KeyboardEvent, useEffect } from 'react';
-import { Input, Button, Space, Tag, Typography } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Button, Tag, Typography } from 'antd';
 import { SendOutlined, LoadingOutlined } from '@ant-design/icons';
 import { useTypewriter } from '../../hooks/useTypewriter';
-
-const { TextArea } = Input;
+import { ParticleMentions } from '../shared/ParticleMentions';
 const { Text } = Typography;
 
 interface ChatInputProps {
     onSend: (message: string) => void;
     disabled?: boolean;
     placeholder?: string;
+    projectId: string;
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({
     onSend,
     disabled = false,
-    placeholder = "输入任何关于你的创作的问题..."
+    placeholder = "输入任何关于你的创作的问题...",
+    projectId
 }) => {
     const [message, setMessage] = useState('');
     const [isHidingSuggestions, setIsHidingSuggestions] = useState(false);
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     const { displayText, isTyping, startTyping } = useTypewriter({
         speed: 30, // 30ms per character for smooth but fast typing
         onComplete: () => {
-            // Auto-resize textarea when typing is complete
-            adjustTextareaHeight();
+            // Typing complete
         }
     });
 
@@ -41,43 +40,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         if (trimmedMessage && !disabled) {
             onSend(trimmedMessage);
             setMessage('');
-            resetTextareaHeight();
         }
     };
 
-    const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            handleSend();
-        }
-    };
 
-    const resetTextareaHeight = () => {
-        if (textareaRef.current) {
-            textareaRef.current.style.height = 'auto';
-        }
-    };
-
-    const adjustTextareaHeight = () => {
-        if (textareaRef.current) {
-            textareaRef.current.style.height = 'auto';
-            const scrollHeight = textareaRef.current.scrollHeight;
-            const maxHeight = 120; // Maximum height in pixels
-            textareaRef.current.style.height = `${Math.min(scrollHeight, maxHeight)}px`;
-        }
-    };
-
-    const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        // Only allow manual input if not currently typing
-        if (!isTyping) {
-            setMessage(e.target.value);
-            adjustTextareaHeight();
-            // Reset animation state if user manually types
-            if (isHidingSuggestions) {
-                setIsHidingSuggestions(false);
-            }
-        }
-    };
 
     const getSuggestions = () => [
 
@@ -163,22 +129,19 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             )}
 
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-                <TextArea
+                <ParticleMentions
                     value={message}
-                    onChange={(e) => handleInputChange(e as any)}
-                    onKeyDown={handleKeyDown}
+                    onChange={(value) => setMessage(value)}
                     placeholder={disabled ? "AI正在思考..." : placeholder}
+                    projectId={projectId}
                     disabled={disabled || isTyping}
-                    autoSize={{ minRows: 1, maxRows: 4 }}
-                    maxLength={5000}
+                    rows={4}
                     style={{
+                        flex: 1,
                         background: 'rgba(0, 0, 0, 0.8)',
                         borderColor: '#444',
-                        color: '#e0e0e0',
-                        resize: 'none',
-                        cursor: isTyping ? 'default' : 'text'
+                        color: '#e0e0e0'
                     }}
-                    showCount={message.length > 4000}
                 />
 
                 <Button

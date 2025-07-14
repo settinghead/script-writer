@@ -1,6 +1,13 @@
-import { LanguageModelV1 } from 'ai';
+import { EmbeddingModel, LanguageModelV1 } from 'ai';
 
 export interface LLMCredentials {
+    apiKey: string;
+    baseUrl: string;
+    modelName: string;
+    provider: string;
+}
+
+export interface EmbeddingCredentials {
     apiKey: string;
     baseUrl: string;
     modelName: string;
@@ -34,6 +41,43 @@ export function getLLMCredentials(): LLMCredentials {
         baseUrl,
         modelName,
         provider
+    };
+}
+
+export function getEmbeddingCredentials(): EmbeddingCredentials & { dimensions?: number } {
+    const apiKey = process.env.EMBEDDING_API_KEY || process.env.LLM_API_KEY;
+    const baseUrl = process.env.EMBEDDING_BASE_URL || process.env.LLM_BASE_URL;
+    const modelName = process.env.EMBEDDING_MODEL_NAME || 'text-embedding-3-small';
+    const provider = process.env.EMBEDDING_PROVIDER || process.env.LLM_PROVIDER;
+
+    if (!apiKey) {
+        throw new Error('EMBEDDING_API_KEY environment variable is not set');
+    }
+
+    if (!baseUrl) {
+        throw new Error('EMBEDDING_BASE_URL environment variable is not set');
+    }
+
+    if (!modelName) {
+        throw new Error('EMBEDDING_MODEL_NAME environment variable is not set');
+    }
+
+    if (!provider) {
+        throw new Error('EMBEDDING_PROVIDER environment variable is not set');
+    }
+
+    if (!process.env.EMBEDDING_DIMENSIONS) {
+        throw new Error('EMBEDDING_DIMENSIONS environment variable is not set');
+    }
+
+    const dimensions = parseInt(process.env.EMBEDDING_DIMENSIONS);
+
+    return {
+        apiKey,
+        baseUrl,
+        modelName,
+        provider,
+        dimensions
     };
 }
 
@@ -72,6 +116,38 @@ export async function getLLMModel({
             baseURL: actualBaseUrl,
         });
         return deepseek(actualModelName);
+    } else {
+        throw new Error(`Unsupported provider: ${actualProvider}`);
+    }
+}
+
+export function getEmbeddingModel({
+    modelName,
+    apiKey,
+    baseUrl,
+    provider,
+}: Partial<EmbeddingCredentials> = {}): any {
+    const { apiKey: defaultApiKey, baseUrl: defaultBaseUrl, provider: defaultProvider, modelName: defaultModelName } = getEmbeddingCredentials();
+    const actualModelName = modelName || defaultModelName;
+    const actualApiKey = apiKey || defaultApiKey;
+    const actualBaseUrl = baseUrl || defaultBaseUrl;
+    const actualProvider = provider || defaultProvider;
+
+    if (actualProvider === 'openai' || actualProvider === 'qwen') {
+        const { createOpenAI } = require('@ai-sdk/openai');
+        const openai = createOpenAI({
+            apiKey: actualApiKey,
+            baseURL: actualBaseUrl,
+        });
+        return openai.embedding(actualModelName);
+    }
+    else if (actualProvider === 'deepseek') {
+        const { createDeepSeek } = require('@ai-sdk/deepseek');
+        const deepseek = createDeepSeek({
+            apiKey: actualApiKey,
+            baseURL: actualBaseUrl,
+        });
+        return deepseek.textEmbeddingModel(actualModelName);
     } else {
         throw new Error(`Unsupported provider: ${actualProvider}`);
     }

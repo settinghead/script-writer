@@ -51,6 +51,20 @@ const chatService = new ChatService(chatMessageRepo, agentService);
 // Inject dependencies to avoid circular dependency issues
 agentService.setChatMessageRepository(chatMessageRepo);
 
+// Initialize particle system asynchronously
+let particleSystemInitialized = false;
+(async () => {
+  try {
+    const { initializeParticleSystem } = await import('./services/ParticleSystemInitializer.js');
+    await initializeParticleSystem(db);
+    particleSystemInitialized = true;
+    console.log('🎯 Particle system initialized successfully');
+  } catch (error) {
+    console.warn('⚠️ Particle system initialization failed (this is expected if embedding env vars are not set):', error instanceof Error ? error.message : error);
+    console.log('🔧 To enable particle system, set: LLM_API_KEY, LLM_BASE_URL, LLM_PROVIDER, EMBEDDING_MODEL_NAME, EMBEDDING_DIMENSIONS');
+  }
+})();
+
 // Make services available to routes via app.locals
 app.locals.transformRepo = transformRepo;
 const server = app.listen(PORT, "0.0.0.0", () =>
@@ -66,6 +80,10 @@ if (process.env.NODE_ENV !== 'production') {
 // Mount authentication routes
 app.use('/auth', createAuthRoutes(authDB, authMiddleware));
 app.use('/api/yjs', yjsRoutes);
+
+// Mount particle routes BEFORE other API routes to avoid catch-all
+import particleRoutes from './routes/particleRoutes.js';
+app.use('/api/particles', particleRoutes);
 
 // Mount all API routes
 import { createAPIRoutes } from './routes/apiRoutes';
