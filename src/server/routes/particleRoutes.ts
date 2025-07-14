@@ -27,8 +27,42 @@ router.get('/health', (req, res) => {
             particleEventBus: !!particleSystem.particleEventBus,
             particleTemplateProcessor: !!particleSystem.particleTemplateProcessor
         } : null,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        version: 'v2-with-similarity' // Test marker
     });
+});
+
+/**
+ * Manually trigger particle extraction for all jsondocs (dev only)
+ * POST /api/particles/extract-all
+ */
+router.post('/extract-all', authMiddleware.authenticate, async (req, res) => {
+    try {
+        const particleSystem = getParticleSystem();
+        if (!particleSystem) {
+            res.status(503).json({ error: 'Particle system not available' });
+            return;
+        }
+
+        console.log('[ParticleRoutes] Manually triggering particle extraction for all jsondocs...');
+        await particleSystem.particleService.initializeAllParticles();
+
+        // Count particles after extraction
+        const particleCount = await db.selectFrom('particles').select(db.fn.count('id').as('count')).executeTakeFirst();
+
+        res.json({
+            success: true,
+            message: 'Particle extraction completed',
+            particleCount: particleCount?.count || 0,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('[ParticleRoutes] Manual extraction failed:', error);
+        res.status(500).json({
+            error: 'Particle extraction failed',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        });
+    }
 });
 
 /**
@@ -90,9 +124,12 @@ router.get('/search', authMiddleware.authenticate, async (req, res) => {
                 id: particle.id,
                 title: particle.title,
                 type: particle.type,
-                content_preview: particle.content.substring(0, 100) + (particle.content.length > 100 ? '...' : ''),
+                content_preview: particle.content_text ?
+                    particle.content_text.substring(0, 100) + (particle.content_text.length > 100 ? '...' : '') :
+                    JSON.stringify(particle.content).substring(0, 100) + '...',
                 jsondoc_id: particle.jsondoc_id,
-                path: particle.path
+                path: particle.path,
+                similarity: particle.similarity
             }));
 
             res.json(transformedResults);
@@ -107,7 +144,8 @@ router.get('/search', authMiddleware.authenticate, async (req, res) => {
                     type: '角色',
                     content_preview: '苏家遭灭门之灾，苏若水为救重伤兄长假扮林家千金...',
                     jsondoc_id: 'mock-jsondoc-1',
-                    path: '$.characters[0]'
+                    path: '$.characters[0]',
+                    similarity: 0.85
                 },
                 {
                     id: 'mock-particle-2',
@@ -115,7 +153,8 @@ router.get('/search', authMiddleware.authenticate, async (req, res) => {
                     type: '创意',
                     content_preview: '现代都市背景下的复仇题材，女主角智慧与美貌并存...',
                     jsondoc_id: 'mock-jsondoc-2',
-                    path: '$.ideas[0]'
+                    path: '$.ideas[0]',
+                    similarity: 0.72
                 }
             ];
 

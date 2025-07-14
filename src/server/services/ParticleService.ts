@@ -104,18 +104,18 @@ export class ParticleService {
             const queryEmbedding = await this.embeddingService.generateEmbedding(query);
             const queryVector = this.embeddingService.embeddingToVector(queryEmbedding);
 
-            // Perform semantic search using pgvector
+            // Perform semantic search using pgvector cosine similarity
             const results = await this.db
                 .selectFrom('particles')
                 .selectAll()
-                .select(sql<number>`(embedding <-> ${queryVector})`.as('distance'))
+                .select(sql<number>`(1 - (embedding <=> ${queryVector}))`.as('similarity'))
                 .where('project_id', '=', projectId)
                 .where('is_active', '=', true)
-                .orderBy('distance', 'asc')
+                .orderBy('similarity', 'desc')
                 .limit(limit)
                 .execute();
 
-            // Convert distance to similarity score (1 - distance)
+            // Return results with cosine similarity scores
             return results.map(row => ({
                 id: row.id,
                 jsondoc_id: row.jsondoc_id,
@@ -125,7 +125,7 @@ export class ParticleService {
                 title: row.title,
                 content: row.content,
                 content_text: row.content_text,
-                similarity: 1 - (row as any).distance,
+                similarity: (row as any).similarity,
                 created_at: row.created_at,
                 updated_at: row.updated_at
             }));
@@ -258,6 +258,7 @@ export class ParticleService {
             data: JSON.parse(result.data),
             metadata: result.metadata ? JSON.parse(result.metadata) : null,
             project_id: result.project_id,
+            user_id: '', // Not stored in DB - using project-based access control
             origin_type: result.origin_type,
             streaming_status: result.streaming_status || null,
             created_at: result.created_at.toISOString(),

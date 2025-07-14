@@ -7,6 +7,7 @@ import RawChatMessages from '../RawChatMessages';
 import RawAgentContext from '../RawAgentContext';
 import { ScrollPositionDemo } from '../ScrollPositionDemo';
 import { YJSDebugComponent } from './YJSDebugComponent';
+import { ParticleDebugComponent } from './ParticleDebugComponent';
 import { useDebugState } from './DebugMenu';
 
 interface DebugPanelsProps {
@@ -14,7 +15,7 @@ interface DebugPanelsProps {
 }
 
 export const DebugPanels: React.FC<DebugPanelsProps> = ({ projectId }) => {
-    const { showRawGraph, showRawChat, showRawContext, showScrollDemo } = useDebugState();
+    const { showRawGraph, showRawChat, showRawContext, showScrollDemo, showParticleDebug } = useDebugState();
     const [searchParams, setSearchParams] = useSearchParams();
 
     // Check for YJS debug mode
@@ -22,7 +23,7 @@ export const DebugPanels: React.FC<DebugPanelsProps> = ({ projectId }) => {
     const jsondocId = searchParams.get('jsondoc-id');
 
     // Don't render anything if no debug mode is active
-    if (!showRawGraph && !showRawChat && !showRawContext && !showScrollDemo && !showYJSDebug) {
+    if (!showRawGraph && !showRawChat && !showRawContext && !showScrollDemo && !showYJSDebug && !showParticleDebug) {
         return null;
     }
 
@@ -44,6 +45,9 @@ export const DebugPanels: React.FC<DebugPanelsProps> = ({ projectId }) => {
     } else if (showYJSDebug && jsondocId) {
         debugTitle = 'YJS调试信息';
         debugContent = <YJSDebugComponent jsondocId={jsondocId} />;
+    } else if (showParticleDebug) {
+        debugTitle = '粒子嵌入搜索调试';
+        debugContent = <ParticleDebugComponent projectId={projectId} />;
     }
 
     return (
@@ -89,6 +93,7 @@ export const DebugPanels: React.FC<DebugPanelsProps> = ({ projectId }) => {
                         newSearchParams.delete('yjs-debug');
                         newSearchParams.delete('jsondoc-id');
                         newSearchParams.delete('scroll-demo');
+                        newSearchParams.delete('particle-debug');
                         setSearchParams(newSearchParams);
                     }}
                     style={{

@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Space, Button } from 'antd';
-import { NodeIndexOutlined, MessageOutlined, FileTextOutlined, VerticalAlignTopOutlined } from '@ant-design/icons';
+import { NodeIndexOutlined, MessageOutlined, FileTextOutlined, VerticalAlignTopOutlined, SearchOutlined } from '@ant-design/icons';
 
 interface DebugMenuProps {
     isMobile?: boolean;
@@ -19,6 +19,7 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
     const showRawChat = searchParams.get('raw-chat') === '1';
     const showRawContext = searchParams.get('raw-context') === '1';
     const showScrollDemo = searchParams.get('scroll-demo') === '1';
+    const showParticleDebug = searchParams.get('particle-debug') === '1';
 
     // Debug toggle handlers
     const toggleRawGraph = useCallback(() => {
@@ -31,6 +32,7 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
             newSearchParams.delete('raw-chat');
             newSearchParams.delete('raw-context');
             newSearchParams.delete('scroll-demo');
+            newSearchParams.delete('particle-debug');
         }
         setSearchParams(newSearchParams);
     }, [showRawGraph, searchParams, setSearchParams]);
@@ -45,6 +47,7 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
             newSearchParams.delete('raw-graph');
             newSearchParams.delete('raw-context');
             newSearchParams.delete('scroll-demo');
+            newSearchParams.delete('particle-debug');
         }
         setSearchParams(newSearchParams);
     }, [showRawChat, searchParams, setSearchParams]);
@@ -59,6 +62,7 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
             newSearchParams.delete('raw-graph');
             newSearchParams.delete('raw-chat');
             newSearchParams.delete('scroll-demo');
+            newSearchParams.delete('particle-debug');
         }
         setSearchParams(newSearchParams);
     }, [showRawContext, searchParams, setSearchParams]);
@@ -73,9 +77,25 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
             newSearchParams.delete('raw-graph');
             newSearchParams.delete('raw-chat');
             newSearchParams.delete('raw-context');
+            newSearchParams.delete('particle-debug');
         }
         setSearchParams(newSearchParams);
     }, [showScrollDemo, searchParams, setSearchParams]);
+
+    const toggleParticleDebug = useCallback(() => {
+        const newSearchParams = new URLSearchParams(searchParams);
+        if (showParticleDebug) {
+            newSearchParams.delete('particle-debug');
+        } else {
+            newSearchParams.set('particle-debug', '1');
+            // Clear other debug views
+            newSearchParams.delete('raw-graph');
+            newSearchParams.delete('raw-chat');
+            newSearchParams.delete('raw-context');
+            newSearchParams.delete('scroll-demo');
+        }
+        setSearchParams(newSearchParams);
+    }, [showParticleDebug, searchParams, setSearchParams]);
 
     return (
         <Space size={isMobile ? 'small' : 'middle'}>
@@ -127,6 +147,16 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
                 {isMobile ? '' : (showScrollDemo ? '关闭滚动演示' : '滚动演示')}
             </Button>
 
+            <Button
+                type="text"
+                icon={<SearchOutlined />}
+                onClick={toggleParticleDebug}
+                style={{ color: showParticleDebug ? '#52c41a' : '#1890ff' }}
+                size={isMobile ? 'small' : 'middle'}
+            >
+                {isMobile ? '' : (showParticleDebug ? '关闭粒子搜索' : '粒子搜索')}
+            </Button>
+
         </Space>
     );
 };
@@ -140,9 +170,11 @@ export const useDebugState = () => {
         showRawChat: searchParams.get('raw-chat') === '1',
         showRawContext: searchParams.get('raw-context') === '1',
         showScrollDemo: searchParams.get('scroll-demo') === '1',
+        showParticleDebug: searchParams.get('particle-debug') === '1',
         isDebugMode: searchParams.get('raw-graph') === '1' ||
             searchParams.get('raw-chat') === '1' ||
             searchParams.get('raw-context') === '1' ||
-            searchParams.get('scroll-demo') === '1'
+            searchParams.get('scroll-demo') === '1' ||
+            searchParams.get('particle-debug') === '1'
     };
 }; 
