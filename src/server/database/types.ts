@@ -181,6 +181,33 @@ export interface Users {
   username: string;
 }
 
+export interface EmbeddingCache {
+  content_hash: string;
+  content_text: string;
+  embedding: string; // pgvector type represented as string
+  model_name: string;
+  provider: string;
+  dimensions: Generated<number>;
+  created_at: Generated<Timestamp>;
+  accessed_at: Generated<Timestamp>;
+  access_count: Generated<number>;
+}
+
+export interface Particles {
+  id: string;
+  jsondoc_id: string;
+  project_id: string;
+  path: string;
+  type: string;
+  title: string;
+  content: Json;
+  content_text: string;
+  embedding: string | null; // pgvector type represented as string
+  is_active: Generated<boolean>;
+  created_at: Generated<Timestamp>;
+  updated_at: Generated<Timestamp>;
+}
+
 export interface UserSessions {
   created_at: Generated<Timestamp>;
   expires_at: Timestamp;
@@ -195,9 +222,11 @@ export interface DB {
   auth_providers: AuthProviders;
   chat_messages_display: ChatMessagesDisplay;
   chat_messages_raw: ChatMessagesRaw;
+  embedding_cache: EmbeddingCache;
   human_transforms: HumanTransforms;
   llm_prompts: LlmPrompts;
   llm_transforms: LlmTransforms;
+  particles: Particles;
   projects: Projects;
   projects_users: ProjectsUsers;
   transform_inputs: TransformInputs;
