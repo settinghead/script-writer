@@ -85,9 +85,9 @@ const RawAgentContext: React.FC<RawAgentContextProps> = ({ projectId }) => {
     const [error, setError] = useState<string | null>(null);
 
     // Dry run state
-    const [dryRunLoading, setDryRunLoading] = useState(false);
-    const [dryRunResults, setDryRunResults] = useState<any[]>([]);
-    const [dryRunStatus, setDryRunStatus] = useState<'idle' | 'running' | 'completed' | 'error'>('idle');
+    const [nonPersistentRunLoading, setNonPersistentRunLoading] = useState(false);
+    const [nonPersistentRunResults, setNonPersistentRunResults] = useState<any>(null);
+    const [nonPersistentRunStatus, setNonPersistentRunStatus] = useState<string>('');
 
     // Use the debug params hook for persistence
     const {
@@ -276,79 +276,61 @@ const RawAgentContext: React.FC<RawAgentContextProps> = ({ projectId }) => {
         }
     }, [debouncedRequestPayload]);
 
-    // Dry run function
-    const runDryRun = useCallback(async () => {
-        if (!selectedTool || selectedJsondocs.length === 0) return;
-
-        setDryRunLoading(true);
-        setDryRunResults([]);
-        setDryRunStatus('running');
-        setError(null);
+    // Non-persistent run function
+    const runNonPersistentRun = async (toolName: string, input: any) => {
+        setNonPersistentRunLoading(true);
+        setNonPersistentRunResults(null);
+        setNonPersistentRunStatus('开始非持久化运行...');
 
         try {
-            let parsedParams = {};
-            try {
-                if (additionalParams.trim()) {
-                    parsedParams = JSON.parse(additionalParams);
-                }
-            } catch (e) {
-                throw new Error('Invalid JSON in additional parameters');
-            }
-
-            const selectedJsondocData = selectedJsondocs.map(id => {
-                const jsondoc = jsondocs.find(j => j.id === id);
-                return {
-                    jsondocId: id,
-                    description: jsondoc?.schemaType || 'unknown',
-                    schemaType: jsondoc?.schemaType || 'unknown'
-                };
-            });
-
-            // Use fetch for POST with SSE
-            const response = await fetch(`/api/admin/tools/${selectedTool}/dry-run`, {
+            const response = await fetch(`/api/admin/tools/${toolName}/non-persistent`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': 'Bearer debug-auth-token-script-writer-dev',
-                    'Accept': 'text/event-stream'
+                    'Authorization': `Bearer debug-auth-token-script-writer-dev`
                 },
-                body: JSON.stringify({
-                    jsondocs: selectedJsondocData,
-                    additionalParams: parsedParams
-                })
+                body: JSON.stringify(input)
             });
 
             if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
 
             const reader = response.body?.getReader();
             if (!reader) {
-                throw new Error('No response body');
+                throw new Error('No response body reader available');
             }
 
-            const decoder = new TextDecoder();
-            let buffer = '';
+            let consolidatedResult: any = {};
 
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
 
-                buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split('\n');
-                buffer = lines.pop() || '';
+                const chunk = new TextDecoder().decode(value);
+                const lines = chunk.split('\n');
 
                 for (const line of lines) {
                     if (line.startsWith('data: ')) {
                         try {
-                            const data = JSON.parse(line.substring(6));
-                            setDryRunResults(prev => [...prev, {
-                                timestamp: new Date().toLocaleTimeString(),
-                                data
-                            }]);
+                            const data = JSON.parse(line.slice(6));
 
-                            if (data.message === 'Dry run completed successfully') {
-                                setDryRunStatus('completed');
+                            if (data.type === 'chunk' && data.data) {
+                                // Handle both array and object data structures
+                                if (Array.isArray(data.data)) {
+                                    // For array data, update the consolidated result
+                                    consolidatedResult = data.data;
+                                    setNonPersistentRunResults(consolidatedResult);
+                                } else {
+                                    // For object data, merge into consolidated result
+                                    consolidatedResult = { ...consolidatedResult, ...data.data };
+                                    setNonPersistentRunResults(consolidatedResult);
+                                }
+                                setNonPersistentRunStatus('接收数据中...');
+                            } else if (data.message === 'Non-persistence run completed successfully') {
+                                setNonPersistentRunStatus('非持久化运行完成');
+                            } else if (data.message) {
+                                setNonPersistentRunStatus(data.message);
                             }
                         } catch (e) {
                             console.warn('Failed to parse SSE data:', line);
@@ -356,14 +338,13 @@ const RawAgentContext: React.FC<RawAgentContextProps> = ({ projectId }) => {
                     }
                 }
             }
-
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Unknown error');
-            setDryRunStatus('error');
+        } catch (error) {
+            console.error('Non-persistent run error:', error);
+            setNonPersistentRunStatus(`错误: ${error instanceof Error ? error.message : String(error)}`);
         } finally {
-            setDryRunLoading(false);
+            setNonPersistentRunLoading(false);
         }
-    }, [selectedTool, selectedJsondocs, additionalParams, jsondocs]);
+    };
 
     const renderCodeBlock = (content: string, maxHeight = '400px') => (
         <div style={{
@@ -513,13 +494,37 @@ const RawAgentContext: React.FC<RawAgentContextProps> = ({ projectId }) => {
                     </Button>
                     <Button
                         icon={<PlayCircleOutlined />}
-                        onClick={runDryRun}
+                        onClick={() => {
+                            if (!selectedTool || selectedJsondocs.length === 0) return;
+
+                            let parsedParams = {};
+                            try {
+                                if (additionalParams.trim()) {
+                                    parsedParams = JSON.parse(additionalParams);
+                                }
+                            } catch (e) {
+                                setError('Invalid JSON in additional parameters');
+                                return;
+                            }
+
+                            runNonPersistentRun(selectedTool, {
+                                jsondocs: selectedJsondocs.map(id => {
+                                    const jsondoc = jsondocs.find(j => j.id === id);
+                                    return {
+                                        jsondocId: id,
+                                        description: jsondoc?.schemaType || 'unknown',
+                                        schemaType: jsondoc?.schemaType || 'unknown'
+                                    };
+                                }),
+                                additionalParams: parsedParams
+                            });
+                        }}
                         size="small"
-                        loading={dryRunLoading}
+                        loading={nonPersistentRunLoading}
                         disabled={!selectedTool || selectedJsondocs.length === 0}
                         style={{ backgroundColor: '#52c41a', borderColor: '#52c41a', color: 'white' }}
                     >
-                        执行干运行
+                        执行测试运行
                     </Button>
                 </Space>
 
@@ -633,17 +638,15 @@ const RawAgentContext: React.FC<RawAgentContextProps> = ({ projectId }) => {
                 </div>
             )}
 
-            {/* Dry Run Results */}
-            {dryRunResults.length > 0 && (
+            {/* Non-Persistent Run Results */}
+            {nonPersistentRunResults && (
                 <div style={{ marginTop: 24 }}>
                     <Title level={4} style={{ display: 'flex', alignItems: 'center', color: '#fff', marginBottom: 16 }}>
                         <PlayCircleOutlined style={{ marginRight: 8 }} />
                         干运行结果
-                        {dryRunLoading && <Spin size="small" style={{ marginLeft: 8 }} />}
+                        {nonPersistentRunLoading && <Spin size="small" style={{ marginLeft: 8 }} />}
                         <Text type="secondary" style={{ marginLeft: 8, fontSize: '14px' }}>
-                            ({dryRunStatus === 'running' ? '运行中...' :
-                                dryRunStatus === 'completed' ? '已完成' :
-                                    dryRunStatus === 'error' ? '错误' : '空闲'})
+                            {nonPersistentRunStatus}
                         </Text>
                     </Title>
 
@@ -654,27 +657,19 @@ const RawAgentContext: React.FC<RawAgentContextProps> = ({ projectId }) => {
                         border: '1px solid #434343',
                         borderRadius: '6px'
                     }}>
-                        {dryRunResults.map((event, index) => (
-                            <div key={index} style={{
-                                marginBottom: '8px',
-                                padding: '12px',
-                                backgroundColor: index % 2 === 0 ? '#262626' : '#1a1a1a',
-                                borderBottom: index < dryRunResults.length - 1 ? '1px solid #434343' : 'none'
-                            }}>
-                                <Text code style={{ fontSize: '11px', color: '#888' }}>
-                                    [{event.timestamp}]
-                                </Text>
-                                <pre style={{
-                                    margin: '4px 0 0 0',
-                                    fontSize: '12px',
-                                    whiteSpace: 'pre-wrap',
-                                    color: '#e6e6e6',
-                                    fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace'
-                                }}>
-                                    {JSON.stringify(event.data, null, 2)}
-                                </pre>
-                            </div>
-                        ))}
+                        <pre style={{
+                            margin: '0',
+                            width: '100%',
+                            fontSize: '12px',
+                            whiteSpace: 'pre-wrap',
+                            wordWrap: 'break-word',
+                            overflowWrap: 'break-word',
+                            color: '#e6e6e6',
+                            fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace',
+                            padding: '12px'
+                        }}>
+                            {JSON.stringify(nonPersistentRunResults, null, 2)}
+                        </pre>
                     </div>
                 </div>
             )}

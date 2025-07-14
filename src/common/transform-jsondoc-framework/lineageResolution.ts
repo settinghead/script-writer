@@ -1031,10 +1031,24 @@ export function getJsondocAtPath(
         const ideaMatch = jsondocPath.match(/^\$\.ideas\[(\d+)\]$/);
         if (ideaMatch) {
             const index = parseInt(ideaMatch[1]);
-            if (data.ideas && Array.isArray(data.ideas) && data.ideas[index]) {
+
+            // Handle both old format (direct array) and new format (with ideas property)
+            let ideasArray: any[] = [];
+
+            if (Array.isArray(data)) {
+                // Old format: data is directly an array
+                ideasArray = data;
+            } else if (data.ideas && Array.isArray(data.ideas)) {
+                // New format: data has an ideas property
+                ideasArray = data.ideas;
+            } else {
+                return null;
+            }
+
+            if (ideasArray[index]) {
                 return {
-                    title: data.ideas[index].title,
-                    body: data.ideas[index].body
+                    title: ideasArray[index].title,
+                    body: ideasArray[index].body
                 };
             }
             return null;
@@ -1045,8 +1059,22 @@ export function getJsondocAtPath(
         if (nestedFieldMatch) {
             const index = parseInt(nestedFieldMatch[1]);
             const field = nestedFieldMatch[2];
-            if (data.ideas && Array.isArray(data.ideas) && data.ideas[index]) {
-                return data.ideas[index][field] || null;
+
+            // Handle both old format (direct array) and new format (with ideas property)
+            let ideasArray: any[] = [];
+
+            if (Array.isArray(data)) {
+                // Old format: data is directly an array
+                ideasArray = data;
+            } else if (data.ideas && Array.isArray(data.ideas)) {
+                // New format: data has an ideas property
+                ideasArray = data.ideas;
+            } else {
+                return null;
+            }
+
+            if (ideasArray[index]) {
+                return ideasArray[index][field] || null;
             }
             return null;
         }
@@ -1097,23 +1125,38 @@ export function findEffectiveBrainstormIdeas(
     graph: LineageGraph,
     jsondocs: ElectricJsondoc[]
 ): EffectiveBrainstormIdea[] {
+    console.log('[findEffectiveBrainstormIdeas] Starting with:', {
+        totalNodes: graph.nodes.size,
+        totalJsondocs: jsondocs.length,
+        brainstormJsondocs: jsondocs.filter(j => j.schema_type === 'brainstorm_idea' || j.schema_type === 'brainstorm_collection').length
+    });
+
     const results: EffectiveBrainstormIdea[] = [];
     const jsondocMap = new Map(jsondocs.map(a => [a.id, a]));
 
-
-
-
+    console.log('[findEffectiveBrainstormIdeas] Jsondoc map created with keys:', Array.from(jsondocMap.keys()));
 
     // Step 1: Find all relevant brainstorm nodes (both leaf and non-leaf)
     // Collections can be non-leaf but still need processing for unconsumed ideas
     const relevantNodes = Array.from(graph.nodes.entries())
         .filter(([_, node]) => {
-            if (node.type !== 'jsondoc') return false;
+            if (node.type !== 'jsondoc') {
+                return false;
+            }
 
             const jsondoc = jsondocMap.get((node as LineageNodeJsondoc).jsondocId);
             const isBrainstormType = jsondoc && (
                 jsondoc.schema_type === 'brainstorm_idea' || jsondoc.schema_type === 'brainstorm_collection'
             );
+
+            console.log('[findEffectiveBrainstormIdeas] Checking node:', {
+                nodeId: (node as LineageNodeJsondoc).jsondocId,
+                nodeType: node.type,
+                jsondocFound: !!jsondoc,
+                jsondocSchemaType: jsondoc?.schema_type,
+                isBrainstormType,
+                isLeaf: node.isLeaf
+            });
 
             // Include all brainstorm types regardless of leaf status
             // - brainstorm_idea: only if leaf (final versions)
@@ -1124,43 +1167,85 @@ export function findEffectiveBrainstormIdeas(
                 (jsondoc.schema_type === 'brainstorm_collection')
             );
 
+            console.log('[findEffectiveBrainstormIdeas] Should include node:', {
+                nodeId: (node as LineageNodeJsondoc).jsondocId,
+                shouldInclude,
+                reason: shouldInclude ? 'matches criteria' : 'does not match criteria'
+            });
 
             return shouldInclude;
         })
         .map(([jsondocId, node]) => ({ jsondocId, node: node as LineageNodeJsondoc }));
 
-
+    console.log('[findEffectiveBrainstormIdeas] Relevant nodes found:', {
+        count: relevantNodes.length,
+        nodes: relevantNodes.map(n => ({
+            jsondocId: n.jsondocId,
+            schemaType: jsondocMap.get(n.jsondocId)?.schema_type,
+            isLeaf: n.node.isLeaf
+        }))
+    });
 
     for (const { jsondocId, node } of relevantNodes) {
         const jsondoc = jsondocMap.get(jsondocId);
-        if (!jsondoc) continue;
+        if (!jsondoc) {
+            console.warn('[findEffectiveBrainstormIdeas] Jsondoc not found for relevant node:', jsondocId);
+            continue;
+        }
+
+        console.log('[findEffectiveBrainstormIdeas] Processing relevant node:', {
+            jsondocId,
+            schemaType: jsondoc.schema_type,
+            isLeaf: node.isLeaf
+        });
 
         if (jsondoc.schema_type === 'brainstorm_collection') {
+            console.log('[findEffectiveBrainstormIdeas] Processing brainstorm collection:', jsondocId);
             // Step 2a: Collection leaf - check which ideas are still "available"
             const consumedPaths = findConsumedCollectionPaths(jsondocId, graph);
+            console.log('[findEffectiveBrainstormIdeas] Consumed paths for collection:', {
+                jsondocId,
+                consumedPaths: Array.from(consumedPaths)
+            });
+
             const collectionIdeas = extractCollectionIdeas(jsondoc, consumedPaths);
+            console.log('[findEffectiveBrainstormIdeas] Extracted collection ideas:', {
+                jsondocId,
+                ideasCount: collectionIdeas.length,
+                ideas: collectionIdeas
+            });
+
             results.push(...collectionIdeas);
 
         } else if (jsondoc.schema_type === 'brainstorm_idea') {
+            console.log('[findEffectiveBrainstormIdeas] Processing brainstorm idea:', jsondocId);
             // Step 2b: Standalone idea leaf - check if it originated from a collection
             const originInfo = traceToCollectionOrigin(jsondocId, graph, jsondocMap);
+            console.log('[findEffectiveBrainstormIdeas] Origin info for idea:', {
+                jsondocId,
+                originInfo
+            });
 
             if (originInfo.isFromCollection) {
-                results.push({
+                const ideaResult = {
                     jsondocId,
                     jsondocPath: '$', // Standalone jsondoc uses whole jsondoc
                     originalJsondocId: originInfo.originalCollectionId!,
                     index: originInfo.collectionIndex!,
                     isFromCollection: true
-                });
+                };
+                console.log('[findEffectiveBrainstormIdeas] Adding idea from collection:', ideaResult);
+                results.push(ideaResult);
             } else {
-                results.push({
+                const ideaResult = {
                     jsondocId,
                     jsondocPath: '$',
                     originalJsondocId: jsondocId,
                     index: 0,
                     isFromCollection: false
-                });
+                };
+                console.log('[findEffectiveBrainstormIdeas] Adding standalone idea:', ideaResult);
+                results.push(ideaResult);
             }
         }
     }
@@ -1177,6 +1262,18 @@ export function findEffectiveBrainstormIdeas(
         // Then sort by index within the collection (preserves original ordering)
         return a.index - b.index;
     });
+
+    console.log('[findEffectiveBrainstormIdeas] Final results:', {
+        count: results.length,
+        results: results.map(r => ({
+            jsondocId: r.jsondocId,
+            jsondocPath: r.jsondocPath,
+            originalJsondocId: r.originalJsondocId,
+            index: r.index,
+            isFromCollection: r.isFromCollection
+        }))
+    });
+
     return results;
 }
 
@@ -1204,31 +1301,91 @@ function extractCollectionIdeas(
     collectionJsondoc: ElectricJsondoc,
     consumedPaths: Set<string>
 ): EffectiveBrainstormIdea[] {
+    console.log('[extractCollectionIdeas] Starting extraction for collection:', {
+        collectionId: collectionJsondoc.id,
+        schemaType: collectionJsondoc.schema_type,
+        dataLength: collectionJsondoc.data?.length || 0,
+        consumedPathsCount: consumedPaths.size,
+        consumedPaths: Array.from(consumedPaths)
+    });
+
     const results: EffectiveBrainstormIdea[] = [];
 
     try {
         const collectionData = JSON.parse(collectionJsondoc.data);
-        if (!collectionData.ideas || !Array.isArray(collectionData.ideas)) {
+
+        // Handle both old format (direct array) and new format (with ideas property)
+        let ideasArray: any[] = [];
+
+        if (Array.isArray(collectionData)) {
+            // Old format: data is directly an array
+            console.log('[extractCollectionIdeas] Using old format (direct array)');
+            ideasArray = collectionData;
+        } else if (collectionData.ideas && Array.isArray(collectionData.ideas)) {
+            // New format: data has ideas property
+            console.log('[extractCollectionIdeas] Using new format (ideas property)');
+            ideasArray = collectionData.ideas;
+        }
+
+        console.log('[extractCollectionIdeas] Parsed collection data:', {
+            collectionId: collectionJsondoc.id,
+            hasIdeas: !!collectionData.ideas,
+            ideasIsArray: Array.isArray(collectionData.ideas),
+            ideasLength: collectionData.ideas?.length || 0,
+            dataKeys: Object.keys(collectionData),
+            isDirectArray: Array.isArray(collectionData),
+            directArrayLength: Array.isArray(collectionData) ? collectionData.length : 0,
+            finalIdeasArrayLength: ideasArray.length
+        });
+
+        if (!ideasArray || ideasArray.length === 0) {
+            console.warn('[extractCollectionIdeas] No ideas found in collection data:', {
+                collectionId: collectionJsondoc.id,
+                collectionData
+            });
             return results;
         }
 
-        for (let i = 0; i < collectionData.ideas.length; i++) {
+        for (let i = 0; i < ideasArray.length; i++) {
             const ideaPath = `$.ideas[${i}]`;
+            const isConsumed = consumedPaths.has(ideaPath);
 
-            if (!consumedPaths.has(ideaPath)) {
+            console.log('[extractCollectionIdeas] Processing idea:', {
+                collectionId: collectionJsondoc.id,
+                index: i,
+                ideaPath,
+                isConsumed,
+                ideaData: ideasArray[i]
+            });
+
+            if (!isConsumed) {
                 // This idea hasn't been consumed, so it's still "available"
-                results.push({
+                const ideaResult = {
                     jsondocId: collectionJsondoc.id,
                     jsondocPath: ideaPath,
                     originalJsondocId: collectionJsondoc.id,
                     index: i,
                     isFromCollection: true
+                };
+                console.log('[extractCollectionIdeas] Adding available idea:', ideaResult);
+                results.push(ideaResult);
+            } else {
+                console.log('[extractCollectionIdeas] Skipping consumed idea:', {
+                    collectionId: collectionJsondoc.id,
+                    index: i,
+                    ideaPath
                 });
             }
         }
     } catch (error) {
-        console.error(`Error parsing collection data for ${collectionJsondoc.id}:`, error);
+        console.error(`[extractCollectionIdeas] Error parsing collection data for ${collectionJsondoc.id}:`, error);
     }
+
+    console.log('[extractCollectionIdeas] Final results for collection:', {
+        collectionId: collectionJsondoc.id,
+        resultsCount: results.length,
+        results
+    });
 
     return results;
 }
@@ -1337,11 +1494,25 @@ export function convertEffectiveIdeasToIdeaWithTitle(
     const jsondocMap = new Map(jsondocs.map(a => [a.id, a]));
 
     return effectiveIdeas.map((effectiveIdea): IdeaWithTitle => {
+        console.log('[convertEffectiveIdeasToIdeaWithTitle] Processing effective idea:', {
+            jsondocId: effectiveIdea.jsondocId,
+            jsondocPath: effectiveIdea.jsondocPath,
+            index: effectiveIdea.index,
+            isFromCollection: effectiveIdea.isFromCollection
+        });
+
         // Get the actual data for this idea
         let title = '';
         let body = '';
 
         const jsondoc = jsondocMap.get(effectiveIdea.jsondocId);
+        console.log('[convertEffectiveIdeasToIdeaWithTitle] Jsondoc found:', {
+            jsondocId: effectiveIdea.jsondocId,
+            jsondocFound: !!jsondoc,
+            jsondocSchemaType: jsondoc?.schema_type,
+            dataLength: jsondoc?.data?.length || 0
+        });
+
         if (jsondoc) {
             try {
                 if (effectiveIdea.jsondocPath === '$') {
@@ -1349,20 +1520,69 @@ export function convertEffectiveIdeasToIdeaWithTitle(
                     const data = JSON.parse(jsondoc.data);
                     title = data.title || '';
                     body = data.body || '';
+                    console.log('[convertEffectiveIdeasToIdeaWithTitle] Standalone jsondoc data:', {
+                        jsondocId: effectiveIdea.jsondocId,
+                        title,
+                        body,
+                        dataKeys: Object.keys(data)
+                    });
                 } else {
                     // Collection jsondoc - extract specific idea
                     const data = JSON.parse(jsondoc.data);
-                    if (data.ideas && Array.isArray(data.ideas) && data.ideas[effectiveIdea.index]) {
-                        title = data.ideas[effectiveIdea.index].title || '';
-                        body = data.ideas[effectiveIdea.index].body || '';
+
+                    console.log('[convertEffectiveIdeasToIdeaWithTitle] Collection jsondoc raw data:', {
+                        jsondocId: effectiveIdea.jsondocId,
+                        isArray: Array.isArray(data),
+                        dataKeys: Array.isArray(data) ? `array[${data.length}]` : Object.keys(data),
+                        hasIdeasProperty: 'ideas' in data,
+                        targetIndex: effectiveIdea.index
+                    });
+
+                    // Handle both old format (direct array) and new format (with ideas property)
+                    let ideasArray: any[] = [];
+
+                    if (Array.isArray(data)) {
+                        // Old format: data is directly an array
+                        console.log('[convertEffectiveIdeasToIdeaWithTitle] Using old format (direct array)');
+                        ideasArray = data;
+                    } else if (data.ideas && Array.isArray(data.ideas)) {
+                        // New format: data has ideas property
+                        console.log('[convertEffectiveIdeasToIdeaWithTitle] Using new format (ideas property)');
+                        ideasArray = data.ideas;
+                    }
+
+                    console.log('[convertEffectiveIdeasToIdeaWithTitle] Ideas array details:', {
+                        jsondocId: effectiveIdea.jsondocId,
+                        ideasArrayLength: ideasArray.length,
+                        targetIndex: effectiveIdea.index,
+                        ideaAtIndex: ideasArray[effectiveIdea.index]
+                    });
+
+                    if (ideasArray && ideasArray[effectiveIdea.index]) {
+                        const ideaData = ideasArray[effectiveIdea.index];
+                        title = ideaData.title || '';
+                        body = ideaData.body || '';
+                        console.log('[convertEffectiveIdeasToIdeaWithTitle] Extracted idea data:', {
+                            jsondocId: effectiveIdea.jsondocId,
+                            index: effectiveIdea.index,
+                            title,
+                            body,
+                            ideaDataKeys: Object.keys(ideaData)
+                        });
+                    } else {
+                        console.warn('[convertEffectiveIdeasToIdeaWithTitle] No idea found at index:', {
+                            jsondocId: effectiveIdea.jsondocId,
+                            index: effectiveIdea.index,
+                            ideasArrayLength: ideasArray.length
+                        });
                     }
                 }
             } catch (parseError) {
-                console.error(`Error parsing jsondoc data for ${effectiveIdea.jsondocId}:`, parseError);
+                console.error(`[convertEffectiveIdeasToIdeaWithTitle] Error parsing jsondoc data for ${effectiveIdea.jsondocId}:`, parseError);
             }
         }
 
-        return {
+        const result = {
             title,
             body,
             jsondocId: effectiveIdea.jsondocId,
@@ -1370,6 +1590,9 @@ export function convertEffectiveIdeasToIdeaWithTitle(
             jsondocPath: effectiveIdea.jsondocPath,
             index: effectiveIdea.index
         };
+
+        console.log('[convertEffectiveIdeasToIdeaWithTitle] Final result:', result);
+        return result;
     });
 }
 

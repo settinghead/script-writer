@@ -168,8 +168,8 @@ export function createAdminRoutes(
         }
     });
 
-    // POST /api/admin/tools/:toolName/dry-run - Execute tool in dry run mode with SSE streaming
-    router.post('/tools/:toolName/dry-run', authMiddleware.authenticate, async (req: Request, res: Response) => {
+    // POST /api/admin/tools/:toolName/non-persistent - Execute tool in non-persistent mode with SSE streaming
+    router.post('/tools/:toolName/non-persistent', authMiddleware.authenticate, async (req: Request, res: Response) => {
         try {
             const { toolName } = req.params;
             const { jsondocs, additionalParams } = req.body;
@@ -305,12 +305,12 @@ export function createAdminRoutes(
                 outputJsondocType = 'chronicles';
                 transformMetadata = { toolName: 'generate_chronicles' };
             } else {
-                sendSSE('error', { message: `Unsupported tool for non-persistence run: ${toolName}` });
+                sendSSE('error', { message: `Unsupported tool for non-persistent run: ${toolName}` });
                 res.end();
                 return;
             }
 
-            // Execute the streaming transform with dryRun: true
+            // Execute the streaming transform with dryRun: true and streaming callback
             const result = await executeStreamingTransform({
                 config,
                 input,
@@ -320,7 +320,15 @@ export function createAdminRoutes(
                 jsondocRepo,
                 outputJsondocType,
                 transformMetadata,
-                dryRun: true  // This will skip database operations but still call LLM
+                dryRun: true,  // This will skip database operations but still call LLM
+                onStreamChunk: async (chunk: any, chunkCount: number) => {
+                    // Send each chunk as SSE event
+                    sendSSE('chunk', {
+                        chunkCount,
+                        data: chunk,
+                        toolName
+                    });
+                }
             });
 
             sendSSE('result', {
@@ -331,7 +339,7 @@ export function createAdminRoutes(
             });
 
         } catch (error) {
-            console.error(`[AdminRoutes] Dry run error for ${req.params.toolName}:`, error);
+            console.error(`[AdminRoutes] Non-persistent run error for ${req.params.toolName}:`, error);
             const sendSSE = (event: string, data: any) => {
                 res.write(`event: ${event}\n`);
                 res.write(`data: ${JSON.stringify(data)}\n\n`);

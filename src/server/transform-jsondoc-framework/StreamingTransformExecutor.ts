@@ -82,6 +82,8 @@ export interface StreamingTransformParams<TInput, TOutput> {
     executionMode?: StreamingExecutionMode;
     // NEW: Dry run mode - no database operations
     dryRun?: boolean;  // Skip all database operations (default: false)
+    // NEW: Streaming callback for real-time updates
+    onStreamChunk?: (chunk: TOutput, chunkCount: number) => void | Promise<void>;  // Called for each streaming chunk
 }
 
 /**
@@ -128,7 +130,8 @@ export class StreamingTransformExecutor {
             topP,
             maxTokens,
             executionMode,
-            dryRun = false
+            dryRun = false,
+            onStreamChunk
         } = params;
 
         let transformId: string | null = null;
@@ -284,6 +287,15 @@ export class StreamingTransformExecutor {
                 for await (const partialData of stream) {
                     chunkCount++;
                     lastData = partialData as TOutput;
+
+                    // Call streaming callback if provided
+                    if (onStreamChunk) {
+                        try {
+                            await onStreamChunk(lastData, chunkCount);
+                        } catch (callbackError) {
+                            console.warn(`[StreamingTransformExecutor] Streaming callback error at chunk ${chunkCount}:`, callbackError);
+                        }
+                    }
 
                     // Update jsondoc every N chunks or if this is the final chunk
                     if (chunkCount % updateIntervalChunks === 0) {

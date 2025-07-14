@@ -21,15 +21,23 @@ export const BrainstormToolInputSchema = z.object({
 
 export type BrainstormToolInput = z.infer<typeof BrainstormToolInputSchema>;
 
-// Jsondoc Schema Registry
-export const JsondocSchemaRegistry = {
-  // Brainstorm schemas
-  'brainstorm_collection': z.object({
+// Brainstorm collection schema that handles both old and new formats
+const BrainstormCollectionSchema = z.union([
+  // Old format: direct array
+  z.array(IdeaSchema),
+  // New format: object with ideas property
+  z.object({
     ideas: z.array(IdeaSchema),
     platform: z.string(),
     genre: z.string(),
     total_ideas: z.number()
-  }),
+  })
+]);
+
+// Jsondoc Schema Registry
+export const JsondocSchemaRegistry = {
+  // Brainstorm schemas
+  'brainstorm_collection': BrainstormCollectionSchema,
   'brainstorm_idea': IdeaSchema,
   'brainstorm_input_params': BrainstormToolInputSchema,
 

@@ -25,12 +25,25 @@ export function extractDataAtPath(sourceData: any, path: string): any {
     const ideaMatch = path.match(/^\$\.ideas\[(\d+)\]$/);
     if (ideaMatch) {
         const index = parseInt(ideaMatch[1]);
-        if (normalizedSourceData.ideas && Array.isArray(normalizedSourceData.ideas) && normalizedSourceData.ideas[index]) {
+
+        // Handle both old format (direct array) and new format (with ideas property)
+        let ideasArray: any[] = [];
+
+        if (Array.isArray(normalizedSourceData)) {
+            // Old format: data is directly an array
+            ideasArray = normalizedSourceData;
+        } else if (normalizedSourceData.ideas && Array.isArray(normalizedSourceData.ideas)) {
+            // New format: data has an ideas property
+            ideasArray = normalizedSourceData.ideas;
+        }
+
+        if (ideasArray[index]) {
             return {
-                title: normalizedSourceData.ideas[index].title,
-                body: normalizedSourceData.ideas[index].body
+                title: ideasArray[index].title,
+                body: ideasArray[index].body
             };
         }
+
         throw new Error(`No idea found at index ${index} in collection`);
     }
 

@@ -15,7 +15,7 @@ interface ChatInputProps {
 export const ChatInput: React.FC<ChatInputProps> = ({
     onSend,
     disabled = false,
-    placeholder = "向我询问任何关于你的创作项目的问题..."
+    placeholder = "输入任何关于你的创作的问题..."
 }) => {
     const [message, setMessage] = useState('');
     const [isHidingSuggestions, setIsHidingSuggestions] = useState(false);
@@ -172,7 +172,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                     autoSize={{ minRows: 1, maxRows: 4 }}
                     maxLength={5000}
                     style={{
-                        background: '#2a2a2a',
+                        background: 'rgba(0, 0, 0, 0.8)',
                         borderColor: '#444',
                         color: '#e0e0e0',
                         resize: 'none',

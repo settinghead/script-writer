@@ -41,7 +41,7 @@ const BrainstormInputForm: React.FC<BrainstormInputFormPropsUnion> = (props) => 
                 message.error('无法读取头脑风暴参数');
                 return;
             }
-
+            console.log("currentData", currentData);
             // Validate required fields
             if (!currentData?.genre || !currentData?.genre.trim()) {
                 message.warning('请先在上方填写故事类型');
