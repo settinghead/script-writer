@@ -230,7 +230,7 @@ CREATE TABLE particles (
     title TEXT NOT NULL,
     content JSONB NOT NULL,
     content_text TEXT NOT NULL,
-    embedding VECTOR(1536), -- Qwen embedding dimensions
+    embedding VECTOR(1024), -- Qwen embedding dimensions
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
