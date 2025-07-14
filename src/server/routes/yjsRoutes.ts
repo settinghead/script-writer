@@ -139,7 +139,7 @@ const syncYJSToJsondoc = async (jsondocId: string) => {
                 Y.applyUpdate(tempDoc, updateData);
                 updateCount++;
             } catch (error) {
-                console.warn(`[YJS Sync] Skipping corrupted update ${updateCount + skippedCount + 1} for jsondoc ${jsondocId}:`, error instanceof Error ? error.message : String(error));
+                // console.warn(`[YJS Sync] Skipping corrupted update ${updateCount + skippedCount + 1} for jsondoc ${jsondocId}:`, error instanceof Error ? error.message : String(error));
                 skippedCount++;
                 continue;
             }
@@ -401,7 +401,7 @@ router.get('/document/:jsondocId', async (req: any, res: any) => {
                         Y.applyUpdate(tempDoc, updateArray);
                         appliedCount++;
                     } catch (error) {
-                        console.warn(`[YJS Document] Failed to apply update for jsondoc ${jsondocId}, skipping:`, error instanceof Error ? error.message : String(error));
+                        // console.warn(`[YJS Document] Failed to apply update for jsondoc ${jsondocId}, skipping:`, error instanceof Error ? error.message : String(error));
                         skippedCount++;
                     }
                 }

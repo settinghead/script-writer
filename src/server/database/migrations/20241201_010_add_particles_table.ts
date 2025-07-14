@@ -23,9 +23,12 @@ export async function up(db: Kysely<any>): Promise<void> {
         .execute();
 
     // Add embedding column with pgvector type (flexible dimensions based on model)
-    // Default to 1536 for OpenAI, but can be 1024 for Qwen or other dimensions
-    const embeddingDimensions = process.env.EMBEDDING_DIMENSIONS || '1536';
-    await sql`ALTER TABLE particles ADD COLUMN embedding vector(${sql.raw(embeddingDimensions)})`.execute(db);
+    // Default to 1024 for OpenAI, but can be 1024 for Qwen or other dimensions
+    if (!process.env.EMBEDDING_DIMENSIONS) {
+        throw new Error('EMBEDDING_DIMENSIONS is not set');
+    }
+    const embeddingDimensions = parseInt(process.env.EMBEDDING_DIMENSIONS);
+    await sql`ALTER TABLE particles ADD COLUMN embedding vector(${sql.raw(`${embeddingDimensions}`)})`.execute(db);
 
     // Create performance indexes
     await db.schema

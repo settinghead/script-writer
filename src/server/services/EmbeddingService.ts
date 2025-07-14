@@ -15,7 +15,7 @@ export interface EmbeddingCredentials {
     baseUrl: string;
     modelName: string;
     provider: string;
-    dimensions?: number;
+    dimensions: number;
 }
 
 
@@ -137,7 +137,7 @@ export class EmbeddingService {
      * Validate embedding dimensions
      */
     validateEmbedding(embedding: number[]): boolean {
-        const expectedDimensions = this.credentials.dimensions || 1536;
+        const expectedDimensions = this.credentials.dimensions;
         return embedding.length === expectedDimensions && embedding.every(val => typeof val === 'number' && !isNaN(val));
     }
 
@@ -222,7 +222,6 @@ export class EmbeddingService {
                 .execute();
         } catch (error) {
             console.error('Failed to update cache access:', error);
-            // Don't throw - access tracking failure shouldn't break the flow
         }
     }
 } 

@@ -8,15 +8,19 @@ export async function up(db: Kysely<any>): Promise<void> {
         .addColumn('content_text', 'text', (col) => col.notNull())
         .addColumn('model_name', 'varchar(255)', (col) => col.notNull())
         .addColumn('provider', 'varchar(100)', (col) => col.notNull())
-        .addColumn('dimensions', 'integer', (col) => col.notNull().defaultTo(1536))
+        .addColumn('dimensions', 'integer', (col) => col.notNull().defaultTo(1024))
         .addColumn('created_at', 'timestamp', (col) => col.defaultTo(sql`CURRENT_TIMESTAMP`).notNull())
         .addColumn('accessed_at', 'timestamp', (col) => col.defaultTo(sql`CURRENT_TIMESTAMP`).notNull())
         .addColumn('access_count', 'integer', (col) => col.defaultTo(1).notNull())
         .execute();
 
     // Add embedding column with pgvector type (flexible dimensions based on model)
-    const embeddingDimensions = process.env.EMBEDDING_DIMENSIONS || '1536';
-    await sql`ALTER TABLE embedding_cache ADD COLUMN embedding vector(${sql.raw(embeddingDimensions)}) NOT NULL`.execute(db);
+    const embeddingDimensions = process.env.EMBEDDING_DIMENSIONS;
+    if (!embeddingDimensions) {
+        throw new Error('EMBEDDING_DIMENSIONS is not set');
+    }
+    const embeddingDimensionsInt = parseInt(embeddingDimensions);
+    await sql`ALTER TABLE embedding_cache ADD COLUMN embedding vector(${sql.raw(`${embeddingDimensionsInt}`)}) NOT NULL`.execute(db);
 
     // Create index on model_name and provider for efficient lookups
     await db.schema

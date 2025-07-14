@@ -12,6 +12,7 @@ export interface EmbeddingCredentials {
     baseUrl: string;
     modelName: string;
     provider: string;
+    dimensions: number;
 }
 
 export function getLLMCredentials(): LLMCredentials {
@@ -44,11 +45,27 @@ export function getLLMCredentials(): LLMCredentials {
     };
 }
 
-export function getEmbeddingCredentials(): EmbeddingCredentials & { dimensions?: number } {
-    const apiKey = process.env.EMBEDDING_API_KEY || process.env.LLM_API_KEY;
-    const baseUrl = process.env.EMBEDDING_BASE_URL || process.env.LLM_BASE_URL;
-    const modelName = process.env.EMBEDDING_MODEL_NAME || 'text-embedding-3-small';
-    const provider = process.env.EMBEDDING_PROVIDER || process.env.LLM_PROVIDER;
+export function getEmbeddingCredentials(): EmbeddingCredentials {
+    if (!process.env.EMBEDDING_API_KEY) {
+        throw new Error('EMBEDDING_API_KEY environment variable is not set');
+    }
+
+    if (!process.env.EMBEDDING_BASE_URL) {
+        throw new Error('EMBEDDING_BASE_URL environment variable is not set');
+    }
+
+    if (!process.env.EMBEDDING_MODEL_NAME) {
+        throw new Error('EMBEDDING_MODEL_NAME environment variable is not set');
+    }
+
+    if (!process.env.EMBEDDING_PROVIDER) {
+        throw new Error('EMBEDDING_PROVIDER environment variable is not set');
+    }
+
+    const apiKey = process.env.EMBEDDING_API_KEY;
+    const baseUrl = process.env.EMBEDDING_BASE_URL;
+    const modelName = process.env.EMBEDDING_MODEL_NAME;
+    const provider = process.env.EMBEDDING_PROVIDER;
 
     if (!apiKey) {
         throw new Error('EMBEDDING_API_KEY environment variable is not set');

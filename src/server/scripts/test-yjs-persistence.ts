@@ -43,7 +43,7 @@ async function testYJSPersistence() {
                         Y.applyUpdate(testDoc, updateArray);
                         console.log(`  Applied update of ${updateArray.length} bytes`);
                     } catch (error) {
-                        console.warn(`  Failed to apply update:`, error instanceof Error ? error.message : String(error));
+                        // console.warn(`  Failed to apply update:`, error instanceof Error ? error.message : String(error));
                     }
                 }
             }
