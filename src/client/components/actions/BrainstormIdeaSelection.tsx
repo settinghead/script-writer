@@ -111,7 +111,7 @@ const BrainstormIdeaSelection: React.FC<BaseActionProps> = ({ projectId, onSucce
     }
 
     return (
-        <div style={{ padding: '16px 0', textAlign: 'center' }}>
+        <div style={{ padding: '16px 0', textAlign: 'center', display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
 
 
             <div style={{
@@ -121,7 +121,8 @@ const BrainstormIdeaSelection: React.FC<BaseActionProps> = ({ projectId, onSucce
                 padding: '16px',
                 marginBottom: '16px',
                 maxWidth: '600px',
-                margin: '0 auto 16px'
+                margin: '0 auto 16px',
+                marginRight: '16px'
             }}>
                 <Text style={{ color: '#1890ff', fontWeight: 'bold' }}>
                     已选择

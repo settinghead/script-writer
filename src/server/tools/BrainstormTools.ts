@@ -333,7 +333,27 @@ function transformToCollectionFormat(llmOutput: IdeationOutput, extractedParams:
     other_requirements: string;
     numberOfIdeas: number;
 }): any {
-    const collectionIdeas = llmOutput
+    // Handle cases where llmOutput might not be an array during streaming
+    let ideasArray: any[] = [];
+
+    if (Array.isArray(llmOutput)) {
+        ideasArray = llmOutput;
+    } else if (llmOutput && typeof llmOutput === 'object') {
+        // Handle case where LLM returns an object instead of array
+        const outputObj = llmOutput as any;
+        if ('ideas' in outputObj && Array.isArray(outputObj.ideas)) {
+            ideasArray = outputObj.ideas;
+        } else {
+            // Treat the object as a single idea
+            ideasArray = [llmOutput];
+        }
+    } else {
+        // Fallback for unexpected types
+        console.warn('[transformToCollectionFormat] Unexpected llmOutput type:', typeof llmOutput);
+        ideasArray = [];
+    }
+
+    const collectionIdeas = ideasArray
         .filter((idea: any) => idea && idea.title && idea.body && idea.body.length >= 10)
         .map((idea: any, index: number) => ({
             title: idea.title,
@@ -382,7 +402,11 @@ export function createBrainstormToolDefinition(
             const config: StreamingTransformConfig<IdeationInput, IdeationOutput> = {
                 templateName: 'brainstorming',
                 inputSchema: IdeationInputSchema,
-                outputSchema: IdeationOutputSchema
+                outputSchema: IdeationOutputSchema,
+                // Transform LLM output (array) to collection format (object)
+                transformLLMOutput: (llmOutput: IdeationOutput, input: IdeationInput) => {
+                    return transformToCollectionFormat(llmOutput, extractedParams);
+                }
                 // No custom prepareTemplateVariables - use default schema-driven extraction
             };
 
