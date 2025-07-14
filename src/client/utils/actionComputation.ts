@@ -83,32 +83,19 @@ function computeUnifiedContext(
     _projectId: string
 ): UnifiedComputationContext | null {
 
-    console.log('[actionComputation] computeUnifiedContext called with:', {
-        jsondocs: Array.isArray(projectData.jsondocs) ? `${projectData.jsondocs.length} items` : projectData.jsondocs,
-        transforms: Array.isArray(projectData.transforms) ? `${projectData.transforms.length} items` : projectData.transforms,
-        humanTransforms: Array.isArray(projectData.humanTransforms) ? `${projectData.humanTransforms.length} items` : projectData.humanTransforms,
-        transformInputs: Array.isArray(projectData.transformInputs) ? `${projectData.transformInputs.length} items` : projectData.transformInputs,
-        transformOutputs: Array.isArray(projectData.transformOutputs) ? `${projectData.transformOutputs.length} items` : projectData.transformOutputs,
-        lineageGraph: projectData.lineageGraph === "pending" ? "pending" : projectData.lineageGraph === "error" ? "error" : "loaded"
-    });
-
     // Check if any data is still loading
     if (projectData.jsondocs === "pending" ||
         projectData.transforms === "pending" ||
         projectData.humanTransforms === "pending" ||
         projectData.transformInputs === "pending" ||
         projectData.transformOutputs === "pending") {
-        console.log('[actionComputation] Some data still loading, returning null');
         return null;
     }
 
     // Handle lineage graph pending state
     if (projectData.lineageGraph === "pending") {
-        console.log('[actionComputation] Lineage graph pending, using fallback logic');
-
         // Simple fallback: check if we have any jsondocs
         if (projectData.jsondocs === "error" || !Array.isArray(projectData.jsondocs) || projectData.jsondocs.length === 0) {
-            console.log('[actionComputation] No jsondocs available, returning initial state');
             return {
                 currentStage: 'initial',
                 hasActiveTransforms: false,
@@ -127,8 +114,6 @@ function computeUnifiedContext(
             };
         }
 
-        console.log('[actionComputation] Fallback: analyzing jsondocs directly');
-
         // Basic stage detection without lineage
         const brainstormIdeas = projectData.jsondocs.filter(a =>
             a.schema_type === 'brainstorm_idea'
@@ -138,41 +123,12 @@ function computeUnifiedContext(
             a.schema_type === 'brainstorm_collection'
         );
 
-        console.log('[actionComputation] Fallback analysis:', {
-            brainstormIdeas: brainstormIdeas.length,
-            brainstormCollections: brainstormCollections.length,
-            brainstormIdeasDetailed: brainstormIdeas.map(a => ({
-                id: a.id,
-                schema_type: a.schema_type,
-                origin_type: a.origin_type,
-                created_at: a.created_at
-            })),
-            brainstormCollectionsDetailed: brainstormCollections.map(a => ({
-                id: a.id,
-                schema_type: a.schema_type,
-                origin_type: a.origin_type,
-                streaming_status: a.streaming_status,
-                created_at: a.created_at
-            }))
-        });
-
         if (brainstormIdeas.length > 0) {
             // Check if we have user_input brainstorm ideas (indicating human transform/chosen idea)
             const userInputIdeas = brainstormIdeas.filter(a => a.origin_type === 'user_input');
 
-            console.log('[actionComputation] Found brainstorm ideas:', {
-                total: brainstormIdeas.length,
-                userInput: userInputIdeas.length,
-                userInputIdeasDetailed: userInputIdeas.map(a => ({
-                    id: a.id,
-                    origin_type: a.origin_type,
-                    created_at: a.created_at
-                }))
-            });
-
             if (userInputIdeas.length > 0) {
                 // We have chosen/edited ideas -> idea_editing stage
-                console.log('[actionComputation] Fallback: detected idea_editing stage');
                 return {
                     currentStage: 'idea_editing',
                     hasActiveTransforms: false,
@@ -190,7 +146,6 @@ function computeUnifiedContext(
                     actions: []
                 };
             } else {
-                console.log('[actionComputation] Fallback: detected brainstorm_selection stage');
                 return {
                     currentStage: 'brainstorm_selection',
                     hasActiveTransforms: false,
@@ -210,7 +165,6 @@ function computeUnifiedContext(
             }
         } else if (brainstormCollections.length > 0) {
             // We have brainstorm collections but no individual ideas -> brainstorm_selection stage
-            console.log('[actionComputation] Fallback: detected brainstorm_selection stage (collections only)');
             return {
                 currentStage: 'brainstorm_selection',
                 hasActiveTransforms: false,
@@ -229,7 +183,6 @@ function computeUnifiedContext(
             };
         }
 
-        console.log('[actionComputation] Fallback: no brainstorm data found, returning initial state');
         return {
             currentStage: 'initial',
             hasActiveTransforms: false,
@@ -255,7 +208,6 @@ function computeUnifiedContext(
         projectData.humanTransforms === "error" ||
         projectData.transformInputs === "error" ||
         projectData.transformOutputs === "error") {
-        console.log('[actionComputation] Error state detected, returning initial state');
         return {
             currentStage: 'initial',
             hasActiveTransforms: false,
@@ -274,8 +226,6 @@ function computeUnifiedContext(
         };
     }
 
-    console.log('[actionComputation] Using lineage-based computation');
-
     // Use the lineage-based computation for actions and stage detection
     const lineageResult = computeActionsFromLineage(
         projectData.lineageGraph,
@@ -285,19 +235,6 @@ function computeUnifiedContext(
         projectData.transformInputs,
         projectData.transformOutputs
     );
-
-    console.log('[actionComputation] Lineage computation result:', {
-        currentStage: lineageResult.actionContext.currentStage,
-        hasActiveTransforms: lineageResult.actionContext.hasActiveTransforms,
-        stageDescription: lineageResult.stageDescription,
-        effectiveBrainstormIdeas: lineageResult.actionContext.effectiveBrainstormIdeas?.length || 0,
-        chosenBrainstormIdea: lineageResult.actionContext.chosenBrainstormIdea ? {
-            jsondocId: lineageResult.actionContext.chosenBrainstormIdea.jsondocId,
-            jsondocPath: lineageResult.actionContext.chosenBrainstormIdea.jsondocPath,
-            originalJsondocId: lineageResult.actionContext.chosenBrainstormIdea.originalJsondocId
-        } : null,
-        actionsCount: lineageResult.actions.length
-    });
 
     // Extract all needed data from lineage graph and jsondocs in a single pass
     const lineageGraph = projectData.lineageGraph;
@@ -311,11 +248,6 @@ function computeUnifiedContext(
     const canonicalOutlineJsondocs: ElectricJsondoc[] = [];
     const canonicalChroniclesJsondocs: ElectricJsondoc[] = [];
 
-    console.log('[actionComputation] Processing lineage graph nodes:', {
-        totalNodes: lineageGraph.nodes.size,
-        nodeTypes: Array.from(lineageGraph.nodes.values()).map(n => n.type)
-    });
-
     // Process all lineage nodes in one pass
     for (const node of lineageGraph.nodes.values()) {
         if (node.type !== 'jsondoc') continue;
@@ -324,7 +256,6 @@ function computeUnifiedContext(
         const jsondoc = jsondocs.find((a) => a.id === lineageJsondocNode.jsondocId);
 
         if (!jsondoc) {
-            console.warn('[actionComputation] Jsondoc not found for lineage node:', lineageJsondocNode.jsondocId);
             continue;
         }
 
@@ -340,17 +271,6 @@ function computeUnifiedContext(
         }
     }
 
-    console.log('[actionComputation] Categorized jsondocs:', {
-        canonicalBrainstormJsondocs: canonicalBrainstormJsondocs.length,
-        canonicalOutlineJsondocs: canonicalOutlineJsondocs.length,
-        canonicalChroniclesJsondocs: canonicalChroniclesJsondocs.length,
-        brainstormDetails: canonicalBrainstormJsondocs.map(a => ({
-            id: a.id,
-            schema_type: a.schema_type,
-            origin_type: a.origin_type
-        }))
-    });
-
     // Extract specific jsondoc types from brainstorm jsondocs
     const brainstormInput = canonicalBrainstormJsondocs.find((a) =>
         a.schema_type === 'brainstorm_input_params'
@@ -359,48 +279,13 @@ function computeUnifiedContext(
     // This properly extracts individual ideas from collections
     const brainstormIdeas = lineageResult.actionContext.effectiveBrainstormIdeas;
 
-    console.log('[actionComputation] Extracted brainstorm data:', {
-        brainstormInput: brainstormInput ? {
-            id: brainstormInput.id,
-            schema_type: brainstormInput.schema_type,
-            origin_type: brainstormInput.origin_type
-        } : null,
-        brainstormIdeas: brainstormIdeas?.length || 0,
-        brainstormIdeasDetailed: brainstormIdeas?.map(idea => ({
-            jsondocId: idea.jsondocId,
-            jsondocPath: idea.jsondocPath,
-            originalJsondocId: idea.originalJsondocId,
-            index: idea.index,
-            isFromCollection: idea.isFromCollection
-        })) || []
-    });
-
     // Convert EffectiveBrainstormIdea[] to IdeaWithTitle[] format for components
     const brainstormIdeasWithTitle = brainstormIdeas ?
         convertEffectiveIdeasToIdeaWithTitle(brainstormIdeas, projectData.jsondocs) :
         [];
 
-    console.log('[actionComputation] Converted brainstorm ideas to IdeaWithTitle format:', {
-        originalCount: brainstormIdeas?.length || 0,
-        convertedCount: brainstormIdeasWithTitle.length,
-        sampleIdea: brainstormIdeasWithTitle[0] ? {
-            title: brainstormIdeasWithTitle[0].title,
-            jsondocId: brainstormIdeasWithTitle[0].jsondocId,
-            originalJsondocId: brainstormIdeasWithTitle[0].originalJsondocId,
-            jsondocPath: brainstormIdeasWithTitle[0].jsondocPath
-        } : null
-    });
-
     // Find chosen idea using lineage computation result
     let chosenIdea = lineageResult.actionContext.chosenBrainstormIdea;
-
-    console.log('[actionComputation] Chosen idea from lineage:', chosenIdea ? {
-        jsondocId: chosenIdea.jsondocId,
-        jsondocPath: chosenIdea.jsondocPath,
-        originalJsondocId: chosenIdea.originalJsondocId,
-        index: chosenIdea.index,
-        isFromCollection: chosenIdea.isFromCollection
-    } : null);
 
     // Process outline settings with priority logic
     let outlineSettings = null;
@@ -433,17 +318,6 @@ function computeUnifiedContext(
 
     // Detect workflow path
     const isManualPath = !brainstormInput;
-
-    console.log('[actionComputation] Final context:', {
-        currentStage: lineageResult.actionContext.currentStage,
-        hasActiveTransforms: lineageResult.actionContext.hasActiveTransforms,
-        stageDescription: lineageResult.stageDescription,
-        isManualPath,
-        brainstormIdeasCount: brainstormIdeas?.length || 0,
-        chosenIdea: !!chosenIdea,
-        outlineSettings: !!outlineSettings,
-        canonicalChronicles: !!canonicalChronicles
-    });
 
     return {
         currentStage: lineageResult.actionContext.currentStage,
@@ -589,13 +463,10 @@ function computeWorkflowStepsFromContext(context: UnifiedComputationContext): Wo
  */
 function computeDisplayComponentsFromContext(context: UnifiedComputationContext): DisplayComponent[] {
 
-    console.log('[actionComputation] computeDisplayComponentsFromContext called with stage:', context.currentStage);
-
     const components: DisplayComponent[] = [];
 
     switch (context.currentStage) {
         case 'initial':
-            console.log('[actionComputation] Stage: initial - adding project creation form');
             // Show project creation form
             components.push({
                 id: 'project-creation-form',
@@ -607,7 +478,6 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
             break;
 
         case 'brainstorm_input':
-            console.log('[actionComputation] Stage: brainstorm_input - adding brainstorm input editor');
             // Show brainstorm input editor
             if (context.brainstormInput) {
                 components.push({
@@ -625,18 +495,11 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
             break;
 
         case 'brainstorm_selection':
-            console.log('[actionComputation] Stage: brainstorm_selection - adding components for selection');
             // Show brainstorm input in readonly mode
             if (context.brainstormInput) {
                 // Check if brainstorm input is at leaf level in lineage graph
                 const brainstormInputNode = context.lineageGraph?.nodes.get(context.brainstormInput.id);
                 const isAtLeafLevel = brainstormInputNode?.isLeaf ?? true;
-
-                console.log('[actionComputation] Adding brainstorm input editor (readonly):', {
-                    id: context.brainstormInput.id,
-                    isAtLeafLevel,
-                    minimized: !isAtLeafLevel
-                });
 
                 components.push({
                     id: 'brainstorm-input-editor',
@@ -653,11 +516,6 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
 
             // Show brainstorm ideas for selection
             if (context.brainstormIdeas.length > 0) {
-                console.log('[actionComputation] Adding idea collection for selection:', {
-                    ideasCount: context.brainstormIdeas.length,
-                    hasActiveTransforms: context.hasActiveTransforms
-                });
-
                 components.push({
                     id: 'idea-collection',
                     component: getComponentById('idea-collection'),
@@ -669,24 +527,15 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
                     },
                     priority: 2
                 });
-            } else {
-                console.log('[actionComputation] No brainstorm ideas found for selection');
             }
             break;
 
         case 'idea_editing':
-            console.log('[actionComputation] Stage: idea_editing - adding components for editing');
             // Show brainstorm input in readonly mode (only for AI path)
             if (context.brainstormInput && !context.isManualPath) {
                 // Check if brainstorm input is at leaf level in lineage graph
                 const brainstormInputNode = context.lineageGraph?.nodes.get(context.brainstormInput.id);
                 const isAtLeafLevel = brainstormInputNode?.isLeaf ?? true;
-
-                console.log('[actionComputation] Adding brainstorm input editor (readonly, AI path):', {
-                    id: context.brainstormInput.id,
-                    isAtLeafLevel,
-                    minimized: !isAtLeafLevel
-                });
 
                 components.push({
                     id: 'brainstorm-input-editor',
@@ -703,10 +552,6 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
 
             // Show brainstorm ideas in readonly mode for reference (only for AI path)
             if (context.brainstormIdeas.length > 0 && !context.isManualPath) {
-                console.log('[actionComputation] Adding idea collection (readonly, AI path):', {
-                    ideasCount: context.brainstormIdeas.length
-                });
-
                 components.push({
                     id: 'idea-collection',
                     component: getComponentById('idea-collection'),
@@ -723,11 +568,6 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
 
             // Show chosen idea editor (if we have one)
             if (context.chosenIdea) {
-                console.log('[actionComputation] Adding single idea editor:', {
-                    chosenIdeaId: context.chosenIdea.jsondocId,
-                    hasActiveTransforms: context.hasActiveTransforms
-                });
-
                 components.push({
                     id: 'single-idea-editor',
                     component: getComponentById('single-idea-editor'),
@@ -742,9 +582,7 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
             } else {
                 // No chosen idea yet - this should be brainstorm_selection stage instead
                 // But for backward compatibility, show brainstorm collection for selection
-                console.warn('[actionComputation] idea_editing stage but no chosenIdea found - should be brainstorm_selection');
                 if (context.brainstormIdeas.length > 0) {
-                    console.log('[actionComputation] Fallback: adding single idea editor with first idea');
                     components.push({
                         id: 'single-idea-editor',
                         component: getComponentById('single-idea-editor'),
@@ -761,7 +599,6 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
             break;
 
         case 'outline_generation':
-            console.log('[actionComputation] Stage: outline_generation - adding components');
             // Show previous components in readonly/collapsed mode (only for AI path)
             if (context.brainstormInput && !context.isManualPath) {
                 // Check if brainstorm input is at leaf level in lineage graph
@@ -818,7 +655,6 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
             break;
 
         case 'chronicles_generation':
-            console.log('[actionComputation] Stage: chronicles_generation - adding components');
             // Show previous components in readonly/collapsed mode (only for AI path)
             if (context.brainstormInput && !context.isManualPath) {
                 // Check if brainstorm input is at leaf level in lineage graph
@@ -882,7 +718,6 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
             break;
 
         case 'episode_synopsis_generation':
-            console.log('[actionComputation] Stage: episode_synopsis_generation - adding components');
             // Show all previous components in readonly/collapsed mode (only for AI path)
             if (context.brainstormInput && !context.isManualPath) {
                 // Check if brainstorm input is at leaf level in lineage graph
@@ -947,18 +782,6 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
 
     // Sort by priority
     const sortedComponents = components.sort((a, b) => a.priority - b.priority);
-
-    console.log('[actionComputation] Generated display components:', {
-        stage: context.currentStage,
-        componentsCount: sortedComponents.length,
-        componentIds: sortedComponents.map(c => c.id),
-        componentDetails: sortedComponents.map(c => ({
-            id: c.id,
-            mode: c.mode,
-            priority: c.priority,
-            propsKeys: Object.keys(c.props || {})
-        }))
-    });
 
     return sortedComponents;
 }
@@ -1038,12 +861,9 @@ export const computeUnifiedWorkflowState = (
     projectId: string,
     _selectedJsondocAndPath?: SelectedJsondocAndPath | null
 ): UnifiedWorkflowState => {
-    console.log('[actionComputation] computeUnifiedWorkflowState called for project:', projectId);
-
     const context = computeUnifiedContext(projectData, projectId);
 
     if (!context) {
-        console.log('[actionComputation] No context computed, returning default state');
         return {
             steps: [],
             displayComponents: [],
@@ -1061,24 +881,10 @@ export const computeUnifiedWorkflowState = (
         };
     }
 
-    console.log('[actionComputation] Context computed successfully, generating workflow state');
-
     // Compute all outputs from the unified context
     const steps = computeWorkflowStepsFromContext(context);
     const displayComponents = computeDisplayComponentsFromContext(context);
     const parameters = computeWorkflowParametersFromContext(context, projectId);
-
-    console.log('[actionComputation] Final unified workflow state:', {
-        projectId,
-        currentStage: context.currentStage,
-        stepsCount: steps.length,
-        displayComponentsCount: displayComponents.length,
-        actionsCount: context.actions.length,
-        hasActiveTransforms: context.hasActiveTransforms,
-        brainstormIdeasCount: context.brainstormIdeas?.length || 0,
-        chosenIdea: !!context.chosenIdea,
-        displayComponentIds: displayComponents.map(c => c.id)
-    });
 
     return {
         steps,
