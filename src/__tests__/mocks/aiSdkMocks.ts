@@ -66,6 +66,9 @@ export function createCachedStreamObjectMock() {
             } else if (prompt.includes('outline') || prompt.includes('Outline') || prompt.includes('大纲')) {
                 console.log('[Mock] Using generic outline fallback');
                 return createFallbackOutlineObject();
+            } else if (prompt.includes('JSON补丁') || prompt.includes('RFC6902') || prompt.includes('patch') || prompt.includes('补丁')) {
+                console.log('[Mock] Using patch edit fallback');
+                return createFallbackBrainstormEditObject();
             } else if (prompt.includes('edit') || prompt.includes('改进') || prompt.includes('修改')) {
                 console.log('[Mock] Using edit fallback');
                 return createFallbackBrainstormEditObject();
@@ -267,29 +270,27 @@ function createFallbackStreamText(options?: { onToolCall?: (toolName: string, ar
 }
 
 /**
- * Fallback mock for brainstorm edit (returns patches in the format expected by StreamingTransformExecutor)
+ * Fallback mock for brainstorm edit (returns RFC6902 patches directly as array)
  */
 function createFallbackBrainstormEditObject() {
-    // Return patches that the StreamingTransformExecutor can apply
-    const mockPatches = {
-        patches: [
-            {
-                op: "replace",
-                path: "/title",
-                value: "误爱成宠（升级版）"
-            },
-            {
-                op: "replace",
-                path: "/body",
-                value: "现代都市背景下，林氏科技集团总裁林慕琛利用先进的AI系统误将普通程序员夏栀识别为富家千金。这个技术错误引发了一段充满现代科技色彩的爱恋故事，保持原有的情感核心，但融入了现代科技背景。"
-            }
-        ]
-    };
+    // Return RFC6902 patches directly as array (not wrapped in object)
+    const mockPatches = [
+        {
+            op: "replace",
+            path: "/title",
+            value: "误爱成宠（升级版）"
+        },
+        {
+            op: "replace",
+            path: "/body",
+            value: "现代都市背景下，林氏科技集团总裁林慕琛利用先进的AI系统误将普通程序员夏栀识别为富家千金。这个技术错误引发了一段充满现代科技色彩的爱恋故事，保持原有的情感核心，但融入了现代科技背景。"
+        }
+    ];
 
     return {
         partialObjectStream: createAsyncIterator([
-            { patches: mockPatches.patches.slice(0, 1) },
-            mockPatches
+            mockPatches.slice(0, 1), // First patch only
+            mockPatches // All patches
         ]),
         object: Promise.resolve(mockPatches),
         baseStream: createMockBaseStream(mockPatches)
