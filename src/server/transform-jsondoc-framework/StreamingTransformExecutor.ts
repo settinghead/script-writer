@@ -552,24 +552,59 @@ export class StreamingTransformExecutor {
     }
 
     /**
-     * Extract JSON patches from LLM output
+     * Extract JSON patches from LLM output with validation
      */
     private extractJsonPatches(llmOutput: any): Operation[] | null {
         try {
+            let patches: any[] | null = null;
+
             // Handle different possible formats
             if (Array.isArray(llmOutput)) {
-                return llmOutput as Operation[];
+                patches = llmOutput;
+            } else if (llmOutput.patches && Array.isArray(llmOutput.patches)) {
+                patches = llmOutput.patches;
+            } else if (llmOutput.data && Array.isArray(llmOutput.data)) {
+                patches = llmOutput.data;
             }
 
-            if (llmOutput.patches && Array.isArray(llmOutput.patches)) {
-                return llmOutput.patches as Operation[];
+            if (!patches) {
+                return null;
             }
 
-            if (llmOutput.data && Array.isArray(llmOutput.data)) {
-                return llmOutput.data as Operation[];
-            }
+            // Validate each patch to ensure it's complete
+            const validPatches = patches.filter(patch => {
+                if (!patch || typeof patch !== 'object') {
+                    return false;
+                }
 
-            return null;
+                // Check for required properties
+                if (!patch.op || typeof patch.op !== 'string') {
+                    return false;
+                }
+
+                if (!patch.path || typeof patch.path !== 'string') {
+                    return false;
+                }
+
+                // Operations that require a value
+                if (['add', 'replace', 'test'].includes(patch.op)) {
+                    if (patch.value === undefined) {
+                        return false;
+                    }
+                }
+
+                // Operations that require a from path
+                if (['move', 'copy'].includes(patch.op)) {
+                    if (!patch.from || typeof patch.from !== 'string') {
+                        return false;
+                    }
+                }
+
+                return true;
+            });
+
+            // Only return patches if we have at least one valid patch
+            return validPatches.length > 0 ? validPatches as Operation[] : null;
         } catch (error) {
             console.warn(`[StreamingTransformExecutor] Failed to extract JSON patches:`, error);
             return null;

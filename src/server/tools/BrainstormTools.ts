@@ -179,11 +179,17 @@ export function createBrainstormEditToolDefinition(
                 outputJsondocType = 'brainstorm_idea'; // Legacy type
             }
 
-            // Create config for unified patch generation using existing edit template
+            // Create config for unified patch generation using patch template
             const config: StreamingTransformConfig<BrainstormEditInput, any> = {
-                templateName: 'brainstorm_edit',
+                templateName: 'brainstorm_edit_patch',
                 inputSchema: BrainstormEditInputSchema,
-                outputSchema: z.any(), // JSON patch output schema
+                outputSchema: z.object({
+                    patches: z.array(z.object({
+                        op: z.string(),
+                        path: z.string(),
+                        value: z.any()
+                    }))
+                }), // JSON patch output schema
                 // No custom prepareTemplateVariables - use default schema-driven extraction
             };
 
