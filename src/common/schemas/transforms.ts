@@ -85,20 +85,15 @@ export type LLMTransformDefinition = z.infer<typeof LLMTransformDefinitionSchema
 // Input schema for brainstorm editing
 export const BrainstormEditInputSchema = z.object({
   ideaIndex: z.number().min(0).optional().describe('要编辑的故事创意在集合中的索引位置（从0开始）'),
-  jsondocs: JsondocReferencesSchema.describe('引用的jsondoc列表，包含要编辑的故事创意等'),
+  jsondocs: JsondocReferencesSchema.describe('引用的jsondoc列表。可以是以下类型： brainstorm_idea, brainstorm_collection'),
   editRequirements: z.string().min(1, '编辑要求不能为空').describe('具体的编辑要求，如：扩展内容、调整风格、修改情节、增加元素等'),
   agentInstructions: z.string().optional().describe('来自智能体的额外指导信息，用于更好地理解编辑意图')
 });
 
 export type BrainstormEditInput = z.infer<typeof BrainstormEditInputSchema>;
 
-// Output schema for brainstorm editing (single brainstorm idea)
-export const BrainstormEditOutputSchema = z.object({
-  title: z.string().min(1, '标题不能为空').max(50, '标题不能超过50个字符').describe('编辑后的故事标题，简洁有吸引力'),
-  body: z.string().min(1, '内容不能为空').max(500, '内容不能超过500个字符').describe('编辑后的故事详细内容，包含完整的情节和人物设定')
-});
 
-export type BrainstormEditOutput = z.infer<typeof BrainstormEditOutputSchema>;
+
 
 // JSON Patch operation schema (RFC 6902)
 export const JsonPatchOperationSchema = z.object({
@@ -144,8 +139,6 @@ export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinitio
     pathPattern: '^\\$.ideas\\[\\d+\\]$', // JSONPath for ideas[n]
     instantiationFunction: 'createBrainstormIdeaFromPath'
   },
-
-
 
   'edit_jsondoc_field': {
     name: 'edit_jsondoc_field',
@@ -212,56 +205,6 @@ export const GenericEditOutputSchema = z.any(); // Flexible output type
 
 export type GenericEditOutput = z.infer<typeof GenericEditOutputSchema>;
 
-// LLM Transform registry
-export const LLM_TRANSFORM_DEFINITIONS: Record<string, LLMTransformDefinition> = {
-  // Collection-specific LLM transforms
-  'llm_edit_brainstorm_collection_idea': {
-    name: 'llm_edit_brainstorm_collection_idea',
-    description: 'AI editing of ideas within brainstorm collections',
-    inputTypes: ['brainstorm_collection'],
-    outputType: 'brainstorm_idea',
-    templateName: 'brainstormEdit',
-    inputSchema: BrainstormEditInputSchema,
-    outputSchema: BrainstormEditOutputSchema
-  },
-  'llm_edit_jsondoc_path': {
-    name: 'llm_edit_jsondoc_path',
-    description: 'Generic AI editing using JSONPath',
-    inputTypes: ['*'], // Any jsondoc type
-    outputType: '*', // Flexible output type
-    templateName: 'genericEdit',
-    inputSchema: GenericEditInputSchema,
-    outputSchema: GenericEditOutputSchema
-  },
-  'llm_edit_brainstorm_idea': {
-    name: 'llm_edit_brainstorm_idea',
-    description: 'AI-powered editing of brainstorm ideas based on user requirements',
-    inputTypes: ['brainstorm_idea', 'user_input'],
-    outputType: 'brainstorm_idea',
-    templateName: 'brainstormEdit',
-    inputSchema: BrainstormEditInputSchema,
-    outputSchema: BrainstormEditOutputSchema
-  },
-  'llm_generate_outline_settings': {
-    name: 'llm_generate_outline_settings',
-    description: 'AI generation of outline settings from brainstorm idea',
-    inputTypes: ['brainstorm_idea', 'user_input'],
-    outputType: 'outline_settings',
-    templateName: 'outline_settings',
-    inputSchema: OutlineSettingsInputSchema,
-    outputSchema: OutlineSettingsOutputSchema
-  },
-  'llm_generate_chronicles': {
-    name: 'llm_generate_chronicles',
-    description: 'AI generation of chronicles from outline settings',
-    inputTypes: ['outline_settings'],
-    templateName: 'chronicles',
-    inputSchema: ChroniclesInputSchema,
-    outputSchema: ChroniclesOutputSchema,
-    outputType: 'chronicles'
-  }
-};
-
 // Validation function for human transforms
 export function validateTransformPath(transformName: string, path: string): boolean {
   const definition = HUMAN_TRANSFORM_DEFINITIONS[transformName];
@@ -270,12 +213,3 @@ export function validateTransformPath(transformName: string, path: string): bool
   const regex = new RegExp(definition.pathPattern);
   return regex.test(path);
 }
-
-// Validation function for LLM transforms
-export function validateLLMTransformInput(transformName: string, input: any): boolean {
-  const definition = LLM_TRANSFORM_DEFINITIONS[transformName];
-  if (!definition) return false;
-
-  const result = definition.inputSchema.safeParse(input);
-  return result.success;
-} 

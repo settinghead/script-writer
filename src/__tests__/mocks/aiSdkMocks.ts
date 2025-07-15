@@ -197,21 +197,23 @@ async function* createAsyncIteratorFromChunks(chunks: any[]) {
  * Fallback mock for when no cache is available
  */
 function createFallbackStreamObject() {
-    // Create mock data that matches brainstorm schema (array of ideas)
-    const mockBrainstormData = [
-        {
-            title: "误爱成宠",
-            body: "林氏集团总裁林慕琛因一场误会将普通职员夏栀认作富家千金，开启了一段错综复杂的爱恋..."
-        },
-        {
-            title: "暗恋心动",
-            body: "校园女神苏晚晚与学霸男神陆景行之间的青春暗恋故事，甜蜜与心动并存..."
-        }
-    ];
+    // Create mock data that matches brainstorm schema ({ ideas: [...] })
+    const mockBrainstormData = {
+        ideas: [
+            {
+                title: "误爱成宠",
+                body: "林氏集团总裁林慕琛因一场误会将普通职员夏栀认作富家千金，开启了一段错综复杂的爱恋..."
+            },
+            {
+                title: "暗恋心动",
+                body: "校园女神苏晚晚与学霸男神陆景行之间的青春暗恋故事，甜蜜与心动并存..."
+            }
+        ]
+    };
 
     return {
         partialObjectStream: createAsyncIterator([
-            [{ title: "误爱成宠" }],
+            { ideas: [{ title: "误爱成宠" }] },
             mockBrainstormData
         ]),
         object: Promise.resolve(mockBrainstormData),
@@ -226,7 +228,7 @@ async function* createMockBaseStream(finalResult: any) {
     // Emit partial object first
     yield {
         type: 'object-delta',
-        object: Array.isArray(finalResult) ? [finalResult[0]] : finalResult
+        object: finalResult.ideas ? { ideas: [finalResult.ideas[0]] } : finalResult
     };
 
     // Emit final object

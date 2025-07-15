@@ -79,7 +79,30 @@ export const brainstormingTemplate: LLMTemplate = {
 - title: 简洁有力的标题（3-7个汉字）
 - body: 完整的故事梗概（约180-200字），包含清晰的叙事结构
 
-输出格式必须是有效的JSON数组，包含多个故事创意对象。`,
+**重要：你必须严格按照以下格式输出JSON对象，包含ideas数组：**
+
+{
+  "ideas": [
+    {
+      "title": "故事标题1",
+      "body": "故事内容1..."
+    },
+    {
+      "title": "故事标题2", 
+      "body": "故事内容2..."
+    },
+    {
+      "title": "故事标题3",
+      "body": "故事内容3..."
+    }
+  ]
+}
+
+**注意：**
+- 必须输出包含ideas数组的JSON对象格式
+- ideas数组中包含多个故事创意对象
+- 每个故事创意对象必须包含title和body字段
+- 确保JSON格式正确，没有语法错误`,
   outputFormat: 'json',
   responseWrapper: '```json\n%%content%%\n```'
 }; 

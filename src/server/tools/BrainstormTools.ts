@@ -404,13 +404,15 @@ export function createBrainstormToolDefinition(
             const extractedParams = await extractBrainstormParams(sourceJsondocRef.jsondocId, jsondocRepo, userId);
 
             // Create config with extracted parameters
-            const config: StreamingTransformConfig<IdeationInput, IdeationOutput> = {
+            const config: StreamingTransformConfig<IdeationInput, any> = {
                 templateName: 'brainstorming',
                 inputSchema: IdeationInputSchema,
-                outputSchema: IdeationOutputSchema,
-                // Transform LLM output (array) to collection format (object)
-                transformLLMOutput: (llmOutput: IdeationOutput, input: IdeationInput) => {
-                    return transformToCollectionFormat(llmOutput, extractedParams);
+                outputSchema: z.object({
+                    ideas: IdeationOutputSchema
+                }),
+                // Transform LLM output ({ ideas: [...] }) to collection format (object)
+                transformLLMOutput: (llmOutput: any, input: IdeationInput) => {
+                    return transformToCollectionFormat(llmOutput.ideas || llmOutput, extractedParams);
                 }
                 // No custom prepareTemplateVariables - use default schema-driven extraction
             };

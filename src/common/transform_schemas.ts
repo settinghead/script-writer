@@ -10,7 +10,7 @@ import { JsondocReferencesSchema } from './schemas/common';
  * This schema validates the data provided by the user to generate story ideas.
  */
 export const IdeationInputSchema = z.object({
-  jsondocs: JsondocReferencesSchema.describe('引用的jsondoc列表，包含头脑风暴参数等'),
+  jsondocs: JsondocReferencesSchema.describe('引用的jsondoc列表。可以是以下类型（一个或者多个）： brainstorm_input_params, brainstorm_collection（已有的头脑风暴创意集合）, brainstorm_idea（已有的头脑风暴创意）'),
   otherRequirements: z.string().describe('其他要求，如故事类型、内容、故事风格等'),
 });
 
