@@ -217,6 +217,30 @@ export const ReadOnlyJsondocDisplay: React.FC<ReadOnlyJsondocDisplayProps> = ({ 
         );
     }
 
+    // Render brainstorm idea specific layout
+    if (schemaType === 'brainstorm_idea') {
+        return (
+            <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                {/* Title */}
+                <div>
+                    <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
+                        <BulbOutlined style={{ marginRight: '8px' }} />
+                        创意标题
+                    </Text>
+                    {renderTextField(parsedData.title, '未设置标题')}
+                </div>
+
+                {/* Body/Content */}
+                <div>
+                    <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
+                        📝 创意内容
+                    </Text>
+                    {renderMultilineText(parsedData.body, '未设置创意内容')}
+                </div>
+            </Space>
+        );
+    }
+
     // Render outline settings specific layout
     if (schemaType === 'outline_settings') {
         return (
