@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "./run-ts src/server/index.ts",
     "test-llm": "./run-ts src/server/test-llm-script.ts",
-    "build:backend": "tsc --project tsconfig.node.json",
+    "build:backend": "tsc --project tsconfig.node.json && tsc-alias -p tsconfig.node.json",
     "build:frontend": "vite build",
     "build": "npm run clean && npm run build:backend && npm run build:frontend",
     "clean": "rimraf dist-client dist-server",
@@ -132,6 +132,7 @@
     "kysely-codegen": "^0.18.5",
     "less": "^4.3.0",
     "rimraf": "^6.0.1",
+    "tsc-alias": "^1.8.16",
     "tsx": "^4.20.3",
     "tw-animate-css": "^1.3.4",
     "vite-plugin-style-import": "^2.0.0",
