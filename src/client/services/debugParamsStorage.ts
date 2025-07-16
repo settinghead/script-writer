@@ -22,8 +22,9 @@ interface ProjectAgentContextParams {
 
 class DebugParamsStorage {
     private dbName = 'script-writer-debug-params';
-    private dbVersion = 1;
+    private dbVersion = 2; // Increment version for new store
     private storeName = 'debug-params';
+    private agentContextStoreName = 'agent-context-params';
     private db: IDBDatabase | null = null;
 
     async init(): Promise<void> {
@@ -42,10 +43,16 @@ class DebugParamsStorage {
             request.onupgradeneeded = (event) => {
                 const db = (event.target as IDBOpenDBRequest).result;
 
-                // Create object store if it doesn't exist
+                // Create debug params object store if it doesn't exist
                 if (!db.objectStoreNames.contains(this.storeName)) {
                     const store = db.createObjectStore(this.storeName, { keyPath: 'projectId' });
                     store.createIndex('lastUpdated', 'params.lastUpdated', { unique: false });
+                }
+
+                // Create agent context params object store if it doesn't exist
+                if (!db.objectStoreNames.contains(this.agentContextStoreName)) {
+                    const agentStore = db.createObjectStore(this.agentContextStoreName, { keyPath: 'projectId' });
+                    agentStore.createIndex('lastUpdated', 'params.lastUpdated', { unique: false });
                 }
             };
         });
@@ -196,10 +203,96 @@ class DebugParamsStorage {
             };
         });
     }
+
+    // Agent Context Methods
+    async saveAgentContextParams(projectId: string, params: Omit<AgentContextParams, 'lastUpdated'>): Promise<void> {
+        if (!this.db) {
+            await this.init();
+        }
+
+        return new Promise((resolve, reject) => {
+            if (!this.db) {
+                reject(new Error('Database not initialized'));
+                return;
+            }
+
+            const transaction = this.db.transaction([this.agentContextStoreName], 'readwrite');
+            const store = transaction.objectStore(this.agentContextStoreName);
+
+            const data: ProjectAgentContextParams = {
+                projectId,
+                params: {
+                    ...params,
+                    lastUpdated: Date.now()
+                }
+            };
+
+            const request = store.put(data);
+
+            request.onsuccess = () => {
+                resolve();
+            };
+
+            request.onerror = () => {
+                reject(new Error('Failed to save agent context params'));
+            };
+        });
+    }
+
+    async loadAgentContextParams(projectId: string): Promise<AgentContextParams | null> {
+        if (!this.db) {
+            await this.init();
+        }
+
+        return new Promise((resolve, reject) => {
+            if (!this.db) {
+                reject(new Error('Database not initialized'));
+                return;
+            }
+
+            const transaction = this.db.transaction([this.agentContextStoreName], 'readonly');
+            const store = transaction.objectStore(this.agentContextStoreName);
+            const request = store.get(projectId);
+
+            request.onsuccess = () => {
+                const result = request.result as ProjectAgentContextParams;
+                resolve(result?.params || null);
+            };
+
+            request.onerror = () => {
+                reject(new Error('Failed to load agent context params'));
+            };
+        });
+    }
+
+    async clearAgentContextParams(projectId: string): Promise<void> {
+        if (!this.db) {
+            await this.init();
+        }
+
+        return new Promise((resolve, reject) => {
+            if (!this.db) {
+                reject(new Error('Database not initialized'));
+                return;
+            }
+
+            const transaction = this.db.transaction([this.agentContextStoreName], 'readwrite');
+            const store = transaction.objectStore(this.agentContextStoreName);
+            const request = store.delete(projectId);
+
+            request.onsuccess = () => {
+                resolve();
+            };
+
+            request.onerror = () => {
+                reject(new Error('Failed to clear agent context params'));
+            };
+        });
+    }
 }
 
 // Export singleton instance
 export const debugParamsStorage = new DebugParamsStorage();
 
 // Export types for use in components
-export type { DebugParams, ProjectDebugParams }; 
+export type { DebugParams, ProjectDebugParams, AgentContextParams }; 

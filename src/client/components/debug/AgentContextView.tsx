@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Card, Typography, Alert, Spin, Divider, Input } from 'antd';
-import { ToolOutlined, FileTextOutlined, MessageOutlined } from '@ant-design/icons';
+import { Card, Typography, Alert, Spin, Divider, Input, Button, Space } from 'antd';
+import { ToolOutlined, FileTextOutlined, MessageOutlined, SaveOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useProjectData } from '../../contexts/ProjectDataContext';
 import { useDebounce } from '../../hooks/useDebounce';
+import { useAgentContextParams } from '../../hooks/useAgentContextParams';
 import { computeUnifiedWorkflowState } from '../../utils/actionComputation';
 
 const { Title, Text } = Typography;
@@ -30,20 +31,52 @@ interface AgentPromptResult {
 }
 
 export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId }) => {
-    const [userInput, setUserInput] = useState('');
     const [promptResult, setPromptResult] = useState<AgentPromptResult | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const projectData = useProjectData();
 
+    // Use the persistence hook for user input
+    const {
+        userInput,
+        setUserInput,
+        saveParams,
+        loadParams,
+        clearParams,
+        isLoading: paramsLoading,
+        error: paramsError
+    } = useAgentContextParams({ projectId });
+
+    // Debug logging
+    console.log('[AgentContextView] Component render:', {
+        projectId,
+        userInputLength: userInput?.length || 0,
+        loading,
+        paramsLoading,
+        hasError: !!error,
+        hasParamsError: !!paramsError,
+        hasPromptResult: !!promptResult,
+        projectDataStatus: typeof projectData
+    });
+
+    // Track component lifecycle
+    useEffect(() => {
+        console.log('[AgentContextView] Component mounted');
+        return () => {
+            console.log('[AgentContextView] Component unmounted');
+        };
+    }, []);
+
     // Compute current workflow state - memoize with deep comparison to prevent unnecessary re-renders
     const workflowState = useMemo(() => {
+        console.log('[AgentContextView] Computing workflow state');
         return computeUnifiedWorkflowState(projectData, projectId);
     }, [projectData, projectId]);
 
     // Memoize the workflow state to prevent re-renders when the object reference changes but content is the same
     const stableWorkflowState = useMemo(() => {
+        console.log('[AgentContextView] Stabilizing workflow state');
         return JSON.stringify(workflowState);
     }, [workflowState]);
 
@@ -52,11 +85,17 @@ export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId })
 
     // Memoize the input change handler to prevent re-renders
     const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        console.log('[AgentContextView] Input change:', e.target.value.length);
         setUserInput(e.target.value);
     }, []);
 
     // Generate prompt data when input changes
     useEffect(() => {
+        console.log('[AgentContextView] useEffect triggered for prompt generation:', {
+            debouncedUserInput: debouncedUserInput?.length || 0,
+            stableWorkflowState: stableWorkflowState?.length || 0
+        });
+
         if (!debouncedUserInput.trim()) {
             setPromptResult(null);
             setError(null);
@@ -65,6 +104,7 @@ export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId })
 
         const generatePrompt = async () => {
             try {
+                console.log('[AgentContextView] Starting prompt generation');
                 setLoading(true);
                 setError(null);
 
@@ -106,24 +146,27 @@ export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId })
         generatePrompt();
     }, [debouncedUserInput, projectId, stableWorkflowState]);
 
-    const renderCodeBlock = useCallback((content: string, maxHeight = '400px') => (
-        <div style={{
-            fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace',
-            fontSize: '12px',
-            lineHeight: '1.4',
-            color: '#e6e6e6',
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-            background: '#0d1117',
-            padding: '12px',
-            borderRadius: '6px',
-            border: '1px solid #30363d',
-            maxHeight,
-            overflow: 'auto'
-        }}>
-            {content}
-        </div>
-    ), []);
+    const renderCodeBlock = useCallback((content: string, maxHeight = '400px') => {
+        console.log('[AgentContextView] renderCodeBlock called:', content.length);
+        return (
+            <div style={{
+                fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace',
+                fontSize: '12px',
+                lineHeight: '1.4',
+                color: '#e6e6e6',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                background: '#0d1117',
+                padding: '12px',
+                borderRadius: '6px',
+                border: '1px solid #30363d',
+                maxHeight,
+                overflow: 'auto'
+            }}>
+                {content}
+            </div>
+        );
+    }, []);
 
     return (
         <div style={{
@@ -183,6 +226,57 @@ export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId })
                                 style={{ fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace' }}
                                 autoFocus={false}
                             />
+                        </div>
+
+                        {/* Persistence Controls */}
+                        <div style={{ marginBottom: 16 }}>
+                            <Space>
+                                <Button
+                                    icon={<SaveOutlined />}
+                                    onClick={saveParams}
+                                    size="small"
+                                    loading={paramsLoading}
+                                    disabled={!userInput.trim()}
+                                >
+                                    保存
+                                </Button>
+                                <Button
+                                    icon={<ReloadOutlined />}
+                                    onClick={loadParams}
+                                    size="small"
+                                    loading={paramsLoading}
+                                >
+                                    重新加载
+                                </Button>
+                                <Button
+                                    icon={<DeleteOutlined />}
+                                    onClick={clearParams}
+                                    size="small"
+                                    danger
+                                    loading={paramsLoading}
+                                >
+                                    清除
+                                </Button>
+                            </Space>
+
+                            {paramsError && (
+                                <Alert
+                                    message="参数保存错误"
+                                    description={paramsError}
+                                    type="warning"
+                                    style={{ marginTop: 8 }}
+                                    closable
+                                />
+                            )}
+
+                            {paramsLoading && (
+                                <div style={{ marginTop: 8 }}>
+                                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                                        <Spin size="small" style={{ marginRight: 4 }} />
+                                        正在处理参数...
+                                    </Text>
+                                </div>
+                            )}
                         </div>
 
                         {loading && (
