@@ -14,6 +14,145 @@ interface BasicThreadProps {
     projectId: string;
 }
 
+// Custom Scrollbar Component
+const CustomScrollbar: React.FC<{
+    containerRef: React.RefObject<HTMLDivElement | null>;
+    onScroll?: () => void;
+}> = ({ containerRef, onScroll }) => {
+    const [scrollThumb, setScrollThumb] = useState({ height: 0, top: 0 });
+    const [isDragging, setIsDragging] = useState(false);
+    const [dragStart, setDragStart] = useState({ y: 0, scrollTop: 0 });
+    const thumbRef = useRef<HTMLDivElement>(null);
+
+    const updateScrollThumb = () => {
+        if (!containerRef.current) return;
+
+        const container = containerRef.current;
+        const scrollHeight = container.scrollHeight;
+        const clientHeight = container.clientHeight;
+        const scrollTop = container.scrollTop;
+
+        // Calculate available track height (excluding header and input areas)
+        const trackHeight = clientHeight - 224; // 64px header + 160px input
+
+        if (scrollHeight <= clientHeight || trackHeight <= 0) {
+            setScrollThumb({ height: 0, top: 0 });
+            return;
+        }
+
+        const thumbHeight = Math.max(20, (clientHeight / scrollHeight) * trackHeight);
+        const maxThumbTop = trackHeight - thumbHeight;
+        const thumbTop = Math.min(maxThumbTop, (scrollTop / (scrollHeight - clientHeight)) * maxThumbTop);
+
+        setScrollThumb({ height: thumbHeight, top: Math.max(0, thumbTop) });
+    };
+
+    useEffect(() => {
+        const container = containerRef.current;
+        if (!container) return;
+
+        let scrollTimeout: NodeJS.Timeout;
+        const handleScroll = () => {
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(() => {
+                updateScrollThumb();
+                onScroll?.();
+            }, 16); // ~60fps
+        };
+
+        container.addEventListener('scroll', handleScroll, { passive: true });
+        updateScrollThumb();
+
+        // Update on resize
+        const resizeObserver = new ResizeObserver(() => {
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(updateScrollThumb, 16);
+        });
+        resizeObserver.observe(container);
+
+        return () => {
+            clearTimeout(scrollTimeout);
+            container.removeEventListener('scroll', handleScroll);
+            resizeObserver.disconnect();
+        };
+    }, [containerRef, onScroll]);
+
+    const handleMouseDown = (e: React.MouseEvent) => {
+        if (!containerRef.current) return;
+
+        setIsDragging(true);
+        setDragStart({
+            y: e.clientY,
+            scrollTop: containerRef.current.scrollTop
+        });
+
+        e.preventDefault();
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+        if (!isDragging || !containerRef.current) return;
+
+        const container = containerRef.current;
+        const trackHeight = container.clientHeight - 224;
+        const scrollHeight = container.scrollHeight;
+        const clientHeight = container.clientHeight;
+
+        const deltaY = e.clientY - dragStart.y;
+        const scrollRatio = deltaY / (trackHeight - scrollThumb.height);
+        const newScrollTop = dragStart.scrollTop + scrollRatio * (scrollHeight - clientHeight);
+
+        container.scrollTop = Math.max(0, Math.min(newScrollTop, scrollHeight - clientHeight));
+    };
+
+    const handleMouseUp = () => {
+        setIsDragging(false);
+    };
+
+    useEffect(() => {
+        if (isDragging) {
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+
+            return () => {
+                document.removeEventListener('mousemove', handleMouseMove);
+                document.removeEventListener('mouseup', handleMouseUp);
+            };
+        }
+    }, [isDragging, dragStart, scrollThumb]);
+
+    const handleTrackClick = (e: React.MouseEvent) => {
+        if (!containerRef.current || !thumbRef.current) return;
+
+        const container = containerRef.current;
+        const trackHeight = container.clientHeight - 224;
+        const scrollHeight = container.scrollHeight;
+        const clientHeight = container.clientHeight;
+
+        const rect = e.currentTarget.getBoundingClientRect();
+        const clickY = e.clientY - rect.top;
+        const scrollRatio = clickY / trackHeight;
+        const newScrollTop = scrollRatio * (scrollHeight - clientHeight);
+
+        container.scrollTop = Math.max(0, Math.min(newScrollTop, scrollHeight - clientHeight));
+    };
+
+    if (scrollThumb.height === 0) return null;
+
+    return (
+        <div className="custom-scrollbar-track" onClick={handleTrackClick}>
+            <div
+                ref={thumbRef}
+                className="custom-scrollbar-thumb"
+                style={{
+                    height: `${scrollThumb.height}px`,
+                    top: `${scrollThumb.top}px`,
+                }}
+                onMouseDown={handleMouseDown}
+            />
+        </div>
+    );
+};
+
 // ChatMessage component similar to original but inline
 const ChatMessage: React.FC<{ message: any; isStreaming?: boolean }> = ({ message, isStreaming = false }) => {
     const processedMessage = processChatMessage(
@@ -264,99 +403,99 @@ export const BasicThread: React.FC<BasicThreadProps> = ({ projectId }) => {
             background: 'transparent',
             position: 'relative'
         }}>
-            {/* Messages Area */}
-            <div
-                ref={containerRef}
-                onScroll={handleScroll}
-                style={{
-                    flex: 1,
-                    padding: '80px 16px 160px 16px', // Top padding for header, bottom padding for input
-                    overflow: 'auto',
-                    background: 'transparent'
-                }}
-            >
-                {messages.length === 0 && !isLoading ? (
-                    <Empty
-                        image={<MessageOutlined style={{ fontSize: 64, color: '#666' }} />}
-                        style={{ marginTop: '40px' }}
-                        description={
-                            <div style={{ textAlign: 'center' }}>
-                                <Title level={4} style={{ color: '#ccc', marginBottom: 8 }}>
-                                    开始对话
-                                </Title>
-                                <Paragraph style={{ color: '#888', marginBottom: 24 }}>
-                                    向我询问任何关于你的创作项目的问题！
-                                </Paragraph>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
-                                    <Tag icon={<EditOutlined />} color="blue" style={{ fontSize: 12 }}>
-                                        "帮我头脑风暴故事创意"
-                                    </Tag>
-                                    <Tag icon={<PlayCircleOutlined />} color="green" style={{ fontSize: 12 }}>
-                                        "为我的剧本创建大纲"
-                                    </Tag>
-                                    <Tag icon={<MessageOutlined />} color="purple" style={{ fontSize: 12 }}>
-                                        "为这个场景写对白"
-                                    </Tag>
+            {/* Messages Area with Custom Scrollbar */}
+            <div className="chat-messages-container">
+                <div
+                    ref={containerRef}
+                    className="chat-messages-scrollable"
+                >
+                    <CustomScrollbar
+                        containerRef={containerRef}
+                        onScroll={handleScroll}
+                    />
+                    {messages.length === 0 && !isLoading ? (
+                        <Empty
+                            image={<MessageOutlined style={{ fontSize: 64, color: '#666' }} />}
+                            style={{ marginTop: '40px' }}
+                            description={
+                                <div style={{ textAlign: 'center' }}>
+                                    <Title level={4} style={{ color: '#ccc', marginBottom: 8 }}>
+                                        开始对话
+                                    </Title>
+                                    <Paragraph style={{ color: '#888', marginBottom: 24 }}>
+                                        向我询问任何关于你的创作项目的问题！
+                                    </Paragraph>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
+                                        <Tag icon={<EditOutlined />} color="blue" style={{ fontSize: 12 }}>
+                                            "帮我头脑风暴故事创意"
+                                        </Tag>
+                                        <Tag icon={<PlayCircleOutlined />} color="green" style={{ fontSize: 12 }}>
+                                            "为我的剧本创建大纲"
+                                        </Tag>
+                                        <Tag icon={<MessageOutlined />} color="purple" style={{ fontSize: 12 }}>
+                                            "为这个场景写对白"
+                                        </Tag>
+                                    </div>
                                 </div>
-                            </div>
-                        }
-                    />
-                ) : (
-                    <List
-                        dataSource={messages}
-                        renderItem={(message) => (
-                            <List.Item style={{ border: 'none', padding: '8px 0' }}>
-                                <ChatMessage
-                                    key={message.id}
-                                    message={message}
-                                    isStreaming={message.status === 'streaming'}
-                                />
-                            </List.Item>
-                        )}
-                        style={{ background: 'transparent' }}
-                    />
-                )}
+                            }
+                        />
+                    ) : (
+                        <List
+                            dataSource={messages}
+                            renderItem={(message) => (
+                                <List.Item style={{ border: 'none', padding: '8px 0' }}>
+                                    <ChatMessage
+                                        key={message.id}
+                                        message={message}
+                                        isStreaming={message.status === 'streaming'}
+                                    />
+                                </List.Item>
+                            )}
+                            style={{ background: 'transparent' }}
+                        />
+                    )}
 
-                {isLoading && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 0' }}>
-                        <Cpu style={{ fontSize: 20, color: AppColors.ai.primary }} />
-                        <Spin size="small" />
-                        <span style={{ color: '#888' }}>AI正在思考...</span>
+                    {isLoading && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 0' }}>
+                            <Cpu style={{ fontSize: 20, color: AppColors.ai.primary }} />
+                            <Spin size="small" />
+                            <span style={{ color: '#888' }}>AI正在思考...</span>
+                        </div>
+                    )}
+
+                    {/* Invisible element to scroll to */}
+                    <div ref={messagesEndRef} />
+                </div>
+
+                {/* Scroll to Bottom Button */}
+                {!isAtBottom && (
+                    <div style={{
+                        position: 'absolute',
+                        bottom: '180px', // Adjusted to be above the glass input area
+                        right: '16px',
+                        zIndex: 15 // Higher z-index to be above glass effects
+                    }}>
+                        <button
+                            onClick={scrollToBottom}
+                            style={{
+                                width: '40px',
+                                height: '40px',
+                                borderRadius: '50%',
+                                background: '#1890ff',
+                                border: 'none',
+                                color: 'white',
+                                cursor: 'pointer',
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}
+                        >
+                            <ArrowDownOutlined />
+                        </button>
                     </div>
                 )}
-
-                {/* Invisible element to scroll to */}
-                <div ref={messagesEndRef} />
             </div>
-
-            {/* Scroll to Bottom Button */}
-            {!isAtBottom && (
-                <div style={{
-                    position: 'absolute',
-                    bottom: '180px', // Adjusted to be above the glass input area
-                    right: '16px',
-                    zIndex: 15 // Higher z-index to be above glass effects
-                }}>
-                    <button
-                        onClick={scrollToBottom}
-                        style={{
-                            width: '40px',
-                            height: '40px',
-                            borderRadius: '50%',
-                            background: '#1890ff',
-                            border: 'none',
-                            color: 'white',
-                            cursor: 'pointer',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                        }}
-                    >
-                        <ArrowDownOutlined />
-                    </button>
-                </div>
-            )}
 
             {/* Glass Input Area Overlay */}
             <div

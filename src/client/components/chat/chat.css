@@ -34,6 +34,113 @@
     background: #606060;
 }
 
+/* Custom Scrollbar Container */
+.chat-messages-container {
+    position: relative;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* Custom Scrollbar for Messages Area */
+.chat-messages-scrollable {
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 80px 16px 160px 16px;
+    /* Top padding for header, bottom padding for input */
+    background: transparent;
+
+    /* Hide default scrollbar */
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+    /* IE and Edge */
+}
+
+.chat-messages-scrollable::-webkit-scrollbar {
+    display: none;
+    /* Chrome, Safari, Opera */
+}
+
+/* Custom Scrollbar Track */
+.custom-scrollbar-track {
+    position: absolute;
+    top: 64px;
+    /* Start below header */
+    bottom: 160px;
+    /* End above input area */
+    right: 4px;
+    width: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    z-index: 20;
+    opacity: 0;
+    transition: opacity 0.3s ease, background 0.2s ease;
+    cursor: pointer;
+}
+
+.chat-messages-container:hover .custom-scrollbar-track {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.custom-scrollbar-track:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+/* Custom Scrollbar Thumb */
+.custom-scrollbar-thumb {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background: linear-gradient(180deg,
+            rgba(138, 43, 226, 0.7) 0%,
+            rgba(75, 0, 130, 0.7) 100%);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.1s ease;
+    min-height: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.custom-scrollbar-thumb:hover {
+    background: linear-gradient(180deg,
+            rgba(138, 43, 226, 0.9) 0%,
+            rgba(75, 0, 130, 0.9) 100%);
+    transform: scaleX(1.2);
+    box-shadow: 0 4px 12px rgba(138, 43, 226, 0.4);
+}
+
+.custom-scrollbar-thumb:active {
+    background: linear-gradient(180deg,
+            rgba(168, 63, 246, 1) 0%,
+            rgba(95, 20, 150, 1) 100%);
+    transform: scaleX(1.3);
+    box-shadow: 0 6px 16px rgba(168, 63, 246, 0.5);
+}
+
+/* Add smooth scrolling behavior */
+.chat-messages-scrollable {
+    scroll-behavior: smooth;
+}
+
+/* Enhance scrollbar visibility on dark backgrounds */
+.custom-scrollbar-track::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(180deg,
+            rgba(255, 255, 255, 0.02) 0%,
+            rgba(255, 255, 255, 0.05) 50%,
+            rgba(255, 255, 255, 0.02) 100%);
+    border-radius: 4px;
+    pointer-events: none;
+}
+
 /* Enhanced Glass Effect for Header */
 .chat-header-glass {
     position: relative;
