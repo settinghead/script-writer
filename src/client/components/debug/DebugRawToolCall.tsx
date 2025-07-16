@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, Typography, Tabs, Spin, Alert, Select, Button, Space, Form, Input, Divider } from 'antd';
 import { ToolOutlined, BugOutlined, FileTextOutlined, DatabaseOutlined, SaveOutlined, DeleteOutlined, ReloadOutlined, PlayCircleOutlined } from '@ant-design/icons';
-import { useProjectData } from '../contexts/ProjectDataContext';
-import { useDebounce } from '../hooks/useDebounce';
-import { useDebugParams } from '../hooks/useDebugParams';
+import { useProjectData } from '../../contexts/ProjectDataContext';
+import { useDebounce } from '../../hooks/useDebounce';
+import { useDebugParams } from '../../hooks/useDebugParams';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -77,7 +77,7 @@ const isJsondocCompatible = (jsondocType: string, toolName: string): boolean => 
     return expectedTypes.length === 0 || expectedTypes.includes(jsondocType);
 };
 
-const RawAgentContext: React.FC<RawAgentContextProps> = ({ projectId }) => {
+const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
     const [tools, setTools] = useState<Tool[]>([]);
     const [jsondocs, setJsondocs] = useState<JsondocInfo[]>([]);
     const [promptResult, setPromptResult] = useState<PromptResult | null>(null);
@@ -741,4 +741,4 @@ const RawAgentContext: React.FC<RawAgentContextProps> = ({ projectId }) => {
     );
 };
 
-export default RawAgentContext; 
+export default RawTooLCall; 

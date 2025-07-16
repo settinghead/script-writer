@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Space, Button } from 'antd';
-import { NodeIndexOutlined, MessageOutlined, FileTextOutlined, VerticalAlignTopOutlined, SearchOutlined } from '@ant-design/icons';
+import { NodeIndexOutlined, MessageOutlined, FileTextOutlined, ToolOutlined, SearchOutlined } from '@ant-design/icons';
 
 interface DebugMenuProps {
     isMobile?: boolean;
@@ -18,8 +18,8 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
     const showRawGraph = searchParams.get('raw-graph') === '1';
     const showRawChat = searchParams.get('raw-chat') === '1';
     const showRawContext = searchParams.get('raw-context') === '1';
-    const showScrollDemo = searchParams.get('scroll-demo') === '1';
     const showParticleDebug = searchParams.get('particle-debug') === '1';
+    const showAgentContext = searchParams.get('agent-context') === '1';
 
     // Debug toggle handlers
     const toggleRawGraph = useCallback(() => {
@@ -31,7 +31,7 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
             // Clear other debug views
             newSearchParams.delete('raw-chat');
             newSearchParams.delete('raw-context');
-            newSearchParams.delete('scroll-demo');
+            newSearchParams.delete('agent-context');
             newSearchParams.delete('particle-debug');
         }
         setSearchParams(newSearchParams);
@@ -46,7 +46,7 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
             // Clear other debug views
             newSearchParams.delete('raw-graph');
             newSearchParams.delete('raw-context');
-            newSearchParams.delete('scroll-demo');
+            newSearchParams.delete('agent-context');
             newSearchParams.delete('particle-debug');
         }
         setSearchParams(newSearchParams);
@@ -61,18 +61,18 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
             // Clear other debug views
             newSearchParams.delete('raw-graph');
             newSearchParams.delete('raw-chat');
-            newSearchParams.delete('scroll-demo');
+            newSearchParams.delete('agent-context');
             newSearchParams.delete('particle-debug');
         }
         setSearchParams(newSearchParams);
     }, [showRawContext, searchParams, setSearchParams]);
 
-    const toggleScrollDemo = useCallback(() => {
+    const toggleAgentContext = useCallback(() => {
         const newSearchParams = new URLSearchParams(searchParams);
-        if (showScrollDemo) {
-            newSearchParams.delete('scroll-demo');
+        if (showAgentContext) {
+            newSearchParams.delete('agent-context');
         } else {
-            newSearchParams.set('scroll-demo', '1');
+            newSearchParams.set('agent-context', '1');
             // Clear other debug views
             newSearchParams.delete('raw-graph');
             newSearchParams.delete('raw-chat');
@@ -80,7 +80,7 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
             newSearchParams.delete('particle-debug');
         }
         setSearchParams(newSearchParams);
-    }, [showScrollDemo, searchParams, setSearchParams]);
+    }, [showAgentContext, searchParams, setSearchParams]);
 
     const toggleParticleDebug = useCallback(() => {
         const newSearchParams = new URLSearchParams(searchParams);
@@ -92,7 +92,7 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
             newSearchParams.delete('raw-graph');
             newSearchParams.delete('raw-chat');
             newSearchParams.delete('raw-context');
-            newSearchParams.delete('scroll-demo');
+            newSearchParams.delete('agent-context');
         }
         setSearchParams(newSearchParams);
     }, [showParticleDebug, searchParams, setSearchParams]);
@@ -125,7 +125,7 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
                 style={{ color: showRawContext ? '#52c41a' : '#1890ff' }}
                 size={isMobile ? 'small' : 'middle'}
             >
-                {isMobile ? '' : (showRawContext ? '关闭上下文' : '打开上下文')}
+                {isMobile ? '' : (showRawContext ? '关闭Agent Tool' : '打开Agent Tool')}
             </Button>
             <Button
                 type="text"
@@ -139,12 +139,12 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
 
             <Button
                 type="text"
-                icon={<VerticalAlignTopOutlined />}
-                onClick={toggleScrollDemo}
-                style={{ color: showScrollDemo ? '#52c41a' : '#1890ff' }}
+                icon={<ToolOutlined />}
+                onClick={toggleAgentContext}
+                style={{ color: showAgentContext ? '#52c41a' : '#1890ff' }}
                 size={isMobile ? 'small' : 'middle'}
             >
-                {isMobile ? '' : (showScrollDemo ? '关闭滚动演示' : '滚动演示')}
+                {isMobile ? '' : (showAgentContext ? '关闭Agent上下文' : 'Agent上下文')}
             </Button>
 
             <Button
@@ -169,12 +169,12 @@ export const useDebugState = () => {
         showRawGraph: searchParams.get('raw-graph') === '1',
         showRawChat: searchParams.get('raw-chat') === '1',
         showRawContext: searchParams.get('raw-context') === '1',
-        showScrollDemo: searchParams.get('scroll-demo') === '1',
+        showAgentContext: searchParams.get('agent-context') === '1',
         showParticleDebug: searchParams.get('particle-debug') === '1',
         isDebugMode: searchParams.get('raw-graph') === '1' ||
             searchParams.get('raw-chat') === '1' ||
             searchParams.get('raw-context') === '1' ||
-            searchParams.get('scroll-demo') === '1' ||
+            searchParams.get('agent-context') === '1' ||
             searchParams.get('particle-debug') === '1'
     };
 }; 

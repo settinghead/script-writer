@@ -526,5 +526,72 @@ export function createAdminRoutes(
         }
     });
 
+    // POST /api/admin/agent-prompt - Get agent prompt construction
+    router.post('/agent-prompt', authMiddleware.authenticate, async (req: Request, res: Response) => {
+        try {
+            const userId = req.user?.id;
+            if (!userId) {
+                res.status(401).json({ error: 'User not authenticated' });
+                return;
+            }
+
+            const { projectId, userRequest, contextType = 'general', contextData } = req.body;
+
+            if (!projectId || !userRequest) {
+                res.status(400).json({ error: 'projectId and userRequest are required' });
+                return;
+            }
+
+            // Import buildAgentConfiguration to get the same prompt construction as AgentService
+            const { buildAgentConfiguration } = await import('../services/AgentRequestBuilder.js');
+
+            // Build the agent configuration exactly as AgentService does
+            const agentConfig = await buildAgentConfiguration(
+                {
+                    userRequest,
+                    projectId,
+                    contextType,
+                    contextData
+                },
+                projectId,
+                transformRepo,
+                jsondocRepo,
+                userId,
+                {
+                    enableCaching: false // Disable caching for debug view
+                }
+            );
+
+            // Extract tools information
+            const availableTools = agentConfig.tools.map((tool: any) => tool.name);
+
+            // Extract workflow state from context data
+            const workflowState = contextData?.workflowState || {};
+
+            res.json({
+                success: true,
+                prompt: agentConfig.prompt,
+                context: {
+                    currentStage: workflowState.parameters?.currentStage || 'unknown',
+                    hasActiveTransforms: workflowState.parameters?.hasActiveTransforms || false,
+                    availableTools,
+                    workflowState
+                },
+                input: {
+                    userRequest,
+                    contextType,
+                    contextData
+                }
+            });
+
+        } catch (error) {
+            console.error('Error building agent prompt:', error);
+            res.status(500).json({
+                error: 'Failed to build agent prompt',
+                details: error instanceof Error ? error.message : String(error)
+            });
+        }
+    });
+
     return router;
 } 

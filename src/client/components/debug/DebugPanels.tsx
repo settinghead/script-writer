@@ -4,10 +4,10 @@ import { Card, Button } from 'antd';
 import { CloseOutlined } from '@ant-design/icons';
 import RawGraphVisualization from '../RawGraphVisualization';
 import RawChatMessages from '../RawChatMessages';
-import RawAgentContext from '../RawAgentContext';
-import { ScrollPositionDemo } from '../ScrollPositionDemo';
+import RawTooLCall from './DebugRawToolCall';
 import { YJSDebugComponent } from './YJSDebugComponent';
 import { ParticleDebugComponent } from './ParticleDebugComponent';
+import { AgentContextView } from './AgentContextView';
 import { useDebugState } from './DebugMenu';
 
 interface DebugPanelsProps {
@@ -15,7 +15,7 @@ interface DebugPanelsProps {
 }
 
 export const DebugPanels: React.FC<DebugPanelsProps> = ({ projectId }) => {
-    const { showRawGraph, showRawChat, showRawContext, showScrollDemo, showParticleDebug } = useDebugState();
+    const { showRawGraph, showRawChat, showRawContext, showAgentContext, showParticleDebug } = useDebugState();
     const [searchParams, setSearchParams] = useSearchParams();
 
     // Check for YJS debug mode
@@ -23,7 +23,7 @@ export const DebugPanels: React.FC<DebugPanelsProps> = ({ projectId }) => {
     const jsondocId = searchParams.get('jsondoc-id');
 
     // Don't render anything if no debug mode is active
-    if (!showRawGraph && !showRawChat && !showRawContext && !showScrollDemo && !showYJSDebug && !showParticleDebug) {
+    if (!showRawGraph && !showRawChat && !showRawContext && !showAgentContext && !showYJSDebug && !showParticleDebug) {
         return null;
     }
 
@@ -37,11 +37,11 @@ export const DebugPanels: React.FC<DebugPanelsProps> = ({ projectId }) => {
         debugTitle = '内部对话记录';
         debugContent = <RawChatMessages projectId={projectId} />;
     } else if (showRawContext) {
-        debugTitle = '代理上下文';
-        debugContent = <RawAgentContext projectId={projectId} />;
-    } else if (showScrollDemo) {
-        debugTitle = '滚动位置保存演示';
-        debugContent = <ScrollPositionDemo />;
+        debugTitle = 'Agent Tool调试';
+        debugContent = <RawTooLCall projectId={projectId} />;
+    } else if (showAgentContext) {
+        debugTitle = 'Agent上下文';
+        debugContent = <AgentContextView projectId={projectId} />;
     } else if (showYJSDebug && jsondocId) {
         debugTitle = 'YJS调试信息';
         debugContent = <YJSDebugComponent jsondocId={jsondocId} />;
@@ -89,10 +89,10 @@ export const DebugPanels: React.FC<DebugPanelsProps> = ({ projectId }) => {
                         newSearchParams.delete('raw-graph');
                         newSearchParams.delete('raw-chat');
                         newSearchParams.delete('raw-context');
+                        newSearchParams.delete('agent-context');
                         newSearchParams.delete('yjs-demo');
                         newSearchParams.delete('yjs-debug');
                         newSearchParams.delete('jsondoc-id');
-                        newSearchParams.delete('scroll-demo');
                         newSearchParams.delete('particle-debug');
                         setSearchParams(newSearchParams);
                     }}

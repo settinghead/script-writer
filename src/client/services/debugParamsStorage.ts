@@ -5,9 +5,19 @@ interface DebugParams {
     lastUpdated: number;
 }
 
+interface AgentContextParams {
+    userInput: string;
+    lastUpdated: number;
+}
+
 interface ProjectDebugParams {
     projectId: string;
     params: DebugParams;
+}
+
+interface ProjectAgentContextParams {
+    projectId: string;
+    params: AgentContextParams;
 }
 
 class DebugParamsStorage {
