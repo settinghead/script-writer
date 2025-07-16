@@ -1,19 +1,15 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Card, Typography, Alert, Spin, Divider, Input, Button, Space } from 'antd';
-import { ToolOutlined, FileTextOutlined, MessageOutlined, SaveOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Input, Button, Card, Typography, Space, Alert, Spin } from 'antd';
 import { useProjectData } from '../../contexts/ProjectDataContext';
-import { useDebounce } from '../../hooks/useDebounce';
 import { useAgentContextParams } from '../../hooks/useAgentContextParams';
+import { useDebounce } from '../../hooks/useDebounce';
 import { computeUnifiedWorkflowState } from '../../utils/actionComputation';
 
-const { Title, Text } = Typography;
 const { TextArea } = Input;
+const { Title, Text } = Typography;
 
-interface AgentContextViewProps {
-    projectId: string;
-}
-
-interface AgentPromptResult {
+interface AgentPromptResponse {
+    success: boolean;
     prompt: string;
     context: {
         currentStage: string;
@@ -26,89 +22,111 @@ interface AgentPromptResult {
         contextType: string;
         contextData: any;
     };
-    success: boolean;
-    error?: string;
+}
+
+interface AgentContextViewProps {
+    projectId: string;
 }
 
 export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId }) => {
-    const [promptResult, setPromptResult] = useState<AgentPromptResult | null>(null);
+    const projectData = useProjectData();
+
+    // Use the persistent params hook
+    const {
+        params,
+        updateUserInput,
+        isLoading: paramsLoading,
+        hasError: paramsHasError,
+        autoSave,
+        setAutoSave,
+        saveParams,
+        reloadParams,
+        clearParams
+    } = useAgentContextParams(projectId);
+
+    const [promptResponse, setPromptResponse] = useState<AgentPromptResponse | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const projectData = useProjectData();
-
-    // Use the persistence hook for user input
-    const {
-        userInput,
-        setUserInput,
-        saveParams,
-        loadParams,
-        clearParams,
-        isLoading: paramsLoading,
-        error: paramsError
-    } = useAgentContextParams({ projectId });
-
     // Debug logging
-    console.log('[AgentContextView] Component render:', {
+    const debugLog = useCallback((message: string, data?: any) => {
+        console.log(`[AgentContextView] ${message}`, data);
+    }, []);
+
+    debugLog('Component render:', {
         projectId,
-        userInputLength: userInput?.length || 0,
+        userInputLength: params.userInput.length,
         loading,
         paramsLoading,
         hasError: !!error,
-        hasParamsError: !!paramsError,
-        hasPromptResult: !!promptResult,
-        projectDataStatus: typeof projectData
+        paramsHasError,
+        autoSave
     });
 
-    // Track component lifecycle
-    useEffect(() => {
-        console.log('[AgentContextView] Component mounted');
-        return () => {
-            console.log('[AgentContextView] Component unmounted');
-        };
-    }, []);
-
-    // Compute current workflow state - memoize with deep comparison to prevent unnecessary re-renders
+    // Compute workflow state once and memoize it
     const workflowState = useMemo(() => {
-        console.log('[AgentContextView] Computing workflow state');
-        return computeUnifiedWorkflowState(projectData, projectId);
-    }, [projectData, projectId]);
+        if (!projectData || !projectId) return null;
 
-    // Memoize the workflow state to prevent re-renders when the object reference changes but content is the same
+        try {
+            const unifiedState = computeUnifiedWorkflowState(projectData, projectId);
+            const result = {
+                currentStage: unifiedState.parameters.currentStage,
+                hasActiveTransforms: unifiedState.parameters.hasActiveTransforms,
+                actions: unifiedState.actions,
+                steps: unifiedState.steps,
+                displayComponents: unifiedState.displayComponents,
+                parameters: unifiedState.parameters
+            };
+
+            debugLog('Workflow state computed:', {
+                currentStage: result.currentStage,
+                hasActiveTransforms: result.hasActiveTransforms,
+                actionsCount: result.actions.length,
+                stepsCount: result.steps.length,
+                displayComponentsCount: result.displayComponents.length
+            });
+
+            return result;
+        } catch (error) {
+            debugLog('Error computing workflow state:', error);
+            return null;
+        }
+    }, [projectData, projectId, debugLog]);
+
+    // Debounce user input to avoid excessive API calls
+    const debouncedUserInput = useDebounce(params.userInput, 1000);
+
+    // Stable workflow state for useEffect dependency
     const stableWorkflowState = useMemo(() => {
-        console.log('[AgentContextView] Stabilizing workflow state');
-        return JSON.stringify(workflowState);
+        return workflowState ? JSON.stringify(workflowState).length : 0;
     }, [workflowState]);
 
-    // Debounced user input to avoid too many requests
-    const debouncedUserInput = useDebounce(userInput, 1000);
-
-    // Memoize the input change handler to prevent re-renders
+    // Input change handler
     const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        console.log('[AgentContextView] Input change:', e.target.value.length);
-        setUserInput(e.target.value);
-    }, []);
+        const newValue = e.target.value;
+        debugLog('Input change:', newValue.length);
+        updateUserInput(newValue);
+    }, [updateUserInput, debugLog]);
 
-    // Generate prompt data when input changes
+    // Generate agent prompt when debounced input or workflow state changes
     useEffect(() => {
-        console.log('[AgentContextView] useEffect triggered for prompt generation:', {
-            debouncedUserInput: debouncedUserInput?.length || 0,
-            stableWorkflowState: stableWorkflowState?.length || 0
+        debugLog('useEffect triggered for prompt generation:', {
+            debouncedUserInput: debouncedUserInput.length,
+            stableWorkflowState
         });
 
-        if (!debouncedUserInput.trim()) {
-            setPromptResult(null);
-            setError(null);
+        if (!projectId || !workflowState || !debouncedUserInput.trim()) {
+            setPromptResponse(null);
             return;
         }
 
         const generatePrompt = async () => {
             try {
-                console.log('[AgentContextView] Starting prompt generation');
+                debugLog('Starting prompt generation');
                 setLoading(true);
                 setError(null);
 
-                const response = await fetch(`/api/admin/agent-prompt`, {
+                const response = await fetch('/api/admin/agent-prompt', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -119,35 +137,33 @@ export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId })
                         userRequest: debouncedUserInput,
                         contextType: 'general',
                         contextData: {
-                            workflowState: JSON.parse(stableWorkflowState)
+                            workflowState
                         }
                     })
                 });
 
                 if (!response.ok) {
-                    const errorResult = await response.json();
-                    throw new Error(errorResult.error || `HTTP ${response.status}: ${response.statusText}`);
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
 
-                const result = await response.json();
-                if (result.success) {
-                    setPromptResult(result);
-                } else {
-                    throw new Error(result.error || 'Failed to generate prompt');
-                }
+                const data = await response.json();
+                setPromptResponse(data);
+                debugLog('Prompt generation completed');
             } catch (err) {
-                console.error('Error generating agent prompt:', err);
-                setError(err instanceof Error ? err.message : String(err));
+                const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+                setError(errorMessage);
+                debugLog('Prompt generation error:', errorMessage);
             } finally {
                 setLoading(false);
             }
         };
 
         generatePrompt();
-    }, [debouncedUserInput, projectId, stableWorkflowState]);
+    }, [debouncedUserInput, stableWorkflowState, projectId, workflowState, debugLog]);
 
+    // Memoized render functions to prevent unnecessary re-renders
     const renderCodeBlock = useCallback((content: string, maxHeight = '400px') => {
-        console.log('[AgentContextView] renderCodeBlock called:', content.length);
+        debugLog('renderCodeBlock called:', content.length);
         return (
             <div style={{
                 fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace',
@@ -166,20 +182,23 @@ export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId })
                 {content}
             </div>
         );
-    }, []);
+    }, [debugLog]);
+
+    if (!projectData) {
+        return <Spin size="large" />;
+    }
 
     return (
         <div style={{
+            padding: '20px',
             height: '100%',
             overflow: 'auto',
-            padding: '20px',
             background: '#0a0a0a'
         }}>
             <Card
                 title={
                     <Title level={3} style={{ margin: 0, color: '#fff' }}>
-                        <ToolOutlined style={{ marginRight: '12px' }} />
-                        Agent上下文分析
+                        Agent上下文调试
                     </Title>
                 }
                 style={{
@@ -203,80 +222,83 @@ export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId })
                     gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
                     gap: '32px'
                 }}>
-                    {/* Input Section */}
+                    {/* Left Column - Input and Workflow State */}
                     <div style={{ minWidth: '400px' }}>
-                        <Alert
-                            message="输入用户请求"
-                            description="输入一个用户请求，查看Agent会如何构建提示词和上下文"
-                            type="info"
-                            style={{ marginBottom: 16 }}
-                            showIcon
-                        />
-
-                        <div style={{ marginBottom: 16 }}>
-                            <Text strong style={{ color: '#fff', display: 'block', marginBottom: 8 }}>
-                                用户请求:
-                            </Text>
+                        {/* Input Section */}
+                        <div style={{ marginBottom: '24px' }}>
+                            <Title level={4} style={{ color: '#fff', marginBottom: '16px' }}>
+                                用户输入
+                            </Title>
                             <TextArea
-                                value={userInput}
+                                value={params.userInput}
                                 onChange={handleInputChange}
-                                placeholder="输入用户请求..."
-                                disabled={loading}
-                                rows={3}
-                                style={{ fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace' }}
-                                autoFocus={false}
+                                placeholder="输入你想要发送给Agent的消息..."
+                                rows={4}
+                                style={{
+                                    marginBottom: '12px',
+                                    fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace'
+                                }}
                             />
-                        </div>
 
-                        {/* Persistence Controls */}
-                        <div style={{ marginBottom: 16 }}>
                             <Space>
                                 <Button
-                                    icon={<SaveOutlined />}
                                     onClick={saveParams}
-                                    size="small"
+                                    disabled={!params.userInput.trim() || paramsLoading}
                                     loading={paramsLoading}
-                                    disabled={!userInput.trim()}
+                                    size="small"
                                 >
                                     保存
                                 </Button>
-                                <Button
-                                    icon={<ReloadOutlined />}
-                                    onClick={loadParams}
-                                    size="small"
-                                    loading={paramsLoading}
-                                >
+                                <Button onClick={reloadParams} disabled={paramsLoading} size="small">
                                     重新加载
                                 </Button>
-                                <Button
-                                    icon={<DeleteOutlined />}
-                                    onClick={clearParams}
-                                    size="small"
-                                    danger
-                                    loading={paramsLoading}
-                                >
+                                <Button onClick={clearParams} disabled={paramsLoading} size="small">
                                     清除
                                 </Button>
+                                <Text type="secondary">
+                                    自动保存: {autoSave ? '开启' : '关闭'}
+                                </Text>
                             </Space>
 
-                            {paramsError && (
-                                <Alert
-                                    message="参数保存错误"
-                                    description={paramsError}
-                                    type="warning"
-                                    style={{ marginTop: 8 }}
-                                    closable
-                                />
+                            {paramsHasError && (
+                                <Alert message="参数存储错误" type="error" style={{ marginTop: '8px' }} />
                             )}
+                        </div>
 
-                            {paramsLoading && (
-                                <div style={{ marginTop: 8 }}>
-                                    <Text type="secondary" style={{ fontSize: '12px' }}>
-                                        <Spin size="small" style={{ marginRight: 4 }} />
-                                        正在处理参数...
-                                    </Text>
-                                </div>
-                            )}
+                        {/* Current Workflow State */}
+                        <div style={{ marginBottom: '24px' }}>
+                            <Title level={4} style={{ color: '#fff', marginBottom: '16px' }}>
+                                当前工作流状态
+                            </Title>
+                            <div style={{
+                                padding: '16px',
+                                backgroundColor: '#262626',
+                                borderRadius: '8px',
+                                marginBottom: '16px'
+                            }}>
+                                {workflowState ? (
+                                    <div>
+                                        <Text strong style={{ color: '#fff' }}>当前阶段: </Text>
+                                        <Text code>{workflowState.currentStage}</Text>
+                                        <br />
+                                        <Text strong style={{ color: '#fff' }}>活跃变换: </Text>
+                                        <Text type={workflowState.hasActiveTransforms ? 'warning' : 'success'}>
+                                            {workflowState.hasActiveTransforms ? '是' : '否'}
+                                        </Text>
+                                        <br />
+                                        <Text strong style={{ color: '#fff' }}>可用操作: </Text>
+                                        <Text type="secondary">{workflowState.actions.length} 个</Text>
+                                        <br />
+                                        <Text strong style={{ color: '#fff' }}>工作流步骤: </Text>
+                                        <Text type="secondary">{workflowState.steps.length} 个</Text>
+                                        <br />
+                                        <Text strong style={{ color: '#fff' }}>显示组件: </Text>
+                                        <Text type="secondary">{workflowState.displayComponents.length} 个</Text>
+                                    </div>
+                                ) : (
+                                    <Text type="secondary">无工作流状态</Text>
+                                )}
+                            </div>
                         </div>
 
                         {loading && (
@@ -302,57 +324,41 @@ export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId })
                                 onClose={() => setError(null)}
                             />
                         )}
-
-                        {/* Workflow State Display */}
-                        <div style={{ marginTop: 24 }}>
-                            <Divider />
-                            <Title level={5} style={{ color: '#fff' }}>
-                                <FileTextOutlined style={{ marginRight: 8 }} />
-                                当前工作流状态
-                            </Title>
-                            <div style={{ marginBottom: 16, padding: 16, backgroundColor: '#262626', borderRadius: 8 }}>
-                                <Text strong style={{ color: '#fff' }}>当前阶段: </Text>
-                                <Text code>{workflowState.parameters.currentStage}</Text>
-                                <br />
-                                <Text strong style={{ color: '#fff' }}>活跃转换: </Text>
-                                <Text type={workflowState.parameters.hasActiveTransforms ? 'warning' : 'success'}>
-                                    {workflowState.parameters.hasActiveTransforms ? '是' : '否'}
-                                </Text>
-                                <br />
-                                <Text strong style={{ color: '#fff' }}>可用操作: </Text>
-                                <Text type="secondary">{workflowState.actions.length} 个</Text>
-                            </div>
-                        </div>
                     </div>
 
-                    {/* Results Section */}
+                    {/* Right Column - Agent Prompt Results */}
                     <div style={{ minWidth: '400px' }}>
-                        {promptResult ? (
+                        {promptResponse ? (
                             <div>
-                                <Title level={4} style={{ display: 'flex', alignItems: 'center', color: '#fff', marginBottom: 16 }}>
-                                    <MessageOutlined style={{ marginRight: 8 }} />
-                                    Agent提示词构建结果
+                                <Title level={4} style={{ color: '#fff', marginBottom: '16px' }}>
+                                    Agent提示构建结果
                                 </Title>
 
-                                <div style={{ marginBottom: 16, padding: 16, backgroundColor: '#262626', borderRadius: 8 }}>
+                                <div style={{ marginBottom: '16px', padding: '16px', backgroundColor: '#262626', borderRadius: '8px' }}>
                                     <Text strong style={{ color: '#fff' }}>上下文类型: </Text>
-                                    <Text code>{promptResult.input.contextType}</Text>
+                                    <Text code>{promptResponse.input.contextType}</Text>
                                     <br />
                                     <Text strong style={{ color: '#fff' }}>工作流阶段: </Text>
-                                    <Text code>{promptResult.context.currentStage}</Text>
+                                    <Text code>{promptResponse.context.currentStage}</Text>
                                     <br />
                                     <Text strong style={{ color: '#fff' }}>可用工具: </Text>
-                                    <Text type="secondary">{promptResult.context.availableTools.join(', ')}</Text>
+                                    <Text type="secondary">{promptResponse.context.availableTools.join(', ')}</Text>
                                 </div>
 
-                                <Title level={5} style={{ color: '#fff', marginTop: 20 }}>用户输入</Title>
-                                {renderCodeBlock(promptResult.input.userRequest, '100px')}
+                                <Title level={5} style={{ color: '#fff', marginTop: 20 }}>
+                                    用户输入
+                                </Title>
+                                {renderCodeBlock(promptResponse.input.userRequest, '100px')}
 
-                                <Title level={5} style={{ color: '#fff', marginTop: 20 }}>完整Agent提示词</Title>
-                                {renderCodeBlock(promptResult.prompt, '400px')}
+                                <Title level={5} style={{ color: '#fff', marginTop: 20 }}>
+                                    完整Agent提示词
+                                </Title>
+                                {renderCodeBlock(promptResponse.prompt, '400px')}
 
-                                <Title level={5} style={{ color: '#fff', marginTop: 20 }}>上下文数据</Title>
-                                {renderCodeBlock(JSON.stringify(promptResult.context.workflowState, null, 2), '200px')}
+                                <Title level={5} style={{ color: '#fff', marginTop: 20 }}>
+                                    上下文数据
+                                </Title>
+                                {renderCodeBlock(JSON.stringify(promptResponse.context.workflowState, null, 2), '200px')}
                             </div>
                         ) : (
                             <div style={{
@@ -366,7 +372,9 @@ export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId })
                                 color: '#999',
                                 backgroundColor: '#262626'
                             }}>
-                                <MessageOutlined style={{ fontSize: '48px', marginBottom: '16px' }} />
+                                <Title level={4} style={{ color: '#999', marginBottom: '16px' }}>
+                                    Agent提示构建结果
+                                </Title>
                                 <Text type="secondary">输入用户请求后，Agent提示词构建结果将在此显示</Text>
                             </div>
                         )}
