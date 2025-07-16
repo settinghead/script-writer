@@ -63,7 +63,7 @@ const getDefaultParamsForTool = (toolName: string): Record<string, any> => {
 const getExpectedJsondocTypes = (toolName: string): string[] => {
     switch (toolName) {
         case 'edit_brainstorm_idea':
-            return ['brainstorm_collection', 'brainstorm_idea_collection'];
+            return ['brainstorm_collection', 'brainstorm_idea'];
         case 'generate_brainstorm_ideas':
             return ['brainstorm_input_params'];
         default:

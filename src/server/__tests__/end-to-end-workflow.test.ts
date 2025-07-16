@@ -154,7 +154,7 @@ describe('End-to-End Workflow Tests', () => {
             jsondocs: [{
                 jsondocId: brainstormResult.outputJsondocId,
                 description: '故事创意',
-                schemaType: 'brainstorm_idea_collection'
+                schemaType: 'brainstorm_collection'
             }],
             title: '现代甜宠故事设定',
             requirements: '创建详细的剧本框架，包括角色背景和商业定位'

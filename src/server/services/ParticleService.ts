@@ -41,6 +41,7 @@ export class ParticleService {
 
     /**
      * Update particles for a specific jsondoc
+     * Uses hash-based comparison to only update particles that have actually changed
      */
     async updateParticlesForJsondoc(jsondocId: string, projectId: string): Promise<void> {
         console.log(`[ParticleService] Updating particles for jsondoc ${jsondocId}`);
@@ -55,38 +56,60 @@ export class ParticleService {
         const isActive = await this.isJsondocActive(jsondocId);
         console.log(`[ParticleService] Jsondoc ${jsondocId} is ${isActive ? 'active' : 'inactive'}`);
 
-        // Extract particles from jsondoc
-        const particles = isActive ? await this.particleExtractor.extractParticles(jsondoc) : [];
-        console.log(`[ParticleService] Extracted ${particles.length} particles from jsondoc ${jsondocId}`);
+        // Extract particles from jsondoc (generates hash-based IDs)
+        const newParticles = isActive ? await this.particleExtractor.extractParticles(jsondoc) : [];
+        console.log(`[ParticleService] Generated ${newParticles.length} particles from jsondoc ${jsondocId}`);
 
-        // Update database in transaction
-        await this.db.transaction().execute(async (tx) => {
-            // Delete existing particles
-            await tx.deleteFrom('particles')
-                .where('jsondoc_id', '=', jsondocId)
-                .execute();
+        // Get existing particles for this jsondoc
+        const existingParticles = await this.db
+            .selectFrom('particles')
+            .select(['id', 'type', 'title'])
+            .where('jsondoc_id', '=', jsondocId)
+            .execute();
 
-            if (particles.length > 0) {
-                // Convert particles to database format
-                const particleInserts: ParticleInsert[] = particles.map(p => ({
-                    id: p.id,
-                    jsondoc_id: jsondocId,
-                    project_id: projectId,
-                    path: p.path,
-                    type: p.type,
-                    title: p.title,
-                    content: p.content,
-                    content_text: p.content_text,
-                    embedding: this.embeddingService.embeddingToVector(p.embedding),
-                    is_active: true
-                }));
+        const existingParticleIds = new Set(existingParticles.map(p => p.id));
+        const newParticleIds = new Set(newParticles.map(p => p.id));
 
-                // Insert new particles
-                await tx.insertInto('particles')
-                    .values(particleInserts)
-                    .execute();
-            }
-        });
+
+
+        // Determine which particles need to be added, removed, or kept
+        const particlesToAdd = newParticles.filter(p => !existingParticleIds.has(p.id));
+        const particleIdsToRemove = Array.from(existingParticleIds).filter(id => !newParticleIds.has(id));
+        const unchangedCount = newParticles.length - particlesToAdd.length;
+
+        console.log(`[ParticleService] Particle changes for jsondoc ${jsondocId}: ${particlesToAdd.length} to add, ${particleIdsToRemove.length} to remove, ${unchangedCount} unchanged`);
+
+        // Update database only if there are changes
+        if (particlesToAdd.length > 0 || particleIdsToRemove.length > 0) {
+            await this.db.transaction().execute(async (tx) => {
+                // Remove particles that no longer exist
+                if (particleIdsToRemove.length > 0) {
+                    await tx.deleteFrom('particles')
+                        .where('id', 'in', particleIdsToRemove)
+                        .execute();
+                }
+
+                // Add new particles
+                if (particlesToAdd.length > 0) {
+                    const particleInserts: ParticleInsert[] = particlesToAdd.map(p => ({
+                        id: p.id,
+                        jsondoc_id: jsondocId,
+                        project_id: projectId,
+                        path: p.path,
+                        type: p.type,
+                        title: p.title,
+                        content: p.content,
+                        content_text: p.content_text,
+                        embedding: this.embeddingService.embeddingToVector(p.embedding),
+                        is_active: true
+                    }));
+
+                    await tx.insertInto('particles')
+                        .values(particleInserts)
+                        .execute();
+                }
+            });
+        }
 
         console.log(`[ParticleService] Successfully updated particles for jsondoc ${jsondocId}`);
     }
@@ -186,6 +209,7 @@ export class ParticleService {
 
     /**
      * Initialize particles for all existing jsondocs
+     * Only processes jsondocs that need updates (new or changed particles based on hash comparison)
      */
     async initializeAllParticles(): Promise<void> {
         console.log('[ParticleService] Initializing particles for all jsondocs...');
@@ -195,15 +219,26 @@ export class ParticleService {
             .select(['id', 'project_id'])
             .execute();
 
+        let processedCount = 0;
+        let skippedCount = 0;
+
         for (const jsondoc of jsondocs) {
             try {
-                await this.updateParticlesForJsondoc(jsondoc.id, jsondoc.project_id);
+                const needsUpdate = await this.jsondocNeedsParticleUpdate(jsondoc.id);
+
+                if (needsUpdate) {
+                    await this.updateParticlesForJsondoc(jsondoc.id, jsondoc.project_id);
+                    processedCount++;
+                } else {
+                    // console.log(`[ParticleService] Skipping jsondoc ${jsondoc.id} - particles are up to date`);
+                    skippedCount++;
+                }
             } catch (error) {
                 console.error(`[ParticleService] Failed to initialize particles for jsondoc ${jsondoc.id}:`, error);
             }
         }
 
-        console.log(`[ParticleService] Finished initializing particles for ${jsondocs.length} jsondocs`);
+        console.log(`[ParticleService] Finished initializing particles for ${jsondocs.length} jsondocs (processed: ${processedCount}, skipped: ${skippedCount})`);
     }
 
     /**
@@ -264,6 +299,54 @@ export class ParticleService {
             created_at: result.created_at.toISOString(),
             updated_at: result.updated_at.toISOString()
         } as TypedJsondoc;
+    }
+
+    /**
+     * Check if a jsondoc needs particle updates using hash-based comparison
+     * Returns true if:
+     * - The jsondoc is inactive and has particles (need to remove them)
+     * - The jsondoc is active and the generated particle IDs don't match existing ones
+     */
+    private async jsondocNeedsParticleUpdate(jsondocId: string): Promise<boolean> {
+        const jsondoc = await this.getJsondoc(jsondocId);
+        if (!jsondoc) {
+            return false;
+        }
+
+        // Check if jsondoc is active
+        const isActive = await this.isJsondocActive(jsondocId);
+
+        // Get existing particles for this jsondoc
+        const existingParticles = await this.db
+            .selectFrom('particles')
+            .select(['id'])
+            .where('jsondoc_id', '=', jsondocId)
+            .execute();
+
+        const existingParticleIds = new Set(existingParticles.map(p => p.id));
+
+        if (!isActive) {
+            // If jsondoc is inactive, we need to remove particles if they exist
+            return existingParticleIds.size > 0;
+        }
+
+        // If jsondoc is active, generate new particle IDs and compare
+        const newParticles = await this.particleExtractor.extractParticles(jsondoc);
+        const newParticleIds = new Set(newParticles.map(p => p.id));
+
+        // Check if the sets of particle IDs are different
+        if (existingParticleIds.size !== newParticleIds.size) {
+            return true;
+        }
+
+        // Check if all existing IDs are in the new set
+        for (const existingId of existingParticleIds) {
+            if (!newParticleIds.has(existingId)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

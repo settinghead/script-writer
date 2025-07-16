@@ -70,7 +70,7 @@ export interface StreamingTransformParams<TInput, TOutput> {
     userId: string;
     transformRepo: TransformRepository;
     jsondocRepo: JsondocRepository;
-    outputJsondocType: TypedJsondoc['schema_type'];  // e.g., 'brainstorm_idea_collection', 'outline'
+    outputJsondocType: TypedJsondoc['schema_type'];  // e.g., 'brainstorm_collection', 'outline'
     transformMetadata?: Record<string, any>;  // tool-specific metadata
     updateIntervalChunks?: number;  // How often to update jsondoc (default: 3)
     // Caching options

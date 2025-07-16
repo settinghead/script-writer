@@ -204,7 +204,7 @@ The framework recently underwent a major typing refactoring to improve type safe
 **What Changed**:
 - **Removed `jsondoc.type` field** - Replaced with `schema_type` and `origin_type`
 - **Removed `type_version` field** - Replaced with `schema_version`
-- **Consolidated schema names** - Cleaner, more consistent naming (e.g., `brainstorm_idea_collection` → `brainstorm_collection`)
+- **Consolidated schema names** - Cleaner, more consistent naming (e.g., `brainstorm_collection` → `brainstorm_collection`)
 - **Introduced TypedJsondoc** - Discriminated union types for compile-time safety
 - **Centralized JsondocSchemaRegistry** - Single source of truth for all schema validation
 

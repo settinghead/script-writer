@@ -1,6 +1,7 @@
 import { EmbeddingService } from './EmbeddingService';
 import { TypedJsondoc } from '../../common/jsondocs.js';
 import { dump } from 'js-yaml';
+import { createHash } from 'crypto';
 
 export interface ParticleData {
     id: string;
@@ -97,6 +98,43 @@ export class ParticleExtractor {
         }
     }
 
+    /**
+     * Generate a deterministic hash-based ID for a particle
+     * This combines jsondoc content, particle path, type, and content to create a unique identifier
+     */
+    private generateParticleId(jsondoc: TypedJsondoc, path: string, type: string, content: any): string {
+        // Create a safe serialization function that handles circular references
+        const safeStringify = (obj: any): string => {
+            const seen = new WeakSet();
+            return JSON.stringify(obj, (key, value) => {
+                if (typeof value === 'object' && value !== null) {
+                    if (seen.has(value)) {
+                        return '[Circular]';
+                    }
+                    seen.add(value);
+                }
+                return value;
+            });
+        };
+
+        const hashInput = {
+            jsondoc_id: jsondoc.id,
+            jsondoc_schema_type: jsondoc.schema_type,
+            jsondoc_schema_version: jsondoc.schema_version,
+            jsondoc_data: jsondoc.data,
+            particle_path: path,
+            particle_type: type,
+            particle_content: content
+        };
+
+        // Create a deterministic hash from the input using safe serialization
+        const hashInputString = safeStringify(hashInput);
+        const hash = createHash('sha256').update(hashInputString).digest('hex');
+        const particleId = hash.substring(0, 16); // Use first 16 chars for readability
+
+        return particleId;
+    }
+
     private async extractBrainstormParticles(jsondoc: TypedJsondoc): Promise<ParticleData[]> {
         const data = jsondoc.data as any; // Use any for flexible access to data properties
         const particles: ParticleData[] = [];
@@ -114,7 +152,7 @@ export class ParticleExtractor {
                     const embedding = await this.embeddingService.generateEmbedding(contentText);
 
                     particles.push({
-                        id: `${jsondoc.id}_idea_${i}`,
+                        id: this.generateParticleId(jsondoc, `$.ideas[${i}]`, '创意', content),
                         path: `$.ideas[${i}]`,
                         type: '创意',
                         title,
@@ -147,7 +185,7 @@ export class ParticleExtractor {
             const embedding = await this.embeddingService.generateEmbedding(contentText);
 
             particles.push({
-                id: `${jsondoc.id}_input_params`,
+                id: this.generateParticleId(jsondoc, '$', '头脑风暴参数', data),
                 path: '$',
                 type: '头脑风暴参数',
                 title,
@@ -174,7 +212,7 @@ export class ParticleExtractor {
                 const embedding = await this.embeddingService.generateEmbedding(contentText);
 
                 particles.push({
-                    id: `${jsondoc.id}_idea`,
+                    id: this.generateParticleId(jsondoc, '$', '创意', content),
                     path: '$',
                     type: '创意',
                     title,
@@ -205,7 +243,7 @@ export class ParticleExtractor {
                     const embedding = await this.embeddingService.generateEmbedding(contentText);
 
                     particles.push({
-                        id: `${jsondoc.id}_character_${i}`,
+                        id: this.generateParticleId(jsondoc, `$.characters[${i}]`, '人物', character),
                         path: `$.characters[${i}]`,
                         type: '人物',
                         title,
@@ -228,7 +266,7 @@ export class ParticleExtractor {
                 const contentText = this.generateEmbeddingContent('selling_point', content, jsondoc);
 
                 particles.push({
-                    id: `${jsondoc.id}_selling_point_${i}`,
+                    id: this.generateParticleId(jsondoc, `$.selling_points[${i}]`, '卖点', content),
                     path: `$.selling_points[${i}]`,
                     type: '卖点',
                     title,
@@ -250,7 +288,7 @@ export class ParticleExtractor {
                 const contentText = this.generateEmbeddingContent('satisfaction_point', content, jsondoc);
 
                 particles.push({
-                    id: `${jsondoc.id}_satisfaction_point_${i}`,
+                    id: this.generateParticleId(jsondoc, `$.satisfaction_points[${i}]`, '爽点', content),
                     path: `$.satisfaction_points[${i}]`,
                     type: '爽点',
                     title,
@@ -271,7 +309,7 @@ export class ParticleExtractor {
                 const embedding = await this.embeddingService.generateEmbedding(scene);
 
                 particles.push({
-                    id: `${jsondoc.id}_key_scene_${i}`,
+                    id: this.generateParticleId(jsondoc, `$.key_scenes[${i}]`, '场景', { text: scene }),
                     path: `$.key_scenes[${i}]`,
                     type: '场景',
                     title,
@@ -301,7 +339,7 @@ export class ParticleExtractor {
                     const embedding = await this.embeddingService.generateEmbedding(contentText);
 
                     particles.push({
-                        id: `${jsondoc.id}_stage_${i}`,
+                        id: this.generateParticleId(jsondoc, `$.stages[${i}]`, '阶段', stage),
                         path: `$.stages[${i}]`,
                         type: '阶段',
                         title,

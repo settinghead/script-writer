@@ -71,7 +71,6 @@ let particleSystemInitialized = false;
     console.log('🎯 Particle system initialized successfully');
   } catch (error) {
     console.warn('⚠️ Particle system initialization failed (this is expected if embedding env vars are not set):', error instanceof Error ? error.message : error);
-    console.log('🔧 To enable particle system, set: LLM_API_KEY, LLM_BASE_URL, LLM_PROVIDER, EMBEDDING_MODEL_NAME, EMBEDDING_DIMENSIONS');
     // gracefully exit
     process.exit(1);
   }

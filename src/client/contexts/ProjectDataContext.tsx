@@ -405,7 +405,7 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
     const selectors = useMemo(() => ({
         // NEW: Collection-aware selectors
         getIdeaCollections: () =>
-            jsondocs?.filter(a => a.schema_type === 'brainstorm_collection' || a.type === 'brainstorm_idea_collection') || [],
+            jsondocs?.filter(a => a.schema_type === 'brainstorm_collection' || a.type === 'brainstorm_collection') || [],
 
         getJsondocAtPath: (jsondocId: string, jsondocPath: string) => {
             const jsondoc = jsondocs?.find(a => a.id === jsondocId);

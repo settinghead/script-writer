@@ -100,6 +100,7 @@ async function saveUpdate({ jsondoc_id, update }: Update) {
 // Helper function to sync YJS document to jsondoc
 const syncYJSToJsondoc = async (jsondocId: string) => {
     try {
+
         // Get all YJS updates for this jsondoc
         const updates = await db
             .selectFrom('jsondoc_yjs_documents')
@@ -107,6 +108,7 @@ const syncYJSToJsondoc = async (jsondocId: string) => {
             .where('jsondoc_id', '=', jsondocId)
             .orderBy('created_at', 'asc')
             .execute();
+
 
         if (updates.length === 0) {
             return;
@@ -184,22 +186,26 @@ const syncYJSToJsondoc = async (jsondocId: string) => {
             }
         });
 
+
         if (Object.keys(extractedData).length === 0) {
             return;
         }
 
         // Update the jsondoc in the database
+        const updateTime = new Date().toISOString();
+
         await db
             .updateTable('jsondocs')
             .set({
                 data: JSON.stringify(extractedData),
-                updated_at: new Date().toISOString()
+                updated_at: updateTime
             })
             .where('id', '=', jsondocId)
             .execute();
 
+
     } catch (error) {
-        console.error(`[YJS Sync] Error syncing YJS to jsondoc ${jsondocId}:`, error);
+        console.error(`[YJS Debug] Error syncing YJS to jsondoc ${jsondocId}:`, error);
     }
 };
 

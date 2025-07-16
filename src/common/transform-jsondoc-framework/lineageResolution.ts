@@ -1149,7 +1149,7 @@ export function findEffectiveBrainstormIdeas(
 
             // Include all brainstorm types regardless of leaf status
             // - brainstorm_idea: only if leaf (final versions)
-            // - brainstorm_idea_collection: always (may have unconsumed ideas)
+            // - brainstorm_collection: always (may have unconsumed ideas)
             const shouldInclude = isBrainstormType && (
                 ((jsondoc.schema_type === 'brainstorm_idea') && node.isLeaf) ||
                 ((jsondoc.schema_type === 'brainstorm_collection') && node.isLeaf) ||

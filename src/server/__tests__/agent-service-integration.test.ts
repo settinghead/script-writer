@@ -104,14 +104,14 @@ describe('AgentService Integration', () => {
             // Simulate request-specific repository calls
             if (request.userRequest?.includes('改进') || request.userRequest?.includes('edit')) {
                 // For edit requests, simulate the repository call to get existing jsondocs
-                await mockJsondocRepo.getJsondocsByType(projectId, 'brainstorm_idea_collection');
+                await mockJsondocRepo.getJsondocsByType(projectId, 'brainstorm_collection');
             } else if (request.userRequest?.includes('大纲') || request.userRequest?.includes('outline')) {
                 // For outline requests, simulate getting jsondocs for context
-                await mockJsondocRepo.getJsondocsByType(projectId, 'brainstorm_idea_collection');
+                await mockJsondocRepo.getJsondocsByType(projectId, 'brainstorm_collection');
                 await mockJsondocRepo.getJsondocsByType(projectId, 'brainstorm_idea');
             } else if (request.userRequest?.includes('分析')) {
                 // For analysis requests, simulate context gathering
-                await mockJsondocRepo.getJsondocsByType(projectId, 'brainstorm_idea_collection');
+                await mockJsondocRepo.getJsondocsByType(projectId, 'brainstorm_collection');
             }
 
             // Call the original method
@@ -182,7 +182,7 @@ describe('AgentService Integration', () => {
         const existingBrainstormJsondocs = [
             {
                 id: 'existing-brainstorm-1',
-                type: 'brainstorm_idea_collection',
+                type: 'brainstorm_collection',
                 project_id: TEST_PROJECT_ID,
                 data: {
                     ideas: [
@@ -232,7 +232,7 @@ describe('AgentService Integration', () => {
         // Verify existing jsondocs were queried
         expect(mockJsondocRepo.getJsondocsByType).toHaveBeenCalledWith(
             TEST_PROJECT_ID,
-            'brainstorm_idea_collection'
+            'brainstorm_collection'
         );
 
         // Verify new jsondoc and transform were created
@@ -259,7 +259,7 @@ describe('AgentService Integration', () => {
         ];
 
         mockJsondocRepo.getJsondocsByType.mockImplementation((projectId: string, type: string) => {
-            if (type === 'brainstorm_idea_collection') {
+            if (type === 'brainstorm_collection') {
                 return Promise.resolve([]);
             } else if (type === 'brainstorm_idea') {
                 return Promise.resolve(existingBrainstormJsondocs);

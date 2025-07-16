@@ -2,6 +2,7 @@ import { EventEmitter } from 'events';
 import { Kysely } from 'kysely';
 import { DB } from '../database/types';
 import { ParticleService } from './ParticleService';
+import { Client } from 'pg';
 
 export interface JsondocChangeEvent {
     jsondoc_id: string;
@@ -11,10 +12,14 @@ export interface JsondocChangeEvent {
 }
 
 export class ParticleEventBus extends EventEmitter {
-    private dbConnection: any;
+    private dbConnection: Kysely<DB>;
     private particleService: ParticleService;
     private isListening: boolean = false;
     private debouncedUpdates: Map<string, NodeJS.Timeout> = new Map();
+    private notificationClient: Client | null = null;
+
+    // Configuration
+    private static readonly DEBOUNCE_DELAY_MS = 5000; // 5 seconds to reduce expensive embedding calls
 
     constructor(db: Kysely<DB>, particleService: ParticleService) {
         super();
@@ -32,15 +37,24 @@ export class ParticleEventBus extends EventEmitter {
         }
 
         try {
-            // Get the underlying connection for listening to notifications
-            const connection = await this.getUnderlyingConnection();
+            // Create a dedicated client for notifications
+            this.notificationClient = new Client({
+                host: process.env.DATABASE_HOST || 'localhost',
+                port: parseInt(process.env.DATABASE_PORT || '5432'),
+                database: process.env.DATABASE_NAME || 'script_writer',
+                user: process.env.DATABASE_USER || 'postgres',
+                password: process.env.DATABASE_PASSWORD || 'password',
+            });
+
+            await this.notificationClient.connect();
 
             // Listen for jsondoc change notifications
-            await connection.query('LISTEN jsondoc_changed');
+            await this.notificationClient.query('LISTEN jsondoc_changed');
 
             // Set up notification handler
-            connection.on('notification', (msg: any) => {
+            this.notificationClient.on('notification', (msg: any) => {
                 if (msg.channel === 'jsondoc_changed') {
+                    console.log('[ParticleEventBus] 🔔 Received jsondoc_changed notification:', msg.payload);
                     try {
                         const data: JsondocChangeEvent = JSON.parse(msg.payload);
                         this.handleJsondocChange(data);
@@ -67,8 +81,11 @@ export class ParticleEventBus extends EventEmitter {
         }
 
         try {
-            const connection = await this.getUnderlyingConnection();
-            await connection.query('UNLISTEN jsondoc_changed');
+            if (this.notificationClient) {
+                await this.notificationClient.query('UNLISTEN jsondoc_changed');
+                await this.notificationClient.end();
+                this.notificationClient = null;
+            }
 
             // Clear any pending debounced updates
             for (const timeout of this.debouncedUpdates.values()) {
@@ -87,7 +104,7 @@ export class ParticleEventBus extends EventEmitter {
      * Handle jsondoc change notifications with debouncing
      */
     private handleJsondocChange(data: JsondocChangeEvent): void {
-        console.log(`[ParticleEventBus] Received jsondoc change: ${data.operation} for ${data.jsondoc_id}`);
+        console.log(`[ParticleEventBus] 🚀 Received jsondoc change: ${data.operation} for ${data.jsondoc_id}`);
 
         const key = data.jsondoc_id;
 
@@ -95,10 +112,14 @@ export class ParticleEventBus extends EventEmitter {
         const existingTimeout = this.debouncedUpdates.get(key);
         if (existingTimeout) {
             clearTimeout(existingTimeout);
+            console.log(`[ParticleEventBus] ⏰ Debouncing: Reset timer for jsondoc ${data.jsondoc_id}`);
+        } else {
+            console.log(`[ParticleEventBus] ⏰ Debouncing: Started ${ParticleEventBus.DEBOUNCE_DELAY_MS / 1000}s timer for jsondoc ${data.jsondoc_id}`);
         }
 
         // Set new debounced update
         const timeout = setTimeout(async () => {
+            console.log(`[ParticleEventBus] ⚡ Debounce timer expired, processing particle update for jsondoc ${data.jsondoc_id}`);
             try {
                 await this.processJsondocChange(data);
                 this.debouncedUpdates.delete(key);
@@ -106,7 +127,7 @@ export class ParticleEventBus extends EventEmitter {
                 console.error(`[ParticleEventBus] Failed to process change for jsondoc ${data.jsondoc_id}:`, error);
                 this.debouncedUpdates.delete(key);
             }
-        }, 2000); // 2-second debounce
+        }, ParticleEventBus.DEBOUNCE_DELAY_MS);
 
         this.debouncedUpdates.set(key, timeout);
     }
@@ -135,28 +156,7 @@ export class ParticleEventBus extends EventEmitter {
         }
     }
 
-    /**
-     * Get the underlying PostgreSQL connection for notifications
-     * This is a simplified version - in production, you'd want proper connection pooling
-     */
-    private async getUnderlyingConnection(): Promise<any> {
-        // For Kysely with PostgreSQL, we need to access the underlying connection
-        // This is a simplified approach - in production you'd need to properly access the pg connection
-        try {
-            // Execute a simple query to get access to the connection
-            const result = await this.dbConnection.executeQuery({
-                sql: 'SELECT 1',
-                parameters: []
-            });
 
-            // Return the connection (this is a simplified approach)
-            // In a real implementation, you'd need to properly access the pg connection
-            return (this.dbConnection as any).getExecutor().adapter.connectionProvider.connection;
-        } catch (error) {
-            console.error('[ParticleEventBus] Failed to get underlying connection:', error);
-            throw error;
-        }
-    }
 
     /**
      * Manually trigger particle update for a jsondoc (for testing)

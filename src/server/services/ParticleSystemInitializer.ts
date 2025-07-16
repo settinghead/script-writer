@@ -41,10 +41,18 @@ export async function initializeParticleSystem(db: Kysely<DB>): Promise<Particle
             particleTemplateProcessor
         };
 
+        // Try to start listening for jsondoc changes, but don't fail if it doesn't work
+        try {
+            await particleEventBus.startListening();
+            console.log('[ParticleSystem] ✅ Event bus started successfully');
+        } catch (error) {
+            console.warn('[ParticleSystem] ⚠️ Event bus failed to start, will use manual updates:', error instanceof Error ? error.message : String(error));
+        }
+
         console.log('[ParticleSystem] ✅ Particle system initialized successfully');
 
-        // Optionally initialize particles for existing jsondocs
-        // await particleService.initializeAllParticles();
+        // Initialize particles for existing jsondocs
+        await particleService.initializeAllParticles();
 
         return globalParticleSystem;
     } catch (error) {

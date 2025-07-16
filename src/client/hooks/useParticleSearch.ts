@@ -8,6 +8,9 @@ export interface ParticleSearchResult {
     content_preview: string;
     jsondoc_id: string;
     path: string;
+    similarity?: number;
+    created_at?: string;
+    updated_at?: string;
 }
 
 export interface UseParticleSearchOptions {
@@ -75,5 +78,66 @@ export function useParticleSearch(options: UseParticleSearchOptions): UseParticl
         error,
         searchParticles,
         clearResults
+    };
+}
+
+// New hook for listing all particles in a project
+export interface UseParticleListOptions {
+    projectId: string;
+    limit?: number;
+}
+
+export interface UseParticleListReturn {
+    particles: ParticleSearchResult[];
+    loading: boolean;
+    error: string | null;
+    fetchParticles: () => Promise<void>;
+    refresh: () => Promise<void>;
+}
+
+export function useParticleList(options: UseParticleListOptions): UseParticleListReturn {
+    const { projectId, limit = 50 } = options;
+    const [particles, setParticles] = useState<ParticleSearchResult[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const fetchParticles = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+
+        try {
+            const params = new URLSearchParams({
+                projectId,
+                limit: limit.toString()
+            });
+
+            const response = await fetch(`/api/particles/list?${params.toString()}`);
+
+            if (!response.ok) {
+                throw new Error(`Failed to fetch particles: ${response.status}`);
+            }
+
+            const results = await response.json();
+            setParticles(results);
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Failed to fetch particles';
+            setError(errorMessage);
+            console.error('[useParticleList] Fetch failed:', err);
+            setParticles([]);
+        } finally {
+            setLoading(false);
+        }
+    }, [projectId, limit]);
+
+    const refresh = useCallback(async () => {
+        await fetchParticles();
+    }, [fetchParticles]);
+
+    return {
+        particles,
+        loading,
+        error,
+        fetchParticles,
+        refresh
     };
 } 
