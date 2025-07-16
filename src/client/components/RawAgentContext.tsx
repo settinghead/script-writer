@@ -323,12 +323,15 @@ const RawAgentContext: React.FC<RawAgentContextProps> = ({ projectId }) => {
                 const chunk = new TextDecoder().decode(value);
                 const lines = chunk.split('\n');
 
+                let currentEvent = '';
                 for (const line of lines) {
-                    if (line.startsWith('data: ')) {
+                    if (line.startsWith('event: ')) {
+                        currentEvent = line.slice(7).trim();
+                    } else if (line.startsWith('data: ')) {
                         try {
                             const data = JSON.parse(line.slice(6));
 
-                            if (data.type === 'chunk' && data.data) {
+                            if (currentEvent === 'chunk' && data.data) {
                                 // Handle both array and object data structures
                                 if (Array.isArray(data.data)) {
                                     // For array data, update the consolidated result
@@ -339,11 +342,13 @@ const RawAgentContext: React.FC<RawAgentContextProps> = ({ projectId }) => {
                                     consolidatedResult = { ...consolidatedResult, ...data.data };
                                     setNonPersistentRunResults(consolidatedResult);
                                 }
-                                setNonPersistentRunStatus('接收数据中...');
-                            } else if (data.message === 'Non-persistence run completed successfully') {
+                                setNonPersistentRunStatus(`接收数据中... (第${data.chunkCount}块)`);
+                            } else if (currentEvent === 'result' && data.message === 'Non-persistence run completed successfully') {
                                 setNonPersistentRunStatus('非持久化运行完成');
-                            } else if (data.message) {
+                            } else if (currentEvent === 'status' && data.message) {
                                 setNonPersistentRunStatus(data.message);
+                            } else if (currentEvent === 'error') {
+                                setNonPersistentRunStatus(`错误: ${data.message}`);
                             }
                         } catch (e) {
                             console.warn('Failed to parse SSE data:', line);

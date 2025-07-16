@@ -269,7 +269,7 @@ export class StreamingTransformExecutor {
                         { promptText: finalPrompt, promptRole: 'primary' }
                     ], projectId);
                 } else if (dryRun) {
-                    console.log(`[StreamingTransformExecutor] Dry run: Skipping LLM prompt for ${config.templateName}`);
+                    console.log(`[StreamingTransformExecutor] Dry run: Skipping adding LLM prompt storage for ${config.templateName}`);
                 }
 
                 // 7. Execute streaming with internal retry (this handles LLM-level retries)
