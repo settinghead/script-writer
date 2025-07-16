@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Input, Button, Card, Typography, Space, Alert, Spin } from 'antd';
+import { Input, Card, Typography, Alert, Spin } from 'antd';
 import { useProjectData } from '../../contexts/ProjectDataContext';
 import { useAgentContextParams } from '../../hooks/useAgentContextParams';
 import { useDebounce } from '../../hooks/useDebounce';
@@ -35,13 +35,7 @@ export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId })
     const {
         params,
         updateUserInput,
-        isLoading: paramsLoading,
-        hasError: paramsHasError,
-        autoSave,
-        setAutoSave,
-        saveParams,
-        reloadParams,
-        clearParams
+        hasError: paramsHasError
     } = useAgentContextParams(projectId);
 
     const [promptResponse, setPromptResponse] = useState<AgentPromptResponse | null>(null);
@@ -57,10 +51,8 @@ export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId })
         projectId,
         userInputLength: params.userInput.length,
         loading,
-        paramsLoading,
         hasError: !!error,
-        paramsHasError,
-        autoSave
+        paramsHasError
     });
 
     // Compute workflow state once and memoize it
@@ -235,30 +227,9 @@ export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId })
                                 placeholder="输入你想要发送给Agent的消息..."
                                 rows={4}
                                 style={{
-                                    marginBottom: '12px',
                                     fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace'
                                 }}
                             />
-
-                            <Space>
-                                <Button
-                                    onClick={saveParams}
-                                    disabled={!params.userInput.trim() || paramsLoading}
-                                    loading={paramsLoading}
-                                    size="small"
-                                >
-                                    保存
-                                </Button>
-                                <Button onClick={reloadParams} disabled={paramsLoading} size="small">
-                                    重新加载
-                                </Button>
-                                <Button onClick={clearParams} disabled={paramsLoading} size="small">
-                                    清除
-                                </Button>
-                                <Text type="secondary">
-                                    自动保存: {autoSave ? '开启' : '关闭'}
-                                </Text>
-                            </Space>
 
                             {paramsHasError && (
                                 <Alert message="参数存储错误" type="error" style={{ marginTop: '8px' }} />
