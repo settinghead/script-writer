@@ -20,7 +20,17 @@ import { ChatService } from './transform-jsondoc-framework/ChatService.js';
 
 dotenv.config();
 
-const PORT = parseInt(process.env.PORT || "4600");
+if (!process.env.PORT) {
+  throw new Error('PORT is not set');
+}
+
+if (!process.env.HTTPS_PORT) {
+  throw new Error('HTTPS_PORT is not set');
+}
+
+
+const PORT = parseInt(process.env.PORT);
+const HTTPS_PORT = parseInt(process.env.HTTPS_PORT);
 const app = express();
 
 // Configure body parser with increased size limits for large jsondoc data
@@ -70,7 +80,7 @@ let particleSystemInitialized = false;
 // Make services available to routes via app.locals
 app.locals.transformRepo = transformRepo;
 const server = app.listen(PORT, "0.0.0.0", () =>
-  console.log(`Server is listening at http://localhost:${PORT}...`)
+  console.log(`Server is listening at https://localhost:${HTTPS_PORT}...`)
 );
 
 // Only bind ViteExpress in development - nginx handles static files in production
