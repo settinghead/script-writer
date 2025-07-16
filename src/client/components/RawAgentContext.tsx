@@ -162,6 +162,19 @@ const RawAgentContext: React.FC<RawAgentContextProps> = ({ projectId }) => {
             }
         }
     }, [selectedTool, jsondocs]);
+
+    // Populate default parameters when tool changes
+    useEffect(() => {
+        if (selectedTool) {
+            const defaultParams = getDefaultParamsForTool(selectedTool);
+            if (Object.keys(defaultParams).length > 0) {
+                // Only set if additionalParams is empty or just '{}'
+                if (additionalParams.trim() === '' || additionalParams.trim() === '{}') {
+                    setAdditionalParams(JSON.stringify(defaultParams, null, 2));
+                }
+            }
+        }
+    }, [selectedTool]);
     const [toolsLoading, setToolsLoading] = useState(true);
     const [jsondocsLoading, setJsondocsLoading] = useState(true);
 
@@ -507,6 +520,10 @@ const RawAgentContext: React.FC<RawAgentContextProps> = ({ projectId }) => {
                                 return;
                             }
 
+                            // Merge default parameters with user-provided parameters
+                            const defaultParams = getDefaultParamsForTool(selectedTool);
+                            const mergedParams = { ...defaultParams, ...parsedParams };
+
                             runNonPersistentRun(selectedTool, {
                                 jsondocs: selectedJsondocs.map(id => {
                                     const jsondoc = jsondocs.find(j => j.id === id);
@@ -516,7 +533,7 @@ const RawAgentContext: React.FC<RawAgentContextProps> = ({ projectId }) => {
                                         schemaType: jsondoc?.schemaType || 'unknown'
                                     };
                                 }),
-                                additionalParams: parsedParams
+                                additionalParams: mergedParams
                             });
                         }}
                         size="small"

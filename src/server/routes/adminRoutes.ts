@@ -40,7 +40,7 @@ export function createAdminRoutes(
             // Map tool names to template names for frontend compatibility
             const toolToTemplate: Record<string, string> = {
                 'generate_brainstorm_ideas': 'brainstorming',
-                'edit_brainstorm_idea': 'brainstorm_edit',
+                'edit_brainstorm_idea': 'brainstorm_edit_patch',
                 'generate_outline_settings': 'outline_settings',
                 'generate_chronicles': 'chronicles'
             };
@@ -83,7 +83,7 @@ export function createAdminRoutes(
             // Also list available templates
             const templates = [
                 'brainstorming',
-                'brainstorm_edit',
+                'brainstorm_edit_patch',
                 'outline_settings',
                 'chronicles',
                 'episode_synopsis_generation',
@@ -131,7 +131,7 @@ export function createAdminRoutes(
             // Map tool names to template names (reuse the mapping from above)
             const toolToTemplate: Record<string, string> = {
                 'generate_brainstorm_ideas': 'brainstorming',
-                'edit_brainstorm_idea': 'brainstorm_edit',
+                'edit_brainstorm_idea': 'brainstorm_edit_patch',
                 'generate_outline_settings': 'outline_settings',
                 'generate_chronicles': 'chronicles'
             };
@@ -276,11 +276,16 @@ export function createAdminRoutes(
                 };
             } else if (toolName === 'edit_brainstorm_idea') {
                 const { BrainstormEditInputSchema } = await import('@/common/schemas/transforms.js');
-                const { IdeationOutputSchema } = await import('@/common/transform_schemas.js');
+                const { z } = await import('zod');
                 config = {
-                    templateName: 'brainstorm_edit',
+                    templateName: 'brainstorm_edit_patch',
                     inputSchema: BrainstormEditInputSchema,
-                    outputSchema: IdeationOutputSchema
+                    outputSchema: z.array(z.object({
+                        op: z.enum(['add', 'remove', 'replace', 'move', 'copy', 'test']),
+                        path: z.string(),
+                        value: z.any().optional(),
+                        from: z.string().optional()
+                    }))
                 };
                 outputJsondocType = 'brainstorm_idea';
                 transformMetadata = { toolName: 'edit_brainstorm_idea' };
@@ -368,7 +373,7 @@ export function createAdminRoutes(
             // Map tool names to template names
             const toolToTemplate: Record<string, string> = {
                 'generate_brainstorm_ideas': 'brainstorming',
-                'edit_brainstorm_idea': 'brainstorm_edit',
+                'edit_brainstorm_idea': 'brainstorm_edit_patch',
                 'generate_outline_settings': 'outline_settings',
                 'generate_chronicles': 'chronicles'
             };

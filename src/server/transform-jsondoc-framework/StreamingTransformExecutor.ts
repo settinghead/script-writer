@@ -13,7 +13,7 @@ import { dump } from 'js-yaml';
  * Configuration for a streaming transform - minimal interface that tools provide
  */
 export interface StreamingTransformConfig<TInput, TOutput> {
-    templateName: string;  // 'brainstorming', 'brainstorm_edit', 'outline'
+    templateName: string;  // 'brainstorming', 'brainstorm_edit_patch', 'outline'
     inputSchema: z.ZodSchema<TInput>;
     outputSchema: z.ZodSchema<TOutput>;
     // OPTIONAL: Custom template variables function. If not provided, uses default schema-driven extraction
@@ -740,7 +740,7 @@ export class StreamingTransformExecutor {
     private getInputJsondocType(templateName: string): TypedJsondoc['schema_type'] {
         const inputJsondocTypeMap: Record<string, TypedJsondoc['schema_type']> = {
             'brainstorming': 'brainstorm_input_params',
-            'brainstorm_edit': 'brainstorm_input_params',
+            'brainstorm_edit_patch': 'brainstorm_input_params',
             'outline': 'outline_settings',
             'outline_settings': 'outline_settings',
             'chronicles': 'chronicles'
