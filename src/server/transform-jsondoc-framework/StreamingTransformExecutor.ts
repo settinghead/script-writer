@@ -192,20 +192,6 @@ export class StreamingTransformExecutor {
                         }
                     }
 
-                    // 3b. Create tool input jsondoc from tool parameters (only if we don't have source jsondocs)
-                    if (transformInputs.length === 0) {
-                        const inputJsondocType = this.getInputJsondocType(config.templateName);
-                        const inputJsondoc = await jsondocRepo.createJsondoc(
-                            projectId,
-                            inputJsondocType,
-                            validatedInput,
-                            'v1',
-                            {},
-                            'completed',
-                            'user_input'
-                        );
-                        transformInputs.push({ jsondocId: inputJsondoc.id, inputRole: 'tool_input' });
-                    }
 
                     // 3c. Add all transform inputs at once
                     if (!dryRun && transformId) {
@@ -734,20 +720,6 @@ export class StreamingTransformExecutor {
         }
     }
 
-    /**
- * Map template names to their correct input jsondoc types
- */
-    private getInputJsondocType(templateName: string): TypedJsondoc['schema_type'] {
-        const inputJsondocTypeMap: Record<string, TypedJsondoc['schema_type']> = {
-            'brainstorming': 'brainstorm_input_params',
-            'brainstorm_edit_patch': 'brainstorm_input_params',
-            'outline': 'outline_settings',
-            'outline_settings': 'outline_settings',
-            'chronicles': 'chronicles'
-        };
-
-        return inputJsondocTypeMap[templateName] || `${templateName}_input`;
-    }
 
     /**
      * Create initial data structure for different jsondoc types (universal JSON handling)

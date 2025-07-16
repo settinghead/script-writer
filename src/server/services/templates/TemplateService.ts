@@ -1,6 +1,7 @@
 import { brainstormingTemplate } from './brainstorming.js';
 import { brainstormEditPatchTemplate } from './brainstormEditPatch.js';
 import { outlineSettingsTemplate } from './outlineSettings.js';
+import { outlineSettingsEditPatchTemplate } from './outlineSettingsEditPatch.js';
 import { chroniclesTemplate } from './chronicles.js';
 import { episodeSynopsisGenerationTemplate } from './episodeSynopsisGeneration.js';
 import { scriptGenerationTemplate } from './scriptGeneration.js';
@@ -35,6 +36,7 @@ export class TemplateService {
     this.registerTemplate(brainstormingTemplate);
     this.registerTemplate(brainstormEditPatchTemplate);
     this.registerTemplate(outlineSettingsTemplate);
+    this.registerTemplate(outlineSettingsEditPatchTemplate);
     this.registerTemplate(chroniclesTemplate);
     this.registerTemplate(episodeSynopsisGenerationTemplate);
     this.registerTemplate(scriptGenerationTemplate);

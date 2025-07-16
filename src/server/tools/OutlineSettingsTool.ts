@@ -8,19 +8,209 @@ import {
     OutlineSettingsOutput
 } from '../../common/schemas/outlineSchemas';
 import {
+    OutlineSettingsEditInputSchema,
+    OutlineSettingsEditInput
+} from '../../common/schemas/transforms';
+import {
     executeStreamingTransform,
     StreamingTransformConfig
 } from '../transform-jsondoc-framework/StreamingTransformExecutor';
 import type { StreamingToolDefinition } from '../transform-jsondoc-framework/StreamingAgentFramework';
+import { TypedJsondoc } from '@/common/jsondocs';
 
 const OutlineSettingsToolResultSchema = z.object({
     outputJsondocId: z.string(),
     finishReason: z.string()
 });
 
+const OutlineSettingsEditToolResultSchema = z.object({
+    outputJsondocId: z.string(),
+    finishReason: z.string(),
+    originalSettings: z.object({
+        title: z.string(),
+        genre: z.string(),
+        // Add other key fields for reference
+    }).optional(),
+    editedSettings: z.object({
+        title: z.string(),
+        genre: z.string(),
+        // Add other key fields for reference
+    }).optional()
+});
+
 interface OutlineSettingsToolResult {
     outputJsondocId: string;
     finishReason: string;
+}
+
+export type OutlineSettingsEditToolResult = z.infer<typeof OutlineSettingsEditToolResultSchema>;
+
+/**
+ * Extract source outline settings data from different jsondoc types
+ */
+async function extractSourceOutlineSettingsData(
+    params: OutlineSettingsEditInput,
+    jsondocRepo: JsondocRepository,
+    userId: string
+): Promise<{
+    originalSettings: any;
+    targetPlatform: string;
+    storyGenre: string;
+}> {
+    // Get the first jsondoc from the array (primary source)
+    const sourceJsondocRef = params.jsondocs[0];
+    const sourceJsondoc = await jsondocRepo.getJsondoc(sourceJsondocRef.jsondocId);
+    if (!sourceJsondoc) {
+        throw new Error('Source jsondoc not found');
+    }
+
+    // Verify user has access to this jsondoc's project
+    const hasAccess = await jsondocRepo.userHasProjectAccess(userId, sourceJsondoc.project_id);
+    if (!hasAccess) {
+        throw new Error('Access denied to source jsondoc');
+    }
+
+    const sourceData = sourceJsondoc.data;
+    let originalSettings: any;
+    let targetPlatform = 'unknown';
+    let storyGenre = 'unknown';
+
+    if (sourceJsondoc.schema_type === 'outline_settings') {
+        // Direct outline settings jsondoc
+        originalSettings = sourceData;
+        targetPlatform = sourceData.platform || 'unknown';
+        storyGenre = sourceData.genre || 'unknown';
+    } else if (sourceJsondoc.origin_type === 'user_input') {
+        // User-edited jsondoc - extract from derived data
+        let derivedData = sourceJsondoc.metadata?.derived_data;
+        if (!derivedData && sourceData.text) {
+            try {
+                derivedData = JSON.parse(sourceData.text);
+            } catch (e) {
+                throw new Error('Failed to parse user input data');
+            }
+        }
+
+        if (!derivedData) {
+            throw new Error('Invalid user input jsondoc');
+        }
+
+        originalSettings = derivedData;
+        targetPlatform = derivedData.platform || 'unknown';
+        storyGenre = derivedData.genre || 'unknown';
+    } else {
+        throw new Error(`Unsupported source jsondoc schema_type: ${sourceJsondoc.schema_type}, origin_type: ${sourceJsondoc.origin_type}`);
+    }
+
+    return { originalSettings, targetPlatform, storyGenre };
+}
+
+/**
+ * Factory function that creates an outline settings edit tool definition using JSON patch
+ */
+export function createOutlineSettingsEditToolDefinition(
+    transformRepo: TransformRepository,
+    jsondocRepo: JsondocRepository,
+    projectId: string,
+    userId: string,
+    cachingOptions?: {
+        enableCaching?: boolean;
+        seed?: number;
+        temperature?: number;
+        topP?: number;
+        maxTokens?: number;
+    }
+): StreamingToolDefinition<OutlineSettingsEditInput, OutlineSettingsEditToolResult> {
+    return {
+        name: 'edit_outline_settings',
+        description: '使用JSON补丁方式编辑和改进现有剧本框架设置。适用场景：用户对现有剧本框架有具体的修改要求或改进建议，如修改角色设定、调整卖点、更新故事背景等。使用JSON Patch格式进行精确修改，只改变需要改变的部分。重要：必须使用项目背景信息中显示的完整ID作为sourceJsondocId参数。',
+        inputSchema: OutlineSettingsEditInputSchema,
+        outputSchema: OutlineSettingsEditToolResultSchema,
+        execute: async (params: OutlineSettingsEditInput, { toolCallId }): Promise<OutlineSettingsEditToolResult> => {
+            const sourceJsondocRef = params.jsondocs[0];
+            console.log(`[OutlineSettingsEditTool] Starting JSON patch edit for jsondoc ${sourceJsondocRef.jsondocId}`);
+
+            // Extract source outline settings data for context
+            const { originalSettings, targetPlatform, storyGenre } = await extractSourceOutlineSettingsData(params, jsondocRepo, userId);
+
+            // Determine output jsondoc type
+            const sourceJsondoc = await jsondocRepo.getJsondoc(sourceJsondocRef.jsondocId);
+            if (!sourceJsondoc) {
+                throw new Error('Source jsondoc not found');
+            }
+
+            const outputJsondocType: TypedJsondoc['schema_type'] = 'outline_settings';
+
+            // Create config for JSON patch generation using patch template
+            const config: StreamingTransformConfig<OutlineSettingsEditInput, any> = {
+                templateName: 'outline_settings_edit_patch',
+                inputSchema: OutlineSettingsEditInputSchema,
+                outputSchema: z.array(z.object({
+                    op: z.enum(['add', 'remove', 'replace', 'move', 'copy', 'test']),
+                    path: z.string(),
+                    value: z.any().optional(),
+                    from: z.string().optional()
+                })), // RFC6902 JSON patch array schema
+                // No custom prepareTemplateVariables - use default schema-driven extraction
+            };
+
+            try {
+                // Execute the streaming transform with patch mode
+                const result = await executeStreamingTransform({
+                    config,
+                    input: params,
+                    projectId,
+                    userId,
+                    transformRepo,
+                    jsondocRepo,
+                    outputJsondocType,
+                    executionMode: {
+                        mode: 'patch',
+                        originalJsondoc: originalSettings
+                    },
+                    transformMetadata: {
+                        toolName: 'edit_outline_settings',
+                        source_jsondoc_id: sourceJsondocRef.jsondocId,
+                        edit_requirements: params.editRequirements,
+                        original_settings: originalSettings,
+                        platform: targetPlatform,
+                        genre: storyGenre,
+                        method: 'json_patch',
+                        source_jsondoc_type: sourceJsondoc.schema_type,
+                        output_jsondoc_type: outputJsondocType
+                    },
+                    enableCaching: cachingOptions?.enableCaching,
+                    seed: cachingOptions?.seed,
+                    temperature: cachingOptions?.temperature,
+                    topP: cachingOptions?.topP,
+                    maxTokens: cachingOptions?.maxTokens
+                });
+
+                // Get the final jsondoc to extract the edited settings
+                const finalJsondoc = await jsondocRepo.getJsondoc(result.outputJsondocId);
+                const editedSettings = finalJsondoc?.data || originalSettings;
+
+                console.log(`[OutlineSettingsEditTool] Successfully completed JSON patch edit with jsondoc ${result.outputJsondocId}`);
+
+                return {
+                    outputJsondocId: result.outputJsondocId,
+                    finishReason: result.finishReason,
+                    originalSettings: {
+                        title: originalSettings.title || '',
+                        genre: originalSettings.genre || ''
+                    },
+                    editedSettings: {
+                        title: editedSettings.title || originalSettings.title || '',
+                        genre: editedSettings.genre || originalSettings.genre || ''
+                    }
+                };
+
+            } catch (error) {
+                console.error(`[OutlineSettingsEditTool] JSON patch edit failed:`, error);
+                throw new Error(`Outline settings edit failed: ${error instanceof Error ? error.message : String(error)}`);
+            }
+        }
+    };
 }
 
 /**

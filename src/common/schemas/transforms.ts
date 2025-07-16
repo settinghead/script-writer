@@ -44,20 +44,13 @@ export const TransformRegistry = {
   }
 } as const;
 
-// Validate transform name
-export function validateTransformName(name: string): boolean {
-  return name in TransformRegistry;
-}
+// Type for transform registry keys
+export type TransformRegistryKey = keyof typeof TransformRegistry;
 
-// Get transform definition
-export function getTransformDefinition(name: string) {
-  if (!validateTransformName(name)) {
-    throw new Error(`Unknown transform: ${name}`);
-  }
-  return TransformRegistry[name as keyof typeof TransformRegistry];
-}
+// Type for transform definitions
+export type TransformDefinition = typeof TransformRegistry[TransformRegistryKey];
 
-// Transform definition schema
+// Human Transform definition schema
 export const HumanTransformDefinitionSchema = z.object({
   name: z.string(),
   description: z.string(),
@@ -92,8 +85,14 @@ export const BrainstormEditInputSchema = z.object({
 
 export type BrainstormEditInput = z.infer<typeof BrainstormEditInputSchema>;
 
+// Input schema for outline settings editing
+export const OutlineSettingsEditInputSchema = z.object({
+  jsondocs: JsondocReferencesSchema.describe('引用的jsondoc列表，包含要编辑的剧本框架设置'),
+  editRequirements: z.string().min(1, '编辑要求不能为空').describe('具体的编辑要求，如：修改角色设定、调整卖点、更新故事背景等'),
+  agentInstructions: z.string().optional().describe('来自智能体的额外指导信息，用于更好地理解编辑意图')
+});
 
-
+export type OutlineSettingsEditInput = z.infer<typeof OutlineSettingsEditInputSchema>;
 
 // JSON Patch operation schema (RFC 6902)
 export const JsonPatchOperationSchema = z.object({
@@ -107,17 +106,20 @@ export type JsonPatchOperation = z.infer<typeof JsonPatchOperationSchema>;
 
 // JSON Patch array schema
 export const JsonPatchArraySchema = z.array(JsonPatchOperationSchema);
+
 export type JsonPatchArray = z.infer<typeof JsonPatchArraySchema>;
 
 // Input schema for JSON patch-based brainstorm editing
-export const BrainstormEditJsonPatchInputSchema = BrainstormEditInputSchema; // Same input as regular edit
-
-export type BrainstormEditJsonPatchInput = z.infer<typeof BrainstormEditJsonPatchInputSchema>;
+export const BrainstormEditJsonPatchInputSchema = BrainstormEditInputSchema;
 
 // Output schema for JSON patch-based brainstorm editing
 export const BrainstormEditJsonPatchOutputSchema = JsonPatchArraySchema;
 
-export type BrainstormEditJsonPatchOutput = z.infer<typeof BrainstormEditJsonPatchOutputSchema>;
+// Input schema for JSON patch-based outline settings editing
+export const OutlineSettingsEditJsonPatchInputSchema = OutlineSettingsEditInputSchema;
+
+// Output schema for JSON patch-based outline settings editing
+export const OutlineSettingsEditJsonPatchOutputSchema = JsonPatchArraySchema;
 
 // Transform registry
 export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinition> = {

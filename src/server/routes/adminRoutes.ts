@@ -42,6 +42,7 @@ export function createAdminRoutes(
                 'generate_brainstorm_ideas': 'brainstorming',
                 'edit_brainstorm_idea': 'brainstorm_edit_patch',
                 'generate_outline_settings': 'outline_settings',
+                'edit_outline_settings': 'outline_settings_edit_patch',
                 'generate_chronicles': 'chronicles'
             };
 
@@ -85,6 +86,7 @@ export function createAdminRoutes(
                 'brainstorming',
                 'brainstorm_edit_patch',
                 'outline_settings',
+                'outline_settings_edit_patch',
                 'chronicles',
                 'episode_synopsis_generation',
                 'script_generation'
@@ -133,6 +135,7 @@ export function createAdminRoutes(
                 'generate_brainstorm_ideas': 'brainstorming',
                 'edit_brainstorm_idea': 'brainstorm_edit_patch',
                 'generate_outline_settings': 'outline_settings',
+                'edit_outline_settings': 'outline_settings_edit_patch',
                 'generate_chronicles': 'chronicles'
             };
 
@@ -208,6 +211,10 @@ export function createAdminRoutes(
                 'generate_outline_settings': async (projectId: string, userId: string) => {
                     const { createOutlineSettingsToolDefinition } = await import('../tools/OutlineSettingsTool.js');
                     return createOutlineSettingsToolDefinition(transformRepo, jsondocRepo, projectId, userId);
+                },
+                'edit_outline_settings': async (projectId: string, userId: string) => {
+                    const { createOutlineSettingsEditToolDefinition } = await import('../tools/OutlineSettingsTool.js');
+                    return createOutlineSettingsEditToolDefinition(transformRepo, jsondocRepo, projectId, userId);
                 },
                 'generate_chronicles': async (projectId: string, userId: string) => {
                     const { createChroniclesToolDefinition } = await import('../tools/ChroniclesTool.js');
@@ -299,6 +306,21 @@ export function createAdminRoutes(
                 };
                 outputJsondocType = 'outline_settings';
                 transformMetadata = { toolName: 'generate_outline_settings' };
+            } else if (toolName === 'edit_outline_settings') {
+                const { OutlineSettingsEditInputSchema } = await import('@/common/schemas/transforms.js');
+                const { z } = await import('zod');
+                config = {
+                    templateName: 'outline_settings_edit_patch',
+                    inputSchema: OutlineSettingsEditInputSchema,
+                    outputSchema: z.array(z.object({
+                        op: z.enum(['add', 'remove', 'replace', 'move', 'copy', 'test']),
+                        path: z.string(),
+                        value: z.any().optional(),
+                        from: z.string().optional()
+                    }))
+                };
+                outputJsondocType = 'outline_settings';
+                transformMetadata = { toolName: 'edit_outline_settings' };
             } else if (toolName === 'generate_chronicles') {
                 // Import chronicles schemas
                 const { ChroniclesInputSchema, ChroniclesOutputSchema } = await import('@/common/schemas/outlineSchemas.js');
@@ -375,6 +397,7 @@ export function createAdminRoutes(
                 'generate_brainstorm_ideas': 'brainstorming',
                 'edit_brainstorm_idea': 'brainstorm_edit_patch',
                 'generate_outline_settings': 'outline_settings',
+                'edit_outline_settings': 'outline_settings_edit_patch',
                 'generate_chronicles': 'chronicles'
             };
 

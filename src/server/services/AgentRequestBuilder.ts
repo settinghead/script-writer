@@ -3,7 +3,7 @@ import { TransformRepository } from '../transform-jsondoc-framework/TransformRep
 import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
 import { prepareAgentPromptContext } from '../../common/utils/agentContext';
 import { createBrainstormToolDefinition, createBrainstormEditToolDefinition } from '../tools/BrainstormTools';
-import { createOutlineSettingsToolDefinition } from '../tools/OutlineSettingsTool';
+import { createOutlineSettingsToolDefinition, createOutlineSettingsEditToolDefinition } from '../tools/OutlineSettingsTool';
 import { createChroniclesToolDefinition } from '../tools/ChroniclesTool';
 import type { GeneralAgentRequest } from '../transform-jsondoc-framework/AgentService';
 import type { StreamingToolDefinition } from '../transform-jsondoc-framework/StreamingAgentFramework';
@@ -89,6 +89,11 @@ ${context}
 用户请求："修改第一个故事创意，增加悬疑元素"
 → 使用 edit_brainstorm_ideas 工具
 → 参数：sourceJsondocId="集合jsondoc的ID", ideaIndex=0, editRequirements="增加悬疑元素"
+
+示例5：编辑剧本框架
+用户请求："修改剧本框架中的角色设定，增加反派角色"
+→ 使用 edit_outline_settings 工具
+→ 参数：sourceJsondocId="剧本框架jsondoc的ID", editRequirements="增加反派角色"
 ===工具选择示例 结束===
 
 ===重要提示 开始===
@@ -114,6 +119,7 @@ ${context}
 - 生成创意后：{"humanReadableMessage": "我已经为您生成了3个精彩的故事创意，涵盖了现代都市、古装和悬疑题材。您可以在头脑风暴结果中查看详细内容。"}
 - 编辑创意后：{"humanReadableMessage": "我已经根据您的要求修改了故事创意，增加了悬疑元素和更复杂的人物关系。更新后的创意现在更具吸引力。"}
 - 生成框架后：{"humanReadableMessage": "我已经基于选定的故事创意生成了详细的剧本框架，包括人物角色、故事背景和商业定位等内容。"}
+- 编辑框架后：{"humanReadableMessage": "我已经根据您的要求修改了剧本框架，更新了角色设定和故事背景。修改后的框架更加完善。"}
 
 **注意：绝对不能跳过工具调用步骤！必须先调用工具，再返回JSON响应。**
 ===工作流程要求 结束===
@@ -142,6 +148,7 @@ export function buildToolsForRequestType(
         createBrainstormToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions),
         createBrainstormEditToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions),
         createOutlineSettingsToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions),
+        createOutlineSettingsEditToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions),
         createChroniclesToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions)
     ];
 }
