@@ -14,6 +14,7 @@ import { ActionItemsSection } from './ActionItemsSection';
 import { DebugMenu, DebugPanels } from './debug';
 import { ProjectCreationForm } from './ProjectCreationForm';
 import { UnifiedDisplayRenderer } from './UnifiedDisplayRenderer';
+import { ExportButton } from './ExportButton';
 import { computeUnifiedWorkflowState } from '../utils/actionComputation';
 
 const { Sider, Content } = Layout;
@@ -412,12 +413,13 @@ const DesktopRightSidebar: React.FC<{
 
 // Header with breadcrumb and debug menu
 const ProjectHeader: React.FC<{
+    projectId: string;
     isMobile: boolean;
     sidebarWidth: number;
     rightSidebarVisible: boolean;
     rightSidebarWidth: number;
     onMobileRightDrawerOpen: () => void;
-}> = ({ isMobile, sidebarWidth, rightSidebarVisible, rightSidebarWidth, onMobileRightDrawerOpen }) => {
+}> = ({ projectId, isMobile, sidebarWidth, rightSidebarVisible, rightSidebarWidth, onMobileRightDrawerOpen }) => {
     return (
         <div style={{
             top: 0,
@@ -435,6 +437,10 @@ const ProjectHeader: React.FC<{
             <DebugMenu
                 isMobile={isMobile}
                 onMobileRightDrawerOpen={onMobileRightDrawerOpen}
+            />
+            <ExportButton
+                projectId={projectId}
+                isMobile={isMobile}
             />
         </div>
     );
@@ -665,13 +671,16 @@ const ProjectLayout: React.FC = () => {
                     overflow: 'hidden',
                 }}>
                     {/* Breadcrumb and Toggle Buttons Row */}
-                    <ProjectHeader
-                        isMobile={isMobile}
-                        sidebarWidth={sidebarWidth}
-                        rightSidebarVisible={rightSidebarVisible}
-                        rightSidebarWidth={rightSidebarWidth}
-                        onMobileRightDrawerOpen={showMobileRightDrawer}
-                    />
+                    {projectId && (
+                        <ProjectHeader
+                            projectId={projectId}
+                            isMobile={isMobile}
+                            sidebarWidth={sidebarWidth}
+                            rightSidebarVisible={rightSidebarVisible}
+                            rightSidebarWidth={rightSidebarWidth}
+                            onMobileRightDrawerOpen={showMobileRightDrawer}
+                        />
+                    )}
 
                     {/* Main Content Area */}
                     <MainContentArea
