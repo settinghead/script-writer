@@ -4,7 +4,7 @@ import { EditOutlined, LoadingOutlined } from '@ant-design/icons';
 import { useProjectData } from '../../contexts/ProjectDataContext';
 import { YJSJsondocProvider } from '../contexts/YJSJsondocContext';
 import { ReadOnlyJsondocDisplay } from '../../components/shared/ReadOnlyJsondocDisplay';
-import { canBecomeEditable } from '../../utils/actionComputation';
+import { canBecomeEditable, isDirectlyEditable } from '../../utils/actionComputation';
 import { TypedJsondoc } from '../../../common/types';
 
 const { Text, Title } = Typography;
@@ -42,24 +42,39 @@ export const JsondocDisplayWrapper: React.FC<JsondocDisplayWrapperProps> = ({
     parentJsondocId,
     jsondocPath
 }) => {
-    console.log('[JsondocDisplayWrapper] Rendering:', {
-        title,
-        schemaType,
-        hasJsondoc: !!jsondoc,
-        jsondocId: jsondoc?.id,
-        isEditable,
-        enableClickToEdit,
-        icon
-    });
+
 
     const projectData = useProjectData();
     const [isCreatingTransform, setIsCreatingTransform] = useState(false);
 
-    // Check if this jsondoc can become editable (only for read-only mode)
+    // Check editability with the new logic
+    const editabilityState = useMemo(() => {
+        if (!jsondoc || !Array.isArray(projectData.transformInputs)) {
+            return { isDirectlyEditable: false, canBecomeEditable: false };
+        }
+
+        return {
+            isDirectlyEditable: isDirectlyEditable(jsondoc, projectData.transformInputs),
+            canBecomeEditable: canBecomeEditable(jsondoc, projectData.transformInputs)
+        };
+    }, [jsondoc, projectData.transformInputs]);
+
+    // Determine the effective editability
+    const effectiveIsEditable = useMemo(() => {
+        // If explicitly set as editable, use that
+        if (isEditable) return true;
+
+        // If it's a user-created jsondoc with no descendants, it should be directly editable
+        if (editabilityState.isDirectlyEditable) return true;
+
+        return false;
+    }, [isEditable, editabilityState.isDirectlyEditable]);
+
+    // Check if this jsondoc can become editable via click-to-edit (only for AI-generated)
     const canEdit = useMemo(() => {
-        if (isEditable || !jsondoc || !Array.isArray(projectData.transformInputs)) return false;
-        return canBecomeEditable(jsondoc, projectData.transformInputs);
-    }, [jsondoc, projectData.transformInputs, isEditable]);
+        if (effectiveIsEditable || !jsondoc) return false;
+        return editabilityState.canBecomeEditable;
+    }, [effectiveIsEditable, jsondoc, editabilityState.canBecomeEditable]);
 
     // Handle creating an editable version
     const handleCreateEditableVersion = useCallback(async () => {
@@ -110,12 +125,7 @@ export const JsondocDisplayWrapper: React.FC<JsondocDisplayWrapperProps> = ({
     const clickToEditAvailable = enableClickToEdit && (onClickToEdit || canEdit);
 
     if (!jsondoc) {
-        console.log('[JsondocDisplayWrapper] No jsondoc provided, showing loading state:', {
-            title,
-            schemaType,
-            jsondocValue: jsondoc,
-            jsondocType: typeof jsondoc
-        });
+
         return (
             <div style={{ padding: '40px', textAlign: 'center' }}>
                 <Spin size="large" />
@@ -126,14 +136,8 @@ export const JsondocDisplayWrapper: React.FC<JsondocDisplayWrapperProps> = ({
         );
     }
 
-    console.log('[JsondocDisplayWrapper] Jsondoc found, proceeding with render:', {
-        jsondocId: jsondoc.id,
-        schemaType: jsondoc.schema_type,
-        isEditable,
-        hasData: !!jsondoc.data
-    });
 
-    if (isEditable) {
+    if (effectiveIsEditable) {
         // Editable mode - green border, user can edit with YJS
         return (
             <Card
@@ -154,25 +158,24 @@ export const JsondocDisplayWrapper: React.FC<JsondocDisplayWrapperProps> = ({
                             borderRadius: '3px'
                         }} />
                         <div>
-                            <Title level={5} style={{ margin: 0, color: '#52c41a' }}>
-                                ✏️ 编辑{title}
+                            <Title level={4} style={{ margin: 0, color: '#fff' }}>
+                                {icon} {title}
                             </Title>
+                            <Text type="secondary" style={{ fontSize: '12px' }}>
+                                {jsondoc.origin_type === 'user_input' ? '用户创建' : '可编辑'}
+                            </Text>
                         </div>
                     </div>
                 </div>
 
-                {/* YJS-enabled form */}
-                <YJSJsondocProvider
-                    jsondocId={parentJsondocId || jsondoc.id}
-                    enableCollaboration={true}
-                    basePath={parentJsondocId ? jsondocPath : undefined}
-                >
+                {/* Editable Content */}
+                <YJSJsondocProvider jsondocId={jsondoc.id}>
                     <EditableComponent />
                 </YJSJsondocProvider>
             </Card>
         );
     } else {
-        // Read-only mode
+        // Read-only mode - gray border, with optional click-to-edit
         return (
             <Card
                 onClick={clickToEditAvailable && !effectiveLoading ? handleCreateEditableVersion : undefined}
@@ -212,26 +215,33 @@ export const JsondocDisplayWrapper: React.FC<JsondocDisplayWrapperProps> = ({
                                 {icon} {title}
                             </Title>
                             <Text type="secondary" style={{ fontSize: '12px' }}>
-                                {clickToEditAvailable ?
-                                    (effectiveLoading ? '创建编辑版本中...' : '点击编辑') :
-                                    '只读模式'
-                                }
+                                {jsondoc.origin_type === 'ai_generated' ? 'AI生成' : '只读'}
+                                {clickToEditAvailable && ' • 点击编辑'}
                             </Text>
                         </div>
                     </div>
-                    {clickToEditAvailable && !effectiveLoading && (
-                        <EditOutlined style={{ color: '#52c41a', fontSize: '16px' }} />
-                    )}
-                    {effectiveLoading && (
-                        <LoadingOutlined style={{ color: '#1890ff', fontSize: '16px' }} />
+
+                    {/* Edit button for click-to-edit */}
+                    {clickToEditAvailable && (
+                        <Button
+                            type="text"
+                            icon={effectiveLoading ? <LoadingOutlined /> : <EditOutlined />}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (!effectiveLoading) {
+                                    handleCreateEditableVersion();
+                                }
+                            }}
+                            disabled={effectiveLoading}
+                            style={{ color: '#52c41a' }}
+                        >
+                            {effectiveLoading ? '创建中...' : '编辑'}
+                        </Button>
                     )}
                 </div>
 
-                {/* Read-only content */}
-                <ReadOnlyJsondocDisplay
-                    data={jsondoc.data}
-                    schemaType={schemaType}
-                />
+                {/* Read-only Content */}
+                <ReadOnlyJsondocDisplay data={jsondoc.data} schemaType={jsondoc.schema_type} />
             </Card>
         );
     }

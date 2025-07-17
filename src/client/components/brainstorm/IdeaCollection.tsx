@@ -22,14 +22,6 @@ const IdeaCardWrapper: React.FC<{
   onIdeaClick: (collectionId: string, index: number) => void;
   readOnly?: boolean;
 }> = ({ idea, index, isSelected, chosenIdea, ideaOutlines, onIdeaClick, readOnly = false }) => {
-  console.log(`[IdeaCardWrapper] Rendering idea ${index}:`, {
-    title: idea.title,
-    jsondocId: idea.jsondocId,
-    originalJsondocId: idea.originalJsondocId,
-    jsondocPath: idea.jsondocPath,
-    hasRequiredFields: !!(idea.jsondocId && idea.originalJsondocId && idea.jsondocPath)
-  });
-
   const projectData = useProjectData();
 
   // Check if this idea has descendants (transforms using it as input)
@@ -55,24 +47,8 @@ const IdeaCardWrapper: React.FC<{
 
   // Ensure we have the required fields - check after all hooks are called
   if (!idea.jsondocId || !idea.originalJsondocId || !idea.jsondocPath) {
-    console.warn('[IdeaCardWrapper] Missing required fields:', {
-      jsondocId: idea.jsondocId,
-      originalJsondocId: idea.originalJsondocId,
-      jsondocPath: idea.jsondocPath,
-      idea
-    });
     return null;
   }
-
-  console.log(`[IdeaCardWrapper] Rendering BrainstormIdeaEditor for idea ${index}:`, {
-    jsondocId: idea.jsondocId,
-    jsondocPath: idea.jsondocPath,
-    originalCollectionId: idea.originalJsondocId,
-    isSelected,
-    isChosen: !!isChosenIdea,
-    hasEditableDescendants: hasEditableDescendants || readOnly,
-    readOnly
-  });
 
   return (
     <BrainstormIdeaEditor
@@ -109,16 +85,7 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
     readOnly = false
   } = props;
 
-  console.log('[IdeaCollection] Component render:', {
-    projectId,
-    propsIdeas: propsIdeas?.length || 0,
-    propsSelectionMode,
-    propsIsLoading,
-    readOnly
-  });
-
   if (!projectId) {
-    console.log('[IdeaCollection] No projectId, navigating to /projects');
     navigate('/projects')
     return null
   }
@@ -126,48 +93,19 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
   // Use unified project data context
   const projectData = useProjectData()
 
-  console.log('[IdeaCollection] ProjectData status:', {
-    jsondocs: Array.isArray(projectData.jsondocs) ? `${projectData.jsondocs.length} items` : projectData.jsondocs,
-    transforms: Array.isArray(projectData.transforms) ? `${projectData.transforms.length} items` : projectData.transforms,
-    humanTransforms: Array.isArray(projectData.humanTransforms) ? `${projectData.humanTransforms.length} items` : projectData.humanTransforms,
-    transformInputs: Array.isArray(projectData.transformInputs) ? `${projectData.transformInputs.length} items` : projectData.transformInputs,
-    lineageGraph: projectData.lineageGraph === "pending" ? "pending" : projectData.lineageGraph === "error" ? "error" : "loaded",
-    isLoading: projectData.isLoading,
-    error: projectData.error?.message
-  });
-
   // Get latest brainstorm ideas using the new hook
   const latestIdeas = useLatestBrainstormIdeas();
 
-  console.log('[IdeaCollection] Latest ideas from hook:', {
-    latestIdeas: latestIdeas === "pending" ? "pending" : latestIdeas === "error" ? "error" : `${latestIdeas.length} ideas`,
-    latestIdeasDetailed: latestIdeas !== "pending" && latestIdeas !== "error" ? latestIdeas : null
-  });
-
   // Check for chosen brainstorm idea
   const { chosenIdea, isLoading: chosenIdeaLoading } = useChosenBrainstormIdea();
-
-  console.log('[IdeaCollection] Chosen idea:', {
-    chosenIdea: chosenIdea ? {
-      editableJsondocId: chosenIdea.editableJsondocId,
-      originalJsondocId: chosenIdea.originalJsondocId,
-      originalJsondocPath: chosenIdea.originalJsondocPath,
-      index: chosenIdea.index,
-      isFromCollection: chosenIdea.isFromCollection
-    } : null,
-    chosenIdeaLoading
-  });
 
   // Use action items store for selection
   const store = useActionItemsStore(projectId);
 
   // Extract brainstorm data using the new collection-based approach as fallback
   const { ideas: fallbackIdeas, status, progress, error, isLoading, lastSyncedAt } = useMemo(() => {
-    console.log('[IdeaCollection] Computing fallback ideas...');
-
     // If we have latest ideas from the hook, use those
     if (latestIdeas !== "pending" && latestIdeas !== "error" && latestIdeas.length > 0) {
-      console.log('[IdeaCollection] Using latest ideas from hook as primary source');
       return {
         ideas: latestIdeas,
         status: 'completed' as const,
@@ -178,24 +116,10 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
       }
     }
 
-    console.log('[IdeaCollection] Latest ideas not available, falling back to collections');
-
     // Fallback to legacy collection-based approach
     const collections = projectData.getIdeaCollections();
 
-    console.log('[IdeaCollection] Collections from projectData:', {
-      collections: collections === "pending" ? "pending" : collections === "error" ? "error" : `${collections.length} collections`,
-      collectionsDetailed: collections !== "pending" && collections !== "error" ? collections.map(c => ({
-        id: c.id,
-        schema_type: c.schema_type,
-        origin_type: c.origin_type,
-        streaming_status: c.streaming_status,
-        dataLength: c.data?.length || 0
-      })) : null
-    });
-
     if (collections === "pending") {
-      console.log('[IdeaCollection] Collections pending, returning loading state');
       return {
         ideas: [],
         status: 'idle' as const,
@@ -207,7 +131,6 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
     }
 
     if (collections === "error") {
-      console.log('[IdeaCollection] Collections error, returning error state');
       return {
         ideas: [],
         status: 'failed' as const,
@@ -221,7 +144,6 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
     const hasAnyBrainstormData = collections.length > 0;
 
     if (!hasAnyBrainstormData) {
-      console.log('[IdeaCollection] No brainstorm data found, returning idle state');
       return {
         ideas: [],
         status: 'idle' as const,
@@ -239,27 +161,10 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
     let lastSyncedAt: string | null = null
 
     try {
-      console.log('[IdeaCollection] Processing collections to extract ideas...');
-
       // Process collections
       for (const collection of collections) {
         try {
-          console.log('[IdeaCollection] Processing collection:', {
-            id: collection.id,
-            schema_type: collection.schema_type,
-            origin_type: collection.origin_type,
-            streaming_status: collection.streaming_status,
-            dataLength: collection.data?.length || 0
-          });
-
           const collectionData = JSON.parse(collection.data);
-
-          console.log('[IdeaCollection] Parsed collection data:', {
-            collectionId: collection.id,
-            hasIdeas: !!collectionData.ideas,
-            ideasLength: collectionData.ideas?.length || 0,
-            collectionDataKeys: Object.keys(collectionData)
-          });
 
           if (collectionData.ideas && Array.isArray(collectionData.ideas)) {
             for (let i = 0; i < collectionData.ideas.length; i++) {
@@ -272,7 +177,6 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
                 index: ideas.length
               };
 
-              console.log('[IdeaCollection] Adding idea from collection:', ideaData);
               ideas.push(ideaData);
             }
           }
@@ -285,18 +189,11 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
           }
 
         } catch (parseErr) {
-          console.warn(`[IdeaCollection] Failed to parse collection ${collection.id}:`, parseErr);
+          // Skip invalid collections
         }
       }
 
-      console.log('[IdeaCollection] Finished processing collections, extracted ideas:', {
-        totalIdeas: ideas.length,
-        status,
-        progress
-      });
-
     } catch (err) {
-      console.error('[IdeaCollection] ❌ Failed to process brainstorm data:', err);
       return {
         ideas: [],
         status: 'failed' as const,
@@ -319,46 +216,21 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
 
   // Use the better data source - prioritize props when available
   const ideas = useMemo(() => {
-    console.log('[IdeaCollection] Computing final ideas to display...');
-
     // If props provide ideas, use them (for read-only mode)
     if (propsIdeas && propsIdeas.length > 0) {
-
       return propsIdeas;
     }
 
     // Otherwise use the computed data
     if (latestIdeas === "pending" || latestIdeas === "error") {
-      console.log('[IdeaCollection] Latest ideas not available, using fallback ideas:', fallbackIdeas.length);
       return fallbackIdeas;
     }
     const finalIdeas = latestIdeas.length > 0 ? latestIdeas : fallbackIdeas;
-    console.log('[IdeaCollection] Using final computed ideas:', {
-      source: latestIdeas.length > 0 ? 'latestIdeas' : 'fallbackIdeas',
-      count: finalIdeas.length
-    });
     return finalIdeas;
   }, [propsIdeas, latestIdeas, fallbackIdeas]);
 
-  console.log('[IdeaCollection] Final ideas to render:', {
-    ideasCount: ideas.length,
-    ideas: ideas.map(idea => ({
-      title: idea.title,
-      jsondocId: idea.jsondocId,
-      originalJsondocId: idea.originalJsondocId,
-      jsondocPath: idea.jsondocPath
-    }))
-  });
-
   const isStreaming = propsIsLoading ?? status === 'streaming';
   const isConnecting = (propsIsLoading ?? isLoading) && ideas.length === 0;
-
-  console.log('[IdeaCollection] Render state:', {
-    isStreaming,
-    isConnecting,
-    status,
-    ideasLength: ideas.length
-  });
 
   // Determine if we should show collapsed view
   // Show collapsed view if we have a chosen idea OR if we only have individual ideas (not collections)
@@ -369,43 +241,23 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
   // Don't show selection mode if we only have individual ideas
   const inSelectionMode = propsSelectionMode ?? (!chosenIdea && !readOnly && !hasOnlyIndividualIdeas);
 
-  console.log('[IdeaCollection] Display mode:', {
-    isCollapsedView,
-    inSelectionMode,
-    chosenIdea: !!chosenIdea,
-    readOnly
-  });
-
   // Handle idea card click - store selection in action items store
   const handleIdeaClick = useCallback((collectionId: string, index: number) => {
-    console.log('[IdeaCollection] Idea clicked:', { collectionId, index, readOnly, chosenIdea: !!chosenIdea });
-
     // Don't handle clicks if in read-only mode
     if (readOnly) {
-      console.log('[IdeaCollection] Click ignored - read-only mode');
       return;
     }
 
     // Don't handle clicks if we already have a chosen idea
     if (chosenIdea) {
-      console.log('[IdeaCollection] Click ignored - already have chosen idea');
       return;
     }
 
     // Find the idea that was clicked
     const clickedIdea = ideas[index];
     if (!clickedIdea || !clickedIdea.jsondocId || !clickedIdea.jsondocPath) {
-      console.warn('[IdeaCollection] Invalid idea clicked:', clickedIdea);
       return;
     }
-
-    console.log('[IdeaCollection] Storing idea selection:', {
-      jsondocId: clickedIdea.jsondocId,
-      originalJsondocId: clickedIdea.originalJsondocId || clickedIdea.jsondocId,
-      jsondocPath: clickedIdea.jsondocPath,
-      index,
-      title: clickedIdea.title
-    });
 
     // Store selection in action items store
     store.setSelectedJsondocAndPath({
@@ -420,7 +272,6 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
   // Handle stop streaming
   const handleStop = useCallback(() => {
     // TODO: Implement stop streaming logic
-    console.log('[IdeaCollection] Stop brainstorm streaming');
   }, []);
 
   // Determine selected idea index for visual feedback
@@ -447,7 +298,6 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
 
   // Show loading state during initial sync
   if (isConnecting) {
-    console.log('[IdeaCollection] Rendering loading state');
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-900">
         <div className="text-center">
@@ -460,7 +310,6 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
 
   // Show error state
   if (error) {
-    console.log('[IdeaCollection] Rendering error state:', error);
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-900">
         <div className="text-center">
@@ -478,18 +327,9 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
     )
   }
 
-  console.log('[IdeaCollection] Rendering main component with ideas:', ideas.length);
-
   // Determine schema type based on whether we have individual ideas or collections
   const sectionSchemaType = hasOnlyIndividualIdeas ? "brainstorm_idea" : "brainstorm_collection";
   const sectionJsondocId = hasOnlyIndividualIdeas ? ideas[0]?.jsondocId : undefined;
-
-  console.log('[IdeaCollection] Section configuration:', {
-    hasOnlyIndividualIdeas,
-    sectionSchemaType,
-    sectionJsondocId,
-    ideasCount: ideas.length
-  });
 
   return (
     <SectionWrapper
@@ -602,13 +442,6 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
                       : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
                 } style={{ padding: "12px 12px" }}>
                   {ideas.map((idea, index) => {
-                    console.log(`[IdeaCollection] Rendering idea ${index}:`, {
-                      title: idea.title,
-                      jsondocId: idea.jsondocId,
-                      originalJsondocId: idea.originalJsondocId,
-                      jsondocPath: idea.jsondocPath
-                    });
-
                     return (
                       <IdeaCardWrapper
                         key={`${idea.jsondocId}-${index}`}

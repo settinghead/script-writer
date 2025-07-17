@@ -33,7 +33,20 @@ export const isLeafNode = (jsondocId: string, transformInputs: any[]): boolean =
 
 // Helper function to check if an jsondoc can become editable
 export const canBecomeEditable = (jsondoc: TypedJsondoc, transformInputs: any[]): boolean => {
+    // Only AI-generated jsondocs can become editable via click-to-edit
+    // User-created jsondocs should be directly editable, not click-to-edit
     return isLeafNode(jsondoc.id, transformInputs) && jsondoc.origin_type === 'ai_generated';
+};
+
+// Helper function to check if an jsondoc should be directly editable
+export const isDirectlyEditable = (jsondoc: TypedJsondoc, transformInputs: any[]): boolean => {
+    // User-created jsondocs should be directly editable if they have no descendants
+    return isLeafNode(jsondoc.id, transformInputs) && jsondoc.origin_type === 'user_input';
+};
+
+// Helper function to check if an jsondoc can be edited (either directly or via click-to-edit)
+export const canBeEdited = (jsondoc: TypedJsondoc, transformInputs: any[]): boolean => {
+    return isDirectlyEditable(jsondoc, transformInputs) || canBecomeEditable(jsondoc, transformInputs);
 };
 
 // ==============================================================================
@@ -281,29 +294,11 @@ function computeUnifiedContext(
     // Process outline settings with priority logic
     let outlineSettings = null;
     if (canonicalOutlineJsondocs.length > 0) {
-        console.log('[computeUnifiedContext] Found outline jsondocs:', {
-            count: canonicalOutlineJsondocs.length,
-            outlines: canonicalOutlineJsondocs.map(j => ({
-                id: j.id,
-                origin_type: j.origin_type,
-                created_at: j.created_at
-            }))
-        });
-
         // Find leaf nodes from canonical set
         const leafOutlineSettings = canonicalOutlineJsondocs.filter((jsondoc) => {
             const lineageNode = lineageGraph.nodes.get(jsondoc.id);
             const isLeaf = lineageNode && lineageNode.isLeaf;
-            console.log(`[computeUnifiedContext] Outline ${jsondoc.id}: isLeaf=${isLeaf}, lineageNode exists=${!!lineageNode}`);
             return isLeaf;
-        });
-
-        console.log('[computeUnifiedContext] Leaf outline settings:', {
-            leafCount: leafOutlineSettings.length,
-            leafNodes: leafOutlineSettings.map(j => ({
-                id: j.id,
-                origin_type: j.origin_type
-            }))
         });
 
         if (leafOutlineSettings.length > 0) {
@@ -321,44 +316,16 @@ function computeUnifiedContext(
             canonicalOutlineJsondocs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
             outlineSettings = canonicalOutlineJsondocs[0];
         }
-
-        console.log('[computeUnifiedContext] Selected outline settings:', {
-            selected: outlineSettings ? {
-                id: outlineSettings.id,
-                origin_type: outlineSettings.origin_type,
-                created_at: outlineSettings.created_at
-            } : null
-        });
-    } else {
-        console.log('[computeUnifiedContext] No outline jsondocs found in lineage graph');
     }
 
     // Process chronicles with priority logic (same as outline settings)
     let canonicalChronicles = null;
     if (canonicalChroniclesJsondocs.length > 0) {
-        console.log('[computeUnifiedContext] Found chronicles jsondocs:', {
-            count: canonicalChroniclesJsondocs.length,
-            chronicles: canonicalChroniclesJsondocs.map(j => ({
-                id: j.id,
-                origin_type: j.origin_type,
-                created_at: j.created_at
-            }))
-        });
-
         // Find leaf nodes from canonical set
         const leafChronicles = canonicalChroniclesJsondocs.filter((jsondoc) => {
             const lineageNode = lineageGraph.nodes.get(jsondoc.id);
             const isLeaf = lineageNode && lineageNode.isLeaf;
-            console.log(`[computeUnifiedContext] Chronicles ${jsondoc.id}: isLeaf=${isLeaf}, lineageNode exists=${!!lineageNode}`);
             return isLeaf;
-        });
-
-        console.log('[computeUnifiedContext] Leaf chronicles:', {
-            leafCount: leafChronicles.length,
-            leafNodes: leafChronicles.map(j => ({
-                id: j.id,
-                origin_type: j.origin_type
-            }))
         });
 
         if (leafChronicles.length > 0) {
@@ -376,44 +343,16 @@ function computeUnifiedContext(
             canonicalChroniclesJsondocs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
             canonicalChronicles = canonicalChroniclesJsondocs[0];
         }
-
-        console.log('[computeUnifiedContext] Selected chronicles:', {
-            selected: canonicalChronicles ? {
-                id: canonicalChronicles.id,
-                origin_type: canonicalChronicles.origin_type,
-                created_at: canonicalChronicles.created_at
-            } : null
-        });
-    } else {
-        console.log('[computeUnifiedContext] No chronicles jsondocs found in lineage graph');
     }
 
     // Process episode planning with priority logic (same as outline settings)
     let canonicalEpisodePlanning = null;
     if (canonicalEpisodePlanningJsondocs.length > 0) {
-        console.log('[computeUnifiedContext] Found episode planning jsondocs:', {
-            count: canonicalEpisodePlanningJsondocs.length,
-            episodePlanning: canonicalEpisodePlanningJsondocs.map(j => ({
-                id: j.id,
-                origin_type: j.origin_type,
-                created_at: j.created_at
-            }))
-        });
-
         // Find leaf nodes from canonical set
         const leafEpisodePlanning = canonicalEpisodePlanningJsondocs.filter((jsondoc) => {
             const lineageNode = lineageGraph.nodes.get(jsondoc.id);
             const isLeaf = lineageNode && lineageNode.isLeaf;
-            console.log(`[computeUnifiedContext] Episode planning ${jsondoc.id}: isLeaf=${isLeaf}, lineageNode exists=${!!lineageNode}`);
             return isLeaf;
-        });
-
-        console.log('[computeUnifiedContext] Leaf episode planning:', {
-            leafCount: leafEpisodePlanning.length,
-            leafNodes: leafEpisodePlanning.map(j => ({
-                id: j.id,
-                origin_type: j.origin_type
-            }))
         });
 
         if (leafEpisodePlanning.length > 0) {
@@ -431,32 +370,7 @@ function computeUnifiedContext(
             canonicalEpisodePlanningJsondocs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
             canonicalEpisodePlanning = canonicalEpisodePlanningJsondocs[0];
         }
-
-        console.log('[computeUnifiedContext] Selected episode planning:', {
-            selected: canonicalEpisodePlanning ? {
-                id: canonicalEpisodePlanning.id,
-                origin_type: canonicalEpisodePlanning.origin_type,
-                created_at: canonicalEpisodePlanning.created_at
-            } : null
-        });
-    } else {
-        console.log('[computeUnifiedContext] No episode planning jsondocs found in lineage graph');
     }
-
-    console.log('[computeUnifiedContext] Episode planning analysis:', {
-        canonicalEpisodePlanningJsondocs: canonicalEpisodePlanningJsondocs.map(j => ({
-            id: j.id,
-            schema_type: j.schema_type,
-            origin_type: j.origin_type,
-            created_at: j.created_at
-        })),
-        canonicalEpisodePlanning: canonicalEpisodePlanning ? {
-            id: canonicalEpisodePlanning.id,
-            schema_type: canonicalEpisodePlanning.schema_type,
-            origin_type: canonicalEpisodePlanning.origin_type,
-            created_at: canonicalEpisodePlanning.created_at
-        } : null
-    });
 
     // Detect workflow path
     const isManualPath = !brainstormInput;
@@ -568,7 +482,6 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
             },
             priority: componentOrder['outline-settings-display']
         });
-    } else {
     }
 
     if (context.canonicalChronicles) {
@@ -598,15 +511,6 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
             isEpisodePlanningLeafNode &&
             context.canonicalEpisodePlanning.origin_type === 'user_input';
 
-        console.log('[computeDisplayComponentsFromContext] Adding episode planning component:', {
-            episodePlanningId: context.canonicalEpisodePlanning.id,
-            episodePlanningSchemaType: context.canonicalEpisodePlanning.schema_type,
-            episodePlanningOriginType: context.canonicalEpisodePlanning.origin_type,
-            episodePlanningDataLength: context.canonicalEpisodePlanning.data?.length,
-            hasActiveTransforms: context.hasActiveTransforms,
-            isEditable: isEpisodePlanningEditable
-        });
-
         components.push({
             id: 'episode-planning-display',
             component: getComponentById('episode-planning-display'),
@@ -617,14 +521,10 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
             },
             priority: componentOrder['episode-planning-display']
         });
-    } else {
-        console.log('[computeDisplayComponentsFromContext] No canonical episode planning found');
     }
 
     // Sort by priority
     const sortedComponents = components.sort((a, b) => a.priority - b.priority);
-
-
 
     return sortedComponents;
 }

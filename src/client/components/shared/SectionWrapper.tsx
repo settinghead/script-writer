@@ -22,15 +22,6 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
     jsondocId,
     mode: overrideMode
 }) => {
-    console.log('[SectionWrapper] Rendering:', {
-        schemaType,
-        title,
-        sectionId,
-        jsondocId,
-        overrideMode,
-        hasChildren: !!children
-    });
-
     const projectData = useProjectData();
     const jsondocs = projectData.jsondocs;
     const transforms = projectData.transforms;
@@ -40,26 +31,13 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
 
     // Find the deepest/latest jsondoc of the specified schema type
     const latestJsondoc = useMemo(() => {
-        console.log('[SectionWrapper] Resolving latest jsondoc:', {
-            schemaType,
-            jsondocId,
-            jsondocsStatus: Array.isArray(jsondocs) ? 'loaded' : jsondocs,
-            jsondocsCount: Array.isArray(jsondocs) ? jsondocs.length : 0
-        });
-
         if (jsondocs === "pending" || jsondocs === "error" || transformInputs === "pending" || transformInputs === "error" || transformOutputs === "pending" || transformOutputs === "error") {
-            console.log('[SectionWrapper] Data not ready yet');
             return null;
         }
 
         if (jsondocId) {
             // Use provided jsondoc ID
             const foundJsondoc = getJsondocById(jsondocId);
-            console.log('[SectionWrapper] Using provided jsondoc ID:', {
-                jsondocId,
-                found: !!foundJsondoc,
-                foundSchemaType: foundJsondoc?.schema_type
-            });
             return foundJsondoc;
         }
 
@@ -211,14 +189,6 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
 
     // Convert title to string for TextDivider
     const titleString = typeof title === 'string' ? title : finalSectionId;
-
-    console.log('[SectionWrapper] Final render:', {
-        titleString,
-        finalSectionId,
-        detectedMode,
-        latestJsondocId: latestJsondoc?.id,
-        hasChildren: !!children
-    });
 
     return (
         <>
