@@ -299,18 +299,18 @@ export class ParticleExtractor {
             }
         }
 
-        // Extract key scenes
-        if (data.key_scenes && Array.isArray(data.key_scenes)) {
-            for (let i = 0; i < data.key_scenes.length; i++) {
-                const scene = data.key_scenes[i];
+        // Extract key scenes from setting.key_scenes
+        if (data.setting && data.setting.key_scenes && Array.isArray(data.setting.key_scenes)) {
+            for (let i = 0; i < data.setting.key_scenes.length; i++) {
+                const scene = data.setting.key_scenes[i];
                 if (!scene || typeof scene !== 'string') continue;
 
                 const title = scene.length > 20 ? scene.substring(0, 20) + '...' : scene;
                 const embedding = await this.embeddingService.generateEmbedding(scene);
 
                 particles.push({
-                    id: this.generateParticleId(jsondoc, `$.key_scenes[${i}]`, '场景', { text: scene }),
-                    path: `$.key_scenes[${i}]`,
+                    id: this.generateParticleId(jsondoc, `$.setting.key_scenes[${i}]`, '场景', { text: scene }),
+                    path: `$.setting.key_scenes[${i}]`,
                     type: '场景',
                     title,
                     content: { text: scene },

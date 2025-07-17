@@ -414,8 +414,7 @@ export const YJSCharacterArray = React.memo(({ path, fontSize = DEFAULT_FONT_SIZ
                 occupation: '',
                 description: '',
                 personality_traits: [],
-                character_arc: '',
-                key_scenes: []
+                character_arc: ''
             };
         }
         newArray[index] = { ...newArray[index], [field]: newValue };
@@ -431,8 +430,7 @@ export const YJSCharacterArray = React.memo(({ path, fontSize = DEFAULT_FONT_SIZ
             occupation: '',
             description: '',
             personality_traits: [],
-            character_arc: '',
-            key_scenes: []
+            character_arc: ''
         }];
         updateValue(newArray);
     }, [arrayValue, updateValue]);
@@ -453,8 +451,7 @@ export const YJSCharacterArray = React.memo(({ path, fontSize = DEFAULT_FONT_SIZ
                 occupation: '',
                 description: '',
                 personality_traits: [],
-                character_arc: '',
-                key_scenes: []
+                character_arc: ''
             };
         }
         newArray[index] = { ...newArray[index], [field]: newArrayValue };
@@ -554,15 +551,6 @@ export const YJSCharacterArray = React.memo(({ path, fontSize = DEFAULT_FONT_SIZ
                                 onChange={(e) => handleItemChange(index, 'character_arc', e.target.value)}
                                 placeholder="成长轨迹"
                                 rows={2}
-                            />
-                        </div>
-                        <div>
-                            <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>关键场景：</Text>
-                            <YJSArrayFieldInline
-                                value={character?.key_scenes || []}
-                                onChange={(newValue) => handleArrayFieldChange(index, 'key_scenes', newValue)}
-                                placeholder="每行一个关键场景..."
-                                fontSize={fontSize}
                             />
                         </div>
                     </Space>

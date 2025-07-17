@@ -1258,8 +1258,7 @@ export const EditableCharacterCard: React.FC<ExtendedFieldProps & {
         occupation: '',
         personality_traits: [],
         character_arc: '',
-        relationships: {},
-        key_scenes: []
+        relationships: {}
       };
     });
     const [isSaving, setIsSaving] = useState(false);
@@ -1277,8 +1276,7 @@ export const EditableCharacterCard: React.FC<ExtendedFieldProps & {
         occupation: '',
         personality_traits: [],
         character_arc: '',
-        relationships: {},
-        key_scenes: []
+        relationships: {}
       });
       setHasUnsavedChanges(false);
     }, [value]);
@@ -1537,8 +1535,7 @@ export const EditableCharacterArrayField: React.FC<ExtendedFieldProps & {
         occupation: '',
         personality_traits: [],
         character_arc: '',
-        relationships: {},
-        key_scenes: []
+        relationships: {}
       };
       setLocalCharacters([...localCharacters, newCharacter]);
     };

@@ -396,12 +396,6 @@ export const ReadOnlyJsondocDisplay: React.FC<ReadOnlyJsondocDisplayProps> = ({ 
                                             </Text>
                                             {renderMultilineText(character.character_arc, '未设置成长轨迹')}
                                         </div>
-                                        <div>
-                                            <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>
-                                                关键场景：
-                                            </Text>
-                                            {renderArrayField(character.key_scenes, '未设置关键场景')}
-                                        </div>
                                     </Space>
                                 </Card>
                             ))

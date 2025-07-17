@@ -45,8 +45,7 @@ export const mockJsondocs = {
                     occupation: '集团总裁',
                     personality_traits: ['冷静', '专业', '内心温柔'],
                     character_arc: '从误解到理解，从冷漠到深情',
-                    relationships: { '夏栀': '恋人关系' },
-                    key_scenes: ['初次见面', '误会产生', '真相大白', '表白场景']
+                    relationships: { '夏栀': '恋人关系' }
                 },
                 {
                     name: '夏栀',
@@ -57,8 +56,7 @@ export const mockJsondocs = {
                     occupation: '公司职员',
                     personality_traits: ['善良', '坚强', '聪明'],
                     character_arc: '从被误解到证明自己，获得真爱',
-                    relationships: { '林慕琛': '恋人关系' },
-                    key_scenes: ['入职场景', '被误解', '澄清真相', '接受告白']
+                    relationships: { '林慕琛': '恋人关系' }
                 }
             ],
             stages: [

@@ -401,8 +401,7 @@ function createFallbackOutlineObject() {
                 relationships: {
                     "夏栀": "误会中产生的爱情关系",
                     "母亲": "传统家庭压力来源"
-                },
-                key_scenes: ["总裁办公室对峙", "餐厅告白", "公司救场"]
+                }
             },
             {
                 name: "夏栀",
@@ -416,8 +415,7 @@ function createFallbackOutlineObject() {
                 relationships: {
                     "林慕琛": "误会中发展的真挚感情",
                     "同事": "职场友谊支撑"
-                },
-                key_scenes: ["初次见面", "工作合作", "身份揭露"]
+                }
             }
         ],
         synopsis_stages: [

@@ -22,8 +22,7 @@ export const CharacterSchema = z.object({
     occupation: z.string(),
     personality_traits: z.array(z.string()),
     character_arc: z.string(),
-    relationships: z.record(z.string(), z.string()),
-    key_scenes: z.array(z.string()).optional()
+    relationships: z.record(z.string(), z.string())
 });
 
 // ===============================
