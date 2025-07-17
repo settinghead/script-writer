@@ -74,7 +74,8 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
         const navigationTargetToSection: Record<string, CurrentSection> = {
             '#ideas': 'ideas',
             '#outline-settings': 'outline-settings',
-            '#chronicles': 'chronicles'
+            '#chronicles': 'chronicles',
+            '#episode-planning': 'episode-planning'
         };
 
         const nodeSection = navigationTargetToSection[navigationTarget];
@@ -117,12 +118,18 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
             jsondoc.schema_type === 'chronicles'
         );
 
+        // Check for episode planning jsondocs
+        const hasEpisodePlanning = projectData.jsondocs.some(jsondoc =>
+            jsondoc.schema_type === 'episode_planning'
+        );
+
         return {
             hasBrainstormIdeas,
             hasBrainstormInput,
             hasEditableBrainstormIdea,
             hasOutlineSettings,
-            hasChronicles
+            hasChronicles,
+            hasEpisodePlanning
         };
     }, [ideas, projectData.jsondocs]);
 
@@ -385,6 +392,52 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
             };
 
             sections.push(chroniclesSection);
+        }
+
+        // 5. EPISODE PLANNING SECTION - only show if episode planning jsondocs exist
+        if (jsondocChecks.hasEpisodePlanning) {
+            const episodePlanningHighlighted = shouldHighlightNode('#episode-planning');
+
+            const episodePlanningSection: ProjectTreeNode = {
+                key: 'episode-planning-section',
+                title: (
+                    <Space style={{
+                        padding: episodePlanningHighlighted ? '4px 8px' : '0',
+                        borderRadius: '6px',
+                        background: episodePlanningHighlighted ?
+                            'linear-gradient(135deg, rgba(255, 87, 51, 0.25) 0%, rgba(255, 107, 74, 0.15) 100%)' :
+                            'none',
+                        border: episodePlanningHighlighted ? '1px solid rgba(255, 87, 51, 0.4)' : 'none',
+                        boxShadow: episodePlanningHighlighted ?
+                            '0 0 20px rgba(255, 87, 51, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)' :
+                            'none',
+                        transition: 'all 0.2s ease-in-out',
+                        display: 'inline-flex',
+                        alignItems: 'center'
+                    }}>
+                        <Text style={{
+                            color: episodePlanningHighlighted ? '#ffffff' : '#fff',
+                            fontWeight: episodePlanningHighlighted ? 700 : 500,
+                            textShadow: episodePlanningHighlighted ? '0 0 8px rgba(255, 87, 51, 0.8)' : 'none'
+                        }}>
+                            分集规划
+                        </Text>
+                        <CheckCircleOutlined style={{
+                            color: episodePlanningHighlighted ? '#52c41a' : '#52c41a',
+                            fontSize: '12px',
+                            marginLeft: '4px'
+                        }} />
+                    </Space>
+                ),
+                icon: <FileTextOutlined style={{
+                    color: episodePlanningHighlighted ? '#ff5733' : '#666',
+                    filter: episodePlanningHighlighted ? 'drop-shadow(0 0 4px rgba(255, 87, 51, 0.6))' : 'none'
+                }} />,
+                selectable: true,
+                navigationTarget: '#episode-planning'
+            };
+
+            sections.push(episodePlanningSection);
         }
 
         return sections;

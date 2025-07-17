@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-export type CurrentSection = 'ideas' | 'outline-settings' | 'chronicles' | null;
+export type CurrentSection = 'ideas' | 'outline-settings' | 'chronicles' | 'episode-planning' | null;
 
 /**
  * Hook to detect which section is currently visible in the viewport
@@ -13,7 +13,8 @@ export function useCurrentSection(): CurrentSection {
         const sectionSelectors = [
             '#ideas',
             '#outline-settings',
-            '#chronicles'
+            '#chronicles',
+            '#episode-planning'
         ];
 
         const observer = new IntersectionObserver(
