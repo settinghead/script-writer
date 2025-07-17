@@ -32,7 +32,6 @@ export class ParticleEventBus extends EventEmitter {
      */
     async startListening(): Promise<void> {
         if (this.isListening) {
-            console.log('[ParticleEventBus] Already listening for notifications');
             return;
         }
 
@@ -54,7 +53,6 @@ export class ParticleEventBus extends EventEmitter {
             // Set up notification handler
             this.notificationClient.on('notification', (msg: any) => {
                 if (msg.channel === 'jsondoc_changed') {
-                    console.log('[ParticleEventBus] 🔔 Received jsondoc_changed notification:', msg.payload);
                     try {
                         const data: JsondocChangeEvent = JSON.parse(msg.payload);
                         this.handleJsondocChange(data);
@@ -65,7 +63,6 @@ export class ParticleEventBus extends EventEmitter {
             });
 
             this.isListening = true;
-            console.log('[ParticleEventBus] Started listening for jsondoc changes');
         } catch (error) {
             console.error('[ParticleEventBus] Failed to start listening:', error);
             throw error;
@@ -94,7 +91,6 @@ export class ParticleEventBus extends EventEmitter {
             this.debouncedUpdates.clear();
 
             this.isListening = false;
-            console.log('[ParticleEventBus] Stopped listening for jsondoc changes');
         } catch (error) {
             console.error('[ParticleEventBus] Failed to stop listening:', error);
         }
@@ -104,22 +100,16 @@ export class ParticleEventBus extends EventEmitter {
      * Handle jsondoc change notifications with debouncing
      */
     private handleJsondocChange(data: JsondocChangeEvent): void {
-        console.log(`[ParticleEventBus] 🚀 Received jsondoc change: ${data.operation} for ${data.jsondoc_id}`);
-
         const key = data.jsondoc_id;
 
         // Clear existing timeout for this jsondoc
         const existingTimeout = this.debouncedUpdates.get(key);
         if (existingTimeout) {
             clearTimeout(existingTimeout);
-            console.log(`[ParticleEventBus] ⏰ Debouncing: Reset timer for jsondoc ${data.jsondoc_id}`);
-        } else {
-            console.log(`[ParticleEventBus] ⏰ Debouncing: Started ${ParticleEventBus.DEBOUNCE_DELAY_MS / 1000}s timer for jsondoc ${data.jsondoc_id}`);
         }
 
         // Set new debounced update
         const timeout = setTimeout(async () => {
-            console.log(`[ParticleEventBus] ⚡ Debounce timer expired, processing particle update for jsondoc ${data.jsondoc_id}`);
             try {
                 await this.processJsondocChange(data);
                 this.debouncedUpdates.delete(key);
@@ -141,11 +131,9 @@ export class ParticleEventBus extends EventEmitter {
         try {
             if (operation === 'DELETE') {
                 await this.particleService.deleteParticlesByJsondoc(jsondoc_id);
-                console.log(`[ParticleEventBus] Deleted particles for jsondoc ${jsondoc_id}`);
             } else {
                 // For INSERT and UPDATE operations
                 await this.particleService.updateParticlesForJsondoc(jsondoc_id, project_id);
-                console.log(`[ParticleEventBus] Updated particles for jsondoc ${jsondoc_id}`);
             }
 
             // Emit event for any listeners
