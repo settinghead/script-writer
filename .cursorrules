@@ -137,6 +137,8 @@ src/
 - If a new flow is constructed or modified, test by creating a Node.js testing script that executes transforms
 - Use raw graph visualization for debugging jsondoc lineage
 - Access via `?raw-graph=1` parameter for development debugging
+- **For debugging lineage issues or understanding data flow for a specific project**, use the extract-lineage-tree.ts script: `./run-ts src/server/scripts/extract-lineage-tree.ts <project-id>`
+- The extract-lineage-tree script builds the complete lineage graph from the database and prints both the tree structure and main workflow path
 
 ## Data Validation
 
