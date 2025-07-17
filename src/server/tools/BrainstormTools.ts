@@ -157,7 +157,7 @@ export function createBrainstormEditToolDefinition(
 ): StreamingToolDefinition<BrainstormEditInput, BrainstormEditToolResult> {
     return {
         name: 'edit_brainstorm_idea',
-        description: '使用JSON补丁方式编辑和改进现有故事创意。适用场景：用户对现有创意有具体的修改要求或改进建议。使用JSON Patch格式进行精确修改，只改变需要改变的部分，提高效率和准确性。重要：必须使用项目背景信息中显示的完整ID作为sourceJsondocId参数。支持各种编辑类型：内容扩展、风格调整、情节修改、结构调整等。',
+        description: '编辑和改进现有故事创意。适用场景：用户对现有创意有具体的修改要求或改进建议。使用JSON Patch格式进行精确修改，只改变需要改变的部分，提高效率和准确性。支持各种编辑类型：内容扩展、风格调整、情节修改、结构调整等。系统会自动处理相关的上下文信息。',
         inputSchema: BrainstormEditInputSchema,
         outputSchema: BrainstormEditToolResultSchema,
         execute: async (params: BrainstormEditInput, { toolCallId }): Promise<BrainstormEditToolResult> => {
@@ -396,7 +396,7 @@ export function createBrainstormToolDefinition(
 ): StreamingToolDefinition<IdeationInput, BrainstormToolResult> {
     return {
         name: 'generate_brainstorm_ideas',
-        description: '基于提供的所有jsondocs生成新的故事创意。适用场景：用户想要全新的故事想法、需要更多创意选择、或当前没有满意的故事创意时。例如："给我一些新的故事想法"、"再想几个不同的创意"。将处理所有传入的jsondocs作为参考资料。',
+        description: '生成新的故事创意。适用场景：用户想要全新的故事想法、需要更多创意选择、或当前没有满意的故事创意时。例如："给我一些新的故事想法"、"再想几个不同的创意"。系统会自动处理所有相关的上下文信息作为参考资料。',
         inputSchema: IdeationInputSchema,
         outputSchema: BrainstormToolResultSchema,
         execute: async (params: IdeationInput): Promise<BrainstormToolResult> => {

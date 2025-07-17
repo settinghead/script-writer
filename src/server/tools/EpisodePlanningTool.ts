@@ -42,7 +42,7 @@ export function createEpisodePlanningToolDefinition(
 ): StreamingToolDefinition<EpisodePlanningInput, EpisodePlanningToolResult> {
     return {
         name: 'generate_episode_planning',
-        description: '基于提供的所有jsondocs生成剧集规划（优化观看顺序和情感节奏）。适用场景：用户已完成相关创作步骤，需要生成适合短视频平台的剧集规划。将处理所有传入的jsondocs作为参考资料。',
+        description: '生成剧集规划（优化观看顺序和情感节奏）。适用场景：用户已完成相关创作步骤，需要生成适合短视频平台的剧集规划。系统会自动处理所有相关的上下文信息作为参考资料。',
         inputSchema: EpisodePlanningInputSchema,
         outputSchema: EpisodePlanningToolResultSchema,
         execute: async (params: EpisodePlanningInput, { toolCallId }): Promise<EpisodePlanningToolResult> => {

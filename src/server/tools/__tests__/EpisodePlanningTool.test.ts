@@ -37,7 +37,7 @@ describe('EpisodePlanningTool', () => {
             );
 
             expect(toolDef.name).toBe('generate_episode_planning');
-            expect(toolDef.description).toContain('基于提供的所有jsondocs生成剧集规划');
+            expect(toolDef.description).toContain('生成剧集规划');
             expect(toolDef.inputSchema).toBe(EpisodePlanningInputSchema);
             expect(typeof toolDef.execute).toBe('function');
         });

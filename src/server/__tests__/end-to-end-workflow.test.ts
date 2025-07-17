@@ -184,6 +184,7 @@ describe('End-to-End Workflow Tests', () => {
                 description: '大纲设置',
                 schemaType: 'outline_settings'
             }],
+            totalEpisodes: 30,
             requirements: '创建按时间顺序的故事发展脉络'
         };
 

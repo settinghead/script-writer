@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { CharacterSchema } from './streaming';
-import { JsondocReferencesSchema } from './common';
+import { BaseToolInputSchema } from './common';
 import { MIN_EPISODES, MAX_EPISODES } from '../config/constants';
 
 // ===========================================
@@ -8,8 +8,7 @@ import { MIN_EPISODES, MAX_EPISODES } from '../config/constants';
 // ===========================================
 
 // Outline Settings Schemas
-export const OutlineSettingsInputSchema = z.object({
-    jsondocs: JsondocReferencesSchema.describe('引用的jsondoc列表，包含故事创意等'),
+export const OutlineSettingsInputSchema = BaseToolInputSchema.extend({
     title: z.string().describe('故事标题'),
     requirements: z.string().describe('故事要求'),
 });
@@ -60,8 +59,8 @@ export const ChroniclesStageSchema = z.object({
 });
 
 // Chronicles Schemas
-export const ChroniclesInputSchema = z.object({
-    jsondocs: JsondocReferencesSchema.describe('引用的jsondoc列表，包含大纲设置等'),
+export const ChroniclesInputSchema = BaseToolInputSchema.extend({
+    totalEpisodes: z.number().min(MIN_EPISODES).max(MAX_EPISODES).describe('总集数'),
     requirements: z.string().optional()
 });
 
@@ -89,9 +88,8 @@ export const EpisodeGroupSchema = z.object({
 });
 
 // Episode Planning Schemas
-export const EpisodePlanningInputSchema = z.object({
-    jsondocs: JsondocReferencesSchema.describe('引用的jsondoc列表，包含时间顺序大纲等'),
-    numberOfEpisodes: z.number().min(MIN_EPISODES).max(MAX_EPISODES).describe('总集数'),
+export const EpisodePlanningInputSchema = BaseToolInputSchema.extend({
+    numberOfEpisodes: z.number().min(MIN_EPISODES).max(MAX_EPISODES).describe('要规划的总集数'),
     requirements: z.string().optional().describe('额外要求')
 });
 

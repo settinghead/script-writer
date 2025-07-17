@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { OutlineSettingsInputSchema, OutlineSettingsOutputSchema, ChroniclesInputSchema, ChroniclesOutputSchema, EpisodePlanningInputSchema, EpisodePlanningOutputSchema } from './outlineSchemas';
 import { BrainstormToolInputSchema } from './jsondocs';
-import { JsondocReferencesSchema } from './common';
+import { BaseToolInputSchema } from './common';
 
 // Base transform definition
 export const BaseTransformDefinition = z.object({
@@ -84,9 +84,8 @@ export const LLMTransformDefinitionSchema = z.object({
 export type LLMTransformDefinition = z.infer<typeof LLMTransformDefinitionSchema>;
 
 // Input schema for brainstorm editing
-export const BrainstormEditInputSchema = z.object({
+export const BrainstormEditInputSchema = BaseToolInputSchema.extend({
   ideaIndex: z.number().min(0).optional().describe('要编辑的故事创意在集合中的索引位置（从0开始）'),
-  jsondocs: JsondocReferencesSchema.describe('引用的jsondoc列表。可以是以下类型： brainstorm_idea, brainstorm_collection'),
   editRequirements: z.string().min(1, '编辑要求不能为空').describe('具体的编辑要求，如：扩展内容、调整风格、修改情节、增加元素等'),
   agentInstructions: z.string().optional().describe('来自智能体的额外指导信息，用于更好地理解编辑意图')
 });
@@ -94,8 +93,7 @@ export const BrainstormEditInputSchema = z.object({
 export type BrainstormEditInput = z.infer<typeof BrainstormEditInputSchema>;
 
 // Input schema for outline settings editing
-export const OutlineSettingsEditInputSchema = z.object({
-  jsondocs: JsondocReferencesSchema.min(1, '至少需要一个jsondoc引用').describe('引用的jsondoc列表，包含要编辑的剧本框架设置和其他相关内容，如更新的故事创意'),
+export const OutlineSettingsEditInputSchema = BaseToolInputSchema.extend({
   editRequirements: z.string().min(1, '编辑要求不能为空').describe('具体的编辑要求，如：修改角色设定、调整卖点、更新故事背景等'),
   agentInstructions: z.string().optional().describe('来自智能体的额外指导信息，用于更好地理解编辑意图')
 });
@@ -103,8 +101,7 @@ export const OutlineSettingsEditInputSchema = z.object({
 export type OutlineSettingsEditInput = z.infer<typeof OutlineSettingsEditInputSchema>;
 
 // Input schema for chronicles editing
-export const ChroniclesEditInputSchema = z.object({
-  jsondocs: JsondocReferencesSchema.min(1, '至少需要一个jsondoc引用').describe('引用的jsondoc列表，包含要编辑的时间顺序大纲和其他相关内容，如更新的剧本框架设置'),
+export const ChroniclesEditInputSchema = BaseToolInputSchema.extend({
   editRequirements: z.string().min(1, '编辑要求不能为空').describe('具体的编辑要求，如：修改时间线、调整角色发展、更新情节推进等'),
   agentInstructions: z.string().optional().describe('来自智能体的额外指导信息，用于更好地理解编辑意图')
 });
@@ -210,8 +207,7 @@ export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinitio
 };
 
 // Generic edit input schema for path-based editing
-export const GenericEditInputSchema = z.object({
-  jsondocs: JsondocReferencesSchema.describe('引用的jsondoc列表，包含要编辑的源内容'),
+export const GenericEditInputSchema = BaseToolInputSchema.extend({
   jsondocPath: z.string().min(1, '路径不能为空'),
   editRequirements: z.string().min(1, '编辑要求不能为空'),
   agentInstructions: z.string().optional()

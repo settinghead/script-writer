@@ -16,9 +16,22 @@ export const JsondocReferenceSchema = z.object({
 export const JsondocReferencesSchema = z.array(JsondocReferenceSchema).min(1, '至少需要一个jsondoc引用');
 
 /**
+ * Base tool input schema that includes jsondocs parameter
+ * All tools should extend from this to ensure consistent jsondocs handling
+ */
+export const BaseToolInputSchema = z.object({
+    jsondocs: JsondocReferencesSchema.describe('引用的jsondoc列表，作为工具执行的上下文和参考资料')
+});
+
+/**
  * TypeScript type for jsondoc references
  */
 export type JsondocReference = z.infer<typeof JsondocReferenceSchema>;
+
+/**
+ * TypeScript type for base tool input
+ */
+export type BaseToolInput = z.infer<typeof BaseToolInputSchema>;
 
 /**
  * Utility function to create a jsondoc reference

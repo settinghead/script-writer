@@ -116,7 +116,7 @@ export function createChroniclesEditToolDefinition(
 ): StreamingToolDefinition<ChroniclesEditInput, ChroniclesEditToolResult> {
     return {
         name: 'edit_chronicles',
-        description: '使用JSON补丁方式编辑和改进现有时间顺序大纲。适用场景：用户对现有时间顺序大纲有具体的修改要求或改进建议，如修改时间线、调整角色发展、更新情节推进等。使用JSON Patch格式进行精确修改，只改变需要改变的部分。重要：必须使用项目背景信息中显示的完整ID作为sourceJsondocId参数。',
+        description: '编辑和改进现有时间顺序大纲。适用场景：用户对现有时间顺序大纲有具体的修改要求或改进建议，如修改时间线、调整角色发展、更新情节推进等。使用JSON Patch格式进行精确修改，只改变需要改变的部分。系统会自动处理相关的上下文信息。',
         inputSchema: ChroniclesEditInputSchema,
         outputSchema: ChroniclesEditToolResultSchema,
         execute: async (params: ChroniclesEditInput, { toolCallId }): Promise<ChroniclesEditToolResult> => {
@@ -231,7 +231,7 @@ export function createChroniclesToolDefinition(
 ): StreamingToolDefinition<ChroniclesInput, ChroniclesToolResult> {
     return {
         name: 'generate_chronicles',
-        description: '基于提供的所有jsondocs生成时间顺序大纲（按时间顺序的故事发展阶段）。适用场景：用户已完成相关创作步骤，需要生成完整的时间发展脉络。将处理所有传入的jsondocs作为参考资料。',
+        description: '生成时间顺序大纲（按时间顺序的故事发展阶段）。适用场景：用户已完成相关创作步骤，需要生成完整的时间发展脉络。系统会自动处理所有相关的上下文信息作为参考资料。',
         inputSchema: ChroniclesInputSchema,
         outputSchema: ChroniclesToolResultSchema,
         execute: async (params: ChroniclesInput, { toolCallId }): Promise<ChroniclesToolResult> => {

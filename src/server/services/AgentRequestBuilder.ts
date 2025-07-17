@@ -95,73 +95,71 @@ ${context}
 
 ===工具选择示例 开始===
 示例1：生成新的故事创意
-用户请求："基于jsondoc ID abc123 的头脑风暴参数生成故事创意"
+用户请求："基于头脑风暴参数生成故事创意"
 → 使用 generate_brainstorm_ideas 工具
-→ 参数：sourceJsondocId="abc123" otherRequirements="其他要求"
+→ 参数：otherRequirements="其他要求"
 
 示例2：基于现有创意生成剧本框架
-用户请求："基于jsondoc ID abc123 的故事创意，生成详细的剧本框架"
+用户请求："基于故事创意，生成详细的剧本框架"
 → 使用 generate_outline_settings 工具
-→ 参数：sourceJsondocId="abc123"
+→ 参数：title="故事标题", requirements="具体要求"
 
 示例3：生成时间顺序大纲
 用户请求："基于剧本框架创建60集的时间顺序大纲"
 → 使用 generate_chronicles 工具
-→ 参数：sourceJsondocId="设定jsondoc的ID", totalEpisodes=60
+→ 参数：totalEpisodes=60
 
 示例4：生成剧集规划
 用户请求："基于时间顺序大纲生成12集的剧集规划"
 → 使用 generate_episode_planning 工具
-→ 参数：jsondocs=[{jsondocId: "chronicles_id_from_context", description: "时间顺序大纲", schemaType: "chronicles"}, {jsondocId: "brainstorm_idea_id_from_context", description: "故事创意", schemaType: "brainstorm_idea"}, {jsondocId: "outline_settings_id_from_context", description: "剧本框架", schemaType: "outline_settings"}], numberOfEpisodes=12
+→ 参数：numberOfEpisodes=12
 
 示例5：编辑现有创意
 用户请求："修改第一个故事创意，增加悬疑元素"
-→ 使用 edit_brainstorm_ideas 工具
-→ 参数：sourceJsondocId="集合jsondoc的ID", ideaIndex=0, editRequirements="增加悬疑元素"
+→ 使用 edit_brainstorm_idea 工具
+→ 参数：ideaIndex=0, editRequirements="增加悬疑元素"
 
-示例5：编辑剧本框架
+示例6：编辑剧本框架
 用户请求："修改剧本框架中的角色设定，增加反派角色"
 → 使用 edit_outline_settings 工具
-→ 参数：sourceJsondocId="剧本框架jsondoc的ID", editRequirements="增加反派角色"
+→ 参数：editRequirements="增加反派角色"
 
-示例6：编辑时间顺序大纲
+示例7：编辑时间顺序大纲
 用户请求："修改时间顺序大纲，加入更多南京本地元素"
 → 使用 edit_chronicles 工具
-→ 参数：jsondocs=[{jsondocId: "chronicles_id_from_context", schemaType: "chronicles", description: "时间顺序大纲"}], editRequirements="加入更多南京本地元素，包括文化，南京话，等等"
-→ 注意：jsondocs数组中只包含一个要编辑的chronicles jsondoc，不要重复包含相同的jsondoc
+→ 参数：editRequirements="加入更多南京本地元素，包括文化，南京话，等等"
 
-示例7：复杂请求 - 修改想法并更新大纲
+示例8：复杂请求 - 修改想法并更新大纲
 用户请求："在故事中加入童话元素"
 → 第一步：使用 edit_brainstorm_idea 编辑想法，添加童话元素
-→ 参数：jsondocs=[{jsondocId: "chosen_idea_id_from_context", schemaType: "brainstorm_idea", description: "当前选中的创意想法"}], editRequirements="添加童话元素"
+→ 参数：editRequirements="添加童话元素"
 → 第二步：使用 edit_outline_settings 更新大纲，整合新元素
-→ 参数：jsondocs=[{jsondocId: "outline_id_from_context", schemaType: "outline_settings", description: "现有剧本框架"}, {jsondocId: "<output_from_first_call>", schemaType: "brainstorm_idea", description: "更新后的故事创意"}], editRequirements="基于更新后的创意整合童话元素到大纲中"
+→ 参数：editRequirements="基于更新后的创意整合童话元素到大纲中"
 → 完成后返回JSON总结
 
-示例8：多步编辑 - 修改剧本框架后更新时间顺序大纲
+示例9：多步编辑 - 修改剧本框架后更新时间顺序大纲
 用户请求："减少作品的伦理争议，加入更多正面元素"
-→ 第一步 使用 edit_brainstorm_ideas 编辑想法，减少伦理争议
-→ 参数：jsondocs=[{jsondocId: "chosen_idea_id_from_context", schemaType: "brainstorm_idea", description: "当前选中的创意想法"}], editRequirements="减少伦理争议，加入更多正面元素"
+→ 第一步 使用 edit_brainstorm_idea 编辑想法，减少伦理争议
+→ 参数：editRequirements="减少伦理争议，加入更多正面元素"
 → 第二步 使用 edit_outline_settings 编辑剧本框架，基于新的想法
-→ 参数：jsondocs=[{jsondocId: "<output_from_first_call>", schemaType: "brainstorm_idea", description: "更新后的故事创意"}, {jsondocId: "outline_id_from_context", schemaType: "outline_settings", description: "剧本框架设定"}], editRequirements="基于更新后的创意整合童话元素到大纲中"
+→ 参数：editRequirements="基于更新后的创意整合正面元素到框架中"
 → 第三步 使用 edit_chronicles 更新时间顺序大纲，基于新的框架设定
-→ 参数：jsondocs=[{jsondocId: "chronicles_id_from_context", schemaType: "chronicles", description: "时间顺序大纲"}, {jsondocId: "<output_from_second_call>", schemaType: "outline_settings", description: "更新后的剧本框架"}], editRequirements="基于更新后的框架设定调整时间顺序大纲，确保内容一致性"
+→ 参数：editRequirements="基于更新后的框架设定调整时间顺序大纲，确保内容一致性"
 → 完成后返回JSON总结
 
-**重要：在多步工具调用中，后续工具必须在jsondocs参数中包含前面工具调用的输出jsondocId，以确保基于最新数据进行编辑。**
-
+**重要：所有工具都会自动接收相关的上下文jsondocs作为参考资料。在多步工具调用中，后续工具会自动包含前面工具调用的输出jsondocId，确保基于最新数据进行处理。**
 ===工具选择示例 结束===
 
 ===重要提示 开始===
 - 上下文是YAML格式，包含完整数据 - 仔细阅读以了解当前状态。
 - 对于修改请求，始终使用编辑工具更新现有最新内容。
 - 如果需要多个更改，按依赖顺序调用工具（例如，先编辑想法，再编辑依赖于它的内容）。
-- **多步工具调用的关键规则：当你在同一个请求中调用多个工具时，后续工具的jsondocs参数必须包含前面工具调用的输出jsondocId。这确保后续编辑基于最新的数据，而不是过时的jsondoc。如果一个新版本(相同类型)的jsondoc被创建，旧的就不应该被使用，并且后续的工具调用中应该尽量包含新的jsondoc id，以便最新信息得到及时传播。**
+- **多步工具调用的关键规则：当你在同一个请求中调用多个工具时，后续工具会自动获取前面工具调用的输出作为上下文。这确保后续编辑基于最新的数据，而不是过时的内容。系统会自动处理jsondoc引用和依赖关系。**
 - 工具会处理结果的存储和流式传输，请不要尝试显示结果内容。
 - 仔细从用户请求和上下文中提取必要的参数。
 - 如果用户要求的创意数量未明确说明，默认为3个。
 - 确保选择最符合用户需求的工具或工具序列。
-- 对于需要jsondocs参数的工具，确保数组中每个对象有正确的字段：jsondocId (字符串), schemaType (字符串，如'outline_settings'), description (字符串描述)。使用精确的键名，不要添加冒号或额外内容。
+- 所有工具都会自动接收相关的上下文jsondocs作为参考资料，无需手动指定。
 ===重要提示 结束===
 
 ===工作流程要求 开始===

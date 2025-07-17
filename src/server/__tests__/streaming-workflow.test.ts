@@ -160,6 +160,7 @@ describe('Streaming Workflow Tests', () => {
                 description: '剧本框架设定',
                 schemaType: 'outline_settings'
             }],
+            totalEpisodes: 30,
             requirements: '创建完整的时序发展脉络'
         }, { toolCallId: 'test-chronicles' });
 

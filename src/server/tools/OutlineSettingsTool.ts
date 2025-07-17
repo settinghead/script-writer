@@ -116,7 +116,7 @@ export function createOutlineSettingsEditToolDefinition(
 ): StreamingToolDefinition<OutlineSettingsEditInput, OutlineSettingsEditToolResult> {
     return {
         name: 'edit_outline_settings',
-        description: '使用JSON补丁方式编辑和改进现有剧本框架设置。适用场景：用户对现有剧本框架有具体的修改要求或改进建议，如修改角色设定、调整卖点、更新故事背景等。使用JSON Patch格式进行精确修改，只改变需要改变的部分。重要：必须使用项目背景信息中显示的完整ID作为sourceJsondocId参数。',
+        description: '编辑和改进现有剧本框架设置。适用场景：用户对现有剧本框架有具体的修改要求或改进建议，如修改角色设定、调整卖点、更新故事背景等。使用JSON Patch格式进行精确修改，只改变需要改变的部分。系统会自动处理相关的上下文信息。',
         inputSchema: OutlineSettingsEditInputSchema,
         outputSchema: OutlineSettingsEditToolResultSchema,
         execute: async (params: OutlineSettingsEditInput, { toolCallId }): Promise<OutlineSettingsEditToolResult> => {
@@ -231,7 +231,7 @@ export function createOutlineSettingsToolDefinition(
 ): StreamingToolDefinition<OutlineSettingsInput, OutlineSettingsToolResult> {
     return {
         name: 'generate_outline_settings',
-        description: '基于提供的所有jsondocs生成剧本框架（人物角色、故事背景、商业定位等），为后续时间顺序大纲奠定基础。适用场景：用户已有相关创作内容，需要先确定基础设定再进行时序发展。将处理所有传入的jsondocs作为参考资料。',
+        description: '生成剧本框架（人物角色、故事背景、商业定位等），为后续时间顺序大纲奠定基础。适用场景：用户已有相关创作内容，需要先确定基础设定再进行时序发展。系统会自动处理所有相关的上下文信息作为参考资料。',
         inputSchema: OutlineSettingsInputSchema,
         outputSchema: OutlineSettingsToolResultSchema,
         execute: async (params: OutlineSettingsInput, { toolCallId }): Promise<OutlineSettingsToolResult> => {
