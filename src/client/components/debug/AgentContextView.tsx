@@ -12,7 +12,6 @@ interface AgentPromptResponse {
     success: boolean;
     prompt: string;
     context: {
-        currentStage: string;
         hasActiveTransforms: boolean;
         availableTools: string[];
         workflowState: any;
@@ -62,19 +61,15 @@ export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId })
         try {
             const unifiedState = computeUnifiedWorkflowState(projectData, projectId);
             const result = {
-                currentStage: unifiedState.parameters.currentStage,
                 hasActiveTransforms: unifiedState.parameters.hasActiveTransforms,
                 actions: unifiedState.actions,
-                steps: unifiedState.steps,
                 displayComponents: unifiedState.displayComponents,
                 parameters: unifiedState.parameters
             };
 
             debugLog('Workflow state computed:', {
-                currentStage: result.currentStage,
                 hasActiveTransforms: result.hasActiveTransforms,
                 actionsCount: result.actions.length,
-                stepsCount: result.steps.length,
                 displayComponentsCount: result.displayComponents.length
             });
 
@@ -249,9 +244,6 @@ export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId })
                             }}>
                                 {workflowState ? (
                                     <div>
-                                        <Text strong style={{ color: '#fff' }}>当前阶段: </Text>
-                                        <Text code>{workflowState.currentStage}</Text>
-                                        <br />
                                         <Text strong style={{ color: '#fff' }}>活跃变换: </Text>
                                         <Text type={workflowState.hasActiveTransforms ? 'warning' : 'success'}>
                                             {workflowState.hasActiveTransforms ? '是' : '否'}
@@ -259,9 +251,6 @@ export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId })
                                         <br />
                                         <Text strong style={{ color: '#fff' }}>可用操作: </Text>
                                         <Text type="secondary">{workflowState.actions.length} 个</Text>
-                                        <br />
-                                        <Text strong style={{ color: '#fff' }}>工作流步骤: </Text>
-                                        <Text type="secondary">{workflowState.steps.length} 个</Text>
                                         <br />
                                         <Text strong style={{ color: '#fff' }}>显示组件: </Text>
                                         <Text type="secondary">{workflowState.displayComponents.length} 个</Text>
@@ -308,9 +297,6 @@ export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId })
                                 <div style={{ marginBottom: '16px', padding: '16px', backgroundColor: '#262626', borderRadius: '8px' }}>
                                     <Text strong style={{ color: '#fff' }}>上下文类型: </Text>
                                     <Text code>{promptResponse.input.contextType}</Text>
-                                    <br />
-                                    <Text strong style={{ color: '#fff' }}>工作流阶段: </Text>
-                                    <Text code>{promptResponse.context.currentStage}</Text>
                                     <br />
                                     <Text strong style={{ color: '#fff' }}>可用工具: </Text>
                                     <Text type="secondary">{promptResponse.context.availableTools.join(', ')}</Text>

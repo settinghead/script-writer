@@ -27,13 +27,6 @@ export type ComponentMode =
     | 'loading'
     | 'error';
 
-// Workflow step definition
-export interface WorkflowStep {
-    id: string;
-    title: string;
-    status: 'wait' | 'process' | 'finish' | 'error';
-}
-
 // Display component definition
 export interface DisplayComponent {
     id: ComponentId;
@@ -46,7 +39,6 @@ export interface DisplayComponent {
 // Workflow parameters for components and actions
 export interface WorkflowParameters {
     projectId: string;
-    currentStage: string;
     hasActiveTransforms: boolean;
     effectiveBrainstormIdeas: any[];
     chosenBrainstormIdea: any;
@@ -58,31 +50,7 @@ export interface WorkflowParameters {
 
 // Main unified state
 export interface UnifiedWorkflowState {
-    steps: WorkflowStep[];
     displayComponents: DisplayComponent[];
     actions: any[]; // Will be ActionItem[] from existing types
-    parameters: WorkflowParameters;
-}
-
-// Step definitions with proper states
-export const WORKFLOW_STEPS = {
-    INITIAL: 'initial',
-    BRAINSTORM_INPUT: 'brainstorm_input',
-    BRAINSTORM_GENERATION: 'brainstorm_generation',
-    BRAINSTORM_SELECTION: 'brainstorm_selection',
-    IDEA_EDITING: 'idea_editing',
-    OUTLINE_GENERATION: 'outline_generation',
-    CHRONICLES_GENERATION: 'chronicles_generation',
-    EPISODE_GENERATION: 'episode_generation'
-} as const;
-
-export type WorkflowStageId = typeof WORKFLOW_STEPS[keyof typeof WORKFLOW_STEPS];
-
-// Step configuration
-export interface StepConfig {
-    id: string;
-    title: string;
-    description: string;
-    icon: React.ReactNode;
-    stages: WorkflowStageId[];
+    parameters: WorkflowParameters; // Update this without currentStage
 } 

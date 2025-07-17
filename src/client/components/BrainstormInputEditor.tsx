@@ -21,7 +21,6 @@ interface BrainstormInputEditorProps {
     } | null;
     isEditable?: boolean;
     minimized?: boolean;
-    currentStage?: string;
     onViewOriginalIdeas?: () => void;
 }
 

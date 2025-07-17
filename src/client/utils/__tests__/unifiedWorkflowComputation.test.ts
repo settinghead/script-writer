@@ -274,10 +274,8 @@ describe('Unified Workflow Computation', () => {
 
             const state = computeUnifiedWorkflowState(mockProjectData, 'test-project');
 
-            expect(state.steps).toHaveLength(7); // AI path: 创意输入 → 头脑风暴 → 创意编辑 → 剧本框架 → 时间顺序大纲 → 每集大纲 → 分集剧本
             expect(state.displayComponents).toHaveLength(1); // Should have at least 1 display component
             expect(Array.isArray(state.actions)).toBe(true); // Actions are computed
-            expect(state.parameters.currentStage).toBe('idea_editing');
             expect(state.parameters.hasActiveTransforms).toBe(false);
         });
 
@@ -333,7 +331,7 @@ describe('Unified Workflow Computation', () => {
             const state = computeUnifiedWorkflowState(mockProjectData, 'test-project');
 
             expect(state.displayComponents).toHaveLength(1);
-            expect(state.parameters.currentStage).toBe('idea_editing');
+            expect(state.parameters.hasActiveTransforms).toBe(false);
         });
     });
 

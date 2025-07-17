@@ -22,16 +22,6 @@ import OutlineGenerationForm from '../components/actions/OutlineGenerationForm';
 import ChroniclesGenerationAction from '../components/actions/ChroniclesGenerationAction';
 import EpisodeGenerationAction from '../components/actions/EpisodeGenerationAction';
 
-// Workflow stages
-export type WorkflowStage =
-    | 'initial'
-    | 'brainstorm_input'
-    | 'brainstorm_selection'
-    | 'idea_editing'
-    | 'outline_generation'
-    | 'chronicles_generation'
-    | 'episode_synopsis_generation';
-
 // Action item definition
 export interface ActionItem {
     id: string;
@@ -61,7 +51,6 @@ export interface ActionComponentProps {
 
     // Workflow context
     workflowContext: {
-        currentStage: WorkflowStage;
         hasActiveTransforms: boolean;
         workflowNodes: WorkflowNode[];
     };
@@ -79,8 +68,7 @@ export interface LineageBasedActionContext {
     latestChronicles: ElectricJsondoc | null;
     brainstormInput: ElectricJsondoc | null;
 
-    // Workflow state
-    currentStage: WorkflowStage;
+    // Workflow state without stage
     workflowNodes: WorkflowNode[];
 
     // Transform state
@@ -97,7 +85,6 @@ export interface LineageBasedActionContext {
 export interface ComputedActions {
     actionContext: LineageBasedActionContext;
     actions: ActionItem[];
-    stageDescription: string;
 }
 
 /**
@@ -123,56 +110,12 @@ export function computeActionsFromLineage(
         transformOutputs
     );
 
-    // 2. Determine current stage from workflow nodes
-    let currentStage = detectStageFromWorkflowNodes(actionContext.workflowNodes);
-
-    // 3. Override stage detection if we have a chosen idea or leaf brainstorm ideas
-    if (currentStage === 'brainstorm_selection') {
-        // First check: if we have a chosen idea, move to idea_editing stage
-        if (actionContext.chosenBrainstormIdea) {
-            console.log('[computeActionsFromLineage] Found chosen idea, overriding stage to idea_editing:', actionContext.chosenBrainstormIdea.jsondocId);
-            currentStage = 'idea_editing';
-        } else {
-            // Second check: if we have leaf brainstorm ideas that indicate the user has moved to idea_editing stage
-            const leafBrainstormIdeas = actionContext.leafNodes.filter(nodeId => {
-                const node = lineageGraph.nodes.get(nodeId);
-                if (node?.type !== 'jsondoc') return false;
-
-                const jsondoc = jsondocs.find(a => a.id === nodeId);
-                return jsondoc && (
-                    jsondoc.schema_type === 'brainstorm_idea'
-                );
-            });
-
-            if (leafBrainstormIdeas.length > 0) {
-
-                // User has created/edited brainstorm ideas, move to idea_editing stage
-                currentStage = 'idea_editing';
-            }
-        }
-    }
-
-    // 4. Fallback logic: if no workflow nodes but we have brainstorm input jsondoc, set to brainstorm_input stage
-    if (currentStage === 'initial' && actionContext.brainstormInput) {
-        currentStage = 'brainstorm_input';
-    }
-
-    // 4. Complete the action context with current stage
-    const completeActionContext: LineageBasedActionContext = {
-        ...actionContext,
-        currentStage
-    };
-
-    // 5. Generate actions based on lineage state
-    const actions = generateActionsForStage(currentStage, completeActionContext);
-
-    // 6. Get stage description
-    const stageDescription = getStageDescription(currentStage);
+    // 2. Generate actions based on context
+    const actions = generateActionsFromContext(actionContext);
 
     return {
-        actionContext: completeActionContext,
+        actionContext: actionContext,
         actions,
-        stageDescription
     };
 }
 
@@ -244,48 +187,10 @@ function buildActionContextFromLineage(
 }
 
 /**
- * Detect current workflow stage from workflow nodes
- */
-export function detectStageFromWorkflowNodes(workflowNodes: WorkflowNode[]): WorkflowStage {
-    // If no workflow nodes, we're at initial stage
-    if (workflowNodes.length === 0) {
-        return 'initial';
-    }
-
-    // Find the last (most recent) node in the workflow
-    const lastNode = workflowNodes[workflowNodes.length - 1];
-
-    // Map workflow node types to action stages
-    // For brainstorm_collection, we should be in brainstorm_selection stage
-    if (lastNode.schemaType === 'brainstorm_collection') {
-        // When we have a brainstorm collection, the user needs to select one idea
-        return 'brainstorm_selection';
-    }
-
-    const stageMap: Record<string, WorkflowStage> = {
-        'brainstorm_input_params': 'brainstorm_input',
-        'brainstorm_idea': 'idea_editing',
-        'outline_settings': 'outline_generation',
-        'chronicles': 'chronicles_generation',
-        'episode_synopsis': 'episode_synopsis_generation'
-    };
-
-    const detectedStage = stageMap[lastNode.schemaType] || 'initial';
-
-    return detectedStage;
-}
-
-/**
  * Generate actions for a specific workflow stage
  */
-function generateActionsForStage(
-    stage: WorkflowStage,
-    context: LineageBasedActionContext
-): ActionItem[] {
-    // If there are active transforms, return empty actions
-    if (context.hasActiveTransforms) {
-        return [];
-    }
+function generateActionsFromContext(context: LineageBasedActionContext): ActionItem[] {
+    if (context.hasActiveTransforms) return [];
 
     const actions: ActionItem[] = [];
 
@@ -299,134 +204,115 @@ function generateActionsForStage(
     };
 
     const commonWorkflowContext = {
-        currentStage: context.currentStage,
+        currentStage: 'initial', // This will be determined by the main function
         hasActiveTransforms: context.hasActiveTransforms,
         workflowNodes: context.workflowNodes
     };
 
-    switch (stage) {
-        case 'initial':
-            actions.push({
-                id: 'brainstorm_creation',
-                type: 'button',
-                title: '创建头脑风暴',
-                description: '使用AI辅助生成创意想法',
-                component: BrainstormCreationActions,
-                props: {
-                    jsondocs: commonJsondocs,
-                    workflowContext: commonWorkflowContext
-                },
-                enabled: true,
-                priority: 1
-            });
-            break;
+    // If no brainstorm input, add creation
+    if (!context.brainstormInput) {
+        actions.push({
+            id: 'brainstorm_creation',
+            type: 'button',
+            title: '创建头脑风暴',
+            description: '使用AI辅助生成创意想法',
+            component: BrainstormCreationActions,
+            props: {
+                jsondocs: commonJsondocs,
+                workflowContext: commonWorkflowContext
+            },
+            enabled: true,
+            priority: 1
+        });
+    }
 
-        case 'brainstorm_input':
-            if (context.brainstormInput) {
-                actions.push({
-                    id: 'brainstorm_start_button',
-                    type: 'button',
-                    title: '开始头脑风暴',
-                    description: '基于上方填写的参数开始生成创意',
-                    component: BrainstormInputForm,
-                    props: {
-                        brainstormJsondoc: context.brainstormInput, // For backward compatibility
-                        jsondocs: commonJsondocs,
-                        workflowContext: commonWorkflowContext
-                    },
-                    enabled: true,
-                    priority: 1
-                });
-            }
-            break;
+    // If brainstormInput but no ideas, add BrainstormInputForm
+    if (context.brainstormInput && context.effectiveBrainstormIdeas.length === 0) {
+        actions.push({
+            id: 'brainstorm_start_button',
+            type: 'button',
+            title: '开始头脑风暴',
+            description: '基于上方填写的参数开始生成创意',
+            component: BrainstormInputForm,
+            props: {
+                brainstormJsondoc: context.brainstormInput, // For backward compatibility
+                jsondocs: commonJsondocs,
+                workflowContext: commonWorkflowContext
+            },
+            enabled: true,
+            priority: 1
+        });
+    }
 
-        case 'brainstorm_selection':
-            actions.push({
-                id: 'brainstorm_idea_selection',
-                type: 'selection',
-                title: '选择创意',
-                description: '从生成的创意中选择一个继续开发',
-                component: BrainstormIdeaSelection,
-                props: {
-                    jsondocs: commonJsondocs,
-                    workflowContext: commonWorkflowContext
-                },
-                enabled: true,
-                priority: 1
-            });
-            break;
+    // If ideas but no chosen, add BrainstormIdeaSelection
+    if (context.effectiveBrainstormIdeas.length > 0 && !context.chosenBrainstormIdea) {
+        actions.push({
+            id: 'brainstorm_idea_selection',
+            type: 'selection',
+            title: '选择创意',
+            description: '从生成的创意中选择一个继续开发',
+            component: BrainstormIdeaSelection,
+            props: {
+                jsondocs: commonJsondocs,
+                workflowContext: commonWorkflowContext
+            },
+            enabled: true,
+            priority: 1
+        });
+    }
 
-        case 'idea_editing':
-            actions.push({
-                id: 'outline_generation',
-                type: 'form',
-                title: '生成大纲',
-                description: '基于选中的创意生成详细大纲',
-                component: OutlineGenerationForm,
-                props: {
-                    jsondocs: commonJsondocs,
-                    workflowContext: commonWorkflowContext
-                },
-                enabled: true,
-                priority: 1
-            });
-            break;
+    // If chosen but no outline, add OutlineGenerationForm
+    if (context.chosenBrainstormIdea && !context.latestOutlineSettings) {
+        actions.push({
+            id: 'outline_generation',
+            type: 'form',
+            title: '生成大纲',
+            description: '基于选中的创意生成详细大纲',
+            component: OutlineGenerationForm,
+            props: {
+                jsondocs: commonJsondocs,
+                workflowContext: commonWorkflowContext
+            },
+            enabled: true,
+            priority: 1
+        });
+    }
 
-        case 'outline_generation':
-            actions.push({
-                id: 'chronicles_generation',
-                type: 'button',
-                title: '生成分集概要',
-                description: '基于大纲生成分集概要',
-                component: ChroniclesGenerationAction,
-                props: {
-                    jsondocs: commonJsondocs,
-                    workflowContext: commonWorkflowContext
-                },
-                enabled: true,
-                priority: 1
-            });
-            break;
+    // If outline but no chronicles, add ChroniclesGenerationAction
+    if (context.latestOutlineSettings && !context.latestChronicles) {
+        actions.push({
+            id: 'chronicles_generation',
+            type: 'button',
+            title: '生成分集概要',
+            description: '基于大纲生成分集概要',
+            component: ChroniclesGenerationAction,
+            props: {
+                jsondocs: commonJsondocs,
+                workflowContext: commonWorkflowContext
+            },
+            enabled: true,
+            priority: 1
+        });
+    }
 
-        case 'chronicles_generation':
-            actions.push({
-                id: 'episode_synopsis_generation',
-                type: 'button',
-                title: '生成剧本',
-                description: '基于分集概要生成具体剧本',
-                component: EpisodeGenerationAction,
-                props: {
-                    jsondocs: commonJsondocs,
-                    workflowContext: commonWorkflowContext
-                },
-                enabled: true,
-                priority: 1
-            });
-            break;
-
-        case 'episode_synopsis_generation':
-            // No more actions at this stage
-            break;
+    // If chronicles but no episode, add EpisodeGenerationAction
+    if (context.latestChronicles && !context.latestChronicles.schema_type.includes('episode_synopsis')) {
+        actions.push({
+            id: 'episode_synopsis_generation',
+            type: 'button',
+            title: '生成剧本',
+            description: '基于分集概要生成具体剧本',
+            component: EpisodeGenerationAction,
+            props: {
+                jsondocs: commonJsondocs,
+                workflowContext: commonWorkflowContext
+            },
+            enabled: true,
+            priority: 1
+        });
     }
 
     return actions;
-}
-
-/**
- * Get human-readable description for a workflow stage
- */
-function getStageDescription(stage: WorkflowStage): string {
-    const descriptions: Record<WorkflowStage, string> = {
-        'initial': '开始创建项目',
-        'brainstorm_input': '填写参数并开始头脑风暴',
-        'brainstorm_selection': '选择一个创意继续开发',
-        'idea_editing': '编辑创意并生成大纲',
-        'outline_generation': '生成时间顺序大纲',
-        'chronicles_generation': '生成分集概要',
-        'episode_synopsis_generation': '生成剧本内容'
-    };
-
-    return descriptions[stage] || '未知阶段';
 }
 
 // ============================================================================

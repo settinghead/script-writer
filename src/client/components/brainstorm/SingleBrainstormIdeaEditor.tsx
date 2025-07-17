@@ -11,7 +11,6 @@ const { Text } = Typography;
 interface SingleBrainstormIdeaEditorProps {
     onViewOriginalIdeas?: () => void;
     isEditable?: boolean; // Global editability state from computation system
-    currentStage?: string; // Current workflow stage
     brainstormIdea?: any; // The jsondoc to display
     mode?: 'editable' | 'readonly'; // Display mode
 }
@@ -51,7 +50,6 @@ const EditableBrainstormForm: React.FC = () => {
 export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProps> = ({
     onViewOriginalIdeas,
     isEditable: propsIsEditable,
-    currentStage = 'idea_editing',
     brainstormIdea: propsBrainstormIdea,
     mode: propsMode
 }) => {
@@ -109,7 +107,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
 
     // Determine editability for fallback mode
     const isEditable = useMemo(() => {
-        if (!latestBrainstormIdea || currentStage !== 'idea_editing') return false;
+        if (!latestBrainstormIdea) return false;
 
         // Check if this jsondoc has descendants (is used as input in any transform)
         if (projectData.transformInputs === "pending" || projectData.transformInputs === "error") {
@@ -123,7 +121,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
 
         // Only editable if it's user_input and has no descendants
         return latestBrainstormIdea.origin_type === 'user_input' && !hasDescendants && (propsIsEditable ?? true);
-    }, [latestBrainstormIdea, currentStage, projectData.transformInputs, propsIsEditable]);
+    }, [latestBrainstormIdea, projectData.transformInputs, propsIsEditable]);
 
     return (
         <SectionWrapper

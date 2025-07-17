@@ -7,8 +7,8 @@ import RawChatMessages from '../RawChatMessages';
 import RawTooLCall from './DebugRawToolCall';
 import { YJSDebugComponent } from './YJSDebugComponent';
 import { ParticleDebugComponent } from './ParticleDebugComponent';
-import { AgentContextView } from './AgentContextView';
 import { useDebugState } from './DebugMenu';
+import { AgentContextView } from './AgentContextView';
 
 interface DebugPanelsProps {
     projectId: string;

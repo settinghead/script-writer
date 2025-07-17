@@ -6,7 +6,7 @@ import { useProjectData } from '../contexts/ProjectDataContext';
 import { useProjectStore } from '../stores/projectStore';
 import { ProjectDataProvider } from '../contexts/ProjectDataContext';
 import { ChatSidebarWrapper } from './chat/ChatSidebarWrapper';
-import WorkflowVisualization from './WorkflowVisualization';
+import RawGraphVisualization from './RawGraphVisualization'; // Replace WorkflowVisualization
 import ProjectTreeView from './ProjectTreeView';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { useScrollPosition } from '../hooks/useScrollPosition';
@@ -372,7 +372,7 @@ const DesktopRightSidebar: React.FC<{
                                         ),
                                         children: (
                                             <div style={{ padding: '12px' }}>
-                                                <WorkflowVisualization width={width - 48} />
+                                                <RawGraphVisualization />
                                             </div>
                                         )
                                     },
