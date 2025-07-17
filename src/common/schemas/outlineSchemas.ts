@@ -90,7 +90,7 @@ export const EpisodeGroupSchema = z.object({
 // Episode Planning Schemas
 export const EpisodePlanningInputSchema = z.object({
     jsondocs: JsondocReferencesSchema.describe('引用的jsondoc列表，包含时间顺序大纲等'),
-    numberOfEpisodes: z.number().min(1).max(50).describe('总集数'),
+    numberOfEpisodes: z.number().min(1).max(200).describe('总集数'),
     requirements: z.string().optional().describe('额外要求')
 });
 

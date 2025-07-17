@@ -11,7 +11,7 @@ A collaborative Chinese short drama script writing application built on the [Tra
 - **Chinese Short Drama Focus** - Specialized for 抖音, 快手, and other Chinese platforms
 - **去脸谱化 Content** - Emphasizes modern, non-stereotypical characters and plots
 - **Real-time Collaboration** - YJS-powered collaborative editing with conflict resolution
-- **Complete Project Workflow** - 灵感 → 剧本框架 → 时间顺序大纲 → 分集 → 剧本 pipeline
+- **Complete Project Workflow** - 灵感 → 剧本框架 → 时间顺序大纲 → 分集规划 → 剧本 pipeline
 
 ## Application-Specific Features
 
@@ -42,10 +42,15 @@ A collaborative Chinese short drama script writing application built on the [Tra
 - **Stage-Level Human Transforms** - Each stage can be independently edited while preserving the overall chronicles structure
 - **Complete Field Editing** - All stage fields editable: title, synopsis, events, emotion arcs, relationship developments, insights
 
-**Episode Generation (分集规划)**:
-- **Agent-Based Generation** - Powered by Transform Jsondoc Framework
-- **Context-Aware** - Maintains story consistency across episodes
-- **User Feedback Integration** - Captures and utilizes episode-specific feedback
+**Episode Planning (分集规划)**:
+- **TikTok-Optimized Structure** - Creates 2-minute episodes perfect for 抖音 short attention spans
+- **"Pulsing" Emotional Rhythm** - Each episode features emotional climax and suspense hooks
+- **Non-Linear Organization** - Reorders chronological timeline for maximum dramatic impact
+- **Group-Based Management** - Organizes episodes into logical groups for production efficiency
+- **Hook-Heavy Design** - Strong opening hooks and cliffhanger endings to maintain viewer engagement
+- **Dramatic Restructuring** - Uses flashbacks, reveals, and plot twists to optimize viewing experience
+- **Platform-Specific Optimization** - Tailored for short-form video platforms (抖音, 快手, 小红书)
+- **Real-time Collaborative Editing** - YJS-powered editing with complete field access
 
 ### 🤖 Intelligent Agent System
 
@@ -56,6 +61,7 @@ Built on the [Transform Jsondoc Framework](./TRANSFORM_JSONDOC_FRAMEWORK.md) age
 - ✅ **Brainstorm Editing** - AI-powered content modification using JSON Patch operations
 - ✅ **Outline Settings Generation** - Character development, story foundation, and commercial positioning  
 - ✅ **Chronicles Generation** - Chronological story timeline and episode progression
+- ✅ **Episode Planning Generation** - TikTok-optimized episode structure with "pulsing" emotional rhythm
 - ✅ **Episode Script Generation** - Agent-based generation with Electric SQL integration
 - ✅ **Conversational Response** - General chat with project context
 
@@ -289,14 +295,14 @@ This unified system provides a solid foundation for the Chinese short drama scri
 The application supports two distinct paths for script creation, each optimized for different creative approaches:
 
 ### Path 1: Manual Entry Path (手动输入路径)
-**User Flow**: Manual idea entry → Edit → Generate outline settings → Generate chronicles → Generate episodes → Generate scripts
+**User Flow**: Manual idea entry → Edit → Generate outline settings → Generate chronicles → Generate episode planning → Generate scripts
 
 **Stages**:
 1. **手动创意输入 (Manual Idea Entry)** - User manually enters a single story concept
 2. **创意编辑 (Idea Editing)** - Refine and develop the manually entered idea
 3. **剧本框架生成 (Outline Settings Generation)** - Generate characters, setting, and commercial elements
 4. **时间顺序大纲生成 (Chronicles Generation)** - Create chronological story progression
-5. **分集规划 (Episode Planning)** - Break story into episode structure
+5. **分集规划 (Episode Planning)** - Transform chronicles into TikTok-optimized episode structure
 6. **剧本创作 (Script Writing)** - Generate detailed scripts with dialogue
 
 **Key Features**:
@@ -305,7 +311,7 @@ The application supports two distinct paths for script creation, each optimized 
 - **Streamlined Flow** - No selection step required, faster progression
 
 ### Path 2: AI Brainstorm Path (AI头脑风暴路径)
-**User Flow**: Brainstorm input → AI generates multiple ideas → Select best idea → Edit → Generate outline settings → Generate chronicles → Generate episodes → Generate scripts
+**User Flow**: Brainstorm input → AI generates multiple ideas → Select best idea → Edit → Generate outline settings → Generate chronicles → Generate episode planning → Generate scripts
 
 **Stages**:
 1. **头脑风暴输入 (Brainstorm Input)** - User provides creative brief and requirements
@@ -314,7 +320,7 @@ The application supports two distinct paths for script creation, each optimized 
 4. **创意编辑 (Idea Editing)** - Refine and develop the selected idea
 5. **剧本框架生成 (Outline Settings Generation)** - Generate characters, setting, and commercial elements
 6. **时间顺序大纲生成 (Chronicles Generation)** - Create chronological story progression
-7. **分集规划 (Episode Planning)** - Break story into episode structure
+7. **分集规划 (Episode Planning)** - Transform chronicles into TikTok-optimized episode structure
 8. **剧本创作 (Script Writing)** - Generate detailed scripts with dialogue
 
 **Key Features**:
@@ -354,7 +360,8 @@ const actions = computeActionsFromLineage(currentStage, context);
 - `idea_editing` - Single idea available (manual or selected), ready for editing
 - `outline_generation` - Idea finalized, ready for outline settings generation
 - `chronicles_generation` - Outline settings complete, ready for chronicles
-- `episode_generation` - Chronicles complete, ready for episode planning
+- `episode_planning` - Chronicles complete, ready for episode planning generation
+- `script_generation` - Episode planning complete, ready for script writing
 
 **Smart Action Generation**:
 - **Context-Aware Actions** - Only shows relevant next steps based on current stage
@@ -396,6 +403,7 @@ This dual-computation system ensures that users always see the correct workflow 
 - **Brainstorm Ideas** - Initial story concepts with platform targeting
 - **Outline Settings** - Character development, story foundation, and commercial elements
 - **Chronicles** - Chronological story timeline and staged progression
+- **Episode Planning** - TikTok-optimized episode structure with "pulsing" emotional rhythm
 - **Episode Synopses** - Individual episode breakdowns
 - **Script Content** - Full dialogue and scene descriptions
 
@@ -492,6 +500,7 @@ yText.insert(0, 'Hello collaborative world!');
 - ✅ **BrainstormInputEditor** - Requirements input with YJS textarea field
 - ✅ **SingleBrainstormIdeaEditor** - Idea editing with YJS title/body fields  
 - ✅ **OutlineSettingsDisplay** - Complex nested editing with character management
+- ✅ **EpisodePlanningDisplay** - Episode planning with group-based editing
 - 🚧 **ChronicleStageCard** - Stage descriptions (in progress)
 
 **YJS Field Components**:
@@ -517,6 +526,169 @@ yText.insert(0, 'Hello collaborative world!');
 - Maintained all existing UI states and interactions while adding collaborative features
 - Advanced features like complex nested object editing and dynamic array management
 - Rich read-only displays with conditional sections
+
+## Episode Planning System
+
+觅光助创 features a sophisticated episode planning system designed specifically for Chinese short drama production on platforms like 抖音, 快手, and 小红书.
+
+### Core Philosophy: "Pulsing" Emotional Rhythm
+
+The episode planning system transforms chronological story timelines into TikTok-optimized viewing experiences:
+
+**Key Principles**:
+- **2-Minute Episodes** - Perfect for short attention spans on mobile platforms
+- **Emotional Climax Per Episode** - Every episode must have a dramatic peak
+- **Hook-Heavy Structure** - Strong opening hooks and cliffhanger endings
+- **Non-Linear Storytelling** - Reorders chronological events for maximum impact
+- **Suspense-Driven Pacing** - Uses flashbacks, reveals, and plot twists strategically
+
+### Episode Planning Features
+
+**TikTok-Optimized Structure**:
+- **Group-Based Organization** - Episodes organized into logical production groups
+- **Episode Range Management** - Clear episode numbering (e.g., "1-3", "4-7")
+- **Key Events Tracking** - Essential plot points for each episode group
+- **Hook Strategy** - Specific suspense hooks designed to retain viewers
+- **Emotional Beat Mapping** - Precise emotional progression throughout episodes
+
+**AI-Powered Generation**:
+```typescript
+// Episode planning generation from chronicles
+const episodePlanningInput = {
+  jsondocs: [{ jsondocId: chroniclesId, schemaType: 'chronicles' }],
+  numberOfEpisodes: 20,
+  requirements: '适合抖音平台，注重情感冲击'
+};
+
+// AI generates optimized episode structure
+const episodePlanning = await generateEpisodePlanning(episodePlanningInput);
+```
+
+**Generated Structure**:
+```typescript
+interface EpisodePlanningOutput {
+  totalEpisodes: number;
+  episodeGroups: Array<{
+    groupTitle: string;           // e.g., "开局冲突"
+    episodes: string;             // e.g., "1-3" 
+    keyEvents: string[];          // Major plot points
+    hooks: string[];              // Suspense elements
+    emotionalBeats: string[];     // Emotional progression
+  }>;
+  overallStrategy: string;        // Strategic approach explanation
+}
+```
+
+### Episode Planning Workflow
+
+**Step 1: Chronicles Completion**
+- User must complete chronological story timeline (chronicles)
+- Chronicles provide the raw story material for episode planning
+- AI analyzes character arcs, plot points, and emotional progression
+
+**Step 2: Episode Planning Generation**
+- AI transforms chronological timeline into optimized viewing order
+- Considers platform-specific requirements (抖音 vs 快手 vs 小红书)
+- Applies "pulsing" emotional rhythm principles
+- Creates episode groups with clear dramatic functions
+
+**Step 3: Collaborative Editing**
+- Real-time collaborative editing with YJS integration
+- Group-level editing with episode range management
+- Key events and hooks can be refined collaboratively
+- Emotional beats can be adjusted for optimal impact
+
+**Step 4: Production Planning**
+- Episode groups provide clear production units
+- Each group has defined scope and objectives
+- Hook strategy guides content creation priorities
+- Emotional beat mapping ensures consistent viewer engagement
+
+### UI Components and Editing
+
+**EpisodePlanningDisplay Component**:
+- **JsondocDisplayWrapper Integration** - Consistent editing patterns
+- **Group-Based Visualization** - Clear episode group organization
+- **Click-to-Edit Interface** - Seamless transition to editing mode
+- **Real-time Collaboration** - YJS-powered collaborative editing
+- **Responsive Design** - Optimized for both desktop and mobile editing
+
+**EditableEpisodePlanningForm**:
+- **Group Management** - Add, remove, and reorder episode groups
+- **Episode Range Editing** - Flexible episode numbering
+- **Key Events Array** - Dynamic list management for plot points
+- **Hooks Array** - Suspense element management
+- **Emotional Beats Array** - Emotional progression tracking
+
+### Integration with Workflow
+
+**Workflow Position**: Episode planning sits between chronicles generation and script writing:
+```
+Chronicles (Time Order) → Episode Planning (Viewing Order) → Script Writing
+```
+
+**Action Computation Integration**:
+- **Prerequisite Validation** - Requires completed chronicles
+- **Auto-Detection** - Automatically appears when chronicles are complete
+- **Progress Tracking** - Integrated with unified workflow state management
+- **Next Step Enablement** - Unlocks script generation when complete
+
+**Database Schema**:
+```sql
+-- Episode planning jsondocs
+jsondocs (
+  schema_type: 'episode_planning',
+  data: EpisodePlanningOutput,
+  origin_type: 'ai_generated' | 'human'
+)
+
+-- Transform tracking
+transforms (
+  transform_type: 'llm',
+  tool_name: 'generate_episode_planning',
+  metadata: {
+    chronicles_jsondoc_id: string,
+    numberOfEpisodes: number,
+    requirements: string
+  }
+)
+```
+
+### Platform-Specific Optimization
+
+**抖音 (TikTok) Optimization**:
+- **Ultra-Short Episodes** - 1-2 minutes maximum
+- **Immediate Hooks** - Compelling content within first 3 seconds
+- **Cliffhanger Endings** - Every episode ends with suspense
+- **Emotional Intensity** - High emotional stakes throughout
+
+**快手 (Kuaishou) Optimization**:
+- **Authentic Storytelling** - Relatable, down-to-earth content
+- **Longer Episodes** - 2-3 minutes for deeper character development
+- **Community Focus** - Stories that resonate with working-class audiences
+- **Emotional Authenticity** - Genuine emotional moments over manufactured drama
+
+**小红书 (RedBook) Optimization**:
+- **Lifestyle Integration** - Stories that fit lifestyle content consumption
+- **Visual Storytelling** - Emphasis on visually appealing scenes
+- **Aspirational Content** - Characters and situations users aspire to
+- **Social Sharing** - Content designed for social media sharing
+
+### Benefits for Chinese Short Drama Production
+
+**Creative Benefits**:
+- **Optimized Viewer Retention** - Each episode designed to maximize engagement
+- **Platform-Specific Adaptation** - Content tailored for specific platforms
+- **Emotional Impact Maximization** - Strategic placement of emotional beats
+- **Production Efficiency** - Clear episode groups guide production planning
+
+**Technical Benefits**:
+- **Schema-Driven Validation** - Ensures consistent episode planning structure
+- **Real-time Collaboration** - Multiple team members can refine episode plans
+- **Version Control** - Complete audit trail of episode planning changes
+- **Integration Ready** - Seamless flow to script generation and production
+
+The episode planning system represents a sophisticated approach to Chinese short drama production, combining AI-powered content optimization with collaborative editing tools specifically designed for the unique requirements of platforms like 抖音, 快手, and 小红书.
 
 ## Technical Architecture
 
@@ -1081,6 +1253,8 @@ fetch('/api/chat', {
 - `GET /api/jsondocs` - List jsondocs with filtering
 - `GET /api/projects/:projectId/outline-settings` - Get outline settings for brainstorm ideas
 - `GET /api/projects/:projectId/chronicles` - Get chronicles for outline settings
+- `POST /api/projects/:projectId/episode-planning` - Generate episode planning from chronicles
+- `GET /api/projects/:projectId/episode-planning` - Get episode planning for project
 
 ### YJS Collaboration
 - `GET /api/yjs/jsondoc/:jsondocId` - Get jsondoc data for YJS initialization

@@ -1740,7 +1740,8 @@ function traceForwardFromJsondoc(
                 nextJsondoc.schema_type === 'brainstorm_collection' ||
                 nextJsondoc.schema_type === 'brainstorm_idea' ||
                 nextJsondoc.schema_type === 'outline_settings' ||
-                nextJsondoc.schema_type === 'chronicles';
+                nextJsondoc.schema_type === 'chronicles' ||
+                nextJsondoc.schema_type === 'episode_planning';
 
 
 
@@ -1826,6 +1827,10 @@ function createWorkflowNodeFromJsondoc(
         nodeType = 'chronicles';
         title = '分集概要';
         navigationTarget = '#chronicles';
+    } else if (jsondoc.schema_type === 'episode_planning') {
+        nodeType = 'episode_planning';
+        title = '分集规划';
+        navigationTarget = '#episode-planning';
     } else {
         // Unknown jsondoc type
         return null;

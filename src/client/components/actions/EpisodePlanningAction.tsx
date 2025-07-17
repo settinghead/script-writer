@@ -26,8 +26,8 @@ const EpisodePlanningAction: React.FC<EpisodePlanningActionProps> = (props) => {
             return;
         }
 
-        if (numberOfEpisodes < 1 || numberOfEpisodes > 50) {
-            message.error('集数必须在1-50之间');
+        if (numberOfEpisodes < 1 || numberOfEpisodes > 200) {
+            message.error('集数必须在1-200之间');
             return;
         }
 
@@ -91,11 +91,11 @@ const EpisodePlanningAction: React.FC<EpisodePlanningActionProps> = (props) => {
                 >
                     <InputNumber
                         min={1}
-                        max={50}
+                        max={200}
                         value={numberOfEpisodes}
-                        onChange={(value) => setNumberOfEpisodes(value || 12)}
+                        onChange={(value) => setNumberOfEpisodes(value || 80)}
                         style={{ width: '100%' }}
-                        placeholder="输入总集数（1-50）"
+                        placeholder="输入总集数（1-200"
                         data-testid="episode-count-input"
                     />
                 </Form.Item>
@@ -105,7 +105,7 @@ const EpisodePlanningAction: React.FC<EpisodePlanningActionProps> = (props) => {
                 type="primary"
                 loading={isGenerating}
                 onClick={handleGenerateEpisodePlanning}
-                disabled={!latestChronicles || numberOfEpisodes < 1 || numberOfEpisodes > 50}
+                disabled={!latestChronicles || numberOfEpisodes < 1 || numberOfEpisodes > 200}
                 style={{ width: '100%' }}
                 data-testid="generate-episode-planning-btn"
             >

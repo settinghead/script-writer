@@ -339,6 +339,21 @@ function computeUnifiedContext(
     // Find canonical episode planning (should be only one)
     const canonicalEpisodePlanning = canonicalEpisodePlanningJsondocs[0] || null;
 
+    console.log('[computeUnifiedContext] Episode planning analysis:', {
+        canonicalEpisodePlanningJsondocs: canonicalEpisodePlanningJsondocs.map(j => ({
+            id: j.id,
+            schema_type: j.schema_type,
+            origin_type: j.origin_type,
+            created_at: j.created_at
+        })),
+        canonicalEpisodePlanning: canonicalEpisodePlanning ? {
+            id: canonicalEpisodePlanning.id,
+            schema_type: canonicalEpisodePlanning.schema_type,
+            origin_type: canonicalEpisodePlanning.origin_type,
+            created_at: canonicalEpisodePlanning.created_at
+        } : null
+    });
+
     // Detect workflow path
     const isManualPath = !brainstormInput;
 
@@ -372,7 +387,8 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
         'idea-collection': 2,
         'single-idea-editor': 3,
         'outline-settings-display': 4,
-        'chronicles-display': 5
+        'chronicles-display': 5,
+        'episode-planning-display': 6
     };
 
     // Add components based on context
@@ -445,11 +461,32 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
             component: getComponentById('chronicles-display'),
             mode: context.hasActiveTransforms ? 'readonly' : 'editable',
             props: {
-                chronicles: context.canonicalChronicles,
+                chroniclesJsondoc: context.canonicalChronicles,
                 isEditable: !context.hasActiveTransforms
             },
             priority: componentOrder['chronicles-display']
         });
+    }
+
+    if (context.canonicalEpisodePlanning) {
+        console.log('[computeDisplayComponentsFromContext] Adding episode planning component:', {
+            episodePlanningId: context.canonicalEpisodePlanning.id,
+            hasActiveTransforms: context.hasActiveTransforms,
+            isEditable: !context.hasActiveTransforms
+        });
+
+        components.push({
+            id: 'episode-planning-display',
+            component: getComponentById('episode-planning-display'),
+            mode: context.hasActiveTransforms ? 'readonly' : 'editable',
+            props: {
+                episodePlanningJsondoc: context.canonicalEpisodePlanning,
+                isEditable: !context.hasActiveTransforms
+            },
+            priority: componentOrder['episode-planning-display']
+        });
+    } else {
+        console.log('[computeDisplayComponentsFromContext] No canonical episode planning found');
     }
 
     // Sort by priority
