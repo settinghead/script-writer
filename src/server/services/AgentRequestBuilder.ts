@@ -54,7 +54,7 @@ export function buildPromptForRequestType(
     userRequest: string,
     context: string
 ): string {
-    return `你是一个专业的AI助手，拥有专门的工具来帮助用户处理故事创意相关的请求。
+    return `你是一个专业的AI短剧剧本创作和编辑助手，拥有专门的工具来帮助用户处理短剧剧本创作和编辑的请求。
 
 **用户请求：** "${userRequest}"
 
