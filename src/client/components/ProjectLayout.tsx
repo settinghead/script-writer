@@ -254,20 +254,7 @@ const MobileRightDrawer: React.FC<{
                             </div>
                         )
                     },
-                    {
-                        key: 'workflow',
-                        label: (
-                            <Space>
-                                <ApartmentOutlined />
-                                <span>流程图</span>
-                            </Space>
-                        ),
-                        children: (
-                            <div style={{ padding: '12px' }}>
-                                <WorkflowVisualization width={280} />
-                            </div>
-                        )
-                    },
+
                 ]}
             />
         </Drawer>
