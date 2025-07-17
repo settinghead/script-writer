@@ -21,7 +21,7 @@ const ChroniclesGenerationAction: React.FC<ChroniclesGenerationActionProps> = (p
     // Handle chronicles generation
     const handleGenerateChronicles = useCallback(async () => {
         if (!latestOutlineSettings) {
-            message.error('未找到剧本框架');
+            message.error('未找到剧本设定');
             return;
         }
 
@@ -45,8 +45,8 @@ const ChroniclesGenerationAction: React.FC<ChroniclesGenerationActionProps> = (p
     if (!latestOutlineSettings) {
         return (
             <Alert
-                message="需要先生成剧本框架"
-                description="请先完成剧本框架，然后再生成时间顺序大纲"
+                message="需要先生成剧本设定"
+                description="请先完成剧本设定，然后再生成时间顺序大纲"
                 type="warning"
                 showIcon
                 style={{ margin: '16px 0' }}

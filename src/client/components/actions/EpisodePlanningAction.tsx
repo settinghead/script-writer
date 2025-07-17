@@ -36,11 +36,11 @@ const EpisodePlanningAction: React.FC<EpisodePlanningActionProps> = (props) => {
         try {
             await apiService.generateEpisodePlanningFromChronicles(projectId, latestChronicles.id, numberOfEpisodes);
 
-            message.success('剧集规划生成已启动');
+            message.success('剧集框架生成已启动');
             onSuccess?.();
         } catch (error) {
             console.error('Error generating episode planning:', error);
-            const errorMessage = `生成剧集规划失败: ${error instanceof Error ? error.message : '未知错误'}`;
+            const errorMessage = `生成剧集框架失败: ${error instanceof Error ? error.message : '未知错误'}`;
             message.error(errorMessage);
             onError?.(error instanceof Error ? error : new Error(errorMessage));
         } finally {
@@ -53,7 +53,7 @@ const EpisodePlanningAction: React.FC<EpisodePlanningActionProps> = (props) => {
         return (
             <Alert
                 message="需要先生成时间顺序大纲"
-                description="请先完成时间顺序大纲，然后再生成剧集规划"
+                description="请先完成时间顺序大纲，然后再生成剧集框架"
                 type="warning"
                 showIcon
             />
@@ -78,11 +78,11 @@ const EpisodePlanningAction: React.FC<EpisodePlanningActionProps> = (props) => {
         <Space direction="vertical" style={{ width: '100%' }}>
             <Title level={4}>
                 <VideoCameraOutlined style={{ color: '#722ed1' }} />
-                生成剧集规划
+                生成剧集框架
             </Title>
 
             <Text type="secondary">
-                基于时间顺序大纲（{stagesCount}个阶段）生成适合抖音短剧的剧集规划，优化观看顺序和情感节奏
+                基于时间顺序大纲（{stagesCount}个阶段）生成适合抖音短剧的剧集框架，优化观看顺序和情感节奏
             </Text>
 
             <Form layout="vertical">
@@ -110,13 +110,13 @@ const EpisodePlanningAction: React.FC<EpisodePlanningActionProps> = (props) => {
                 style={{ width: '100%' }}
                 data-testid="generate-episode-planning-btn"
             >
-                {isGenerating ? '正在生成剧集规划...' : '生成剧集规划'}
+                {isGenerating ? '正在生成剧集框架...' : '生成剧集框架'}
             </AIButton>
 
             {isGenerating && (
                 <Alert
                     message="正在生成中"
-                    description="AI正在基于时间顺序大纲生成适合短视频平台的剧集规划，请稍候..."
+                    description="AI正在基于时间顺序大纲生成适合短视频平台的剧集框架，请稍候..."
                     type="info"
                     showIcon
                 />

@@ -3,8 +3,8 @@ import { createJsonPatchTemplate } from './jsonPatchBase';
 export const outlineSettingsEditPatchTemplate = createJsonPatchTemplate(
     'outline_settings_edit_patch',
     'Outline Settings Editing (JSON Patch)',
-    '剧本框架',
-    '剧本框架设置',
+    '剧本设定',
+    '剧本设定设置',
     [
         '确保角色设定符合故事类型和平台特色',
         '保持卖点和爽点的商业价值',

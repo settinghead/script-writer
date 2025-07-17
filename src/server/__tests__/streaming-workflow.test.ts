@@ -102,7 +102,7 @@ describe('Streaming Workflow Tests', () => {
                 description: '故事创意',
                 schemaType: 'brainstorm_idea'
             }],
-            title: '都市甜宠剧本框架',
+            title: '都市甜宠剧本设定',
             requirements: '创建详细的角色设定和商业定位'
         }, { toolCallId: 'test-outline-settings' });
 
@@ -157,7 +157,7 @@ describe('Streaming Workflow Tests', () => {
         const chroniclesResult = await chroniclesTool.execute({
             jsondocs: [{
                 jsondocId: mockOutlineSettingsJsondoc.id,
-                description: '剧本框架设定',
+                description: '剧本设定设定',
                 schemaType: 'outline_settings'
             }],
             totalEpisodes: 30,

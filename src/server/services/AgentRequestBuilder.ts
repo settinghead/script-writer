@@ -71,9 +71,9 @@ ${context}
 1. 头脑风暴输入 (brainstorm_input)：用户提供创意参数
 2. 故事创意生成 (brainstorm_idea)：AI生成多个故事想法
 3. 创意选择与编辑：用户选择并修改创意
-4. 剧本框架生成 (outline_settings)：基于选定创意生成人物、背景、商业设定
+4. 剧本设定生成 (outline_settings)：基于选定创意生成人物、背景、商业设定
 5. 时间顺序大纲生成 (chronicles)：创建故事时序结构
-6. 剧集规划生成 (episode_planning)：基于时间顺序大纲创建优化的分集结构
+6. 剧集框架生成 (episode_planning)：基于时间顺序大纲创建优化的分集结构
 7. 分集与剧本生成：后续详细内容创作
 
 对于多步修改，始终遵循此顺序：先编辑上游内容（如创意），然后编辑依赖的下游内容（如框架）。
@@ -85,7 +85,7 @@ ${context}
 4. 如果请求复杂，需要修改多个组件（如想法和大纲），则按逻辑顺序调用多个工具（上游先，下游后）。
 5. **对于后续阶段的生成或编辑**：
    - 始终包含相关的上游canonical jsondocs作为参考材料
-   - 例如：生成剧集规划时包含 chronicles、brainstorm_idea、outline_settings
+   - 例如：生成剧集框架时包含 chronicles、brainstorm_idea、outline_settings
    - 例如：编辑时间顺序大纲时包含相关的 outline_settings 和 brainstorm_idea
    - 这确保每个阶段都基于完整的上下文信息，保持整个创作流程的一致性
 6. 选择最合适的工具（或工具序列）来满足需求。
@@ -99,18 +99,18 @@ ${context}
 → 使用 generate_brainstorm_ideas 工具
 → 参数：otherRequirements="其他要求"
 
-示例2：基于现有创意生成剧本框架
-用户请求："基于故事创意，生成详细的剧本框架"
+示例2：基于现有创意生成剧本设定
+用户请求："基于故事创意，生成详细的剧本设定"
 → 使用 generate_outline_settings 工具
 → 参数：title="故事标题", requirements="具体要求"
 
 示例3：生成时间顺序大纲
-用户请求："基于剧本框架创建60集的时间顺序大纲"
+用户请求："基于剧本设定创建60集的时间顺序大纲"
 → 使用 generate_chronicles 工具
 → 参数：totalEpisodes=60
 
-示例4：生成剧集规划
-用户请求："基于时间顺序大纲生成12集的剧集规划"
+示例4：生成剧集框架
+用户请求："基于时间顺序大纲生成12集的剧集框架"
 → 使用 generate_episode_planning 工具
 → 参数：numberOfEpisodes=12, jsondocs=[{ id: "active_brainstorm_idea" }, { id: "active_outline_settings" }, { id: "active_chronicles" }]
 
@@ -119,8 +119,8 @@ ${context}
 → 使用 edit_brainstorm_idea 工具
 → 参数：ideaIndex=0, editRequirements="增加悬疑元素"
 
-示例6：编辑剧本框架
-用户请求："修改剧本框架中的角色设定，增加反派角色"
+示例6：编辑剧本设定
+用户请求："修改剧本设定中的角色设定，增加反派角色"
 → 使用 edit_outline_settings 工具
 → 参数：editRequirements="增加反派角色", jsondocs=[{ id: "active_brainstorm_idea" }, { id: "current_outline_settings" }]
 
@@ -137,11 +137,11 @@ ${context}
 → 参数：editRequirements="基于更新后的创意整合童话元素到大纲中", jsondocs=[{ id: "new_brainstorm_idea" }, { id: "current_outline_settings" }]
 → 完成后返回JSON总结
 
-示例9：多步编辑 - 修改剧本框架后更新时间顺序大纲
+示例9：多步编辑 - 修改剧本设定后更新时间顺序大纲
 用户请求："减少作品的伦理争议，加入更多正面元素"
 → 第一步 使用 edit_brainstorm_idea 编辑想法，减少伦理争议
 → 参数：editRequirements="减少伦理争议，加入更多正面元素", jsondocs=[{ id: "current_brainstorm_idea" }]. 返回 jsondoc: { id: "new_brainstorm_idea" }
-→ 第二步 使用 edit_outline_settings 编辑剧本框架，基于新的想法
+→ 第二步 使用 edit_outline_settings 编辑剧本设定，基于新的想法
 → 参数：editRequirements="基于更新后的创意整合正面元素到框架中", jsondocs=[{ id: "new_brainstorm_idea" }, { id: "current_outline_settings" }], 返回 jsondoc: { id: "new_outline_settings" }
 → 第三步 使用 edit_chronicles 更新时间顺序大纲，基于新的框架设定
 → 参数：editRequirements="基于更新后的框架设定调整时间顺序大纲，确保内容一致性", jsondocs=[{ id: "new_brainstorm_idea" }, { id: "new_outline_settings" }, { id: "current_chronicles" }]

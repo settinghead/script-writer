@@ -110,7 +110,7 @@ const OutlineGenerationForm: React.FC<OutlineGenerationFormProps> = (props) => {
                     height: '40px'
                 }}
             >
-                {isGenerating ? '生成中...' : <> 生成剧本框架 <RightOutlined /></>}
+                {isGenerating ? '生成中...' : <> 生成剧本设定 <RightOutlined /></>}
             </AIButton>
         </div>
     );

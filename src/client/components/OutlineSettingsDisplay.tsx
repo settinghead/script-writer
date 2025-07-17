@@ -22,7 +22,7 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
         return (
             <SectionWrapper
                 schemaType={"outline_settings"}
-                title="剧本框架"
+                title="剧本设定"
                 sectionId="outline-settings"
                 jsondocId={effectiveJsondoc?.id}
             >
@@ -30,7 +30,7 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                     <JsondocDisplayWrapper
                         jsondoc={effectiveJsondoc}
                         isEditable={isEditable}
-                        title="剧本框架"
+                        title="剧本设定"
                         icon="📖"
                         editableComponent={EditableOutlineForm}
                         schemaType="outline_settings"
@@ -44,7 +44,7 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
     return (
         <SectionWrapper
             schemaType={"outline_settings"}
-            title="剧本框架"
+            title="剧本设定"
             sectionId="outline-settings"
             jsondocId={undefined}
         >
@@ -52,7 +52,7 @@ export const OutlineSettingsDisplay: React.FC<OutlineSettingsDisplayProps> = ({
                 <JsondocDisplayWrapper
                     jsondoc={undefined}
                     isEditable={false}
-                    title="剧本框架"
+                    title="剧本设定"
                     icon="📖"
                     editableComponent={EditableOutlineForm}
                     schemaType="outline_settings"

@@ -252,7 +252,7 @@ class ApiService {
     }
 
     async generateOutlineFromIdea(projectId: string, ideaJsondocId: string, title: string, requirements: string = ''): Promise<any> {
-        const content = `请基于创意生成剧本框架。源创意ID: ${ideaJsondocId}，标题: ${title}，要求: ${requirements || '无特殊要求'}`;
+        const content = `请基于创意生成剧本设定。源创意ID: ${ideaJsondocId}，标题: ${title}，要求: ${requirements || '无特殊要求'}`;
 
         return this.sendChatMessage(projectId, content, {
             sourceJsondocId: ideaJsondocId,
@@ -263,7 +263,7 @@ class ApiService {
     }
 
     async generateChroniclesFromOutline(projectId: string, outlineJsondocId: string): Promise<any> {
-        const content = `请基于剧本框架生成时间顺序大纲。源剧本框架ID: ${outlineJsondocId}`;
+        const content = `请基于剧本设定生成时间顺序大纲。源剧本设定ID: ${outlineJsondocId}`;
 
         return this.sendChatMessage(projectId, content, {
             sourceJsondocId: outlineJsondocId,
@@ -272,7 +272,7 @@ class ApiService {
     }
 
     async generateEpisodePlanningFromChronicles(projectId: string, chroniclesJsondocId: string, numberOfEpisodes: number): Promise<any> {
-        const content = `请基于时间顺序大纲生成剧集规划。源时间顺序大纲ID: ${chroniclesJsondocId}，总集数: ${numberOfEpisodes}`;
+        const content = `请基于时间顺序大纲生成剧集框架。源时间顺序大纲ID: ${chroniclesJsondocId}，总集数: ${numberOfEpisodes}`;
 
         return this.sendChatMessage(projectId, content, {
             sourceJsondocId: chroniclesJsondocId,

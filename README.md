@@ -11,13 +11,13 @@ A collaborative Chinese short drama script writing application built on the [Tra
 - **Chinese Short Drama Focus** - Specialized for 抖音, 快手, and other Chinese platforms
 - **去脸谱化 Content** - Emphasizes modern, non-stereotypical characters and plots
 - **Real-time Collaboration** - YJS-powered collaborative editing with conflict resolution
-- **Complete Project Workflow** - 灵感 → 剧本框架 → 时间顺序大纲 → 剧集规划 → 剧本 pipeline
+- **Complete Project Workflow** - 灵感 → 剧本设定 → 时间顺序大纲 → 剧集框架 → 剧本 pipeline
 
 ## Application-Specific Features
 
 ### 🎭 Script Creation Pipeline
 
-**Complete Workflow**: 灵感生成 → 剧本框架 → 时间顺序大纲 → 剧集规划 → 剧本创作
+**Complete Workflow**: 灵感生成 → 剧本设定 → 时间顺序大纲 → 剧集框架 → 剧本创作
 
 **Brainstorming (灵感生成)**:
 - **Platform-Specific Generation** - Optimized for 抖音, 快手, 小红书, etc.
@@ -26,12 +26,12 @@ A collaborative Chinese short drama script writing application built on the [Tra
 - **AI-Powered Editing** - "让这些故事更现代一些，加入一些科技元素"
 - **Real-time Streaming** - Ideas appear as they're generated
 
-**Outline Settings (剧本框架)**:
+**Outline Settings (剧本设定)**:
 - **Character Development** - Normalized character types (male_lead, female_lead, etc.) with detailed backgrounds
 - **Story Foundation** - Genre, target audience, platform settings, and commercial positioning
 - **Setting & Context** - Time period, location, and social background for the story
 - **Commercial Elements** - Selling points (卖点) and satisfaction points (爽点) for audience engagement
-- **Seamless Integration** - "生成剧本框架" workflow from brainstorm to settings
+- **Seamless Integration** - "生成剧本设定" workflow from brainstorm to settings
 
 **Chronicles (时间顺序大纲)**:
 - **Chronological Structure** - Complete story timeline from earliest events to conclusion (story order, not broadcast order)
@@ -42,7 +42,7 @@ A collaborative Chinese short drama script writing application built on the [Tra
 - **Stage-Level Human Transforms** - Each stage can be independently edited while preserving the overall chronicles structure
 - **Complete Field Editing** - All stage fields editable: title, synopsis, events, emotion arcs, relationship developments, insights
 
-**Episode Planning (剧集规划)**:
+**Episode Planning (剧集框架)**:
 - **TikTok-Optimized Structure** - Creates 2-minute episodes perfect for 抖音 short attention spans
 - **"Pulsing" Emotional Rhythm** - Each episode features emotional climax and suspense hooks
 - **Non-Linear Organization** - Reorders chronological timeline for maximum dramatic impact
@@ -300,9 +300,9 @@ The application supports two distinct paths for script creation, each optimized 
 **Stages**:
 1. **手动创意输入 (Manual Idea Entry)** - User manually enters a single story concept
 2. **创意编辑 (Idea Editing)** - Refine and develop the manually entered idea
-3. **剧本框架生成 (Outline Settings Generation)** - Generate characters, setting, and commercial elements
+3. **剧本设定生成 (Outline Settings Generation)** - Generate characters, setting, and commercial elements
 4. **时间顺序大纲生成 (Chronicles Generation)** - Create chronological story progression
-5. **剧集规划 (Episode Planning)** - Transform chronicles into TikTok-optimized episode structure
+5. **剧集框架 (Episode Planning)** - Transform chronicles into TikTok-optimized episode structure
 6. **剧本创作 (Script Writing)** - Generate detailed scripts with dialogue
 
 **Key Features**:
@@ -318,9 +318,9 @@ The application supports two distinct paths for script creation, each optimized 
 2. **AI创意生成 (AI Idea Generation)** - AI generates multiple story concepts based on input
 3. **创意选择 (Idea Selection)** - User selects the most promising idea from AI-generated options
 4. **创意编辑 (Idea Editing)** - Refine and develop the selected idea
-5. **剧本框架生成 (Outline Settings Generation)** - Generate characters, setting, and commercial elements
+5. **剧本设定生成 (Outline Settings Generation)** - Generate characters, setting, and commercial elements
 6. **时间顺序大纲生成 (Chronicles Generation)** - Create chronological story progression
-7. **剧集规划 (Episode Planning)** - Transform chronicles into TikTok-optimized episode structure
+7. **剧集框架 (Episode Planning)** - Transform chronicles into TikTok-optimized episode structure
 8. **剧本创作 (Script Writing)** - Generate detailed scripts with dialogue
 
 **Key Features**:
@@ -1161,7 +1161,7 @@ npm run dev
 1. **Login** - Use dropdown to select test user (xiyang, xiaolin)
 2. **Create Project** - Start with a new script project
 3. **Brainstorm Ideas** - Generate initial story concepts
-4. **Generate Outline Settings** - Use "生成剧本框架" to create character and story foundation
+4. **Generate Outline Settings** - Use "生成剧本设定" to create character and story foundation
 5. **Create Chronicles** - Generate chronological story timeline and episode progression
 6. **Generate Episodes** - Create detailed episode breakdowns
 7. **Write Scripts** - Develop full dialogue and scenes

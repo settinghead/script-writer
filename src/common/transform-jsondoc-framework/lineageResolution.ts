@@ -1829,7 +1829,7 @@ function createWorkflowNodeFromJsondoc(
         navigationTarget = '#chronicles';
     } else if (jsondoc.schema_type === 'episode_planning') {
         nodeType = 'episode_planning';
-        title = '剧集规划';
+        title = '剧集框架';
         navigationTarget = '#episode-planning';
     } else {
         // Unknown jsondoc type

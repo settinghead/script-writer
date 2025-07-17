@@ -157,7 +157,7 @@ describe('End-to-End Workflow Tests', () => {
                 schemaType: 'brainstorm_collection'
             }],
             title: '现代甜宠故事设定',
-            requirements: '创建详细的剧本框架，包括角色背景和商业定位'
+            requirements: '创建详细的剧本设定，包括角色背景和商业定位'
         };
 
         console.log('🎭 Step 2: Generating outline settings...');

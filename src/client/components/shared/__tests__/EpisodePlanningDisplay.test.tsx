@@ -285,6 +285,6 @@ describe('EpisodePlanningDisplay', () => {
         render(<EpisodePlanningDisplay {...mockProps} />);
 
         expect(screen.getByTestId('alert')).toHaveAttribute('data-type', 'info');
-        expect(screen.getByTestId('alert')).toHaveTextContent('暂无剧集规划数据');
+        expect(screen.getByTestId('alert')).toHaveTextContent('暂无剧集框架数据');
     });
 }); 
