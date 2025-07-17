@@ -44,6 +44,7 @@ export function createAdminRoutes(
                 'generate_outline_settings': 'outline_settings',
                 'edit_outline_settings': 'outline_settings_edit_patch',
                 'generate_chronicles': 'chronicles',
+                'edit_chronicles': 'chronicles_edit_patch',
                 'generate_episode_planning': 'episode_planning'
             };
 
@@ -137,7 +138,8 @@ export function createAdminRoutes(
                 'edit_brainstorm_idea': 'brainstorm_edit_patch',
                 'generate_outline_settings': 'outline_settings',
                 'edit_outline_settings': 'outline_settings_edit_patch',
-                'generate_chronicles': 'chronicles'
+                'generate_chronicles': 'chronicles',
+                'edit_chronicles': 'chronicles_edit_patch'
             };
 
             const templateName = toolToTemplate[toolName];
@@ -220,6 +222,10 @@ export function createAdminRoutes(
                 'generate_chronicles': async (projectId: string, userId: string) => {
                     const { createChroniclesToolDefinition } = await import('../tools/ChroniclesTool.js');
                     return createChroniclesToolDefinition(transformRepo, jsondocRepo, projectId, userId);
+                },
+                'edit_chronicles': async (projectId: string, userId: string) => {
+                    const { createChroniclesEditToolDefinition } = await import('../tools/ChroniclesTool.js');
+                    return createChroniclesEditToolDefinition(transformRepo, jsondocRepo, projectId, userId);
                 }
             };
 
@@ -332,6 +338,21 @@ export function createAdminRoutes(
                 };
                 outputJsondocType = 'chronicles';
                 transformMetadata = { toolName: 'generate_chronicles' };
+            } else if (toolName === 'edit_chronicles') {
+                const { ChroniclesEditInputSchema } = await import('@/common/schemas/transforms.js');
+                const { z } = await import('zod');
+                config = {
+                    templateName: 'chronicles_edit_patch',
+                    inputSchema: ChroniclesEditInputSchema,
+                    outputSchema: z.array(z.object({
+                        op: z.enum(['add', 'remove', 'replace', 'move', 'copy', 'test']),
+                        path: z.string(),
+                        value: z.any().optional(),
+                        from: z.string().optional()
+                    }))
+                };
+                outputJsondocType = 'chronicles';
+                transformMetadata = { toolName: 'edit_chronicles' };
             } else {
                 sendSSE('error', { message: `Unsupported tool for non-persistent run: ${toolName}` });
                 res.end();

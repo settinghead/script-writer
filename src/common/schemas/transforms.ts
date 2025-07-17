@@ -102,6 +102,15 @@ export const OutlineSettingsEditInputSchema = z.object({
 
 export type OutlineSettingsEditInput = z.infer<typeof OutlineSettingsEditInputSchema>;
 
+// Input schema for chronicles editing
+export const ChroniclesEditInputSchema = z.object({
+  jsondocs: JsondocReferencesSchema.min(1, '至少需要一个jsondoc引用').describe('引用的jsondoc列表，包含要编辑的时间顺序大纲和其他相关内容，如更新的剧本框架设置'),
+  editRequirements: z.string().min(1, '编辑要求不能为空').describe('具体的编辑要求，如：修改时间线、调整角色发展、更新情节推进等'),
+  agentInstructions: z.string().optional().describe('来自智能体的额外指导信息，用于更好地理解编辑意图')
+});
+
+export type ChroniclesEditInput = z.infer<typeof ChroniclesEditInputSchema>;
+
 // JSON Patch operation schema (RFC 6902)
 export const JsonPatchOperationSchema = z.object({
   op: z.enum(['add', 'remove', 'replace', 'move', 'copy', 'test']).describe('JSON Patch操作类型'),

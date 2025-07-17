@@ -456,13 +456,16 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
     }
 
     if (context.canonicalChronicles) {
+        // Chronicles should be read-only if there are active transforms OR if episode planning exists
+        const isChroniclesEditable = !context.hasActiveTransforms && !context.canonicalEpisodePlanning;
+
         components.push({
             id: 'chronicles-display',
             component: getComponentById('chronicles-display'),
-            mode: context.hasActiveTransforms ? 'readonly' : 'editable',
+            mode: isChroniclesEditable ? 'editable' : 'readonly',
             props: {
                 chroniclesJsondoc: context.canonicalChronicles,
-                isEditable: !context.hasActiveTransforms
+                isEditable: isChroniclesEditable
             },
             priority: componentOrder['chronicles-display']
         });
@@ -471,6 +474,9 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
     if (context.canonicalEpisodePlanning) {
         console.log('[computeDisplayComponentsFromContext] Adding episode planning component:', {
             episodePlanningId: context.canonicalEpisodePlanning.id,
+            episodePlanningSchemaType: context.canonicalEpisodePlanning.schema_type,
+            episodePlanningOriginType: context.canonicalEpisodePlanning.origin_type,
+            episodePlanningDataLength: context.canonicalEpisodePlanning.data?.length,
             hasActiveTransforms: context.hasActiveTransforms,
             isEditable: !context.hasActiveTransforms
         });

@@ -126,7 +126,7 @@ ${context}
 → 第二步：使用 edit_outline_settings 更新大纲，整合新元素
 → 参数：jsondocs=[{jsondocId: "outline_id_from_context", schemaType: "outline_settings", description: "现有剧本框架"}, {jsondocId: "<output_from_first_call>", schemaType: "brainstorm_idea", description: "更新后的故事创意"}], editRequirements="基于更新后的创意整合童话元素到大纲中"
 → 完成后返回JSON总结
-(注意在示例6中，我们使用了两个工具，并且第二个工具的参数中包含了第一个工具的输出。)
+(注意在示例7中，我们使用了两个工具，并且第二个工具的参数中包含了第一个工具的输出。)
 
 ===工具选择示例 结束===
 

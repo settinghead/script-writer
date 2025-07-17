@@ -8,19 +8,208 @@ import {
     ChroniclesOutput
 } from '../../common/schemas/outlineSchemas';
 import {
+    ChroniclesEditInputSchema,
+    ChroniclesEditInput
+} from '../../common/schemas/transforms';
+import {
     executeStreamingTransform,
     StreamingTransformConfig
 } from '../transform-jsondoc-framework/StreamingTransformExecutor';
 import type { StreamingToolDefinition } from '../transform-jsondoc-framework/StreamingAgentFramework';
+import { TypedJsondoc } from '@/common/jsondocs';
+import { defaultPrepareTemplateVariables } from '../transform-jsondoc-framework/StreamingTransformExecutor';
 
 const ChroniclesToolResultSchema = z.object({
     outputJsondocId: z.string(),
     finishReason: z.string()
 });
 
+const ChroniclesEditToolResultSchema = z.object({
+    outputJsondocId: z.string(),
+    finishReason: z.string(),
+    originalChronicles: z.object({
+        stageCount: z.number(),
+        firstStageTitle: z.string().optional(),
+        // Add other key fields for reference
+    }).optional(),
+    editedChronicles: z.object({
+        stageCount: z.number(),
+        firstStageTitle: z.string().optional(),
+        // Add other key fields for reference
+    }).optional()
+});
+
 interface ChroniclesToolResult {
     outputJsondocId: string;
     finishReason: string;
+}
+
+export type ChroniclesEditToolResult = z.infer<typeof ChroniclesEditToolResultSchema>;
+
+/**
+ * Extract source chronicles data from different jsondoc types
+ */
+async function extractSourceChroniclesData(
+    params: ChroniclesEditInput,
+    jsondocRepo: JsondocRepository,
+    userId: string
+): Promise<{
+    originalChronicles: any;
+    additionalContexts: any[];
+    stageCount: number;
+    firstStageTitle: string;
+}> {
+    let originalChronicles: any;
+    let additionalContexts: any[] = [];
+    let stageCount = 0;
+    let firstStageTitle = '';
+
+    for (const [index, jsondocRef] of params.jsondocs.entries()) {
+        const sourceJsondoc = await jsondocRepo.getJsondoc(jsondocRef.jsondocId);
+        if (!sourceJsondoc) {
+            throw new Error(`Jsondoc ${jsondocRef.jsondocId} not found`);
+        }
+
+        const hasAccess = await jsondocRepo.userHasProjectAccess(userId, sourceJsondoc.project_id);
+        if (!hasAccess) {
+            throw new Error(`Access denied to jsondoc ${jsondocRef.jsondocId}`);
+        }
+
+        const sourceData = sourceJsondoc.data;
+
+        if (index === 0) { // First is always the chronicles
+            originalChronicles = sourceData;
+            stageCount = sourceData.stages ? sourceData.stages.length : 0;
+            firstStageTitle = sourceData.stages && sourceData.stages.length > 0 ? sourceData.stages[0].title || '' : '';
+        } else {
+            // Additional contexts (e.g., updated outline settings)
+            additionalContexts.push({
+                description: jsondocRef.description,
+                data: sourceData
+            });
+        }
+    }
+
+    if (!originalChronicles) {
+        throw new Error('No chronicles jsondoc provided');
+    }
+
+    return { originalChronicles, additionalContexts, stageCount, firstStageTitle };
+}
+
+/**
+ * Factory function that creates a chronicles edit tool definition using JSON patch
+ */
+export function createChroniclesEditToolDefinition(
+    transformRepo: TransformRepository,
+    jsondocRepo: JsondocRepository,
+    projectId: string,
+    userId: string,
+    cachingOptions?: {
+        enableCaching?: boolean;
+        seed?: number;
+        temperature?: number;
+        topP?: number;
+        maxTokens?: number;
+    }
+): StreamingToolDefinition<ChroniclesEditInput, ChroniclesEditToolResult> {
+    return {
+        name: 'edit_chronicles',
+        description: '使用JSON补丁方式编辑和改进现有时间顺序大纲。适用场景：用户对现有时间顺序大纲有具体的修改要求或改进建议，如修改时间线、调整角色发展、更新情节推进等。使用JSON Patch格式进行精确修改，只改变需要改变的部分。重要：必须使用项目背景信息中显示的完整ID作为sourceJsondocId参数。',
+        inputSchema: ChroniclesEditInputSchema,
+        outputSchema: ChroniclesEditToolResultSchema,
+        execute: async (params: ChroniclesEditInput, { toolCallId }): Promise<ChroniclesEditToolResult> => {
+            const sourceJsondocRef = params.jsondocs[0];
+            console.log(`[ChroniclesEditTool] Starting JSON patch edit for jsondoc ${sourceJsondocRef.jsondocId}`);
+
+            // Extract source chronicles data for context
+            const { originalChronicles, additionalContexts, stageCount, firstStageTitle } = await extractSourceChroniclesData(params, jsondocRepo, userId);
+
+            // Determine output jsondoc type
+            const sourceJsondoc = await jsondocRepo.getJsondoc(sourceJsondocRef.jsondocId);
+            if (!sourceJsondoc) {
+                throw new Error('Source jsondoc not found');
+            }
+
+            const outputJsondocType: TypedJsondoc['schema_type'] = 'chronicles';
+
+            // Create config for JSON patch generation using patch template
+            const config: StreamingTransformConfig<ChroniclesEditInput, any> = {
+                templateName: 'chronicles_edit_patch',
+                inputSchema: ChroniclesEditInputSchema,
+                outputSchema: z.array(z.object({
+                    op: z.enum(['add', 'remove', 'replace', 'move', 'copy', 'test']),
+                    path: z.string(),
+                    value: z.any().optional(),
+                    from: z.string().optional()
+                })), // RFC6902 JSON patch array schema
+                prepareTemplateVariables: async (input) => {
+                    const defaultVars = await defaultPrepareTemplateVariables(input, jsondocRepo);
+                    return {
+                        ...defaultVars,
+                        additionalContexts
+                    };
+                }
+            };
+
+            try {
+                // Execute the streaming transform with patch mode
+                const result = await executeStreamingTransform({
+                    config,
+                    input: params,
+                    projectId,
+                    userId,
+                    transformRepo,
+                    jsondocRepo,
+                    outputJsondocType,
+                    executionMode: {
+                        mode: 'patch',
+                        originalJsondoc: originalChronicles
+                    },
+                    transformMetadata: {
+                        toolName: 'edit_chronicles',
+                        source_jsondoc_id: sourceJsondocRef.jsondocId,
+                        edit_requirements: params.editRequirements,
+                        original_chronicles: originalChronicles,
+                        stage_count: stageCount,
+                        first_stage_title: firstStageTitle,
+                        method: 'json_patch',
+                        source_jsondoc_type: sourceJsondoc.schema_type,
+                        output_jsondoc_type: outputJsondocType,
+                        additionalContexts: additionalContexts
+                    },
+                    enableCaching: cachingOptions?.enableCaching,
+                    seed: cachingOptions?.seed,
+                    temperature: cachingOptions?.temperature,
+                    topP: cachingOptions?.topP,
+                    maxTokens: cachingOptions?.maxTokens
+                });
+
+                // Get the final jsondoc to extract the edited chronicles
+                const finalJsondoc = await jsondocRepo.getJsondoc(result.outputJsondocId);
+                const editedChronicles = finalJsondoc?.data || originalChronicles;
+
+                console.log(`[ChroniclesEditTool] Successfully completed JSON patch edit with jsondoc ${result.outputJsondocId}`);
+
+                return {
+                    outputJsondocId: result.outputJsondocId,
+                    finishReason: result.finishReason,
+                    originalChronicles: {
+                        stageCount: stageCount,
+                        firstStageTitle: firstStageTitle
+                    },
+                    editedChronicles: {
+                        stageCount: editedChronicles.stages ? editedChronicles.stages.length : stageCount,
+                        firstStageTitle: editedChronicles.stages && editedChronicles.stages.length > 0 ? editedChronicles.stages[0].title || firstStageTitle : firstStageTitle
+                    }
+                };
+
+            } catch (error) {
+                console.error(`[ChroniclesEditTool] JSON patch edit failed:`, error);
+                throw new Error(`Chronicles edit failed: ${error instanceof Error ? error.message : String(error)}`);
+            }
+        }
+    };
 }
 
 /**
