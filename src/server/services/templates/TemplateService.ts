@@ -83,13 +83,31 @@ export class TemplateService {
       result = result.replace(/%%params%%/g, paramsYaml);
     }
 
-    // Replace %%jsondocs%% with YAML-formatted jsondoc data
+    // Replace %%jsondocs%% with custom flat YAML-like format
     if (context.jsondocs) {
-      const jsondocsYaml = dump(context.jsondocs, {
-        indent: 2,
-        lineWidth: -1 // Disable line wrapping
-      }).trim();
-      result = result.replace(/%%jsondocs%%/g, jsondocsYaml);
+      let jsondocsOutput = '';
+
+      for (const [key, jsondoc] of Object.entries(context.jsondocs)) {
+        jsondocsOutput += `${key}:\n`;
+
+        // Handle each field in the jsondoc
+        for (const [field, value] of Object.entries(jsondoc as any)) {
+          if (field === 'data') {
+            // For data field, output the JSON string with proper indentation
+            jsondocsOutput += `  ${field}: |\n`;
+            const jsonString = value as string;
+            // Indent each line of the JSON string
+            const indentedJson = jsonString.split('\n').map(line => `    ${line}`).join('\n');
+            jsondocsOutput += `${indentedJson}\n`;
+          } else {
+            // For other fields, use regular YAML formatting
+            jsondocsOutput += `  ${field}: ${value}\n`;
+          }
+        }
+        jsondocsOutput += '\n'; // Add spacing between jsondocs
+      }
+
+      result = result.replace(/%%jsondocs%%/g, jsondocsOutput.trim());
     }
 
     return result;

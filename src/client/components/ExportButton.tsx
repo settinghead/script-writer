@@ -63,6 +63,7 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
                 exportableItems={exportableItems}
                 lineageGraph={projectData.lineageGraph}
                 jsondocs={Array.isArray(projectData.jsondocs) ? projectData.jsondocs : []}
+                projectId={projectId}
             />
         </>
     );

@@ -4,8 +4,7 @@ import { DownloadOutlined } from '@ant-design/icons';
 import {
     ExportableItem,
     generateExportFilename,
-    exportToMarkdown,
-    exportToDocx
+    exportProject
 } from '../services/exportService';
 
 interface ExportModalProps {
@@ -14,6 +13,7 @@ interface ExportModalProps {
     exportableItems: ExportableItem[];
     lineageGraph: any;
     jsondocs: any[];
+    projectId: string;
 }
 
 export const ExportModal: React.FC<ExportModalProps> = ({
@@ -21,9 +21,10 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     onClose,
     exportableItems,
     lineageGraph,
-    jsondocs
+    jsondocs,
+    projectId
 }) => {
-    const [format, setFormat] = useState<'markdown' | 'docx'>('markdown');
+    const [format, setFormat] = useState<'markdown' | 'docx'>('docx');
     const [selectedItems, setSelectedItems] = useState<string[]>([]);
     const [filename, setFilename] = useState('');
     const [isExporting, setIsExporting] = useState(false);
@@ -85,13 +86,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
         setIsExporting(true);
         try {
-            if (format === 'markdown') {
-                exportToMarkdown(exportableItems, selectedItems, filename);
-                message.success('Markdown 文件导出成功');
-            } else {
-                await exportToDocx(exportableItems, selectedItems, filename);
-                message.success('Word 文档导出成功');
-            }
+            await exportProject(projectId, format, selectedItems, filename);
+            message.success(format === 'markdown' ? 'Markdown 文件导出成功' : 'Word 文档导出成功');
             onClose();
         } catch (error) {
             console.error('Export failed:', error);
@@ -128,8 +124,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 <div>
                     <h4>导出格式</h4>
                     <Radio.Group value={format} onChange={(e) => setFormat(e.target.value)}>
-                        <Radio value="markdown">Markdown (.md)</Radio>
                         <Radio value="docx">Word 文档 (.docx)</Radio>
+                        <Radio value="markdown">Markdown (.md)</Radio>
                     </Radio.Group>
                 </div>
 

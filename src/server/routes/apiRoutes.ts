@@ -16,6 +16,7 @@ import { createJsondocRoutes } from './jsondocRoutes';
 import { createTransformRoutes } from './transformRoutes';
 import { createChatRoutes } from './chatRoutes';
 import { createAdminRoutes } from './adminRoutes';
+import { createExportRoutes } from './exportRoutes';
 import yjsRoutes from './yjsRoutes';
 
 export function createAPIRoutes(
@@ -50,6 +51,9 @@ export function createAPIRoutes(
 
     // Mount admin routes (dev-only)
     app.use('/api/admin', createAdminRoutes(jsondocRepo, authMiddleware, transformRepo, projectRepo));
+
+    // Mount export routes
+    app.use('/api/export', createExportRoutes(authMiddleware));
 
     // Catch-all for unmatched API routes - return 404 instead of falling through to ViteExpress
     app.use(/^\/api\/.*$/, (req, res) => {

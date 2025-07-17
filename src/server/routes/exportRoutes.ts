@@ -1,0 +1,512 @@
+import { Router, Request, Response } from 'express';
+import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
+import { AuthMiddleware } from '../middleware/auth';
+import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
+import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
+import { ProjectRepository } from '../transform-jsondoc-framework/ProjectRepository';
+import { deduceProjectTitle } from '../../common/utils/projectTitleDeduction';
+import { computeCanonicalJsondocsFromLineage, extractCanonicalJsondocIds } from '../../common/canonicalJsondocLogic';
+import { buildLineageGraph } from '../../common/transform-jsondoc-framework/lineageResolution';
+import { db } from '../database/connection';
+
+export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
+    const router = Router();
+
+    // Initialize repositories
+    const jsondocRepo = new JsondocRepository(db);
+    const transformRepo = new TransformRepository(db);
+    const projectRepo = new ProjectRepository(db);
+
+    interface ExportRequest {
+        format: 'markdown' | 'docx';
+        selectedItems: string[];
+        filename?: string;
+    }
+
+    interface ExportableItem {
+        id: string;
+        name: string;
+        content: any;
+        type: 'brainstorm_input' | 'idea_collection' | 'chosen_idea' | 'outline_settings' | 'chronicles' | 'episode_planning';
+    }
+
+    /**
+     * Fetch all project data needed for export
+     */
+    async function fetchProjectData(projectId: string, userId: string) {
+        // Verify user has access to this project
+        const hasAccess = await jsondocRepo.userHasProjectAccess(userId, projectId);
+        if (!hasAccess) {
+            throw new Error('Access denied to project');
+        }
+
+        // Fetch all project data needed for lineage computation
+        const jsondocs = await jsondocRepo.getAllProjectJsondocsForLineage(projectId);
+        const transforms = await jsondocRepo.getAllProjectTransformsForLineage(projectId);
+        const humanTransforms = await jsondocRepo.getAllProjectHumanTransformsForLineage(projectId);
+        const transformInputs = await jsondocRepo.getAllProjectTransformInputsForLineage(projectId);
+        const transformOutputs = await jsondocRepo.getAllProjectTransformOutputsForLineage(projectId);
+
+        return {
+            jsondocs,
+            transforms,
+            humanTransforms,
+            transformInputs,
+            transformOutputs
+        };
+    }
+
+    /**
+     * Generate exportable items from project data using canonical jsondoc logic
+     */
+    function generateExportableItems(projectData: any): ExportableItem[] {
+        const { jsondocs, transforms, humanTransforms, transformInputs, transformOutputs } = projectData;
+
+        // Build lineage graph
+        const lineageGraph = buildLineageGraph(
+            jsondocs,
+            transforms,
+            humanTransforms,
+            transformInputs,
+            transformOutputs
+        );
+
+        // Get canonical jsondocs context
+        const canonicalContext = computeCanonicalJsondocsFromLineage(
+            lineageGraph,
+            jsondocs,
+            transforms,
+            humanTransforms,
+            transformInputs,
+            transformOutputs
+        );
+
+        const items: ExportableItem[] = [];
+
+        // Add brainstorm input if exists
+        if (canonicalContext.brainstormInput) {
+            items.push({
+                id: 'brainstorm-input-editor',
+                name: '创意输入',
+                content: canonicalContext.brainstormInput,
+                type: 'brainstorm_input'
+            });
+        }
+
+        // Add effective brainstorm ideas as idea collection
+        if (canonicalContext.effectiveBrainstormIdeas.length > 0) {
+            items.push({
+                id: 'idea-collection',
+                name: '创意集合',
+                content: canonicalContext.effectiveBrainstormIdeas,
+                type: 'idea_collection'
+            });
+        }
+
+        // Add chosen brainstorm idea if exists
+        if (canonicalContext.chosenBrainstormIdea) {
+            const chosenIdeaJsondoc = jsondocs.find((j: any) => j.id === canonicalContext.chosenBrainstormIdea!.jsondocId);
+            if (chosenIdeaJsondoc) {
+                items.push({
+                    id: 'single-idea-editor',
+                    name: '选定创意',
+                    content: chosenIdeaJsondoc,
+                    type: 'chosen_idea'
+                });
+            }
+        }
+
+        // Add outline settings if exists
+        if (canonicalContext.latestOutlineSettings) {
+            items.push({
+                id: 'outline-settings-display',
+                name: '大纲设置',
+                content: canonicalContext.latestOutlineSettings,
+                type: 'outline_settings'
+            });
+        }
+
+        // Add chronicles if exists
+        if (canonicalContext.latestChronicles) {
+            items.push({
+                id: 'chronicles-display',
+                name: '时间顺序大纲',
+                content: canonicalContext.latestChronicles,
+                type: 'chronicles'
+            });
+        }
+
+        // Add episode planning if exists
+        if (canonicalContext.latestEpisodePlanning) {
+            items.push({
+                id: 'episode-planning-display',
+                name: '剧集规划',
+                content: canonicalContext.latestEpisodePlanning,
+                type: 'episode_planning'
+            });
+        }
+
+        return items;
+    }
+
+    /**
+     * Format item content for export
+     */
+    function formatItemContent(item: ExportableItem): string {
+        try {
+            switch (item.type) {
+                case 'brainstorm_input':
+                    return formatBrainstormInput(item.content);
+                case 'idea_collection':
+                    return formatIdeaCollection(item.content);
+                case 'chosen_idea':
+                    return formatChosenIdea(item.content);
+                case 'outline_settings':
+                    return formatOutlineSettings(item.content);
+                case 'chronicles':
+                    return formatChronicles(item.content);
+                case 'episode_planning':
+                    return formatEpisodePlanning(item.content);
+                default:
+                    return '无法识别的内容类型';
+            }
+        } catch (error) {
+            console.error('Error formatting item content:', error);
+            return '内容格式化错误';
+        }
+    }
+
+    function formatBrainstormInput(jsondoc: any): string {
+        if (!jsondoc || !jsondoc.data) return '无内容';
+
+        try {
+            const data = JSON.parse(jsondoc.data);
+            let content = '';
+
+            if (data.genre) content += `**类型**: ${data.genre}\n\n`;
+            if (data.platform) content += `**平台**: ${data.platform}\n\n`;
+            if (data.theme) content += `**主题**: ${data.theme}\n\n`;
+            if (data.requirements) content += `**要求**: ${data.requirements}\n\n`;
+
+            return content;
+        } catch (error) {
+            return '内容解析错误';
+        }
+    }
+
+    function formatIdeaCollection(effectiveIdeas: any[]): string {
+        if (!Array.isArray(effectiveIdeas) || effectiveIdeas.length === 0) return '无创意';
+
+        let content = '';
+
+        effectiveIdeas.forEach((idea, index) => {
+            content += `### 创意 ${index + 1}\n\n`;
+
+            // Extract idea data based on jsondocPath
+            let ideaData: any = null;
+
+            if (idea.jsondocPath === '$') {
+                // Standalone idea - get from jsondoc directly
+                // Note: We need to fetch the jsondoc separately since effectiveIdeas only contains metadata
+                content += `**来源**: 独立创意\n`;
+                content += `**ID**: ${idea.jsondocId}\n\n`;
+            } else {
+                // Idea from collection - extract from path
+                content += `**来源**: 创意集合 (${idea.jsondocPath})\n`;
+                content += `**索引**: ${idea.index}\n\n`;
+            }
+        });
+
+        return content;
+    }
+
+    function formatChosenIdea(jsondoc: any): string {
+        if (!jsondoc || !jsondoc.data) return '无内容';
+
+        try {
+            const data = JSON.parse(jsondoc.data);
+            let content = '';
+
+            if (data.title) content += `**标题**: ${data.title}\n\n`;
+            if (data.body) content += `**内容**: ${data.body}\n\n`;
+
+            return content;
+        } catch (error) {
+            return '内容解析错误';
+        }
+    }
+
+    function formatOutlineSettings(jsondoc: any): string {
+        if (!jsondoc || !jsondoc.data) return '无内容';
+
+        try {
+            const data = JSON.parse(jsondoc.data);
+            let content = '';
+
+            if (data.title) content += `**标题**: ${data.title}\n\n`;
+            if (data.genre) content += `**类型**: ${data.genre}\n\n`;
+            if (data.target_platform) content += `**目标平台**: ${data.target_platform}\n\n`;
+            if (data.target_episodes) content += `**目标集数**: ${data.target_episodes}\n\n`;
+
+            if (data.core_themes && Array.isArray(data.core_themes)) {
+                content += `**核心主题**: ${data.core_themes.join(', ')}\n\n`;
+            }
+
+            if (data.selling_points && Array.isArray(data.selling_points)) {
+                content += `**卖点**: ${data.selling_points.join(', ')}\n\n`;
+            }
+
+            if (data.satisfaction_points && Array.isArray(data.satisfaction_points)) {
+                content += `**爽点**: ${data.satisfaction_points.join(', ')}\n\n`;
+            }
+
+            return content;
+        } catch (error) {
+            return '内容解析错误';
+        }
+    }
+
+    function formatChronicles(jsondoc: any): string {
+        if (!jsondoc || !jsondoc.data) return '无内容';
+
+        try {
+            const data = JSON.parse(jsondoc.data);
+            let content = '';
+
+            if (data.title) content += `**标题**: ${data.title}\n\n`;
+
+            if (data.synopsis_stages && Array.isArray(data.synopsis_stages)) {
+                content += `**故事梗概**:\n`;
+                data.synopsis_stages.forEach((stage: string, index: number) => {
+                    content += `${index + 1}. ${stage}\n`;
+                });
+                content += '\n';
+            }
+
+            if (data.characters && Array.isArray(data.characters)) {
+                content += `**角色设定**:\n`;
+                data.characters.forEach((char: any) => {
+                    content += `- **${char.name}** (${char.type}): ${char.description}\n`;
+                });
+                content += '\n';
+            }
+
+            return content;
+        } catch (error) {
+            return '内容解析错误';
+        }
+    }
+
+    function formatEpisodePlanning(jsondoc: any): string {
+        if (!jsondoc || !jsondoc.data) return '无内容';
+
+        try {
+            const data = JSON.parse(jsondoc.data);
+            let content = '';
+
+            if (data.title) content += `**标题**: ${data.title}\n\n`;
+            if (data.total_episodes) content += `**总集数**: ${data.total_episodes}\n\n`;
+
+            if (data.episodes && Array.isArray(data.episodes)) {
+                content += `**分集规划**:\n`;
+                data.episodes.forEach((episode: any, index: number) => {
+                    content += `### 第${index + 1}集\n`;
+                    if (episode.title) content += `**标题**: ${episode.title}\n`;
+                    if (episode.summary) content += `**概要**: ${episode.summary}\n`;
+                    if (episode.key_scenes && Array.isArray(episode.key_scenes)) {
+                        content += `**关键场景**: ${episode.key_scenes.join(', ')}\n`;
+                    }
+                    content += '\n';
+                });
+            }
+
+            return content;
+        } catch (error) {
+            return '内容解析错误';
+        }
+    }
+
+    /**
+     * Generate markdown content
+     */
+    function generateMarkdown(items: ExportableItem[], selectedItemIds: string[]): string {
+        const selectedItems = items.filter(item => selectedItemIds.includes(item.id));
+
+        let markdown = `# 项目导出\n\n`;
+        markdown += `导出时间: ${new Date().toLocaleString('zh-CN')}\n\n`;
+
+        for (const item of selectedItems) {
+            markdown += `## ${item.name}\n\n`;
+            markdown += formatItemContent(item) + '\n\n';
+        }
+
+        return markdown;
+    }
+
+    /**
+     * Generate docx content
+     */
+    async function generateDocx(items: ExportableItem[], selectedItemIds: string[]): Promise<Buffer> {
+        const selectedItems = items.filter(item => selectedItemIds.includes(item.id));
+
+        const children: any[] = [];
+
+        // Title
+        children.push(
+            new Paragraph({
+                text: '项目导出',
+                heading: HeadingLevel.HEADING_1,
+            })
+        );
+
+        // Export time
+        children.push(
+            new Paragraph({
+                children: [
+                    new TextRun({
+                        text: `导出时间: ${new Date().toLocaleString('zh-CN')}`,
+                        italics: true,
+                    })
+                ],
+            })
+        );
+
+        children.push(new Paragraph({ text: '' })); // Empty line
+
+        // Content sections
+        for (const item of selectedItems) {
+            // Section header
+            children.push(
+                new Paragraph({
+                    text: item.name,
+                    heading: HeadingLevel.HEADING_2,
+                })
+            );
+
+            // Section content
+            const contentLines = formatItemContent(item).split('\n');
+            for (const line of contentLines) {
+                if (line.trim()) {
+                    children.push(
+                        new Paragraph({
+                            children: [new TextRun({ text: line })],
+                        })
+                    );
+                } else {
+                    children.push(new Paragraph({ text: '' }));
+                }
+            }
+
+            children.push(new Paragraph({ text: '' })); // Empty line after section
+        }
+
+        const doc = new Document({
+            sections: [
+                {
+                    children,
+                },
+            ],
+        });
+
+        return await Packer.toBuffer(doc);
+    }
+
+    // GET /api/export/:projectId/items - Get exportable items for a project
+    router.get('/:projectId/items', authMiddleware.authenticate, async (req: Request, res: Response) => {
+        try {
+            const { projectId } = req.params;
+            const userId = req.user?.id;
+
+            if (!userId) {
+                res.status(401).json({ error: 'User not authenticated' });
+                return;
+            }
+
+            // Fetch project data
+            const projectData = await fetchProjectData(projectId, userId);
+
+            // Generate exportable items
+            const exportableItems = generateExportableItems(projectData);
+
+            // Build lineage graph for title deduction
+            const lineageGraph = buildLineageGraph(
+                projectData.jsondocs,
+                projectData.transforms,
+                projectData.humanTransforms,
+                projectData.transformInputs,
+                projectData.transformOutputs
+            );
+
+            // Deduce project title
+            const projectTitle = deduceProjectTitle(lineageGraph, projectData.jsondocs);
+
+            res.json({
+                items: exportableItems,
+                projectTitle
+            });
+        } catch (error) {
+            console.error('Failed to get exportable items:', error);
+
+            if (error instanceof Error && error.message.includes('Access denied')) {
+                res.status(403).json({ error: 'Access denied to project' });
+                return;
+            }
+
+            res.status(500).json({ error: 'Failed to get exportable items' });
+        }
+    });
+
+    // POST /api/export/:projectId - Export project content
+    router.post('/:projectId', authMiddleware.authenticate, async (req: Request, res: Response) => {
+        try {
+            const { projectId } = req.params;
+            const { format, selectedItems, filename }: ExportRequest = req.body;
+            const userId = req.user?.id;
+
+            if (!userId) {
+                res.status(401).json({ error: 'User not authenticated' });
+                return;
+            }
+
+            if (!format || !selectedItems || selectedItems.length === 0) {
+                res.status(400).json({ error: 'Missing required parameters' });
+                return;
+            }
+
+            // Fetch project data
+            const projectData = await fetchProjectData(projectId, userId);
+
+            // Generate exportable items
+            const exportableItems = generateExportableItems(projectData);
+
+            if (format === 'markdown') {
+                const markdown = generateMarkdown(exportableItems, selectedItems);
+                const finalFilename = filename || `项目导出_${new Date().toISOString().slice(0, 10)}.md`;
+
+                res.setHeader('Content-Type', 'text/markdown');
+                res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(finalFilename)}"`);
+                res.send(markdown);
+            } else if (format === 'docx') {
+                const docxBuffer = await generateDocx(exportableItems, selectedItems);
+                const finalFilename = filename || `项目导出_${new Date().toISOString().slice(0, 10)}.docx`;
+
+                res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+                res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(finalFilename)}"`);
+                res.send(docxBuffer);
+            } else {
+                res.status(400).json({ error: 'Invalid format' });
+            }
+        } catch (error) {
+            console.error('Export failed:', error);
+
+            if (error instanceof Error && error.message.includes('Access denied')) {
+                res.status(403).json({ error: 'Access denied to project' });
+                return;
+            }
+
+            res.status(500).json({ error: 'Export failed' });
+        }
+    });
+
+    return router;
+}; 

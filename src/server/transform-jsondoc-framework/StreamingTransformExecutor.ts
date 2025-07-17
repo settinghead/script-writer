@@ -41,10 +41,14 @@ export async function defaultPrepareTemplateVariables<TInput>(
             if (jsondoc) {
                 // Use description as key, fallback to schema type or jsondoc ID
                 const key = jsondocRef.description || jsondocRef.schemaType || jsondocRef.jsondocId;
+                // For JSON patch templates, flatten the structure and stringify the data
+                // This allows the LLM to see the data structure clearly while generating correct paths
                 jsondocs[key] = {
+                    id: jsondoc.id,
                     description: jsondocRef.description,
                     schemaType: jsondocRef.schemaType,
-                    data: jsondoc.data
+                    schema_type: jsondoc.schema_type,
+                    data: JSON.stringify(jsondoc.data, null, 2)
                 };
             }
         }
@@ -304,6 +308,7 @@ export class StreamingTransformExecutor {
                                 } catch (patchError) {
                                     // If partial patch fails, keep original data and continue
                                     console.warn(`[StreamingTransformExecutor] Partial patch failed at chunk ${chunkCount}, continuing...`);
+                                    console.warn(`[StreamingTransformExecutor] Patch content: ${JSON.stringify(partialData)}`);
                                     jsondocData = executionMode.originalJsondoc;
                                 }
                             } else {
