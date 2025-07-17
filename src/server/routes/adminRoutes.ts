@@ -338,21 +338,6 @@ export function createAdminRoutes(
                 };
                 outputJsondocType = 'chronicles';
                 transformMetadata = { toolName: 'generate_chronicles' };
-            } else if (toolName === 'edit_chronicles') {
-                const { ChroniclesEditInputSchema } = await import('@/common/schemas/transforms.js');
-                const { z } = await import('zod');
-                config = {
-                    templateName: 'chronicles_edit_patch',
-                    inputSchema: ChroniclesEditInputSchema,
-                    outputSchema: z.array(z.object({
-                        op: z.enum(['add', 'remove', 'replace', 'move', 'copy', 'test']),
-                        path: z.string(),
-                        value: z.any().optional(),
-                        from: z.string().optional()
-                    }))
-                };
-                outputJsondocType = 'chronicles';
-                transformMetadata = { toolName: 'edit_chronicles' };
             } else {
                 sendSSE('error', { message: `Unsupported tool for non-persistent run: ${toolName}` });
                 res.end();

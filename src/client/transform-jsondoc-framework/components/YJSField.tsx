@@ -440,23 +440,7 @@ export const YJSCharacterArray = React.memo(({ path, fontSize = DEFAULT_FONT_SIZ
         updateValue(newArray);
     }, [arrayValue, updateValue]);
 
-    const handleArrayFieldChange = useCallback((index: number, field: string, newArrayValue: string[]) => {
-        const newArray = [...arrayValue];
-        if (!newArray[index]) {
-            newArray[index] = {
-                name: '',
-                type: 'supporting',
-                age: '',
-                gender: '',
-                occupation: '',
-                description: '',
-                personality_traits: [],
-                character_arc: ''
-            };
-        }
-        newArray[index] = { ...newArray[index], [field]: newArrayValue };
-        updateValue(newArray);
-    }, [arrayValue, updateValue]);
+
 
     if (!isInitialized) return null;
 
@@ -538,10 +522,10 @@ export const YJSCharacterArray = React.memo(({ path, fontSize = DEFAULT_FONT_SIZ
                         </div>
                         <div>
                             <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>性格特点：</Text>
-                            <YJSArrayFieldInline
-                                value={character?.personality_traits || []}
-                                onChange={(newValue) => handleArrayFieldChange(index, 'personality_traits', newValue)}
+                            <YJSArrayOfStringField
+                                path={`${path}[${index}].personality_traits`}
                                 placeholder="每行一个性格特点..."
+                                fontSize={fontSize}
                             />
                         </div>
                         <div>
@@ -652,4 +636,124 @@ export const YJSNumberField = React.memo(({ path, min, max, placeholder, fontSiz
 
 YJSCharacterArray.displayName = 'YJSCharacterArray';
 YJSArrayFieldInline.displayName = 'YJSArrayFieldInline';
-YJSNumberField.displayName = 'YJSNumberField'; 
+YJSNumberField.displayName = 'YJSNumberField';
+
+// Episode Groups Array Component
+export const YJSEpisodeGroupsArray = React.memo(({ path, fontSize = DEFAULT_FONT_SIZE }: { path: string, fontSize?: number }) => {
+    const { value, updateValue, isInitialized } = useYJSField(path);
+
+    const arrayValue = useMemo(() => {
+        if (!Array.isArray(value)) return [];
+        return value;
+    }, [value]);
+
+    const handleItemChange = useCallback((index: number, field: string, newValue: any) => {
+        const newArray = [...arrayValue];
+        if (!newArray[index]) {
+            newArray[index] = {
+                groupTitle: '',
+                episodes: '',
+                keyEvents: [],
+                hooks: [],
+                emotionalBeats: []
+            };
+        }
+        newArray[index] = { ...newArray[index], [field]: newValue };
+        updateValue(newArray);
+    }, [arrayValue, updateValue]);
+
+    const handleAddItem = useCallback(() => {
+        const newArray = [...arrayValue, {
+            groupTitle: '',
+            episodes: '',
+            keyEvents: [],
+            hooks: [],
+            emotionalBeats: []
+        }];
+        updateValue(newArray);
+    }, [arrayValue, updateValue]);
+
+    const handleRemoveItem = useCallback((index: number) => {
+        const newArray = arrayValue.filter((_, i) => i !== index);
+        updateValue(newArray);
+    }, [arrayValue, updateValue]);
+
+
+
+    if (!isInitialized) return null;
+
+    return (
+        <div>
+            {arrayValue.map((group, index) => (
+                <div key={index} style={{ border: '1px solid #d9d9d9', borderRadius: 6, padding: 16, marginBottom: 16 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <Text strong>分组 {index + 1}</Text>
+                        <Button
+                            type="text"
+                            icon={<DeleteOutlined />}
+                            onClick={() => handleRemoveItem(index)}
+                            size="small"
+                        />
+                    </div>
+
+                    <div style={{ marginBottom: 12 }}>
+                        <Text>分组标题：</Text>
+                        <Input
+                            value={group?.groupTitle || ''}
+                            onChange={(e) => handleItemChange(index, 'groupTitle', e.target.value)}
+                            placeholder="输入分组标题"
+                            style={{ marginTop: 4, fontSize: fontSize }}
+                        />
+                    </div>
+
+                    <div style={{ marginBottom: 12 }}>
+                        <Text>集数范围：</Text>
+                        <Input
+                            value={group?.episodes || ''}
+                            onChange={(e) => handleItemChange(index, 'episodes', e.target.value)}
+                            placeholder="例如：1-3"
+                            style={{ marginTop: 4, fontSize: fontSize }}
+                        />
+                    </div>
+
+                    <div style={{ marginBottom: 12 }}>
+                        <Text>关键事件：</Text>
+                        <YJSArrayOfStringField
+                            path={`${path}[${index}].keyEvents`}
+                            placeholder="每行一个关键事件..."
+                            fontSize={fontSize}
+                        />
+                    </div>
+
+                    <div style={{ marginBottom: 12 }}>
+                        <Text>悬念钩子：</Text>
+                        <YJSArrayOfStringField
+                            path={`${path}[${index}].hooks`}
+                            placeholder="每行一个悬念钩子..."
+                            fontSize={fontSize}
+                        />
+                    </div>
+
+                    <div>
+                        <Text>情感节拍：</Text>
+                        <YJSArrayOfStringField
+                            path={`${path}[${index}].emotionalBeats`}
+                            placeholder="每行一个情感节拍..."
+                            fontSize={fontSize}
+                        />
+                    </div>
+                </div>
+            ))}
+            <Button
+                type="dashed"
+                icon={<PlusOutlined />}
+                onClick={handleAddItem}
+                style={{ width: '100%' }}
+            >
+                添加分组
+            </Button>
+        </div>
+    );
+});
+
+YJSEpisodeGroupsArray.displayName = 'YJSEpisodeGroupsArray'; 
