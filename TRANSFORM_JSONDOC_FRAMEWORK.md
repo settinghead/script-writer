@@ -1714,6 +1714,137 @@ Collection → [Item 1] → Human Edit → User Input → AI Edit → Enhanced I
           → [Item 3] → (unchanged, references original)
 ```
 
+## Canonical Jsondoc Principle
+
+The Transform Jsondoc Framework implements a critical principle for applications with complex data workflows: **Only canonical jsondocs should have active derived services**.
+
+### The Problem: Duplicate Services for Chain Data
+
+In complex jsondoc transformation chains, multiple versions of the same logical content can exist:
+
+```
+Original Outline → Human Edit → Outline v2 → AI Enhancement → Outline v3
+```
+
+Without proper management, derived services (search indices, caches, notifications, etc.) can create duplicates for every version in the chain, leading to:
+- **Duplicate search results** from multiple outline versions
+- **Inconsistent user experience** with outdated content appearing alongside current content
+- **Resource waste** from indexing obsolete jsondoc versions
+- **Confusion** about which version is the "current" one
+
+### The Canonical Jsondoc Solution
+
+**Core Principle**: Derived services should only operate on jsondocs that are currently being displayed or used in the application UI.
+
+**Implementation Pattern**:
+1. **Compute Canonical Set** - Use the same logic that determines UI display to identify canonical jsondocs
+2. **Service Alignment** - All derived services (search, caching, etc.) only process canonical jsondocs
+3. **Automatic Updates** - When UI logic changes, derived services automatically update their active set
+
+### Framework Implementation
+
+**CanonicalJsondocService**:
+```typescript
+export class CanonicalJsondocService {
+  /**
+   * Get all canonical (active) jsondoc IDs for a project.
+   * These are the jsondocs that should be displayed in components
+   * and therefore should have active derived services.
+   */
+  async getCanonicalJsondocIds(projectId: string): Promise<Set<string>> {
+    // Build project data context similar to frontend
+    const projectData = await this.buildProjectDataContext(projectId);
+    
+    // Use the SAME computation logic as the frontend display components
+    const workflowState = computeUnifiedWorkflowState(projectData, projectId);
+    
+    // Extract jsondoc IDs from display components
+    const canonicalIds = new Set<string>();
+    
+    for (const component of workflowState.displayComponents) {
+      // Extract jsondoc IDs from component props
+      if (component.props.jsondoc?.id) {
+        canonicalIds.add(component.props.jsondoc.id);
+      }
+      // ... extract from all component prop patterns
+    }
+    
+    return canonicalIds;
+  }
+}
+```
+
+**Service Integration Pattern**:
+```typescript
+export class DerivedService {
+  constructor(
+    private canonicalJsondocService: CanonicalJsondocService
+  ) {}
+
+  async updateForJsondoc(jsondocId: string, projectId: string): Promise<void> {
+    // Check if jsondoc should have active derived services
+    const isCanonical = await this.canonicalJsondocService.isJsondocCanonical(
+      jsondocId, 
+      projectId
+    );
+
+    if (isCanonical) {
+      // Create/update derived services for this jsondoc
+      await this.createDerivedData(jsondocId);
+    } else {
+      // Remove derived services for this jsondoc
+      await this.removeDerivedData(jsondocId);
+    }
+  }
+}
+```
+
+### Key Benefits
+
+**Consistency Guarantee**: Whatever jsondocs are displayed in the UI are exactly the jsondocs that have active derived services.
+
+**Automatic Synchronization**: When UI display logic changes (new components, different lineage resolution), derived services automatically align without manual coordination.
+
+**Resource Efficiency**: No wasted processing on obsolete jsondoc versions that users will never see.
+
+**Single Source of Truth**: The same computation logic determines both UI display and service activation.
+
+### Common Use Cases
+
+**Search and Indexing Services**:
+- Only index jsondocs that appear in search results
+- Prevent duplicate results from jsondoc chains
+- Ensure search reflects current application state
+
+**Caching and Performance Services**:
+- Cache only actively displayed content
+- Invalidate caches when jsondocs become non-canonical
+- Optimize resource usage for current workflow state
+
+**Notification and Alert Services**:
+- Send notifications only for canonical content changes
+- Avoid spam from intermediate jsondoc updates
+- Focus alerts on user-visible content
+
+**Analytics and Monitoring**:
+- Track metrics only for canonical jsondocs
+- Avoid skewed data from internal jsondoc chains
+- Monitor actual user-facing content performance
+
+### Implementation Guidelines
+
+**1. Reuse Display Logic**: Always use the same computation that determines UI components to identify canonical jsondocs.
+
+**2. Service Alignment**: Design derived services to activate/deactivate based on canonical status rather than jsondoc existence.
+
+**3. Bulk Updates**: Provide methods to update entire projects when canonical sets change due to workflow progression.
+
+**4. Testing**: Verify that canonical computation matches actual UI display in all workflow states.
+
+**5. Performance**: Cache canonical computations when possible, but ensure they stay synchronized with UI logic.
+
+This principle ensures that complex applications maintain consistency between what users see and what services process, preventing the common problem of duplicate or inconsistent derived data in transformation-heavy workflows.
+
 ## Development Patterns
 
 ### Repository Pattern

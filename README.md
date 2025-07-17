@@ -399,6 +399,52 @@ This dual-computation system ensures that users always see the correct workflow 
 - **Episode Synopses** - Individual episode breakdowns
 - **Script Content** - Full dialogue and scene descriptions
 
+### 🔍 Canonical Content Principle
+
+觅光助创 implements the **Canonical Jsondoc Principle** to ensure search and derived services only operate on content that users actually see and interact with.
+
+**The Problem We Solved**:
+In complex script development workflows, multiple versions of the same content exist:
+```
+AI Generated Outline → User Edits → Outline v2 → AI Enhancement → Outline v3
+```
+
+Without proper management, this creates:
+- **Duplicate search results** showing outdated outline versions
+- **Confusing particle search** with multiple "古尔多·老李" characters from different outline versions
+- **Resource waste** indexing content users never see
+- **Inconsistent experience** with obsolete content appearing in search
+
+**Our Solution - Canonical Content Management**:
+- **UI-Driven Canonicalization** - Only jsondocs displayed in components have active search particles
+- **Automatic Synchronization** - Search index automatically updates when workflow progresses
+- **Single Source of Truth** - Same logic determines UI display and search indexing
+- **Resource Efficiency** - No wasted processing on obsolete content versions
+
+**Implementation in 觅光助创**:
+```typescript
+// Particle system only indexes canonical jsondocs
+const canonicalIds = await canonicalJsondocService.getCanonicalJsondocIds(projectId);
+
+// Search results only show current workflow content
+const searchResults = await particleService.searchParticles(query, projectId);
+// Results automatically filtered to canonical content only
+```
+
+**Benefits for Script Writers**:
+- **Clean Search Results** - No duplicate characters or plot elements from old versions
+- **Current Content Focus** - Search always reflects the latest script state
+- **Workflow Awareness** - Search results match what's displayed in the editing interface
+- **Performance Optimization** - Faster search with reduced index size
+
+**Example Workflow**:
+1. **AI generates outline** with character "古尔多·老李" → Particle created, searchable
+2. **User edits character** to "古尔多·玛丽亚" → New jsondoc created, old particle removed
+3. **Search for "古尔多"** → Only finds current "玛丽亚" version, no duplicates
+4. **User continues editing** → Search always reflects current editing state
+
+This ensures that the particle search system in 觅光助创 provides clean, relevant results that match exactly what users see in their script development workflow.
+
 ## Real-time Collaboration with YJS
 
 觅光助创 supports real-time collaborative editing powered by YJS (Yjs) + Electric SQL:
