@@ -4,6 +4,8 @@ import { ParticleExtractor } from './ParticleExtractor';
 import { ParticleService } from './ParticleService';
 import { ParticleEventBus } from './ParticleEventBus';
 import { ParticleTemplateProcessor } from './ParticleTemplateProcessor';
+import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
+import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
 import { DB } from '../database/types';
 
 export interface ParticleSystemServices {
@@ -26,7 +28,9 @@ export async function initializeParticleSystem(db: Kysely<DB>): Promise<Particle
         // Initialize services in dependency order
         const embeddingService = new EmbeddingService();
         const particleExtractor = new ParticleExtractor(embeddingService);
-        const particleService = new ParticleService(db, embeddingService, particleExtractor);
+        const jsondocRepo = new JsondocRepository(db);
+        const transformRepo = new TransformRepository(db);
+        const particleService = new ParticleService(db, embeddingService, particleExtractor, jsondocRepo, transformRepo);
         const particleTemplateProcessor = new ParticleTemplateProcessor(particleService);
 
         // Setup event bus for real-time updates

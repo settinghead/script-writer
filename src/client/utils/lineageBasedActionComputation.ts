@@ -1,8 +1,6 @@
 import React from 'react';
 import {
     LineageGraph,
-    extractEffectiveBrainstormIdeas,
-    findMainWorkflowPath,
     type EffectiveBrainstormIdea,
     type WorkflowNode
 } from '../../common/transform-jsondoc-framework/lineageResolution';
@@ -13,6 +11,10 @@ import type {
     ElectricTransformInput,
     ElectricTransformOutput
 } from '../../common/types';
+import {
+    CanonicalJsondocContext,
+    computeCanonicalJsondocsFromLineage
+} from '../../common/canonicalJsondocLogic';
 
 // Import action components
 import BrainstormCreationActions from '../components/actions/BrainstormCreationActions';
@@ -60,27 +62,9 @@ export interface ActionComponentProps {
     metadata?: Record<string, any>;
 }
 
-// Lineage-based action context
-export interface LineageBasedActionContext {
-    // Resolved jsondocs from lineage traversal
-    effectiveBrainstormIdeas: EffectiveBrainstormIdea[];
-    chosenBrainstormIdea: EffectiveBrainstormIdea | null;
-    latestOutlineSettings: ElectricJsondoc | null;
-    latestChronicles: ElectricJsondoc | null;
-    latestEpisodePlanning: ElectricJsondoc | null;
-    brainstormInput: ElectricJsondoc | null;
-
-    // Workflow state without stage
-    workflowNodes: WorkflowNode[];
-
-    // Transform state
-    hasActiveTransforms: boolean;
-    activeTransforms: ElectricTransform[];
-
-    // Lineage metadata
-    lineageGraph: LineageGraph;
-    rootNodes: string[];
-    leafNodes: string[];
+// Lineage-based action context (extends the shared canonical context)
+export interface LineageBasedActionContext extends CanonicalJsondocContext {
+    // Additional frontend-specific context can be added here if needed
 }
 
 // Result of action computation
@@ -100,10 +84,8 @@ export function computeActionsFromLineage(
     transformInputs: ElectricTransformInput[],
     transformOutputs: ElectricTransformOutput[]
 ): ComputedActions {
-
-
-    // 1. Build workflow context from lineage traversal
-    const actionContext = buildActionContextFromLineage(
+    // 1. Use shared canonical jsondoc logic
+    const canonicalContext = computeCanonicalJsondocsFromLineage(
         lineageGraph,
         jsondocs,
         transforms,
@@ -112,75 +94,18 @@ export function computeActionsFromLineage(
         transformOutputs
     );
 
-    // 2. Generate actions based on context
+    // 2. Extend with frontend-specific context if needed
+    const actionContext: LineageBasedActionContext = {
+        ...canonicalContext
+        // Add frontend-specific extensions here if needed
+    };
+
+    // 3. Generate actions based on context
     const actions = generateActionsFromContext(actionContext);
 
     return {
-        actionContext: actionContext,
+        actionContext,
         actions,
-    };
-}
-
-/**
- * Build action context from lineage graph traversal
- */
-function buildActionContextFromLineage(
-    lineageGraph: LineageGraph,
-    jsondocs: ElectricJsondoc[],
-    transforms: ElectricTransform[],
-    humanTransforms: ElectricHumanTransform[],
-    transformInputs: ElectricTransformInput[],
-    transformOutputs: ElectricTransformOutput[]
-): Omit<LineageBasedActionContext, 'currentStage'> {
-    // Use existing functions from lineageResolution.ts
-    const effectiveBrainstormIdeas = extractEffectiveBrainstormIdeas(
-        jsondocs,
-        transforms,
-        humanTransforms,
-        transformInputs,
-        transformOutputs
-    );
-
-    const chosenBrainstormIdea = findChosenIdeaFromLineage(effectiveBrainstormIdeas, lineageGraph);
-
-    const latestOutlineSettings = findLatestJsondocByType(
-        lineageGraph,
-        jsondocs,
-        'outline_settings'
-    );
-
-    const latestChronicles = findLatestJsondocByType(
-        lineageGraph,
-        jsondocs,
-        'chronicles'
-    );
-
-    const latestEpisodePlanning = findLatestJsondocByType(
-        lineageGraph,
-        jsondocs,
-        'episode_planning'
-    );
-
-    // Find brainstorm input jsondoc
-    const brainstormInput = findLatestJsondocByType(
-        lineageGraph,
-        jsondocs,
-        'brainstorm_input_params'
-    );
-
-    return {
-        effectiveBrainstormIdeas,
-        chosenBrainstormIdea,
-        latestOutlineSettings,
-        latestChronicles,
-        latestEpisodePlanning,
-        brainstormInput,
-        workflowNodes: findMainWorkflowPath(jsondocs, lineageGraph),
-        hasActiveTransforms: transforms.some(t => t.status === 'running' || t.status === 'pending'),
-        activeTransforms: transforms.filter(t => t.status === 'running' || t.status === 'pending'),
-        lineageGraph,
-        rootNodes: Array.from(lineageGraph.rootNodes),
-        leafNodes: findAllLeafNodes(lineageGraph)
     };
 }
 
@@ -354,100 +279,4 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
     }
 
     return actions;
-}
-
-// ============================================================================
-// Utility Functions
-// ============================================================================
-
-/**
- * Find the latest jsondoc of a specific type using lineage depth
- */
-function findLatestJsondocByType(
-    lineageGraph: LineageGraph,
-    jsondocs: ElectricJsondoc[],
-    schemaType: string
-): ElectricJsondoc | null {
-    // Find all jsondocs of this type
-    const candidateJsondocs = jsondocs.filter(a =>
-        a.schema_type === schemaType
-    );
-
-    if (candidateJsondocs.length === 0) return null;
-
-    // Filter to only include jsondocs that are in the lineage graph (canonical jsondocs)
-    const canonicalJsondocs = candidateJsondocs.filter(jsondoc => {
-        const node = lineageGraph.nodes.get(jsondoc.id);
-        return node != null;
-    });
-
-    if (canonicalJsondocs.length === 0) return null;
-
-    // Find leaf nodes (jsondocs without descendants) from canonical set
-    const leafJsondocs = canonicalJsondocs.filter(jsondoc => {
-        const node = lineageGraph.nodes.get(jsondoc.id);
-        return node && node.isLeaf;
-    });
-
-    if (leafJsondocs.length > 0) {
-        // Prioritize user_input jsondocs, then by most recent
-        leafJsondocs.sort((a, b) => {
-            // First priority: user_input origin type
-            if (a.origin_type === 'user_input' && b.origin_type !== 'user_input') return -1;
-            if (b.origin_type === 'user_input' && a.origin_type !== 'user_input') return 1;
-            // Second priority: most recent
-            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-        });
-        return leafJsondocs[0];
-    } else {
-        // Fallback to most recent from canonical set if no leaf nodes found
-        canonicalJsondocs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-        return canonicalJsondocs[0];
-    }
-}
-
-/**
- * Find chosen brainstorm idea from lineage (standalone idea that represents the chosen path)
- */
-function findChosenIdeaFromLineage(
-    effectiveBrainstormIdeas: EffectiveBrainstormIdea[],
-    lineageGraph: LineageGraph
-): EffectiveBrainstormIdea | null {
-    // For standalone ideas (jsondocPath === '$'), consider them chosen regardless of leaf status
-    // This is because individual ideas can have descendants (like outline settings) but are still the chosen idea
-    for (const idea of effectiveBrainstormIdeas) {
-        const node = lineageGraph.nodes.get(idea.jsondocId);
-        if (node && idea.jsondocPath === '$') {
-            // This is a standalone brainstorm idea jsondoc, can be chosen
-            // We don't require it to be a leaf node because it might have outline settings as descendants
-            return idea;
-        }
-    }
-
-    // Fallback: if no standalone ideas, look for leaf nodes from collections
-    for (const idea of effectiveBrainstormIdeas) {
-        const node = lineageGraph.nodes.get(idea.jsondocId);
-        if (node && node.isLeaf) {
-            // Ideas from collections (jsondocPath like '$.ideas[0]') are only chosen if they're leaf nodes
-            // This means user has explicitly selected them
-            return idea;
-        }
-    }
-
-    return null;
-}
-
-/**
- * Find all leaf nodes in the lineage graph
- */
-function findAllLeafNodes(lineageGraph: LineageGraph): string[] {
-    const leafNodes: string[] = [];
-
-    for (const [jsondocId, node] of lineageGraph.nodes) {
-        if (node.isLeaf) {
-            leafNodes.push(jsondocId);
-        }
-    }
-
-    return leafNodes;
 } 

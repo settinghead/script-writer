@@ -123,6 +123,7 @@ ${context}
 用户请求："修改时间顺序大纲，加入更多南京本地元素"
 → 使用 edit_chronicles 工具
 → 参数：jsondocs=[{jsondocId: "chronicles_id_from_context", schemaType: "chronicles", description: "时间顺序大纲"}], editRequirements="加入更多南京本地元素，包括文化，南京话，等等"
+→ 注意：jsondocs数组中只包含一个要编辑的chronicles jsondoc，不要重复包含相同的jsondoc
 
 示例7：复杂请求 - 修改想法并更新大纲
 用户请求："在故事中加入童话元素"

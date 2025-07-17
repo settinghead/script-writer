@@ -4,6 +4,8 @@ import { EmbeddingService } from './EmbeddingService';
 import { ParticleExtractor, ParticleData } from './ParticleExtractor';
 import { TypedJsondoc } from '../../common/jsondocs.js';
 import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
+import { CanonicalJsondocService } from './CanonicalJsondocService';
+import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
 
 export interface ParticleSearchResult {
     id: string;
@@ -33,11 +35,21 @@ export interface ParticleInsert {
 }
 
 export class ParticleService {
+    private canonicalJsondocService: CanonicalJsondocService;
+
     constructor(
         private db: Kysely<DB>,
         private embeddingService: EmbeddingService,
-        private particleExtractor: ParticleExtractor
-    ) { }
+        private particleExtractor: ParticleExtractor,
+        private jsondocRepo: JsondocRepository,
+        private transformRepo: TransformRepository
+    ) {
+        this.canonicalJsondocService = new CanonicalJsondocService(
+            this.db,
+            this.jsondocRepo,
+            this.transformRepo
+        );
+    }
 
     /**
      * Update particles for a specific jsondoc
@@ -350,16 +362,18 @@ export class ParticleService {
     }
 
     /**
-     * Check if jsondoc is active (leaf in lineage - no dependents)
+     * Check if jsondoc is active (should have particles)
+     * Uses CanonicalJsondocService to determine if jsondoc is displayed in UI components
      */
     private async isJsondocActive(jsondocId: string): Promise<boolean> {
-        const dependents = await this.db
-            .selectFrom('transform_inputs')
-            .select('id')
-            .where('jsondoc_id', '=', jsondocId)
-            .limit(1)
-            .execute();
+        // Get the jsondoc to find its project ID
+        const jsondoc = await this.getJsondoc(jsondocId);
+        if (!jsondoc) {
+            return false;
+        }
 
-        return dependents.length === 0;
+        // Use CanonicalJsondocService to check if jsondoc is canonical (displayed in UI)
+        const projectId = (jsondoc as any).project_id;
+        return await this.canonicalJsondocService.isJsondocCanonical(jsondocId, projectId);
     }
 } 

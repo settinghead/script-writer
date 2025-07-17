@@ -3,6 +3,8 @@ import { EmbeddingService } from '../services/EmbeddingService';
 import { ParticleExtractor } from '../services/ParticleExtractor';
 import { ParticleService } from '../services/ParticleService';
 import { ParticleEventBus } from '../services/ParticleEventBus';
+import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
+import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
 
 async function testParticleSystem() {
     console.log('🧪 Testing Particle System Phase 1...\n');
@@ -13,7 +15,9 @@ async function testParticleSystem() {
         const database = db;
         const embeddingService = new EmbeddingService();
         const particleExtractor = new ParticleExtractor(embeddingService);
-        const particleService = new ParticleService(database, embeddingService, particleExtractor);
+        const jsondocRepo = new JsondocRepository(database);
+        const transformRepo = new TransformRepository(database);
+        const particleService = new ParticleService(database, embeddingService, particleExtractor, jsondocRepo, transformRepo);
         const eventBus = new ParticleEventBus(database, particleService);
 
         console.log('✅ Services initialized successfully\n');
