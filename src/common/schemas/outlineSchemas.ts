@@ -101,4 +101,17 @@ export const EpisodePlanningOutputSchema = z.object({
 
 export type EpisodeGroup = z.infer<typeof EpisodeGroupSchema>;
 export type EpisodePlanningInput = z.infer<typeof EpisodePlanningInputSchema>;
-export type EpisodePlanningOutput = z.infer<typeof EpisodePlanningOutputSchema>; 
+export type EpisodePlanningOutput = z.infer<typeof EpisodePlanningOutputSchema>;
+
+// Episode Planning Edit Schemas
+export const EpisodePlanningEditInputSchema = BaseToolInputSchema.extend({
+    editRequirements: z.string().min(1, '编辑要求不能为空').describe('具体的编辑要求，如：调整剧集分组、修改情感节拍、更新关键事件等')
+});
+
+export const EpisodePlanningEditToolResultSchema = z.object({
+    outputJsondocId: z.string(),
+    finishReason: z.string()
+});
+
+export type EpisodePlanningEditInput = z.infer<typeof EpisodePlanningEditInputSchema>;
+export type EpisodePlanningEditToolResult = z.infer<typeof EpisodePlanningEditToolResultSchema>; 

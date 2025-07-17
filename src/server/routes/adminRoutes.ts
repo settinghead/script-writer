@@ -45,7 +45,8 @@ export function createAdminRoutes(
                 'edit_outline_settings': 'outline_settings_edit_patch',
                 'generate_chronicles': 'chronicles',
                 'edit_chronicles': 'chronicles_edit_patch',
-                'generate_episode_planning': 'episode_planning'
+                'generate_episode_planning': 'episode_planning',
+                'edit_episode_planning': 'episode_planning_edit_patch'
             };
 
             // Format tools for admin display (matching frontend Tool interface)
@@ -139,7 +140,9 @@ export function createAdminRoutes(
                 'generate_outline_settings': 'outline_settings',
                 'edit_outline_settings': 'outline_settings_edit_patch',
                 'generate_chronicles': 'chronicles',
-                'edit_chronicles': 'chronicles_edit_patch'
+                'edit_chronicles': 'chronicles_edit_patch',
+                'generate_episode_planning': 'episode_planning',
+                'edit_episode_planning': 'episode_planning_edit_patch'
             };
 
             const templateName = toolToTemplate[toolName];
@@ -226,6 +229,14 @@ export function createAdminRoutes(
                 'edit_chronicles': async (projectId: string, userId: string) => {
                     const { createChroniclesEditToolDefinition } = await import('../tools/ChroniclesTool.js');
                     return createChroniclesEditToolDefinition(transformRepo, jsondocRepo, projectId, userId);
+                },
+                'generate_episode_planning': async (projectId: string, userId: string) => {
+                    const { createEpisodePlanningToolDefinition } = await import('../tools/EpisodePlanningTool.js');
+                    return createEpisodePlanningToolDefinition(transformRepo, jsondocRepo, projectId, userId);
+                },
+                'edit_episode_planning': async (projectId: string, userId: string) => {
+                    const { createEpisodePlanningEditToolDefinition } = await import('../tools/EpisodePlanningTool.js');
+                    return createEpisodePlanningEditToolDefinition(transformRepo, jsondocRepo, projectId, userId);
                 }
             };
 
@@ -405,7 +416,10 @@ export function createAdminRoutes(
                 'edit_brainstorm_idea': 'brainstorm_edit_patch',
                 'generate_outline_settings': 'outline_settings',
                 'edit_outline_settings': 'outline_settings_edit_patch',
-                'generate_chronicles': 'chronicles'
+                'generate_chronicles': 'chronicles',
+                'edit_chronicles': 'chronicles_edit_patch',
+                'generate_episode_planning': 'episode_planning',
+                'edit_episode_planning': 'episode_planning_edit_patch'
             };
 
             const templateName = toolToTemplate[toolName];
