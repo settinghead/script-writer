@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { OutlineSettingsInputSchema, OutlineSettingsOutputSchema, ChroniclesInputSchema, ChroniclesOutputSchema } from './outlineSchemas';
+import { OutlineSettingsInputSchema, OutlineSettingsOutputSchema, ChroniclesInputSchema, ChroniclesOutputSchema, EpisodePlanningInputSchema, EpisodePlanningOutputSchema } from './outlineSchemas';
 import { BrainstormToolInputSchema } from './jsondocs';
 import { JsondocReferencesSchema } from './common';
 
@@ -27,6 +27,14 @@ export const TransformRegistry = {
     inputSchema: ChroniclesInputSchema,
     outputSchema: ChroniclesOutputSchema,
     outputType: 'chronicles'
+  },
+
+  // Episode Planning Transform
+  'episode_planning_generation': {
+    pathPattern: '^\\$\\[episode_planning\\]$',
+    inputSchema: EpisodePlanningInputSchema,
+    outputSchema: EpisodePlanningOutputSchema,
+    outputType: 'episode_planning'
   },
 
   // Brainstorm edit transforms

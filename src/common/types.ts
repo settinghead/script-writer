@@ -226,7 +226,27 @@ export interface ChroniclesV1 {
     chronicles: Chronicle[];
 }
 
+export interface EpisodePlanningV1 {
+    totalEpisodes: number;
+    episodeGroups: Array<{
+        groupTitle: string;
+        episodes: string;
+        keyEvents: string[];
+        hooks: string[];
+        emotionalBeats: string[];
+    }>;
+    overallStrategy: string;
+}
 
+export interface EpisodePlanningInputV1 {
+    jsondocs: Array<{
+        jsondocId: string;
+        description: string;
+        schemaType: string;
+    }>;
+    numberOfEpisodes: number;
+    requirements?: string;
+}
 
 // ========== STRONGLY TYPED JSONDOC INTERFACES ==========
 
@@ -238,6 +258,8 @@ export type TypedJsondoc =
     | JsondocWithData<'brainstorm_input', 'v1', BrainstormParamsV1>
     | JsondocWithData<'outline_settings', 'v1', OutlineSettingV1>
     | JsondocWithData<'chronicles', 'v1', ChroniclesV1>
+    | JsondocWithData<'episode_planning', 'v1', EpisodePlanningV1>
+    | JsondocWithData<'episode_planning_input', 'v1', EpisodePlanningInputV1>
     | JsondocWithData<'user_input', 'v1', UserInputV1>
     | JsondocWithData<'outline_title', 'v1', OutlineTitleV1>
     | JsondocWithData<'outline_genre', 'v1', OutlineGenreV1>

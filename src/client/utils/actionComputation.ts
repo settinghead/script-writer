@@ -57,6 +57,7 @@ interface UnifiedComputationContext {
     chosenIdea: any;
     outlineSettings: any;
     canonicalChronicles: any;
+    canonicalEpisodePlanning: any;
 
     // Lineage and transform data
     lineageGraph: any;
@@ -98,6 +99,7 @@ function computeUnifiedContext(
                 chosenIdea: null,
                 outlineSettings: null,
                 canonicalChronicles: null,
+                canonicalEpisodePlanning: null,
                 lineageGraph: null,
                 transformInputs: [],
                 jsondocs: [],
@@ -129,6 +131,7 @@ function computeUnifiedContext(
                     chosenIdea: userInputIdeas[0] || null,
                     outlineSettings: null,
                     canonicalChronicles: null,
+                    canonicalEpisodePlanning: null,
                     lineageGraph: null,
                     transformInputs: [],
                     jsondocs: projectData.jsondocs,
@@ -144,6 +147,7 @@ function computeUnifiedContext(
                     chosenIdea: null,
                     outlineSettings: null,
                     canonicalChronicles: null,
+                    canonicalEpisodePlanning: null,
                     lineageGraph: null,
                     transformInputs: [],
                     jsondocs: projectData.jsondocs,
@@ -161,6 +165,7 @@ function computeUnifiedContext(
                 chosenIdea: null,
                 outlineSettings: null,
                 canonicalChronicles: null,
+                canonicalEpisodePlanning: null,
                 lineageGraph: null,
                 transformInputs: [],
                 jsondocs: projectData.jsondocs,
@@ -177,6 +182,7 @@ function computeUnifiedContext(
             chosenIdea: null,
             outlineSettings: null,
             canonicalChronicles: null,
+            canonicalEpisodePlanning: null,
             lineageGraph: null,
             transformInputs: [],
             jsondocs: [],
@@ -200,6 +206,7 @@ function computeUnifiedContext(
             chosenIdea: null,
             outlineSettings: null,
             canonicalChronicles: null,
+            canonicalEpisodePlanning: null,
             lineageGraph: null,
             transformInputs: [],
             jsondocs: [],
@@ -228,6 +235,7 @@ function computeUnifiedContext(
     const canonicalBrainstormJsondocs: ElectricJsondoc[] = [];
     const canonicalOutlineJsondocs: ElectricJsondoc[] = [];
     const canonicalChroniclesJsondocs: ElectricJsondoc[] = [];
+    const canonicalEpisodePlanningJsondocs: ElectricJsondoc[] = [];
 
     // Process all lineage nodes in one pass
     for (const node of lineageGraph.nodes.values()) {
@@ -249,6 +257,8 @@ function computeUnifiedContext(
             canonicalOutlineJsondocs.push(jsondoc);
         } else if (jsondoc.schema_type === 'chronicles') {
             canonicalChroniclesJsondocs.push(jsondoc);
+        } else if (jsondoc.schema_type === 'episode_planning') {
+            canonicalEpisodePlanningJsondocs.push(jsondoc);
         }
     }
 
@@ -326,6 +336,9 @@ function computeUnifiedContext(
     // Find canonical chronicles (should be only one)
     const canonicalChronicles = canonicalChroniclesJsondocs[0] || null;
 
+    // Find canonical episode planning (should be only one)
+    const canonicalEpisodePlanning = canonicalEpisodePlanningJsondocs[0] || null;
+
     // Detect workflow path
     const isManualPath = !brainstormInput;
 
@@ -338,6 +351,7 @@ function computeUnifiedContext(
         chosenIdea,
         outlineSettings,
         canonicalChronicles,
+        canonicalEpisodePlanning,
         lineageGraph,
         transformInputs,
         jsondocs,

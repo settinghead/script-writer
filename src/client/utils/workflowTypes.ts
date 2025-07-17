@@ -16,7 +16,8 @@ export type ComponentId =
     | 'idea-collection'
     | 'single-idea-editor'
     | 'outline-settings-display'
-    | 'chronicles-display';
+    | 'chronicles-display'
+    | 'episode-planning-display';
 
 // Component modes
 export type ComponentMode =

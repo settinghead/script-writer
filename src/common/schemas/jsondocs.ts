@@ -4,7 +4,9 @@ import {
   OutlineSettingsOutputSchema,
   ChroniclesInputSchema,
   ChroniclesOutputSchema,
-  ChroniclesStageSchema
+  ChroniclesStageSchema,
+  EpisodePlanningInputSchema,
+  EpisodePlanningOutputSchema
 } from './outlineSchemas';
 
 // Import schemas from streaming.ts 
@@ -47,9 +49,9 @@ export const JsondocSchemaRegistry = {
   'chronicles_input': ChroniclesInputSchema,
   'chronicles': ChroniclesOutputSchema,
 
-
-
-
+  // Episode planning schemas
+  'episode_planning_input': EpisodePlanningInputSchema,
+  'episode_planning': EpisodePlanningOutputSchema,
 } as const;
 
 // Type exports

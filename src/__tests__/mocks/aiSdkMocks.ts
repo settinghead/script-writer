@@ -57,6 +57,12 @@ export function createCachedStreamObjectMock() {
             } else if (prompt.includes('templateName: chronicles') || prompt.includes('template: chronicles')) {
                 console.log('[Mock] Using chronicles fallback (template name match)');
                 return createFallbackChroniclesObject();
+            } else if (prompt.includes('templateName: episode_planning') || prompt.includes('template: episode_planning')) {
+                console.log('[Mock] Using episode planning fallback (template name match)');
+                return createFallbackEpisodePlanningObject();
+            } else if (prompt.includes('分集规划') || prompt.includes('分集结构') || prompt.includes('episode planning') || prompt.includes('分集安排')) {
+                console.log('[Mock] Using episode planning fallback (content match)');
+                return createFallbackEpisodePlanningObject();
             } else if (prompt.includes('时间顺序大纲') || prompt.includes('时间线编年史') || prompt.includes('timeline') || prompt.includes('时间顺序') || prompt.includes('编年史')) {
                 console.log('[Mock] Using chronicles fallback (content match)');
                 return createFallbackChroniclesObject();
@@ -368,6 +374,56 @@ function createFallbackChroniclesObject() {
         ]),
         object: Promise.resolve(mockChroniclesData),
         baseStream: createMockBaseStream(mockChroniclesData)
+    };
+}
+
+/**
+ * Fallback mock for episode planning generation (matches EpisodePlanningOutputSchema)
+ */
+function createFallbackEpisodePlanningObject() {
+    const mockEpisodePlanningData = {
+        totalEpisodes: 12,
+        episodeGroups: [
+            {
+                groupTitle: "开场吸引阶段",
+                episodes: "1-3",
+                keyEvents: ["女主入职", "初遇男主", "误会产生"],
+                hooks: ["身份悬念", "关系误会", "职场冲突"],
+                emotionalBeats: ["紧张", "好奇", "困惑"]
+            },
+            {
+                groupTitle: "情感发展阶段",
+                episodes: "4-7",
+                keyEvents: ["误会解开", "合作项目", "感情升温"],
+                hooks: ["真实身份", "竞争对手", "家族反对"],
+                emotionalBeats: ["甜蜜", "紧张", "期待"]
+            },
+            {
+                groupTitle: "冲突高潮阶段",
+                episodes: "8-10",
+                keyEvents: ["身份曝光", "分手危机", "家族介入"],
+                hooks: ["背叛疑云", "第三者", "生死抉择"],
+                emotionalBeats: ["愤怒", "绝望", "痛苦"]
+            },
+            {
+                groupTitle: "甜蜜结局阶段",
+                episodes: "11-12",
+                keyEvents: ["真相大白", "重归于好", "幸福结局"],
+                hooks: ["最后反转", "浪漫求婚"],
+                emotionalBeats: ["感动", "幸福", "满足"]
+            }
+        ],
+        overallStrategy: "采用非线性叙事结构，通过身份误会制造悬念，每集都有情感冲突点和悬念钩子，适合抖音短剧的脉冲式观看体验。重点利用闪回和插叙技巧，在关键时刻揭示真相，保持观众的观看兴趣。"
+    };
+
+    console.log('[Mock] Using episode planning fallback with data:', mockEpisodePlanningData);
+
+    return {
+        partialObjectStream: createAsyncIterator([
+            mockEpisodePlanningData  // Just return the complete data directly
+        ]),
+        object: Promise.resolve(mockEpisodePlanningData),
+        baseStream: createMockBaseStream(mockEpisodePlanningData)
     };
 }
 

@@ -72,4 +72,34 @@ export type EmotionArc = z.infer<typeof EmotionArcSchema>;
 export type RelationshipDevelopment = z.infer<typeof RelationshipDevelopmentSchema>;
 export type ChroniclesStage = z.infer<typeof ChroniclesStageSchema>;
 export type ChroniclesInput = z.infer<typeof ChroniclesInputSchema>;
-export type ChroniclesOutput = z.infer<typeof ChroniclesOutputSchema>; 
+export type ChroniclesOutput = z.infer<typeof ChroniclesOutputSchema>;
+
+// ===========================================
+// EPISODE PLANNING SCHEMAS
+// ===========================================
+
+// Episode group schema for episode planning
+export const EpisodeGroupSchema = z.object({
+    groupTitle: z.string().min(1).describe('分组标题'),
+    episodes: z.string().min(1).describe('集数范围，如 "1-3"'),
+    keyEvents: z.array(z.string()).describe('关键事件列表'),
+    hooks: z.array(z.string()).describe('悬念钩子列表'),
+    emotionalBeats: z.array(z.string()).describe('情感节拍')
+});
+
+// Episode Planning Schemas
+export const EpisodePlanningInputSchema = z.object({
+    jsondocs: JsondocReferencesSchema.describe('引用的jsondoc列表，包含时间顺序大纲等'),
+    numberOfEpisodes: z.number().min(1).max(50).describe('总集数'),
+    requirements: z.string().optional().describe('额外要求')
+});
+
+export const EpisodePlanningOutputSchema = z.object({
+    totalEpisodes: z.number(),
+    episodeGroups: z.array(EpisodeGroupSchema),
+    overallStrategy: z.string().describe('整体策略说明')
+});
+
+export type EpisodeGroup = z.infer<typeof EpisodeGroupSchema>;
+export type EpisodePlanningInput = z.infer<typeof EpisodePlanningInputSchema>;
+export type EpisodePlanningOutput = z.infer<typeof EpisodePlanningOutputSchema>; 

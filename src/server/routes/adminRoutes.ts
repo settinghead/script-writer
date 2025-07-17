@@ -43,7 +43,8 @@ export function createAdminRoutes(
                 'edit_brainstorm_idea': 'brainstorm_edit_patch',
                 'generate_outline_settings': 'outline_settings',
                 'edit_outline_settings': 'outline_settings_edit_patch',
-                'generate_chronicles': 'chronicles'
+                'generate_chronicles': 'chronicles',
+                'generate_episode_planning': 'episode_planning'
             };
 
             // Format tools for admin display (matching frontend Tool interface)

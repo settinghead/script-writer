@@ -20,6 +20,7 @@ import BrainstormInputForm from '../components/actions/BrainstormInputForm';
 import BrainstormIdeaSelection from '../components/actions/BrainstormIdeaSelection';
 import OutlineGenerationForm from '../components/actions/OutlineGenerationForm';
 import ChroniclesGenerationAction from '../components/actions/ChroniclesGenerationAction';
+import EpisodePlanningAction from '../components/actions/EpisodePlanningAction';
 import EpisodeGenerationAction from '../components/actions/EpisodeGenerationAction';
 
 // Action item definition
@@ -66,6 +67,7 @@ export interface LineageBasedActionContext {
     chosenBrainstormIdea: EffectiveBrainstormIdea | null;
     latestOutlineSettings: ElectricJsondoc | null;
     latestChronicles: ElectricJsondoc | null;
+    latestEpisodePlanning: ElectricJsondoc | null;
     brainstormInput: ElectricJsondoc | null;
 
     // Workflow state without stage
@@ -153,6 +155,12 @@ function buildActionContextFromLineage(
         'chronicles'
     );
 
+    const latestEpisodePlanning = findLatestJsondocByType(
+        lineageGraph,
+        jsondocs,
+        'episode_planning'
+    );
+
     // Find brainstorm input jsondoc
     const brainstormInput = findLatestJsondocByType(
         lineageGraph,
@@ -165,6 +173,7 @@ function buildActionContextFromLineage(
         chosenBrainstormIdea,
         latestOutlineSettings,
         latestChronicles,
+        latestEpisodePlanning,
         brainstormInput,
         workflowNodes: findMainWorkflowPath(jsondocs, lineageGraph),
         hasActiveTransforms: transforms.some(t => t.status === 'running' || t.status === 'pending'),
@@ -289,8 +298,35 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
         });
     }
 
-    // If chronicles but no episode, add EpisodeGenerationAction
-    const shouldShowEpisodeGeneration = context.latestChronicles && !context.latestChronicles.schema_type.includes('episode_synopsis');
+    // Add episode planning generation if we have chronicles but no episode planning
+    if (context.latestChronicles && !context.latestEpisodePlanning) {
+        actions.push({
+            id: 'episode_planning_generation',
+            type: 'form',
+            title: '生成分集规划',
+            description: '基于时间顺序大纲生成分集规划',
+            component: EpisodePlanningAction,
+            props: {
+                jsondocs: {
+                    brainstormIdeas: context.effectiveBrainstormIdeas,
+                    chosenIdea: context.chosenBrainstormIdea,
+                    outlineSettings: context.latestOutlineSettings,
+                    chronicles: context.latestChronicles,
+                    episodePlanning: context.latestEpisodePlanning,
+                    brainstormInput: context.brainstormInput
+                },
+                workflowContext: {
+                    hasActiveTransforms: context.hasActiveTransforms,
+                    workflowNodes: context.workflowNodes
+                }
+            },
+            enabled: true,
+            priority: 1
+        });
+    }
+
+    // If episode planning but no episode synopsis, add EpisodeGenerationAction
+    const shouldShowEpisodeGeneration = context.latestEpisodePlanning && !context.latestChronicles?.schema_type.includes('episode_synopsis');
     if (shouldShowEpisodeGeneration) {
         actions.push({
             id: 'episode_synopsis_generation',
@@ -304,6 +340,7 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
                     chosenIdea: context.chosenBrainstormIdea,
                     outlineSettings: context.latestOutlineSettings,
                     chronicles: context.latestChronicles,
+                    episodePlanning: context.latestEpisodePlanning,
                     brainstormInput: context.brainstormInput
                 },
                 workflowContext: {

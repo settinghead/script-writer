@@ -271,6 +271,16 @@ class ApiService {
         });
     }
 
+    async generateEpisodePlanningFromChronicles(projectId: string, chroniclesJsondocId: string, numberOfEpisodes: number): Promise<any> {
+        const content = `请基于时间顺序大纲生成分集规划。源时间顺序大纲ID: ${chroniclesJsondocId}，总集数: ${numberOfEpisodes}`;
+
+        return this.sendChatMessage(projectId, content, {
+            sourceJsondocId: chroniclesJsondocId,
+            action: 'episode_planning_generation',
+            numberOfEpisodes
+        });
+    }
+
     async generateEpisodesFromChronicles(projectId: string, chroniclesJsondocId: string): Promise<any> {
         const content = `请基于时间顺序大纲生成剧本。源时间顺序大纲ID: ${chroniclesJsondocId}`;
 

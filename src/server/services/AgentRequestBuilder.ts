@@ -5,6 +5,7 @@ import { prepareAgentPromptContext } from '../../common/utils/agentContext';
 import { createBrainstormToolDefinition, createBrainstormEditToolDefinition } from '../tools/BrainstormTools';
 import { createOutlineSettingsToolDefinition, createOutlineSettingsEditToolDefinition } from '../tools/OutlineSettingsTool';
 import { createChroniclesToolDefinition } from '../tools/ChroniclesTool';
+import { createEpisodePlanningToolDefinition } from '../tools/EpisodePlanningTool';
 import type { GeneralAgentRequest } from '../transform-jsondoc-framework/AgentService';
 import type { StreamingToolDefinition } from '../transform-jsondoc-framework/StreamingAgentFramework';
 
@@ -72,13 +73,14 @@ ${context}
 3. 创意选择与编辑：用户选择并修改创意
 4. 剧本框架生成 (outline_settings)：基于选定创意生成人物、背景、商业设定
 5. 时间顺序大纲生成 (chronicles)：创建故事时序结构
-6. 分集与剧本生成：后续详细内容创作
+6. 分集规划生成 (episode_planning)：基于时间顺序大纲创建优化的分集结构
+7. 分集与剧本生成：后续详细内容创作
 
 对于多步修改，始终遵循此顺序：先编辑上游内容（如创意），然后编辑依赖的下游内容（如框架）。
 ===创作流程 结束===
 
 1. 仔细分析用户请求，理解用户的真实意图。考虑请求是否模糊或复杂，可能需要修改多个部分。
-2. 审视YAML上下文，识别最新 brainstorm_input, chosen_idea, outline_settings, chronicles 等内容。
+2. 审视YAML上下文，识别最新 brainstorm_input, chosen_idea, outline_settings, chronicles, episode_planning 等内容。
 3. 如果请求涉及修改现有内容，优先使用编辑工具（edit_*）来更新最新版本，而非生成新内容。
 4. 如果请求复杂，需要修改多个组件（如想法和大纲），则按逻辑顺序调用多个工具（上游先，下游后）。
 5. 选择最合适的工具（或工具序列）来满足需求。
@@ -102,7 +104,12 @@ ${context}
 → 使用 generate_chronicles 工具
 → 参数：sourceJsondocId="设定jsondoc的ID", totalEpisodes=60
 
-示例4：编辑现有创意
+示例4：生成分集规划
+用户请求："基于时间顺序大纲生成12集的分集规划"
+→ 使用 generate_episode_planning 工具
+→ 参数：sourceJsondocId="时间顺序大纲jsondoc的ID", numberOfEpisodes=12
+
+示例5：编辑现有创意
 用户请求："修改第一个故事创意，增加悬疑元素"
 → 使用 edit_brainstorm_ideas 工具
 → 参数：sourceJsondocId="集合jsondoc的ID", ideaIndex=0, editRequirements="增加悬疑元素"
@@ -176,7 +183,8 @@ export function buildToolsForRequestType(
         createBrainstormEditToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions),
         createOutlineSettingsToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions),
         createOutlineSettingsEditToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions),
-        createChroniclesToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions)
+        createChroniclesToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions),
+        createEpisodePlanningToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions)
     ];
 }
 
