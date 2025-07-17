@@ -333,11 +333,115 @@ function computeUnifiedContext(
         console.log('[computeUnifiedContext] No outline jsondocs found in lineage graph');
     }
 
-    // Find canonical chronicles (should be only one)
-    const canonicalChronicles = canonicalChroniclesJsondocs[0] || null;
+    // Process chronicles with priority logic (same as outline settings)
+    let canonicalChronicles = null;
+    if (canonicalChroniclesJsondocs.length > 0) {
+        console.log('[computeUnifiedContext] Found chronicles jsondocs:', {
+            count: canonicalChroniclesJsondocs.length,
+            chronicles: canonicalChroniclesJsondocs.map(j => ({
+                id: j.id,
+                origin_type: j.origin_type,
+                created_at: j.created_at
+            }))
+        });
 
-    // Find canonical episode planning (should be only one)
-    const canonicalEpisodePlanning = canonicalEpisodePlanningJsondocs[0] || null;
+        // Find leaf nodes from canonical set
+        const leafChronicles = canonicalChroniclesJsondocs.filter((jsondoc) => {
+            const lineageNode = lineageGraph.nodes.get(jsondoc.id);
+            const isLeaf = lineageNode && lineageNode.isLeaf;
+            console.log(`[computeUnifiedContext] Chronicles ${jsondoc.id}: isLeaf=${isLeaf}, lineageNode exists=${!!lineageNode}`);
+            return isLeaf;
+        });
+
+        console.log('[computeUnifiedContext] Leaf chronicles:', {
+            leafCount: leafChronicles.length,
+            leafNodes: leafChronicles.map(j => ({
+                id: j.id,
+                origin_type: j.origin_type
+            }))
+        });
+
+        if (leafChronicles.length > 0) {
+            // Prioritize user_input jsondocs, then by most recent
+            leafChronicles.sort((a, b) => {
+                // First priority: user_input origin type
+                if (a.origin_type === 'user_input' && b.origin_type !== 'user_input') return -1;
+                if (b.origin_type === 'user_input' && a.origin_type !== 'user_input') return 1;
+                // Second priority: most recent
+                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+            });
+            canonicalChronicles = leafChronicles[0];
+        } else {
+            // Fallback to most recent from canonical set if no leaf nodes found
+            canonicalChroniclesJsondocs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+            canonicalChronicles = canonicalChroniclesJsondocs[0];
+        }
+
+        console.log('[computeUnifiedContext] Selected chronicles:', {
+            selected: canonicalChronicles ? {
+                id: canonicalChronicles.id,
+                origin_type: canonicalChronicles.origin_type,
+                created_at: canonicalChronicles.created_at
+            } : null
+        });
+    } else {
+        console.log('[computeUnifiedContext] No chronicles jsondocs found in lineage graph');
+    }
+
+    // Process episode planning with priority logic (same as outline settings)
+    let canonicalEpisodePlanning = null;
+    if (canonicalEpisodePlanningJsondocs.length > 0) {
+        console.log('[computeUnifiedContext] Found episode planning jsondocs:', {
+            count: canonicalEpisodePlanningJsondocs.length,
+            episodePlanning: canonicalEpisodePlanningJsondocs.map(j => ({
+                id: j.id,
+                origin_type: j.origin_type,
+                created_at: j.created_at
+            }))
+        });
+
+        // Find leaf nodes from canonical set
+        const leafEpisodePlanning = canonicalEpisodePlanningJsondocs.filter((jsondoc) => {
+            const lineageNode = lineageGraph.nodes.get(jsondoc.id);
+            const isLeaf = lineageNode && lineageNode.isLeaf;
+            console.log(`[computeUnifiedContext] Episode planning ${jsondoc.id}: isLeaf=${isLeaf}, lineageNode exists=${!!lineageNode}`);
+            return isLeaf;
+        });
+
+        console.log('[computeUnifiedContext] Leaf episode planning:', {
+            leafCount: leafEpisodePlanning.length,
+            leafNodes: leafEpisodePlanning.map(j => ({
+                id: j.id,
+                origin_type: j.origin_type
+            }))
+        });
+
+        if (leafEpisodePlanning.length > 0) {
+            // Prioritize user_input jsondocs, then by most recent
+            leafEpisodePlanning.sort((a, b) => {
+                // First priority: user_input origin type
+                if (a.origin_type === 'user_input' && b.origin_type !== 'user_input') return -1;
+                if (b.origin_type === 'user_input' && a.origin_type !== 'user_input') return 1;
+                // Second priority: most recent
+                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+            });
+            canonicalEpisodePlanning = leafEpisodePlanning[0];
+        } else {
+            // Fallback to most recent from canonical set if no leaf nodes found
+            canonicalEpisodePlanningJsondocs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+            canonicalEpisodePlanning = canonicalEpisodePlanningJsondocs[0];
+        }
+
+        console.log('[computeUnifiedContext] Selected episode planning:', {
+            selected: canonicalEpisodePlanning ? {
+                id: canonicalEpisodePlanning.id,
+                origin_type: canonicalEpisodePlanning.origin_type,
+                created_at: canonicalEpisodePlanning.created_at
+            } : null
+        });
+    } else {
+        console.log('[computeUnifiedContext] No episode planning jsondocs found in lineage graph');
+    }
 
     console.log('[computeUnifiedContext] Episode planning analysis:', {
         canonicalEpisodePlanningJsondocs: canonicalEpisodePlanningJsondocs.map(j => ({

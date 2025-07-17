@@ -4,7 +4,7 @@ import { JsondocRepository } from '../transform-jsondoc-framework/JsondocReposit
 import { prepareAgentPromptContext } from '../../common/utils/agentContext';
 import { createBrainstormToolDefinition, createBrainstormEditToolDefinition } from '../tools/BrainstormTools';
 import { createOutlineSettingsToolDefinition, createOutlineSettingsEditToolDefinition } from '../tools/OutlineSettingsTool';
-import { createChroniclesToolDefinition } from '../tools/ChroniclesTool';
+import { createChroniclesToolDefinition, createChroniclesEditToolDefinition } from '../tools/ChroniclesTool';
 import { createEpisodePlanningToolDefinition } from '../tools/EpisodePlanningTool';
 import type { GeneralAgentRequest } from '../transform-jsondoc-framework/AgentService';
 import type { StreamingToolDefinition } from '../transform-jsondoc-framework/StreamingAgentFramework';
@@ -119,7 +119,12 @@ ${context}
 → 使用 edit_outline_settings 工具
 → 参数：sourceJsondocId="剧本框架jsondoc的ID", editRequirements="增加反派角色"
 
-示例6：复杂请求 - 修改想法并更新大纲
+示例6：编辑时间顺序大纲
+用户请求："修改时间顺序大纲，加入更多南京本地元素"
+→ 使用 edit_chronicles 工具
+→ 参数：jsondocs=[{jsondocId: "chronicles_id_from_context", schemaType: "chronicles", description: "时间顺序大纲"}], editRequirements="加入更多南京本地元素，包括文化，南京话，等等"
+
+示例7：复杂请求 - 修改想法并更新大纲
 用户请求："在故事中加入童话元素"
 → 第一步：使用 edit_brainstorm_idea 编辑想法，添加童话元素
 → 参数：jsondocs=[{jsondocId: "chosen_idea_id_from_context", schemaType: "brainstorm_idea", description: "当前选中的创意想法"}], editRequirements="添加童话元素"
@@ -184,6 +189,7 @@ export function buildToolsForRequestType(
         createOutlineSettingsToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions),
         createOutlineSettingsEditToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions),
         createChroniclesToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions),
+        createChroniclesEditToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions),
         createEpisodePlanningToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions)
     ];
 }
