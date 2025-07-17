@@ -497,13 +497,19 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
 
     // Add components based on context
     if (context.brainstormInput) {
+        // Determine if the brainstorm input is actually editable
+        const isBrainstormInputLeafNode = isLeafNode(context.brainstormInput.id, context.transformInputs);
+        const isBrainstormInputEditable = !context.hasActiveTransforms &&
+            isBrainstormInputLeafNode &&
+            context.brainstormInput.origin_type === 'user_input';
+
         components.push({
             id: 'brainstorm-input-editor',
             component: getComponentById('brainstorm-input-editor'),
-            mode: context.hasActiveTransforms ? 'readonly' : 'editable',
+            mode: isBrainstormInputEditable ? 'editable' : 'readonly',
             props: {
                 jsondoc: context.brainstormInput,
-                isEditable: !context.hasActiveTransforms,
+                isEditable: isBrainstormInputEditable,
                 minimized: false // Always full mode when at brainstorm_input stage
             },
             priority: componentOrder['brainstorm-input-editor']
@@ -525,13 +531,19 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
     }
 
     if (context.chosenIdea) {
+        // Determine if the brainstorm idea is actually editable
+        const isIdeaLeafNode = isLeafNode(context.chosenIdea.id, context.transformInputs);
+        const isIdeaEditable = !context.hasActiveTransforms &&
+            isIdeaLeafNode &&
+            context.chosenIdea.origin_type === 'user_input';
+
         components.push({
             id: 'single-idea-editor',
             component: getComponentById('single-idea-editor'),
             mode: context.hasActiveTransforms ? 'readonly' : 'editable',
             props: {
                 brainstormIdea: context.chosenIdea, // Fixed: use brainstormIdea instead of idea
-                isEditable: !context.hasActiveTransforms,
+                isEditable: isIdeaEditable,
                 currentStage: 'idea_editing' // This will be removed from UnifiedWorkflowState
             },
             priority: componentOrder['single-idea-editor']
@@ -560,8 +572,12 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
     }
 
     if (context.canonicalChronicles) {
-        // Chronicles should be read-only if there are active transforms OR if episode planning exists
-        const isChroniclesEditable = !context.hasActiveTransforms && !context.canonicalEpisodePlanning;
+        // Determine if the chronicles jsondoc is actually editable
+        const isChroniclesLeafNode = isLeafNode(context.canonicalChronicles.id, context.transformInputs);
+        const isChroniclesEditable = !context.hasActiveTransforms &&
+            !context.canonicalEpisodePlanning &&
+            isChroniclesLeafNode &&
+            context.canonicalChronicles.origin_type === 'user_input';
 
         components.push({
             id: 'chronicles-display',
@@ -576,22 +592,28 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
     }
 
     if (context.canonicalEpisodePlanning) {
+        // Determine if the episode planning jsondoc is actually editable
+        const isEpisodePlanningLeafNode = isLeafNode(context.canonicalEpisodePlanning.id, context.transformInputs);
+        const isEpisodePlanningEditable = !context.hasActiveTransforms &&
+            isEpisodePlanningLeafNode &&
+            context.canonicalEpisodePlanning.origin_type === 'user_input';
+
         console.log('[computeDisplayComponentsFromContext] Adding episode planning component:', {
             episodePlanningId: context.canonicalEpisodePlanning.id,
             episodePlanningSchemaType: context.canonicalEpisodePlanning.schema_type,
             episodePlanningOriginType: context.canonicalEpisodePlanning.origin_type,
             episodePlanningDataLength: context.canonicalEpisodePlanning.data?.length,
             hasActiveTransforms: context.hasActiveTransforms,
-            isEditable: !context.hasActiveTransforms
+            isEditable: isEpisodePlanningEditable
         });
 
         components.push({
             id: 'episode-planning-display',
             component: getComponentById('episode-planning-display'),
-            mode: context.hasActiveTransforms ? 'readonly' : 'editable',
+            mode: isEpisodePlanningEditable ? 'editable' : 'readonly',
             props: {
                 episodePlanningJsondoc: context.canonicalEpisodePlanning,
-                isEditable: !context.hasActiveTransforms
+                isEditable: isEpisodePlanningEditable
             },
             priority: componentOrder['episode-planning-display']
         });

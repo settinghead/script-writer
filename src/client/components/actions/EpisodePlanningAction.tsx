@@ -5,6 +5,7 @@ import { BaseActionProps } from './index';
 import { ActionComponentProps } from '../../utils/lineageBasedActionComputation';
 import { apiService } from '../../services/apiService';
 import { AIButton } from '../shared';
+import { MIN_EPISODES, MAX_EPISODES, DEFAULT_EPISODES } from '../../../common/config/constants';
 
 const { Title, Text } = Typography;
 
@@ -14,7 +15,7 @@ type EpisodePlanningActionProps = BaseActionProps | ActionComponentProps;
 const EpisodePlanningAction: React.FC<EpisodePlanningActionProps> = (props) => {
     const { projectId, onSuccess, onError } = props;
     const [isGenerating, setIsGenerating] = useState(false);
-    const [numberOfEpisodes, setNumberOfEpisodes] = useState(12);
+    const [numberOfEpisodes, setNumberOfEpisodes] = useState<number>(DEFAULT_EPISODES);
 
     // Get chronicles from props (new way) or null (old way)
     const latestChronicles = 'jsondocs' in props ? props.jsondocs.chronicles : null;
@@ -26,8 +27,8 @@ const EpisodePlanningAction: React.FC<EpisodePlanningActionProps> = (props) => {
             return;
         }
 
-        if (numberOfEpisodes < 1 || numberOfEpisodes > 200) {
-            message.error('集数必须在1-200之间');
+        if (numberOfEpisodes < MIN_EPISODES || numberOfEpisodes > MAX_EPISODES) {
+            message.error(`集数必须在${MIN_EPISODES}-${MAX_EPISODES}之间`);
             return;
         }
 
@@ -90,12 +91,12 @@ const EpisodePlanningAction: React.FC<EpisodePlanningActionProps> = (props) => {
                     help="建议根据故事复杂度设置，每集约2分钟"
                 >
                     <InputNumber
-                        min={1}
-                        max={200}
+                        min={MIN_EPISODES}
+                        max={MAX_EPISODES}
                         value={numberOfEpisodes}
-                        onChange={(value) => setNumberOfEpisodes(value || 80)}
+                        onChange={(value) => setNumberOfEpisodes(value || DEFAULT_EPISODES)}
                         style={{ width: '100%' }}
-                        placeholder="输入总集数（1-200"
+                        placeholder={`输入总集数（${MIN_EPISODES}-${MAX_EPISODES}`}
                         data-testid="episode-count-input"
                     />
                 </Form.Item>
@@ -105,7 +106,7 @@ const EpisodePlanningAction: React.FC<EpisodePlanningActionProps> = (props) => {
                 type="primary"
                 loading={isGenerating}
                 onClick={handleGenerateEpisodePlanning}
-                disabled={!latestChronicles || numberOfEpisodes < 1 || numberOfEpisodes > 200}
+                disabled={!latestChronicles || numberOfEpisodes < MIN_EPISODES || numberOfEpisodes > MAX_EPISODES}
                 style={{ width: '100%' }}
                 data-testid="generate-episode-planning-btn"
             >

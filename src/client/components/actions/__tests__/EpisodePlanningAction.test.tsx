@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import EpisodePlanningAction from '../EpisodePlanningAction';
 import { apiService } from '../../../services/apiService';
+import { DEFAULT_EPISODES } from '../../../../common/config/constants';
 
 // Mock the API service
 vi.mock('../../../services/apiService', () => ({
@@ -109,11 +110,11 @@ describe('EpisodePlanningAction', () => {
         expect(screen.getByTestId('generate-episode-planning-btn')).toBeInTheDocument();
     });
 
-    it('has default episode count of 12', () => {
+    it('has default episode count of 80', () => {
         render(<EpisodePlanningAction {...mockProps} />);
 
         const input = screen.getByTestId('episode-count-input') as HTMLInputElement;
-        expect(input.value).toBe('12');
+        expect(input.value).toBe(DEFAULT_EPISODES.toString());
     });
 
     it('updates episode count when input changes', () => {
@@ -138,7 +139,7 @@ describe('EpisodePlanningAction', () => {
             expect(mockGenerateEpisodePlanning).toHaveBeenCalledWith(
                 'test-project-123',
                 'chronicles-456',
-                12
+                DEFAULT_EPISODES
             );
         });
     });

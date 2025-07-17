@@ -5,6 +5,7 @@ import {
     EpisodePlanningInputSchema,
     EpisodePlanningOutputSchema
 } from '@/common/schemas/outlineSchemas';
+import { MIN_EPISODES, MAX_EPISODES } from '@/common/config/constants';
 
 describe('EpisodePlanningTool Schemas', () => {
     describe('EpisodePlanningInputSchema', () => {
@@ -55,7 +56,7 @@ describe('EpisodePlanningTool Schemas', () => {
                     description: 'Chronicles data',
                     schemaType: 'chronicles'
                 }],
-                numberOfEpisodes: 0,
+                numberOfEpisodes: MIN_EPISODES - 1,
             };
 
             expect(() => EpisodePlanningInputSchema.parse(invalidInput)).toThrow();
@@ -68,7 +69,7 @@ describe('EpisodePlanningTool Schemas', () => {
                     description: 'Chronicles data',
                     schemaType: 'chronicles'
                 }],
-                numberOfEpisodes: 51,
+                numberOfEpisodes: MAX_EPISODES + 1,
             };
 
             expect(() => EpisodePlanningInputSchema.parse(invalidInput)).toThrow();

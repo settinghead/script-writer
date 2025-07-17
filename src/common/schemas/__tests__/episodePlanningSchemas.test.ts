@@ -8,6 +8,7 @@ import {
     EpisodeGroup
 } from '../outlineSchemas';
 import { JsondocReferenceSchema } from '../common';
+import { MIN_EPISODES, MAX_EPISODES } from '../../config/constants';
 
 describe('Episode Planning Schemas', () => {
     describe('EpisodeGroupSchema', () => {
@@ -126,7 +127,7 @@ describe('Episode Planning Schemas', () => {
         it('validates numberOfEpisodes minimum constraint', () => {
             const belowMinimum = {
                 ...validInput,
-                numberOfEpisodes: 0
+                numberOfEpisodes: MIN_EPISODES - 1
             };
 
             expect(() => EpisodePlanningInputSchema.parse(belowMinimum)).toThrow();
@@ -135,7 +136,7 @@ describe('Episode Planning Schemas', () => {
         it('validates numberOfEpisodes maximum constraint', () => {
             const aboveMaximum = {
                 ...validInput,
-                numberOfEpisodes: 51
+                numberOfEpisodes: MAX_EPISODES + 1
             };
 
             expect(() => EpisodePlanningInputSchema.parse(aboveMaximum)).toThrow();
@@ -144,7 +145,7 @@ describe('Episode Planning Schemas', () => {
         it('accepts minimum valid numberOfEpisodes', () => {
             const minValid = {
                 ...validInput,
-                numberOfEpisodes: 1
+                numberOfEpisodes: MIN_EPISODES
             };
 
             expect(() => EpisodePlanningInputSchema.parse(minValid)).not.toThrow();
@@ -153,7 +154,7 @@ describe('Episode Planning Schemas', () => {
         it('accepts maximum valid numberOfEpisodes', () => {
             const maxValid = {
                 ...validInput,
-                numberOfEpisodes: 50
+                numberOfEpisodes: MAX_EPISODES
             };
 
             expect(() => EpisodePlanningInputSchema.parse(maxValid)).not.toThrow();

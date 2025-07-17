@@ -132,7 +132,18 @@ ${context}
 → 第二步：使用 edit_outline_settings 更新大纲，整合新元素
 → 参数：jsondocs=[{jsondocId: "outline_id_from_context", schemaType: "outline_settings", description: "现有剧本框架"}, {jsondocId: "<output_from_first_call>", schemaType: "brainstorm_idea", description: "更新后的故事创意"}], editRequirements="基于更新后的创意整合童话元素到大纲中"
 → 完成后返回JSON总结
-(注意在示例7中，我们使用了两个工具，并且第二个工具的参数中包含了第一个工具的输出。)
+
+示例8：多步编辑 - 修改剧本框架后更新时间顺序大纲
+用户请求："减少作品的伦理争议，加入更多正面元素"
+→ 第一步 使用 edit_brainstorm_ideas 编辑想法，减少伦理争议
+→ 参数：jsondocs=[{jsondocId: "chosen_idea_id_from_context", schemaType: "brainstorm_idea", description: "当前选中的创意想法"}], editRequirements="减少伦理争议，加入更多正面元素"
+→ 第二步 使用 edit_outline_settings 编辑剧本框架，基于新的想法
+→ 参数：jsondocs=[{jsondocId: "<output_from_first_call>", schemaType: "brainstorm_idea", description: "更新后的故事创意"}, {jsondocId: "outline_id_from_context", schemaType: "outline_settings", description: "剧本框架设定"}], editRequirements="基于更新后的创意整合童话元素到大纲中"
+→ 第三步 使用 edit_chronicles 更新时间顺序大纲，基于新的框架设定
+→ 参数：jsondocs=[{jsondocId: "chronicles_id_from_context", schemaType: "chronicles", description: "时间顺序大纲"}, {jsondocId: "<output_from_second_call>", schemaType: "outline_settings", description: "更新后的剧本框架"}], editRequirements="基于更新后的框架设定调整时间顺序大纲，确保内容一致性"
+→ 完成后返回JSON总结
+
+**重要：在多步工具调用中，后续工具必须在jsondocs参数中包含前面工具调用的输出jsondocId，以确保基于最新数据进行编辑。**
 
 ===工具选择示例 结束===
 
@@ -140,6 +151,7 @@ ${context}
 - 上下文是YAML格式，包含完整数据 - 仔细阅读以了解当前状态。
 - 对于修改请求，始终使用编辑工具更新现有最新内容。
 - 如果需要多个更改，按依赖顺序调用工具（例如，先编辑想法，再编辑依赖于它的内容）。
+- **多步工具调用的关键规则：当你在同一个请求中调用多个工具时，后续工具的jsondocs参数必须包含前面工具调用的输出jsondocId。这确保后续编辑基于最新的数据，而不是过时的jsondoc。如果一个新版本(相同类型)的jsondoc被创建，旧的就不应该被使用，并且后续的工具调用中应该尽量包含新的jsondoc id，以便最新信息得到及时传播。**
 - 工具会处理结果的存储和流式传输，请不要尝试显示结果内容。
 - 仔细从用户请求和上下文中提取必要的参数。
 - 如果用户要求的创意数量未明确说明，默认为3个。

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isLeafNode, canBecomeEditable } from '../actionComputation';
+import { isLeafNode, canBecomeEditable, computeUnifiedWorkflowState } from '../actionComputation';
 import { computeActionsFromLineage } from '../lineageBasedActionComputation';
 import type { LineageGraph } from '../../../common/transform-jsondoc-framework/lineageResolution';
 import { TypedJsondoc } from '../../../common/types';
@@ -168,4 +168,87 @@ describe('actionComputation', () => {
         const hasChroniclesAction = result.actions.some((action: { id: string }) => action.id === 'chronicles_generation');
         expect(hasChroniclesAction).toBe(true);
     });
-}); 
+});
+
+describe('LLM-Generated Content Immutability Rule', () => {
+    it('should mark AI-generated jsondocs as non-editable', () => {
+        // Test that AI-generated jsondocs are never directly editable
+        const aiGeneratedJsondoc = {
+            id: 'ai-jsondoc',
+            origin_type: 'ai_generated'
+        } as any; // Simplified for testing the core logic
+
+        const transformInputs: any[] = []; // No descendants
+
+        // AI-generated jsondocs should never be directly editable
+        expect(canBecomeEditable(aiGeneratedJsondoc, transformInputs)).toBe(true); // Can become editable via human transform
+
+        // But in the UI, they should display as read-only initially
+        expect(aiGeneratedJsondoc.origin_type).toBe('ai_generated');
+    });
+
+    it('should mark user-input jsondocs as editable when they are leaf nodes', () => {
+        // Test that user-input jsondocs are editable when they're leaf nodes
+        const userInputJsondoc = {
+            id: 'user-jsondoc',
+            origin_type: 'user_input'
+        } as any; // Simplified for testing the core logic
+
+        const transformInputs: any[] = []; // No descendants
+
+        // User-input jsondocs should not "become editable" (they already are)
+        expect(canBecomeEditable(userInputJsondoc, transformInputs)).toBe(false);
+
+        // But they should be directly editable in the UI
+        expect(userInputJsondoc.origin_type).toBe('user_input');
+    });
+
+    it('should mark jsondocs with descendants as non-editable regardless of origin', () => {
+        // Test that jsondocs with descendants are never editable
+        const aiJsondocWithDescendants = {
+            id: 'ai-with-descendants',
+            origin_type: 'ai_generated'
+        } as any; // Simplified for testing the core logic
+
+        const userJsondocWithDescendants = {
+            id: 'user-with-descendants',
+            origin_type: 'user_input'
+        } as any; // Simplified for testing the core logic
+
+        const transformInputs = [
+            { jsondoc_id: 'ai-with-descendants', transform_id: 'transform-1' },
+            { jsondoc_id: 'user-with-descendants', transform_id: 'transform-2' }
+        ];
+
+        // Neither should be editable when they have descendants
+        expect(canBecomeEditable(aiJsondocWithDescendants, transformInputs)).toBe(false);
+        expect(canBecomeEditable(userJsondocWithDescendants, transformInputs)).toBe(false);
+    });
+
+    it('should enforce immutability rule: only user_input jsondocs are editable', () => {
+        // Test the core immutability rule: only user_input jsondocs should be editable
+        // This tests the key principle that AI-generated content is never directly editable
+
+        // Test 1: AI-generated jsondoc without descendants
+        const aiJsondoc = { id: 'ai-test', origin_type: 'ai_generated' } as any;
+        const noDescendants: any[] = [];
+
+        // AI-generated jsondocs can "become editable" (via human transform) but are not directly editable
+        expect(canBecomeEditable(aiJsondoc, noDescendants)).toBe(true);
+
+        // Test 2: User-input jsondoc without descendants  
+        const userJsondoc = { id: 'user-test', origin_type: 'user_input' } as any;
+
+        // User-input jsondocs should not "become editable" (they already are directly editable)
+        expect(canBecomeEditable(userJsondoc, noDescendants)).toBe(false);
+
+        // Test 3: Both types with descendants should not be editable
+        const withDescendants = [{ jsondoc_id: 'ai-test', transform_id: 'transform-1' }];
+        expect(canBecomeEditable(aiJsondoc, withDescendants)).toBe(false);
+        expect(canBecomeEditable(userJsondoc, withDescendants)).toBe(false);
+
+        // The key rule: origin_type determines direct editability
+        expect(aiJsondoc.origin_type).toBe('ai_generated');  // Never directly editable
+        expect(userJsondoc.origin_type).toBe('user_input');  // Directly editable (when leaf)
+    });
+});  

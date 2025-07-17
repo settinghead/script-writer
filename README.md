@@ -980,7 +980,22 @@ const textareaValue = isStringArray ? value.join('\n') : '';
 - Clear distinction between AI-generated and human-edited content
 - Builds confidence in the editing workflow
 
-### 6. **Contextual Field Validation**
+### 6. **LLM-Generated Content Immutability**
+**Principle**: LLM-generated jsondocs (origin_type: 'ai_generated') are immutable and NEVER directly editable in the UI.
+
+**Implementation**:
+- **Read-Only Display** - AI-generated content always displays in read-only mode initially
+- **Human Transform Creation** - When users click to edit, automatically create a human transform that produces a user-input jsondoc
+- **Audit Trail Preservation** - Complete lineage tracking from AI-generated → human-edited versions
+- **Visual Distinction** - Purple borders for AI-generated content, green borders for human-edited content
+
+**Benefits**:
+- Prevents accidental modification of AI-generated content
+- Maintains complete audit trails of all content changes
+- Clear distinction between AI and human contributions
+- Supports collaborative editing workflows
+
+### 7. **Contextual Field Validation**
 **Principle**: Validate content based on Chinese short drama requirements and platform constraints.
 
 **Implementation**:
@@ -994,7 +1009,7 @@ const textareaValue = isStringArray ? value.join('\n') : '';
 - Reduces revision cycles
 - Maintains quality standards for Chinese audiences
 
-### 7. **Progressive Content Revelation**
+### 8. **Progressive Content Revelation**
 **Principle**: Show content complexity progressively as users dive deeper into editing.
 
 **Implementation**:
@@ -1008,7 +1023,7 @@ const textareaValue = isStringArray ? value.join('\n') : '';
 - Guides users through complex creative processes
 - Maintains focus on current task
 
-### 8. **Intelligent Auto-Save with Conflict Resolution**
+### 9. **Intelligent Auto-Save with Conflict Resolution**
 **Principle**: Save user work automatically while handling concurrent edits gracefully.
 
 **Implementation**:
@@ -1031,7 +1046,7 @@ if (pendingSaveRef.current && pendingSaveRef.current !== valueToSave) {
 - Handles network delays gracefully
 - Supports collaborative editing without conflicts
 
-### 9. **Schema-Driven UI Generation**
+### 10. **Schema-Driven UI Generation**
 **Principle**: Generate editing interfaces automatically from content schemas while maintaining Chinese-specific optimizations.
 
 **Implementation**:
@@ -1046,7 +1061,7 @@ if (pendingSaveRef.current && pendingSaveRef.current !== valueToSave) {
 - Reduces development time for new content types
 - Maintains Chinese language input optimization
 
-### 10. **Workflow-Aware Action Management**
+### 11. **Workflow-Aware Action Management**
 **Principle**: Present only relevant actions based on current workflow state and available content.
 
 **Implementation**:
@@ -1060,7 +1075,7 @@ if (pendingSaveRef.current && pendingSaveRef.current !== valueToSave) {
 - Clear guidance through complex creative workflows
 - Reduces decision fatigue and cognitive load
 
-### 11. **Color Theme Principles**
+### 12. **Color Theme Principles**
 **Principle**: Use consistent color coding to distinguish between AI-generated and human-edited content throughout the application.
 
 **Implementation**:
