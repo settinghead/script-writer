@@ -390,18 +390,7 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
         });
     }
 
-    console.log('[computeDisplayComponentsFromContext] Checking for chosen idea:', {
-        hasChosenIdea: !!context.chosenIdea,
-        chosenIdeaId: context.chosenIdea?.jsondocId,
-        chosenIdeaPath: context.chosenIdea?.jsondocPath
-    });
-
     if (context.chosenIdea) {
-        console.log('[computeDisplayComponentsFromContext] Adding single idea editor component:', {
-            chosenIdeaId: context.chosenIdea.jsondocId,
-            isEditable: !context.hasActiveTransforms
-        });
-
         components.push({
             id: 'single-idea-editor',
             component: getComponentById('single-idea-editor'),
@@ -413,8 +402,6 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
             },
             priority: componentOrder['single-idea-editor']
         });
-    } else {
-        console.log('[computeDisplayComponentsFromContext] No chosen idea found, not adding single idea editor');
     }
 
     if (context.outlineSettings) {
@@ -424,13 +411,6 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
             isOutlineLeafNode &&
             context.outlineSettings.origin_type === 'user_input';
 
-        console.log('[computeDisplayComponentsFromContext] Adding outline settings component:', {
-            outlineSettingsId: context.outlineSettings.id,
-            isOutlineLeafNode,
-            isOutlineEditable,
-            hasActiveTransforms: context.hasActiveTransforms,
-            originType: context.outlineSettings.origin_type
-        });
 
         components.push({
             id: 'outline-settings-display',
@@ -443,7 +423,6 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
             priority: componentOrder['outline-settings-display']
         });
     } else {
-        console.log('[computeDisplayComponentsFromContext] No outline settings found, skipping outline component');
     }
 
     if (context.canonicalChronicles) {
@@ -462,16 +441,7 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
     // Sort by priority
     const sortedComponents = components.sort((a, b) => a.priority - b.priority);
 
-    console.log('[computeDisplayComponentsFromContext] Final display components:', {
-        totalComponents: sortedComponents.length,
-        componentIds: sortedComponents.map(c => c.id),
-        componentDetails: sortedComponents.map(c => ({
-            id: c.id,
-            mode: c.mode,
-            priority: c.priority,
-            hasComponent: !!c.component
-        }))
-    });
+
 
     return sortedComponents;
 }

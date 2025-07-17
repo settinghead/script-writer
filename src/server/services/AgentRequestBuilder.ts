@@ -64,6 +64,7 @@ ${context}
 ===当前项目背景信息 结束===
 
 ===你的任务 开始===
+
 ===创作流程 开始===
 我们的创作流程遵循以下顺序：
 1. 头脑风暴输入 (brainstorm_input)：用户提供创意参数
@@ -112,12 +113,14 @@ ${context}
 → 参数：sourceJsondocId="剧本框架jsondoc的ID", editRequirements="增加反派角色"
 
 示例6：复杂请求 - 修改想法并更新大纲
-用户请求："在故事中加入童话元素，并相应调整大纲"
+用户请求："在故事中加入童话元素"
 → 第一步：使用 edit_brainstorm_idea 编辑想法，添加童话元素
 → 参数：jsondocs=[{jsondocId: "chosen_idea_id_from_context", schemaType: "brainstorm_idea", description: "当前选中的创意想法"}], editRequirements="添加童话元素"
 → 第二步：使用 edit_outline_settings 更新大纲，整合新元素
 → 参数：jsondocs=[{jsondocId: "outline_id_from_context", schemaType: "outline_settings", description: "现有剧本框架"}, {jsondocId: "<output_from_first_call>", schemaType: "brainstorm_idea", description: "更新后的故事创意"}], editRequirements="基于更新后的创意整合童话元素到大纲中"
 → 完成后返回JSON总结
+(注意在示例6中，我们使用了两个工具，并且第二个工具的参数中包含了第一个工具的输出。)
+
 ===工具选择示例 结束===
 
 ===重要提示 开始===
@@ -138,22 +141,17 @@ ${context}
 2. **然后：按顺序调用所有必要的工具。**
 3. **最后：所有工具调用完成后，返回JSON格式的响应。**
 
-**JSON响应格式：**
+**你的回复的JSON格式要求：**
 {
-  "humanReadableMessage": "对用户友好的中文回复消息，说明你完成了什么任务"
+  "humanReadableMessage": "对用户友好的中文回复消息，说明你完成了什么任务。不要暴露任何工具调用的细节。"
 }
 
-**JSON响应示例：**
-- 生成创意后：{"humanReadableMessage": "我已经为您生成了3个精彩的故事创意，涵盖了现代都市、古装和悬疑题材。您可以在头脑风暴结果中查看详细内容。"}
-- 编辑创意后：{"humanReadableMessage": "我已经根据您的要求修改了故事创意，增加了悬疑元素和更复杂的人物关系。更新后的创意现在更具吸引力。"}
-- 生成框架后：{"humanReadableMessage": "我已经基于选定的故事创意生成了详细的剧本框架，包括人物角色、故事背景和商业定位等内容。"}
-- 编辑框架后：{"humanReadableMessage": "我已经根据您的要求修改了剧本框架，更新了角色设定和故事背景。修改后的框架更加完善。"}
-- 多步后：{"humanReadableMessage": "我已经完成了多步修改：首先更新了故事创意添加童话元素，然后相应调整了大纲。所有更改已保存。"}
 
 **注意：对于简单请求，可能只需一个工具调用；对于复杂请求，进行多个调用。始终在所有操作完成后返回JSON。**
+
 ===工作流程要求 结束===
 
-现在，请开始分析请求、审视YAML上下文，并执行必要的工具调用序列。`;
+现在，请开始分析请求、审视上下文，并执行必要的工具调用序列，在每个中间和最后步骤输出JSON格式响应。`;
 }
 
 /**
