@@ -81,7 +81,7 @@ export function useParticleSearch(options: UseParticleSearchOptions): UseParticl
     };
 }
 
-// New hook for listing all particles in a project
+// Hook for listing all particles in a project
 export interface UseParticleListOptions {
     projectId: string;
     limit?: number;
@@ -96,12 +96,13 @@ export interface UseParticleListReturn {
 }
 
 export function useParticleList(options: UseParticleListOptions): UseParticleListReturn {
-    const { projectId, limit = 50 } = options;
+    const { projectId, limit = 100 } = options;
     const [particles, setParticles] = useState<ParticleSearchResult[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const fetchParticles = useCallback(async () => {
+        console.log('[useParticleList] Starting fetch for project:', projectId);
         setLoading(true);
         setError(null);
 
@@ -111,13 +112,18 @@ export function useParticleList(options: UseParticleListOptions): UseParticleLis
                 limit: limit.toString()
             });
 
-            const response = await fetch(`/api/particles/list?${params.toString()}`);
+            const url = `/api/particles/list?${params.toString()}`;
+            console.log('[useParticleList] Fetching from URL:', url);
+
+            const response = await fetch(url);
 
             if (!response.ok) {
+                console.error('[useParticleList] Response not OK:', response.status, response.statusText);
                 throw new Error(`Failed to fetch particles: ${response.status}`);
             }
 
             const results = await response.json();
+            console.log('[useParticleList] Received results:', results.length, 'particles');
             setParticles(results);
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Failed to fetch particles';
@@ -140,4 +146,5 @@ export function useParticleList(options: UseParticleListOptions): UseParticleLis
         fetchParticles,
         refresh
     };
-} 
+}
+

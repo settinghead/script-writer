@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button, Typography } from 'antd';
 import { IdeaWithTitle } from '../../../common/transform-jsondoc-framework/lineageResolution';
 import { ReasoningIndicator, SectionWrapper, } from '../shared';
+import { JsondocDisplayWrapper } from '../../transform-jsondoc-framework/components/JsondocDisplayWrapper';
 import { useProjectData } from '../../contexts/ProjectDataContext';
 import { useLatestBrainstormIdeas } from '../../transform-jsondoc-framework/useLineageResolution';
 import { useChosenBrainstormIdea } from '../../hooks/useChosenBrainstormIdea';
@@ -360,10 +361,13 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
   });
 
   // Determine if we should show collapsed view
-  const isCollapsedView = chosenIdea && !chosenIdeaLoading;
+  // Show collapsed view if we have a chosen idea OR if we only have individual ideas (not collections)
+  const hasOnlyIndividualIdeas = ideas.length === 1 && ideas[0]?.jsondocPath === '$';
+  const isCollapsedView = (chosenIdea && !chosenIdeaLoading) || hasOnlyIndividualIdeas;
 
   // Determine if we're in selection mode
-  const inSelectionMode = propsSelectionMode ?? (!chosenIdea && !readOnly);
+  // Don't show selection mode if we only have individual ideas
+  const inSelectionMode = propsSelectionMode ?? (!chosenIdea && !readOnly && !hasOnlyIndividualIdeas);
 
   console.log('[IdeaCollection] Display mode:', {
     isCollapsedView,
@@ -476,132 +480,179 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
 
   console.log('[IdeaCollection] Rendering main component with ideas:', ideas.length);
 
+  // Determine schema type based on whether we have individual ideas or collections
+  const sectionSchemaType = hasOnlyIndividualIdeas ? "brainstorm_idea" : "brainstorm_collection";
+  const sectionJsondocId = hasOnlyIndividualIdeas ? ideas[0]?.jsondocId : undefined;
+
+  console.log('[IdeaCollection] Section configuration:', {
+    hasOnlyIndividualIdeas,
+    sectionSchemaType,
+    sectionJsondocId,
+    ideasCount: ideas.length
+  });
+
   return (
     <SectionWrapper
-      schemaType={"brainstorm_collection"}
+      schemaType={sectionSchemaType}
       title="头脑风暴"
       sectionId="ideas"
+      jsondocId={sectionJsondocId}
     >
-      <div className={`${isCollapsedView ? 'bg-gray-900' : 'min-h-screen bg-gray-900'} text-white`}>
-        <div className={`container mx-auto px-4 ${isCollapsedView ? 'py-4' : 'py-8'}`}>
-          {/* Header */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between">
-              {/* Status indicator */}
-              <div className="flex items-center gap-4">
-                {isStreaming && (
-                  <div className="flex items-center gap-2">
-                    <ReasoningIndicator isVisible={false} />
-                    <span className="text-sm text-blue-400">正在生成想法...</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Progress bar */}
-            {isStreaming && (
-              <div className="mt-4">
-                正在生成想法...
-              </div>
-            )}
+      {hasOnlyIndividualIdeas ? (
+        // For individual ideas, show a collapsed summary with the idea title
+        <div style={{ padding: '16px', textAlign: 'center' }}>
+          <div style={{
+            padding: '12px 20px',
+            backgroundColor: '#2a2a2a',
+            borderRadius: '8px',
+            border: '1px solid #444',
+            display: 'inline-block'
+          }}>
+            <Text style={{ color: '#1890ff', fontSize: '14px', fontWeight: 500 }}>
+              已选择创意: {ideas[0]?.title || '觉醒吧，南京赛亚人！'}
+            </Text>
           </div>
-
-          {/* Results */}
-          {ideas.length > 0 ? (
-            <div className="space-y-6">
-              {/* Header with controls */}
+          <div style={{ marginTop: '8px' }}>
+            <Text style={{ color: '#666', fontSize: '12px' }}>
+              头脑风暴已完成 - 详细内容请查看下方创意编辑区
+            </Text>
+          </div>
+        </div>
+      ) : (
+        // For collections, use the existing card-based rendering
+        <div className={`${isCollapsedView ? 'bg-gray-900' : 'min-h-screen bg-gray-900'} text-white`}>
+          <div className={`container mx-auto px-4 ${isCollapsedView ? 'py-4' : 'py-8'}`}>
+            {/* Header */}
+            <div className="mb-8">
               <div className="flex items-center justify-between">
+                {/* Status indicator */}
                 <div className="flex items-center gap-4">
                   {isStreaming && (
                     <div className="flex items-center gap-2">
                       <ReasoningIndicator isVisible={false} />
-                      <Text className="text-sm text-blue-400">
-                        生成中...
-                      </Text>
+                      <span className="text-sm text-blue-400">正在生成想法...</span>
                     </div>
                   )}
                 </div>
-
-
               </div>
 
-              {/* Selection instruction */}
-              {inSelectionMode && !chosenIdea && (
-                <div className="text-center py-4 " style={{ padding: "12px 12px" }}>
-                  <Text className="text-gray-400" >
-                    {store.selectedJsondocAndPath
-                      ? `已选择创意 ${store.selectedJsondocAndPath.index + 1}，请使用下方的操作面板确认选择`
-                      : '点击选择一个创意想法继续开发'
-                    }
-                  </Text>
-                </div>
-              )}
-
-              {/* Read-only mode instruction */}
-              {readOnly && (
-                <div className="text-center py-4 " style={{ padding: "12px 12px" }}>
-                  <Text className="text-gray-400">
-                    创意回顾 - 这些是之前生成的创意想法
-                  </Text>
-                </div>
-              )}
-
-              {/* Ideas grid - responsive layout based on collapsed state */}
-              <div className={isCollapsedView
-                ? "grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3"
-                : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-              } style={{ padding: "12px 12px" }}>
-                {ideas.map((idea, index) => {
-                  console.log(`[IdeaCollection] Rendering idea ${index}:`, {
-                    title: idea.title,
-                    jsondocId: idea.jsondocId,
-                    originalJsondocId: idea.originalJsondocId,
-                    jsondocPath: idea.jsondocPath
-                  });
-
-                  return (
-                    <IdeaCardWrapper
-                      key={`${idea.jsondocId}-${index}`}
-                      idea={idea}
-                      index={index}
-                      isSelected={getIsIdeaSelected(idea, index)}
-                      chosenIdea={chosenIdea}
-                      ideaOutlines={ideaOutlines[idea.jsondocId || ''] || []}
-                      onIdeaClick={handleIdeaClick}
-                      readOnly={readOnly}
-                    />
-                  );
-                })}
-              </div>
-
-              {/* Streaming indicator */}
+              {/* Progress bar */}
               {isStreaming && (
-                <div className="text-center py-4">
-                  <Text className="text-sm text-gray-400">
-                    正在生成更多创意想法...
-                  </Text>
+                <div className="mt-4">
+                  正在生成想法...
                 </div>
               )}
             </div>
-          ) : status === 'idle' ? (
-            <div className="text-center py-12">
-              <p className="text-gray-400 mb-6">
-                还没有头脑风暴结果，稍等一下可能就会有
-              </p>
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <div className="animate-pulse">
-                <div className="text-4xl mb-4">⚡</div>
-                <h2 className="text-xl font-semibold mb-2">头脑风暴进行中</h2>
-                <p className="text-gray-400">
-                  正在生成您的创意。结果将自动显示在这里。
+
+            {/* Results */}
+            {ideas.length > 0 ? (
+              <div className="space-y-6">
+                {/* Header with controls */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    {isStreaming && (
+                      <div className="flex items-center gap-2">
+                        <ReasoningIndicator isVisible={false} />
+                        <Text className="text-sm text-blue-400">
+                          生成中...
+                        </Text>
+                      </div>
+                    )}
+                  </div>
+
+
+                </div>
+
+                {/* Selection instruction */}
+                {inSelectionMode && !chosenIdea && (
+                  <div className="text-center py-4 " style={{ padding: "12px 12px" }}>
+                    <Text className="text-gray-400" >
+                      {store.selectedJsondocAndPath
+                        ? `已选择创意 ${store.selectedJsondocAndPath.index + 1}，请使用下方的操作面板确认选择`
+                        : '点击选择一个创意想法继续开发'
+                      }
+                    </Text>
+                  </div>
+                )}
+
+                {/* Individual idea mode instruction */}
+                {hasOnlyIndividualIdeas && !readOnly && (
+                  <div className="text-center py-4 " style={{ padding: "12px 12px" }}>
+                    <Text className="text-gray-400">
+                      当前创意 - 您可以继续编辑或进入下一步骤
+                    </Text>
+                  </div>
+                )}
+
+                {/* Read-only mode instruction */}
+                {readOnly && (
+                  <div className="text-center py-4 " style={{ padding: "12px 12px" }}>
+                    <Text className="text-gray-400">
+                      创意回顾 - 这些是之前生成的创意想法
+                    </Text>
+                  </div>
+                )}
+
+                {/* Ideas grid - responsive layout based on collapsed state and content type */}
+                <div className={
+                  hasOnlyIndividualIdeas
+                    ? "grid grid-cols-1 gap-6" // Full width for individual ideas
+                    : isCollapsedView
+                      ? "grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3"
+                      : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                } style={{ padding: "12px 12px" }}>
+                  {ideas.map((idea, index) => {
+                    console.log(`[IdeaCollection] Rendering idea ${index}:`, {
+                      title: idea.title,
+                      jsondocId: idea.jsondocId,
+                      originalJsondocId: idea.originalJsondocId,
+                      jsondocPath: idea.jsondocPath
+                    });
+
+                    return (
+                      <IdeaCardWrapper
+                        key={`${idea.jsondocId}-${index}`}
+                        idea={idea}
+                        index={index}
+                        isSelected={getIsIdeaSelected(idea, index)}
+                        chosenIdea={chosenIdea}
+                        ideaOutlines={ideaOutlines[idea.jsondocId || ''] || []}
+                        onIdeaClick={handleIdeaClick}
+                        readOnly={readOnly}
+                      />
+                    );
+                  })}
+                </div>
+
+                {/* Streaming indicator */}
+                {isStreaming && (
+                  <div className="text-center py-4">
+                    <Text className="text-sm text-gray-400">
+                      正在生成更多创意想法...
+                    </Text>
+                  </div>
+                )}
+              </div>
+            ) : status === 'idle' ? (
+              <div className="text-center py-12">
+                <p className="text-gray-400 mb-6">
+                  还没有头脑风暴结果，稍等一下可能就会有
                 </p>
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="text-center py-12">
+                <div className="animate-pulse">
+                  <div className="text-4xl mb-4">⚡</div>
+                  <h2 className="text-xl font-semibold mb-2">头脑风暴进行中</h2>
+                  <p className="text-gray-400">
+                    正在生成您的创意。结果将自动显示在这里。
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </SectionWrapper>
   )
 } 

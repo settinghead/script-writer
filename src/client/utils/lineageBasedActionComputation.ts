@@ -370,24 +370,30 @@ function findLatestJsondocByType(
 }
 
 /**
- * Find chosen brainstorm idea from lineage (leaf node that's ready for next stage)
+ * Find chosen brainstorm idea from lineage (standalone idea that represents the chosen path)
  */
 function findChosenIdeaFromLineage(
     effectiveBrainstormIdeas: EffectiveBrainstormIdea[],
     lineageGraph: LineageGraph
 ): EffectiveBrainstormIdea | null {
-    // Find the idea that's a leaf node (ready for next stage)
+    // For standalone ideas (jsondocPath === '$'), consider them chosen regardless of leaf status
+    // This is because individual ideas can have descendants (like outline settings) but are still the chosen idea
+    for (const idea of effectiveBrainstormIdeas) {
+        const node = lineageGraph.nodes.get(idea.jsondocId);
+        if (node && idea.jsondocPath === '$') {
+            // This is a standalone brainstorm idea jsondoc, can be chosen
+            // We don't require it to be a leaf node because it might have outline settings as descendants
+            return idea;
+        }
+    }
+
+    // Fallback: if no standalone ideas, look for leaf nodes from collections
     for (const idea of effectiveBrainstormIdeas) {
         const node = lineageGraph.nodes.get(idea.jsondocId);
         if (node && node.isLeaf) {
-            // CRITICAL FIX: Only consider standalone ideas as "chosen"
-            // Ideas from collections (jsondocPath !== '$') should not be auto-chosen
-            // even if the collection is a leaf node - user needs to explicitly select one
-            if (idea.jsondocPath === '$') {
-                // This is a standalone brainstorm idea jsondoc, can be chosen
-                return idea;
-            }
-            // Ideas from collections (jsondocPath like '$.ideas[0]') are not auto-chosen
+            // Ideas from collections (jsondocPath like '$.ideas[0]') are only chosen if they're leaf nodes
+            // This means user has explicitly selected them
+            return idea;
         }
     }
 

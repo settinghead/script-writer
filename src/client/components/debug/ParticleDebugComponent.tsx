@@ -105,6 +105,7 @@ export const ParticleDebugComponent: React.FC<ParticleDebugComponentProps> = ({ 
     // Fetch particles when list tab is selected
     useEffect(() => {
         if (activeTab === 'list') {
+            console.log('[ParticleDebugComponent] List tab selected, fetching particles...');
             fetchParticles();
         }
     }, [activeTab, fetchParticles]);
@@ -377,9 +378,14 @@ export const ParticleDebugComponent: React.FC<ParticleDebugComponentProps> = ({ 
                                     }
                                 >
                                     {allParticles.length === 0 && !listLoading ? (
-                                        <Text style={{ color: '#888' }}>
-                                            当前项目中没有粒子
-                                        </Text>
+                                        <div>
+                                            <Text style={{ color: '#888' }}>
+                                                当前项目中没有粒子
+                                            </Text>
+                                            <div style={{ marginTop: 8, fontSize: '12px', color: '#666' }}>
+                                                Debug: allParticles.length = {allParticles.length}, listLoading = {listLoading.toString()}, listError = {listError || 'null'}
+                                            </div>
+                                        </div>
                                     ) : (
                                         <List
                                             dataSource={allParticles}

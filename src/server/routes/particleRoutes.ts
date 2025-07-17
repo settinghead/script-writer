@@ -66,6 +66,90 @@ router.post('/extract-all', authMiddleware.authenticate, async (req, res) => {
 });
 
 /**
+ * List all particles within a project
+ * GET /api/particles/list?projectId=id&limit=100
+ */
+router.get('/list', authMiddleware.authenticate, async (req, res) => {
+    try {
+        const { projectId, limit = 100 } = req.query;
+        const user = authMiddleware.getCurrentUser(req);
+
+        // Validate required parameters
+        if (!projectId || typeof projectId !== 'string') {
+            res.status(400).json({ error: 'ProjectId parameter is required' });
+            return;
+        }
+
+        if (!user) {
+            res.status(401).json({ error: 'User not authenticated' });
+            return;
+        }
+
+        // Get particle system
+        const particleSystem = getParticleSystem();
+        if (!particleSystem) {
+            res.status(503).json({
+                error: 'Particle system not available',
+                details: 'Particle system may not be initialized due to missing configuration'
+            });
+            return;
+        }
+
+        const listLimit = Math.min(parseInt(limit as string) || 100, 200);
+
+        try {
+            // Verify user has access to the project
+            const { JsondocRepository } = await import('../transform-jsondoc-framework/JsondocRepository.js');
+            const jsondocRepo = new JsondocRepository(db);
+            const hasAccess = await jsondocRepo.userHasProjectAccess(user.id, projectId);
+            if (!hasAccess) {
+                res.status(403).json({ error: 'Access denied to project' });
+                return;
+            }
+
+            // Get all particles for the project
+            const particles = await db
+                .selectFrom('particles')
+                .selectAll()
+                .where('project_id', '=', projectId)
+                .where('is_active', '=', true)
+                .orderBy('created_at', 'desc')
+                .limit(listLimit)
+                .execute();
+
+            // Transform results to match frontend expectations
+            const transformedResults = particles.map(particle => ({
+                id: particle.id,
+                title: particle.title,
+                type: particle.type,
+                content_preview: particle.content_text ?
+                    particle.content_text.substring(0, 100) + (particle.content_text.length > 100 ? '...' : '') :
+                    JSON.stringify(particle.content).substring(0, 100) + '...',
+                jsondoc_id: particle.jsondoc_id,
+                path: particle.path,
+                created_at: particle.created_at,
+                updated_at: particle.updated_at
+            }));
+
+            res.json(transformedResults);
+        } catch (dbError) {
+            console.error('[ParticleRoutes] Database list failed:', dbError);
+            res.status(500).json({
+                error: 'Failed to list particles',
+                details: dbError instanceof Error ? dbError.message : 'Database error'
+            });
+        }
+
+    } catch (error) {
+        console.error('[ParticleRoutes] List failed:', error);
+        res.status(500).json({
+            error: 'Particle list failed',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        });
+    }
+});
+
+/**
  * Search particles within a project (simplified version)
  * GET /api/particles/search?query=text&projectId=id&limit=10
  */

@@ -42,6 +42,16 @@ export const JsondocDisplayWrapper: React.FC<JsondocDisplayWrapperProps> = ({
     parentJsondocId,
     jsondocPath
 }) => {
+    console.log('[JsondocDisplayWrapper] Rendering:', {
+        title,
+        schemaType,
+        hasJsondoc: !!jsondoc,
+        jsondocId: jsondoc?.id,
+        isEditable,
+        enableClickToEdit,
+        icon
+    });
+
     const projectData = useProjectData();
     const [isCreatingTransform, setIsCreatingTransform] = useState(false);
 
@@ -100,6 +110,12 @@ export const JsondocDisplayWrapper: React.FC<JsondocDisplayWrapperProps> = ({
     const clickToEditAvailable = enableClickToEdit && (onClickToEdit || canEdit);
 
     if (!jsondoc) {
+        console.log('[JsondocDisplayWrapper] No jsondoc provided, showing loading state:', {
+            title,
+            schemaType,
+            jsondocValue: jsondoc,
+            jsondocType: typeof jsondoc
+        });
         return (
             <div style={{ padding: '40px', textAlign: 'center' }}>
                 <Spin size="large" />
@@ -109,6 +125,13 @@ export const JsondocDisplayWrapper: React.FC<JsondocDisplayWrapperProps> = ({
             </div>
         );
     }
+
+    console.log('[JsondocDisplayWrapper] Jsondoc found, proceeding with render:', {
+        jsondocId: jsondoc.id,
+        schemaType: jsondoc.schema_type,
+        isEditable,
+        hasData: !!jsondoc.data
+    });
 
     if (isEditable) {
         // Editable mode - green border, user can edit with YJS

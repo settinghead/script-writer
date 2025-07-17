@@ -120,10 +120,65 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
         };
     }, [electricConfig, projectWhereClause]); // Removed handleElectricError from deps
 
-    // Electric SQL subscriptions
-    const { data: jsondocs, isLoading: jsondocsLoading, error: jsondocsError } = useShape<ElectricJsondoc & {
+    // Electric SQL subscriptions with fallback
+    const { data: electricJsondocs, isLoading: jsondocsLoading, error: jsondocsError } = useShape<ElectricJsondoc & {
         [key: string]: any;
     }>(jsondocsConfig);
+
+    // Fallback API data state
+    const [fallbackJsondocs, setFallbackJsondocs] = useState<ElectricJsondoc[]>([]);
+    const [fallbackLoading, setFallbackLoading] = useState(false);
+
+    // Use Electric SQL data if available, otherwise fallback to API
+    const jsondocs = useMemo(() => {
+        if (electricJsondocs && electricJsondocs.length > 0) {
+            console.log('[ProjectDataContext] Using Electric SQL data:', electricJsondocs.length, 'jsondocs');
+            return electricJsondocs;
+        }
+        if (fallbackJsondocs.length > 0) {
+            console.log('[ProjectDataContext] Using fallback API data:', fallbackJsondocs.length, 'jsondocs');
+            return fallbackJsondocs;
+        }
+        console.log('[ProjectDataContext] No jsondocs available from either source');
+        return [];
+    }, [electricJsondocs, fallbackJsondocs]);
+
+    // Fallback API call when Electric SQL is not working
+    useEffect(() => {
+        const fetchFallbackData = async () => {
+            // Only fetch if Electric SQL is not providing data and we haven't already fetched
+            if ((!electricJsondocs || electricJsondocs.length === 0) &&
+                !jsondocsLoading &&
+                !fallbackLoading &&
+                fallbackJsondocs.length === 0) {
+
+                console.log('[ProjectDataContext] Electric SQL not working, fetching fallback data...');
+                setFallbackLoading(true);
+
+                try {
+                    const response = await fetch(`/api/jsondocs?projectId=${projectId}`, {
+                        credentials: 'include'
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        console.log('[ProjectDataContext] Fallback API returned:', data.length, 'jsondocs');
+                        setFallbackJsondocs(data);
+                    } else {
+                        console.error('[ProjectDataContext] Fallback API failed:', response.status);
+                    }
+                } catch (error) {
+                    console.error('[ProjectDataContext] Fallback API error:', error);
+                } finally {
+                    setFallbackLoading(false);
+                }
+            }
+        };
+
+        // Delay the fallback call to give Electric SQL a chance
+        const timeoutId = setTimeout(fetchFallbackData, 2000);
+        return () => clearTimeout(timeoutId);
+    }, [projectId, electricJsondocs, jsondocsLoading, fallbackLoading, fallbackJsondocs.length]);
 
     // Debug jsondocs loading (removed for clarity)
 
@@ -228,7 +283,7 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
 
     // Aggregate loading state
     const isLoading = jsondocsLoading || transformsLoading || humanTransformsLoading ||
-        transformInputsLoading || transformOutputsLoading || llmPromptsLoading || llmTransformsLoading;
+        transformInputsLoading || transformOutputsLoading || llmPromptsLoading || llmTransformsLoading || fallbackLoading;
 
     // Aggregate error state
     const error = jsondocsError || transformsError || null;
@@ -405,7 +460,7 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
     const selectors = useMemo(() => ({
         // NEW: Collection-aware selectors
         getIdeaCollections: () =>
-            jsondocs?.filter(a => a.schema_type === 'brainstorm_collection' || a.type === 'brainstorm_collection') || [],
+            jsondocs?.filter(a => a.schema_type === 'brainstorm_collection') || [],
 
         getJsondocAtPath: (jsondocId: string, jsondocPath: string) => {
             const jsondoc = jsondocs?.find(a => a.id === jsondocId);
