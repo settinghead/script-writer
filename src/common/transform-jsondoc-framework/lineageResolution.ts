@@ -1126,108 +1126,95 @@ export function findEffectiveBrainstormIdeas(
     jsondocs: ElectricJsondoc[]
 ): EffectiveBrainstormIdea[] {
 
-
     const results: EffectiveBrainstormIdea[] = [];
-    const jsondocMap = new Map(jsondocs.map(a => [a.id, a]));
+    const jsondocMap = new Map(jsondocs.map(j => [j.id, j]));
 
-
-
-    // Step 1: Find all relevant brainstorm nodes (both leaf and non-leaf)
-    // Collections can be non-leaf but still need processing for unconsumed ideas
-    const relevantNodes = Array.from(graph.nodes.entries())
+    // Find all brainstorm-related nodes (ideas and collections)
+    const allBrainstormNodes = Array.from(graph.nodes.entries())
         .filter(([_, node]) => {
-            if (node.type !== 'jsondoc') {
-                return false;
+            if (node.type !== 'jsondoc') return false;
+            const jsondoc = jsondocMap.get((node as LineageNodeJsondoc).jsondocId);
+            return jsondoc?.schema_type === 'brainstorm_idea' || jsondoc?.schema_type === 'brainstorm_collection';
+        });
+
+    const relevantNodes = allBrainstormNodes
+        .filter(([_, node]) => {
+            const jsondoc = jsondocMap.get((node as LineageNodeJsondoc).jsondocId);
+            if (!jsondoc) return false;
+
+            // Check if there are any brainstorm_collection nodes
+            const hasCollections = allBrainstormNodes.some(([_, n]) => {
+                const j = jsondocMap.get((n as LineageNodeJsondoc).jsondocId);
+                return j?.schema_type === 'brainstorm_collection';
+            });
+
+            // Include all brainstorm types with modified logic for ideas
+            let shouldInclude = false;
+
+            if (jsondoc.schema_type === 'brainstorm_collection') {
+                shouldInclude = node.isLeaf;
+            } else if (jsondoc.schema_type === 'brainstorm_idea') {
+                if (hasCollections) {
+                    // If collections exist, only include leaf ideas
+                    shouldInclude = node.isLeaf;
+                } else {
+                    // If no collections, include leaf ideas OR the latest idea in chain
+                    if (node.isLeaf) {
+                        shouldInclude = true;
+                    } else {
+                        // Check if this is the latest brainstorm_idea (highest depth)
+                        const allIdeaNodes = allBrainstormNodes.filter(([_, n]) => {
+                            const j = jsondocMap.get((n as LineageNodeJsondoc).jsondocId);
+                            return j?.schema_type === 'brainstorm_idea';
+                        });
+                        const maxDepth = Math.max(...allIdeaNodes.map(([_, n]) => n.depth));
+                        shouldInclude = node.depth === maxDepth;
+                    }
+                }
             }
 
-            const jsondoc = jsondocMap.get((node as LineageNodeJsondoc).jsondocId);
-            const isBrainstormType = jsondoc && (
-                jsondoc.schema_type === 'brainstorm_idea' || jsondoc.schema_type === 'brainstorm_collection'
-            );
-
-
-
-            // Include all brainstorm types regardless of leaf status
-            // - brainstorm_idea: only if leaf (final versions)
-            // - brainstorm_collection: always (may have unconsumed ideas)
-            const shouldInclude = isBrainstormType && (
-                ((jsondoc.schema_type === 'brainstorm_idea') && node.isLeaf) ||
-                ((jsondoc.schema_type === 'brainstorm_collection') && node.isLeaf) ||
-                (jsondoc.schema_type === 'brainstorm_collection')
-            );
-
-
-
             return shouldInclude;
-        })
-        .map(([jsondocId, node]) => ({ jsondocId, node: node as LineageNodeJsondoc }));
+        });
 
-
-
-    for (const { jsondocId, node } of relevantNodes) {
-        const jsondoc = jsondocMap.get(jsondocId);
-        if (!jsondoc) {
-            console.warn('[findEffectiveBrainstormIdeas] Jsondoc not found for relevant node:', jsondocId);
-            continue;
-        }
-
-
+    // Process the relevant nodes
+    for (const [nodeId, node] of relevantNodes) {
+        const jsondoc = jsondocMap.get((node as LineageNodeJsondoc).jsondocId);
+        if (!jsondoc) continue;
 
         if (jsondoc.schema_type === 'brainstorm_collection') {
-
-            // Step 2a: Collection leaf - check which ideas are still "available"
-            const consumedPaths = findConsumedCollectionPaths(jsondocId, graph);
-
-
-            const collectionIdeas = extractCollectionIdeas(jsondoc, consumedPaths);
-
-
-            results.push(...collectionIdeas);
-
+            // Handle collections
+            try {
+                const data = JSON.parse(jsondoc.data);
+                if (data.ideas && Array.isArray(data.ideas)) {
+                    data.ideas.forEach((idea: any, index: number) => {
+                        results.push({
+                            jsondocId: jsondoc.id,
+                            jsondocPath: `ideas.${index}`,
+                            originalJsondocId: jsondoc.id,
+                            index,
+                            isFromCollection: true
+                        });
+                    });
+                }
+            } catch (e) {
+                console.warn('Failed to parse brainstorm collection data:', e);
+            }
         } else if (jsondoc.schema_type === 'brainstorm_idea') {
-
-            // Step 2b: Standalone idea leaf - check if it originated from a collection
-            const originInfo = traceToCollectionOrigin(jsondocId, graph, jsondocMap);
-
-
-            if (originInfo.isFromCollection) {
-                const ideaResult = {
-                    jsondocId,
-                    jsondocPath: '$', // Standalone jsondoc uses whole jsondoc
-                    originalJsondocId: originInfo.originalCollectionId!,
-                    index: originInfo.collectionIndex!,
-                    isFromCollection: true
-                };
-
-                results.push(ideaResult);
-            } else {
-                const ideaResult = {
-                    jsondocId,
-                    jsondocPath: '$',
-                    originalJsondocId: jsondocId,
+            // Handle individual ideas
+            try {
+                const data = JSON.parse(jsondoc.data);
+                results.push({
+                    jsondocId: jsondoc.id,
+                    jsondocPath: '',
+                    originalJsondocId: jsondoc.id,
                     index: 0,
                     isFromCollection: false
-                };
-
-                results.push(ideaResult);
+                });
+            } catch (e) {
+                console.warn('Failed to parse brainstorm idea data:', e);
             }
         }
     }
-
-    // CRITICAL: Sort results to preserve original collection ordering
-    // This ensures that derived jsondocs (human edits) appear in the same position
-    // as their original collection items, maintaining consistent UI ordering
-    results.sort((a, b) => {
-        // First sort by original collection ID (to group ideas from same collection)
-        if (a.originalJsondocId !== b.originalJsondocId) {
-            return a.originalJsondocId.localeCompare(b.originalJsondocId);
-        }
-
-        // Then sort by index within the collection (preserves original ordering)
-        return a.index - b.index;
-    });
-
-
 
     return results;
 }

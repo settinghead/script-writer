@@ -139,19 +139,8 @@ function buildActionContextFromLineage(
         transformOutputs
     );
 
-    const workflowNodes = findMainWorkflowPath(jsondocs, lineageGraph);
+    const chosenBrainstormIdea = findChosenIdeaFromLineage(effectiveBrainstormIdeas, lineageGraph);
 
-    // Find chosen idea (leaf brainstorm idea that's ready for next stage)
-    let chosenBrainstormIdea = findChosenIdeaFromLineage(effectiveBrainstormIdeas, lineageGraph);
-
-    // For single ideas in idea_editing stage, automatically treat the single idea as chosen
-    if (!chosenBrainstormIdea && effectiveBrainstormIdeas.length === 1) {
-        chosenBrainstormIdea = effectiveBrainstormIdeas[0];
-    }
-
-
-
-    // Find latest jsondocs using lineage resolution
     const latestOutlineSettings = findLatestJsondocByType(
         lineageGraph,
         jsondocs,
@@ -177,7 +166,7 @@ function buildActionContextFromLineage(
         latestOutlineSettings,
         latestChronicles,
         brainstormInput,
-        workflowNodes,
+        workflowNodes: findMainWorkflowPath(jsondocs, lineageGraph),
         hasActiveTransforms: transforms.some(t => t.status === 'running' || t.status === 'pending'),
         activeTransforms: transforms.filter(t => t.status === 'running' || t.status === 'pending'),
         lineageGraph,
@@ -190,27 +179,14 @@ function buildActionContextFromLineage(
  * Generate actions for a specific workflow stage
  */
 function generateActionsFromContext(context: LineageBasedActionContext): ActionItem[] {
-    if (context.hasActiveTransforms) return [];
+    if (context.hasActiveTransforms) {
+        return [];
+    }
 
     const actions: ActionItem[] = [];
 
-    // Build common jsondocs and context for ActionComponentProps
-    const commonJsondocs = {
-        brainstormIdeas: context.effectiveBrainstormIdeas,
-        chosenIdea: context.chosenBrainstormIdea,
-        outlineSettings: context.latestOutlineSettings,
-        chronicles: context.latestChronicles,
-        brainstormInput: context.brainstormInput
-    };
-
-    const commonWorkflowContext = {
-        currentStage: 'initial', // This will be determined by the main function
-        hasActiveTransforms: context.hasActiveTransforms,
-        workflowNodes: context.workflowNodes
-    };
-
-    // If no brainstorm input, add creation
-    if (!context.brainstormInput) {
+    // Add brainstorm creation actions only if no input and no existing ideas
+    if (!context.brainstormInput && context.effectiveBrainstormIdeas.length === 0) {
         actions.push({
             id: 'brainstorm_creation',
             type: 'button',
@@ -218,34 +194,25 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
             description: '使用AI辅助生成创意想法',
             component: BrainstormCreationActions,
             props: {
-                jsondocs: commonJsondocs,
-                workflowContext: commonWorkflowContext
+                jsondocs: {
+                    brainstormIdeas: context.effectiveBrainstormIdeas,
+                    chosenIdea: context.chosenBrainstormIdea,
+                    outlineSettings: context.latestOutlineSettings,
+                    chronicles: context.latestChronicles,
+                    brainstormInput: context.brainstormInput
+                },
+                workflowContext: {
+                    hasActiveTransforms: context.hasActiveTransforms,
+                    workflowNodes: context.workflowNodes
+                }
             },
             enabled: true,
             priority: 1
         });
     }
 
-    // If brainstormInput but no ideas, add BrainstormInputForm
-    if (context.brainstormInput && context.effectiveBrainstormIdeas.length === 0) {
-        actions.push({
-            id: 'brainstorm_start_button',
-            type: 'button',
-            title: '开始头脑风暴',
-            description: '基于上方填写的参数开始生成创意',
-            component: BrainstormInputForm,
-            props: {
-                brainstormJsondoc: context.brainstormInput, // For backward compatibility
-                jsondocs: commonJsondocs,
-                workflowContext: commonWorkflowContext
-            },
-            enabled: true,
-            priority: 1
-        });
-    }
-
-    // If ideas but no chosen, add BrainstormIdeaSelection
-    if (context.effectiveBrainstormIdeas.length > 0 && !context.chosenBrainstormIdea) {
+    // Add brainstorm idea selection if we have multiple ideas but no chosen one
+    if (context.effectiveBrainstormIdeas.length > 1 && !context.chosenBrainstormIdea) {
         actions.push({
             id: 'brainstorm_idea_selection',
             type: 'selection',
@@ -253,15 +220,24 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
             description: '从生成的创意中选择一个继续开发',
             component: BrainstormIdeaSelection,
             props: {
-                jsondocs: commonJsondocs,
-                workflowContext: commonWorkflowContext
+                jsondocs: {
+                    brainstormIdeas: context.effectiveBrainstormIdeas,
+                    chosenIdea: context.chosenBrainstormIdea,
+                    outlineSettings: context.latestOutlineSettings,
+                    chronicles: context.latestChronicles,
+                    brainstormInput: context.brainstormInput
+                },
+                workflowContext: {
+                    hasActiveTransforms: context.hasActiveTransforms,
+                    workflowNodes: context.workflowNodes
+                }
             },
             enabled: true,
             priority: 1
         });
     }
 
-    // If chosen but no outline, add OutlineGenerationForm
+    // Add outline generation if we have a chosen idea but no outline
     if (context.chosenBrainstormIdea && !context.latestOutlineSettings) {
         actions.push({
             id: 'outline_generation',
@@ -270,15 +246,24 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
             description: '基于选中的创意生成详细大纲',
             component: OutlineGenerationForm,
             props: {
-                jsondocs: commonJsondocs,
-                workflowContext: commonWorkflowContext
+                jsondocs: {
+                    brainstormIdeas: context.effectiveBrainstormIdeas,
+                    chosenIdea: context.chosenBrainstormIdea,
+                    outlineSettings: context.latestOutlineSettings,
+                    chronicles: context.latestChronicles,
+                    brainstormInput: context.brainstormInput
+                },
+                workflowContext: {
+                    hasActiveTransforms: context.hasActiveTransforms,
+                    workflowNodes: context.workflowNodes
+                }
             },
             enabled: true,
             priority: 1
         });
     }
 
-    // If outline but no chronicles, add ChroniclesGenerationAction
+    // Add chronicles generation if we have outline but no chronicles
     if (context.latestOutlineSettings && !context.latestChronicles) {
         actions.push({
             id: 'chronicles_generation',
@@ -287,8 +272,17 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
             description: '基于大纲生成分集概要',
             component: ChroniclesGenerationAction,
             props: {
-                jsondocs: commonJsondocs,
-                workflowContext: commonWorkflowContext
+                jsondocs: {
+                    brainstormIdeas: context.effectiveBrainstormIdeas,
+                    chosenIdea: context.chosenBrainstormIdea,
+                    outlineSettings: context.latestOutlineSettings,
+                    chronicles: context.latestChronicles,
+                    brainstormInput: context.brainstormInput
+                },
+                workflowContext: {
+                    hasActiveTransforms: context.hasActiveTransforms,
+                    workflowNodes: context.workflowNodes
+                }
             },
             enabled: true,
             priority: 1
@@ -296,7 +290,8 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
     }
 
     // If chronicles but no episode, add EpisodeGenerationAction
-    if (context.latestChronicles && !context.latestChronicles.schema_type.includes('episode_synopsis')) {
+    const shouldShowEpisodeGeneration = context.latestChronicles && !context.latestChronicles.schema_type.includes('episode_synopsis');
+    if (shouldShowEpisodeGeneration) {
         actions.push({
             id: 'episode_synopsis_generation',
             type: 'button',
@@ -304,8 +299,17 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
             description: '基于分集概要生成具体剧本',
             component: EpisodeGenerationAction,
             props: {
-                jsondocs: commonJsondocs,
-                workflowContext: commonWorkflowContext
+                jsondocs: {
+                    brainstormIdeas: context.effectiveBrainstormIdeas,
+                    chosenIdea: context.chosenBrainstormIdea,
+                    outlineSettings: context.latestOutlineSettings,
+                    chronicles: context.latestChronicles,
+                    brainstormInput: context.brainstormInput
+                },
+                workflowContext: {
+                    hasActiveTransforms: context.hasActiveTransforms,
+                    workflowNodes: context.workflowNodes
+                }
             },
             enabled: true,
             priority: 1

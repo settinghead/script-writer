@@ -24,7 +24,7 @@ export interface StreamingTransformConfig<TInput, TOutput> {
 /**
  * Default template variable extraction - automatically extracts all fields from input schema and jsondocs
  */
-async function defaultPrepareTemplateVariables<TInput>(
+export async function defaultPrepareTemplateVariables<TInput>(
     input: TInput,
     jsondocRepo: JsondocRepository
 ): Promise<{ params: any; jsondocs: any }> {

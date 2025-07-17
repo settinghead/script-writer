@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
 import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
+import { defaultPrepareTemplateVariables } from '../transform-jsondoc-framework/StreamingTransformExecutor';
 import {
     OutlineSettingsInputSchema,
     OutlineSettingsInput,
