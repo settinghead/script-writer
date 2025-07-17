@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { List, Empty, Spin, Typography, Tag, Avatar, Card, Space } from 'antd';
+import { List, Empty, Spin, Typography, Tag, Avatar, Card, Space, Tooltip } from 'antd';
 import { UserOutlined, MessageOutlined, EditOutlined, PlayCircleOutlined, ClockCircleOutlined, ExclamationCircleOutlined, SendOutlined, ArrowDownOutlined } from '@ant-design/icons';
 import { Cpu } from 'iconoir-react';
 import { useChatMessages } from '../../hooks/useChatMessages';
@@ -154,7 +154,11 @@ const CustomScrollbar: React.FC<{
 };
 
 // ChatMessage component similar to original but inline
-const ChatMessage: React.FC<{ message: any; isStreaming?: boolean }> = ({ message, isStreaming = false }) => {
+const ChatMessage: React.FC<{
+    message: any;
+    isStreaming?: boolean;
+    onUserMessageClick?: (content: string) => void;
+}> = ({ message, isStreaming = false, onUserMessageClick }) => {
     const processedMessage = processChatMessage(
         message.id,
         message.role,
@@ -257,6 +261,12 @@ const ChatMessage: React.FC<{ message: any; isStreaming?: boolean }> = ({ messag
     const isUserMessage = message.role === 'user';
     const isThinkingMessage = message.display_type === 'thinking';
 
+    const handleMessageClick = () => {
+        if (isUserMessage && onUserMessageClick && !isThinkingMessage) {
+            onUserMessageClick(processedMessage.content);
+        }
+    };
+
     return (
         <div style={{
             display: 'flex',
@@ -304,37 +314,58 @@ const ChatMessage: React.FC<{ message: any; isStreaming?: boolean }> = ({ messag
 
                 {/* Only show message bubble for non-thinking messages */}
                 {!isThinkingMessage && (
-                    <Card
-                        size="small"
-                        className={getMessageClassName()}
-                        style={{
-                            maxWidth: '100%',
-                            wordBreak: 'break-word' as const
-                        }}
-                        styles={{
-                            body: {
-                                padding: '12px 14px',
-                                color: isUserMessage ? AppColors.text.primary : (message.role === 'assistant' ? AppColors.text.white : AppColors.text.primary),
-                                position: 'relative',
-                                zIndex: 1
-                            }
-                        }}
+                    <Tooltip
+                        title={isUserMessage ? "点击重复此消息到输入框" : undefined}
+                        placement="top"
+                        mouseEnterDelay={0.5}
                     >
-                        <Paragraph
+                        <Card
+                            size="small"
+                            className={getMessageClassName()}
                             style={{
-                                margin: 0,
-                                color: 'inherit',
-                                lineHeight: 1.5,
-                                whiteSpace: 'pre-wrap',
-                                fontSize: isThinkingMessage ? '13px' : '14px'
+                                maxWidth: '100%',
+                                wordBreak: 'break-word' as const,
+                                cursor: isUserMessage ? 'pointer' : 'default',
+                                transition: 'all 0.2s ease-in-out'
+                            }}
+                            styles={{
+                                body: {
+                                    padding: '12px 14px',
+                                    color: isUserMessage ? AppColors.text.primary : (message.role === 'assistant' ? AppColors.text.white : AppColors.text.primary),
+                                    position: 'relative',
+                                    zIndex: 1
+                                }
+                            }}
+                            onClick={handleMessageClick}
+                            onMouseEnter={(e) => {
+                                if (isUserMessage) {
+                                    e.currentTarget.style.transform = 'translateY(-1px)';
+                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(80, 70, 229, 0.3)';
+                                }
+                            }}
+                            onMouseLeave={(e) => {
+                                if (isUserMessage) {
+                                    e.currentTarget.style.transform = 'translateY(0px)';
+                                    e.currentTarget.style.boxShadow = '';
+                                }
                             }}
                         >
-                            {processedMessage.content}
-                            {(message.status === 'streaming' || processedMessage.showSpinner || isStreaming) && (
-                                <Spin size="small" style={{ marginLeft: 8 }} />
-                            )}
-                        </Paragraph>
-                    </Card>
+                            <Paragraph
+                                style={{
+                                    margin: 0,
+                                    color: 'inherit',
+                                    lineHeight: 1.5,
+                                    whiteSpace: 'pre-wrap',
+                                    fontSize: isThinkingMessage ? '13px' : '14px'
+                                }}
+                            >
+                                {processedMessage.content}
+                                {(message.status === 'streaming' || processedMessage.showSpinner || isStreaming) && (
+                                    <Spin size="small" style={{ marginLeft: 8 }} />
+                                )}
+                            </Paragraph>
+                        </Card>
+                    </Tooltip>
                 )}
             </div>
         </div>
@@ -344,6 +375,9 @@ const ChatMessage: React.FC<{ message: any; isStreaming?: boolean }> = ({ messag
 export const BasicThread: React.FC<BasicThreadProps> = ({ projectId }) => {
     const { messages, sendMessage, isLoading } = useChatMessages(projectId);
     const runtime = useProjectChatRuntime(projectId);
+
+    // Input state management
+    const [inputValue, setInputValue] = useState('');
 
     // Auto-scroll functionality
     const [isAtBottom, setIsAtBottom] = useState(true);
@@ -393,6 +427,11 @@ export const BasicThread: React.FC<BasicThreadProps> = ({ projectId }) => {
 
     const handleSendMessage = (content: string) => {
         sendMessage(content);
+        setInputValue(''); // Clear input after sending
+    };
+
+    const handleUserMessageClick = (content: string) => {
+        setInputValue(content);
     };
 
     return (
@@ -448,56 +487,17 @@ export const BasicThread: React.FC<BasicThreadProps> = ({ projectId }) => {
                                         key={message.id}
                                         message={message}
                                         isStreaming={message.status === 'streaming'}
+                                        onUserMessageClick={handleUserMessageClick}
                                     />
                                 </List.Item>
                             )}
-                            style={{ background: 'transparent' }}
                         />
                     )}
-
-                    {isLoading && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 0' }}>
-                            <Cpu style={{ fontSize: 20, color: AppColors.ai.primary }} />
-                            <Spin size="small" />
-                            <span style={{ color: '#888' }}>AI正在思考...</span>
-                        </div>
-                    )}
-
-                    {/* Invisible element to scroll to */}
                     <div ref={messagesEndRef} />
                 </div>
-
-                {/* Scroll to Bottom Button */}
-                {!isAtBottom && (
-                    <div style={{
-                        position: 'absolute',
-                        bottom: '180px', // Adjusted to be above the glass input area
-                        right: '16px',
-                        zIndex: 15 // Higher z-index to be above glass effects
-                    }}>
-                        <button
-                            onClick={scrollToBottom}
-                            style={{
-                                width: '40px',
-                                height: '40px',
-                                borderRadius: '50%',
-                                background: '#1890ff',
-                                border: 'none',
-                                color: 'white',
-                                cursor: 'pointer',
-                                boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                            }}
-                        >
-                            <ArrowDownOutlined />
-                        </button>
-                    </div>
-                )}
             </div>
 
-            {/* Glass Input Area Overlay */}
+            {/* Fixed Input Area */}
             <div
                 className="chat-input-glass"
                 style={{
@@ -505,12 +505,20 @@ export const BasicThread: React.FC<BasicThreadProps> = ({ projectId }) => {
                     bottom: 0,
                     left: 0,
                     right: 0,
-                    padding: '16px',
-                    zIndex: 10,
-                    borderTop: '1px solid rgba(255, 255, 255, 0.1)'
+                    padding: '20px 16px',
+                    background: 'rgba(0, 0, 0, 0.8)',
+                    backdropFilter: 'blur(10px)',
+                    borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                    zIndex: 10
                 }}
             >
-                <ChatInput onSend={handleSendMessage} disabled={isLoading} projectId={projectId} />
+                <ChatInput
+                    onSend={handleSendMessage}
+                    disabled={isLoading}
+                    projectId={projectId}
+                    value={inputValue}
+                    onValueChange={setInputValue}
+                />
             </div>
         </div>
     );
