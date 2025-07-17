@@ -5,6 +5,7 @@ import {
   OutlineSettingsOutputSchema,
   ChroniclesInputSchema,
   ChroniclesOutputSchema,
+  EpisodePlanningOutputSchema,
 } from '../../../common/schemas/outlineSchemas';
 
 // Get the schemas from the registry
@@ -192,5 +193,30 @@ export function createChroniclesFromChronicles(
     console.warn('Chronicles validation failed, using raw data:', error);
     // Return the raw data even if validation fails - user can edit it
     return chroniclesData;
+  }
+}
+
+/**
+ * Create editable episode planning from existing episode planning
+ * Returns the episode planning data directly (no wrapper)
+ */
+export function createEpisodePlanningFromEpisodePlanning(
+  sourceJsondocData: any,
+  derivationPath: string
+): any {
+  const episodePlanningData = extractDataAtPath(sourceJsondocData, derivationPath);
+
+  if (!episodePlanningData || typeof episodePlanningData !== 'object') {
+    throw new Error(`Invalid episode planning data at path ${derivationPath}`);
+  }
+
+  // Validate the data structure against the output schema
+  try {
+    const validatedData = EpisodePlanningOutputSchema.parse(episodePlanningData);
+    return validatedData;
+  } catch (error) {
+    console.warn('Episode planning validation failed, using raw data:', error);
+    // Return the raw data even if validation fails - user can edit it
+    return episodePlanningData;
   }
 } 

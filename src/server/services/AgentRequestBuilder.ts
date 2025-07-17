@@ -112,7 +112,7 @@ ${context}
 示例4：生成剧集规划
 用户请求："基于时间顺序大纲生成12集的剧集规划"
 → 使用 generate_episode_planning 工具
-→ 参数：numberOfEpisodes=12
+→ 参数：numberOfEpisodes=12, jsondocs=[{ id: "active_brainstorm_idea" }, { id: "active_outline_settings" }, { id: "active_chronicles" }]
 
 示例5：编辑现有创意
 用户请求："修改第一个故事创意，增加悬疑元素"
@@ -122,29 +122,29 @@ ${context}
 示例6：编辑剧本框架
 用户请求："修改剧本框架中的角色设定，增加反派角色"
 → 使用 edit_outline_settings 工具
-→ 参数：editRequirements="增加反派角色"
+→ 参数：editRequirements="增加反派角色", jsondocs=[{ id: "active_brainstorm_idea" }, { id: "current_outline_settings" }]
 
 示例7：编辑时间顺序大纲
 用户请求："修改时间顺序大纲，加入更多南京本地元素"
 → 使用 edit_chronicles 工具
-→ 参数：editRequirements="加入更多南京本地元素，包括文化，南京话，等等"
+→ 参数：editRequirements="加入更多南京本地元素，包括文化，南京话，等等", jsondocs=[{ id: "active_brainstorm_idea" }, { id: "active_outline_settings" },  { id: "current_chronicles" }]
 
 示例8：复杂请求 - 修改想法并更新大纲
 用户请求："在故事中加入童话元素"
 → 第一步：使用 edit_brainstorm_idea 编辑想法，添加童话元素
-→ 参数：editRequirements="添加童话元素"
+→ 参数：editRequirements="添加童话元素", jsondocs=[{ id: "current_brainstorm_idea" }]. 返回 jsondoc: { id: "new_brainstorm_idea" }
 → 第二步：使用 edit_outline_settings 更新大纲，整合新元素
-→ 参数：editRequirements="基于更新后的创意整合童话元素到大纲中"
+→ 参数：editRequirements="基于更新后的创意整合童话元素到大纲中", jsondocs=[{ id: "new_brainstorm_idea" }, { id: "current_outline_settings" }]
 → 完成后返回JSON总结
 
 示例9：多步编辑 - 修改剧本框架后更新时间顺序大纲
 用户请求："减少作品的伦理争议，加入更多正面元素"
 → 第一步 使用 edit_brainstorm_idea 编辑想法，减少伦理争议
-→ 参数：editRequirements="减少伦理争议，加入更多正面元素"
+→ 参数：editRequirements="减少伦理争议，加入更多正面元素", jsondocs=[{ id: "current_brainstorm_idea" }]. 返回 jsondoc: { id: "new_brainstorm_idea" }
 → 第二步 使用 edit_outline_settings 编辑剧本框架，基于新的想法
-→ 参数：editRequirements="基于更新后的创意整合正面元素到框架中"
+→ 参数：editRequirements="基于更新后的创意整合正面元素到框架中", jsondocs=[{ id: "new_brainstorm_idea" }, { id: "current_outline_settings" }], 返回 jsondoc: { id: "new_outline_settings" }
 → 第三步 使用 edit_chronicles 更新时间顺序大纲，基于新的框架设定
-→ 参数：editRequirements="基于更新后的框架设定调整时间顺序大纲，确保内容一致性"
+→ 参数：editRequirements="基于更新后的框架设定调整时间顺序大纲，确保内容一致性", jsondocs=[{ id: "new_brainstorm_idea" }, { id: "new_outline_settings" }, { id: "current_chronicles" }]
 → 完成后返回JSON总结
 
 **重要：所有工具都会自动接收相关的上下文jsondocs作为参考资料。在多步工具调用中，后续工具会自动包含前面工具调用的输出jsondocId，确保基于最新数据进行处理。**
