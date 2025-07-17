@@ -19,6 +19,8 @@ import {
 import type { StreamingToolDefinition } from '../transform-jsondoc-framework/StreamingAgentFramework';
 import { TypedJsondoc } from '@/common/jsondocs';
 import { createJsondocProcessor } from './shared/JsondocProcessor';
+import { computeCanonicalJsondocsFromLineage } from '../../common/canonicalJsondocLogic';
+import { buildLineageGraph } from '../../common/transform-jsondoc-framework/lineageResolution';
 
 const OutlineSettingsToolResultSchema = z.object({
     outputJsondocId: z.string(),
@@ -48,24 +50,63 @@ interface OutlineSettingsToolResult {
 export type OutlineSettingsEditToolResult = z.infer<typeof OutlineSettingsEditToolResultSchema>;
 
 /**
- * Extract source outline settings data from different jsondoc types
+ * Extract source outline settings data using canonical jsondoc logic
  */
 async function extractSourceOutlineSettingsData(
     params: OutlineSettingsEditInput,
     jsondocRepo: JsondocRepository,
-    userId: string
+    userId: string,
+    projectId: string
 ): Promise<{
     originalSettings: any;
     additionalContexts: any[];
     targetPlatform: string;
     storyGenre: string;
 }> {
-    let originalSettings: any;
-    let additionalContexts: any[] = [];
-    let targetPlatform = 'unknown';
-    let storyGenre = 'unknown';
+    // Get all project data for lineage computation
+    const jsondocs = await jsondocRepo.getAllProjectJsondocsForLineage(projectId);
+    const transforms = await jsondocRepo.getAllProjectTransformsForLineage(projectId);
+    const humanTransforms = await jsondocRepo.getAllProjectHumanTransformsForLineage(projectId);
+    const transformInputs = await jsondocRepo.getAllProjectTransformInputsForLineage(projectId);
+    const transformOutputs = await jsondocRepo.getAllProjectTransformOutputsForLineage(projectId);
 
-    for (const [index, jsondocRef] of params.jsondocs.entries()) {
+    // Build lineage graph
+    const lineageGraph = buildLineageGraph(
+        jsondocs,
+        transforms,
+        humanTransforms,
+        transformInputs,
+        transformOutputs
+    );
+
+    // Compute canonical jsondocs using the same logic as actionComputation.ts
+    const canonicalContext = computeCanonicalJsondocsFromLineage(
+        lineageGraph,
+        jsondocs,
+        transforms,
+        humanTransforms,
+        transformInputs,
+        transformOutputs
+    );
+
+    // Get the canonical outline settings
+    const canonicalOutlineSettings = canonicalContext.latestOutlineSettings;
+
+    if (!canonicalOutlineSettings) {
+        throw new Error('No canonical outline settings found in project');
+    }
+
+    // Validate user access
+    const hasAccess = await jsondocRepo.userHasProjectAccess(userId, canonicalOutlineSettings.project_id);
+    if (!hasAccess) {
+        throw new Error(`Access denied to canonical outline settings ${canonicalOutlineSettings.id}`);
+    }
+
+    const originalSettings = JSON.parse(canonicalOutlineSettings.data);
+
+    // Collect additional contexts from the input parameters
+    let additionalContexts: any[] = [];
+    for (const jsondocRef of params.jsondocs) {
         const sourceJsondoc = await jsondocRepo.getJsondoc(jsondocRef.jsondocId);
         if (!sourceJsondoc) {
             throw new Error(`Jsondoc ${jsondocRef.jsondocId} not found`);
@@ -76,24 +117,17 @@ async function extractSourceOutlineSettingsData(
             throw new Error(`Access denied to jsondoc ${jsondocRef.jsondocId}`);
         }
 
-        const sourceData = sourceJsondoc.data;
-
-        if (index === 0) { // First is always the outline
-            originalSettings = sourceData;
-            targetPlatform = sourceData.platform || 'unknown';
-            storyGenre = sourceData.genre || 'unknown';
-        } else {
-            // Additional contexts (e.g., updated idea)
+        // Only add as additional context if it's not the canonical outline settings
+        if (sourceJsondoc.id !== canonicalOutlineSettings.id) {
             additionalContexts.push({
                 description: jsondocRef.description,
-                data: sourceData
+                data: JSON.parse(sourceJsondoc.data)
             });
         }
     }
 
-    if (!originalSettings) {
-        throw new Error('No outline settings jsondoc provided');
-    }
+    const targetPlatform = originalSettings.platform || 'unknown';
+    const storyGenre = originalSettings.genre || 'unknown';
 
     return { originalSettings, additionalContexts, targetPlatform, storyGenre };
 }
@@ -124,7 +158,7 @@ export function createOutlineSettingsEditToolDefinition(
             console.log(`[OutlineSettingsEditTool] Starting JSON patch edit for jsondoc ${sourceJsondocRef.jsondocId}`);
 
             // Extract source outline settings data for context
-            const { originalSettings, additionalContexts, targetPlatform, storyGenre } = await extractSourceOutlineSettingsData(params, jsondocRepo, userId);
+            const { originalSettings, additionalContexts, targetPlatform, storyGenre } = await extractSourceOutlineSettingsData(params, jsondocRepo, userId, projectId);
 
             // Determine output jsondoc type
             const sourceJsondoc = await jsondocRepo.getJsondoc(sourceJsondocRef.jsondocId);

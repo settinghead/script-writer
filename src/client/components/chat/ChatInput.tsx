@@ -10,13 +10,17 @@ interface ChatInputProps {
     disabled?: boolean;
     placeholder?: string;
     projectId: string;
+    value?: string;
+    onValueChange?: (value: string) => void;
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({
     onSend,
     disabled = false,
     placeholder = "输入任何关于你的创作的问题...",
-    projectId
+    projectId,
+    value,
+    onValueChange
 }) => {
     const [message, setMessage] = useState('');
     const [isHidingSuggestions, setIsHidingSuggestions] = useState(false);
@@ -28,18 +32,30 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         }
     });
 
+    // Use controlled value if provided, otherwise use internal state
+    const currentMessage = value !== undefined ? value : message;
+
+    // Handle message changes
+    const handleMessageChange = (newMessage: string) => {
+        if (value !== undefined && onValueChange) {
+            onValueChange(newMessage);
+        } else {
+            setMessage(newMessage);
+        }
+    };
+
     // Sync the typewriter display text with the message state
     useEffect(() => {
         if (isTyping) {
-            setMessage(displayText);
+            handleMessageChange(displayText);
         }
     }, [displayText, isTyping]);
 
     const handleSend = () => {
-        const trimmedMessage = message.trim();
+        const trimmedMessage = currentMessage.trim();
         if (trimmedMessage && !disabled) {
             onSend(trimmedMessage);
-            setMessage('');
+            handleMessageChange('');
         }
     };
 
@@ -64,7 +80,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     return (
         <div style={{ padding: 0 }}>
             {/* Quick suggestions (shown when input is empty) */}
-            {message.length === 0 && (
+            {currentMessage.length === 0 && (
                 <div
                     style={{
                         display: 'grid',
@@ -130,8 +146,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
                 <ParticleMentions
-                    value={message}
-                    onChange={(value) => setMessage(value)}
+                    value={currentMessage}
+                    onChange={handleMessageChange}
                     placeholder={disabled ? "AI正在思考..." : placeholder}
                     projectId={projectId}
                     disabled={disabled || isTyping}
@@ -148,11 +164,11 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                     type="primary"
                     icon={disabled ? <LoadingOutlined /> : <SendOutlined />}
                     onClick={handleSend}
-                    disabled={disabled || !message.trim()}
+                    disabled={disabled || !currentMessage.trim()}
                     title="发送消息 (回车键)"
                     style={{
-                        background: disabled || !message.trim() ? '#374151' : '#4f46e5',
-                        borderColor: disabled || !message.trim() ? '#374151' : '#4f46e5',
+                        background: disabled || !currentMessage.trim() ? '#374151' : '#4f46e5',
+                        borderColor: disabled || !currentMessage.trim() ? '#374151' : '#4f46e5',
                         height: 'auto',
                         minHeight: 32
                     }}
