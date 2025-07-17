@@ -41,7 +41,7 @@ export function createEpisodePlanningToolDefinition(
 ): StreamingToolDefinition<EpisodePlanningInput, EpisodePlanningToolResult> {
     return {
         name: 'generate_episode_planning',
-        description: '基于时间顺序大纲生成分集规划（优化观看顺序和情感节奏）。适用场景：用户已完成时间顺序大纲，需要生成适合短视频平台的分集规划。必须使用项目背景信息中显示的完整chronicles jsondoc ID作为sourceJsondocId参数。',
+        description: '基于时间顺序大纲生成剧集规划（优化观看顺序和情感节奏）。适用场景：用户已完成时间顺序大纲，需要生成适合短视频平台的剧集规划。必须使用项目背景信息中显示的完整chronicles jsondoc ID作为sourceJsondocId参数。',
         inputSchema: EpisodePlanningInputSchema,
         outputSchema: EpisodePlanningToolResultSchema,
         execute: async (params: EpisodePlanningInput, { toolCallId }): Promise<EpisodePlanningToolResult> => {

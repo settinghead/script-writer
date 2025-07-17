@@ -359,24 +359,66 @@ describe('Episode Planning Schemas', () => {
                 episodeGroups: [
                     {
                         groupTitle: '第一阶段：相遇',
-                        episodes: '第1-10集',
-                        keyEvents: ['初次见面', '误会产生', '逐渐了解', '产生好感'],
-                        hooks: ['意外相遇', '身份隐瞒', '巧合重逢', '心动瞬间'],
-                        emotionalBeats: ['好奇', '紧张', '温馨', '甜蜜']
+                        episodes: '第1-6集',
+                        keyEvents: ['初次见面', '误会产生', '逐渐了解'],
+                        hooks: ['意外相遇', '身份隐瞒', '巧合重逢'],
+                        emotionalBeats: ['好奇', '紧张', '温馨']
                     },
                     {
-                        groupTitle: '第二阶段：纠葛',
-                        episodes: '第11-30集',
-                        keyEvents: ['感情升温', '外界阻力', '内心挣扎', '暂时分离'],
-                        hooks: ['家族反对', '事业冲突', '第三者出现', '误会加深'],
-                        emotionalBeats: ['幸福', '焦虑', '痛苦', '绝望']
+                        groupTitle: '第二阶段：了解',
+                        episodes: '第7-12集',
+                        keyEvents: ['产生好感', '感情升温', '外界阻力'],
+                        hooks: ['心动瞬间', '家族反对', '事业冲突'],
+                        emotionalBeats: ['甜蜜', '幸福', '焦虑']
                     },
                     {
-                        groupTitle: '第三阶段：重逢',
-                        episodes: '第31-50集',
-                        keyEvents: ['真相大白', '重新相遇', '化解误会', '终成眷属'],
-                        hooks: ['意外重逢', '真相揭露', '深情告白', '完美结局'],
-                        emotionalBeats: ['惊喜', '感动', '幸福', '满足']
+                        groupTitle: '第三阶段：纠葛',
+                        episodes: '第13-18集',
+                        keyEvents: ['内心挣扎', '第三者出现', '误会加深'],
+                        hooks: ['情感冲突', '意外发现', '关系危机'],
+                        emotionalBeats: ['痛苦', '绝望', '挣扎']
+                    },
+                    {
+                        groupTitle: '第四阶段：分离',
+                        episodes: '第19-24集',
+                        keyEvents: ['暂时分离', '各自成长', '内心反思'],
+                        hooks: ['痛苦分别', '成长契机', '内心独白'],
+                        emotionalBeats: ['痛苦', '孤独', '思考']
+                    },
+                    {
+                        groupTitle: '第五阶段：转机',
+                        episodes: '第25-30集',
+                        keyEvents: ['真相大白', '重新相遇', '化解误会'],
+                        hooks: ['意外重逢', '真相揭露', '深情告白'],
+                        emotionalBeats: ['惊喜', '感动', '释然']
+                    },
+                    {
+                        groupTitle: '第六阶段：重逢',
+                        episodes: '第31-36集',
+                        keyEvents: ['重新开始', '克服障碍', '家人支持'],
+                        hooks: ['重新追求', '家庭和解', '朋友助力'],
+                        emotionalBeats: ['希望', '勇气', '温暖']
+                    },
+                    {
+                        groupTitle: '第七阶段：团圆',
+                        episodes: '第37-42集',
+                        keyEvents: ['正式复合', '婚礼筹备', '未来规划'],
+                        hooks: ['浪漫求婚', '婚礼准备', '甜蜜日常'],
+                        emotionalBeats: ['兴奋', '甜蜜', '憧憬']
+                    },
+                    {
+                        groupTitle: '第八阶段：圆满',
+                        episodes: '第43-48集',
+                        keyEvents: ['完美婚礼', '蜜月旅行', '新生活'],
+                        hooks: ['梦幻婚礼', '浪漫蜜月', '幸福生活'],
+                        emotionalBeats: ['完美', '幸福', '满足']
+                    },
+                    {
+                        groupTitle: '第九阶段：结局',
+                        episodes: '第49-50集',
+                        keyEvents: ['终成眷属', '圆满结局'],
+                        hooks: ['完美结局', '幸福永远'],
+                        emotionalBeats: ['满足', '完美']
                     }
                 ]
             };
@@ -406,17 +448,31 @@ describe('Episode Planning Schemas', () => {
                 episodeGroups: [
                     {
                         groupTitle: '相遇阶段',
-                        episodes: '第1-8集',
+                        episodes: '第1-6集',
                         keyEvents: ['初遇', '了解'],
                         hooks: ['意外', '误会'],
                         emotionalBeats: ['好奇', '紧张']
                     },
                     {
                         groupTitle: '发展阶段',
-                        episodes: '第9-20集',
-                        keyEvents: ['深入', '结局'],
-                        hooks: ['转折', '高潮'],
-                        emotionalBeats: ['甜蜜', '满足']
+                        episodes: '第7-12集',
+                        keyEvents: ['深入', '感情升温'],
+                        hooks: ['转折', '心动'],
+                        emotionalBeats: ['甜蜜', '幸福']
+                    },
+                    {
+                        groupTitle: '高潮阶段',
+                        episodes: '第13-18集',
+                        keyEvents: ['冲突', '危机'],
+                        hooks: ['误会', '分离'],
+                        emotionalBeats: ['紧张', '痛苦']
+                    },
+                    {
+                        groupTitle: '结局阶段',
+                        episodes: '第19-20集',
+                        keyEvents: ['和解', '结局'],
+                        hooks: ['真相', '团圆'],
+                        emotionalBeats: ['感动', '满足']
                     }
                 ]
             };

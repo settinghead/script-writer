@@ -73,7 +73,7 @@ ${context}
 3. 创意选择与编辑：用户选择并修改创意
 4. 剧本框架生成 (outline_settings)：基于选定创意生成人物、背景、商业设定
 5. 时间顺序大纲生成 (chronicles)：创建故事时序结构
-6. 分集规划生成 (episode_planning)：基于时间顺序大纲创建优化的分集结构
+6. 剧集规划生成 (episode_planning)：基于时间顺序大纲创建优化的分集结构
 7. 分集与剧本生成：后续详细内容创作
 
 对于多步修改，始终遵循此顺序：先编辑上游内容（如创意），然后编辑依赖的下游内容（如框架）。
@@ -104,8 +104,8 @@ ${context}
 → 使用 generate_chronicles 工具
 → 参数：sourceJsondocId="设定jsondoc的ID", totalEpisodes=60
 
-示例4：生成分集规划
-用户请求："基于时间顺序大纲生成12集的分集规划"
+示例4：生成剧集规划
+用户请求："基于时间顺序大纲生成12集的剧集规划"
 → 使用 generate_episode_planning 工具
 → 参数：sourceJsondocId="时间顺序大纲jsondoc的ID", numberOfEpisodes=12
 
