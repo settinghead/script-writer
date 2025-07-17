@@ -15,6 +15,7 @@ import {
 import type { StreamingToolDefinition } from '../transform-jsondoc-framework/StreamingAgentFramework';
 import { extractDataAtPath } from '../services/transform-instantiations/pathTransforms';
 import { TypedJsondoc } from '@/common/jsondocs';
+import { createJsondocProcessor } from './shared/JsondocProcessor';
 
 const BrainstormEditToolResultSchema = z.object({
     outputJsondocId: z.string(),
@@ -395,11 +396,20 @@ export function createBrainstormToolDefinition(
 ): StreamingToolDefinition<IdeationInput, BrainstormToolResult> {
     return {
         name: 'generate_brainstorm_ideas',
-        description: '生成新的故事创意。适用场景：用户想要全新的故事想法、需要更多创意选择、或当前没有满意的故事创意时。例如："给我一些新的故事想法"、"再想几个不同的创意"。基于平台和类型生成适合短视频内容的创意故事概念。',
+        description: '基于提供的所有jsondocs生成新的故事创意。适用场景：用户想要全新的故事想法、需要更多创意选择、或当前没有满意的故事创意时。例如："给我一些新的故事想法"、"再想几个不同的创意"。将处理所有传入的jsondocs作为参考资料。',
         inputSchema: IdeationInputSchema,
         outputSchema: BrainstormToolResultSchema,
         execute: async (params: IdeationInput): Promise<BrainstormToolResult> => {
-            // Extract parameters from source jsondoc
+            console.log(`[BrainstormTool] Starting brainstorm generation with ${params.jsondocs.length} jsondocs`);
+
+            // Use shared jsondoc processor
+            const jsondocProcessor = createJsondocProcessor(jsondocRepo, userId);
+            const { jsondocData, jsondocMetadata, processedCount } = await jsondocProcessor.processJsondocs(params.jsondocs);
+
+            console.log(`[BrainstormTool] Processed ${processedCount} jsondocs`);
+
+            // Extract parameters from first jsondoc for backward compatibility
+            // This maintains the existing behavior while using the shared processor
             const sourceJsondocRef = params.jsondocs[0];
             const extractedParams = await extractBrainstormParams(sourceJsondocRef.jsondocId, jsondocRepo, userId);
 
@@ -427,10 +437,10 @@ export function createBrainstormToolDefinition(
                 outputJsondocType: 'brainstorm_collection',
                 transformMetadata: {
                     toolName: 'generate_brainstorm_ideas',
+                    ...jsondocMetadata, // Include all jsondoc IDs with their schema types as keys
                     platform: extractedParams.platform,
                     genre: extractedParams.genre,
                     numberOfIdeas: extractedParams.numberOfIdeas,
-                    source_jsondoc_id: sourceJsondocRef.jsondocId,
                     initialData: {
                         ideas: [],
                         platform: extractedParams.platform,

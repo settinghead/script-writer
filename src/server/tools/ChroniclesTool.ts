@@ -18,6 +18,7 @@ import {
 import type { StreamingToolDefinition } from '../transform-jsondoc-framework/StreamingAgentFramework';
 import { TypedJsondoc } from '@/common/jsondocs';
 import { defaultPrepareTemplateVariables } from '../transform-jsondoc-framework/StreamingTransformExecutor';
+import { createJsondocProcessor } from './shared/JsondocProcessor';
 
 const ChroniclesToolResultSchema = z.object({
     outputJsondocId: z.string(),
@@ -230,39 +231,19 @@ export function createChroniclesToolDefinition(
 ): StreamingToolDefinition<ChroniclesInput, ChroniclesToolResult> {
     return {
         name: 'generate_chronicles',
-        description: '基于已确定的剧本框架生成时间顺序大纲（按时间顺序的故事发展阶段）。适用场景：用户已完成剧本框架，需要生成完整的时间发展脉络。必须使用项目背景信息中显示的完整outline settings jsondoc ID作为sourceJsondocId参数。',
+        description: '基于提供的所有jsondocs生成时间顺序大纲（按时间顺序的故事发展阶段）。适用场景：用户已完成相关创作步骤，需要生成完整的时间发展脉络。将处理所有传入的jsondocs作为参考资料。',
         inputSchema: ChroniclesInputSchema,
         outputSchema: ChroniclesToolResultSchema,
         execute: async (params: ChroniclesInput, { toolCallId }): Promise<ChroniclesToolResult> => {
-            const sourceJsondocRef = params.jsondocs[0];
-            console.log(`[ChroniclesTool] Starting streaming chronicles generation for outline settings jsondoc ${sourceJsondocRef.jsondocId}`);
+            console.log(`[ChroniclesTool] Starting streaming chronicles generation with ${params.jsondocs.length} jsondocs`);
 
-            // Extract outline settings data first
-            const outlineSettingsJsondoc = await jsondocRepo.getJsondoc(sourceJsondocRef.jsondocId);
-            if (!outlineSettingsJsondoc) {
-                throw new Error('Outline settings jsondoc not found');
-            }
+            // Use shared jsondoc processor
+            const jsondocProcessor = createJsondocProcessor(jsondocRepo, userId);
+            const { jsondocData, jsondocMetadata, processedCount } = await jsondocProcessor.processJsondocs(params.jsondocs);
 
-            // Verify user has access to this jsondoc's project
-            const hasAccess = await jsondocRepo.userHasProjectAccess(userId, outlineSettingsJsondoc.project_id);
-            if (!hasAccess) {
-                throw new Error('Access denied to outline settings jsondoc');
-            }
+            console.log(`[ChroniclesTool] Processed ${processedCount} jsondocs`);
 
-            // Verify jsondoc is outline settings type
-            if (outlineSettingsJsondoc.schema_type !== 'outline_settings') {
-                throw new Error(`Expected outline settings jsondoc, got: ${outlineSettingsJsondoc.schema_type}`);
-            }
-
-            // Extract outline settings data
-            const outlineSettingsData = outlineSettingsJsondoc.data;
-            if (!outlineSettingsData.title || !outlineSettingsData.genre || !outlineSettingsData.characters) {
-                throw new Error('Invalid outline settings jsondoc data');
-            }
-
-            console.log(`[ChroniclesTool] Using outline settings: ${outlineSettingsData.title}`);
-
-            // Create streaming config with extracted data
+            // Create streaming config with all extracted data
             const config: StreamingTransformConfig<ChroniclesInput, ChroniclesOutput> = {
                 templateName: 'chronicles',
                 inputSchema: ChroniclesInputSchema,
@@ -280,8 +261,7 @@ export function createChroniclesToolDefinition(
                 outputJsondocType: 'chronicles',
                 transformMetadata: {
                     toolName: 'generate_chronicles',
-                    outline_settings_jsondoc_id: sourceJsondocRef.jsondocId,
-                    outline_title: outlineSettingsData.title,
+                    ...jsondocMetadata, // Include all jsondoc IDs with their schema types as keys
                     requirements: params.requirements
                 },
                 // Pass caching options from factory

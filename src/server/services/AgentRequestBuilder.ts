@@ -83,9 +83,14 @@ ${context}
 2. 审视YAML上下文，识别最新 brainstorm_input, chosen_idea, outline_settings, chronicles, episode_planning 等内容。
 3. 如果请求涉及修改现有内容，优先使用编辑工具（edit_*）来更新最新版本，而非生成新内容。
 4. 如果请求复杂，需要修改多个组件（如想法和大纲），则按逻辑顺序调用多个工具（上游先，下游后）。
-5. 选择最合适的工具（或工具序列）来满足需求。
-6. 执行所有必要的工具调用。
-7. 所有步骤完成后，返回JSON格式的最终响应。
+5. **对于生成剧集规划（episode_planning）**：
+   - 必须包含 chronicles jsondoc（时间顺序大纲）
+   - 推荐包含 brainstorm_idea jsondoc（故事创意）- 从 chosen_idea 中获取
+   - 推荐包含 outline_settings jsondoc（剧本框架）
+   - 这样能确保生成的剧集规划与整个故事创作流程保持一致
+6. 选择最合适的工具（或工具序列）来满足需求。
+7. 执行所有必要的工具调用。
+8. 所有步骤完成后，返回JSON格式的最终响应。
 ===你的任务 结束===
 
 ===工具选择示例 开始===
@@ -107,7 +112,7 @@ ${context}
 示例4：生成剧集规划
 用户请求："基于时间顺序大纲生成12集的剧集规划"
 → 使用 generate_episode_planning 工具
-→ 参数：sourceJsondocId="时间顺序大纲jsondoc的ID", numberOfEpisodes=12
+→ 参数：jsondocs=[{jsondocId: "时间顺序大纲jsondoc的ID", description: "时间顺序大纲", schemaType: "chronicles"}, {jsondocId: "故事创意jsondoc的ID", description: "故事创意", schemaType: "brainstorm_idea"}, {jsondocId: "剧本框架jsondoc的ID", description: "剧本框架", schemaType: "outline_settings"}], numberOfEpisodes=12
 
 示例5：编辑现有创意
 用户请求："修改第一个故事创意，增加悬疑元素"

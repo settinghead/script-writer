@@ -12,6 +12,7 @@ import {
     StreamingTransformConfig
 } from '../transform-jsondoc-framework/StreamingTransformExecutor';
 import type { StreamingToolDefinition } from '../transform-jsondoc-framework/StreamingAgentFramework';
+import { createJsondocProcessor } from './shared/JsondocProcessor';
 
 const EpisodePlanningToolResultSchema = z.object({
     outputJsondocId: z.string(),
@@ -41,39 +42,19 @@ export function createEpisodePlanningToolDefinition(
 ): StreamingToolDefinition<EpisodePlanningInput, EpisodePlanningToolResult> {
     return {
         name: 'generate_episode_planning',
-        description: '基于时间顺序大纲生成剧集规划（优化观看顺序和情感节奏）。适用场景：用户已完成时间顺序大纲，需要生成适合短视频平台的剧集规划。必须使用项目背景信息中显示的完整chronicles jsondoc ID作为sourceJsondocId参数。',
+        description: '基于提供的所有jsondocs生成剧集规划（优化观看顺序和情感节奏）。适用场景：用户已完成相关创作步骤，需要生成适合短视频平台的剧集规划。将处理所有传入的jsondocs作为参考资料。',
         inputSchema: EpisodePlanningInputSchema,
         outputSchema: EpisodePlanningToolResultSchema,
         execute: async (params: EpisodePlanningInput, { toolCallId }): Promise<EpisodePlanningToolResult> => {
-            const sourceJsondocRef = params.jsondocs[0];
-            console.log(`[EpisodePlanningTool] Starting streaming episode planning generation for chronicles jsondoc ${sourceJsondocRef.jsondocId}`);
+            console.log(`[EpisodePlanningTool] Starting streaming episode planning generation with ${params.jsondocs.length} jsondocs`);
 
-            // Extract chronicles data first
-            const chroniclesJsondoc = await jsondocRepo.getJsondoc(sourceJsondocRef.jsondocId);
-            if (!chroniclesJsondoc) {
-                throw new Error('Chronicles jsondoc not found');
-            }
+            // Use shared jsondoc processor
+            const jsondocProcessor = createJsondocProcessor(jsondocRepo, userId);
+            const { jsondocData, jsondocMetadata, processedCount } = await jsondocProcessor.processJsondocs(params.jsondocs);
 
-            // Verify user has access to this jsondoc's project
-            const hasAccess = await jsondocRepo.userHasProjectAccess(userId, chroniclesJsondoc.project_id);
-            if (!hasAccess) {
-                throw new Error('Access denied to chronicles jsondoc');
-            }
+            console.log(`[EpisodePlanningTool] Processed ${processedCount} jsondocs, target episodes: ${params.numberOfEpisodes}`);
 
-            // Verify jsondoc is chronicles type
-            if (chroniclesJsondoc.schema_type !== 'chronicles') {
-                throw new Error(`Expected chronicles jsondoc, got: ${chroniclesJsondoc.schema_type}`);
-            }
-
-            // Extract chronicles data
-            const chroniclesData = chroniclesJsondoc.data;
-            if (!chroniclesData.stages || !Array.isArray(chroniclesData.stages)) {
-                throw new Error('Invalid chronicles jsondoc data - missing stages array');
-            }
-
-            console.log(`[EpisodePlanningTool] Using chronicles with ${chroniclesData.stages.length} stages, target episodes: ${params.numberOfEpisodes}`);
-
-            // Create streaming config with extracted data
+            // Create streaming config with all extracted data
             const config: StreamingTransformConfig<EpisodePlanningInput, EpisodePlanningOutput> = {
                 templateName: 'episode_planning',
                 inputSchema: EpisodePlanningInputSchema,
@@ -91,7 +72,7 @@ export function createEpisodePlanningToolDefinition(
                 outputJsondocType: 'episode_planning',
                 transformMetadata: {
                     toolName: 'generate_episode_planning',
-                    chronicles_jsondoc_id: sourceJsondocRef.jsondocId,
+                    ...jsondocMetadata, // Include all jsondoc IDs with their schema types as keys
                     numberOfEpisodes: params.numberOfEpisodes,
                     requirements: params.requirements
                 },

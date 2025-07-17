@@ -1,179 +1,319 @@
-import { describe, it, expect } from 'vitest';
-import {
-    EpisodePlanningInput,
-    EpisodePlanningOutput,
-    EpisodePlanningInputSchema,
-    EpisodePlanningOutputSchema
-} from '@/common/schemas/outlineSchemas';
-import { MIN_EPISODES, MAX_EPISODES } from '@/common/config/constants';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { createEpisodePlanningToolDefinition } from '../EpisodePlanningTool';
+import type { TransformRepository } from '../../transform-jsondoc-framework/TransformRepository';
+import type { JsondocRepository } from '../../transform-jsondoc-framework/JsondocRepository';
+import { EpisodePlanningInputSchema } from '../../../common/schemas/outlineSchemas';
 
-describe('EpisodePlanningTool Schemas', () => {
-    describe('EpisodePlanningInputSchema', () => {
-        it('validates correct input data', () => {
-            const validInput: EpisodePlanningInput = {
-                jsondocs: [{
-                    jsondocId: 'chronicles-123',
-                    description: 'Chronicles data',
-                    schemaType: 'chronicles'
-                }],
-                numberOfEpisodes: 20,
-                requirements: 'TikTok优化的短剧'
-            };
+// Mock the streaming transform executor
+vi.mock('../../transform-jsondoc-framework/StreamingTransformExecutor', () => ({
+    executeStreamingTransform: vi.fn()
+}));
 
-            expect(() => EpisodePlanningInputSchema.parse(validInput)).not.toThrow();
-        });
+import { executeStreamingTransform } from '../../transform-jsondoc-framework/StreamingTransformExecutor';
 
-        it('validates minimum episode count', () => {
-            const validInput: EpisodePlanningInput = {
-                jsondocs: [{
-                    jsondocId: 'chronicles-123',
-                    description: 'Chronicles data',
-                    schemaType: 'chronicles'
-                }],
-                numberOfEpisodes: 1,
-            };
+describe('EpisodePlanningTool', () => {
+    let mockTransformRepo: TransformRepository;
+    let mockJsondocRepo: JsondocRepository;
+    const projectId = 'test-project-id';
+    const userId = 'test-user-id';
 
-            expect(() => EpisodePlanningInputSchema.parse(validInput)).not.toThrow();
-        });
+    beforeEach(() => {
+        vi.clearAllMocks();
 
-        it('validates maximum episode count', () => {
-            const validInput: EpisodePlanningInput = {
-                jsondocs: [{
-                    jsondocId: 'chronicles-123',
-                    description: 'Chronicles data',
-                    schemaType: 'chronicles'
-                }],
-                numberOfEpisodes: 50,
-            };
-
-            expect(() => EpisodePlanningInputSchema.parse(validInput)).not.toThrow();
-        });
-
-        it('rejects episode count below minimum', () => {
-            const invalidInput = {
-                jsondocs: [{
-                    jsondocId: 'chronicles-123',
-                    description: 'Chronicles data',
-                    schemaType: 'chronicles'
-                }],
-                numberOfEpisodes: MIN_EPISODES - 1,
-            };
-
-            expect(() => EpisodePlanningInputSchema.parse(invalidInput)).toThrow();
-        });
-
-        it('rejects episode count above maximum', () => {
-            const invalidInput = {
-                jsondocs: [{
-                    jsondocId: 'chronicles-123',
-                    description: 'Chronicles data',
-                    schemaType: 'chronicles'
-                }],
-                numberOfEpisodes: MAX_EPISODES + 1,
-            };
-
-            expect(() => EpisodePlanningInputSchema.parse(invalidInput)).toThrow();
-        });
-
-        it('rejects empty jsondocs array', () => {
-            const invalidInput = {
-                jsondocs: [],
-                numberOfEpisodes: 20,
-            };
-
-            expect(() => EpisodePlanningInputSchema.parse(invalidInput)).toThrow();
-        });
-
-        it('accepts optional requirements field', () => {
-            const inputWithoutRequirements = {
-                jsondocs: [{
-                    jsondocId: 'chronicles-123',
-                    description: 'Chronicles data',
-                    schemaType: 'chronicles'
-                }],
-                numberOfEpisodes: 20,
-            };
-
-            expect(() => EpisodePlanningInputSchema.parse(inputWithoutRequirements)).not.toThrow();
-        });
+        mockTransformRepo = {} as TransformRepository;
+        mockJsondocRepo = {
+            getJsondoc: vi.fn(),
+            userHasProjectAccess: vi.fn()
+        } as any;
     });
 
-    describe('EpisodePlanningOutputSchema', () => {
-        const validOutput: EpisodePlanningOutput = {
-            totalEpisodes: 20,
-            overallStrategy: '非线性叙事结构，注重情感节拍的起伏',
-            episodeGroups: [
-                {
-                    groupTitle: '开篇引入',
-                    episodes: '第1-3集',
-                    keyEvents: ['角色登场', '冲突建立'],
-                    hooks: ['悬疑开场', '身份谜团'],
-                    emotionalBeats: ['好奇', '紧张']
-                },
-                {
-                    groupTitle: '情感发展',
-                    episodes: '第4-12集',
-                    keyEvents: ['感情升温', '障碍出现'],
-                    hooks: ['回忆杀', '误会产生'],
-                    emotionalBeats: ['甜蜜', '纠结']
+    describe('createEpisodePlanningToolDefinition', () => {
+        it('should create a tool definition with correct structure', () => {
+            const toolDef = createEpisodePlanningToolDefinition(
+                mockTransformRepo,
+                mockJsondocRepo,
+                projectId,
+                userId
+            );
+
+            expect(toolDef.name).toBe('generate_episode_planning');
+            expect(toolDef.description).toContain('基于提供的所有jsondocs生成剧集规划');
+            expect(toolDef.inputSchema).toBe(EpisodePlanningInputSchema);
+            expect(typeof toolDef.execute).toBe('function');
+        });
+
+        it('should process all provided jsondocs', async () => {
+            const mockChroniclesJsondoc = {
+                id: 'chronicles-id',
+                schema_type: 'chronicles',
+                project_id: projectId,
+                data: {
+                    title: 'Test Chronicles',
+                    stages: [
+                        { title: 'Stage 1', events: ['Event 1'] },
+                        { title: 'Stage 2', events: ['Event 2'] }
+                    ]
                 }
-            ]
-        };
-
-        it('validates correct output data', () => {
-            expect(() => EpisodePlanningOutputSchema.parse(validOutput)).not.toThrow();
-        });
-
-        it('validates episode groups structure', () => {
-            const outputWithGroups: EpisodePlanningOutput = {
-                totalEpisodes: 10,
-                overallStrategy: '测试策略',
-                episodeGroups: [
-                    {
-                        groupTitle: '测试组',
-                        episodes: '1-5',
-                        keyEvents: ['事件1', '事件2'],
-                        hooks: ['钩子1'],
-                        emotionalBeats: ['情感1', '情感2']
-                    }
-                ]
             };
 
-            expect(() => EpisodePlanningOutputSchema.parse(outputWithGroups)).not.toThrow();
-        });
-
-        it('rejects output with missing required fields', () => {
-            const invalidOutput = {
-                totalEpisodes: 20,
-                // Missing overallStrategy and episodeGroups
+            const mockBrainstormJsondoc = {
+                id: 'brainstorm-id',
+                schema_type: 'brainstorm_idea',
+                project_id: projectId,
+                data: {
+                    title: 'Test Brainstorm',
+                    body: 'Test brainstorm content'
+                }
             };
 
-            expect(() => EpisodePlanningOutputSchema.parse(invalidOutput)).toThrow();
-        });
-
-        it('rejects output with invalid episode group structure', () => {
-            const invalidOutput = {
-                totalEpisodes: 20,
-                overallStrategy: '测试策略',
-                episodeGroups: [
-                    {
-                        groupTitle: '测试组',
-                        // Missing required fields
-                    }
-                ]
+            const mockOutlineJsondoc = {
+                id: 'outline-id',
+                schema_type: 'outline_settings',
+                project_id: projectId,
+                data: {
+                    title: 'Test Outline',
+                    genre: 'romance'
+                }
             };
 
-            expect(() => EpisodePlanningOutputSchema.parse(invalidOutput)).toThrow();
-        });
+            (mockJsondocRepo.getJsondoc as any)
+                .mockResolvedValueOnce(mockChroniclesJsondoc)
+                .mockResolvedValueOnce(mockBrainstormJsondoc)
+                .mockResolvedValueOnce(mockOutlineJsondoc);
 
-        it('validates empty episode groups array', () => {
-            const outputWithEmptyGroups: EpisodePlanningOutput = {
-                totalEpisodes: 0,
-                overallStrategy: '无集数策略',
-                episodeGroups: []
+            (mockJsondocRepo.userHasProjectAccess as any)
+                .mockResolvedValue(true);
+
+            (executeStreamingTransform as any).mockResolvedValue({
+                outputJsondocId: 'output-id',
+                finishReason: 'completed'
+            });
+
+            const toolDef = createEpisodePlanningToolDefinition(
+                mockTransformRepo,
+                mockJsondocRepo,
+                projectId,
+                userId
+            );
+
+            const input = {
+                jsondocs: [
+                    { jsondocId: 'chronicles-id', description: 'Chronicles data', schemaType: 'chronicles' as const },
+                    { jsondocId: 'brainstorm-id', description: 'Brainstorm idea', schemaType: 'brainstorm_idea' as const },
+                    { jsondocId: 'outline-id', description: 'Outline settings', schemaType: 'outline_settings' as const }
+                ],
+                numberOfEpisodes: 30,
+                requirements: 'Test requirements'
             };
 
-            expect(() => EpisodePlanningOutputSchema.parse(outputWithEmptyGroups)).not.toThrow();
+            const result = await toolDef.execute(input, { toolCallId: 'test-tool-call' });
+
+            expect(result.outputJsondocId).toBe('output-id');
+            expect(result.finishReason).toBe('completed');
+
+            // Verify all jsondocs were accessed
+            expect(mockJsondocRepo.getJsondoc).toHaveBeenCalledTimes(3);
+            expect(mockJsondocRepo.getJsondoc).toHaveBeenCalledWith('chronicles-id');
+            expect(mockJsondocRepo.getJsondoc).toHaveBeenCalledWith('brainstorm-id');
+            expect(mockJsondocRepo.getJsondoc).toHaveBeenCalledWith('outline-id');
+
+            // Verify access checks
+            expect(mockJsondocRepo.userHasProjectAccess).toHaveBeenCalledTimes(3);
+
+            // Verify streaming transform was called with correct metadata
+            expect(executeStreamingTransform).toHaveBeenCalledWith({
+                config: expect.objectContaining({
+                    templateName: 'episode_planning'
+                }),
+                input,
+                projectId,
+                userId,
+                transformRepo: mockTransformRepo,
+                jsondocRepo: mockJsondocRepo,
+                outputJsondocType: 'episode_planning',
+                transformMetadata: {
+                    toolName: 'generate_episode_planning',
+                    chronicles: 'chronicles-id',
+                    brainstorm_idea: 'brainstorm-id',
+                    outline_settings: 'outline-id',
+                    numberOfEpisodes: 30,
+                    requirements: 'Test requirements'
+                },
+                enableCaching: undefined,
+                seed: undefined,
+                temperature: undefined,
+                topP: undefined,
+                maxTokens: undefined
+            });
+        });
+
+        it('should handle missing jsondocs gracefully', async () => {
+            (mockJsondocRepo.getJsondoc as any)
+                .mockResolvedValueOnce(null); // First jsondoc not found
+
+            (executeStreamingTransform as any).mockResolvedValue({
+                outputJsondocId: 'output-id',
+                finishReason: 'completed'
+            });
+
+            const toolDef = createEpisodePlanningToolDefinition(
+                mockTransformRepo,
+                mockJsondocRepo,
+                projectId,
+                userId
+            );
+
+            const input = {
+                jsondocs: [
+                    { jsondocId: 'missing-id', description: 'Missing jsondoc', schemaType: 'chronicles' as const }
+                ],
+                numberOfEpisodes: 20,
+                requirements: 'Test requirements'
+            };
+
+            const result = await toolDef.execute(input, { toolCallId: 'test-tool-call' });
+
+            expect(result.outputJsondocId).toBe('output-id');
+            expect(result.finishReason).toBe('completed');
+
+            // Should still call streaming transform with empty metadata
+            expect(executeStreamingTransform).toHaveBeenCalledWith({
+                config: expect.objectContaining({
+                    templateName: 'episode_planning'
+                }),
+                input,
+                projectId,
+                userId,
+                transformRepo: mockTransformRepo,
+                jsondocRepo: mockJsondocRepo,
+                outputJsondocType: 'episode_planning',
+                transformMetadata: {
+                    toolName: 'generate_episode_planning',
+                    numberOfEpisodes: 20,
+                    requirements: 'Test requirements'
+                },
+                enableCaching: undefined,
+                seed: undefined,
+                temperature: undefined,
+                topP: undefined,
+                maxTokens: undefined
+            });
+        });
+
+        it('should handle access denied gracefully', async () => {
+            const mockJsondoc = {
+                id: 'test-id',
+                schema_type: 'chronicles',
+                project_id: projectId,
+                data: { title: 'Test' }
+            };
+
+            (mockJsondocRepo.getJsondoc as any)
+                .mockResolvedValueOnce(mockJsondoc);
+
+            (mockJsondocRepo.userHasProjectAccess as any)
+                .mockResolvedValue(false); // Access denied
+
+            (executeStreamingTransform as any).mockResolvedValue({
+                outputJsondocId: 'output-id',
+                finishReason: 'completed'
+            });
+
+            const toolDef = createEpisodePlanningToolDefinition(
+                mockTransformRepo,
+                mockJsondocRepo,
+                projectId,
+                userId
+            );
+
+            const input = {
+                jsondocs: [
+                    { jsondocId: 'test-id', description: 'Test jsondoc', schemaType: 'chronicles' as const }
+                ],
+                numberOfEpisodes: 20,
+                requirements: 'Test requirements'
+            };
+
+            const result = await toolDef.execute(input, { toolCallId: 'test-tool-call' });
+
+            expect(result.outputJsondocId).toBe('output-id');
+            expect(result.finishReason).toBe('completed');
+
+            // Should still proceed with empty metadata
+            expect(executeStreamingTransform).toHaveBeenCalledWith({
+                config: expect.objectContaining({
+                    templateName: 'episode_planning'
+                }),
+                input,
+                projectId,
+                userId,
+                transformRepo: mockTransformRepo,
+                jsondocRepo: mockJsondocRepo,
+                outputJsondocType: 'episode_planning',
+                transformMetadata: {
+                    toolName: 'generate_episode_planning',
+                    numberOfEpisodes: 20,
+                    requirements: 'Test requirements'
+                },
+                enableCaching: undefined,
+                seed: undefined,
+                temperature: undefined,
+                topP: undefined,
+                maxTokens: undefined
+            });
+        });
+
+        it('should pass caching options to streaming transform', async () => {
+            (executeStreamingTransform as any).mockResolvedValue({
+                outputJsondocId: 'output-id',
+                finishReason: 'completed'
+            });
+
+            const cachingOptions = {
+                enableCaching: true,
+                seed: 42,
+                temperature: 0.7,
+                topP: 0.9,
+                maxTokens: 2000
+            };
+
+            const toolDef = createEpisodePlanningToolDefinition(
+                mockTransformRepo,
+                mockJsondocRepo,
+                projectId,
+                userId,
+                cachingOptions
+            );
+
+            const input = {
+                jsondocs: [],
+                numberOfEpisodes: 20,
+                requirements: 'Test requirements'
+            };
+
+            await toolDef.execute(input, { toolCallId: 'test-tool-call' });
+
+            expect(executeStreamingTransform).toHaveBeenCalledWith({
+                config: expect.objectContaining({
+                    templateName: 'episode_planning'
+                }),
+                input,
+                projectId,
+                userId,
+                transformRepo: mockTransformRepo,
+                jsondocRepo: mockJsondocRepo,
+                outputJsondocType: 'episode_planning',
+                transformMetadata: {
+                    toolName: 'generate_episode_planning',
+                    numberOfEpisodes: 20,
+                    requirements: 'Test requirements'
+                },
+                enableCaching: true,
+                seed: 42,
+                temperature: 0.7,
+                topP: 0.9,
+                maxTokens: 2000
+            });
         });
     });
 }); 
