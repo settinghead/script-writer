@@ -64,10 +64,22 @@ ${context}
 ===当前项目背景信息 结束===
 
 ===你的任务 开始===
+===创作流程 开始===
+我们的创作流程遵循以下顺序：
+1. 头脑风暴输入 (brainstorm_input)：用户提供创意参数
+2. 故事创意生成 (brainstorm_idea)：AI生成多个故事想法
+3. 创意选择与编辑：用户选择并修改创意
+4. 剧本框架生成 (outline_settings)：基于选定创意生成人物、背景、商业设定
+5. 时间顺序大纲生成 (chronicles)：创建故事时序结构
+6. 分集与剧本生成：后续详细内容创作
+
+对于多步修改，始终遵循此顺序：先编辑上游内容（如创意），然后编辑依赖的下游内容（如框架）。
+===创作流程 结束===
+
 1. 仔细分析用户请求，理解用户的真实意图。考虑请求是否模糊或复杂，可能需要修改多个部分。
 2. 审视YAML上下文，识别最新 brainstorm_input, chosen_idea, outline_settings, chronicles 等内容。
 3. 如果请求涉及修改现有内容，优先使用编辑工具（edit_*）来更新最新版本，而非生成新内容。
-4. 如果请求复杂，需要修改多个组件（如想法和大纲），则按逻辑顺序调用多个工具。
+4. 如果请求复杂，需要修改多个组件（如想法和大纲），则按逻辑顺序调用多个工具（上游先，下游后）。
 5. 选择最合适的工具（或工具序列）来满足需求。
 6. 执行所有必要的工具调用。
 7. 所有步骤完成后，返回JSON格式的最终响应。
@@ -101,10 +113,10 @@ ${context}
 
 示例6：复杂请求 - 修改想法并更新大纲
 用户请求："在故事中加入童话元素，并相应调整大纲"
-→ 第一步：使用 edit_brainstorm_ideas 编辑想法，添加童话元素
+→ 第一步：使用 edit_brainstorm_idea 编辑想法，添加童话元素
 → 参数：jsondocs=[{jsondocId: "chosen_idea_id_from_context", schemaType: "brainstorm_idea", description: "当前选中的创意想法"}], editRequirements="添加童话元素"
 → 第二步：使用 edit_outline_settings 更新大纲，整合新元素
-→ 参数：jsondocs=[{jsondocId: "outline_id_from_context", schemaType: "outline_settings", description: "现有剧本框架"}], editRequirements="整合童话元素到大纲中"
+→ 参数：jsondocs=[{jsondocId: "outline_id_from_context", schemaType: "outline_settings", description: "现有剧本框架"}, {jsondocId: "<output_from_first_call>", schemaType: "brainstorm_idea", description: "更新后的故事创意"}], editRequirements="基于更新后的创意整合童话元素到大纲中"
 → 完成后返回JSON总结
 ===工具选择示例 结束===
 

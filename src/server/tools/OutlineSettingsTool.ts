@@ -54,55 +54,46 @@ async function extractSourceOutlineSettingsData(
     userId: string
 ): Promise<{
     originalSettings: any;
+    additionalContexts: any[];
     targetPlatform: string;
     storyGenre: string;
 }> {
-    // Get the first jsondoc from the array (primary source)
-    const sourceJsondocRef = params.jsondocs[0];
-    const sourceJsondoc = await jsondocRepo.getJsondoc(sourceJsondocRef.jsondocId);
-    if (!sourceJsondoc) {
-        throw new Error('Source jsondoc not found');
-    }
-
-    // Verify user has access to this jsondoc's project
-    const hasAccess = await jsondocRepo.userHasProjectAccess(userId, sourceJsondoc.project_id);
-    if (!hasAccess) {
-        throw new Error('Access denied to source jsondoc');
-    }
-
-    const sourceData = sourceJsondoc.data;
     let originalSettings: any;
+    let additionalContexts: any[] = [];
     let targetPlatform = 'unknown';
     let storyGenre = 'unknown';
 
-    if (sourceJsondoc.schema_type === 'outline_settings') {
-        // Direct outline settings jsondoc
-        originalSettings = sourceData;
-        targetPlatform = sourceData.platform || 'unknown';
-        storyGenre = sourceData.genre || 'unknown';
-    } else if (sourceJsondoc.origin_type === 'user_input') {
-        // User-edited jsondoc - extract from derived data
-        let derivedData = sourceJsondoc.metadata?.derived_data;
-        if (!derivedData && sourceData.text) {
-            try {
-                derivedData = JSON.parse(sourceData.text);
-            } catch (e) {
-                throw new Error('Failed to parse user input data');
-            }
+    for (const [index, jsondocRef] of params.jsondocs.entries()) {
+        const sourceJsondoc = await jsondocRepo.getJsondoc(jsondocRef.jsondocId);
+        if (!sourceJsondoc) {
+            throw new Error(`Jsondoc ${jsondocRef.jsondocId} not found`);
         }
 
-        if (!derivedData) {
-            throw new Error('Invalid user input jsondoc');
+        const hasAccess = await jsondocRepo.userHasProjectAccess(userId, sourceJsondoc.project_id);
+        if (!hasAccess) {
+            throw new Error(`Access denied to jsondoc ${jsondocRef.jsondocId}`);
         }
 
-        originalSettings = derivedData;
-        targetPlatform = derivedData.platform || 'unknown';
-        storyGenre = derivedData.genre || 'unknown';
-    } else {
-        throw new Error(`Unsupported source jsondoc schema_type: ${sourceJsondoc.schema_type}, origin_type: ${sourceJsondoc.origin_type}`);
+        const sourceData = sourceJsondoc.data;
+
+        if (index === 0) { // First is always the outline
+            originalSettings = sourceData;
+            targetPlatform = sourceData.platform || 'unknown';
+            storyGenre = sourceData.genre || 'unknown';
+        } else {
+            // Additional contexts (e.g., updated idea)
+            additionalContexts.push({
+                description: jsondocRef.description,
+                data: sourceData
+            });
+        }
     }
 
-    return { originalSettings, targetPlatform, storyGenre };
+    if (!originalSettings) {
+        throw new Error('No outline settings jsondoc provided');
+    }
+
+    return { originalSettings, additionalContexts, targetPlatform, storyGenre };
 }
 
 /**
@@ -131,7 +122,7 @@ export function createOutlineSettingsEditToolDefinition(
             console.log(`[OutlineSettingsEditTool] Starting JSON patch edit for jsondoc ${sourceJsondocRef.jsondocId}`);
 
             // Extract source outline settings data for context
-            const { originalSettings, targetPlatform, storyGenre } = await extractSourceOutlineSettingsData(params, jsondocRepo, userId);
+            const { originalSettings, additionalContexts, targetPlatform, storyGenre } = await extractSourceOutlineSettingsData(params, jsondocRepo, userId);
 
             // Determine output jsondoc type
             const sourceJsondoc = await jsondocRepo.getJsondoc(sourceJsondocRef.jsondocId);
@@ -151,7 +142,13 @@ export function createOutlineSettingsEditToolDefinition(
                     value: z.any().optional(),
                     from: z.string().optional()
                 })), // RFC6902 JSON patch array schema
-                // No custom prepareTemplateVariables - use default schema-driven extraction
+                prepareTemplateVariables: async (input) => {
+                    const defaultVars = await defaultPrepareTemplateVariables(input, jsondocRepo);
+                    return {
+                        ...defaultVars,
+                        additionalContexts
+                    };
+                }
             };
 
             try {
@@ -177,7 +174,8 @@ export function createOutlineSettingsEditToolDefinition(
                         genre: storyGenre,
                         method: 'json_patch',
                         source_jsondoc_type: sourceJsondoc.schema_type,
-                        output_jsondoc_type: outputJsondocType
+                        output_jsondoc_type: outputJsondocType,
+                        additionalContexts: additionalContexts
                     },
                     enableCaching: cachingOptions?.enableCaching,
                     seed: cachingOptions?.seed,

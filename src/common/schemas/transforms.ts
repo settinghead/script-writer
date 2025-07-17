@@ -87,7 +87,7 @@ export type BrainstormEditInput = z.infer<typeof BrainstormEditInputSchema>;
 
 // Input schema for outline settings editing
 export const OutlineSettingsEditInputSchema = z.object({
-  jsondocs: JsondocReferencesSchema.describe('引用的jsondoc列表，包含要编辑的剧本框架设置'),
+  jsondocs: JsondocReferencesSchema.min(1, '至少需要一个jsondoc引用').describe('引用的jsondoc列表，包含要编辑的剧本框架设置和其他相关内容，如更新的故事创意'),
   editRequirements: z.string().min(1, '编辑要求不能为空').describe('具体的编辑要求，如：修改角色设定、调整卖点、更新故事背景等'),
   agentInstructions: z.string().optional().describe('来自智能体的额外指导信息，用于更好地理解编辑意图')
 });

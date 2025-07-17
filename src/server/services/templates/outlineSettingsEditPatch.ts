@@ -8,7 +8,8 @@ export const outlineSettingsEditPatchTemplate = createJsonPatchTemplate(
     [
         '确保角色设定符合故事类型和平台特色',
         '保持卖点和爽点的商业价值',
-        '维护故事设定的内在逻辑性'
+        '维护故事设定的内在逻辑性',
+        '如果提供了附加上下文（如更新后的故事创意），请整合这些变更到补丁中'
     ],
     [
         '/title',

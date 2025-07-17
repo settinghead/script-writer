@@ -400,7 +400,7 @@ const nodeTypes: NodeTypes = {
 const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'LR') => {
     const dagreGraph = new dagre.graphlib.Graph();
     dagreGraph.setDefaultEdgeLabel(() => ({}));
-    dagreGraph.setGraph({ rankdir: direction, nodesep: 100, ranksep: 150 });
+    dagreGraph.setGraph({ rankdir: direction, nodesep: 100, ranksep: 150, edgesep: 50 }); // Add edgesep for better spacing
 
     nodes.forEach((node) => {
         dagreGraph.setNode(node.id, { width: node.type === 'jsondoc' ? 240 : 140, height: node.type === 'jsondoc' ? 140 : 100 });
