@@ -33,13 +33,13 @@ const EditableEpisodePlanningForm: React.FC<EditableEpisodePlanningFormProps> = 
                 </Card>
 
                 {/* Episode Groups */}
-                <Card size="small" title="分集分组">
+                <Card size="small" title="分集阶段">
                     <Space direction="vertical" style={{ width: '100%' }}>
                         <Text type="secondary">
-                            每个分组代表几集的内容安排，包含关键事件、悬念钩子和情感节拍
+                            每个阶段代表几集的内容安排，包含关键事件、悬念钩子和情感节拍
                         </Text>
 
-                        <Form.Item label="分组详情">
+                        <Form.Item label="阶段详情">
                             <YJSEpisodeGroupsArray
                                 path="episodeGroups"
                             />

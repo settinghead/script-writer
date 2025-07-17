@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom';
-import { YJSTextField, YJSTextAreaField, YJSArrayOfStringField } from '../components/YJSField';
+import { YJSTextField, YJSTextAreaField } from '../components/YJSField';
 import { YJSSlateArrayOfStringField } from '../components/YJSSlateArrayField';
 
 // Mock the YJS context and hooks
@@ -173,128 +173,133 @@ describe('YJS Field Components - Working Tests', () => {
         });
     });
 
-    describe('YJSArrayOfStringField', () => {
+    // YJSArrayOfStringField has been replaced with YJSSlateArrayOfStringField
+    // Tests for YJSSlateArrayOfStringField are in the separate test block below
+    /*
+    describe('YJSArrayOfStringField (deprecated - replaced with YJSSlateArrayOfStringField)', () => {
         it('renders correctly with string array data', () => {
             mockValue.mockReturnValue(['Item 1', 'Item 2', 'Item 3']);
-
-            render(<YJSArrayOfStringField path="stringArray" placeholder="Enter items" />);
-
+    
+            // Component has been replaced with YJSSlateArrayOfStringField
+            // render(<YJSArrayOfStringField path="stringArray" placeholder="Enter items" />);
+    
             // Check that the textarea is rendered
             const textarea = screen.getByTestId('textarea');
             expect(textarea).toBeInTheDocument();
             expect(textarea).toHaveAttribute('placeholder', 'Enter items');
             expect(textarea).toHaveValue('Item 1\nItem 2\nItem 3');
         });
-
+    
         it('calls updateValue when textarea changes', async () => {
             mockValue.mockReturnValue(['Item 1']);
-
+    
             render(<YJSArrayOfStringField path="stringArray" placeholder="Enter items" />);
-
+    
             const textarea = screen.getByTestId('textarea');
-
+    
             // Simulate user typing new lines
             fireEvent.change(textarea, { target: { value: 'Item 1\nItem 2\nItem 3' } });
-
+    
             // Wait for debounced update
             await waitFor(() => {
                 expect(mockUpdateField).toHaveBeenCalled();
             }, { timeout: 1500 });
         });
-
+    
         it('handles empty array correctly', () => {
             mockValue.mockReturnValue([]);
-
+    
             render(<YJSArrayOfStringField path="stringArray" placeholder="Enter items" />);
-
+    
             const textarea = screen.getByTestId('textarea');
             expect(textarea).toBeInTheDocument();
             expect(textarea).toHaveValue('');
         });
-
+    
         it('preserves empty lines', async () => {
             mockValue.mockReturnValue([]);
-
+    
             render(<YJSArrayOfStringField path="stringArray" placeholder="Enter items" />);
-
+    
             const textarea = screen.getByTestId('textarea');
-
+    
             // Simulate user typing with empty lines
             fireEvent.change(textarea, { target: { value: 'Item 1\n\nItem 2\n  \nItem 3\n' } });
-
+    
             // Wait for debounced update
             await waitFor(() => {
                 expect(mockUpdateField).toHaveBeenCalled();
             }, { timeout: 1500 });
-
+    
             // Verify that empty lines are preserved (trimmed but not filtered out)
             const lastCall = mockUpdateField.mock.calls[mockUpdateField.mock.calls.length - 1];
             expect(lastCall[0]).toEqual(['Item 1', '', 'Item 2', '', 'Item 3', '']);
         });
-
+    
         it('should allow Enter key to create new lines and increase array size', async () => {
             mockValue.mockReturnValue(['Item 1']);
-
+    
             render(<YJSArrayOfStringField path="stringArray" placeholder="Enter items" />);
-
+    
             const textarea = screen.getByTestId('textarea');
-
+    
             // Verify initial state
             expect(textarea).toHaveValue('Item 1');
-
+    
             // Focus the textarea and position cursor at the end
             fireEvent.focus(textarea);
-
+    
             // Simulate pressing Enter at the end of "Item 1"
             fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter' });
-
+    
             // Simulate the actual text change that should happen after Enter
             fireEvent.change(textarea, { target: { value: 'Item 1\n' } });
-
+    
             // Wait for debounced update
             await waitFor(() => {
                 expect(mockUpdateField).toHaveBeenCalled();
             }, { timeout: 1500 });
-
+    
             // Verify that updateField was called with the new array
             const lastCall = mockUpdateField.mock.calls[mockUpdateField.mock.calls.length - 1];
             expect(lastCall[0]).toEqual(['Item 1', '']); // Should have two items: one with content and one empty
-
+    
             // Now test typing after the Enter
             fireEvent.change(textarea, { target: { value: 'Item 1\nItem 2' } });
-
+    
             await waitFor(() => {
                 expect(mockUpdateField).toHaveBeenCalled();
             }, { timeout: 1500 });
-
+    
             // This time we should have two items
             const finalCall = mockUpdateField.mock.calls[mockUpdateField.mock.calls.length - 1];
             expect(finalCall[0]).toEqual(['Item 1', 'Item 2']);
         });
-
+    
         it('should handle Enter key in middle of text correctly', async () => {
             mockValue.mockReturnValue(['Item 1 and more text']);
-
+    
             render(<YJSArrayOfStringField path="stringArray" placeholder="Enter items" />);
-
+    
             const textarea = screen.getByTestId('textarea');
-
+    
             // Verify initial state
             expect(textarea).toHaveValue('Item 1 and more text');
-
+    
             // Simulate pressing Enter in the middle of the text (after "Item 1 ")
             // This should split the line into two items
             fireEvent.change(textarea, { target: { value: 'Item 1 \nand more text' } });
-
+    
             await waitFor(() => {
                 expect(mockUpdateField).toHaveBeenCalled();
             }, { timeout: 1500 });
-
+    
             // Should split into two items
             const lastCall = mockUpdateField.mock.calls[mockUpdateField.mock.calls.length - 1];
             expect(lastCall[0]).toEqual(['Item 1', 'and more text']);
         });
     });
+    */
 
     describe('YJSSlateArrayOfStringField', () => {
         it('renders correctly with string array data', () => {

@@ -50,9 +50,10 @@ const BulletElement = ({ attributes, children }: RenderElementProps) => (
 );
 
 // Main component
-export const YJSSlateArrayOfStringField = React.memo(({ path, placeholder }: {
+export const YJSSlateArrayOfStringField = React.memo(({ path, placeholder, fontSize = 14 }: {
     path: string;
     placeholder?: string;
+    fontSize?: number;
 }) => {
     const { value, updateValue, isInitialized } = useYJSField(path);
 
@@ -147,7 +148,7 @@ export const YJSSlateArrayOfStringField = React.memo(({ path, placeholder }: {
                     style={{
                         outline: 'none',
                         minHeight: '80px',
-                        fontSize: '14px',
+                        fontSize: `${fontSize}px`,
                         lineHeight: '1.5',
                         color: '#fff',
                         backgroundColor: 'transparent',

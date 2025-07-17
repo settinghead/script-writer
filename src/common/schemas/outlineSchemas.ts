@@ -80,7 +80,7 @@ export type ChroniclesOutput = z.infer<typeof ChroniclesOutputSchema>;
 
 // Episode group schema for episode planning
 export const EpisodeGroupSchema = z.object({
-    groupTitle: z.string().min(1).describe('分组标题'),
+    groupTitle: z.string().min(1).describe('阶段标题'),
     episodes: z.string().min(1).describe('集数范围，如 "1-3"'),
     keyEvents: z.array(z.string()).describe('关键事件列表'),
     hooks: z.array(z.string()).describe('悬念钩子列表'),

@@ -6,7 +6,7 @@ export {
     YJSTextField,
     YJSTextAreaField,
     YJSArrayField,
-    YJSArrayOfStringField,
+
     YJSMultiSelect,
     YJSEmotionArcsArray,
     YJSRelationshipDevelopmentsArray,

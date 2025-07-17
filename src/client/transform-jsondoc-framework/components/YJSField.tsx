@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react'
 import { Input, Select, Button, Typography, Card, Space, Tag, InputNumber } from 'antd';
 import { PlusOutlined, DeleteOutlined, RightOutlined } from '@ant-design/icons';
 import { useYJSField } from '../contexts/YJSJsondocContext';
+import { YJSSlateArrayOfStringField } from './YJSSlateArrayField';
 
 const { TextArea } = Input;
 const { Text } = Typography;
@@ -115,71 +116,7 @@ export const YJSArrayField = React.memo(({ path, placeholder, itemPlaceholder, f
     );
 });
 
-// Dedicated String Array Field Component
-export const YJSArrayOfStringField = React.memo(({ path, placeholder, fontSize = DEFAULT_FONT_SIZE }: {
-    path: string;
-    placeholder?: string;
-    fontSize?: number;
-}) => {
-    const { value, updateValue, isInitialized } = useYJSField(path);
 
-    const arrayValue = useMemo(() => {
-        if (!Array.isArray(value)) return [];
-        return value.filter(item => typeof item === 'string');
-    }, [value]);
-
-    const arrayToTextarea = useCallback(() => {
-        return arrayValue.join('\n');
-    }, [arrayValue]);
-
-    const textareaToArray = useCallback((text: string): string[] => {
-        if (!text) return [];
-        const lines = text.split('\n');
-        const trimmedLines = lines.map(line => line.trim());
-        return trimmedLines;
-    }, []);
-
-    const handleTextareaChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        const newArray = textareaToArray(e.target.value);
-        updateValue(newArray);
-    }, [textareaToArray, updateValue]);
-
-    const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        if (e.key === 'Enter') {
-            // Allow default behavior for Enter key to create new lines
-        }
-    }, []);
-
-    const handleKeyUp = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        if (e.key === 'Enter') {
-            // Trigger change after Enter key is released
-            const target = e.target as HTMLTextAreaElement;
-            const newArray = textareaToArray(target.value);
-            updateValue(newArray);
-        }
-    }, [textareaToArray, updateValue]);
-
-    if (!isInitialized) return null;
-
-    const textareaValue = arrayToTextarea();
-
-    return (
-        <div>
-            <TextArea
-                value={textareaValue}
-                onChange={handleTextareaChange}
-                onKeyDown={handleKeyDown}
-                onKeyUp={handleKeyUp}
-                placeholder={placeholder || '每行一个项目'}
-                autoSize={{ minRows: 3, maxRows: 8 }}
-                style={{ fontSize: fontSize }}
-            />
-            <div style={{ marginTop: 4, color: '#666', fontSize: '12px' }}>
-                每行一个项目
-            </div>
-        </div>
-    );
-});
 
 // Multi-Select Field Component
 export const YJSMultiSelect = React.memo(({ path, options, placeholder, fontSize = DEFAULT_FONT_SIZE }: {
@@ -522,7 +459,7 @@ export const YJSCharacterArray = React.memo(({ path, fontSize = DEFAULT_FONT_SIZ
                         </div>
                         <div>
                             <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>性格特点：</Text>
-                            <YJSArrayOfStringField
+                            <YJSSlateArrayOfStringField
                                 path={`${path}[${index}].personality_traits`}
                                 placeholder="每行一个性格特点..."
                                 fontSize={fontSize}
@@ -687,7 +624,7 @@ export const YJSEpisodeGroupsArray = React.memo(({ path, fontSize = DEFAULT_FONT
             {arrayValue.map((group, index) => (
                 <div key={index} style={{ border: '1px solid #d9d9d9', borderRadius: 6, padding: 16, marginBottom: 16 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                        <Text strong>分组 {index + 1}</Text>
+                        <Text strong>阶段 {index + 1}</Text>
                         <Button
                             type="text"
                             icon={<DeleteOutlined />}
@@ -697,11 +634,11 @@ export const YJSEpisodeGroupsArray = React.memo(({ path, fontSize = DEFAULT_FONT
                     </div>
 
                     <div style={{ marginBottom: 12 }}>
-                        <Text>分组标题：</Text>
+                        <Text>阶段标题：</Text>
                         <Input
                             value={group?.groupTitle || ''}
                             onChange={(e) => handleItemChange(index, 'groupTitle', e.target.value)}
-                            placeholder="输入分组标题"
+                            placeholder="输入阶段标题"
                             style={{ marginTop: 4, fontSize: fontSize }}
                         />
                     </div>
@@ -718,7 +655,7 @@ export const YJSEpisodeGroupsArray = React.memo(({ path, fontSize = DEFAULT_FONT
 
                     <div style={{ marginBottom: 12 }}>
                         <Text>关键事件：</Text>
-                        <YJSArrayOfStringField
+                        <YJSSlateArrayOfStringField
                             path={`${path}[${index}].keyEvents`}
                             placeholder="每行一个关键事件..."
                             fontSize={fontSize}
@@ -727,7 +664,7 @@ export const YJSEpisodeGroupsArray = React.memo(({ path, fontSize = DEFAULT_FONT
 
                     <div style={{ marginBottom: 12 }}>
                         <Text>悬念钩子：</Text>
-                        <YJSArrayOfStringField
+                        <YJSSlateArrayOfStringField
                             path={`${path}[${index}].hooks`}
                             placeholder="每行一个悬念钩子..."
                             fontSize={fontSize}
@@ -736,7 +673,7 @@ export const YJSEpisodeGroupsArray = React.memo(({ path, fontSize = DEFAULT_FONT
 
                     <div>
                         <Text>情感节拍：</Text>
-                        <YJSArrayOfStringField
+                        <YJSSlateArrayOfStringField
                             path={`${path}[${index}].emotionalBeats`}
                             placeholder="每行一个情感节拍..."
                             fontSize={fontSize}
@@ -750,7 +687,7 @@ export const YJSEpisodeGroupsArray = React.memo(({ path, fontSize = DEFAULT_FONT
                 onClick={handleAddItem}
                 style={{ width: '100%' }}
             >
-                添加分组
+                添加阶段
             </Button>
         </div>
     );

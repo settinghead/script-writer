@@ -1,7 +1,7 @@
 import React from 'react';
 import { Typography, Space } from 'antd';
 import { UserOutlined, HeartOutlined, StarOutlined, EnvironmentOutlined, TeamOutlined } from '@ant-design/icons';
-import { YJSTextField, YJSTextAreaField, YJSArrayOfStringField, YJSCharacterArray } from '../../transform-jsondoc-framework/components/YJSField';
+import { YJSTextField, YJSTextAreaField, YJSCharacterArray } from '../../transform-jsondoc-framework/components/YJSField';
 import { YJSSlateArrayOfStringField } from '../../transform-jsondoc-framework/components/YJSSlateArrayField';
 
 const { Text } = Typography;
