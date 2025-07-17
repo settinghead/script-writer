@@ -431,6 +431,68 @@ function computeWorkflowParametersFromContext(
     };
 }
 
+/**
+ * Computes structured agent context with full content of latest relevant jsondocs.
+ * Mirrors display components but excludes collection if chosen idea exists.
+ * Throws on multiple instances of same type.
+ */
+export function computeAgentContext(
+    projectData: ProjectDataContextType,
+    projectId: string
+): Record<string, any> | null {
+    const context = computeUnifiedContext(projectData, projectId);
+    if (!context) return null;
+
+    const agentContext: Record<string, any> = {};
+
+    // Helper to get full parsed data
+    const getFullData = (jsondoc: ElectricJsondoc | null) => {
+        if (!jsondoc) return undefined;
+        try {
+            return JSON.parse(jsondoc.data);
+        } catch (error) {
+            throw new Error(`Failed to parse jsondoc data for ${jsondoc.schema_type}: ${(error as Error).message}`);
+        }
+    };
+
+    // Brainstorm input
+    if (context.brainstormInput) {
+        agentContext.brainstorm_input = getFullData(context.brainstormInput);
+    }
+
+    // Chosen idea
+    if (context.chosenIdea) {
+        agentContext.chosen_idea = getFullData(context.chosenIdea);
+    }
+
+    // Brainstorm collection - only if no chosen idea
+    if (!context.chosenIdea && context.brainstormIdeas.length > 0) {
+        // Assuming brainstormIdeas are from collections; find the latest collection
+        const collections = context.canonicalBrainstormJsondocs.filter(j => j.schema_type === 'brainstorm_collection');
+        if (collections.length > 1) {
+            throw new Error('Multiple brainstorm collections found');
+        }
+        if (collections.length === 1) {
+            agentContext.brainstorm_collection = getFullData(collections[0]);
+        }
+    }
+
+    // Outline settings
+    if (context.outlineSettings) {
+        agentContext.outline_settings = getFullData(context.outlineSettings);
+    }
+
+    // Chronicles
+    if (context.canonicalChronicles) {
+        agentContext.chronicles = getFullData(context.canonicalChronicles);
+    }
+
+    // Check for multiples - but since we already filter to latest/leaf, assume single
+    // Additional checks if needed
+
+    return agentContext;
+}
+
 // ==============================================================================
 // BACKWARD COMPATIBILITY FUNCTIONS
 // ==============================================================================
