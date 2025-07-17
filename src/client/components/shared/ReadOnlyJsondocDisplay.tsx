@@ -420,6 +420,142 @@ export const ReadOnlyJsondocDisplay: React.FC<ReadOnlyJsondocDisplayProps> = ({ 
         );
     }
 
+    // Render episode planning specific layout
+    if (schemaType === 'episode_planning') {
+        return (
+            <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                {/* Total Episodes */}
+                <div>
+                    <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '8px' }}>
+                        📺 总集数
+                    </Text>
+                    <Text style={{ fontSize: '14px', color: '#fff' }}>
+                        {parsedData.totalEpisodes || '未设置'}
+                    </Text>
+                </div>
+
+                {/* Overall Strategy */}
+                <div>
+                    <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '8px' }}>
+                        🎯 整体策略
+                    </Text>
+                    {renderMultilineText(parsedData.overallStrategy, '未设置整体策略')}
+                </div>
+
+                {/* Episode Groups */}
+                <div>
+                    <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '8px' }}>
+                        📚 分集规划
+                    </Text>
+                    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                        {Array.isArray(parsedData.episodeGroups) && parsedData.episodeGroups.length > 0 ? (
+                            parsedData.episodeGroups.map((group: any, index: number) => (
+                                <Card
+                                    key={index}
+                                    size="small"
+                                    style={{
+                                        backgroundColor: '#262626',
+                                        border: '1px solid #434343'
+                                    }}
+                                    styles={{ body: { padding: '20px' } }}
+                                    title={
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <Text strong style={{ fontSize: '16px', color: '#fff' }}>
+                                                {group.groupTitle || `第 ${index + 1} 组`}
+                                            </Text>
+                                            <Tag color="blue" style={{ fontSize: '12px' }}>
+                                                第 {group.episodes} 集
+                                            </Tag>
+                                        </div>
+                                    }
+                                >
+                                    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                                        {/* Key Events */}
+                                        <div>
+                                            <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '8px' }}>
+                                                🎬 关键事件
+                                            </Text>
+                                            {Array.isArray(group.keyEvents) && group.keyEvents.length > 0 ? (
+                                                <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                                                    {group.keyEvents.map((event: string, eventIndex: number) => (
+                                                        <div key={eventIndex} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                                                            <Text style={{ color: '#52c41a', fontSize: '12px', marginTop: '2px' }}>•</Text>
+                                                            <Text style={{ color: '#fff', fontSize: '14px', flex: 1 }}>
+                                                                {event}
+                                                            </Text>
+                                                        </div>
+                                                    ))}
+                                                </Space>
+                                            ) : (
+                                                <Text style={{ color: '#666', fontStyle: 'italic' }}>暂无关键事件</Text>
+                                            )}
+                                        </div>
+
+                                        {/* Hooks */}
+                                        <div>
+                                            <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '8px' }}>
+                                                🪝 悬念钩子
+                                            </Text>
+                                            {Array.isArray(group.hooks) && group.hooks.length > 0 ? (
+                                                <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                                                    {group.hooks.map((hook: string, hookIndex: number) => (
+                                                        <div key={hookIndex} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                                                            <Text style={{ color: '#1890ff', fontSize: '12px', marginTop: '2px' }}>•</Text>
+                                                            <Text style={{ color: '#fff', fontSize: '14px', flex: 1 }}>
+                                                                {hook}
+                                                            </Text>
+                                                        </div>
+                                                    ))}
+                                                </Space>
+                                            ) : (
+                                                <Text style={{ color: '#666', fontStyle: 'italic' }}>暂无悬念钩子</Text>
+                                            )}
+                                        </div>
+
+                                        {/* Emotional Beats */}
+                                        <div>
+                                            <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '8px' }}>
+                                                💭 情感节拍
+                                            </Text>
+                                            {Array.isArray(group.emotionalBeats) && group.emotionalBeats.length > 0 ? (
+                                                <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                                                    {group.emotionalBeats.map((beat: string, beatIndex: number) => (
+                                                        <div key={beatIndex} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                                                            <Text style={{ color: '#f759ab', fontSize: '12px', marginTop: '2px' }}>•</Text>
+                                                            <Text style={{ color: '#fff', fontSize: '14px', flex: 1 }}>
+                                                                {beat}
+                                                            </Text>
+                                                        </div>
+                                                    ))}
+                                                </Space>
+                                            ) : (
+                                                <Text style={{ color: '#666', fontStyle: 'italic' }}>暂无情感节拍</Text>
+                                            )}
+                                        </div>
+                                    </Space>
+                                </Card>
+                            ))
+                        ) : (
+                            <Card
+                                size="small"
+                                style={{
+                                    backgroundColor: '#1a1a1a',
+                                    border: '1px dashed #434343',
+                                    textAlign: 'center'
+                                }}
+                                styles={{ body: { padding: '24px' } }}
+                            >
+                                <Text style={{ color: '#666', fontSize: '14px' }}>
+                                    暂无分集规划
+                                </Text>
+                            </Card>
+                        )}
+                    </Space>
+                </div>
+            </Space>
+        );
+    }
+
     // Generic fallback for other schema types
     return (
         <div style={{ padding: '16px' }}>
