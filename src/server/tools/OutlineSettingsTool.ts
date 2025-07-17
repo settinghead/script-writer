@@ -102,7 +102,9 @@ async function extractSourceOutlineSettingsData(
         throw new Error(`Access denied to canonical outline settings ${canonicalOutlineSettings.id}`);
     }
 
-    const originalSettings = JSON.parse(canonicalOutlineSettings.data);
+    const originalSettings = typeof canonicalOutlineSettings.data === 'string'
+        ? JSON.parse(canonicalOutlineSettings.data)
+        : canonicalOutlineSettings.data;
 
     // Collect additional contexts from the input parameters
     let additionalContexts: any[] = [];
@@ -121,7 +123,9 @@ async function extractSourceOutlineSettingsData(
         if (sourceJsondoc.id !== canonicalOutlineSettings.id) {
             additionalContexts.push({
                 description: jsondocRef.description,
-                data: JSON.parse(sourceJsondoc.data)
+                data: typeof sourceJsondoc.data === 'string'
+                    ? JSON.parse(sourceJsondoc.data)
+                    : sourceJsondoc.data
             });
         }
     }
