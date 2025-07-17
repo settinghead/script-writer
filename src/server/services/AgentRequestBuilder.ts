@@ -100,9 +100,11 @@ ${context}
 → 参数：sourceJsondocId="剧本框架jsondoc的ID", editRequirements="增加反派角色"
 
 示例6：复杂请求 - 修改想法并更新大纲
-用户请求："在故事中加入童话元素"
+用户请求："在故事中加入童话元素，并相应调整大纲"
 → 第一步：使用 edit_brainstorm_ideas 编辑想法，添加童话元素
+→ 参数：jsondocs=[{jsondocId: "chosen_idea_id_from_context", schemaType: "brainstorm_idea", description: "当前选中的创意想法"}], editRequirements="添加童话元素"
 → 第二步：使用 edit_outline_settings 更新大纲，整合新元素
+→ 参数：jsondocs=[{jsondocId: "outline_id_from_context", schemaType: "outline_settings", description: "现有剧本框架"}], editRequirements="整合童话元素到大纲中"
 → 完成后返回JSON总结
 ===工具选择示例 结束===
 
@@ -114,6 +116,7 @@ ${context}
 - 仔细从用户请求和上下文中提取必要的参数。
 - 如果用户要求的创意数量未明确说明，默认为3个。
 - 确保选择最符合用户需求的工具或工具序列。
+- 对于需要jsondocs参数的工具，确保数组中每个对象有正确的字段：jsondocId (字符串), schemaType (字符串，如'outline_settings'), description (字符串描述)。使用精确的键名，不要添加冒号或额外内容。
 ===重要提示 结束===
 
 ===工作流程要求 开始===

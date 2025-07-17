@@ -49,7 +49,8 @@ function computeAgentContextFromData(projectData: ProjectDataForContext): Record
         .map(node => (node as LineageNodeJsondoc).jsondoc);
     if (brainstormInputs.length > 1) throw new Error('Multiple brainstorm inputs found');
     if (brainstormInputs.length === 1) {
-        agentContext.brainstorm_input = getFullData(brainstormInputs[0]);
+        const jsondoc = brainstormInputs[0];
+        agentContext.brainstorm_input = { id: jsondoc.id, data: getFullData(jsondoc) };
     }
 
     // Find chosen idea: leaf user_input brainstorm_idea with possible descendants
@@ -59,7 +60,8 @@ function computeAgentContextFromData(projectData: ProjectDataForContext): Record
     if (chosenIdeas.length > 1) throw new Error('Multiple chosen ideas found');
     const hasChosenIdea = chosenIdeas.length === 1;
     if (hasChosenIdea) {
-        agentContext.chosen_idea = getFullData(chosenIdeas[0]);
+        const jsondoc = chosenIdeas[0];
+        agentContext.chosen_idea = { id: jsondoc.id, data: getFullData(jsondoc) };
     }
 
     // Brainstorm collection: only if no chosen idea, take latest leaf collection
@@ -69,7 +71,8 @@ function computeAgentContextFromData(projectData: ProjectDataForContext): Record
             .map(node => (node as LineageNodeJsondoc).jsondoc);
         if (collections.length > 1) throw new Error('Multiple brainstorm collections found');
         if (collections.length === 1) {
-            agentContext.brainstorm_collection = getFullData(collections[0]);
+            const jsondoc = collections[0];
+            agentContext.brainstorm_collection = { id: jsondoc.id, data: getFullData(jsondoc) };
         }
     }
 
@@ -79,7 +82,8 @@ function computeAgentContextFromData(projectData: ProjectDataForContext): Record
         .map(node => (node as LineageNodeJsondoc).jsondoc);
     if (outlineSettings.length > 1) throw new Error('Multiple outline settings found');
     if (outlineSettings.length === 1) {
-        agentContext.outline_settings = getFullData(outlineSettings[0]);
+        const jsondoc = outlineSettings[0];
+        agentContext.outline_settings = { id: jsondoc.id, data: getFullData(jsondoc) };
     }
 
     // Chronicles: latest leaf
@@ -88,7 +92,8 @@ function computeAgentContextFromData(projectData: ProjectDataForContext): Record
         .map(node => (node as LineageNodeJsondoc).jsondoc);
     if (chronicles.length > 1) throw new Error('Multiple chronicles found');
     if (chronicles.length === 1) {
-        agentContext.chronicles = getFullData(chronicles[0]);
+        const jsondoc = chronicles[0];
+        agentContext.chronicles = { id: jsondoc.id, data: getFullData(jsondoc) };
     }
 
     return agentContext;
