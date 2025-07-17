@@ -422,37 +422,54 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
                 return;
             }
 
-            // Fetch project data
-            const projectData = await fetchProjectData(projectId, userId);
-
-            // Generate exportable items
-            const exportableItems = generateExportableItems(projectData);
-
-            // Build lineage graph for title deduction
-            const lineageGraph = buildLineageGraph(
-                projectData.jsondocs,
-                projectData.transforms,
-                projectData.humanTransforms,
-                projectData.transformInputs,
-                projectData.transformOutputs
-            );
-
-            // Deduce project title
-            const projectTitle = deduceProjectTitle(lineageGraph, projectData.jsondocs);
-
-            res.json({
-                items: exportableItems,
-                projectTitle
-            });
-        } catch (error) {
-            console.error('Failed to get exportable items:', error);
-
-            if (error instanceof Error && error.message.includes('Access denied')) {
-                res.status(403).json({ error: 'Access denied to project' });
+            // Verify user has access to the project
+            const hasAccess = await jsondocRepo.userHasProjectAccess(userId, projectId);
+            if (!hasAccess) {
+                res.status(403).json({ error: 'Access denied to this project' });
                 return;
             }
 
+            // Get all available items
+            const allItems = await generateExportableItems(projectId);
+            res.json(allItems);
+        } catch (error) {
+            console.error('Error getting exportable items:', error);
             res.status(500).json({ error: 'Failed to get exportable items' });
+        }
+    });
+
+    // Preview export content in markdown format
+    router.post('/:projectId/preview', authMiddleware.authenticate, async (req: Request, res: Response) => {
+        try {
+            const { projectId } = req.params;
+            const { selectedItems } = req.body;
+            const userId = req.user?.id;
+
+            if (!userId) {
+                res.status(401).json({ error: 'User not authenticated' });
+                return;
+            }
+
+            // Verify user has access to the project
+            const hasAccess = await jsondocRepo.userHasProjectAccess(userId, projectId);
+            if (!hasAccess) {
+                res.status(403).json({ error: 'Access denied to this project' });
+                return;
+            }
+
+            // Get all available items
+            const allItems = await generateExportableItems(projectId);
+
+            // Filter to only selected items
+            const itemsToExport = allItems.filter(item => selectedItems.includes(item.id));
+
+            // Generate markdown content
+            const markdownContent = generateMarkdown(itemsToExport, selectedItems);
+
+            res.json({ content: markdownContent });
+        } catch (error) {
+            console.error('Error generating preview:', error);
+            res.status(500).json({ error: 'Failed to generate preview' });
         }
     });
 

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Checkbox, Radio, Input, Button, Space, Divider, message } from 'antd';
-import { DownloadOutlined } from '@ant-design/icons';
+import { DownloadOutlined, EyeOutlined } from '@ant-design/icons';
 import {
     ExportableItem,
     generateExportFilename,
-    exportProject
+    exportService
 } from '../services/exportService';
+import { PreviewModal } from './shared/PreviewModal';
 
 interface ExportModalProps {
     visible: boolean;
@@ -28,6 +29,9 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     const [selectedItems, setSelectedItems] = useState<string[]>([]);
     const [filename, setFilename] = useState('');
     const [isExporting, setIsExporting] = useState(false);
+    const [previewVisible, setPreviewVisible] = useState(false);
+    const [previewContent, setPreviewContent] = useState('');
+    const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
     // Initialize selected items and filename when modal opens
     useEffect(() => {
@@ -73,9 +77,30 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         setSelectedItems(defaultSelected);
     };
 
+    const handlePreview = async () => {
+        if (selectedItems.length === 0) {
+            message.warning('请先选择要预览的内容');
+            return;
+        }
+
+        setIsLoadingPreview(true);
+        setPreviewVisible(true);
+
+        try {
+            const content = await exportService.previewExport(projectId, selectedItems);
+            setPreviewContent(content);
+        } catch (error) {
+            console.error('Preview failed:', error);
+            message.error('预览失败，请重试');
+            setPreviewVisible(false);
+        } finally {
+            setIsLoadingPreview(false);
+        }
+    };
+
     const handleExport = async () => {
         if (selectedItems.length === 0) {
-            message.warning('请选择要导出的内容');
+            message.warning('请先选择要导出的内容');
             return;
         }
 
@@ -86,8 +111,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
         setIsExporting(true);
         try {
-            await exportProject(projectId, format, selectedItems, filename);
-            message.success(format === 'markdown' ? 'Markdown 文件导出成功' : 'Word 文档导出成功');
+            await exportService.exportProject(projectId, format, selectedItems, filename);
+            message.success('导出成功！');
             onClose();
         } catch (error) {
             console.error('Export failed:', error);
@@ -98,95 +123,112 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     };
 
     return (
-        <Modal
-            title="导出项目"
-            open={visible}
-            onCancel={onClose}
-            footer={[
-                <Button key="cancel" onClick={onClose}>
-                    取消
-                </Button>,
-                <Button
-                    key="export"
-                    type="primary"
-                    icon={<DownloadOutlined />}
-                    onClick={handleExport}
-                    loading={isExporting}
-                    disabled={selectedItems.length === 0}
-                >
-                    导出
-                </Button>
-            ]}
-            width={600}
-        >
-            <Space direction="vertical" size="large" style={{ width: '100%' }}>
-                {/* Format Selection */}
-                <div>
-                    <h4>导出格式</h4>
-                    <Radio.Group value={format} onChange={(e) => setFormat(e.target.value)}>
-                        <Radio value="docx">Word 文档 (.docx)</Radio>
-                        <Radio value="markdown">Markdown (.md)</Radio>
-                    </Radio.Group>
-                </div>
-
-                <Divider />
-
-                {/* Content Selection */}
-                <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                        <h4>选择导出内容</h4>
-                        <Space>
-                            <Button size="small" onClick={handleSelectDefault}>
-                                默认选择
-                            </Button>
-                            <Button size="small" onClick={handleSelectAll}>
-                                全选
-                            </Button>
-                            <Button size="small" onClick={handleSelectNone}>
-                                全不选
-                            </Button>
-                        </Space>
+        <>
+            <Modal
+                title="导出项目"
+                open={visible}
+                onCancel={onClose}
+                footer={[
+                    <Button key="cancel" onClick={onClose}>
+                        取消
+                    </Button>,
+                    <Button
+                        key="preview"
+                        icon={<EyeOutlined />}
+                        onClick={handlePreview}
+                        disabled={selectedItems.length === 0}
+                    >
+                        预览
+                    </Button>,
+                    <Button
+                        key="export"
+                        type="primary"
+                        icon={<DownloadOutlined />}
+                        onClick={handleExport}
+                        loading={isExporting}
+                        disabled={selectedItems.length === 0}
+                    >
+                        导出
+                    </Button>
+                ]}
+                width={600}
+            >
+                <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                    {/* Format Selection */}
+                    <div>
+                        <h4>导出格式</h4>
+                        <Radio.Group value={format} onChange={(e) => setFormat(e.target.value)}>
+                            <Radio value="docx">Word 文档 (.docx)</Radio>
+                            <Radio value="markdown">Markdown (.md)</Radio>
+                        </Radio.Group>
                     </div>
 
-                    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                        {exportableItems.map(item => (
-                            <Checkbox
-                                key={item.id}
-                                checked={selectedItems.includes(item.id)}
-                                onChange={(e) => handleItemChange(item.id, e.target.checked)}
-                            >
-                                <span style={{ fontWeight: item.defaultSelected ? 'bold' : 'normal' }}>
-                                    {item.name}
-                                </span>
-                                {!item.defaultSelected && (
-                                    <span style={{ color: '#999', marginLeft: 8 }}>
-                                        (前期准备)
-                                    </span>
-                                )}
-                            </Checkbox>
-                        ))}
-                    </Space>
+                    <Divider />
 
-                    {exportableItems.length === 0 && (
-                        <div style={{ textAlign: 'center', color: '#999', padding: 20 }}>
-                            暂无可导出的内容
+                    {/* Content Selection */}
+                    <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                            <h4>选择导出内容</h4>
+                            <Space>
+                                <Button size="small" onClick={handleSelectDefault}>
+                                    默认选择
+                                </Button>
+                                <Button size="small" onClick={handleSelectAll}>
+                                    全选
+                                </Button>
+                                <Button size="small" onClick={handleSelectNone}>
+                                    全不选
+                                </Button>
+                            </Space>
                         </div>
-                    )}
-                </div>
 
-                <Divider />
+                        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                            {exportableItems.map(item => (
+                                <Checkbox
+                                    key={item.id}
+                                    checked={selectedItems.includes(item.id)}
+                                    onChange={(e) => handleItemChange(item.id, e.target.checked)}
+                                >
+                                    <span style={{ fontWeight: item.defaultSelected ? 'bold' : 'normal' }}>
+                                        {item.name}
+                                    </span>
+                                    {!item.defaultSelected && (
+                                        <span style={{ color: '#999', marginLeft: 8 }}>
+                                            (前期准备)
+                                        </span>
+                                    )}
+                                </Checkbox>
+                            ))}
+                        </Space>
 
-                {/* Filename Input */}
-                <div>
-                    <h4>文件名</h4>
-                    <Input
-                        value={filename}
-                        onChange={(e) => setFilename(e.target.value)}
-                        placeholder="请输入文件名"
-                        suffix={`.${format === 'markdown' ? 'md' : 'docx'}`}
-                    />
-                </div>
-            </Space>
-        </Modal>
+                        {exportableItems.length === 0 && (
+                            <div style={{ textAlign: 'center', color: '#999', padding: 20 }}>
+                                暂无可导出的内容
+                            </div>
+                        )}
+                    </div>
+
+                    <Divider />
+
+                    {/* Filename Input */}
+                    <div>
+                        <h4>文件名</h4>
+                        <Input
+                            value={filename}
+                            onChange={(e) => setFilename(e.target.value)}
+                            placeholder="请输入文件名"
+                            suffix={`.${format === 'markdown' ? 'md' : 'docx'}`}
+                        />
+                    </div>
+                </Space>
+            </Modal>
+
+            <PreviewModal
+                open={previewVisible}
+                onClose={() => setPreviewVisible(false)}
+                content={previewContent}
+                loading={isLoadingPreview}
+            />
+        </>
     );
 }; 

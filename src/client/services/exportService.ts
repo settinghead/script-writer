@@ -115,68 +115,77 @@ export function generateExportFilename(
     return `${cleanTitle}_${timestamp}.${extension}`;
 }
 
-/**
- * Get exportable items from backend
- */
-export async function getExportableItems(projectId: string): Promise<{
-    items: ExportableItem[];
-    projectTitle: string;
-}> {
-    const response = await fetch(`/api/export/${projectId}/items`, {
-        method: 'GET',
-        credentials: 'include'
-    });
+export const exportService = {
+    async getExportableItems(projectId: string): Promise<ExportableItem[]> {
+        const response = await fetch(`/api/export/${projectId}/items`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer debug-auth-token-script-writer-dev`
+            }
+        });
 
-    if (!response.ok) {
-        throw new Error(`Failed to get exportable items: ${response.statusText}`);
+        if (!response.ok) {
+            throw new Error('Failed to get exportable items');
+        }
+
+        return response.json();
+    },
+
+    async previewExport(projectId: string, selectedItems: string[]): Promise<string> {
+        const response = await fetch(`/api/export/${projectId}/preview`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer debug-auth-token-script-writer-dev`
+            },
+            body: JSON.stringify({ selectedItems })
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to generate preview');
+        }
+
+        const result = await response.json();
+        return result.content;
+    },
+
+    async exportProject(projectId: string, format: 'markdown' | 'docx', selectedItems: string[], filename?: string): Promise<void> {
+        const response = await fetch(`/api/export/${projectId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer debug-auth-token-script-writer-dev`
+            },
+            body: JSON.stringify({
+                format,
+                selectedItems,
+                filename
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Export failed: ${response.statusText}`);
+        }
+
+        // Get the filename from the response headers
+        const contentDisposition = response.headers.get('Content-Disposition');
+        const filenameMatch = contentDisposition?.match(/filename="([^"]+)"/);
+        const downloadFilename = filenameMatch ? decodeURIComponent(filenameMatch[1]) : (filename || `export_${Date.now()}`);
+
+        // Download the file
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = downloadFilename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        URL.revokeObjectURL(url);
     }
-
-    return response.json();
-}
-
-/**
- * Export project content via backend API
- */
-export async function exportProject(
-    projectId: string,
-    format: 'markdown' | 'docx',
-    selectedItems: string[],
-    filename: string
-): Promise<void> {
-    const response = await fetch(`/api/export/${projectId}`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-            format,
-            selectedItems,
-            filename
-        })
-    });
-
-    if (!response.ok) {
-        throw new Error(`Export failed: ${response.statusText}`);
-    }
-
-    // Get the filename from the response headers
-    const contentDisposition = response.headers.get('Content-Disposition');
-    const filenameMatch = contentDisposition?.match(/filename="([^"]+)"/);
-    const downloadFilename = filenameMatch ? decodeURIComponent(filenameMatch[1]) : filename;
-
-    // Download the file
-    const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
-
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = downloadFilename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    URL.revokeObjectURL(url);
-}
+};
 
 // All formatting and download functionality is now handled by the backend 

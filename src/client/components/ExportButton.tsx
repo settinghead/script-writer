@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
-import { Button } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Button, message } from 'antd';
 import { ExportOutlined } from '@ant-design/icons';
 import { ExportModal } from './ExportModal';
-import { generateExportableItems } from '../services/exportService';
+import { exportService, ExportableItem } from '../services/exportService';
 import { useProjectData } from '../contexts/ProjectDataContext';
-import { computeUnifiedWorkflowState } from '../utils/actionComputation';
 
 interface ExportButtonProps {
     projectId: string;
@@ -16,10 +15,22 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
     isMobile = false
 }) => {
     const [showExportModal, setShowExportModal] = useState(false);
+    const [exportableItems, setExportableItems] = useState<ExportableItem[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
     const projectData = useProjectData();
 
-    const handleExportClick = () => {
-        setShowExportModal(true);
+    const handleExportClick = async () => {
+        setIsLoading(true);
+        try {
+            const items = await exportService.getExportableItems(projectId);
+            setExportableItems(items);
+            setShowExportModal(true);
+        } catch (error) {
+            console.error('Failed to get exportable items:', error);
+            message.error('获取导出项目失败，请重试');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handleCloseModal = () => {
@@ -31,26 +42,15 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
         return null;
     }
 
-    // Generate exportable items from current project state
-    const workflowState = computeUnifiedWorkflowState(projectData, projectId);
-    const exportableItems = generateExportableItems(
-        workflowState.displayComponents,
-        projectData.lineageGraph,
-        Array.isArray(projectData.jsondocs) ? projectData.jsondocs : []
-    );
-
-    // Disable export if no exportable items
-    const hasExportableItems = exportableItems.length > 0;
-
     return (
         <>
             <Button
                 type="text"
                 icon={<ExportOutlined />}
                 onClick={handleExportClick}
-                disabled={!hasExportableItems}
+                loading={isLoading}
                 style={{
-                    color: hasExportableItems ? '#1890ff' : '#d9d9d9'
+                    color: '#1890ff'
                 }}
                 size={isMobile ? 'small' : 'middle'}
             >
