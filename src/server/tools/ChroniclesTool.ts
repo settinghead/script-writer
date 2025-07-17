@@ -9,7 +9,8 @@ import {
 } from '../../common/schemas/outlineSchemas';
 import {
     ChroniclesEditInputSchema,
-    ChroniclesEditInput
+    ChroniclesEditInput,
+    JsonPatchOperationsSchema
 } from '../../common/schemas/transforms';
 import {
     executeStreamingTransform,
@@ -138,12 +139,7 @@ export function createChroniclesEditToolDefinition(
             const config: StreamingTransformConfig<ChroniclesEditInput, any> = {
                 templateName: 'chronicles_edit_patch',
                 inputSchema: ChroniclesEditInputSchema,
-                outputSchema: z.array(z.object({
-                    op: z.enum(['add', 'remove', 'replace', 'move', 'copy', 'test']),
-                    path: z.string(),
-                    value: z.any().optional(),
-                    from: z.string().optional()
-                })), // RFC6902 JSON patch array schema
+                outputSchema: JsonPatchOperationsSchema, // RFC6902 JSON patch array schema
                 prepareTemplateVariables: async (input) => {
                     const defaultVars = await defaultPrepareTemplateVariables(input, jsondocRepo);
                     return {

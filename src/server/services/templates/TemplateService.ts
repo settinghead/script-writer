@@ -95,7 +95,8 @@ export class TemplateService {
           if (field === 'data') {
             // For data field, output the JSON string with proper indentation
             jsondocsOutput += `  ${field}: |\n`;
-            const jsonString = value as string;
+            // Handle both string and object data types
+            const jsonString = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
             // Indent each line of the JSON string
             const indentedJson = jsonString.split('\n').map(line => `    ${line}`).join('\n');
             jsondocsOutput += `${indentedJson}\n`;

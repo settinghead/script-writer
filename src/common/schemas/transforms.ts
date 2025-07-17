@@ -108,6 +108,8 @@ export const ChroniclesEditInputSchema = BaseToolInputSchema.extend({
 
 export type ChroniclesEditInput = z.infer<typeof ChroniclesEditInputSchema>;
 
+
+
 // JSON Patch operation schema (RFC 6902)
 export const JsonPatchOperationSchema = z.object({
   op: z.enum(['add', 'remove', 'replace', 'move', 'copy', 'test']).describe('JSON Patch操作类型'),
@@ -115,6 +117,8 @@ export const JsonPatchOperationSchema = z.object({
   value: z.any().optional().describe('新的值（用于add、replace、copy操作）'),
   from: z.string().optional().describe('源路径（用于move、copy操作）')
 });
+
+export const JsonPatchOperationsSchema = z.array(JsonPatchOperationSchema);
 
 export type JsonPatchOperation = z.infer<typeof JsonPatchOperationSchema>;
 

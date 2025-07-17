@@ -4,7 +4,8 @@ import { TransformRepository } from '../transform-jsondoc-framework/TransformRep
 import { StreamingTransformConfig, executeStreamingTransform } from '../transform-jsondoc-framework/StreamingTransformExecutor';
 import {
     BrainstormEditInputSchema,
-    BrainstormEditInput
+    BrainstormEditInput,
+    JsonPatchOperationsSchema
 } from '@/common/schemas/transforms';
 import {
     IdeationInputSchema,
@@ -184,12 +185,7 @@ export function createBrainstormEditToolDefinition(
             const config: StreamingTransformConfig<BrainstormEditInput, any> = {
                 templateName: 'brainstorm_edit_patch',
                 inputSchema: BrainstormEditInputSchema,
-                outputSchema: z.array(z.object({
-                    op: z.enum(['add', 'remove', 'replace', 'move', 'copy', 'test']),
-                    path: z.string(),
-                    value: z.any().optional(), // Required for add/replace/test
-                    from: z.string().optional() // Required for move/copy
-                })), // RFC6902 JSON patch array schema
+                outputSchema: JsonPatchOperationsSchema, // RFC6902 JSON patch array schema
                 // No custom prepareTemplateVariables - use default schema-driven extraction
             };
 

@@ -4,6 +4,7 @@ import { TransformRepository } from '../transform-jsondoc-framework/TransformRep
 import { ProjectRepository } from '../transform-jsondoc-framework/ProjectRepository';
 import { buildToolsForRequestType } from '../services/AgentRequestBuilder';
 import { TemplateService } from '../services/templates/TemplateService';
+import { JsonPatchOperationsSchema } from '@/common/schemas/transforms';
 
 /**
  * Admin routes for debugging and development
@@ -305,12 +306,7 @@ export function createAdminRoutes(
                 config = {
                     templateName: 'brainstorm_edit_patch',
                     inputSchema: BrainstormEditInputSchema,
-                    outputSchema: z.array(z.object({
-                        op: z.enum(['add', 'remove', 'replace', 'move', 'copy', 'test']),
-                        path: z.string(),
-                        value: z.any().optional(),
-                        from: z.string().optional()
-                    }))
+                    outputSchema: JsonPatchOperationsSchema
                 };
                 outputJsondocType = 'brainstorm_idea';
                 transformMetadata = { toolName: 'edit_brainstorm_idea' };
@@ -330,12 +326,7 @@ export function createAdminRoutes(
                 config = {
                     templateName: 'outline_settings_edit_patch',
                     inputSchema: OutlineSettingsEditInputSchema,
-                    outputSchema: z.array(z.object({
-                        op: z.enum(['add', 'remove', 'replace', 'move', 'copy', 'test']),
-                        path: z.string(),
-                        value: z.any().optional(),
-                        from: z.string().optional()
-                    }))
+                    outputSchema: JsonPatchOperationsSchema
                 };
                 outputJsondocType = 'outline_settings';
                 transformMetadata = { toolName: 'edit_outline_settings' };

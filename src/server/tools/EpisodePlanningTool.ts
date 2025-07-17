@@ -9,7 +9,7 @@ import {
     EpisodePlanningEditInputSchema,
     EpisodePlanningEditInput,
     EpisodePlanningEditToolResultSchema,
-    EpisodePlanningEditToolResult
+    EpisodePlanningEditToolResult,
 } from '../../common/schemas/outlineSchemas';
 import {
     executeStreamingTransform,
@@ -19,6 +19,7 @@ import type { StreamingToolDefinition } from '../transform-jsondoc-framework/Str
 import { TypedJsondoc } from '@/common/jsondocs';
 import { defaultPrepareTemplateVariables } from '../transform-jsondoc-framework/StreamingTransformExecutor';
 import { createJsondocProcessor } from './shared/JsondocProcessor';
+import { JsonPatchOperationsSchema } from '@/common/schemas/transforms';
 
 const EpisodePlanningToolResultSchema = z.object({
     outputJsondocId: z.string(),
@@ -121,12 +122,7 @@ export function createEpisodePlanningEditToolDefinition(
             const config: StreamingTransformConfig<EpisodePlanningEditInput, any> = {
                 templateName: 'episode_planning_edit_patch',
                 inputSchema: EpisodePlanningEditInputSchema,
-                outputSchema: z.array(z.object({
-                    op: z.enum(['add', 'remove', 'replace', 'move', 'copy', 'test']),
-                    path: z.string(),
-                    value: z.any().optional(),
-                    from: z.string().optional()
-                })), // RFC6902 JSON patch array schema
+                outputSchema: JsonPatchOperationsSchema, // RFC6902 JSON patch array schema
                 prepareTemplateVariables: async (input) => {
                     const defaultVars = await defaultPrepareTemplateVariables(input, jsondocRepo);
                     return {
