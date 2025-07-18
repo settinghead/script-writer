@@ -41,11 +41,25 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
         }
 
         // Fetch all project data needed for lineage computation
-        const jsondocs = await jsondocRepo.getAllProjectJsondocsForLineage(projectId);
-        const transforms = await jsondocRepo.getAllProjectTransformsForLineage(projectId);
-        const humanTransforms = await jsondocRepo.getAllProjectHumanTransformsForLineage(projectId);
-        const transformInputs = await jsondocRepo.getAllProjectTransformInputsForLineage(projectId);
-        const transformOutputs = await jsondocRepo.getAllProjectTransformOutputsForLineage(projectId);
+        let jsondocs, transforms, humanTransforms, transformInputs, transformOutputs;
+        try {
+            jsondocs = await jsondocRepo.getAllProjectJsondocsForLineage(projectId);
+            transforms = await jsondocRepo.getAllProjectTransformsForLineage(projectId);
+            humanTransforms = await jsondocRepo.getAllProjectHumanTransformsForLineage(projectId);
+            transformInputs = await jsondocRepo.getAllProjectTransformInputsForLineage(projectId);
+            transformOutputs = await jsondocRepo.getAllProjectTransformOutputsForLineage(projectId);
+        } catch (error) {
+            console.error('Error fetching project data:', error);
+            throw error;
+        }
+
+        console.log('Fetched project data:', {
+            jsondocs: jsondocs ? jsondocs.length : 'undefined',
+            transforms: transforms ? transforms.length : 'undefined',
+            humanTransforms: humanTransforms ? humanTransforms.length : 'undefined',
+            transformInputs: transformInputs ? transformInputs.length : 'undefined',
+            transformOutputs: transformOutputs ? transformOutputs.length : 'undefined'
+        });
 
         return {
             jsondocs,
@@ -61,6 +75,18 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
      */
     function generateExportableItems(projectData: any): ExportableItem[] {
         const { jsondocs, transforms, humanTransforms, transformInputs, transformOutputs } = projectData;
+
+        // Safety check for undefined data
+        if (!jsondocs || !transforms || !humanTransforms || !transformInputs || !transformOutputs) {
+            console.error('Missing project data:', {
+                jsondocs: jsondocs ? jsondocs.length : 'undefined',
+                transforms: transforms ? transforms.length : 'undefined',
+                humanTransforms: humanTransforms ? humanTransforms.length : 'undefined',
+                transformInputs: transformInputs ? transformInputs.length : 'undefined',
+                transformOutputs: transformOutputs ? transformOutputs.length : 'undefined'
+            });
+            return [];
+        }
 
         // Build lineage graph
         const lineageGraph = buildLineageGraph(

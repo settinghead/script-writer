@@ -184,7 +184,7 @@ ${context}
 当前存在的canonical jsondocs: active_brainstorm_idea
 分析：用户明确要求生成剧本设定，因此使用 generate_outline_settings 工具
 → 使用 generate_outline_settings 工具
-→ 参数：jsondocs=[{ id: "active_brainstorm_idea" }]
+→ 参数：jsondocs=[{ jsondocId: "active_brainstorm_idea", description: "chosen_idea", schemaType: "brainstorm_idea" }]
 → **完成生成后立即停止，不要自动进行下一步（如生成时间顺序大纲）**
 
 示例3：生成时间顺序大纲
@@ -192,7 +192,7 @@ ${context}
 当前存在的canonical jsondocs: active_brainstorm_idea, active_outline_settings
 分析：用户明确要求生成时间顺序大纲，因此使用 generate_chronicles 工具
 → 使用 generate_chronicles 工具
-→ 参数：totalEpisodes=60, jsondocs=[{ id: "active_brainstorm_idea" }, { id: "active_outline_settings" }]
+→ 参数：totalEpisodes=60, jsondocs=[{ jsondocId: "active_brainstorm_idea", description: "chosen_idea", schemaType: "brainstorm_idea" }, { jsondocId: "active_outline_settings", description: "outline_settings", schemaType: "outline_settings" }]
 → **完成生成后立即停止，不要自动进行下一步（如生成剧集框架）**
 
 示例4：生成剧集框架
@@ -200,7 +200,7 @@ ${context}
 当前存在的canonical jsondocs: active_brainstorm_idea, active_outline_settings, active_chronicles
 分析：用户明确要求生成剧集框架，因此使用 generate_episode_planning 工具
 → 使用 generate_episode_planning 工具
-→ 参数：numberOfEpisodes=12, jsondocs=[{ id: "active_brainstorm_idea" }, { id: "active_outline_settings" }, { id: "active_chronicles" }]
+→ 参数：numberOfEpisodes=12, jsondocs=[{ jsondocId: "active_brainstorm_idea", description: "chosen_idea", schemaType: "brainstorm_idea" }, { jsondocId: "active_outline_settings", description: "outline_settings", schemaType: "outline_settings" }, { jsondocId: "active_chronicles", description: "chronicles", schemaType: "chronicles" }]
 → **完成生成后立即停止，不要自动进行下一步**
 
 示例5：编辑现有创意（单步编辑）
@@ -208,7 +208,7 @@ ${context}
 当前存在的canonical jsondocs: active_brainstorm_idea
 分析：用户明确要求修改现有创意，因此使用 edit_brainstorm_idea 工具
 → 使用 edit_brainstorm_idea 工具
-→ 参数：ideaIndex=0, editRequirements="增加悬疑元素"
+→ 参数：ideaIndex=0, editRequirements="增加悬疑元素", jsondocs=[{ jsondocId: "active_brainstorm_idea", description: "chosen_idea", schemaType: "brainstorm_idea" }]
 → **完成编辑后立即停止，不要自动更新依赖的剧本设定或大纲**
 
 示例6：编辑剧本设定（单步编辑）
@@ -216,7 +216,7 @@ ${context}
 当前存在的canonical jsondocs: active_brainstorm_idea, active_outline_settings
 分析：用户明确要求修改剧本设定，因此使用 edit_outline_settings 工具
 → 使用 edit_outline_settings 工具
-→ 参数：editRequirements="增加反派角色", jsondocs=[{ id: "active_brainstorm_idea" }, { id: "current_outline_settings" }]
+→ 参数：editRequirements="增加反派角色", jsondocs=[{ jsondocId: "active_brainstorm_idea", description: "chosen_idea", schemaType: "brainstorm_idea" }, { jsondocId: "current_outline_settings", description: "outline_settings", schemaType: "outline_settings" }]
 → **完成编辑后立即停止，不要自动更新依赖的时间顺序大纲**
 
 示例7：编辑时间顺序大纲（单步编辑）
@@ -224,7 +224,7 @@ ${context}
 当前存在的canonical jsondocs: active_brainstorm_idea, active_outline_settings, active_chronicles
 分析：用户明确要求修改时间顺序大纲，因此使用 edit_chronicles 工具
 → 使用 edit_chronicles 工具
-→ 参数：editRequirements="加入更多南京本地元素，包括文化，南京话，等等", jsondocs=[{ id: "active_brainstorm_idea" }, { id: "active_outline_settings" },  { id: "current_chronicles" }]
+→ 参数：editRequirements="加入更多南京本地元素，包括文化，南京话，等等", jsondocs=[{ jsondocId: "active_brainstorm_idea", description: "chosen_idea", schemaType: "brainstorm_idea" }, { jsondocId: "active_outline_settings", description: "outline_settings", schemaType: "outline_settings" }, { jsondocId: "current_chronicles", description: "chronicles", schemaType: "chronicles" }]
 → **完成编辑后立即停止，不要自动更新依赖的剧集框架**
 
 示例8：编辑剧集框架（单步编辑）
@@ -232,7 +232,7 @@ ${context}
 当前存在的canonical jsondocs: active_brainstorm_idea, active_outline_settings, active_chronicles, current_episode_planning
 分析：用户明确要求修改剧集框架，因此使用 edit_episode_planning 工具
 → 使用 edit_episode_planning 工具
-→ 参数：editRequirements="增加更多情感冲突，调整剧集分组以突出戏剧张力", jsondocs=[{ id: "active_brainstorm_idea" }, { id: "active_outline_settings" }, { id: "active_chronicles" }, { id: "current_episode_planning" }]
+→ 参数：editRequirements="增加更多情感冲突，调整剧集分组以突出戏剧张力", jsondocs=[{ jsondocId: "active_brainstorm_idea", description: "chosen_idea", schemaType: "brainstorm_idea" }, { jsondocId: "active_outline_settings", description: "outline_settings", schemaType: "outline_settings" }, { jsondocId: "active_chronicles", description: "chronicles", schemaType: "chronicles" }, { jsondocId: "current_episode_planning", description: "episode_planning", schemaType: "episode_planning" }]
 → **完成编辑后立即停止**
 
 示例9：模糊请求 - 修改想法并更新大纲（仅当用户明确要求修改多个组件时）
@@ -240,9 +240,9 @@ ${context}
 当前存在的canonical jsondocs: current_brainstorm_idea, current_outline_settings
 分析：用户并没有明确要修改或者生成哪个部分，根据逻辑判断“加入童话元素”需要涉及“想法”和“剧本设定”，因此按照顺序原则，使用 edit_brainstorm_idea 和 edit_outline_settings 工具
 → 第一步：使用 edit_brainstorm_idea 编辑想法，添加童话元素
-→ 参数：editRequirements="添加童话元素", jsondocs=[{ id: "current_brainstorm_idea" }]. 返回 jsondoc: { id: "new_brainstorm_idea" }
+→ 参数：editRequirements="添加童话元素", jsondocs=[{ jsondocId: "current_brainstorm_idea", description: "chosen_idea", schemaType: "brainstorm_idea" }]. 返回 jsondoc: { id: "new_brainstorm_idea" }
 → 第二步：使用 edit_outline_settings 更新大纲，整合新元素
-→ 参数：editRequirements="基于更新后的创意整合童话元素到大纲中", jsondocs=[{ id: "new_brainstorm_idea" }, { id: "current_outline_settings" }]
+→ 参数：editRequirements="基于更新后的创意整合童话元素到大纲中", jsondocs=[{ jsondocId: "new_brainstorm_idea", description: "chosen_idea", schemaType: "brainstorm_idea" }, { jsondocId: "current_outline_settings", description: "outline_settings", schemaType: "outline_settings" }]
 → 完成后返回JSON总结
 
 示例10：多步编辑 - 修改剧本设定后更新时间顺序大纲（仅当用户明确要求修改多个组件时）
@@ -250,11 +250,11 @@ ${context}
 当前存在的canonical jsondocs: current_brainstorm_idea, current_outline_settings, current_chronicles
 分析：用户并没有明确要修改或者生成哪个部分，根据逻辑判断“减少伦理争议”需要涉及“想法”、“剧本设定”、“时间顺序大纲”，因此按照顺序原则，edit_brainstorm_idea、edit_outline_settings、edit_chronicles 工具需要依次调用
 → 第一步 使用 edit_brainstorm_idea 编辑想法，减少伦理争议
-→ 参数：editRequirements="减少伦理争议，加入更多正面元素", jsondocs=[{ id: "current_brainstorm_idea" }]. 返回 jsondoc: { id: "new_brainstorm_idea" }
+→ 参数：editRequirements="减少伦理争议，加入更多正面元素", jsondocs=[{ jsondocId: "current_brainstorm_idea", description: "chosen_idea", schemaType: "brainstorm_idea" }]. 返回 jsondoc: { id: "new_brainstorm_idea" }
 → 第二步 使用 edit_outline_settings 编辑剧本设定，基于新的想法
-→ 参数：editRequirements="基于更新后的创意整合正面元素到框架中", jsondocs=[{ id: "new_brainstorm_idea" }, { id: "current_outline_settings" }], 返回 jsondoc: { id: "new_outline_settings" }
+→ 参数：editRequirements="基于更新后的创意整合正面元素到框架中", jsondocs=[{ jsondocId: "new_brainstorm_idea", description: "chosen_idea", schemaType: "brainstorm_idea" }, { jsondocId: "current_outline_settings", description: "outline_settings", schemaType: "outline_settings" }], 返回 jsondoc: { id: "new_outline_settings" }
 → 第三步 使用 edit_chronicles 更新时间顺序大纲，基于新的框架设定
-→ 参数：editRequirements="基于更新后的框架设定调整时间顺序大纲，确保内容一致性", jsondocs=[{ id: "new_brainstorm_idea" }, { id: "new_outline_settings" }, { id: "current_chronicles" }]
+→ 参数：editRequirements="基于更新后的框架设定调整时间顺序大纲，确保内容一致性", jsondocs=[{ jsondocId: "new_brainstorm_idea", description: "chosen_idea", schemaType: "brainstorm_idea" }, { jsondocId: "new_outline_settings", description: "outline_settings", schemaType: "outline_settings" }, { jsondocId: "current_chronicles", description: "chronicles", schemaType: "chronicles" }]
 → 完成后返回JSON总结
 
 示例11：多步级联编辑 - 修改剧本设定后更新时间顺序大纲和剧集框架（仅当用户明确要求修改多个组件时）
@@ -262,14 +262,31 @@ ${context}
 当前存在的canonical jsondocs: current_brainstorm_idea, current_outline_settings, current_chronicles, current_episode_planning
 分析：用户并没有明确要修改或者生成哪个部分，根据逻辑判断“优化故事结构”需要涉及“剧本设定”、“时间顺序大纲”、“剧集框架”，因此按照顺序原则，edit_outline_settings、edit_chronicles、edit_episode_planning 工具需要依次调用
 → 第一步 使用 edit_outline_settings 编辑剧本设定，增强戏剧冲突
-→ 参数：editRequirements="增强戏剧冲突，优化角色关系和情节设定", jsondocs=[{ id: "current_brainstorm_idea" }, { id: "current_outline_settings" }], 返回 jsondoc: { id: "new_outline_settings" }
+→ 参数：editRequirements="增强戏剧冲突，优化角色关系和情节设定", jsondocs=[{ jsondocId: "current_brainstorm_idea", description: "chosen_idea", schemaType: "brainstorm_idea" }, { jsondocId: "current_outline_settings", description: "outline_settings", schemaType: "outline_settings" }], 返回 jsondoc: { id: "new_outline_settings" }
 → 第二步 使用 edit_chronicles 更新时间顺序大纲，基于新的框架设定
-→ 参数：editRequirements="基于更新后的框架设定调整时间顺序大纲，突出戏剧冲突", jsondocs=[{ id: "current_brainstorm_idea" }, { id: "new_outline_settings" }, { id: "current_chronicles" }], 返回 jsondoc: { id: "new_chronicles" }
+→ 参数：editRequirements="基于更新后的框架设定调整时间顺序大纲，突出戏剧冲突", jsondocs=[{ jsondocId: "current_brainstorm_idea", description: "chosen_idea", schemaType: "brainstorm_idea" }, { jsondocId: "new_outline_settings", description: "outline_settings", schemaType: "outline_settings" }, { jsondocId: "current_chronicles", description: "chronicles", schemaType: "chronicles" }], 返回 jsondoc: { id: "new_chronicles" }
 → 第三步 使用 edit_episode_planning 更新剧集框架，基于新的时间顺序大纲
-→ 参数：editRequirements="基于更新后的时间顺序大纲调整剧集框架，优化情感节拍和悬念设置", jsondocs=[{ id: "current_brainstorm_idea" }, { id: "new_outline_settings" }, { id: "new_chronicles" }, { id: "current_episode_planning" }]
+→ 参数：editRequirements="基于更新后的时间顺序大纲调整剧集框架，优化情感节拍和悬念设置", jsondocs=[{ jsondocId: "current_brainstorm_idea", description: "chosen_idea", schemaType: "brainstorm_idea" }, { jsondocId: "new_outline_settings", description: "outline_settings", schemaType: "outline_settings" }, { jsondocId: "new_chronicles", description: "chronicles", schemaType: "chronicles" }, { jsondocId: "current_episode_planning", description: "episode_planning", schemaType: "episode_planning" }]
 → 完成后返回JSON总结
 
 **重要：所有工具都会自动接收相关的上下文jsondocs作为参考资料。在多步工具调用中，后续工具会自动包含前面工具调用的输出jsondocId，确保基于最新数据进行处理。**
+
+**jsondocs参数格式要求：**
+所有工具调用中的jsondocs参数必须使用以下格式：
+{
+  "jsondocId": "实际的jsondoc ID",
+  "description": "jsondoc的描述，如chosen_idea、outline_settings、chronicles等",
+  "schemaType": "jsondoc的schema类型，如brainstorm_idea、outline_settings、chronicles等"
+}
+
+**常用的description和schemaType对应关系：**
+- chosen_idea → brainstorm_idea
+- outline_settings → outline_settings  
+- chronicles → chronicles
+- episode_planning → episode_planning
+- brainstorm_collection → brainstorm_collection
+- brainstorm_input → brainstorm_input_params
+
 ===工具选择示例 结束===
 
 ===重要提示 开始===

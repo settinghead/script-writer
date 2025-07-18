@@ -514,18 +514,8 @@ export class StreamingTransformExecutor {
             if (patches && patches.length > 0) {
                 console.log(`[StreamingTransformExecutor] Patch content: ${JSON.stringify(patches)}`);
                 console.log(`[StreamingTransformExecutor] Applying ${patches.length} JSON patches for ${templateName}`);
-                console.log(`[StreamingTransformExecutor] Original jsondoc structure:`, {
-                    hasStages: !!originalJsondoc.stages,
-                    stagesLength: originalJsondoc.stages?.length,
-                    stagesType: typeof originalJsondoc.stages
-                });
 
                 const originalCopy = deepClone(originalJsondoc);
-                console.log(`[StreamingTransformExecutor] Original copy structure:`, {
-                    hasStages: !!originalCopy.stages,
-                    stagesLength: originalCopy.stages?.length,
-                    stagesType: typeof originalCopy.stages
-                });
 
                 const patchResults = applyPatch(originalCopy, patches);
 
