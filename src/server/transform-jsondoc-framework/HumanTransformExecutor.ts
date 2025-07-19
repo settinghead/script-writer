@@ -286,10 +286,51 @@ export class HumanTransformExecutor {
       'user_input' // originType - human transform result
     );
 
-    // 6. Link relationships
-    await this.transformRepo.addTransformInputs(transform.id, [
-      { jsondocId: sourceJsondocId, inputRole: 'source' }
-    ], projectId);
+    // 6. Link relationships - special handling for patch jsondocs
+    let transformInputs = [{ jsondocId: sourceJsondocId, inputRole: 'source' }];
+
+    // Special case: If source is a json_patch jsondoc, also link the original jsondoc
+    if (sourceJsondoc.schema_type === 'json_patch') {
+      console.log('🔍 [HumanTransformExecutor] Detected patch jsondoc, finding original jsondoc...');
+
+      // Find the original jsondoc that this patch was created from
+      const patchCreatingOutputs = await this.transformRepo.getTransformOutputs(projectId);
+      console.log('🔍 [HumanTransformExecutor] All transform outputs:', patchCreatingOutputs.length);
+
+      const patchCreatingOutput = patchCreatingOutputs.find((output: any) => output.jsondoc_id === sourceJsondocId);
+      console.log('🔍 [HumanTransformExecutor] Patch creating output:', patchCreatingOutput);
+
+      if (patchCreatingOutput) {
+        const patchCreatingInputs = await this.transformRepo.getTransformInputs(projectId);
+        console.log('🔍 [HumanTransformExecutor] All transform inputs:', patchCreatingInputs.length);
+
+        const relevantInputs = patchCreatingInputs.filter((input: any) =>
+          input.transform_id === patchCreatingOutput.transform_id
+        );
+        console.log('🔍 [HumanTransformExecutor] Inputs for patch creating transform:', relevantInputs);
+
+        // Find the source input (first jsondoc in the transform inputs)
+        const originalInput = relevantInputs.find((input: any) =>
+          input.input_role === 'source'
+        );
+        console.log('🔍 [HumanTransformExecutor] Original input found:', originalInput);
+
+        if (originalInput) {
+          const originalJsondoc = await this.jsondocRepo.getJsondoc(originalInput.jsondoc_id);
+          console.log('🔍 [HumanTransformExecutor] Original jsondoc:', originalJsondoc?.id, 'type:', originalJsondoc?.schema_type);
+
+          if (originalJsondoc) {
+            console.log('🔍 [HumanTransformExecutor] Found original jsondoc:', originalInput.jsondoc_id, 'type:', originalJsondoc.schema_type);
+            // Add the original jsondoc as an additional input
+            transformInputs.push({ jsondocId: originalInput.jsondoc_id, inputRole: 'original' });
+          }
+        }
+      } else {
+        console.log('🔍 [HumanTransformExecutor] No patch creating output found for jsondoc:', sourceJsondocId);
+      }
+    }
+
+    await this.transformRepo.addTransformInputs(transform.id, transformInputs, projectId);
 
     await this.transformRepo.addTransformOutputs(transform.id, [
       { jsondocId: derivedJsondoc.id, outputRole: 'derived' }

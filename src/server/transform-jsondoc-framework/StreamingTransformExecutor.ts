@@ -192,10 +192,12 @@ export class StreamingTransformExecutor {
 
                     // 3a. Extract source jsondocs from input.jsondocs array
                     if ((validatedInput as any).jsondocs && Array.isArray((validatedInput as any).jsondocs)) {
-                        for (const jsondocRef of (validatedInput as any).jsondocs) {
+                        for (const [index, jsondocRef] of (validatedInput as any).jsondocs.entries()) {
+                            // Use consistent semantic roles for database lineage
+                            const inputRole = index === 0 ? 'source' : 'context';
                             transformInputs.push({
                                 jsondocId: jsondocRef.jsondocId,
-                                inputRole: jsondocRef.description || 'source'
+                                inputRole: inputRole
                             });
                         }
                     }

@@ -165,8 +165,8 @@ export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinitio
     description: 'Edit JSON patch jsondoc',
     sourceJsondocType: 'json_patch',
     targetJsondocType: 'json_patch',
-    pathPattern: '^\\$\\.[a-zA-Z_][a-zA-Z0-9_]*.*$', // Any valid JSONPath
-    instantiationFunction: 'createFieldEditFromPath'
+    pathPattern: '^\\$$', // Root path for patch editing
+    instantiationFunction: 'createEditableJsondocCopy'
   },
 
   'edit_brainstorm_input_params': {

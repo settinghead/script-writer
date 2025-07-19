@@ -16,89 +16,7 @@ const authMiddleware = createAuthMiddleware(authDB);
 const jsondocRepo = new JsondocRepository(db);
 const transformRepo = new TransformRepository(db);
 
-/**
- * Create human transform when patch jsondoc is edited via YJS
- */
-const createHumanTransformForPatchEdit = async (
-    patchJsondocId: string,
-    projectId: string,
-    userId: string
-): Promise<void> => {
-    try {
-        console.log('🔧 [YJS Routes] Creating human transform for patch jsondoc edit:', patchJsondocId);
 
-        // Check if a human transform already exists for this patch jsondoc
-        const existingTransform = await transformRepo.findHumanTransform(
-            patchJsondocId,
-            '$', // derivation path
-            projectId
-        );
-
-        if (existingTransform) {
-            console.log('⏭️ [YJS Routes] Human transform already exists, skipping:', existingTransform.transform_id);
-            return;
-        }
-
-        // Create a regular human transform (not human_patch_approval)
-        const transform = await transformRepo.createTransform(
-            projectId,
-            'human',
-            'v1',
-            'completed',
-            {
-                action_type: 'patch_edit',
-                patch_jsondoc_id: patchJsondocId,
-                user_id: userId,
-                timestamp: new Date().toISOString()
-            }
-        );
-
-        console.log('✅ [YJS Routes] Created human transform:', transform.id);
-
-        // Link the patch jsondoc as input
-        await transformRepo.addTransformInputs(transform.id, [
-            { jsondocId: patchJsondocId, inputRole: 'patch' }
-        ], projectId);
-
-        // Create a new user_input jsondoc with the edited patch content
-        const patchJsondoc = await jsondocRepo.getJsondoc(patchJsondocId);
-        if (patchJsondoc) {
-            const editedJsondoc = await jsondocRepo.createJsondoc(
-                projectId,
-                'user_input',
-                patchJsondoc.data,
-                'v1',
-                undefined,
-                'completed',
-                'user_input'
-            );
-
-            // Link the new jsondoc as output
-            await transformRepo.addTransformOutputs(transform.id, [
-                { jsondocId: editedJsondoc.id, outputRole: 'edited_patch' }
-            ], projectId);
-
-            // Store human transform metadata
-            await transformRepo.addHumanTransform({
-                transform_id: transform.id,
-                action_type: 'patch_edit',
-                source_jsondoc_id: patchJsondocId,
-                derivation_path: '$',
-                derived_jsondoc_id: editedJsondoc.id,
-                transform_name: 'patch_edit',
-                change_description: 'User edited patch content via YJS',
-                project_id: projectId
-            });
-
-            console.log('✅ [YJS Routes] Created derived user_input jsondoc:', editedJsondoc.id);
-        }
-
-        console.log('✅ [YJS Routes] Human transform for patch edit created successfully');
-
-    } catch (error) {
-        console.error('❌ [YJS Routes] Failed to create human transform for patch edit:', error);
-    }
-};
 
 // Apply authentication middleware to all YJS routes
 router.use(authMiddleware.authenticate);
@@ -293,20 +211,8 @@ const syncYJSToJsondoc = async (jsondocId: string, userId?: string) => {
             .where('id', '=', jsondocId)
             .execute();
 
-        // Check if this is a patch jsondoc being edited and create human_patch_approval transform
-        const jsondoc = await jsondocRepo.getJsondoc(jsondocId);
-        if (jsondoc && jsondoc.schema_type === 'json_patch') {
-            console.log('🩹 [YJS Routes] PATCH JSONDOC EDITED:', {
-                jsondocId,
-                schemaType: jsondoc.schema_type,
-                projectId: jsondoc.project_id,
-                updatedData: extractedData
-            });
-
-            // Use the provided user ID or fallback to test user
-            const effectiveUserId = userId || 'test-user-1';
-            await createHumanTransformForPatchEdit(jsondocId, jsondoc.project_id, effectiveUserId);
-        }
+        // YJS sync complete - no additional transform creation needed
+        // Human transforms should be created via jsondocRoutes.ts, not here
 
 
     } catch (error) {

@@ -46,21 +46,44 @@ export const PatchApprovalEditor: React.FC<PatchApprovalEditorProps> = ({
             return null;
         }
 
-        // Find the transform that created this patch jsondoc
+        // The patchJsondocId we receive might be the derived jsondoc from human transform
+        // We need to find the ORIGINAL patch jsondoc that was created by AI
+        let originalPatchJsondocId = patchJsondocId;
+
+        // Check if this is a derived jsondoc from a human transform
+        if (Array.isArray(projectData.humanTransforms)) {
+            const humanTransform = projectData.humanTransforms.find((ht: any) =>
+                ht.derived_jsondoc_id === patchJsondocId
+            );
+
+            if (humanTransform && humanTransform.source_jsondoc_id) {
+                // Use the source jsondoc from the human transform (the original AI-generated patch)
+                originalPatchJsondocId = humanTransform.source_jsondoc_id;
+                console.log('[PatchApprovalEditor] Found original patch jsondoc via human transform:', originalPatchJsondocId);
+            }
+        }
+
+        // Find the transform that created the ORIGINAL patch jsondoc
         if (!Array.isArray(projectData.transforms) || !Array.isArray(projectData.transformOutputs)) {
             return null;
         }
 
         const creatingTransform = projectData.transforms.find((t: any) =>
             (projectData.transformOutputs as any[]).some((output: any) =>
-                output.transform_id === t.id && output.jsondoc_id === patchJsondocId
+                output.transform_id === t.id && output.jsondoc_id === originalPatchJsondocId
             )
         );
 
         if (!creatingTransform) {
-            console.log('[PatchApprovalEditor] No creating transform found for patch');
+            console.log('[PatchApprovalEditor] No creating transform found for original patch:', originalPatchJsondocId);
             return null;
         }
+
+        console.log('[PatchApprovalEditor] Found creating transform:', {
+            id: creatingTransform.id,
+            type: creatingTransform.type,
+            execution_context: creatingTransform.execution_context
+        });
 
         // Find the input brainstorm_idea for that transform
         if (!Array.isArray(projectData.transformInputs)) {
@@ -71,12 +94,45 @@ export const PatchApprovalEditor: React.FC<PatchApprovalEditorProps> = ({
             input.transform_id === creatingTransform.id
         );
 
-        const brainstormInputId = transformInputs.find((input: any) =>
-            input.input_role === 'source' || !input.input_role
+        console.log('[PatchApprovalEditor] Transform inputs for transform', creatingTransform.id, ':', transformInputs);
+
+        // Try to find brainstorm input with various role patterns
+        let brainstormInputId = transformInputs.find((input: any) =>
+            input.input_role === 'source'
         )?.jsondoc_id;
 
+        // If not found, try any input (there should only be one for patch generation)
+        if (!brainstormInputId && transformInputs.length > 0) {
+            console.log('[PatchApprovalEditor] Trying fallback approach. All available inputs:', transformInputs);
+
+            // Try to find brainstorm_idea by checking jsondoc types
+            for (const input of transformInputs) {
+                const inputJsondoc = projectData.getJsondocById(input.jsondoc_id);
+                console.log(`[PatchApprovalEditor] Checking input ${input.jsondoc_id}:`, {
+                    schema_type: inputJsondoc?.schema_type,
+                    input_role: input.input_role
+                });
+
+                if (inputJsondoc?.schema_type === 'brainstorm_idea') {
+                    brainstormInputId = input.jsondoc_id;
+                    console.log('[PatchApprovalEditor] Found brainstorm_idea via fallback:', brainstormInputId);
+                    break;
+                }
+            }
+
+            // If still not found, use first input as last resort
+            if (!brainstormInputId) {
+                brainstormInputId = transformInputs[0].jsondoc_id;
+                console.log('[PatchApprovalEditor] Using first available input as final fallback:', transformInputs[0]);
+            }
+        }
+
         if (!brainstormInputId) {
-            console.log('[PatchApprovalEditor] No brainstorm input found for transform');
+            console.log('[PatchApprovalEditor] No brainstorm input found for transform. Available inputs:', transformInputs.map((input: any) => ({
+                jsondoc_id: input.jsondoc_id,
+                input_role: input.input_role,
+                jsondoc_path: input.jsondoc_path
+            })));
             return null;
         }
 
@@ -86,6 +142,7 @@ export const PatchApprovalEditor: React.FC<PatchApprovalEditorProps> = ({
             return null;
         }
 
+        console.log('[PatchApprovalEditor] Found original brainstorm_idea:', originalJsondoc.id);
         return originalJsondoc;
     }, [patchJsondoc, projectData, patchJsondocId]);
 

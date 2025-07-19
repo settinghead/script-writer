@@ -116,4 +116,5 @@ export function createOutlineInputFromPath(
     }
 
     throw new Error('Extracted data does not contain required title and body fields');
-} 
+}
+

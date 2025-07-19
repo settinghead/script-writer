@@ -4,6 +4,7 @@ import { CheckOutlined, CloseOutlined, EditOutlined } from '@ant-design/icons';
 import { usePendingPatchApproval, type PendingPatchGroup } from '../hooks/usePendingPatchApproval';
 import { YJSJsondocProvider } from '../transform-jsondoc-framework/contexts/YJSJsondocContext';
 import { YJSTextField, YJSTextAreaField } from '../transform-jsondoc-framework/components/YJSField';
+import { PatchApprovalEditor } from './PatchApprovalEditor';
 import { useProjectData } from '../contexts/ProjectDataContext';
 import type { ElectricJsondoc } from '../../common/types';
 import * as Diff from 'diff';
@@ -108,7 +109,7 @@ const PatchReviewCard: React.FC<PatchReviewCardProps> = ({
         // Look for a human transform that has this patch jsondoc as source
         const found = projectData.humanTransforms.some(transform =>
             transform.source_jsondoc_id === patchJsondoc.id &&
-            transform.derivation_path === '$.patches'
+            transform.derivation_path === '$'  // Changed from '$.patches' to '$'
         );
 
         console.log(`[PatchReviewModal] Checking for human transform for patch ${patchJsondoc.id}: ${found ? 'FOUND' : 'NOT FOUND'}`);
@@ -119,7 +120,7 @@ const PatchReviewCard: React.FC<PatchReviewCardProps> = ({
             status: t.status,
             type: t.type
         })));
-        console.log(`[PatchReviewModal] Looking for source_jsondoc_id: ${patchJsondoc.id} with derivation_path: '$.patches'`);
+        console.log(`[PatchReviewModal] Looking for source_jsondoc_id: ${patchJsondoc.id} with derivation_path: '$'`);
 
         return found;
     }, [projectData.humanTransforms, patchJsondoc.id]);
@@ -132,7 +133,7 @@ const PatchReviewCard: React.FC<PatchReviewCardProps> = ({
 
         const humanTransform = projectData.humanTransforms.find(transform =>
             transform.source_jsondoc_id === patchJsondoc.id &&
-            transform.derivation_path === '$.patches'
+            transform.derivation_path === '$'  // Changed from '$.patches' to '$'
         );
 
         return humanTransform?.derived_jsondoc_id || null;
@@ -161,8 +162,8 @@ const PatchReviewCard: React.FC<PatchReviewCardProps> = ({
                 },
                 credentials: 'include',
                 body: JSON.stringify({
-                    transformName: 'edit_jsondoc_field',
-                    derivationPath: '$.patches',
+                    transformName: 'edit_json_patch',
+                    derivationPath: '$',
                     fieldUpdates: {}
                 })
             });
@@ -284,35 +285,17 @@ const PatchReviewCard: React.FC<PatchReviewCardProps> = ({
                     console.log(`[PatchReviewModal] Rendering content - hasHumanTransform: ${hasHumanTransform}, derivedJsondocId: ${derivedJsondocId}`);
                     return hasHumanTransform;
                 })() ? (
-                    <div>
-                        <Text strong>编辑新值:</Text>
-                        <div className="yjs-field-dark-theme" style={{ marginTop: '4px' }}>
-                            <YJSJsondocProvider
-                                jsondocId={derivedJsondocId || patchJsondoc.id}
-                            >
-                                {typeof newValue === 'string' && newValue.length > 50 ? (
-                                    <YJSTextAreaField
-                                        path="patches.0.value"
-                                        placeholder="编辑新值..."
-                                        rows={4}
-                                    />
-                                ) : (
-                                    <YJSTextField
-                                        path="patches.0.value"
-                                        placeholder="编辑新值..."
-                                    />
-                                )}
-                            </YJSJsondocProvider>
-                        </div>
-
-                        <div style={{ marginTop: '12px' }}>
-                            <Text strong>变更预览:</Text>
-                            <DiffView
-                                oldValue={formatValue(originalValue)}
-                                newValue={formatValue(newValue)}
-                            />
-                        </div>
-                    </div>
+                    <PatchApprovalEditor
+                        patchJsondocId={derivedJsondocId || patchJsondoc.id}
+                        onSave={() => {
+                            console.log('[PatchReviewModal] Patch saved via special editor');
+                            // The patch has been updated, UI should reflect changes automatically via Electric SQL
+                        }}
+                        onCancel={() => {
+                            console.log('[PatchReviewModal] Patch editing cancelled');
+                            // Could implement cancellation logic here if needed
+                        }}
+                    />
                 ) : (
                     <div>
                         <Text strong>变更内容:</Text>
