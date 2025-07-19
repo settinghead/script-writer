@@ -5,9 +5,67 @@ import { usePendingPatchApproval, type PendingPatchGroup } from '../hooks/usePen
 import { YJSJsondocProvider } from '../transform-jsondoc-framework/contexts/YJSJsondocContext';
 import { YJSTextField, YJSTextAreaField } from '../transform-jsondoc-framework/components/YJSField';
 import type { ElectricJsondoc } from '../../common/types';
+import * as Diff from 'diff';
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
+
+// Diff view component
+const DiffView: React.FC<{ oldValue: string; newValue: string }> = ({ oldValue, newValue }) => {
+    const diff = Diff.diffWords(oldValue || '', newValue || '');
+
+    return (
+        <div style={{
+            background: '#1a1a1a',
+            border: '1px solid #434343',
+            borderRadius: '4px',
+            padding: '8px',
+            marginTop: '4px',
+            maxHeight: '150px',
+            overflowY: 'auto',
+            fontFamily: 'monospace',
+            fontSize: '13px',
+            lineHeight: '1.4'
+        }}>
+            {diff.map((part, index) => {
+                if (part.removed) {
+                    return (
+                        <span
+                            key={index}
+                            style={{
+                                backgroundColor: '#4a1a1a',
+                                color: '#ff7875',
+                                textDecoration: 'line-through',
+                                padding: '2px 0'
+                            }}
+                        >
+                            {part.value}
+                        </span>
+                    );
+                } else if (part.added) {
+                    return (
+                        <span
+                            key={index}
+                            style={{
+                                backgroundColor: '#1a4a1a',
+                                color: '#95de64',
+                                padding: '2px 0'
+                            }}
+                        >
+                            {part.value}
+                        </span>
+                    );
+                } else {
+                    return (
+                        <span key={index} style={{ color: '#ffffff' }}>
+                            {part.value}
+                        </span>
+                    );
+                }
+            })}
+        </div>
+    );
+};
 
 interface PatchReviewCardProps {
     patchJsondoc: ElectricJsondoc;
@@ -101,62 +159,46 @@ const PatchReviewCard: React.FC<PatchReviewCardProps> = ({
                 </Button>
             }
         >
-            <div style={{ display: 'flex', gap: '16px' }}>
-                <div style={{ flex: 1 }}>
-                    <Text strong>原值:</Text>
-                    <div style={{
-                        background: '#2a1d1d',
-                        border: '1px solid #5c4040',
-                        borderRadius: '4px',
-                        padding: '8px',
-                        marginTop: '4px',
-                        whiteSpace: 'pre-wrap',
-                        color: '#ffcccc',
-                        maxHeight: '150px',
-                        overflowY: 'auto'
-                    }}>
-                        {formatValue(originalValue)}
-                    </div>
-                </div>
+            <div>
+                {editMode ? (
+                    <div>
+                        <Text strong>编辑新值:</Text>
+                        <div className="yjs-field-dark-theme" style={{ marginTop: '4px' }}>
+                            <YJSJsondocProvider
+                                jsondocId={patchJsondoc.id}
+                            >
+                                {typeof newValue === 'string' && newValue.length > 50 ? (
+                                    <YJSTextAreaField
+                                        path="patches.0.value"
+                                        placeholder="编辑新值..."
+                                        rows={4}
+                                    />
+                                ) : (
+                                    <YJSTextField
+                                        path="patches.0.value"
+                                        placeholder="编辑新值..."
+                                    />
+                                )}
+                            </YJSJsondocProvider>
+                        </div>
 
-                <div style={{ flex: 1 }}>
-                    <Text strong>新值:</Text>
-                    <div style={{ marginTop: '4px' }}>
-                        {editMode ? (
-                            <div className="yjs-field-dark-theme">
-                                <YJSJsondocProvider
-                                    jsondocId={patchJsondoc.id}
-                                >
-                                    {typeof newValue === 'string' && newValue.length > 50 ? (
-                                        <YJSTextAreaField
-                                            path="patches.0.value"
-                                            placeholder="编辑新值..."
-                                            rows={4}
-                                        />
-                                    ) : (
-                                        <YJSTextField
-                                            path="patches.0.value"
-                                            placeholder="编辑新值..."
-                                        />
-                                    )}
-                                </YJSJsondocProvider>
-                            </div>
-                        ) : (
-                            <div style={{
-                                background: '#1d2a1d',
-                                border: '1px solid #405c40',
-                                borderRadius: '4px',
-                                padding: '8px',
-                                whiteSpace: 'pre-wrap',
-                                color: '#ccffcc',
-                                maxHeight: '150px',
-                                overflowY: 'auto'
-                            }}>
-                                {formatValue(newValue)}
-                            </div>
-                        )}
+                        <div style={{ marginTop: '12px' }}>
+                            <Text strong>变更预览:</Text>
+                            <DiffView
+                                oldValue={formatValue(originalValue)}
+                                newValue={formatValue(newValue)}
+                            />
+                        </div>
                     </div>
-                </div>
+                ) : (
+                    <div>
+                        <Text strong>变更内容:</Text>
+                        <DiffView
+                            oldValue={formatValue(originalValue)}
+                            newValue={formatValue(newValue)}
+                        />
+                    </div>
+                )}
             </div>
         </Card>
     );
