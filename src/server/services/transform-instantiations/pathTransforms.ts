@@ -84,6 +84,17 @@ export function createFieldEditFromPath(
     return extractDataAtPath(sourceJsondocData, jsondocPath);
 }
 
+// Create editable copy of entire jsondoc for field editing
+export function createEditableJsondocCopy(
+    sourceJsondocData: any,
+    jsondocPath: string
+): any {
+    // For field editing transforms, return the entire source data
+    // This allows the user to edit any field within the jsondoc
+    // The path is used for validation but the entire jsondoc is editable
+    return sourceJsondocData;
+}
+
 // Update existing functions to handle both collections and individual ideas
 export function createOutlineInputFromPath(
     sourceJsondocData: any,

@@ -141,11 +141,11 @@ export const OutlineSettingsEditJsonPatchOutputSchema = JsonPatchArraySchema;
 
 // Transform registry
 export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinition> = {
-  // Brainstorm input creation transform
+  // Brainstorm input creation transform (from existing brainstorm collection)
   'create_brainstorm_input': {
     name: 'create_brainstorm_input',
-    description: 'Create brainstorm input parameters',
-    sourceJsondocType: '*', // Can be created from any source or standalone
+    description: 'Create brainstorm input parameters from existing collection',
+    sourceJsondocType: 'brainstorm_collection',
     targetJsondocType: 'brainstorm_input_params',
     pathPattern: '^\\$$', // Root path for new creation
     instantiationFunction: 'createBrainstormToolInput'
@@ -160,13 +160,32 @@ export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinitio
     instantiationFunction: 'createBrainstormIdeaFromPath'
   },
 
-  'edit_jsondoc_field': {
-    name: 'edit_jsondoc_field',
-    description: 'Generic field editing using JSONPath',
-    sourceJsondocType: '*', // Any jsondoc type
-    targetJsondocType: '*', // Flexible output type
+  'edit_json_patch': {
+    name: 'edit_json_patch',
+    description: 'Edit JSON patch jsondoc',
+    sourceJsondocType: 'json_patch',
+    targetJsondocType: 'json_patch',
     pathPattern: '^\\$\\.[a-zA-Z_][a-zA-Z0-9_]*.*$', // Any valid JSONPath
     instantiationFunction: 'createFieldEditFromPath'
+  },
+
+  'edit_brainstorm_input_params': {
+    name: 'edit_brainstorm_input_params',
+    description: 'Edit brainstorm input parameters',
+    sourceJsondocType: 'brainstorm_input_params',
+    targetJsondocType: 'brainstorm_input_params',
+    pathPattern: '^\\$\\.[a-zA-Z_][a-zA-Z0-9_]*.*$',
+    instantiationFunction: 'createFieldEditFromPath'
+  },
+
+  // Generic field edit for JSON patch jsondocs (most common use case)
+  'edit_jsondoc_field': {
+    name: 'edit_jsondoc_field',
+    description: 'Edit fields in JSON patch jsondocs',
+    sourceJsondocType: 'json_patch',
+    targetJsondocType: 'json_patch',
+    pathPattern: '^\\$\\.[a-zA-Z_][a-zA-Z0-9_]*.*$',
+    instantiationFunction: 'createEditableJsondocCopy'
   },
   'brainstorm_to_outline': {
     name: 'brainstorm_to_outline',

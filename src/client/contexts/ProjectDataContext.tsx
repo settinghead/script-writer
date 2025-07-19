@@ -132,14 +132,11 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
     // Use Electric SQL data if available, otherwise fallback to API
     const jsondocs = useMemo(() => {
         if (electricJsondocs && electricJsondocs.length > 0) {
-            console.log('[ProjectDataContext] Using Electric SQL data:', electricJsondocs.length, 'jsondocs');
             return electricJsondocs;
         }
         if (fallbackJsondocs.length > 0) {
-            console.log('[ProjectDataContext] Using fallback API data:', fallbackJsondocs.length, 'jsondocs');
             return fallbackJsondocs;
         }
-        console.log('[ProjectDataContext] No jsondocs available from either source');
         return [];
     }, [electricJsondocs, fallbackJsondocs]);
 
@@ -152,7 +149,6 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
                 !fallbackLoading &&
                 fallbackJsondocs.length === 0) {
 
-                console.log('[ProjectDataContext] Electric SQL not working, fetching fallback data...');
                 setFallbackLoading(true);
 
                 try {
@@ -162,7 +158,6 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
 
                     if (response.ok) {
                         const data = await response.json();
-                        console.log('[ProjectDataContext] Fallback API returned:', data.length, 'jsondocs');
                         setFallbackJsondocs(data);
                     } else {
                         console.error('[ProjectDataContext] Fallback API failed:', response.status);
@@ -416,7 +411,6 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
                     }
 
                     if (electricDataMatches) {
-                        console.log(`[ProjectDataContext] Electric SQL data matches local update for ${jsondocId}, scheduling cleanup`);
                         updatesToRemove.push(key);
                     }
                 }

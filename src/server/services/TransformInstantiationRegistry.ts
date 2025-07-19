@@ -11,6 +11,7 @@ import {
 import {
   createBrainstormIdeaFromPath,
   createFieldEditFromPath,
+  createEditableJsondocCopy,
   createOutlineInputFromPath
 } from './transform-instantiations/pathTransforms';
 
@@ -30,6 +31,7 @@ export class TransformInstantiationRegistry {
     // NEW: Path-based transform functions
     this.functions.set('createBrainstormIdeaFromPath', createBrainstormIdeaFromPath);
     this.functions.set('createFieldEditFromPath', createFieldEditFromPath);
+    this.functions.set('createEditableJsondocCopy', createEditableJsondocCopy);
     this.functions.set('createOutlineInputFromPath', createOutlineInputFromPath);
 
     // LEGACY: Keep existing functions for backward compatibility

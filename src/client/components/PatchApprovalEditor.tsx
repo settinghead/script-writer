@@ -1,313 +1,255 @@
-import React, { useState, useCallback, useMemo } from 'react';
-import { Card, Button, Space, Typography, message } from 'antd';
-import { CheckOutlined, CloseOutlined, EditOutlined } from '@ant-design/icons';
-import * as jsonpatch from 'fast-json-patch';
+import React, { useState, useMemo, useCallback } from 'react';
+import { Card, Button, message, Divider, Typography, Space } from 'antd';
+import { SaveOutlined, UndoOutlined } from '@ant-design/icons';
+import { useProjectData } from '../contexts/ProjectDataContext';
 import { YJSJsondocProvider } from '../transform-jsondoc-framework/contexts/YJSJsondocContext';
 import { YJSTextField, YJSTextAreaField } from '../transform-jsondoc-framework/components/YJSField';
-import type { ElectricJsondoc } from '../../common/types';
-import * as Diff from 'diff';
+import { applyPatch } from 'fast-json-patch';
+import * as jsonpatch from 'fast-json-patch';
 
 const { Title, Text } = Typography;
 
-// Diff view component to show changes
-const DiffView: React.FC<{ oldValue: string; newValue: string }> = ({ oldValue, newValue }) => {
-    const diff = Diff.diffWords(oldValue || '', newValue || '');
-
-    return (
-        <div style={{
-            background: '#1a1a1a',
-            border: '1px solid #434343',
-            borderRadius: '4px',
-            padding: '8px',
-            marginTop: '4px',
-            maxHeight: '150px',
-            overflowY: 'auto',
-            fontFamily: 'monospace',
-            fontSize: '13px',
-            lineHeight: '1.4'
-        }}>
-            {diff.map((part, index) => {
-                if (part.removed) {
-                    return (
-                        <span
-                            key={index}
-                            style={{
-                                backgroundColor: '#4a1a1a',
-                                color: '#ff7875',
-                                textDecoration: 'line-through',
-                                padding: '2px 0'
-                            }}
-                        >
-                            {part.value}
-                        </span>
-                    );
-                } else if (part.added) {
-                    return (
-                        <span
-                            key={index}
-                            style={{
-                                backgroundColor: '#1a4a1a',
-                                color: '#95de64',
-                                padding: '2px 0'
-                            }}
-                        >
-                            {part.value}
-                        </span>
-                    );
-                } else {
-                    return (
-                        <span key={index} style={{ color: '#ffffff' }}>
-                            {part.value}
-                        </span>
-                    );
-                }
-            })}
-        </div>
-    );
-};
-
 interface PatchApprovalEditorProps {
-    originalJsondoc: ElectricJsondoc;
-    aiPatchJsondoc: ElectricJsondoc;
-    projectId: string;
-    onApprove: (humanEditedJsondoc: any) => Promise<void>;
-    onReject: (reason?: string) => Promise<void>;
+    patchJsondocId: string;
+    onSave?: () => void;
+    onCancel?: () => void;
 }
 
+interface OriginalContent {
+    title: string;
+    body: string;
+}
+
+/**
+ * Special patch editor that:
+ * 1. Finds the original brainstorm_idea via transformInput relationships
+ * 2. Applies current patches to show the "after" state
+ * 3. Allows editing the full document
+ * 4. Generates new patches and updates the patch jsondoc
+ */
 export const PatchApprovalEditor: React.FC<PatchApprovalEditorProps> = ({
-    originalJsondoc,
-    aiPatchJsondoc,
-    projectId,
-    onApprove,
-    onReject
+    patchJsondocId,
+    onSave,
+    onCancel
 }) => {
-    const [isEditing, setIsEditing] = useState(false);
-    const [humanEditedJsondocId, setHumanEditedJsondocId] = useState<string | null>(null);
-    const [isProcessing, setIsProcessing] = useState(false);
+    const projectData = useProjectData();
+    const [isSaving, setIsSaving] = useState(false);
 
-    // Parse original document data
-    const originalData = useMemo(() => {
-        try {
-            return typeof originalJsondoc.data === 'string'
-                ? JSON.parse(originalJsondoc.data)
-                : originalJsondoc.data;
-        } catch (e) {
-            console.error('Failed to parse original data:', e);
-            return {};
+    // Get the patch jsondoc
+    const patchJsondoc = useMemo(() => {
+        return projectData.getJsondocById(patchJsondocId);
+    }, [projectData, patchJsondocId]);
+
+    // Find the original brainstorm_idea via transformInput relationships
+    const originalBrainstormIdea = useMemo(() => {
+        if (!patchJsondoc || projectData.lineageGraph === "pending") {
+            return null;
         }
-    }, [originalJsondoc.data]);
 
-    // Parse AI-generated patches
-    const aiPatches = useMemo(() => {
-        try {
-            const patchData = typeof aiPatchJsondoc.data === 'string'
-                ? JSON.parse(aiPatchJsondoc.data)
-                : aiPatchJsondoc.data;
-            return patchData.patches || [];
-        } catch (e) {
-            console.error('Failed to parse AI patches:', e);
-            return [];
+        // Find the transform that created this patch jsondoc
+        if (!Array.isArray(projectData.transforms) || !Array.isArray(projectData.transformOutputs)) {
+            return null;
         }
-    }, [aiPatchJsondoc.data]);
 
-    // Apply AI patches to get the AI-suggested version
-    const aiSuggestedData = useMemo(() => {
-        try {
-            // Clone original data
-            let result = JSON.parse(JSON.stringify(originalData));
+        const creatingTransform = projectData.transforms.find((t: any) =>
+            (projectData.transformOutputs as any[]).some((output: any) =>
+                output.transform_id === t.id && output.jsondoc_id === patchJsondocId
+            )
+        );
 
-            // Apply each patch
-            for (const patch of aiPatches) {
-                if (patch.op === 'replace') {
-                    const pathParts = patch.path.replace(/^\//, '').split('/');
-                    let current = result;
-
-                    // Navigate to the parent object
-                    for (let i = 0; i < pathParts.length - 1; i++) {
-                        if (!current[pathParts[i]]) {
-                            current[pathParts[i]] = {};
-                        }
-                        current = current[pathParts[i]];
-                    }
-
-                    // Set the value
-                    const lastKey = pathParts[pathParts.length - 1];
-                    current[lastKey] = patch.value;
-                }
-            }
-
-            return result;
-        } catch (e) {
-            console.error('Failed to apply AI patches:', e);
-            return originalData;
+        if (!creatingTransform) {
+            console.log('[PatchApprovalEditor] No creating transform found for patch');
+            return null;
         }
-    }, [originalData, aiPatches]);
 
-    // Start editing mode - create a human-editable jsondoc with AI-suggested content
-    const handleStartEdit = useCallback(async () => {
-        setIsProcessing(true);
+        // Find the input brainstorm_idea for that transform
+        if (!Array.isArray(projectData.transformInputs)) {
+            return null;
+        }
+
+        const transformInputs = projectData.transformInputs.filter((input: any) =>
+            input.transform_id === creatingTransform.id
+        );
+
+        const brainstormInputId = transformInputs.find((input: any) =>
+            input.input_role === 'source' || !input.input_role
+        )?.jsondoc_id;
+
+        if (!brainstormInputId) {
+            console.log('[PatchApprovalEditor] No brainstorm input found for transform');
+            return null;
+        }
+
+        const originalJsondoc = projectData.getJsondocById(brainstormInputId);
+        if (!originalJsondoc || originalJsondoc.schema_type !== 'brainstorm_idea') {
+            console.log('[PatchApprovalEditor] Original jsondoc not found or wrong type:', originalJsondoc?.schema_type);
+            return null;
+        }
+
+        return originalJsondoc;
+    }, [patchJsondoc, projectData, patchJsondocId]);
+
+    // Parse the patch data
+    const patchData = useMemo(() => {
+        if (!patchJsondoc?.data) return null;
+
         try {
-            // Create a new user_input jsondoc with the AI-suggested content
-            const response = await fetch('/api/jsondocs', {
-                method: 'POST',
+            return typeof patchJsondoc.data === 'string'
+                ? JSON.parse(patchJsondoc.data)
+                : patchJsondoc.data;
+        } catch (error) {
+            console.error('[PatchApprovalEditor] Failed to parse patch data:', error);
+            return null;
+        }
+    }, [patchJsondoc]);
+
+    // Calculate the current "after" state by applying patches to original
+    const currentAfterState = useMemo<OriginalContent | null>(() => {
+        if (!originalBrainstormIdea?.data || !patchData?.patches) {
+            return null;
+        }
+
+        try {
+            const originalData = typeof originalBrainstormIdea.data === 'string'
+                ? JSON.parse(originalBrainstormIdea.data)
+                : originalBrainstormIdea.data;
+
+            // Apply current patches to get the "after" state
+            const afterState = applyPatch(originalData, patchData.patches, false, false).newDocument;
+
+            return {
+                title: afterState.title || '',
+                body: afterState.body || ''
+            };
+        } catch (error) {
+            console.error('[PatchApprovalEditor] Failed to apply patches:', error);
+            // Fallback to original content
+            const originalData = typeof originalBrainstormIdea.data === 'string'
+                ? JSON.parse(originalBrainstormIdea.data)
+                : originalBrainstormIdea.data;
+
+            return {
+                title: originalData.title || '',
+                body: originalData.body || ''
+            };
+        }
+    }, [originalBrainstormIdea, patchData]);
+
+    // Handle saving changes
+    const handleSave = useCallback(async () => {
+        if (!currentAfterState || !originalBrainstormIdea?.data || !patchJsondoc || isSaving) {
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            // Get the original data
+            const originalData = typeof originalBrainstormIdea.data === 'string'
+                ? JSON.parse(originalBrainstormIdea.data)
+                : originalBrainstormIdea.data;
+
+            // Generate new patches from original to current edited state
+            const newPatches = jsonpatch.compare(originalData, currentAfterState);
+
+            // Update the patch jsondoc with new patches
+            const updatedPatchData = {
+                ...patchData,
+                patches: newPatches
+            };
+
+            const response = await fetch(`/api/jsondocs/${patchJsondocId}`, {
+                method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': 'Bearer debug-auth-token-script-writer-dev'
                 },
                 credentials: 'include',
                 body: JSON.stringify({
-                    schema_type: 'user_input',
-                    origin_type: 'user_input',
-                    data: aiSuggestedData,
-                    project_id: projectId
+                    data: updatedPatchData
                 })
             });
 
             if (!response.ok) {
-                throw new Error('Failed to create editable jsondoc');
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `HTTP ${response.status}`);
             }
 
-            const result = await response.json();
-            setHumanEditedJsondocId(result.jsondoc.id);
-            setIsEditing(true);
-            message.success('已创建可编辑版本，您可以开始编辑');
+            message.success('补丁已更新');
+            onSave?.();
         } catch (error) {
-            console.error('Failed to start editing:', error);
-            message.error('创建可编辑版本失败');
+            console.error('[PatchApprovalEditor] Failed to save patch:', error);
+            message.error('保存失败');
         } finally {
-            setIsProcessing(false);
+            setIsSaving(false);
         }
-    }, [aiSuggestedData, projectId]);
+    }, [currentAfterState, originalBrainstormIdea, patchData, patchJsondocId, onSave, isSaving]);
 
-    // Handle approval - compute patches from human edits
-    const handleApprove = useCallback(async () => {
-        if (!humanEditedJsondocId) {
-            // User didn't edit, just approve AI suggestions
-            await onApprove(aiSuggestedData);
-            return;
-        }
-
-        setIsProcessing(true);
-        try {
-            // Get the human-edited jsondoc
-            const response = await fetch(`/api/jsondocs/${humanEditedJsondocId}`, {
-                headers: {
-                    'Authorization': 'Bearer debug-auth-token-script-writer-dev'
-                },
-                credentials: 'include'
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to get human-edited jsondoc');
-            }
-
-            const { jsondoc } = await response.json();
-            const humanEditedData = typeof jsondoc.data === 'string'
-                ? JSON.parse(jsondoc.data)
-                : jsondoc.data;
-
-            // Approve with human-edited data
-            await onApprove(humanEditedData);
-        } catch (error) {
-            console.error('Failed to approve with human edits:', error);
-            message.error('批准失败');
-        } finally {
-            setIsProcessing(false);
-        }
-    }, [humanEditedJsondocId, aiSuggestedData, onApprove]);
+    if (!patchJsondoc || !originalBrainstormIdea || !currentAfterState) {
+        return (
+            <Card>
+                <Text type="secondary">加载补丁编辑器中...</Text>
+            </Card>
+        );
+    }
 
     return (
-        <div>
-            <Card
-                title={
-                    <Space>
-                        <Text strong>补丁审核</Text>
-                        <Text type="secondary">
-                            ({aiPatches.length} 个修改建议)
-                        </Text>
-                    </Space>
-                }
-                extra={
-                    <Space>
-                        <Button
-                            icon={<EditOutlined />}
-                            onClick={handleStartEdit}
-                            loading={isProcessing}
-                            disabled={isEditing}
-                        >
-                            {isEditing ? '编辑中' : '编辑内容'}
-                        </Button>
-                    </Space>
-                }
-            >
-                {/* Show AI-suggested changes */}
-                <div style={{ marginBottom: '16px' }}>
-                    <Text strong>AI建议的修改:</Text>
-                    {aiPatches.map((patch: any, index: number) => {
-                        const pathDisplay = patch.path.replace(/^\//, '').replace(/\//g, ' → ');
-                        const originalValue = patch.path === '/title' ? originalData.title :
-                            patch.path === '/body' ? originalData.body :
-                                'Unknown field';
-
-                        return (
-                            <div key={index} style={{ marginTop: '8px' }}>
-                                <Text type="secondary">{pathDisplay}:</Text>
-                                <DiffView
-                                    oldValue={String(originalValue || '')}
-                                    newValue={String(patch.value || '')}
-                                />
-                            </div>
-                        );
-                    })}
-                </div>
-
-                {/* Full document editor (only show when editing) */}
-                {isEditing && humanEditedJsondocId && (
-                    <div style={{ marginTop: '16px', padding: '16px', border: '2px solid #52c41a', borderRadius: '8px' }}>
-                        <Text strong>编辑完整文档:</Text>
-                        <div style={{ marginTop: '8px' }}>
-                            <YJSJsondocProvider jsondocId={humanEditedJsondocId}>
-                                <div style={{ marginBottom: '12px' }}>
-                                    <Text>标题:</Text>
-                                    <YJSTextField
-                                        path="title"
-                                        placeholder="编辑标题..."
-                                    />
-                                </div>
-                                <div>
-                                    <Text>内容:</Text>
-                                    <YJSTextAreaField
-                                        path="body"
-                                        placeholder="编辑内容..."
-                                        rows={6}
-                                    />
-                                </div>
-                            </YJSJsondocProvider>
-                        </div>
+        <Card
+            title={
+                <Space>
+                    <Title level={4} style={{ margin: 0 }}>补丁编辑器</Title>
+                    <Text type="secondary">编辑完整文档，系统将生成新的补丁</Text>
+                </Space>
+            }
+            extra={
+                <Space>
+                    <Button
+                        icon={<UndoOutlined />}
+                        onClick={onCancel}
+                    >
+                        取消
+                    </Button>
+                    <Button
+                        type="primary"
+                        icon={<SaveOutlined />}
+                        loading={isSaving}
+                        onClick={handleSave}
+                    >
+                        保存补丁
+                    </Button>
+                </Space>
+            }
+        >
+            <div className="yjs-field-dark-theme">
+                <YJSJsondocProvider jsondocId={patchJsondocId}>
+                    <div style={{ marginBottom: '16px' }}>
+                        <Text strong>标题:</Text>
+                        <YJSTextField
+                            path="title"
+                            placeholder="请输入标题"
+                        />
                     </div>
-                )}
 
-                {/* Action buttons */}
-                <div style={{ marginTop: '16px', textAlign: 'right' }}>
-                    <Space>
-                        <Button
-                            icon={<CloseOutlined />}
-                            onClick={() => onReject()}
-                            disabled={isProcessing}
-                        >
-                            拒绝修改
-                        </Button>
-                        <Button
-                            type="primary"
-                            icon={<CheckOutlined />}
-                            onClick={handleApprove}
-                            loading={isProcessing}
-                        >
-                            批准修改 {isEditing ? '(包含您的编辑)' : '(AI建议)'}
-                        </Button>
-                    </Space>
-                </div>
-            </Card>
-        </div>
+                    <div>
+                        <Text strong>内容:</Text>
+                        <YJSTextAreaField
+                            path="body"
+                            placeholder="请输入故事内容"
+                            rows={6}
+                        />
+                    </div>
+                </YJSJsondocProvider>
+            </div>
+
+            <Divider />
+
+            <div style={{ fontSize: '12px', color: '#666' }}>
+                <Text type="secondary">
+                    原始内容: {originalBrainstormIdea.data ?
+                        JSON.parse(typeof originalBrainstormIdea.data === 'string' ? originalBrainstormIdea.data : JSON.stringify(originalBrainstormIdea.data)).title
+                        : '无标题'
+                    }
+                </Text>
+            </div>
+        </Card>
     );
 }; 

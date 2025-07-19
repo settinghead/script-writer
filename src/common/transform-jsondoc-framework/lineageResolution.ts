@@ -1420,14 +1420,6 @@ export function convertEffectiveIdeasToIdeaWithTitle(
                     title = data.title || '';
                     body = data.body || '';
 
-                    console.log('[convertEffectiveIdeasToIdeaWithTitle] Standalone idea data:', {
-                        jsondocId: effectiveIdea.jsondocId,
-                        dataKeys: Object.keys(data),
-                        hasTitle: !!data.title,
-                        hasBody: !!data.body,
-                        titleLength: data.title?.length || 0,
-                        bodyLength: data.body?.length || 0
-                    });
                 } else {
                     // Collection jsondoc - extract specific idea
                     const data = JSON.parse(jsondoc.data);

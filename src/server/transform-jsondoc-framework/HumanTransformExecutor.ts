@@ -18,12 +18,12 @@ export class HumanTransformExecutor {
 
 
   private isCompatibleJsondocType(jsondocSchemaType: string | undefined, expectedSchemaType: string): boolean {
-    // Handle wildcard - accepts any type
-    if (expectedSchemaType === '*') {
-      return true;
+    // Handle undefined jsondoc schema type
+    if (!jsondocSchemaType) {
+      return false;
     }
 
-    // Check if legacy type maps to expected schema type
+    // Exact match - no wildcards allowed for deterministic transforms
     return jsondocSchemaType === expectedSchemaType;
   }
 
@@ -222,6 +222,10 @@ export class HumanTransformExecutor {
 
     // 3. Validate source jsondoc data against schema
     const sourceSchema = JsondocSchemaRegistry[transformDef.sourceJsondocType as keyof typeof JsondocSchemaRegistry];
+    if (!sourceSchema) {
+      throw new Error(`No schema found for type: ${transformDef.sourceJsondocType}`);
+    }
+
     const sourceData = sourceJsondoc.data; // Already parsed by JsondocRepository
     const sourceValidation = sourceSchema.safeParse(sourceData);
 

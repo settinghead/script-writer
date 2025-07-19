@@ -101,14 +101,27 @@ const PatchReviewCard: React.FC<PatchReviewCardProps> = ({
     // Check if this patch has a human transform (derived edit mode from DB state)
     const hasHumanTransform = useMemo(() => {
         if (!Array.isArray(projectData.humanTransforms)) {
+            console.log('[PatchReviewModal] No humanTransforms array available');
             return false;
         }
 
         // Look for a human transform that has this patch jsondoc as source
-        return projectData.humanTransforms.some(transform =>
+        const found = projectData.humanTransforms.some(transform =>
             transform.source_jsondoc_id === patchJsondoc.id &&
-            transform.derivation_path === '$'
+            transform.derivation_path === '$.patches'
         );
+
+        console.log(`[PatchReviewModal] Checking for human transform for patch ${patchJsondoc.id}: ${found ? 'FOUND' : 'NOT FOUND'}`);
+        console.log(`[PatchReviewModal] Available transforms:`, projectData.humanTransforms.map(t => ({
+            id: t.id,
+            source_jsondoc_id: t.source_jsondoc_id,
+            derivation_path: t.derivation_path,
+            status: t.status,
+            type: t.type
+        })));
+        console.log(`[PatchReviewModal] Looking for source_jsondoc_id: ${patchJsondoc.id} with derivation_path: '$.patches'`);
+
+        return found;
     }, [projectData.humanTransforms, patchJsondoc.id]);
 
     // Get the derived jsondoc ID if human transform exists
@@ -119,7 +132,7 @@ const PatchReviewCard: React.FC<PatchReviewCardProps> = ({
 
         const humanTransform = projectData.humanTransforms.find(transform =>
             transform.source_jsondoc_id === patchJsondoc.id &&
-            transform.derivation_path === '$'
+            transform.derivation_path === '$.patches'
         );
 
         return humanTransform?.derived_jsondoc_id || null;
@@ -127,10 +140,18 @@ const PatchReviewCard: React.FC<PatchReviewCardProps> = ({
 
     // Handle creating human transform for editing
     const handleStartEdit = useCallback(async () => {
-        if (hasHumanTransform || isCreatingTransform) return;
+        console.log(`[PatchReviewModal] handleStartEdit called for patch ${patchJsondoc.id}`);
+        console.log(`[PatchReviewModal] hasHumanTransform: ${hasHumanTransform}, isCreatingTransform: ${isCreatingTransform}`);
+
+        if (hasHumanTransform || isCreatingTransform) {
+            console.log(`[PatchReviewModal] Skipping transform creation - already exists or in progress`);
+            return;
+        }
 
         setIsCreatingTransform(true);
         try {
+            console.log(`[PatchReviewModal] Creating human transform for patch ${patchJsondoc.id}`);
+
             // Create human transform for this patch jsondoc
             const response = await fetch(`/api/jsondocs/${patchJsondoc.id}/human-transform`, {
                 method: 'POST',
@@ -146,20 +167,49 @@ const PatchReviewCard: React.FC<PatchReviewCardProps> = ({
                 })
             });
 
+            console.log(`[PatchReviewModal] API response status: ${response.status}`);
+
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
+                console.error(`[PatchReviewModal] API error:`, errorData);
                 throw new Error(errorData.message || `HTTP ${response.status}`);
             }
 
-            // Electric SQL will pick up the change and UI will update automatically
+            const result = await response.json();
+            console.log('[PatchReviewModal] Human transform created successfully:', result);
+            console.log(`[PatchReviewModal] Transform ID: ${result.transform?.id}`);
+            console.log(`[PatchReviewModal] Derived jsondoc ID: ${result.derivedJsondoc?.id}`);
+
+            message.success('开始编辑模式');
+
+            // Force a small delay to allow Electric SQL to sync
+            setTimeout(() => {
+                console.log(`[PatchReviewModal] After 1s delay - checking sync status`);
+                console.log(`[PatchReviewModal] hasHumanTransform: ${hasHumanTransform}`);
+                console.log(`[PatchReviewModal] Available transforms:`,
+                    Array.isArray(projectData.humanTransforms)
+                        ? projectData.humanTransforms.map((t: any) => ({
+                            id: t.id,
+                            source_jsondoc_id: t.source_jsondoc_id,
+                            derivation_path: t.derivation_path,
+                            transform_name: t.transform_name
+                        }))
+                        : projectData.humanTransforms
+                );
+
+                // Force re-render by updating a state variable
+                setIsCreatingTransform(false);
+                setIsCreatingTransform(false); // Double call to force re-render
+            }, 1000);
+
             console.log('Human transform created for patch editing');
         } catch (error) {
-            console.error('Failed to create human transform:', error);
+            console.error('[PatchReviewModal] Failed to create human transform:', error);
             message.error('创建编辑版本失败');
         } finally {
             setIsCreatingTransform(false);
         }
-    }, [patchJsondoc.id, hasHumanTransform, isCreatingTransform]);
+    }, [patchJsondoc.id, hasHumanTransform, isCreatingTransform, projectData.humanTransforms]);
 
     // Extract the first patch operation from the patches array
     const operation = patchData.patches?.[0];
@@ -218,7 +268,10 @@ const PatchReviewCard: React.FC<PatchReviewCardProps> = ({
                 <Button
                     size="small"
                     icon={<EditOutlined />}
-                    onClick={handleStartEdit}
+                    onClick={() => {
+                        console.log(`[PatchReviewModal] Edit button clicked - hasHumanTransform: ${hasHumanTransform}`);
+                        handleStartEdit();
+                    }}
                     loading={isCreatingTransform}
                     disabled={hasHumanTransform}
                 >
@@ -227,7 +280,10 @@ const PatchReviewCard: React.FC<PatchReviewCardProps> = ({
             }
         >
             <div>
-                {hasHumanTransform ? (
+                {(() => {
+                    console.log(`[PatchReviewModal] Rendering content - hasHumanTransform: ${hasHumanTransform}, derivedJsondocId: ${derivedJsondocId}`);
+                    return hasHumanTransform;
+                })() ? (
                     <div>
                         <Text strong>编辑新值:</Text>
                         <div className="yjs-field-dark-theme" style={{ marginTop: '4px' }}>
