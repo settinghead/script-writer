@@ -123,23 +123,15 @@ UI Update: Real-time display with edit indicators
 
 ### 🔄 State Persistence Philosophy
 
-觅光助创 follows a comprehensive **database-driven state persistence** design where all application state is derived from PostgreSQL and synchronized via Electric SQL:
+觅光助创 is built on the Transform Jsondoc Framework's comprehensive **database-driven state persistence** architecture. For detailed information about how all application state is derived from PostgreSQL and synchronized via Electric SQL, see the [State Persistence Philosophy](./TRANSFORM_JSONDOC_FRAMEWORK.md#state-persistence-philosophy) section in the framework documentation.
 
-**Core Principles**:
-- **Database as Single Source of Truth** - All UI state, progress, and user interactions are stored in the database
-- **Cross-Session Continuity** - When users close and reopen the browser, they see exactly where they left off
-- **Real-Time Synchronization** - Changes in one browser tab immediately appear in other tabs through Electric SQL subscriptions
-- **Server Restart Recovery** - Complete application state is recoverable after server restarts with no data loss
-- **No Lost Work** - All form data, selections, editing progress, and workflow state are automatically persisted
-- **Multi-Device Consistency** - Users can switch between devices and continue their creative process seamlessly
-
-**Implementation Benefits**:
+**Key Benefits for Script Writers**:
 - **Uninterrupted Creative Flow** - Writers never lose progress due to technical issues
-- **Collaborative Continuity** - Team members see real-time updates across all sessions
-- **Reliable Workflow State** - Complex multi-step workflows maintain state across interruptions
-- **Zero Configuration** - No manual saving or state management required from users
+- **Cross-Session Continuity** - Close and reopen the browser, continue exactly where you left off
+- **Real-Time Collaboration** - Changes appear instantly across all browser tabs and team members
+- **Zero Configuration** - No manual saving required, everything is automatically persisted
 
-This design ensures that the creative process is never interrupted by technical limitations, allowing writers to focus entirely on content creation.
+This foundation ensures that the creative process is never interrupted by technical limitations, allowing writers to focus entirely on content creation.
 
 ### 🎯 Script Writing Workflow
 

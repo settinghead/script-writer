@@ -608,6 +608,121 @@ const handleCreateEditableVersion = useCallback(async () => {
 3. **Test with Real Data** - Use actual jsondoc data for testing, not mock data
 4. **Debug with API Calls** - Use `curl` or API inspection to verify data structure
 
+## State Persistence Philosophy
+
+The Transform Jsondoc Framework implements a comprehensive **database-driven state persistence** architecture where all application state is derived from PostgreSQL and synchronized via Electric SQL:
+
+### Core Principles
+
+**Database as Single Source of Truth**:
+- All UI state, workflow progress, and user interactions are stored in the database
+- No critical state exists only in browser memory or localStorage
+- Electric SQL subscriptions provide real-time state synchronization across all clients
+- Complete application state can be reconstructed from database queries alone
+
+**Cross-Session Continuity**:
+- When users close and reopen browsers, they see exactly where they left off
+- All form data, selections, editing progress, and workflow states are automatically persisted
+- Complex multi-step workflows maintain their state across interruptions
+- No manual saving or state management required from users
+
+**Real-Time Synchronization**:
+- Changes in one browser tab immediately appear in other tabs through Electric SQL subscriptions
+- Multiple users can collaborate on the same project with instant state updates
+- Transform executions and jsondoc changes propagate immediately to all connected clients
+- Optimistic updates provide instant feedback while maintaining consistency
+
+**Server Restart Recovery**:
+- Complete application state is recoverable after server restarts with no data loss
+- Streaming transforms can resume from their last known state
+- Tool executions and agent conversations maintain continuity across server maintenance
+- No user work is ever lost due to technical infrastructure issues
+
+**Multi-Device Consistency**:
+- Users can switch between devices and continue their work seamlessly
+- Mobile and desktop clients maintain synchronized state
+- Collaborative editing sessions persist across device switches
+- Work progress is never tied to a specific device or browser session
+
+### Implementation Architecture
+
+**PostgreSQL-Centric Design**:
+```sql
+-- All application state stored in database tables
+CREATE TABLE jsondocs (...);           -- Content and data state
+CREATE TABLE transforms (...);         -- Process and workflow state
+CREATE TABLE chat_messages (...);      -- Conversation state
+CREATE TABLE yjs_documents (...);      -- Collaborative editing state
+CREATE TABLE user_sessions (...);      -- Authentication state
+```
+
+**Electric SQL Integration**:
+```typescript
+// Real-time state subscriptions
+const { data: jsondocs } = useElectricQuery('jsondocs', { project_id: projectId });
+const { data: transforms } = useElectricQuery('transforms', { project_id: projectId });
+
+// State automatically updates when database changes
+useEffect(() => {
+  // UI automatically reflects latest database state
+  updateWorkflowState(jsondocs, transforms);
+}, [jsondocs, transforms]);
+```
+
+**YJS Collaborative State**:
+```typescript
+// Collaborative editing state persisted to database
+const { doc, isConnected } = useYJSJsondoc(jsondocId);
+
+// Changes automatically saved to database
+doc.on('update', (update) => {
+  // Persist collaborative changes to PostgreSQL
+  persistYJSUpdate(jsondocId, update);
+});
+```
+
+### Framework Benefits
+
+**Uninterrupted Creative Flow**:
+- Writers and content creators never lose progress due to technical issues
+- Complex creative workflows can span multiple sessions without data loss
+- AI-powered tools maintain context across interruptions
+- Collaborative editing sessions are never disrupted by connectivity issues
+
+**Reliable Collaboration**:
+- Team members see real-time updates across all sessions and devices
+- Concurrent editing is handled gracefully with conflict resolution
+- Project state remains consistent across all team members
+- No coordination required for collaborative work sessions
+
+**Development Advantages**:
+- Simplified state management - no complex client-side state synchronization
+- Easier debugging - all state changes are auditable in the database
+- Better testing - application state can be set up through database fixtures
+- Reduced complexity - no need for localStorage management or offline state handling
+
+**Production Reliability**:
+- Zero data loss during server maintenance or unexpected shutdowns
+- Graceful handling of network interruptions and reconnections
+- Complete audit trail of all state changes for debugging and analytics
+- Predictable recovery procedures for any technical issues
+
+### Usage Guidelines
+
+**For Framework Users**:
+- Design UI components to derive state from Electric SQL subscriptions
+- Avoid storing critical state in component state or localStorage
+- Use optimistic updates for immediate feedback while maintaining database consistency
+- Leverage the framework's built-in state persistence rather than implementing custom solutions
+
+**For Framework Developers**:
+- Always persist workflow state to database tables
+- Use Electric SQL shapes for real-time state synchronization
+- Implement proper error handling for database connectivity issues
+- Design database schemas to support complete state reconstruction
+
+This state persistence philosophy ensures that applications built on the Transform Jsondoc Framework provide reliable, collaborative experiences where users can focus on their work without worrying about technical limitations or data loss.
+
 ## Database Architecture
 
 **PostgreSQL + Electric SQL + Kysely**:
