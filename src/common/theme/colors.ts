@@ -83,6 +83,7 @@ export const ColorUtils = {
             case 'brainstorm_idea': return AppColors.ai.primary;
             case 'outline_response': return AppColors.ai.primary;
             case 'chronicles': return AppColors.ai.primary;
+            case 'json_patch': return AppColors.status.warning; // Orange for patch jsondocs
             default: return AppColors.text.muted;
         }
     }

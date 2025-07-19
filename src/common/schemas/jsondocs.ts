@@ -12,6 +12,9 @@ import {
 // Import schemas from streaming.ts 
 import { IdeaSchema, ScriptSchema } from './streaming';
 
+// Import JSON patch schema from transforms
+import { JsonPatchOperationsSchema } from './transforms';
+
 // Brainstorm tool input schema
 export const BrainstormToolInputSchema = z.object({
   platform: z.string().min(1, "平台不能为空"),
@@ -36,6 +39,16 @@ const BrainstormCollectionSchema = z.union([
   })
 ]);
 
+// JSON Patch schema for intermediate patch storage
+const JsonPatchSchema = z.object({
+  patches: JsonPatchOperationsSchema,
+  targetJsondocId: z.string().optional(),
+  targetSchemaType: z.string().optional(),
+  patchIndex: z.number().optional(),
+  applied: z.boolean().optional(),
+  errorMessage: z.string().optional()
+});
+
 // Jsondoc Schema Registry
 export const JsondocSchemaRegistry = {
   // Brainstorm schemas
@@ -52,6 +65,9 @@ export const JsondocSchemaRegistry = {
   // Episode planning schemas
   'episode_planning_input': EpisodePlanningInputSchema,
   'episode_planning': EpisodePlanningOutputSchema,
+
+  // JSON Patch schema for intermediate patch storage
+  'json_patch': JsonPatchSchema,
 } as const;
 
 // Type exports

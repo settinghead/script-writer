@@ -250,6 +250,21 @@ export interface EpisodePlanningInputV1 {
 
 // ========== STRONGLY TYPED JSONDOC INTERFACES ==========
 
+// JSON Patch interface for intermediate patch storage
+export interface JsonPatchV1 {
+    patches: Array<{
+        op: 'add' | 'remove' | 'replace' | 'move' | 'copy' | 'test';
+        path: string;
+        value?: any;
+        from?: string;
+    }>;
+    targetJsondocId?: string;
+    targetSchemaType?: string;
+    patchIndex?: number; // For ordering patches in a sequence
+    applied?: boolean; // Whether this patch was successfully applied
+    errorMessage?: string; // Error message if patch failed to apply
+}
+
 // Discriminated union for strongly typed jsondocs
 export type TypedJsondoc =
     | JsondocWithData<'brainstorm_collection', 'v1', BrainstormIdeaCollectionV1>
@@ -267,6 +282,7 @@ export type TypedJsondoc =
     | JsondocWithData<'outline_setting', 'v1', OutlineSettingV1>
     | JsondocWithData<'outline_synopsis', 'v1', OutlineSynopsisV1>
     | JsondocWithData<'outline_characters', 'v1', OutlineCharactersV1>
+    | JsondocWithData<'json_patch', 'v1', JsonPatchV1>
 
 
 // Helper type for creating strongly typed jsondocs

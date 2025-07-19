@@ -299,11 +299,17 @@ export class StreamingTransformExecutor {
                             if (executionMode?.mode === 'patch') {
                                 // In patch mode, try to apply partial patches (may fail, that's ok)
                                 try {
-                                    jsondocData = await this.applyPatchesToOriginal(
+                                    jsondocData = await this.applyPatchesToOriginalWithPersistence(
                                         partialData as TOutput,
                                         executionMode.originalJsondoc,
                                         config.templateName,
-                                        retryCount
+                                        retryCount,
+                                        projectId,
+                                        userId,
+                                        jsondocRepo,
+                                        transformId,
+                                        transformRepo,
+                                        dryRun
                                     );
                                 } catch (patchError) {
                                     // If partial patch fails, keep original data and continue
@@ -370,11 +376,17 @@ export class StreamingTransformExecutor {
                 let finalJsondocData: any;
                 if (executionMode?.mode === 'patch') {
                     // Apply patches to original jsondoc
-                    finalJsondocData = await this.applyPatchesToOriginal(
+                    finalJsondocData = await this.applyPatchesToOriginalWithPersistence(
                         finalValidatedData,
                         executionMode.originalJsondoc,
                         config.templateName,
-                        retryCount
+                        retryCount,
+                        projectId,
+                        userId,
+                        jsondocRepo,
+                        transformId,
+                        transformRepo,
+                        dryRun
                     );
                 } else {
                     // Transform LLM output to final jsondoc format if needed (full-object mode)
@@ -526,6 +538,189 @@ export class StreamingTransformExecutor {
                     return originalCopy;
                 } else {
                     console.log(`[StreamingTransformExecutor] Failed patches:`, failedPatches);
+                    throw new Error(`Failed to apply ${failedPatches.length} JSON patches`);
+                }
+            }
+
+            // If no valid JSON patches, try diff format (fallback)
+            const diffText = this.extractDiffText(llmOutput);
+            if (diffText) {
+                console.log(`[StreamingTransformExecutor] Attempting diff format fallback for ${templateName}`);
+                return this.applyDiffFormat(originalJsondoc, diffText);
+            }
+
+            throw new Error('No valid patches or diff found in LLM output');
+
+        } catch (error) {
+            console.error(`[StreamingTransformExecutor] Patch application failed for ${templateName} (attempt ${retryCount + 1}):`, error);
+            throw error;
+        }
+    }
+
+    /**
+     * Create a patch jsondoc to persist intermediate patches in the lineage graph
+     */
+    private async createPatchJsondoc(
+        patches: any[],
+        targetJsondocId: string,
+        targetSchemaType: string,
+        patchIndex: number,
+        applied: boolean,
+        errorMessage?: string,
+        projectId?: string,
+        userId?: string,
+        jsondocRepo?: JsondocRepository,
+        transformId?: string,
+        transformRepo?: TransformRepository,
+        dryRun?: boolean
+    ): Promise<string | null> {
+        if (dryRun || !projectId || !userId || !jsondocRepo || !transformRepo) {
+            console.log(`[StreamingTransformExecutor] Dry run or missing dependencies: Skipping patch jsondoc creation`);
+            return null;
+        }
+
+        try {
+            const patchData = {
+                patches,
+                targetJsondocId,
+                targetSchemaType,
+                patchIndex,
+                applied,
+                errorMessage
+            };
+
+            const patchJsondoc = await jsondocRepo.createJsondoc(
+                projectId,
+                'json_patch',
+                patchData,
+                'v1',
+                {
+                    created_at: new Date().toISOString(),
+                    template_name: 'patch_generation',
+                    patch_index: patchIndex,
+                    applied: applied,
+                    target_jsondoc_id: targetJsondocId,
+                    target_schema_type: targetSchemaType
+                },
+                'completed',
+                'ai_generated'
+            );
+
+            // Link patch jsondoc as input to the transform
+            if (transformId) {
+                await transformRepo.addTransformInputs(transformId, [
+                    { jsondocId: patchJsondoc.id, inputRole: 'intermediate_patch' }
+                ], projectId);
+            }
+
+            console.log(`[StreamingTransformExecutor] Created patch jsondoc ${patchJsondoc.id} for transform ${transformId}`);
+            return patchJsondoc.id;
+
+        } catch (error) {
+            console.error(`[StreamingTransformExecutor] Failed to create patch jsondoc:`, error);
+            return null;
+        }
+    }
+
+    /**
+     * Apply patches to original jsondoc with patch jsondoc persistence
+     */
+    private async applyPatchesToOriginalWithPersistence<TOutput>(
+        llmOutput: TOutput,
+        originalJsondoc: any,
+        templateName: string,
+        retryCount: number,
+        projectId?: string,
+        userId?: string,
+        jsondocRepo?: JsondocRepository,
+        transformId?: string | null,
+        transformRepo?: TransformRepository,
+        dryRun?: boolean
+    ): Promise<any> {
+        try {
+            // First, try JSON Patch format
+            const patches = this.extractJsonPatches(llmOutput);
+            if (patches && patches.length > 0) {
+                console.log(`[StreamingTransformExecutor] Patch content: ${JSON.stringify(patches)}`);
+                console.log(`[StreamingTransformExecutor] Applying ${patches.length} JSON patches for ${templateName}`);
+
+                // Create patch jsondoc before applying patches
+                const patchJsondocId = await this.createPatchJsondoc(
+                    patches,
+                    'target_jsondoc_id', // This will be updated with actual target ID
+                    'target_schema_type', // This will be updated with actual schema type
+                    retryCount,
+                    false, // Will be updated after application
+                    undefined,
+                    projectId,
+                    userId,
+                    jsondocRepo,
+                    transformId || undefined,
+                    transformRepo,
+                    dryRun
+                );
+
+                const originalCopy = deepClone(originalJsondoc);
+
+                const patchResults = applyPatch(originalCopy, patches);
+
+                // Check if all patches applied successfully
+                const failedPatches = patchResults.filter(r => r.test === false);
+                if (failedPatches.length === 0) {
+                    console.log(`[StreamingTransformExecutor] Successfully applied all JSON patches`);
+
+                    // Update patch jsondoc to mark as successfully applied
+                    if (patchJsondocId && jsondocRepo) {
+                        try {
+                            const patchJsondoc = await jsondocRepo.getJsondoc(patchJsondocId);
+                            if (patchJsondoc) {
+                                const updatedPatchData = {
+                                    ...patchJsondoc.data,
+                                    applied: true
+                                };
+                                await jsondocRepo.updateJsondoc(
+                                    patchJsondocId,
+                                    updatedPatchData,
+                                    {
+                                        applied_at: new Date().toISOString(),
+                                        success: true
+                                    }
+                                );
+                            }
+                        } catch (updateError) {
+                            console.warn(`[StreamingTransformExecutor] Failed to update patch jsondoc status:`, updateError);
+                        }
+                    }
+
+                    return originalCopy;
+                } else {
+                    console.log(`[StreamingTransformExecutor] Failed patches:`, failedPatches);
+
+                    // Update patch jsondoc to mark as failed
+                    if (patchJsondocId && jsondocRepo) {
+                        try {
+                            const patchJsondoc = await jsondocRepo.getJsondoc(patchJsondocId);
+                            if (patchJsondoc) {
+                                const updatedPatchData = {
+                                    ...patchJsondoc.data,
+                                    applied: false,
+                                    errorMessage: `Failed to apply ${failedPatches.length} JSON patches`
+                                };
+                                await jsondocRepo.updateJsondoc(
+                                    patchJsondocId,
+                                    updatedPatchData,
+                                    {
+                                        failed_at: new Date().toISOString(),
+                                        success: false,
+                                        error_message: `Failed to apply ${failedPatches.length} JSON patches`
+                                    }
+                                );
+                            }
+                        } catch (updateError) {
+                            console.warn(`[StreamingTransformExecutor] Failed to update patch jsondoc error status:`, updateError);
+                        }
+                    }
+
                     throw new Error(`Failed to apply ${failedPatches.length} JSON patches`);
                 }
             }

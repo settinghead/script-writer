@@ -21,7 +21,7 @@ export function createJsonPatchTemplate(
   examplePaths: string[] = []
 ): LLMTemplate {
   const principlesText = specificPrinciples.length > 0
-    ? specificPrinciples.map((p, i) => `${i + 6}. ${p}`).join('\n')
+    ? specificPrinciples.map((p, i) => `${i + 8}. ${p}`).join('\n')
     : '';
 
   const examplePathsText = examplePaths.length > 0
@@ -39,6 +39,8 @@ export function createJsonPatchTemplate(
 3. 确保编辑后的内容仍然符合平台特点和类型要求
 4. 保持${contentType}的连贯性和逻辑性
 5. 如果修改的是Object，不要擅自添加新的key，只试图修改或者删除现有的key
+6. **数组索引从0开始计算**: 第1个元素的索引是0，第2个元素的索引是1，第8个元素的索引是7，以此类推
+7. **使用提供的array_index_reference**: 参考数据中包含了详细的数组索引标注，请严格按照这些标注来构建JSON路径。例如，如果要修改第3个阶段，查看array_index_reference中stages[2]对应的内容，然后使用路径"/stages/2"
 ${principlesText}
 
 ## 输入参数
@@ -51,11 +53,17 @@ ${principlesText}
 
 根据用户的编辑要求和原始${contentDescription}，生成RFC6902标准的JSON补丁格式修改指令。你需要分析原始内容和用户要求，然后生成精确的JSON补丁来实现所需的修改。
 
+**重要步骤（请按顺序执行）：**
+1. **查看array_index_reference部分**：仔细查看参考数据中的array_index_reference，它详细标注了所有数组的索引信息
+2. **定位目标元素**：根据用户要求，在array_index_reference中找到需要修改的具体数组元素
+3. **构建精确路径**：使用array_index_reference中显示的索引来构建JSON指针路径
+4. **验证路径正确性**：确保路径格式正确，索引准确无误
+
 **重要：你必须严格按照RFC6902标准输出JSON补丁数组，不需要包装在对象中。**
 
 输出格式必须是一个JSON补丁操作数组，每个操作包含：
 - op: 操作类型（"replace"用于修改现有字段，"add"用于添加新元素（仅限于Array; Object不可以添加新的字段)，"remove"用于删除字段）
-- path: JSON指针路径（如${examplePathsText}）
+- path: JSON指针路径（如${examplePathsText}）- **必须基于array_index_reference中的索引信息**
 - value: 新的值（replace和add操作需要）
 
 **正确的输出格式示例：**
@@ -67,14 +75,15 @@ ${principlesText}
   },
   {
     "op": "replace", 
-    "path": "/genre",
-    "value": "修改后的类型"
+    "path": "/stages/2/title",
+    "value": "修改后的第3个阶段标题"
   }
 ]
 
 **注意：**
 - 直接输出JSON补丁数组，不要包装在{"patches": [...]}对象中
 - 路径必须以"/"开头，使用JSON指针格式
+- **严格按照array_index_reference中的索引信息构建路径**
 - 只修改需要改变的字段，不要包含不需要修改的字段
 - 确保输出的JSON格式正确，没有语法错误
 

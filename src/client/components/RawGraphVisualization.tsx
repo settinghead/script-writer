@@ -140,9 +140,36 @@ const JsondocNode: React.FC<{
                         <div style={{ fontWeight: 'bold', color: '#52c41a', marginBottom: '4px' }}>
                             Data Content
                         </div>
-                        <pre style={{ maxHeight: '250px', overflow: 'auto', fontSize: '10px', background: '#262626', padding: '8px', borderRadius: '4px' }}>
-                            {JSON.stringify(parsedData, null, 2)}
-                        </pre>
+                        {jsondoc.schema_type === 'json_patch' ? (
+                            <div style={{ fontSize: '10px', background: '#262626', padding: '8px', borderRadius: '4px' }}>
+                                <div style={{ marginBottom: '8px' }}>
+                                    <strong>补丁数量:</strong> {parsedData.patches?.length || 0}
+                                </div>
+                                <div style={{ marginBottom: '8px' }}>
+                                    <strong>状态:</strong> {parsedData.applied ? '已应用' : '未应用'}
+                                </div>
+                                {parsedData.targetJsondocId && (
+                                    <div style={{ marginBottom: '8px' }}>
+                                        <strong>目标Jsondoc:</strong> {parsedData.targetJsondocId}
+                                    </div>
+                                )}
+                                {parsedData.errorMessage && (
+                                    <div style={{ marginBottom: '8px', color: '#ff4d4f' }}>
+                                        <strong>错误:</strong> {parsedData.errorMessage}
+                                    </div>
+                                )}
+                                <div style={{ marginTop: '8px' }}>
+                                    <strong>补丁内容:</strong>
+                                </div>
+                                <pre style={{ maxHeight: '150px', overflow: 'auto', fontSize: '9px', background: '#1a1a1a', padding: '4px', borderRadius: '2px' }}>
+                                    {JSON.stringify(parsedData.patches, null, 2)}
+                                </pre>
+                            </div>
+                        ) : (
+                            <pre style={{ maxHeight: '250px', overflow: 'auto', fontSize: '10px', background: '#262626', padding: '8px', borderRadius: '4px' }}>
+                                {JSON.stringify(parsedData, null, 2)}
+                            </pre>
+                        )}
                     </div>
                     <div style={{ textAlign: 'center', borderTop: '1px solid #444', paddingTop: '8px' }}>
                         <Button
@@ -207,6 +234,14 @@ const JsondocNode: React.FC<{
                                 } else if (jsondoc.schema_type === 'outline_settings') {
                                     const outlineTitle = data.title || data.synopsis || '';
                                     preview = outlineTitle.length > 25 ? `${outlineTitle.substring(0, 25)}...` : outlineTitle;
+                                } else if (jsondoc.schema_type === 'json_patch') {
+                                    if (data.patches && Array.isArray(data.patches)) {
+                                        const patchCount = data.patches.length;
+                                        const applied = data.applied ? '已应用' : '未应用';
+                                        preview = `${patchCount}个补丁 ${applied}`;
+                                    } else {
+                                        preview = 'JSON补丁';
+                                    }
                                 } else {
                                     // Generic preview for other types
                                     const keys = Object.keys(data);
