@@ -197,9 +197,45 @@ export class PatchApprovalEventBus extends EventEmitter {
      */
     private async findAndResolveApprovedTransform(approvalTransformId: string, result: 'approved' | 'rejected'): Promise<void> {
         try {
-            // Find the original ai_patch transform that this approval is for
-            // This would require querying the database to find the relationship
-            // For now, we'll emit an event and let the caller handle it
+            console.log(`[PatchApprovalEventBus] Processing human_patch_approval transform: ${approvalTransformId}`);
+
+            // Get the inputs of the approval transform to find the patch jsondoc
+            const approvalInputs = await this.dbConnection
+                .selectFrom('transform_inputs')
+                .select(['jsondoc_id'])
+                .where('transform_id', '=', approvalTransformId)
+                .execute();
+
+            if (approvalInputs.length === 0) {
+                console.log(`[PatchApprovalEventBus] No inputs found for human_patch_approval transform ${approvalTransformId}`);
+                return;
+            }
+
+            // For each patch jsondoc, find the original ai_patch transform that created it
+            for (const input of approvalInputs) {
+                const patchJsondocId = input.jsondoc_id;
+                console.log(`[PatchApprovalEventBus] Tracing patch jsondoc: ${patchJsondocId}`);
+
+                // Find the ai_patch transform that created this patch jsondoc
+                const originalTransform = await this.dbConnection
+                    .selectFrom('transform_outputs as to')
+                    .innerJoin('transforms as t', 't.id', 'to.transform_id')
+                    .select(['t.id', 't.type', 't.status', 't.project_id'])
+                    .where('to.jsondoc_id', '=', patchJsondocId)
+                    .where('t.type', '=', 'ai_patch')
+                    .executeTakeFirst();
+
+                if (originalTransform) {
+                    console.log(`[PatchApprovalEventBus] Found original ai_patch transform: ${originalTransform.id}`);
+
+                    // Resolve the waiting tool for the original transform
+                    this.resolveWaitingTool(originalTransform.id, result);
+                } else {
+                    console.log(`[PatchApprovalEventBus] No original ai_patch transform found for patch jsondoc: ${patchJsondocId}`);
+                }
+            }
+
+            // Also emit an event for any other listeners
             this.emit('approval_completed', { approvalTransformId, result });
         } catch (error) {
             console.error('[PatchApprovalEventBus] Error finding approved transform:', error);

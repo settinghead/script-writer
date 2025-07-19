@@ -1,6 +1,7 @@
 // Use dynamic imports for YJS to fix ES module compatibility
 import { db } from '../database/connection';
 import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
+import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
 
 type Database = typeof db;
 
@@ -36,7 +37,8 @@ export class YJSService {
 
     constructor(
         private db: Database,
-        private jsondocRepo: JsondocRepository
+        private jsondocRepo: JsondocRepository,
+        private transformRepo: TransformRepository
     ) { }
 
     /**
@@ -347,16 +349,83 @@ export class YJSService {
             const yMap = doc.getMap('content');
             const updatedData = this.convertYJSToObject(yMap);
 
-            // Create human transform for audit trail
-            // This will be implemented when we integrate with the transform system
-            console.log('Creating transform from YJS changes:', {
-                jsondocId,
-                projectId,
-                userId,
-                updatedData
-            });
+            // Check if this is a patch jsondoc being edited
+            const jsondoc = await this.jsondocRepo.getJsondoc(jsondocId);
+            if (jsondoc && jsondoc.schema_type === 'json_patch') {
+                console.log('🩹 [YJS] PATCH JSONDOC EDITED:', {
+                    jsondocId,
+                    projectId,
+                    userId,
+                    schemaType: jsondoc.schema_type,
+                    updatedData
+                });
+
+                // TODO: Create human_patch_approval transform when patch jsondoc is edited
+                // This is where we should trigger the patch approval workflow
+                await this.createHumanPatchApprovalTransform(jsondocId, projectId, userId, updatedData);
+            } else {
+                console.log('Creating transform from YJS changes:', {
+                    jsondocId,
+                    projectId,
+                    userId,
+                    schemaType: jsondoc?.schema_type,
+                    updatedData
+                });
+            }
         } catch (error) {
             console.error('Failed to create transform from YJS changes:', error);
+        }
+    }
+
+    /**
+     * Create human_patch_approval transform when patch jsondoc is edited
+     */
+    private async createHumanPatchApprovalTransform(
+        patchJsondocId: string,
+        projectId: string,
+        userId: string,
+        updatedData: any
+    ): Promise<void> {
+        try {
+            console.log('🚀 [YJS] Creating human_patch_approval transform for patch jsondoc:', patchJsondocId);
+
+            // Create human_patch_approval transform
+            const transform = await this.transformRepo.createTransform(
+                projectId,
+                'human_patch_approval',
+                'v1',
+                'completed',
+                {
+                    action_type: 'patch_approval',
+                    patch_jsondoc_id: patchJsondocId,
+                    user_id: userId,
+                    timestamp: new Date().toISOString()
+                }
+            );
+
+            console.log('✅ [YJS] Created human_patch_approval transform:', transform.id);
+
+            // Link the patch jsondoc as input
+            await this.transformRepo.addTransformInputs(transform.id, [
+                { jsondocId: patchJsondocId, inputRole: 'patch' }
+            ], projectId);
+
+            // Store human transform metadata
+            await this.transformRepo.addHumanTransform({
+                transform_id: transform.id,
+                action_type: 'patch_approval',
+                source_jsondoc_id: patchJsondocId,
+                derivation_path: '$',
+                derived_jsondoc_id: undefined, // No derived jsondoc for patch approval
+                transform_name: 'patch_approval',
+                change_description: 'User started editing patch content via YJS',
+                project_id: projectId
+            });
+
+            console.log('✅ [YJS] Human patch approval transform created successfully');
+
+        } catch (error) {
+            console.error('❌ [YJS] Failed to create human_patch_approval transform:', error);
         }
     }
 

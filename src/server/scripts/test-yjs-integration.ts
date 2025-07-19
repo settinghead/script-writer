@@ -2,6 +2,7 @@
 
 import { db } from '../database/connection';
 import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
+import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
 import { YJSService } from '../services/YJSService';
 import { ProjectService } from '../services/ProjectService';
 
@@ -14,7 +15,8 @@ async function testYJSIntegration() {
     try {
         // Initialize services
         const jsondocRepo = new JsondocRepository(db);
-        const yjsService = new YJSService(db, jsondocRepo);
+        const transformRepo = new TransformRepository(db);
+        const yjsService = new YJSService(db, jsondocRepo, transformRepo);
         const projectService = new ProjectService(db);
 
         console.log('✅ Services initialized successfully');

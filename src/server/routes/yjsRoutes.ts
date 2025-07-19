@@ -3,12 +3,98 @@ import { createAuthMiddleware } from '../middleware/auth';
 import { db } from '../database/connection';
 import { AuthDatabase } from '../database/auth';
 import { sql } from 'kysely';
+import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
+import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
 
 const router = express.Router();
 
 // Initialize auth middleware
 const authDB = new AuthDatabase(db);
 const authMiddleware = createAuthMiddleware(authDB);
+
+// Initialize repositories for patch approval detection
+const jsondocRepo = new JsondocRepository(db);
+const transformRepo = new TransformRepository(db);
+
+/**
+ * Create human_patch_approval transform when patch jsondoc is edited via YJS
+ */
+const createHumanPatchApprovalTransform = async (
+    patchJsondocId: string,
+    projectId: string,
+    userId: string
+): Promise<void> => {
+    try {
+        console.log('🚀 [YJS Routes] Creating human_patch_approval transform for patch jsondoc:', patchJsondocId);
+
+        // Check if a human_patch_approval transform already exists for this patch jsondoc
+        // We need to check both human_transforms table and also check for any existing transforms
+        // that might be linked to this patch jsondoc
+        const existingTransform = await transformRepo.findHumanTransform(
+            patchJsondocId,
+            '$', // derivation path
+            projectId
+        );
+
+        if (existingTransform) {
+            console.log('⏭️ [YJS Routes] Human patch approval transform already exists, skipping:', existingTransform.transform_id);
+            return;
+        }
+
+        // Additional check: Look for any human_patch_approval transforms that have this patch jsondoc as input
+        const existingTransforms = await db
+            .selectFrom('transforms as t')
+            .innerJoin('transform_inputs as ti', 't.id', 'ti.transform_id')
+            .select(['t.id', 't.type', 't.status'])
+            .where('t.project_id', '=', projectId)
+            .where('t.type', '=', 'human_patch_approval')
+            .where('ti.jsondoc_id', '=', patchJsondocId)
+            .execute();
+
+        if (existingTransforms.length > 0) {
+            console.log('⏭️ [YJS Routes] Human patch approval transform already exists (found via inputs), skipping:', existingTransforms[0].id);
+            return;
+        }
+
+        // Create human_patch_approval transform
+        const transform = await transformRepo.createTransform(
+            projectId,
+            'human_patch_approval',
+            'v1',
+            'completed',
+            {
+                action_type: 'patch_approval',
+                patch_jsondoc_id: patchJsondocId,
+                user_id: userId,
+                timestamp: new Date().toISOString()
+            }
+        );
+
+        console.log('✅ [YJS Routes] Created human_patch_approval transform:', transform.id);
+
+        // Link the patch jsondoc as input
+        await transformRepo.addTransformInputs(transform.id, [
+            { jsondocId: patchJsondocId, inputRole: 'patch' }
+        ], projectId);
+
+        // Store human transform metadata
+        await transformRepo.addHumanTransform({
+            transform_id: transform.id,
+            action_type: 'patch_approval',
+            source_jsondoc_id: patchJsondocId,
+            derivation_path: '$',
+            derived_jsondoc_id: undefined,
+            transform_name: 'patch_approval',
+            change_description: 'User edited patch content via YJS',
+            project_id: projectId
+        });
+
+        console.log('✅ [YJS Routes] Human patch approval transform created successfully');
+
+    } catch (error) {
+        console.error('❌ [YJS Routes] Failed to create human_patch_approval transform:', error);
+    }
+};
 
 // Apply authentication middleware to all YJS routes
 router.use(authMiddleware.authenticate);
@@ -68,7 +154,7 @@ const parseRequest = async (req: express.Request): Promise<ValidRequest | Invali
 };
 
 // Save document update using raw SQL to avoid TypeScript issues
-async function saveUpdate({ jsondoc_id, update }: Update) {
+async function saveUpdate({ jsondoc_id, update }: Update, userId?: string) {
     const room_id = `jsondoc-${jsondoc_id}`;
 
     // Get project_id from jsondoc
@@ -94,11 +180,11 @@ async function saveUpdate({ jsondoc_id, update }: Update) {
         .execute();
 
     // Auto-sync YJS document to jsondoc record
-    await syncYJSToJsondoc(jsondoc_id);
+    await syncYJSToJsondoc(jsondoc_id, userId);
 }
 
 // Helper function to sync YJS document to jsondoc
-const syncYJSToJsondoc = async (jsondocId: string) => {
+const syncYJSToJsondoc = async (jsondocId: string, userId?: string) => {
     try {
 
         // Get all YJS updates for this jsondoc
@@ -202,6 +288,21 @@ const syncYJSToJsondoc = async (jsondocId: string) => {
             })
             .where('id', '=', jsondocId)
             .execute();
+
+        // Check if this is a patch jsondoc being edited and create human_patch_approval transform
+        const jsondoc = await jsondocRepo.getJsondoc(jsondocId);
+        if (jsondoc && jsondoc.schema_type === 'json_patch') {
+            console.log('🩹 [YJS Routes] PATCH JSONDOC EDITED:', {
+                jsondocId,
+                schemaType: jsondoc.schema_type,
+                projectId: jsondoc.project_id,
+                updatedData: extractedData
+            });
+
+            // Use the provided user ID or fallback to test user
+            const effectiveUserId = userId || 'test-user-1';
+            await createHumanPatchApprovalTransform(jsondocId, jsondoc.project_id, effectiveUserId);
+        }
 
 
     } catch (error) {
@@ -343,7 +444,7 @@ router.put('/update', async (req: any, res: any) => {
         if ('client_id' in parsedRequest) {
             await upsertAwarenessUpdate(parsedRequest);
         } else {
-            await saveUpdate(parsedRequest);
+            await saveUpdate(parsedRequest, user.id);
         }
 
         res.status(200).json({ success: true });
