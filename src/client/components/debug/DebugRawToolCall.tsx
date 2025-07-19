@@ -364,10 +364,10 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
         }
     };
 
-    const renderCodeBlock = (content: string, maxHeight = '400px') => (
+    const renderCodeBlock = (content: string, maxHeight = '800px') => (
         <div style={{
             fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace',
-            fontSize: '12px',
+            fontSize: '16px',
             lineHeight: '1.4',
             color: '#e6e6e6',
             whiteSpace: 'pre-wrap',
@@ -600,7 +600,7 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
                     </Title>
                     {(() => {
                         const tool = tools.find(t => t.name === selectedTool);
-                        return tool ? renderCodeBlock(JSON.stringify(tool.inputSchema, null, 2), '200px') : null;
+                        return tool ? renderCodeBlock(JSON.stringify(tool.inputSchema, null, 2), '400px') : null;
                     })()}
                 </div>
             )}
@@ -618,7 +618,7 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
 
 
                     <Title level={5} style={{ color: '#fff', marginTop: 20 }}>完整提示词</Title>
-                    {renderCodeBlock(promptResult.prompt, '300px')}
+                    {renderCodeBlock(promptResult.prompt, '800px')}
 
                     <div style={{ marginBottom: 16, padding: 16, backgroundColor: '#262626', borderRadius: 8 }}>
                         <Text strong style={{ color: '#fff' }}>工具: </Text>
