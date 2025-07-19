@@ -16,7 +16,7 @@ export class TransformRepository {
     // Create a new transform
     async createTransform(
         projectId: string,
-        type: 'llm' | 'human',
+        type: 'llm' | 'human' | 'ai_patch' | 'human_patch_approval',
         typeVersion: string = 'v1',
         status: string = 'running',
         executionContext?: any

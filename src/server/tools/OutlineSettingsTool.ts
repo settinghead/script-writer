@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
 import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
+import { getPatchApprovalEventBus } from '../services/ParticleSystemInitializer';
 import { defaultPrepareTemplateVariables } from '../transform-jsondoc-framework/StreamingTransformExecutor';
 import {
     OutlineSettingsInputSchema,
@@ -198,7 +199,7 @@ export function createOutlineSettingsEditToolDefinition(
                     jsondocRepo,
                     outputJsondocType,
                     executionMode: {
-                        mode: 'patch',
+                        mode: 'patch-approval',
                         originalJsondoc: originalSettings
                     },
                     transformMetadata: {
@@ -219,6 +220,21 @@ export function createOutlineSettingsEditToolDefinition(
                     topP: cachingOptions?.topP,
                     maxTokens: cachingOptions?.maxTokens
                 });
+
+                // Wait for user approval of the patches
+                const patchApprovalEventBus = getPatchApprovalEventBus();
+                if (!patchApprovalEventBus) {
+                    throw new Error('PatchApprovalEventBus not available');
+                }
+
+                console.log(`[OutlineSettingsEditTool] Waiting for approval of transform ${result.transformId}`);
+                const approvalResult = await patchApprovalEventBus.waitForPatchApproval(result.transformId);
+
+                if (approvalResult === 'rejected') {
+                    throw new Error('Patches were rejected by user');
+                }
+
+                console.log(`[OutlineSettingsEditTool] Patches approved, applying changes`);
 
                 // Get the final jsondoc to extract the edited settings
                 const finalJsondoc = await jsondocRepo.getJsondoc(result.outputJsondocId);

@@ -6,7 +6,7 @@ import { TransformRepository } from './TransformRepository';
 import { JsondocRepository } from './JsondocRepository';
 import { ParticleTemplateProcessor } from '../services/ParticleTemplateProcessor';
 import { applyPatch, deepClone, Operation } from 'fast-json-patch';
-import { TypedJsondoc } from '@/common/jsondocs';
+import { TypedJsondoc } from '../../common/jsondocs.js';
 import { dump } from 'js-yaml';
 
 /**
@@ -62,7 +62,8 @@ export async function defaultPrepareTemplateVariables<TInput>(
  */
 export type StreamingExecutionMode =
     | { mode: 'full-object' }
-    | { mode: 'patch', originalJsondoc: any };
+    | { mode: 'patch', originalJsondoc: any }
+    | { mode: 'patch-approval', originalJsondoc: any };
 
 /**
  * Parameters for executing a streaming transform
@@ -97,6 +98,7 @@ export interface StreamingTransformParams<TInput, TOutput> {
 export interface StreamingTransformResult {
     outputJsondocId: string;
     finishReason: string;
+    transformId: string;
 }
 
 /**
@@ -153,9 +155,11 @@ export class StreamingTransformExecutor {
 
                 // 2. Create transform for this execution (or update existing one on retry)
                 if (!dryRun && !transformId) {
+                    // Use ai_patch type for patch-approval mode, llm for others
+                    const transformType = executionMode?.mode === 'patch-approval' ? 'ai_patch' : 'llm';
                     const transform = await transformRepo.createTransform(
                         projectId,
-                        'llm',
+                        transformType,
                         'v1',
                         'running',
                         {
@@ -206,7 +210,8 @@ export class StreamingTransformExecutor {
                 }
 
                 // 4. Create initial output jsondoc in streaming state (only on first attempt)
-                if (!dryRun && !outputJsondocId) {
+                // Skip for patch-approval mode - patches will be the outputs
+                if (!dryRun && !outputJsondocId && executionMode?.mode !== 'patch-approval') {
                     let initialData: any;
                     if (executionMode?.mode === 'patch') {
                         // In patch mode, start with the original jsondoc data
@@ -317,6 +322,9 @@ export class StreamingTransformExecutor {
                                     console.warn(`[StreamingTransformExecutor] Patch content: ${JSON.stringify(partialData)}`);
                                     jsondocData = executionMode.originalJsondoc;
                                 }
+                            } else if (executionMode?.mode === 'patch-approval') {
+                                // In patch-approval mode, don't apply patches during streaming - just keep original
+                                jsondocData = executionMode.originalJsondoc;
                             } else {
                                 // Transform LLM output to final jsondoc format if needed
                                 jsondocData = config.transformLLMOutput
@@ -388,6 +396,20 @@ export class StreamingTransformExecutor {
                         transformRepo,
                         dryRun
                     );
+                } else if (executionMode?.mode === 'patch-approval') {
+                    // Create individual patch jsondocs for approval
+                    finalJsondocData = await this.createPatchApprovalJsondocs(
+                        finalValidatedData,
+                        executionMode.originalJsondoc,
+                        config.templateName,
+                        retryCount,
+                        projectId,
+                        userId,
+                        jsondocRepo,
+                        transformId,
+                        transformRepo,
+                        dryRun
+                    );
                 } else {
                     // Transform LLM output to final jsondoc format if needed (full-object mode)
                     finalJsondocData = config.transformLLMOutput
@@ -446,8 +468,9 @@ export class StreamingTransformExecutor {
                 }
 
                 return {
-                    outputJsondocId: outputJsondocId || 'dry-run-no-output',
-                    finishReason: 'stop'
+                    outputJsondocId: outputJsondocId || (executionMode?.mode === 'patch-approval' ? 'patch-approval-pending' : 'dry-run-no-output'),
+                    finishReason: 'stop',
+                    transformId: transformId || 'dry-run-no-transform'
                 };
 
             } catch (error) {
@@ -940,6 +963,107 @@ export class StreamingTransformExecutor {
             return [];  // Array-based jsondocs
         } else {
             return {};  // Object-based jsondocs
+        }
+    }
+
+    /**
+     * Create individual patch jsondocs for approval workflow
+     */
+    private async createPatchApprovalJsondocs<TOutput>(
+        llmOutput: TOutput,
+        originalJsondoc: any,
+        templateName: string,
+        retryCount: number,
+        projectId?: string,
+        userId?: string,
+        jsondocRepo?: JsondocRepository,
+        transformId?: string | null,
+        transformRepo?: TransformRepository,
+        dryRun?: boolean
+    ): Promise<any> {
+        try {
+            // Extract individual patches from LLM output
+            const patches = this.extractJsonPatches(llmOutput);
+            if (!patches || patches.length === 0) {
+                console.warn(`[StreamingTransformExecutor] No patches found in LLM output for patch-approval mode`);
+                return originalJsondoc;
+            }
+
+            console.log(`[StreamingTransformExecutor] Creating ${patches.length} individual patch jsondocs for approval`);
+
+            // Create individual patch jsondocs for each patch operation
+            const patchJsondocIds: string[] = [];
+            for (let i = 0; i < patches.length; i++) {
+                const patch = patches[i];
+
+                if (!dryRun && jsondocRepo && projectId) {
+                    // Create a json_patch jsondoc for this specific patch
+                    const patchJsondoc = await jsondocRepo.createJsondoc(
+                        projectId,
+                        'json_patch',
+                        {
+                            patches: [patch], // Wrap single patch in array as expected by schema
+                            targetJsondocId: 'pending', // Will be updated after approval
+                            targetSchemaType: originalJsondoc.schema_type || 'unknown',
+                            patchIndex: i,
+                            applied: false
+                        },
+                        'v1',
+                        {
+                            patch_index: i,
+                            template_name: templateName,
+                            retry_count: retryCount,
+                            created_for_approval: true,
+                            execution_mode: 'patch-approval'
+                        },
+                        'completed',
+                        'ai_generated'
+                    );
+
+                    if (patchJsondoc && transformId && transformRepo) {
+                        // Link this patch jsondoc as output of the ai_patch transform
+                        await transformRepo.addTransformOutputs(transformId, [{ jsondocId: patchJsondoc.id }], projectId);
+                        patchJsondocIds.push(patchJsondoc.id);
+                    }
+                } else if (dryRun) {
+                    console.log(`[StreamingTransformExecutor] Dry run: Would create patch jsondoc for patch ${i}:`, patch);
+                }
+            }
+
+            // Return original jsondoc data (patches will be applied after approval)
+            return originalJsondoc;
+
+        } catch (error) {
+            console.error(`[StreamingTransformExecutor] Error creating patch approval jsondocs:`, error);
+            throw error;
+        }
+    }
+
+    /**
+     * Helper method to get value at a specific JSON path
+     */
+    private getValueAtPath(obj: any, path: string): any {
+        try {
+            const pathParts = path.split('/').filter(part => part !== '');
+            let current = obj;
+
+            for (const part of pathParts) {
+                if (current === null || current === undefined) {
+                    return undefined;
+                }
+
+                // Handle array indices
+                if (Array.isArray(current) && /^\d+$/.test(part)) {
+                    current = current[parseInt(part, 10)];
+                } else {
+                    current = current[part];
+                }
+            }
+
+            return current;
+        } catch (error) {
+            console.warn(`[StreamingTransformExecutor] Error getting value at path ${path}:`, error);
+            return undefined;
         }
     }
 }

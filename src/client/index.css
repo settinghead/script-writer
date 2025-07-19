@@ -389,3 +389,23 @@ body {
       transparent 100%);
   border-radius: 8px 8px 0 0;
 }
+
+/* Dark theme styles for YJS fields in Patch Review Modal */
+.yjs-field-dark-theme .ant-input,
+.yjs-field-dark-theme .ant-input:focus,
+.yjs-field-dark-theme .ant-input:hover,
+.yjs-field-dark-theme .ant-input.ant-input {
+  background-color: #1f1f1f !important;
+  border-color: #434343 !important;
+  color: #ffffff !important;
+}
+
+.yjs-field-dark-theme .ant-input::placeholder {
+  color: #8c8c8c !important;
+}
+
+/* Ensure the input text is visible */
+.yjs-field-dark-theme .ant-input:focus {
+  border-color: #1890ff !important;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2) !important;
+}

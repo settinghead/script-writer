@@ -26,7 +26,7 @@ export interface Jsondoc {
 export interface Transform {
     id: string;
     user_id: string;
-    type: 'llm' | 'human';
+    type: 'llm' | 'human' | 'ai_patch' | 'human_patch_approval';
     type_version: string;
     status: 'running' | 'completed' | 'failed' | 'cancelled';
     retry_count: number;
@@ -403,7 +403,7 @@ export interface ElectricJsondocWithLineage extends ElectricJsondoc {
 export interface ElectricTransform {
     id: string;
     project_id: string;
-    type: 'llm' | 'human';
+    type: 'llm' | 'human' | 'ai_patch' | 'human_patch_approval';
     type_version: string;
     status: string;
     retry_count: number;

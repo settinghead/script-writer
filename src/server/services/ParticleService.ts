@@ -64,6 +64,12 @@ export class ParticleService {
             return;
         }
 
+        // Skip patch-type jsondocs - they are temporary approval artifacts, not permanent content
+        if (jsondoc.schema_type === 'json_patch') {
+            console.log(`[ParticleService] Skipping jsondoc ${jsondocId} - patch-type jsondocs are not processed by particle system`);
+            return;
+        }
+
         // Check if jsondoc is active (leaf in lineage)
         const isActive = await this.isJsondocActive(jsondocId);
         console.log(`[ParticleService] Jsondoc ${jsondocId} is ${isActive ? 'active' : 'inactive'}`);
@@ -229,6 +235,7 @@ export class ParticleService {
         const jsondocs = await this.db
             .selectFrom('jsondocs')
             .select(['id', 'project_id'])
+            .where('schema_type', '!=', 'json_patch') // Skip patch-type jsondocs
             .execute();
 
         let processedCount = 0;

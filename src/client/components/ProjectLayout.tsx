@@ -16,6 +16,7 @@ import { ProjectCreationForm } from './ProjectCreationForm';
 import { UnifiedDisplayRenderer } from './UnifiedDisplayRenderer';
 import { ExportButton } from './ExportButton';
 import { computeUnifiedWorkflowState } from '../utils/actionComputation';
+import { PatchReviewModal } from './PatchReviewModal';
 
 const { Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -702,6 +703,9 @@ const ProjectLayout: React.FC = () => {
                     />
                 )}
             </Layout>
+
+            {/* Patch Review Modal - Shows when there are pending patches */}
+            {projectId && <PatchReviewModal projectId={projectId} />}
         </Layout>
     );
 };

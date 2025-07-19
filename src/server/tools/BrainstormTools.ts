@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
 import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
 import { StreamingTransformConfig, executeStreamingTransform } from '../transform-jsondoc-framework/StreamingTransformExecutor';
+import { getPatchApprovalEventBus } from '../services/ParticleSystemInitializer';
 import {
     BrainstormEditInputSchema,
     BrainstormEditInput,
@@ -190,7 +191,7 @@ export function createBrainstormEditToolDefinition(
             };
 
             try {
-                // Execute the streaming transform with patch mode
+                // Execute the streaming transform with patch-approval mode
                 const result = await executeStreamingTransform({
                     config,
                     input: params,
@@ -200,7 +201,7 @@ export function createBrainstormEditToolDefinition(
                     jsondocRepo,
                     outputJsondocType,
                     executionMode: {
-                        mode: 'patch',
+                        mode: 'patch-approval',
                         originalJsondoc: originalIdea
                     },
                     transformMetadata: {
@@ -221,6 +222,21 @@ export function createBrainstormEditToolDefinition(
                     topP: cachingOptions?.topP,
                     maxTokens: cachingOptions?.maxTokens
                 });
+
+                // Wait for user approval of the patches
+                const patchApprovalEventBus = getPatchApprovalEventBus();
+                if (!patchApprovalEventBus) {
+                    throw new Error('PatchApprovalEventBus not available');
+                }
+
+                console.log(`[BrainstormEditTool] Waiting for approval of transform ${result.transformId}`);
+                const approvalResult = await patchApprovalEventBus.waitForPatchApproval(result.transformId);
+
+                if (approvalResult === 'rejected') {
+                    throw new Error('Patches were rejected by user');
+                }
+
+                console.log(`[BrainstormEditTool] Patches approved, applying changes`);
 
                 // Get the final jsondoc to extract the edited idea
                 const finalJsondoc = await jsondocRepo.getJsondoc(result.outputJsondocId);
