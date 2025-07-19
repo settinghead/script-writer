@@ -18,6 +18,11 @@ export class HumanTransformExecutor {
 
 
   private isCompatibleJsondocType(jsondocSchemaType: string | undefined, expectedSchemaType: string): boolean {
+    // Handle wildcard - accepts any type
+    if (expectedSchemaType === '*') {
+      return true;
+    }
+
     // Check if legacy type maps to expected schema type
     return jsondocSchemaType === expectedSchemaType;
   }

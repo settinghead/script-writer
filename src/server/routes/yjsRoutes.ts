@@ -17,19 +17,17 @@ const jsondocRepo = new JsondocRepository(db);
 const transformRepo = new TransformRepository(db);
 
 /**
- * Create human_patch_approval transform when patch jsondoc is edited via YJS
+ * Create human transform when patch jsondoc is edited via YJS
  */
-const createHumanPatchApprovalTransform = async (
+const createHumanTransformForPatchEdit = async (
     patchJsondocId: string,
     projectId: string,
     userId: string
 ): Promise<void> => {
     try {
-        console.log('🚀 [YJS Routes] Creating human_patch_approval transform for patch jsondoc:', patchJsondocId);
+        console.log('🔧 [YJS Routes] Creating human transform for patch jsondoc edit:', patchJsondocId);
 
-        // Check if a human_patch_approval transform already exists for this patch jsondoc
-        // We need to check both human_transforms table and also check for any existing transforms
-        // that might be linked to this patch jsondoc
+        // Check if a human transform already exists for this patch jsondoc
         const existingTransform = await transformRepo.findHumanTransform(
             patchJsondocId,
             '$', // derivation path
@@ -37,62 +35,68 @@ const createHumanPatchApprovalTransform = async (
         );
 
         if (existingTransform) {
-            console.log('⏭️ [YJS Routes] Human patch approval transform already exists, skipping:', existingTransform.transform_id);
+            console.log('⏭️ [YJS Routes] Human transform already exists, skipping:', existingTransform.transform_id);
             return;
         }
 
-        // Additional check: Look for any human_patch_approval transforms that have this patch jsondoc as input
-        const existingTransforms = await db
-            .selectFrom('transforms as t')
-            .innerJoin('transform_inputs as ti', 't.id', 'ti.transform_id')
-            .select(['t.id', 't.type', 't.status'])
-            .where('t.project_id', '=', projectId)
-            .where('t.type', '=', 'human_patch_approval')
-            .where('ti.jsondoc_id', '=', patchJsondocId)
-            .execute();
-
-        if (existingTransforms.length > 0) {
-            console.log('⏭️ [YJS Routes] Human patch approval transform already exists (found via inputs), skipping:', existingTransforms[0].id);
-            return;
-        }
-
-        // Create human_patch_approval transform
+        // Create a regular human transform (not human_patch_approval)
         const transform = await transformRepo.createTransform(
             projectId,
-            'human_patch_approval',
+            'human',
             'v1',
             'completed',
             {
-                action_type: 'patch_approval',
+                action_type: 'patch_edit',
                 patch_jsondoc_id: patchJsondocId,
                 user_id: userId,
                 timestamp: new Date().toISOString()
             }
         );
 
-        console.log('✅ [YJS Routes] Created human_patch_approval transform:', transform.id);
+        console.log('✅ [YJS Routes] Created human transform:', transform.id);
 
         // Link the patch jsondoc as input
         await transformRepo.addTransformInputs(transform.id, [
             { jsondocId: patchJsondocId, inputRole: 'patch' }
         ], projectId);
 
-        // Store human transform metadata
-        await transformRepo.addHumanTransform({
-            transform_id: transform.id,
-            action_type: 'patch_approval',
-            source_jsondoc_id: patchJsondocId,
-            derivation_path: '$',
-            derived_jsondoc_id: undefined,
-            transform_name: 'patch_approval',
-            change_description: 'User edited patch content via YJS',
-            project_id: projectId
-        });
+        // Create a new user_input jsondoc with the edited patch content
+        const patchJsondoc = await jsondocRepo.getJsondoc(patchJsondocId);
+        if (patchJsondoc) {
+            const editedJsondoc = await jsondocRepo.createJsondoc(
+                projectId,
+                'user_input',
+                patchJsondoc.data,
+                'v1',
+                undefined,
+                'completed',
+                'user_input'
+            );
 
-        console.log('✅ [YJS Routes] Human patch approval transform created successfully');
+            // Link the new jsondoc as output
+            await transformRepo.addTransformOutputs(transform.id, [
+                { jsondocId: editedJsondoc.id, outputRole: 'edited_patch' }
+            ], projectId);
+
+            // Store human transform metadata
+            await transformRepo.addHumanTransform({
+                transform_id: transform.id,
+                action_type: 'patch_edit',
+                source_jsondoc_id: patchJsondocId,
+                derivation_path: '$',
+                derived_jsondoc_id: editedJsondoc.id,
+                transform_name: 'patch_edit',
+                change_description: 'User edited patch content via YJS',
+                project_id: projectId
+            });
+
+            console.log('✅ [YJS Routes] Created derived user_input jsondoc:', editedJsondoc.id);
+        }
+
+        console.log('✅ [YJS Routes] Human transform for patch edit created successfully');
 
     } catch (error) {
-        console.error('❌ [YJS Routes] Failed to create human_patch_approval transform:', error);
+        console.error('❌ [YJS Routes] Failed to create human transform for patch edit:', error);
     }
 };
 
@@ -301,7 +305,7 @@ const syncYJSToJsondoc = async (jsondocId: string, userId?: string) => {
 
             // Use the provided user ID or fallback to test user
             const effectiveUserId = userId || 'test-user-1';
-            await createHumanPatchApprovalTransform(jsondocId, jsondoc.project_id, effectiveUserId);
+            await createHumanTransformForPatchEdit(jsondocId, jsondoc.project_id, effectiveUserId);
         }
 
 

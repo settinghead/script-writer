@@ -4,6 +4,7 @@ import { CheckOutlined, CloseOutlined, EditOutlined } from '@ant-design/icons';
 import { usePendingPatchApproval, type PendingPatchGroup } from '../hooks/usePendingPatchApproval';
 import { YJSJsondocProvider } from '../transform-jsondoc-framework/contexts/YJSJsondocContext';
 import { YJSTextField, YJSTextAreaField } from '../transform-jsondoc-framework/components/YJSField';
+import { useProjectData } from '../contexts/ProjectDataContext';
 import type { ElectricJsondoc } from '../../common/types';
 import * as Diff from 'diff';
 
@@ -82,7 +83,8 @@ const PatchReviewCard: React.FC<PatchReviewCardProps> = ({
     onSelectionChange,
     projectId
 }) => {
-    const [editMode, setEditMode] = useState(false);
+    const [isCreatingTransform, setIsCreatingTransform] = useState(false);
+    const projectData = useProjectData();
 
     // Parse patch data
     const patchData = useMemo(() => {
@@ -95,6 +97,69 @@ const PatchReviewCard: React.FC<PatchReviewCardProps> = ({
             return {};
         }
     }, [patchJsondoc.data]);
+
+    // Check if this patch has a human transform (derived edit mode from DB state)
+    const hasHumanTransform = useMemo(() => {
+        if (!Array.isArray(projectData.humanTransforms)) {
+            return false;
+        }
+
+        // Look for a human transform that has this patch jsondoc as source
+        return projectData.humanTransforms.some(transform =>
+            transform.source_jsondoc_id === patchJsondoc.id &&
+            transform.derivation_path === '$'
+        );
+    }, [projectData.humanTransforms, patchJsondoc.id]);
+
+    // Get the derived jsondoc ID if human transform exists
+    const derivedJsondocId = useMemo(() => {
+        if (!Array.isArray(projectData.humanTransforms)) {
+            return null;
+        }
+
+        const humanTransform = projectData.humanTransforms.find(transform =>
+            transform.source_jsondoc_id === patchJsondoc.id &&
+            transform.derivation_path === '$'
+        );
+
+        return humanTransform?.derived_jsondoc_id || null;
+    }, [projectData.humanTransforms, patchJsondoc.id]);
+
+    // Handle creating human transform for editing
+    const handleStartEdit = useCallback(async () => {
+        if (hasHumanTransform || isCreatingTransform) return;
+
+        setIsCreatingTransform(true);
+        try {
+            // Create human transform for this patch jsondoc
+            const response = await fetch(`/api/jsondocs/${patchJsondoc.id}/human-transform`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer debug-auth-token-script-writer-dev'
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    transformName: 'edit_jsondoc_field',
+                    derivationPath: '$.patches',
+                    fieldUpdates: {}
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || `HTTP ${response.status}`);
+            }
+
+            // Electric SQL will pick up the change and UI will update automatically
+            console.log('Human transform created for patch editing');
+        } catch (error) {
+            console.error('Failed to create human transform:', error);
+            message.error('创建编辑版本失败');
+        } finally {
+            setIsCreatingTransform(false);
+        }
+    }, [patchJsondoc.id, hasHumanTransform, isCreatingTransform]);
 
     // Extract the first patch operation from the patches array
     const operation = patchData.patches?.[0];
@@ -153,19 +218,21 @@ const PatchReviewCard: React.FC<PatchReviewCardProps> = ({
                 <Button
                     size="small"
                     icon={<EditOutlined />}
-                    onClick={() => setEditMode(!editMode)}
+                    onClick={handleStartEdit}
+                    loading={isCreatingTransform}
+                    disabled={hasHumanTransform}
                 >
-                    {editMode ? '完成编辑' : '编辑'}
+                    {hasHumanTransform ? '编辑中' : '编辑'}
                 </Button>
             }
         >
             <div>
-                {editMode ? (
+                {hasHumanTransform ? (
                     <div>
                         <Text strong>编辑新值:</Text>
                         <div className="yjs-field-dark-theme" style={{ marginTop: '4px' }}>
                             <YJSJsondocProvider
-                                jsondocId={patchJsondoc.id}
+                                jsondocId={derivedJsondocId || patchJsondoc.id}
                             >
                                 {typeof newValue === 'string' && newValue.length > 50 ? (
                                     <YJSTextAreaField
