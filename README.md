@@ -121,6 +121,26 @@ UI Update: Real-time display with edit indicators
 - **Keyboard Shortcuts** - Enter to send, Shift+Enter for new lines
 - **Performance Optimized** - Efficient scroll tracking without performance impact
 
+### 🔄 State Persistence Philosophy
+
+觅光助创 follows a comprehensive **database-driven state persistence** design where all application state is derived from PostgreSQL and synchronized via Electric SQL:
+
+**Core Principles**:
+- **Database as Single Source of Truth** - All UI state, progress, and user interactions are stored in the database
+- **Cross-Session Continuity** - When users close and reopen the browser, they see exactly where they left off
+- **Real-Time Synchronization** - Changes in one browser tab immediately appear in other tabs through Electric SQL subscriptions
+- **Server Restart Recovery** - Complete application state is recoverable after server restarts with no data loss
+- **No Lost Work** - All form data, selections, editing progress, and workflow state are automatically persisted
+- **Multi-Device Consistency** - Users can switch between devices and continue their creative process seamlessly
+
+**Implementation Benefits**:
+- **Uninterrupted Creative Flow** - Writers never lose progress due to technical issues
+- **Collaborative Continuity** - Team members see real-time updates across all sessions
+- **Reliable Workflow State** - Complex multi-step workflows maintain state across interruptions
+- **Zero Configuration** - No manual saving or state management required from users
+
+This design ensures that the creative process is never interrupted by technical limitations, allowing writers to focus entirely on content creation.
+
 ### 🎯 Script Writing Workflow
 
 觅光助创 implements a sophisticated dual-path workflow system specifically designed for Chinese short drama creation, with intelligent action management that guides users through the complete script development process.
