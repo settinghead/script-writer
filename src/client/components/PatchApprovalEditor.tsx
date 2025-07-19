@@ -1,13 +1,66 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import { Card, Button, message, Divider, Typography, Space } from 'antd';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { Card, Button, message, Divider, Typography, Space, Input } from 'antd';
 import { SaveOutlined, UndoOutlined } from '@ant-design/icons';
 import { useProjectData } from '../contexts/ProjectDataContext';
-import { YJSJsondocProvider } from '../transform-jsondoc-framework/contexts/YJSJsondocContext';
-import { YJSTextField, YJSTextAreaField } from '../transform-jsondoc-framework/components/YJSField';
+
 import { applyPatch } from 'fast-json-patch';
 import * as jsonpatch from 'fast-json-patch';
 
 const { Title, Text } = Typography;
+const { TextArea } = Input;
+
+// Helper function to get value at JSON path
+const getValueAtPath = (obj: any, path: string): any => {
+    if (path === '') return obj;
+    if (path === '/') return obj;
+
+    // Remove leading slash and split by '/'
+    const parts = path.substring(1).split('/');
+    let current = obj;
+
+    for (const part of parts) {
+        if (current === null || current === undefined) return undefined;
+
+        // Handle array indices like "0", "1", etc.
+        if (Array.isArray(current) && /^\d+$/.test(part)) {
+            current = current[parseInt(part, 10)];
+        } else {
+            current = current[part];
+        }
+    }
+
+    return current;
+};
+
+// Helper function to set value at JSON path
+const setValueAtPath = (obj: any, path: string, value: any): any => {
+    if (path === '' || path === '/') return value;
+
+    const result = JSON.parse(JSON.stringify(obj)); // Deep clone
+    const parts = path.substring(1).split('/');
+    let current = result;
+
+    for (let i = 0; i < parts.length - 1; i++) {
+        const part = parts[i];
+        if (Array.isArray(current) && /^\d+$/.test(part)) {
+            const index = parseInt(part, 10);
+            if (!current[index]) current[index] = {};
+            current = current[index];
+        } else {
+            if (!current[part]) current[part] = {};
+            current = current[part];
+        }
+    }
+
+    const lastPart = parts[parts.length - 1];
+    if (Array.isArray(current) && /^\d+$/.test(lastPart)) {
+        current[parseInt(lastPart, 10)] = value;
+    } else {
+        current[lastPart] = value;
+    }
+
+    return result;
+};
 
 interface PatchApprovalEditorProps {
     patchJsondocId: string;
@@ -15,10 +68,7 @@ interface PatchApprovalEditorProps {
     onCancel?: () => void;
 }
 
-interface OriginalContent {
-    title: string;
-    body: string;
-}
+
 
 /**
  * Special patch editor that:
@@ -34,6 +84,9 @@ export const PatchApprovalEditor: React.FC<PatchApprovalEditorProps> = ({
 }) => {
     const projectData = useProjectData();
     const [isSaving, setIsSaving] = useState(false);
+
+    // Local editing state for the combined content (dynamic based on patch paths)
+    const [editedContent, setEditedContent] = useState<Record<string, any>>({});
 
     // Get the patch jsondoc
     const patchJsondoc = useMemo(() => {
@@ -160,8 +213,14 @@ export const PatchApprovalEditor: React.FC<PatchApprovalEditorProps> = ({
         }
     }, [patchJsondoc]);
 
+    // Extract the paths that are modified by the patches
+    const patchPaths = useMemo(() => {
+        if (!patchData?.patches) return [];
+        return [...new Set(patchData.patches.map((patch: any) => patch.path))];
+    }, [patchData]);
+
     // Calculate the current "after" state by applying patches to original
-    const currentAfterState = useMemo<OriginalContent | null>(() => {
+    const currentAfterState = useMemo(() => {
         if (!originalBrainstormIdea?.data || !patchData?.patches) {
             return null;
         }
@@ -174,27 +233,32 @@ export const PatchApprovalEditor: React.FC<PatchApprovalEditorProps> = ({
             // Apply current patches to get the "after" state
             const afterState = applyPatch(originalData, patchData.patches, false, false).newDocument;
 
-            return {
-                title: afterState.title || '',
-                body: afterState.body || ''
-            };
+            // Extract only the values for paths that are modified by patches
+            const patchedValues: Record<string, any> = {};
+            for (const path of patchPaths) {
+                if (typeof path === 'string') {
+                    const value = getValueAtPath(afterState, path);
+                    patchedValues[path] = value;
+                }
+            }
+
+            return patchedValues;
         } catch (error) {
             console.error('[PatchApprovalEditor] Failed to apply patches:', error);
-            // Fallback to original content
-            const originalData = typeof originalBrainstormIdea.data === 'string'
-                ? JSON.parse(originalBrainstormIdea.data)
-                : originalBrainstormIdea.data;
-
-            return {
-                title: originalData.title || '',
-                body: originalData.body || ''
-            };
+            return null;
         }
-    }, [originalBrainstormIdea, patchData]);
+    }, [originalBrainstormIdea, patchData, patchPaths]);
+
+    // Initialize edited content when currentAfterState changes
+    useEffect(() => {
+        if (currentAfterState) {
+            setEditedContent(currentAfterState);
+        }
+    }, [currentAfterState]);
 
     // Handle saving changes
     const handleSave = useCallback(async () => {
-        if (!currentAfterState || !originalBrainstormIdea?.data || !patchJsondoc || isSaving) {
+        if (!editedContent || !originalBrainstormIdea?.data || !patchJsondoc || isSaving) {
             return;
         }
 
@@ -205,8 +269,14 @@ export const PatchApprovalEditor: React.FC<PatchApprovalEditorProps> = ({
                 ? JSON.parse(originalBrainstormIdea.data)
                 : originalBrainstormIdea.data;
 
-            // Generate new patches from original to current edited state
-            const newPatches = jsonpatch.compare(originalData, currentAfterState);
+            // Reconstruct the full object by applying edited values to original
+            let reconstructedObject = JSON.parse(JSON.stringify(originalData));
+            for (const [path, value] of Object.entries(editedContent)) {
+                reconstructedObject = setValueAtPath(reconstructedObject, path, value);
+            }
+
+            // Generate new patches from original to reconstructed object
+            const newPatches = jsonpatch.compare(originalData, reconstructedObject);
 
             // Update the patch jsondoc with new patches
             const updatedPatchData = {
@@ -239,7 +309,7 @@ export const PatchApprovalEditor: React.FC<PatchApprovalEditorProps> = ({
         } finally {
             setIsSaving(false);
         }
-    }, [currentAfterState, originalBrainstormIdea, patchData, patchJsondocId, onSave, isSaving]);
+    }, [editedContent, originalBrainstormIdea, patchData, patchJsondocId, onSave, isSaving]);
 
     if (!patchJsondoc || !originalBrainstormIdea || !currentAfterState) {
         return (
@@ -276,25 +346,41 @@ export const PatchApprovalEditor: React.FC<PatchApprovalEditorProps> = ({
                 </Space>
             }
         >
-            <div className="yjs-field-dark-theme">
-                <YJSJsondocProvider jsondocId={patchJsondocId}>
-                    <div style={{ marginBottom: '16px' }}>
-                        <Text strong>标题:</Text>
-                        <YJSTextField
-                            path="title"
-                            placeholder="请输入标题"
-                        />
-                    </div>
+            <div>
+                {patchPaths.map((path) => {
+                    if (typeof path !== 'string') return null;
 
-                    <div>
-                        <Text strong>内容:</Text>
-                        <YJSTextAreaField
-                            path="body"
-                            placeholder="请输入故事内容"
-                            rows={6}
-                        />
+                    const value = editedContent[path] || '';
+                    const isLongText = typeof value === 'string' && value.length > 100;
+
+                    return (
+                        <div key={path} style={{ marginBottom: '16px' }}>
+                            <Text strong>{path}:</Text>
+                            {isLongText ? (
+                                <TextArea
+                                    value={String(value)}
+                                    onChange={(e) => setEditedContent(prev => ({ ...prev, [path]: e.target.value }))}
+                                    placeholder={`请输入 ${path} 的内容`}
+                                    rows={6}
+                                    style={{ marginTop: '8px' }}
+                                />
+                            ) : (
+                                <Input
+                                    value={String(value)}
+                                    onChange={(e) => setEditedContent(prev => ({ ...prev, [path]: e.target.value }))}
+                                    placeholder={`请输入 ${path} 的内容`}
+                                    style={{ marginTop: '8px' }}
+                                />
+                            )}
+                        </div>
+                    );
+                })}
+
+                {patchPaths.length === 0 && (
+                    <div style={{ textAlign: 'center', color: '#999', padding: '32px' }}>
+                        <Text type="secondary">没有找到可编辑的补丁字段</Text>
                     </div>
-                </YJSJsondocProvider>
+                )}
             </div>
 
             <Divider />
