@@ -455,7 +455,7 @@ export const PatchReviewModal: React.FC<PatchReviewModalProps> = ({ projectId })
             title={
                 <Space>
                     <EditOutlined />
-                    <span>补丁审核</span>
+                    <span>AI修改审核</span>
                     <Text type="secondary">({pendingPatches.patchJsondocs.length} 个补丁待审核)</Text>
                 </Space>
             }
@@ -466,7 +466,8 @@ export const PatchReviewModal: React.FC<PatchReviewModalProps> = ({ projectId })
                     handleModalOpen();
                 }
             }}
-            width={800}
+            width={1400}
+            style={{ top: 20 }}
             footer={
                 <Space>
                     <Button onClick={handleClose}>

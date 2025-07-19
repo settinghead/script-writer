@@ -1,13 +1,71 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { Card, Button, message, Divider, Typography, Space, Input } from 'antd';
+import { Card, Button, message, Divider, Typography, Space, Input, Row, Col } from 'antd';
 import { ReloadOutlined, UndoOutlined } from '@ant-design/icons';
 import { useProjectData } from '../contexts/ProjectDataContext';
 import { debounce } from 'lodash';
 import { applyPatch } from 'fast-json-patch';
 import * as jsonpatch from 'fast-json-patch';
+import * as Diff from 'diff';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
+
+// Diff preview component (reused from PatchReviewModal)
+const DiffPreview: React.FC<{ oldValue: string; newValue: string }> = ({ oldValue, newValue }) => {
+    const diff = Diff.diffWords(oldValue || '', newValue || '');
+
+    return (
+        <div style={{
+            fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace',
+            fontSize: '12px',
+            lineHeight: '1.4',
+            whiteSpace: 'pre-wrap',
+            padding: '12px',
+            backgroundColor: '#1a1a1a',
+            border: '1px solid #333',
+            borderRadius: '6px',
+            maxHeight: '400px',
+            overflowY: 'auto'
+        }}>
+            {diff.map((part, index) => {
+                if (part.removed) {
+                    return (
+                        <span
+                            key={index}
+                            style={{
+                                backgroundColor: '#4a1a1a',
+                                color: '#ff7875',
+                                textDecoration: 'line-through',
+                                padding: '2px 0'
+                            }}
+                        >
+                            {part.value}
+                        </span>
+                    );
+                } else if (part.added) {
+                    return (
+                        <span
+                            key={index}
+                            style={{
+                                backgroundColor: '#1a4a1a',
+                                color: '#95de64',
+                                padding: '2px 0'
+                            }}
+                        >
+                            {part.value}
+                        </span>
+                    );
+                } else {
+                    return (
+                        <span key={index} style={{ color: '#ffffff' }}>
+                            {part.value}
+                        </span>
+                    );
+                }
+            })}
+        </div>
+    );
+};
 
 // Helper function to get value at JSON path
 const getValueAtPath = (obj: any, path: string): any => {
@@ -222,6 +280,33 @@ export const PatchApprovalEditor: React.FC<PatchApprovalEditorProps> = ({
         return [...new Set(patchData.patches.map((patch: any) => patch.path))];
     }, [patchData]);
 
+    // Calculate the original values for diff comparison
+    const originalValues = useMemo(() => {
+        if (!originalBrainstormIdea?.data || !patchPaths.length) {
+            return {};
+        }
+
+        try {
+            const originalData = typeof originalBrainstormIdea.data === 'string'
+                ? JSON.parse(originalBrainstormIdea.data)
+                : originalBrainstormIdea.data;
+
+            // Extract original values for paths that are modified by patches
+            const originalValues: Record<string, any> = {};
+            for (const path of patchPaths) {
+                if (typeof path === 'string') {
+                    const value = getValueAtPath(originalData, path);
+                    originalValues[path] = value;
+                }
+            }
+
+            return originalValues;
+        } catch (error) {
+            console.error('[PatchApprovalEditor] Failed to extract original values:', error);
+            return {};
+        }
+    }, [originalBrainstormIdea, patchPaths]);
+
     // Calculate the current "after" state by applying patches to original
     const currentAfterState = useMemo(() => {
         if (!originalBrainstormIdea?.data || !patchData?.patches) {
@@ -374,42 +459,83 @@ export const PatchApprovalEditor: React.FC<PatchApprovalEditorProps> = ({
                 </Space>
             }
         >
-            <div>
-                {patchPaths.map((path) => {
-                    if (typeof path !== 'string') return null;
+            <Row gutter={24} style={{ height: '500px' }}>
+                {/* Left Column - Editor */}
+                <Col span={12}>
+                    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                        <Title level={5} style={{ marginBottom: '16px', color: '#fff' }}>编辑器</Title>
+                        <div style={{ flex: 1, overflowY: 'auto' }}>
+                            {patchPaths.map((path) => {
+                                if (typeof path !== 'string') return null;
 
-                    const value = editedContent[path] || '';
-                    const isLongText = typeof value === 'string' && value.length > 100;
+                                const value = editedContent[path] || '';
+                                const isLongText = typeof value === 'string' && value.length > 100;
 
-                    return (
-                        <div key={path} style={{ marginBottom: '16px' }}>
-                            <Text strong>{path}:</Text>
-                            {isLongText ? (
-                                <TextArea
-                                    value={String(value)}
-                                    onChange={(e) => setEditedContent(prev => ({ ...prev, [path]: e.target.value }))}
-                                    placeholder={`请输入 ${path} 的内容`}
-                                    rows={6}
-                                    style={{ marginTop: '8px' }}
-                                />
-                            ) : (
-                                <Input
-                                    value={String(value)}
-                                    onChange={(e) => setEditedContent(prev => ({ ...prev, [path]: e.target.value }))}
-                                    placeholder={`请输入 ${path} 的内容`}
-                                    style={{ marginTop: '8px' }}
-                                />
+                                return (
+                                    <div key={path} style={{ marginBottom: '16px' }}>
+                                        <Text strong>{path}:</Text>
+                                        {isLongText ? (
+                                            <TextArea
+                                                value={String(value)}
+                                                onChange={(e) => setEditedContent(prev => ({ ...prev, [path]: e.target.value }))}
+                                                placeholder={`请输入 ${path} 的内容`}
+                                                rows={12}
+                                                style={{ marginTop: '8px' }}
+                                            />
+                                        ) : (
+                                            <Input
+                                                value={String(value)}
+                                                onChange={(e) => setEditedContent(prev => ({ ...prev, [path]: e.target.value }))}
+                                                placeholder={`请输入 ${path} 的内容`}
+                                                style={{ marginTop: '8px' }}
+                                            />
+                                        )}
+                                    </div>
+                                );
+                            })}
+
+                            {patchPaths.length === 0 && (
+                                <div style={{ textAlign: 'center', color: '#999', padding: '32px' }}>
+                                    <Text type="secondary">没有找到可编辑的补丁字段</Text>
+                                </div>
                             )}
                         </div>
-                    );
-                })}
-
-                {patchPaths.length === 0 && (
-                    <div style={{ textAlign: 'center', color: '#999', padding: '32px' }}>
-                        <Text type="secondary">没有找到可编辑的补丁字段</Text>
                     </div>
-                )}
-            </div>
+                </Col>
+
+                {/* Right Column - Diff Preview */}
+                <Col span={12}>
+                    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                        <Title level={5} style={{ marginBottom: '16px', color: '#fff' }}>差异预览</Title>
+                        <div style={{ flex: 1, overflowY: 'auto' }}>
+                            {patchPaths.map((path) => {
+                                if (typeof path !== 'string') return null;
+
+                                const originalValue = String(originalValues[path] || '');
+                                const currentValue = String(editedContent[path] || '');
+
+                                return (
+                                    <div key={path} style={{ marginBottom: '16px' }}>
+                                        <Text strong style={{ color: '#fff' }}>{path}:</Text>
+                                        <div style={{ marginTop: '8px' }}>
+                                            <DiffPreview
+                                                oldValue={originalValue}
+                                                newValue={currentValue}
+                                            />
+                                        </div>
+                                    </div>
+                                );
+                            })}
+
+                            {patchPaths.length === 0 && (
+                                <div style={{ textAlign: 'center', color: '#999', padding: '32px' }}>
+                                    <Text type="secondary">没有差异可显示</Text>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </Col>
+            </Row>
 
             <Divider />
 
