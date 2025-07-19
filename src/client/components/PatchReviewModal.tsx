@@ -467,7 +467,17 @@ export const PatchReviewModal: React.FC<PatchReviewModalProps> = ({ projectId })
                 }
             }}
             width={1400}
-            style={{ top: 20 }}
+            style={{
+                top: 20,
+                paddingBottom: 0,
+                maxWidth: 'calc(100vw - 32px)',
+                height: 'calc(100vh - 40px)'
+            }}
+            bodyStyle={{
+                height: 'calc(100vh - 140px)',
+                overflow: 'hidden',
+                padding: '16px'
+            }}
             footer={
                 <Space>
                     <Button onClick={handleClose}>
@@ -492,7 +502,7 @@ export const PatchReviewModal: React.FC<PatchReviewModalProps> = ({ projectId })
                 </Space>
             }
         >
-            <div style={{ maxHeight: '600px', overflowY: 'auto' }}>
+            <div style={{ height: '100%', overflowY: 'auto' }}>
                 {/* Header Info */}
                 <Card size="small" style={{ marginBottom: '16px' }}>
                     <Paragraph>

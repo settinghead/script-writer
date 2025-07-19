@@ -58,12 +58,24 @@ Built on the [Transform Jsondoc Framework](./TRANSFORM_JSONDOC_FRAMEWORK.md) age
 
 **Available Tools**:
 - ✅ **Brainstorm Generation** - Creates new story ideas with platform-specific optimization
-- ✅ **Brainstorm Editing** - AI-powered content modification using JSON Patch operations
+- ✅ **Brainstorm Editing** - AI-powered content modification using JSON Patch operations with **patch approval system**
 - ✅ **Outline Settings Generation** - Character development, story foundation, and commercial positioning  
 - ✅ **Chronicles Generation** - Chronological story timeline and episode progression
 - ✅ **Episode Planning Generation** - TikTok-optimized episode structure with "pulsing" emotional rhythm
 - ✅ **Episode Script Generation** - Agent-based generation with Electric SQL integration
 - ✅ **Conversational Response** - General chat with project context
+
+**🔍 Patch Approval System**:
+When users request AI edits (e.g., "让这些故事更现代一些，加入一些科技元素"), the system provides human oversight:
+
+- **AI Patch Generation** - AI creates JSON Patch operations instead of direct edits
+- **Review Modal** - Full-screen approval interface shows proposed changes
+- **Interactive Editing** - Users can modify AI suggestions before approval
+- **Two-Column Layout** - Side-by-side editor and diff preview
+- **Granular Control** - Approve/reject individual changes within a single request
+- **Debounced Auto-Save** - Real-time editing with automatic persistence
+- **Revert Functionality** - Reset to original AI suggestions
+- **Complete Audit Trail** - Track both AI proposals and human decisions
 
 **Template System Benefits**:
 - **70% Boilerplate Reduction** - Adding new parameters requires only schema changes
@@ -91,9 +103,15 @@ Template Processing: Automatic YAML formatting of jsondocs and parameters
 ↓
 LLM Transform: Generates JSON Patch operations for targeted improvements
 ↓
-Jsondoc Creation: Creates new jsondocs with proper lineage tracking
+Patch Approval Modal: Full-screen interface appears automatically
 ↓
-UI Update: Real-time display with edit indicators
+User Review: Side-by-side editor with live diff preview
+↓
+Interactive Editing: User modifies AI suggestions before approval
+↓
+Approval/Application: Selected patches applied to create final content
+↓
+UI Update: Real-time display with complete audit trail
 ```
 
 ### 🎨 Script Writing UI
@@ -111,6 +129,17 @@ UI Update: Real-time display with edit indicators
 - **Smart Auto-Save System** - Advanced debouncing with edit preservation during saves
 - **Edit History Visualization** - Visual indicators (📝 已编辑版本) for modified content
 - **Unified Section Management** - `SectionWrapper` component for consistent section rendering with automatic status detection
+
+**🔍 Patch Approval Interface**:
+- **Full-Screen Modal** - Nearly 100% viewport height for comprehensive review
+- **PatchReviewModal** - Automatic detection of pending AI patches with real-time Electric SQL updates
+- **Two-Column Layout** - Side-by-side patch editor and live diff preview
+- **Dynamic Field Generation** - Automatically creates editable fields based on JSON Patch paths
+- **Rich Diff Visualization** - Red strikethrough for deletions, green highlighting for additions
+- **Debounced Auto-Save** - Real-time editing with 300ms debounce and automatic persistence
+- **Revert Functionality** - "恢复AI建议" button to reset to original AI suggestions
+- **Scrollable Content** - Max-height containers with proper overflow handling for long content
+- **Chinese Localization** - Complete interface in Chinese (补丁审批, 原始值, 建议值, etc.)
 
 **Chat Interface with Assistant-UI Integration**:
 - **Auto-Scroll Functionality** - Smart auto-scroll to bottom when new messages arrive, with user control preservation

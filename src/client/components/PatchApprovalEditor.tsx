@@ -24,7 +24,7 @@ const DiffPreview: React.FC<{ oldValue: string; newValue: string }> = ({ oldValu
             backgroundColor: '#1a1a1a',
             border: '1px solid #333',
             borderRadius: '6px',
-            maxHeight: '400px',
+            height: '100%',
             overflowY: 'auto'
         }}>
             {diff.map((part, index) => {
@@ -429,7 +429,7 @@ export const PatchApprovalEditor: React.FC<PatchApprovalEditorProps> = ({
     if (!patchJsondoc || !originalBrainstormIdea || !currentAfterState) {
         return (
             <Card>
-                <Text type="secondary">加载补丁编辑器中...</Text>
+                <Text type="secondary">加载逐条修改器中...</Text>
             </Card>
         );
     }
@@ -438,7 +438,7 @@ export const PatchApprovalEditor: React.FC<PatchApprovalEditorProps> = ({
         <Card
             title={
                 <Space>
-                    <Title level={4} style={{ margin: 0 }}>补丁编辑器</Title>
+                    <Title level={4} style={{ margin: 0 }}>逐条修改器</Title>
                     <Text type="secondary">编辑完整文档，系统将生成新的补丁</Text>
                 </Space>
             }
@@ -459,11 +459,11 @@ export const PatchApprovalEditor: React.FC<PatchApprovalEditorProps> = ({
                 </Space>
             }
         >
-            <Row gutter={24} style={{ height: '500px' }}>
+            <Row gutter={24} >
                 {/* Left Column - Editor */}
                 <Col span={12}>
                     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                        <Title level={5} style={{ marginBottom: '16px', color: '#fff' }}>编辑器</Title>
+                        <Title level={5} style={{ marginBottom: '16px', color: '#fff' }}>在这里修改</Title>
                         <div style={{ flex: 1, overflowY: 'auto' }}>
                             {patchPaths.map((path) => {
                                 if (typeof path !== 'string') return null;
@@ -479,7 +479,7 @@ export const PatchApprovalEditor: React.FC<PatchApprovalEditorProps> = ({
                                                 value={String(value)}
                                                 onChange={(e) => setEditedContent(prev => ({ ...prev, [path]: e.target.value }))}
                                                 placeholder={`请输入 ${path} 的内容`}
-                                                rows={12}
+                                                rows={20}
                                                 style={{ marginTop: '8px' }}
                                             />
                                         ) : (
@@ -506,7 +506,7 @@ export const PatchApprovalEditor: React.FC<PatchApprovalEditorProps> = ({
                 {/* Right Column - Diff Preview */}
                 <Col span={12}>
                     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                        <Title level={5} style={{ marginBottom: '16px', color: '#fff' }}>差异预览</Title>
+                        <Title level={5} style={{ marginBottom: '16px', color: '#fff' }}>修改预览</Title>
                         <div style={{ flex: 1, overflowY: 'auto' }}>
                             {patchPaths.map((path) => {
                                 if (typeof path !== 'string') return null;

@@ -403,6 +403,107 @@ const humanTransform = {
 
 **Key Implementation Detail**: Human transforms are typically triggered through edit interfaces (like those in `jsondocRoutes.ts`) that allow users to modify specific fields or sections of AI-generated content, creating new `user_input` jsondocs while preserving the original AI-generated versions.
 
+#### **Patch Approval Transforms (AI Oversight)**
+
+The framework includes a sophisticated patch approval system that provides human oversight for AI-generated content modifications. This system introduces two specialized transform types that work together to enable review and approval workflows.
+
+**AI Patch Transforms (`ai_patch`)**
+Triggered when AI tools generate incremental edits to existing content:
+```typescript
+const aiPatchTransform = {
+  type: 'ai_patch',
+  trigger: 'agent_edit_request',
+  input_jsondocs: [originalContent, userEditRequirements],
+  execution_context: {
+    original_jsondoc_id: 'content-123',
+    patch_count: 3,
+    edit_requirements: 'Make the story more modern'
+  },
+  streaming_status: 'running' // Awaiting approval
+};
+```
+
+**Human Patch Approval Transforms (`human_patch_approval`)**
+Triggered when users review and approve/reject AI-generated patches:
+```typescript
+const approvalTransform = {
+  type: 'human_patch_approval',
+  trigger: 'patch_approval',
+  input_jsondocs: [aiPatchTransform.output_jsondocs, originalContent],
+  execution_context: {
+    ai_patch_transform_id: 'ai-patch-123',
+    approved_patches: ['patch-1', 'patch-3'],
+    rejected_patches: ['patch-2'],
+    approval_method: 'manual_review'
+  },
+  streaming_status: 'completed'
+};
+```
+
+**Patch Approval Workflow**:
+1. **AI Edit Request** - User requests AI to modify existing content
+2. **Patch Generation** - AI creates JSON Patch operations instead of direct edits
+3. **Patch Review Modal** - User sees proposed changes in a dedicated approval interface
+4. **Interactive Editing** - User can modify patches before approval using specialized editor
+5. **Approval/Rejection** - User approves selected patches, creating final content
+6. **Lineage Preservation** - Complete audit trail of what was proposed vs. what was approved
+
+**Key Benefits**:
+- **Human Oversight** - Users control what AI changes are actually applied
+- **Granular Control** - Approve/reject individual changes within a single edit request
+- **Edit Before Approval** - Modify AI suggestions before applying them
+- **Complete Audit Trail** - Track both AI proposals and human decisions
+- **Non-Destructive** - Original content preserved throughout the process
+
+**JSON Patch Jsondocs**:
+The system uses RFC 6902 JSON Patch format for representing incremental changes:
+```typescript
+const jsonPatchJsondoc = {
+  schema_type: 'json_patch',
+  origin_type: 'ai_generated',
+  data: {
+    patches: [
+      {
+        op: 'replace',
+        path: '/characters/0/name',
+        value: 'Maria Chen'
+      },
+      {
+        op: 'add',
+        path: '/characters/0/background',
+        value: 'A tech-savvy chef who runs a food delivery startup'
+      }
+    ]
+  }
+};
+```
+
+**Specialized UI Components**:
+- **PatchReviewModal** - Full-screen modal for reviewing AI-generated patches
+- **PatchApprovalEditor** - Two-column editor with live diff preview
+- **Dynamic Field Generation** - Automatically creates editable fields based on patch paths
+- **Debounced Auto-Save** - Real-time editing with automatic persistence
+- **Revert Functionality** - Reset to original AI suggestions
+
+**Integration with Particle System**:
+Patch jsondocs are automatically excluded from particle generation to prevent noise in search and embedding systems:
+```typescript
+// ParticleService automatically skips patch jsondocs
+const shouldSkipParticleGeneration = (jsondoc: any) => {
+  return jsondoc.schema_type === 'json_patch';
+};
+```
+
+**Event Bus Architecture**:
+The system uses PostgreSQL LISTEN/NOTIFY for real-time coordination:
+```typescript
+// Tools wait for approval via event bus
+const patchApprovalBus = new PatchApprovalEventBus();
+await patchApprovalBus.waitForApproval(transformId, 10 * 24 * 60 * 60 * 1000); // 10 days
+```
+
+This patch approval system enables sophisticated human-AI collaboration workflows where AI can propose intelligent edits while humans maintain complete control over what changes are actually applied to their content.
+
 ### Practical Benefits
 
 #### For Development Teams
@@ -3517,4 +3618,30 @@ const CollaborativeJsondocEditor = ({ jsondocId, field }) => {
 
 ## Summary
 
-The Transform Jsondoc Framework provides a complete foundation for sophisticated data transformation applications with intelligent agent orchestration, immutable jsondoc management, real-time collaboration via YJS, and enterprise-grade development tooling. Applications built on this framework benefit from automatic lineage tracking, type-safe operations, advanced caching, and seamless real-time collaborative editing while maintaining focus on domain-specific business logic. 
+The Transform Jsondoc Framework provides a complete foundation for sophisticated data transformation applications with intelligent agent orchestration, immutable jsondoc management, real-time collaboration via YJS, and enterprise-grade development tooling. Applications built on this framework benefit from automatic lineage tracking, type-safe operations, advanced caching, and seamless real-time collaborative editing while maintaining focus on domain-specific business logic.
+
+### Patch Approval System - Complete Implementation
+
+The framework includes a fully implemented **patch approval system** that provides human oversight for AI-generated content modifications. This sophisticated system demonstrates the framework's flexibility and power in handling complex human-AI collaboration workflows.
+
+**✅ Completed Components**:
+- **Database Schema** - New transform types (`ai_patch`, `human_patch_approval`) with PostgreSQL LISTEN/NOTIFY
+- **Transform Execution** - `StreamingTransformExecutor` patch-approval mode with JSON Patch generation
+- **Event Bus Architecture** - `PatchApprovalEventBus` for real-time tool coordination with 10-day timeout
+- **Frontend Components** - `PatchReviewModal` and `PatchApprovalEditor` with full-screen interface
+- **Dynamic UI Generation** - Automatic field creation based on JSON Patch paths
+- **Two-Column Layout** - Side-by-side editor and live diff preview
+- **Debounced Auto-Save** - Real-time editing with 300ms debounce and automatic persistence
+- **Particle System Integration** - Automatic exclusion of patch jsondocs from search/embedding
+- **Complete Lineage Tracking** - Full audit trail of AI proposals vs. human decisions
+- **API Endpoints** - Approval/rejection processing with proper transform creation
+
+**Key Achievements**:
+- **Non-Destructive Workflow** - Original content preserved throughout approval process
+- **Granular Control** - Users can approve/reject individual changes within single requests
+- **Interactive Editing** - Modify AI suggestions before approval using specialized editor
+- **Real-Time Synchronization** - Electric SQL integration for instant cross-client updates
+- **Complete Type Safety** - Zod schema validation for all patch operations
+- **Event-Driven Architecture** - Tools wait for approval via PostgreSQL LISTEN/NOTIFY
+
+This implementation showcases how the Transform Jsondoc Framework enables sophisticated workflows that would be complex to implement from scratch, while maintaining the core principles of immutability, traceability, and real-time collaboration. 
