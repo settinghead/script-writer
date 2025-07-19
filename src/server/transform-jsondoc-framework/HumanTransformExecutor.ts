@@ -294,14 +294,14 @@ export class HumanTransformExecutor {
       console.log('🔍 [HumanTransformExecutor] Detected patch jsondoc, finding original jsondoc...');
 
       // Find the original jsondoc that this patch was created from
-      const patchCreatingOutputs = await this.transformRepo.getTransformOutputs(projectId);
+      const patchCreatingOutputs = await this.jsondocRepo.getAllProjectTransformOutputsForLineage(projectId);
       console.log('🔍 [HumanTransformExecutor] All transform outputs:', patchCreatingOutputs.length);
 
       const patchCreatingOutput = patchCreatingOutputs.find((output: any) => output.jsondoc_id === sourceJsondocId);
       console.log('🔍 [HumanTransformExecutor] Patch creating output:', patchCreatingOutput);
 
       if (patchCreatingOutput) {
-        const patchCreatingInputs = await this.transformRepo.getTransformInputs(projectId);
+        const patchCreatingInputs = await this.jsondocRepo.getAllProjectTransformInputsForLineage(projectId);
         console.log('🔍 [HumanTransformExecutor] All transform inputs:', patchCreatingInputs.length);
 
         const relevantInputs = patchCreatingInputs.filter((input: any) =>

@@ -438,7 +438,8 @@ export class JsondocRepository {
             id: row.id,
             transform_id: row.transform_id,
             jsondoc_id: row.jsondoc_id,
-            project_id: row.project_id
+            project_id: row.project_id,
+            input_role: row.input_role || undefined
         }));
     }
 
