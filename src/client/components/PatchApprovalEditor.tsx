@@ -1,8 +1,8 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Card, Button, message, Divider, Typography, Space, Input } from 'antd';
-import { SaveOutlined, UndoOutlined } from '@ant-design/icons';
+import { ReloadOutlined, UndoOutlined } from '@ant-design/icons';
 import { useProjectData } from '../contexts/ProjectDataContext';
-
+import { debounce } from 'lodash';
 import { applyPatch } from 'fast-json-patch';
 import * as jsonpatch from 'fast-json-patch';
 
@@ -87,6 +87,9 @@ export const PatchApprovalEditor: React.FC<PatchApprovalEditorProps> = ({
 
     // Local editing state for the combined content (dynamic based on patch paths)
     const [editedContent, setEditedContent] = useState<Record<string, any>>({});
+
+    // Track initialization to prevent auto-save on first load
+    const initializedRef = useRef(false);
 
     // Get the patch jsondoc
     const patchJsondoc = useMemo(() => {
@@ -253,12 +256,13 @@ export const PatchApprovalEditor: React.FC<PatchApprovalEditorProps> = ({
     useEffect(() => {
         if (currentAfterState) {
             setEditedContent(currentAfterState);
+            initializedRef.current = true;
         }
     }, [currentAfterState]);
 
-    // Handle saving changes
-    const handleSave = useCallback(async () => {
-        if (!editedContent || !originalBrainstormIdea?.data || !patchJsondoc || isSaving) {
+    // Auto-save function
+    const saveChanges = useCallback(async (content: Record<string, any>) => {
+        if (!content || !originalBrainstormIdea?.data || !patchJsondoc || isSaving) {
             return;
         }
 
@@ -271,7 +275,7 @@ export const PatchApprovalEditor: React.FC<PatchApprovalEditorProps> = ({
 
             // Reconstruct the full object by applying edited values to original
             let reconstructedObject = JSON.parse(JSON.stringify(originalData));
-            for (const [path, value] of Object.entries(editedContent)) {
+            for (const [path, value] of Object.entries(content)) {
                 reconstructedObject = setValueAtPath(reconstructedObject, path, value);
             }
 
@@ -301,15 +305,41 @@ export const PatchApprovalEditor: React.FC<PatchApprovalEditorProps> = ({
                 throw new Error(errorData.error || `HTTP ${response.status}`);
             }
 
-            message.success('补丁已更新');
-            onSave?.();
+            console.log('[PatchApprovalEditor] Auto-saved changes');
         } catch (error) {
-            console.error('[PatchApprovalEditor] Failed to save patch:', error);
-            message.error('保存失败');
+            console.error('[PatchApprovalEditor] Auto-save error:', error);
         } finally {
             setIsSaving(false);
         }
-    }, [editedContent, originalBrainstormIdea, patchData, patchJsondocId, onSave, isSaving]);
+    }, [originalBrainstormIdea, patchData, patchJsondocId, isSaving]);
+
+    // Create debounced save function
+    const debouncedSave = useMemo(
+        () => debounce(saveChanges, 1000),
+        [saveChanges]
+    );
+
+    // Auto-save when editedContent changes (but not on initialization)
+    useEffect(() => {
+        if (initializedRef.current && editedContent && Object.keys(editedContent).length > 0) {
+            debouncedSave(editedContent);
+        }
+    }, [editedContent, debouncedSave]);
+
+    // Handle revert to AI suggestion
+    const handleRevertToAI = useCallback(() => {
+        if (currentAfterState) {
+            setEditedContent(currentAfterState);
+            message.info('已恢复AI建议');
+        }
+    }, [currentAfterState]);
+
+    // Cleanup debounce on unmount
+    useEffect(() => {
+        return () => {
+            debouncedSave.cancel();
+        };
+    }, [debouncedSave]);
 
     if (!patchJsondoc || !originalBrainstormIdea || !currentAfterState) {
         return (
@@ -336,12 +366,10 @@ export const PatchApprovalEditor: React.FC<PatchApprovalEditorProps> = ({
                         取消
                     </Button>
                     <Button
-                        type="primary"
-                        icon={<SaveOutlined />}
-                        loading={isSaving}
-                        onClick={handleSave}
+                        icon={<ReloadOutlined />}
+                        onClick={handleRevertToAI}
                     >
-                        保存补丁
+                        恢复AI建议
                     </Button>
                 </Space>
             }
