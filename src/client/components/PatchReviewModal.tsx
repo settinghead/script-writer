@@ -70,11 +70,11 @@ const PatchReviewCard: React.FC<PatchReviewCardProps> = ({
         return path.replace(/^\//, '').replace(/\//g, ' → ');
     };
 
-    // Get value preview
-    const getValuePreview = (value: any) => {
+    // Helper function to format values for display
+    const formatValue = (value: any) => {
         if (value === null || value === undefined) return '(空)';
-        if (typeof value === 'string') return value.length > 100 ? value.substring(0, 100) + '...' : value;
-        return JSON.stringify(value);
+        if (typeof value === 'string') return value;
+        return JSON.stringify(value, null, 2);
     };
 
     return (
@@ -111,9 +111,11 @@ const PatchReviewCard: React.FC<PatchReviewCardProps> = ({
                         padding: '8px',
                         marginTop: '4px',
                         whiteSpace: 'pre-wrap',
-                        color: '#ffcccc'
+                        color: '#ffcccc',
+                        maxHeight: '150px',
+                        overflowY: 'auto'
                     }}>
-                        {getValuePreview(originalValue)}
+                        {formatValue(originalValue)}
                     </div>
                 </div>
 
@@ -146,9 +148,11 @@ const PatchReviewCard: React.FC<PatchReviewCardProps> = ({
                                 borderRadius: '4px',
                                 padding: '8px',
                                 whiteSpace: 'pre-wrap',
-                                color: '#ccffcc'
+                                color: '#ccffcc',
+                                maxHeight: '150px',
+                                overflowY: 'auto'
                             }}>
-                                {getValuePreview(newValue)}
+                                {formatValue(newValue)}
                             </div>
                         )}
                     </div>
@@ -342,7 +346,6 @@ export const PatchReviewModal: React.FC<PatchReviewModalProps> = ({ projectId })
             <div style={{ maxHeight: '600px', overflowY: 'auto' }}>
                 {/* Header Info */}
                 <Card size="small" style={{ marginBottom: '16px' }}>
-                    <Title level={5}>编辑请求</Title>
                     <Paragraph>
                         <Text strong>原始文档:</Text> {pendingPatches.originalJsondoc.schema_type}
                     </Paragraph>
@@ -351,9 +354,7 @@ export const PatchReviewModal: React.FC<PatchReviewModalProps> = ({ projectId })
                             <Text strong>编辑要求:</Text> {pendingPatches.editRequirements}
                         </Paragraph>
                     )}
-                    <Paragraph>
-                        <Text strong>创建时间:</Text> {new Date(pendingPatches.createdAt).toLocaleString('zh-CN')}
-                    </Paragraph>
+
                 </Card>
 
                 {/* Patch Selection Controls */}

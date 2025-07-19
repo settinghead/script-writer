@@ -59,8 +59,17 @@ export const AppColors = {
 // Utility functions for common color operations
 export const ColorUtils = {
     // Get appropriate color for transform/jsondoc type
-    getTransformColor: (type: 'human' | 'llm') => {
-        return type === 'human' ? AppColors.human.primary : AppColors.ai.primary;
+    getTransformColor: (type: 'human' | 'llm' | 'ai_patch' | 'human_patch_approval') => {
+        switch (type) {
+            case 'human':
+            case 'human_patch_approval':
+                return AppColors.human.primary;
+            case 'llm':
+            case 'ai_patch':
+                return AppColors.ai.primary;
+            default:
+                return AppColors.text.muted;
+        }
     },
 
     // Get appropriate color for jsondoc based on origin

@@ -274,7 +274,7 @@ const TransformNode: React.FC<{ data: any }> = ({ data }) => {
     const { transform, humanTransform } = data;
 
     const getTypeColor = (type: string) => {
-        return ColorUtils.getTransformColor(type as 'human' | 'llm');
+        return ColorUtils.getTransformColor(type as 'human' | 'llm' | 'ai_patch' | 'human_patch_approval');
     };
 
     const typeColor = getTypeColor(transform.type);
@@ -539,7 +539,9 @@ const RawGraphVisualization: React.FC = () => {
             projectData.transforms.forEach((transform: any) => {
                 const shouldShow =
                     (transform.type === 'human' && showHumanTransforms) ||
-                    (transform.type === 'llm' && showLLMTransforms);
+                    (transform.type === 'llm' && showLLMTransforms) ||
+                    (transform.type === 'ai_patch' && showLLMTransforms) ||
+                    (transform.type === 'human_patch_approval' && showHumanTransforms);
 
                 if (!shouldShow) return;
 
@@ -563,7 +565,7 @@ const RawGraphVisualization: React.FC = () => {
                 // Create edges from input jsondocs to transform
                 if (Array.isArray(projectData.transformInputs)) {
                     const inputs = projectData.transformInputs.filter((ti: any) => ti.transform_id === transform.id);
-                    const edgeColor = ColorUtils.getTransformColor(transform.type as 'human' | 'llm');
+                    const edgeColor = ColorUtils.getTransformColor(transform.type as 'human' | 'llm' | 'ai_patch' | 'human_patch_approval');
 
                     inputs.forEach((input: any) => {
                         if (showJsondocs && Array.isArray(projectData.jsondocs) && projectData.jsondocs.some((a) => a.id === input.jsondoc_id)) {
@@ -582,7 +584,7 @@ const RawGraphVisualization: React.FC = () => {
                 // Create edges from transform to output jsondocs
                 if (Array.isArray(projectData.transformOutputs)) {
                     const outputs = projectData.transformOutputs.filter((to: any) => to.transform_id === transform.id);
-                    const edgeColor = ColorUtils.getTransformColor(transform.type as 'human' | 'llm');
+                    const edgeColor = ColorUtils.getTransformColor(transform.type as 'human' | 'llm' | 'ai_patch' | 'human_patch_approval');
 
                     outputs.forEach((output: any) => {
                         if (showJsondocs && Array.isArray(projectData.jsondocs) && projectData.jsondocs.some((a) => a.id === output.jsondoc_id)) {
@@ -610,10 +612,12 @@ const RawGraphVisualization: React.FC = () => {
 
                     const shouldShow =
                         (transform.type === 'human' && showHumanTransforms) ||
-                        (transform.type === 'llm' && showLLMTransforms);
+                        (transform.type === 'llm' && showLLMTransforms) ||
+                        (transform.type === 'ai_patch' && showLLMTransforms) ||
+                        (transform.type === 'human_patch_approval' && showHumanTransforms);
                     if (!shouldShow) return;
 
-                    const edgeColor = ColorUtils.getTransformColor(transform.type as 'human' | 'llm');
+                    const edgeColor = ColorUtils.getTransformColor(transform.type as 'human' | 'llm' | 'ai_patch' | 'human_patch_approval');
 
                     // Create edge from source jsondoc to transform (if both exist in nodes)
                     if (humanTransform.source_jsondoc_id &&
