@@ -7,6 +7,7 @@ import { createBrainstormToolDefinition, createBrainstormEditToolDefinition } fr
 import { createOutlineSettingsToolDefinition, createOutlineSettingsEditToolDefinition } from '../tools/OutlineSettingsTool';
 import { createChroniclesToolDefinition, createChroniclesEditToolDefinition } from '../tools/ChroniclesTool';
 import { createEpisodePlanningToolDefinition, createEpisodePlanningEditToolDefinition } from '../tools/EpisodePlanningTool';
+import { createEpisodeSynopsisToolDefinition } from '../tools/EpisodeSynopsisTool';
 import type { GeneralAgentRequest } from '../transform-jsondoc-framework/AgentService';
 import type { StreamingToolDefinition } from '../transform-jsondoc-framework/StreamingAgentFramework';
 import { dump } from 'js-yaml';
@@ -105,6 +106,13 @@ export async function buildContextForRequestType(
     // Episode planning
     if (canonicalContext.canonicalEpisodePlanning) {
         formatJsondocForContext(canonicalContext.canonicalEpisodePlanning, 'episode_planning');
+    }
+
+    // Episode synopsis list
+    if (canonicalContext.canonicalEpisodeSynopsisList.length > 0) {
+        canonicalContext.canonicalEpisodeSynopsisList.forEach((synopsis, index) => {
+            formatJsondocForContext(synopsis, `episode_synopsis_${index + 1}`);
+        });
     }
 
     // Join all context lines - same format as tools
@@ -230,10 +238,24 @@ ${context}
 → 参数：editRequirements="基于更新后的创意整合童话元素到大纲中", jsondocs=[{ jsondocId: "new_brainstorm_idea", description: "chosen_idea", schemaType: "brainstorm_idea" }, { jsondocId: "current_outline_settings", description: "outline_settings", schemaType: "outline_settings" }]
 → 完成后返回JSON总结
 
-示例10：多步编辑 - 修改剧本设定后更新时间顺序大纲（仅当用户明确要求修改多个组件时）
+示例10：多步级联编辑 - 修改剧本设定后更新时间顺序大纲、剧集框架和每集大纲（仅当用户明确要求修改多个组件时）
+用户请求："优化故事结构，增强戏剧冲突"
+当前存在的canonical jsondocs: current_brainstorm_idea, current_outline_settings, current_chronicles, current_episode_planning, current_episode_synopsis_list
+分析：用户并没有明确要修改或者生成哪个部分，根据逻辑判断"优化故事结构"需要涉及"剧本设定"、"时间顺序大纲"、"剧集框架"、"每集大纲"，因此按照顺序原则，edit_outline_settings、edit_chronicles、edit_episode_planning、generate_episode_synopsis 工具需要依次调用
+→ 第一步 使用 edit_outline_settings 编辑剧本设定，增强戏剧冲突
+→ 参数：editRequirements="增强戏剧冲突，优化角色关系和情节设定", jsondocs=[{ jsondocId: "current_brainstorm_idea", description: "chosen_idea", schemaType: "brainstorm_idea" }, { jsondocId: "current_outline_settings", description: "outline_settings", schemaType: "outline_settings" }], 返回 jsondoc: { id: "new_outline_settings" }
+→ 第二步 使用 edit_chronicles 更新时间顺序大纲，基于新的框架设定
+→ 参数：editRequirements="基于更新后的框架设定调整时间顺序大纲，突出戏剧冲突", jsondocs=[{ jsondocId: "current_brainstorm_idea", description: "chosen_idea", schemaType: "brainstorm_idea" }, { jsondocId: "new_outline_settings", description: "outline_settings", schemaType: "outline_settings" }, { jsondocId: "current_chronicles", description: "chronicles", schemaType: "chronicles" }], 返回 jsondoc: { id: "new_chronicles" }
+→ 第三步 使用 edit_episode_planning 更新剧集框架，基于新的时间顺序大纲
+→ 参数：editRequirements="基于更新后的时间顺序大纲调整剧集框架，优化情感节拍和悬念设置", jsondocs=[{ jsondocId: "current_brainstorm_idea", description: "chosen_idea", schemaType: "brainstorm_idea" }, { jsondocId: "new_outline_settings", description: "outline_settings", schemaType: "outline_settings" }, { jsondocId: "new_chronicles", description: "chronicles", schemaType: "chronicles" }, { jsondocId: "current_episode_planning", description: "episode_planning", schemaType: "episode_planning" }], 返回 jsondoc: { id: "new_episode_planning" }
+→ 第四步 使用 generate_episode_synopsis 重新生成第一组每集大纲，基于更新后的剧集框架
+→ 参数：groupTitle="震撼开场：赛亚人觉醒时刻", episodeRange="1-3", episodes=[1,2,3], jsondocs=[{ jsondocId: "current_brainstorm_idea", description: "chosen_idea", schemaType: "brainstorm_idea" }, { jsondocId: "new_outline_settings", description: "outline_settings", schemaType: "outline_settings" }, { jsondocId: "new_chronicles", description: "chronicles", schemaType: "chronicles" }, { jsondocId: "new_episode_planning", description: "episode_planning", schemaType: "episode_planning" }]
+→ 完成后返回JSON总结
+
+示例11：多步编辑 - 修改剧本设定后更新时间顺序大纲（仅当用户明确要求修改多个组件时）
 用户请求："减少作品的伦理争议，加入更多正面元素"
 当前存在的canonical jsondocs: current_brainstorm_idea, current_outline_settings, current_chronicles
-分析：用户并没有明确要修改或者生成哪个部分，根据逻辑判断“减少伦理争议”需要涉及“想法”、“剧本设定”、“时间顺序大纲”，因此按照顺序原则，edit_brainstorm_idea、edit_outline_settings、edit_chronicles 工具需要依次调用
+分析：用户并没有明确要修改或者生成哪个部分，根据逻辑判断"减少伦理争议"需要涉及"想法"、"剧本设定"、"时间顺序大纲"，因此按照顺序原则，edit_brainstorm_idea、edit_outline_settings、edit_chronicles 工具需要依次调用
 → 第一步 使用 edit_brainstorm_idea 编辑想法，减少伦理争议
 → 参数：editRequirements="减少伦理争议，加入更多正面元素", jsondocs=[{ jsondocId: "current_brainstorm_idea", description: "chosen_idea", schemaType: "brainstorm_idea" }]. 返回 jsondoc: { id: "new_brainstorm_idea" }
 → 第二步 使用 edit_outline_settings 编辑剧本设定，基于新的想法
@@ -242,17 +264,13 @@ ${context}
 → 参数：editRequirements="基于更新后的框架设定调整时间顺序大纲，确保内容一致性", jsondocs=[{ jsondocId: "new_brainstorm_idea", description: "chosen_idea", schemaType: "brainstorm_idea" }, { jsondocId: "new_outline_settings", description: "outline_settings", schemaType: "outline_settings" }, { jsondocId: "current_chronicles", description: "chronicles", schemaType: "chronicles" }]
 → 完成后返回JSON总结
 
-示例11：多步级联编辑 - 修改剧本设定后更新时间顺序大纲和剧集框架（仅当用户明确要求修改多个组件时）
-用户请求："优化故事结构，增强戏剧冲突"
-当前存在的canonical jsondocs: current_brainstorm_idea, current_outline_settings, current_chronicles, current_episode_planning
-分析：用户并没有明确要修改或者生成哪个部分，根据逻辑判断“优化故事结构”需要涉及“剧本设定”、“时间顺序大纲”、“剧集框架”，因此按照顺序原则，edit_outline_settings、edit_chronicles、edit_episode_planning 工具需要依次调用
-→ 第一步 使用 edit_outline_settings 编辑剧本设定，增强戏剧冲突
-→ 参数：editRequirements="增强戏剧冲突，优化角色关系和情节设定", jsondocs=[{ jsondocId: "current_brainstorm_idea", description: "chosen_idea", schemaType: "brainstorm_idea" }, { jsondocId: "current_outline_settings", description: "outline_settings", schemaType: "outline_settings" }], 返回 jsondoc: { id: "new_outline_settings" }
-→ 第二步 使用 edit_chronicles 更新时间顺序大纲，基于新的框架设定
-→ 参数：editRequirements="基于更新后的框架设定调整时间顺序大纲，突出戏剧冲突", jsondocs=[{ jsondocId: "current_brainstorm_idea", description: "chosen_idea", schemaType: "brainstorm_idea" }, { jsondocId: "new_outline_settings", description: "outline_settings", schemaType: "outline_settings" }, { jsondocId: "current_chronicles", description: "chronicles", schemaType: "chronicles" }], 返回 jsondoc: { id: "new_chronicles" }
-→ 第三步 使用 edit_episode_planning 更新剧集框架，基于新的时间顺序大纲
-→ 参数：editRequirements="基于更新后的时间顺序大纲调整剧集框架，优化情感节拍和悬念设置", jsondocs=[{ jsondocId: "current_brainstorm_idea", description: "chosen_idea", schemaType: "brainstorm_idea" }, { jsondocId: "new_outline_settings", description: "outline_settings", schemaType: "outline_settings" }, { jsondocId: "new_chronicles", description: "chronicles", schemaType: "chronicles" }, { jsondocId: "current_episode_planning", description: "episode_planning", schemaType: "episode_planning" }]
-→ 完成后返回JSON总结
+示例12：生成每集大纲
+用户请求："基于剧集框架生成第1-3集的详细每集大纲"
+当前存在的canonical jsondocs: active_brainstorm_idea, active_outline_settings, active_chronicles, active_episode_planning
+分析：用户明确要求生成每集大纲，因此使用 generate_episode_synopsis 工具
+→ 使用 generate_episode_synopsis 工具
+→ 参数：groupTitle="震撼开场：赛亚人觉醒时刻", episodeRange="1-3", episodes=[1,2,3], jsondocs=[{ jsondocId: "active_brainstorm_idea", description: "chosen_idea", schemaType: "brainstorm_idea" }, { jsondocId: "active_outline_settings", description: "outline_settings", schemaType: "outline_settings" }, { jsondocId: "active_chronicles", description: "chronicles", schemaType: "chronicles" }, { jsondocId: "active_episode_planning", description: "episode_planning", schemaType: "episode_planning" }]
+→ **完成生成后立即停止，不要自动进行下一步**
 
 **重要：所有工具都会自动接收相关的上下文jsondocs作为参考资料。在多步工具调用中，后续工具会自动包含前面工具调用的输出jsondocId，确保基于最新数据进行处理。**
 
@@ -329,7 +347,8 @@ export function buildToolsForRequestType(
         createChroniclesToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions),
         createChroniclesEditToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions),
         createEpisodePlanningToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions),
-        createEpisodePlanningEditToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions)
+        createEpisodePlanningEditToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions),
+        createEpisodeSynopsisToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions)
     ];
 }
 

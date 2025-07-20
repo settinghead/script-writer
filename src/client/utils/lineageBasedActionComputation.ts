@@ -23,6 +23,7 @@ import OutlineGenerationForm from '../components/actions/OutlineGenerationForm';
 import ChroniclesGenerationAction from '../components/actions/ChroniclesGenerationAction';
 import EpisodePlanningAction from '../components/actions/EpisodePlanningAction';
 import EpisodeGenerationAction from '../components/actions/EpisodeGenerationAction';
+import EpisodeSynopsisGenerationAction from '../components/actions/EpisodeSynopsisGenerationAction';
 
 // Action item definition
 export interface ActionItem {
@@ -107,6 +108,23 @@ export function computeActionsFromLineage(
         actionContext,
         actions,
     };
+}
+
+// Helper function to parse episode range like "1-3" to [1, 2, 3]
+function parseEpisodeRange(episodeRange: string): number[] {
+    const parts = episodeRange.split('-');
+    if (parts.length !== 2) return [];
+
+    const start = parseInt(parts[0]);
+    const end = parseInt(parts[1]);
+
+    if (isNaN(start) || isNaN(end) || start > end) return [];
+
+    const episodes = [];
+    for (let i = start; i <= end; i++) {
+        episodes.push(i);
+    }
+    return episodes;
 }
 
 /**
@@ -254,6 +272,95 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
         });
     }
 
+    // Episode synopsis generation - after episode planning, before script generation
+    if (context.canonicalEpisodePlanning && context.canonicalEpisodeSynopsisList.length === 0) {
+        // First group - get from episode planning
+        try {
+            const episodePlanningData = JSON.parse(context.canonicalEpisodePlanning.data);
+            const firstGroup = episodePlanningData.episodeGroups?.[0];
+
+            if (firstGroup) {
+                actions.push({
+                    id: 'episode_synopsis_generation',
+                    type: 'button',
+                    title: `生成第${firstGroup.episodes}集每集大纲`,
+                    description: `生成"${firstGroup.groupTitle}"的详细每集大纲`,
+                    component: EpisodeSynopsisGenerationAction,
+                    props: {
+                        jsondocs: {
+                            brainstormIdea: context.canonicalBrainstormIdea,
+                            brainstormCollection: context.canonicalBrainstormCollection,
+                            outlineSettings: context.canonicalOutlineSettings,
+                            chronicles: context.canonicalChronicles,
+                            episodePlanning: context.canonicalEpisodePlanning,
+                            brainstormInput: context.canonicalBrainstormInput
+                        },
+                        workflowContext: {
+                            hasActiveTransforms: context.hasActiveTransforms,
+                            workflowNodes: context.workflowNodes
+                        },
+                        nextGroup: {
+                            groupTitle: firstGroup.groupTitle,
+                            episodeRange: firstGroup.episodes,
+                            episodes: parseEpisodeRange(firstGroup.episodes)
+                        }
+                    },
+                    enabled: true,
+                    priority: 1
+                });
+            }
+        } catch (error) {
+            console.warn('Failed to parse episode planning data for synopsis generation:', error);
+        }
+    } else if (context.canonicalEpisodePlanning && context.canonicalEpisodeSynopsisList.length > 0) {
+        // Check if we need next group
+        try {
+            const episodePlanningData = JSON.parse(context.canonicalEpisodePlanning.data);
+            const allGroups = episodePlanningData.episodeGroups || [];
+            const completedRanges = new Set(context.canonicalEpisodeSynopsisList.map(synopsis => {
+                try {
+                    const data = JSON.parse(synopsis.data);
+                    return data.episodeRange;
+                } catch {
+                    return null;
+                }
+            }).filter(Boolean));
+
+            const nextGroup = allGroups.find((group: any) => !completedRanges.has(group.episodes));
+            if (nextGroup) {
+                actions.push({
+                    id: 'episode_synopsis_generation',
+                    type: 'button',
+                    title: `生成第${nextGroup.episodes}集每集大纲`,
+                    description: `生成"${nextGroup.groupTitle}"的详细每集大纲`,
+                    component: EpisodeSynopsisGenerationAction,
+                    props: {
+                        jsondocs: {
+                            brainstormIdea: context.canonicalBrainstormIdea,
+                            brainstormCollection: context.canonicalBrainstormCollection,
+                            outlineSettings: context.canonicalOutlineSettings,
+                            chronicles: context.canonicalChronicles,
+                            episodePlanning: context.canonicalEpisodePlanning,
+                            brainstormInput: context.canonicalBrainstormInput
+                        },
+                        workflowContext: {
+                            hasActiveTransforms: context.hasActiveTransforms,
+                            workflowNodes: context.workflowNodes
+                        },
+                        nextGroup: {
+                            groupTitle: nextGroup.groupTitle,
+                            episodeRange: nextGroup.episodes,
+                            episodes: parseEpisodeRange(nextGroup.episodes)
+                        }
+                    },
+                    enabled: true,
+                    priority: 1
+                });
+            }
+        } catch (error) {
+            console.warn('Failed to parse episode planning data for next group detection:', error);
+        }
+    }
 
     return actions;
 } 

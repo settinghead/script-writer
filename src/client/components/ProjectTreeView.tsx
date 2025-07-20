@@ -75,7 +75,8 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
             '#ideas': 'ideas',
             '#outline-settings': 'outline-settings',
             '#chronicles': 'chronicles',
-            '#episode-planning': 'episode-planning'
+            '#episode-planning': 'episode-planning',
+            '#episode-synopsis': 'episode-synopsis'
         };
 
         const nodeSection = navigationTargetToSection[navigationTarget];
@@ -123,13 +124,19 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
             jsondoc.schema_type === 'episode_planning'
         );
 
+        // Check for episode synopsis jsondocs
+        const hasEpisodeSynopsis = projectData.jsondocs.some(jsondoc =>
+            jsondoc.schema_type === 'episode_synopsis'
+        );
+
         return {
             hasBrainstormIdeas,
             hasBrainstormInput,
             hasEditableBrainstormIdea,
             hasOutlineSettings,
             hasChronicles,
-            hasEpisodePlanning
+            hasEpisodePlanning,
+            hasEpisodeSynopsis
         };
     }, [ideas, projectData.jsondocs]);
 
@@ -438,6 +445,52 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
             };
 
             sections.push(episodePlanningSection);
+        }
+
+        // 6. EPISODE SYNOPSIS SECTION - only show if episode synopsis jsondocs exist
+        if (jsondocChecks.hasEpisodeSynopsis) {
+            const episodeSynopsisHighlighted = shouldHighlightNode('#episode-synopsis');
+
+            const episodeSynopsisSection: ProjectTreeNode = {
+                key: 'episode-synopsis-section',
+                title: (
+                    <Space style={{
+                        padding: episodeSynopsisHighlighted ? '4px 8px' : '0',
+                        borderRadius: '6px',
+                        background: episodeSynopsisHighlighted ?
+                            'linear-gradient(135deg, rgba(24, 144, 255, 0.25) 0%, rgba(64, 169, 255, 0.15) 100%)' :
+                            'none',
+                        border: episodeSynopsisHighlighted ? '1px solid rgba(24, 144, 255, 0.4)' : 'none',
+                        boxShadow: episodeSynopsisHighlighted ?
+                            '0 0 20px rgba(24, 144, 255, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)' :
+                            'none',
+                        transition: 'all 0.2s ease-in-out',
+                        display: 'inline-flex',
+                        alignItems: 'center'
+                    }}>
+                        <Text style={{
+                            color: episodeSynopsisHighlighted ? '#ffffff' : '#fff',
+                            fontWeight: episodeSynopsisHighlighted ? 700 : 500,
+                            textShadow: episodeSynopsisHighlighted ? '0 0 8px rgba(24, 144, 255, 0.8)' : 'none'
+                        }}>
+                            每集大纲
+                        </Text>
+                        <CheckCircleOutlined style={{
+                            color: episodeSynopsisHighlighted ? '#52c41a' : '#52c41a',
+                            fontSize: '12px',
+                            marginLeft: '4px'
+                        }} />
+                    </Space>
+                ),
+                icon: <BookOutlined style={{
+                    color: episodeSynopsisHighlighted ? '#1890ff' : '#666',
+                    filter: episodeSynopsisHighlighted ? 'drop-shadow(0 0 4px rgba(24, 144, 255, 0.6))' : 'none'
+                }} />,
+                selectable: true,
+                navigationTarget: '#episode-synopsis'
+            };
+
+            sections.push(episodeSynopsisSection);
         }
 
         return sections;

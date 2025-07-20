@@ -21,6 +21,7 @@ export interface CanonicalJsondocContext {
     canonicalChronicles: ElectricJsondoc | null;
     canonicalEpisodePlanning: ElectricJsondoc | null;
     canonicalBrainstormInput: ElectricJsondoc | null;
+    canonicalEpisodeSynopsisList: ElectricJsondoc[]; // All episode synopsis jsondocs
 
     // Workflow state
     workflowNodes: WorkflowNode[];
@@ -71,6 +72,22 @@ export function computeCanonicalJsondocsFromLineage(
     const canonicalEpisodePlanning = findCanonicalJsondocByType(lineageGraph, jsondocs, 'episode_planning');
     const canonicalBrainstormInput = findCanonicalJsondocByType(lineageGraph, jsondocs, 'brainstorm_input_params');
 
+    // Find all episode synopsis jsondocs and sort by episode range
+    const canonicalEpisodeSynopsisList = jsondocs
+        .filter(j => j.schema_type === 'episode_synopsis')
+        .sort((a, b) => {
+            // Sort by first episode number for consistent ordering
+            try {
+                const aData = JSON.parse(a.data);
+                const bData = JSON.parse(b.data);
+                const aFirstEpisode = aData.episodes?.[0]?.episodeNumber || 0;
+                const bFirstEpisode = bData.episodes?.[0]?.episodeNumber || 0;
+                return aFirstEpisode - bFirstEpisode;
+            } catch {
+                return 0;
+            }
+        });
+
     return {
         canonicalBrainstormIdea,
         canonicalBrainstormCollection,
@@ -78,6 +95,7 @@ export function computeCanonicalJsondocsFromLineage(
         canonicalChronicles,
         canonicalEpisodePlanning,
         canonicalBrainstormInput,
+        canonicalEpisodeSynopsisList,
         workflowNodes: findMainWorkflowPath(jsondocs, lineageGraph),
         hasActiveTransforms: transforms.some(t => t.status === 'running' || t.status === 'pending'),
         activeTransforms: transforms.filter(t => t.status === 'running' || t.status === 'pending'),
@@ -271,7 +289,7 @@ export function extractCanonicalJsondocIds(context: CanonicalJsondocContext): Se
  * Find the canonical jsondoc of a specific type using smart prioritization
  * 
  * Prioritization logic:
- * 1. Derived jsondocs (with applied_patches metadata) over originals
+ * 1. Derived jsondocs (with applied patches) over originals
  * 2. User input jsondocs over AI generated ones  
  * 3. Leaf nodes (no descendants) over non-leaf nodes
  * 4. More recent jsondocs over older ones

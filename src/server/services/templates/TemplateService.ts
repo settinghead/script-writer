@@ -6,6 +6,7 @@ import { chroniclesTemplate } from './chronicles.js';
 import { chroniclesEditPatchTemplate } from './chroniclesEditPatch.js';
 import { episodePlanningTemplate } from './episodePlanning.js';
 import { episodePlanningEditPatchTemplate } from './episodePlanningEditPatch.js';
+import { episodeSynopsisTemplate } from './episodeSynopsis.js';
 import { ParticleTemplateProcessor } from '../ParticleTemplateProcessor';
 import { dump } from 'js-yaml';
 
@@ -97,6 +98,7 @@ export class TemplateService {
     this.registerTemplate(chroniclesEditPatchTemplate);
     this.registerTemplate(episodePlanningTemplate);
     this.registerTemplate(episodePlanningEditPatchTemplate);
+    this.registerTemplate(episodeSynopsisTemplate);
   }
 
   private registerTemplate(template: LLMTemplate) {

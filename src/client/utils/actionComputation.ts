@@ -119,6 +119,7 @@ function computeUnifiedContext(
                     canonicalChronicles: null,
                     canonicalEpisodePlanning: null,
                     canonicalBrainstormInput: null,
+                    canonicalEpisodeSynopsisList: [],
                     workflowNodes: [],
                     hasActiveTransforms: false,
                     activeTransforms: [],
@@ -165,6 +166,7 @@ function computeUnifiedContext(
                         canonicalChronicles: null,
                         canonicalEpisodePlanning: null,
                         canonicalBrainstormInput: null,
+                        canonicalEpisodeSynopsisList: [],
                         workflowNodes: [],
                         hasActiveTransforms: false,
                         activeTransforms: [],
@@ -195,6 +197,7 @@ function computeUnifiedContext(
                         canonicalChronicles: null,
                         canonicalEpisodePlanning: null,
                         canonicalBrainstormInput: null,
+                        canonicalEpisodeSynopsisList: [],
                         workflowNodes: [],
                         hasActiveTransforms: false,
                         activeTransforms: [],
@@ -227,6 +230,7 @@ function computeUnifiedContext(
                     canonicalChronicles: null,
                     canonicalEpisodePlanning: null,
                     canonicalBrainstormInput: null,
+                    canonicalEpisodeSynopsisList: [],
                     workflowNodes: [],
                     hasActiveTransforms: false,
                     activeTransforms: [],
@@ -258,6 +262,7 @@ function computeUnifiedContext(
                 canonicalChronicles: null,
                 canonicalEpisodePlanning: null,
                 canonicalBrainstormInput: null,
+                canonicalEpisodeSynopsisList: [],
                 workflowNodes: [],
                 hasActiveTransforms: false,
                 activeTransforms: [],
@@ -296,6 +301,7 @@ function computeUnifiedContext(
                 canonicalChronicles: null,
                 canonicalEpisodePlanning: null,
                 canonicalBrainstormInput: null,
+                canonicalEpisodeSynopsisList: [],
                 workflowNodes: [],
                 hasActiveTransforms: false,
                 activeTransforms: [],
@@ -433,7 +439,8 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
         'single-idea-editor': 3,
         'outline-settings-display': 4,
         'chronicles-display': 5,
-        'episode-planning-display': 6
+        'episode-planning-display': 6,
+        'episode-synopsis-display': 7
     };
 
     // Add components based on context
@@ -551,6 +558,19 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
                 isEditable: isEpisodePlanningEditable
             },
             priority: componentOrder['episode-planning-display']
+        });
+    }
+
+    // Episode synopsis display - show immediately when any exist
+    if (context.canonicalContext.canonicalEpisodeSynopsisList.length > 0) {
+        components.push({
+            id: 'episode-synopsis-display',
+            component: getComponentById('episode-synopsis-display'),
+            mode: 'readonly', // Keep simple - no editing for now
+            props: {
+                episodeSynopsisList: context.canonicalContext.canonicalEpisodeSynopsisList
+            },
+            priority: componentOrder['episode-synopsis-display']
         });
     }
 

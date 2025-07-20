@@ -34,6 +34,8 @@ export class ParticleExtractor {
         this.extractors.set('outline_settings', this.extractOutlineParticles.bind(this));
         this.extractors.set('chronicles', this.extractChroniclesParticles.bind(this));
         this.extractors.set('brainstorm_idea', this.extractBrainstormIdeaParticles.bind(this));
+        this.extractors.set('episode_planning', this.extractEpisodePlanningParticles.bind(this));
+        this.extractors.set('episode_synopsis', this.extractEpisodeSynopsisParticles.bind(this));
     }
 
     private registerEmbeddingContentExtractors() {
@@ -61,6 +63,17 @@ export class ParticleExtractor {
         // For stages, use title + synopsis instead of YAML
         this.embeddingContentExtractors.set('stage', (content: any) => {
             return `${content.title || ''}\n${content.stageSynopsis || ''}`.trim();
+        });
+
+        // For episode synopsis, use title + main plot + emotional climax
+        this.embeddingContentExtractors.set('episode', (content: any) => {
+            const parts = [];
+            if (content.title) parts.push(`标题: ${content.title}`);
+            if (content.openingHook) parts.push(`开场钩子: ${content.openingHook}`);
+            if (content.mainPlot) parts.push(`主要剧情: ${content.mainPlot}`);
+            if (content.emotionalClimax) parts.push(`情感高潮: ${content.emotionalClimax}`);
+            if (content.cliffhanger) parts.push(`结尾悬念: ${content.cliffhanger}`);
+            return parts.join('\n');
         });
     }
 
@@ -324,7 +337,7 @@ export class ParticleExtractor {
     }
 
     private async extractChroniclesParticles(jsondoc: TypedJsondoc): Promise<ParticleData[]> {
-        const data = jsondoc.data as any; // Use any for flexible access to data properties
+        const data = jsondoc.data as any;
         const particles: ParticleData[] = [];
 
         if (data.stages && Array.isArray(data.stages)) {
@@ -333,17 +346,104 @@ export class ParticleExtractor {
                 if (!stage.title && !stage.stageSynopsis) continue;
 
                 const title = stage.title || `阶段 ${i + 1}`;
-                const contentText = this.generateEmbeddingContent('stage', stage, jsondoc);
+                const content = {
+                    title: stage.title,
+                    stageSynopsis: stage.stageSynopsis,
+                    event: stage.event,
+                    numberOfEpisodes: stage.numberOfEpisodes
+                };
+
+                const contentText = this.generateEmbeddingContent('stage', content, jsondoc);
 
                 if (contentText) {
                     const embedding = await this.embeddingService.generateEmbedding(contentText);
 
                     particles.push({
-                        id: this.generateParticleId(jsondoc, `$.stages[${i}]`, '阶段', stage),
+                        id: this.generateParticleId(jsondoc, `$.stages[${i}]`, '阶段', content),
                         path: `$.stages[${i}]`,
                         type: '阶段',
                         title,
-                        content: stage,
+                        content,
+                        content_text: contentText,
+                        embedding
+                    });
+                }
+            }
+        }
+
+        return particles;
+    }
+
+    private async extractEpisodePlanningParticles(jsondoc: TypedJsondoc): Promise<ParticleData[]> {
+        const data = jsondoc.data as any;
+        const particles: ParticleData[] = [];
+
+        if (data.episodeGroups && Array.isArray(data.episodeGroups)) {
+            for (let i = 0; i < data.episodeGroups.length; i++) {
+                const group = data.episodeGroups[i];
+                if (!group.groupTitle) continue;
+
+                const title = group.groupTitle;
+                const content = {
+                    groupTitle: group.groupTitle,
+                    episodes: group.episodes,
+                    keyEvents: group.keyEvents,
+                    hooks: group.hooks,
+                    emotionalBeats: group.emotionalBeats
+                };
+
+                const contentText = this.generateEmbeddingContent('episode_group', content, jsondoc);
+
+                if (contentText) {
+                    const embedding = await this.embeddingService.generateEmbedding(contentText);
+
+                    particles.push({
+                        id: this.generateParticleId(jsondoc, `$.episodeGroups[${i}]`, '剧集组', content),
+                        path: `$.episodeGroups[${i}]`,
+                        type: '剧集组',
+                        title,
+                        content,
+                        content_text: contentText,
+                        embedding
+                    });
+                }
+            }
+        }
+
+        return particles;
+    }
+
+    private async extractEpisodeSynopsisParticles(jsondoc: TypedJsondoc): Promise<ParticleData[]> {
+        const data = jsondoc.data as any;
+        const particles: ParticleData[] = [];
+
+        if (data.episodes && Array.isArray(data.episodes)) {
+            for (let i = 0; i < data.episodes.length; i++) {
+                const episode = data.episodes[i];
+                if (!episode.title) continue;
+
+                const title = `第${episode.episodeNumber}集: ${episode.title}`;
+                const content = {
+                    episodeNumber: episode.episodeNumber,
+                    title: episode.title,
+                    openingHook: episode.openingHook,
+                    mainPlot: episode.mainPlot,
+                    emotionalClimax: episode.emotionalClimax,
+                    cliffhanger: episode.cliffhanger,
+                    suspenseElements: episode.suspenseElements
+                };
+
+                const contentText = this.generateEmbeddingContent('episode', content, jsondoc);
+
+                if (contentText) {
+                    const embedding = await this.embeddingService.generateEmbedding(contentText);
+
+                    particles.push({
+                        id: this.generateParticleId(jsondoc, `$.episodes[${i}]`, '每集大纲', content),
+                        path: `$.episodes[${i}]`,
+                        type: '每集大纲',
+                        title,
+                        content,
                         content_text: contentText,
                         embedding
                     });

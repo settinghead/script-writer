@@ -39,7 +39,6 @@ export const episodePlanningTemplate: LLMTemplate = {
 ## 参考数据
 以下是生成分集规划的关键参考资料：
 
-### 时间顺序大纲（必需）
 %%jsondocs%%
 
 ### 故事创意（如果提供）

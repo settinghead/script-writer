@@ -114,4 +114,40 @@ export const EpisodePlanningEditToolResultSchema = z.object({
 });
 
 export type EpisodePlanningEditInput = z.infer<typeof EpisodePlanningEditInputSchema>;
-export type EpisodePlanningEditToolResult = z.infer<typeof EpisodePlanningEditToolResultSchema>; 
+export type EpisodePlanningEditToolResult = z.infer<typeof EpisodePlanningEditToolResultSchema>;
+
+// Episode Synopsis Schemas
+export const EpisodeSynopsisSchema = z.object({
+    episodeNumber: z.number(),
+    title: z.string(),
+    openingHook: z.string().describe('开场钩子 - 前3秒抓住观众'),
+    mainPlot: z.string().describe('主要剧情发展'),
+    emotionalClimax: z.string().describe('情感高潮点'),
+    cliffhanger: z.string().describe('结尾悬念'),
+    suspenseElements: z.array(z.string()).describe('悬念元素'),
+    estimatedDuration: z.number().describe('预估时长(秒)')
+});
+
+export const EpisodeSynopsisGroupSchema = z.object({
+    groupTitle: z.string(),
+    episodeRange: z.string(), // "1-3"
+    episodes: z.array(EpisodeSynopsisSchema)
+});
+
+export const EpisodeSynopsisInputSchema = BaseToolInputSchema.extend({
+    groupTitle: z.string(),
+    episodeRange: z.string(),
+    episodes: z.array(z.number()) // [1, 2, 3]
+});
+
+// Episode Synopsis Tool Result
+export const EpisodeSynopsisToolResultSchema = z.object({
+    outputJsondocId: z.string(),
+    finishReason: z.string()
+});
+
+// Type exports
+export type EpisodeSynopsisV1 = z.infer<typeof EpisodeSynopsisSchema>;
+export type EpisodeSynopsisGroupV1 = z.infer<typeof EpisodeSynopsisGroupSchema>;
+export type EpisodeSynopsisInputV1 = z.infer<typeof EpisodeSynopsisInputSchema>;
+export type EpisodeSynopsisToolResult = z.infer<typeof EpisodeSynopsisToolResultSchema>; 

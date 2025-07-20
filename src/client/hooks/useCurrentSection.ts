@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-export type CurrentSection = 'ideas' | 'outline-settings' | 'chronicles' | 'episode-planning' | null;
+export type CurrentSection = 'ideas' | 'outline-settings' | 'chronicles' | 'episode-planning' | 'episode-synopsis' | null;
 
 /**
  * Hook to detect which section is currently visible in the viewport
@@ -14,7 +14,8 @@ export function useCurrentSection(): CurrentSection {
             '#ideas',
             '#outline-settings',
             '#chronicles',
-            '#episode-planning'
+            '#episode-planning',
+            '#episode-synopsis'
         ];
 
         const observer = new IntersectionObserver(
@@ -22,7 +23,7 @@ export function useCurrentSection(): CurrentSection {
 
                 // SOLUTION: Don't rely on entries (which only show changes)
                 // Instead, manually check all target elements on every intersection event
-                const sectionSelectors = ['#ideas', '#outline-settings', '#chronicles'];
+                const sectionSelectors = ['#ideas', '#outline-settings', '#chronicles', '#episode-planning', '#episode-synopsis'];
                 const allSectionData: { id: string; rect: DOMRect; element: HTMLElement }[] = [];
 
                 sectionSelectors.forEach(selector => {
