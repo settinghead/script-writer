@@ -157,8 +157,14 @@ export class TemplateService {
         };
 
         const jsondocTyped = jsondoc as any;
-        const schemaType = jsondocTyped.schema_type || jsondocTyped.schemaType || 'unknown';
-        const displayLabel = schemaTypeLabels[schemaType] || schemaType;
+        const schemaType = jsondocTyped.schema_type || jsondocTyped.schemaType;
+        if (!schemaType) {
+          throw new Error(`Jsondoc missing schema_type field. This indicates a data integrity issue. Jsondoc: ${JSON.stringify(jsondocTyped, null, 2)}`);
+        }
+        const displayLabel = schemaTypeLabels[schemaType];
+        if (!displayLabel) {
+          throw new Error(`Unknown schema type '${schemaType}'. Please add it to schemaTypeLabels in TemplateService.ts`);
+        }
 
         jsondocsOutput += `[jsondoc] ${displayLabel}:\n`;
 

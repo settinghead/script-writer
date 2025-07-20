@@ -37,11 +37,6 @@ export function createAdminRoutes(
         const toolRegistry = new Map();
 
         for (const tool of tools) {
-            // Extract template name from tool configuration
-            // This is a bit hacky but works by introspecting the tool's execute method
-            let templateName = 'unknown';
-            let outputJsondocType = 'unknown';
-
             // Map tool names to their template configurations based on known patterns
             const toolConfigs: Record<string, { templateName: string; outputJsondocType: string; schemas: any }> = {
                 'generate_brainstorm_ideas': {
@@ -119,15 +114,14 @@ export function createAdminRoutes(
             };
 
             const config = toolConfigs[tool.name];
-            if (config) {
-                templateName = config.templateName;
-                outputJsondocType = config.outputJsondocType;
+            if (!config) {
+                throw new Error(`Tool configuration not found for '${tool.name}'. Please add it to toolConfigs in buildToolRegistry().`);
             }
 
             toolRegistry.set(tool.name, {
                 tool,
-                templateName,
-                outputJsondocType,
+                templateName: config.templateName,
+                outputJsondocType: config.outputJsondocType,
                 config
             });
         }
@@ -158,7 +152,9 @@ export function createAdminRoutes(
                             Object.entries(schema.shape).map(([key, value]) => [
                                 key,
                                 {
-                                    type: (value as any)?._def?.typeName?.toLowerCase() || 'unknown',
+                                    type: (value as any)?._def?.typeName?.toLowerCase() || (() => {
+                                        throw new Error(`Unable to determine type for schema property '${key}' in tool '${tool.name}'. Schema introspection failed.`);
+                                    })(),
                                     description: `${key} parameter`
                                 }
                             ])
@@ -327,11 +323,19 @@ export function createAdminRoutes(
 
             // Add jsondoc references if provided
             if (jsondocs && Array.isArray(jsondocs)) {
-                input.jsondocs = jsondocs.map((j: any) => ({
-                    jsondocId: j.jsondocId,
-                    description: j.description || j.schemaType || 'input_data',
-                    schemaType: j.schemaType || 'unknown'
-                }));
+                input.jsondocs = jsondocs.map((j: any) => {
+                    if (!j.jsondocId) {
+                        throw new Error(`Jsondoc reference missing jsondocId field. Received: ${JSON.stringify(j)}`);
+                    }
+                    if (!j.schemaType) {
+                        throw new Error(`Jsondoc reference ${j.jsondocId} missing schemaType field. This indicates a data integrity issue.`);
+                    }
+                    return {
+                        jsondocId: j.jsondocId,
+                        description: j.description || j.schemaType,
+                        schemaType: j.schemaType
+                    };
+                });
             }
 
             sendSSE('status', { message: 'Executing tool in non-persistence mode...', input });
@@ -432,7 +436,7 @@ export function createAdminRoutes(
             const template = templateService.getTemplate(toolInfo.templateName);
 
             // Prepare context data exactly like tools do
-            let jsondocData: any[] = [];
+            let jsondocData: Record<string, any> = {};
             if (jsondocs && jsondocs.length > 0) {
                 // Fetch actual jsondoc content from database (same as tools do)
                 for (const jsondocRef of jsondocs) {
@@ -444,11 +448,14 @@ export function createAdminRoutes(
                                 // Check user has access to this jsondoc's project
                                 const hasAccess = await jsondocRepo.userHasProjectAccess(userId, jsondoc.project_id);
                                 if (hasAccess) {
-                                    jsondocData.push({
-                                        id: jsondoc.id,
-                                        type: jsondoc.schema_type,
+                                    // Structure jsondocs for template service:
+                                    // Key = schema_type, Value = jsondoc object with schema_type and data fields
+                                    jsondocData[jsondoc.schema_type] = {
+                                        schema_type: jsondoc.schema_type,
+                                        schema_version: jsondoc.schema_version,
+                                        origin_type: jsondoc.origin_type,
                                         data: jsondoc.data
-                                    });
+                                    };
                                 }
                             }
                         } catch (error) {
@@ -590,7 +597,9 @@ export function createAdminRoutes(
                 success: true,
                 prompt: agentConfig.prompt,
                 context: {
-                    currentStage: workflowState.parameters?.currentStage || 'unknown',
+                    currentStage: workflowState.parameters?.currentStage || (() => {
+                        throw new Error('Current stage not found in workflow state. This indicates a workflow computation issue.');
+                    })(),
                     hasActiveTransforms: workflowState.parameters?.hasActiveTransforms || false,
                     availableTools,
                     workflowState

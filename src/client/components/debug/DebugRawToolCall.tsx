@@ -131,6 +131,8 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
     const [promptResult, setPromptResult] = useState<PromptResult | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [toolsLoading, setToolsLoading] = useState(true);
+    const [jsondocsLoading, setJsondocsLoading] = useState(true);
 
     // Dry run state
     const [nonPersistentRunLoading, setNonPersistentRunLoading] = useState(false);
@@ -162,6 +164,11 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
             return null;
         }
 
+        // Wait for jsondocs to be loaded before processing selectedJsondocs
+        if (jsondocsLoading || jsondocs.length === 0) {
+            return null;
+        }
+
         let parsedParams = {};
         try {
             if (additionalParams.trim()) {
@@ -176,10 +183,28 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
         const mergedParams = { ...defaultParams, ...parsedParams };
 
         // Prepare jsondocs array for the request
-        const jsondocsArray = selectedJsondocs.map(jsondocId => {
+        // First, filter out any selectedJsondocs that don't exist in the current project
+        const validSelectedJsondocs = selectedJsondocs.filter(jsondocId => {
             const jsondoc = jsondocs.find(j => j.id === jsondocId);
             if (!jsondoc) {
-                throw new Error(`Jsondoc with ID ${jsondocId} not found. This should not happen - check jsondoc loading logic.`);
+                console.warn(`[DebugRawToolCall] Jsondoc ${jsondocId} not found in current project - removing from selection`);
+                return false;
+            }
+            return true;
+        });
+
+        // If any jsondocs were filtered out, update the selection
+        if (validSelectedJsondocs.length !== selectedJsondocs.length) {
+            console.warn(`[DebugRawToolCall] Cleaned up selectedJsondocs: ${selectedJsondocs.length} -> ${validSelectedJsondocs.length}`);
+            setSelectedJsondocs(validSelectedJsondocs);
+            return null; // Return null to trigger re-computation with cleaned selection
+        }
+
+        const jsondocsArray = validSelectedJsondocs.map(jsondocId => {
+            const jsondoc = jsondocs.find(j => j.id === jsondocId);
+            // This should never happen now due to filtering above, but keep as safety net
+            if (!jsondoc) {
+                throw new Error(`Jsondoc with ID ${jsondocId} not found after validation. This should not happen.`);
             }
             if (!jsondoc.schemaType) {
                 throw new Error(`Jsondoc ${jsondocId} has no schemaType. This indicates a data integrity issue.`);
@@ -198,7 +223,7 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
         };
 
         return payload;
-    }, [selectedTool, selectedJsondocs, additionalParams, jsondocs]);
+    }, [selectedTool, selectedJsondocs, additionalParams, jsondocs, jsondocsLoading, setSelectedJsondocs]);
 
     // Single debounced request payload
     const debouncedRequestPayload = useDebounce(requestPayload, 1000);
@@ -229,8 +254,6 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
             }
         }
     }, [selectedTool]);
-    const [toolsLoading, setToolsLoading] = useState(true);
-    const [jsondocsLoading, setJsondocsLoading] = useState(true);
 
     // Load available tools
     useEffect(() => {
