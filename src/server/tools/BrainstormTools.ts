@@ -19,18 +19,38 @@ import { extractDataAtPath } from '../services/transform-instantiations/pathTran
 import { TypedJsondoc } from '@/common/jsondocs';
 import { createJsondocProcessor } from './shared/JsondocProcessor';
 
-const BrainstormEditToolResultSchema = z.object({
-    outputJsondocId: z.string(),
-    finishReason: z.string(),
-    originalIdea: z.object({
-        title: z.string(),
-        body: z.string()
-    }).optional(),
-    editedIdea: z.object({
-        title: z.string(),
-        body: z.string()
-    }).optional()
-});
+// Discriminated union for brainstorm edit results
+const BrainstormEditToolResultSchema = z.discriminatedUnion('status', [
+    z.object({
+        status: z.literal('success'),
+        outputJsondocId: z.string(),
+        finishReason: z.string(),
+        originalIdea: z.object({
+            title: z.string(),
+            body: z.string()
+        }).optional(),
+        editedIdea: z.object({
+            title: z.string(),
+            body: z.string()
+        }).optional()
+    }),
+    z.object({
+        status: z.literal('rejected'),
+        reason: z.string(),
+        originalIdea: z.object({
+            title: z.string(),
+            body: z.string()
+        }).optional()
+    }),
+    z.object({
+        status: z.literal('error'),
+        error: z.string(),
+        originalIdea: z.object({
+            title: z.string(),
+            body: z.string()
+        }).optional()
+    })
+]);
 
 const BrainstormToolResultSchema = z.object({
     outputJsondocId: z.string(),
@@ -166,31 +186,39 @@ export function createBrainstormEditToolDefinition(
             const sourceJsondocRef = params.jsondocs[0];
             console.log(`[BrainstormEditTool] Starting unified patch edit for jsondoc ${sourceJsondocRef.jsondocId}`);
 
-            // Extract source idea data for context
-            const { originalIdea, targetPlatform, storyGenre } = await extractSourceIdeaData(params, jsondocRepo, userId);
-
-            // Determine output jsondoc type based on source jsondoc type
-            const sourceJsondoc = await jsondocRepo.getJsondoc(sourceJsondocRef.jsondocId);
-            if (!sourceJsondoc) {
-                throw new Error('Source jsondoc not found');
-            }
-
-            let outputJsondocType: TypedJsondoc['schema_type'];
-            if (sourceJsondoc.schema_type === 'brainstorm_idea') {
-                outputJsondocType = 'brainstorm_idea'; // Use new schema type
-            } else {
-                outputJsondocType = 'brainstorm_idea'; // Legacy type
-            }
-
-            // Create config for unified patch generation using patch template
-            const config: StreamingTransformConfig<BrainstormEditInput, any> = {
-                templateName: 'brainstorm_edit_patch',
-                inputSchema: BrainstormEditInputSchema,
-                outputSchema: JsonPatchOperationsSchema, // RFC6902 JSON patch array schema
-                // No custom prepareTemplateVariables - use default schema-driven extraction
-            };
+            let originalIdea: { title: string; body: string } = { title: 'Unknown', body: 'Unknown' };
 
             try {
+                // Extract source idea data for context
+                const extractedData = await extractSourceIdeaData(params, jsondocRepo, userId);
+                originalIdea = extractedData.originalIdea;
+                const { targetPlatform, storyGenre } = extractedData;
+
+                // Determine output jsondoc type based on source jsondoc type
+                const sourceJsondoc = await jsondocRepo.getJsondoc(sourceJsondocRef.jsondocId);
+                if (!sourceJsondoc) {
+                    return {
+                        status: 'error',
+                        error: 'Source jsondoc not found',
+                        originalIdea
+                    };
+                }
+
+                let outputJsondocType: TypedJsondoc['schema_type'];
+                if (sourceJsondoc.schema_type === 'brainstorm_idea') {
+                    outputJsondocType = 'brainstorm_idea'; // Use new schema type
+                } else {
+                    outputJsondocType = 'brainstorm_idea'; // Legacy type
+                }
+
+                // Create config for unified patch generation using patch template
+                const config: StreamingTransformConfig<BrainstormEditInput, any> = {
+                    templateName: 'brainstorm_edit_patch',
+                    inputSchema: BrainstormEditInputSchema,
+                    outputSchema: JsonPatchOperationsSchema, // RFC6902 JSON patch array schema
+                    // No custom prepareTemplateVariables - use default schema-driven extraction
+                };
+
                 // Execute the streaming transform with patch-approval mode
                 const result = await executeStreamingTransform({
                     config,
@@ -226,14 +254,23 @@ export function createBrainstormEditToolDefinition(
                 // Wait for user approval of the patches
                 const patchApprovalEventBus = getPatchApprovalEventBus();
                 if (!patchApprovalEventBus) {
-                    throw new Error('PatchApprovalEventBus not available');
+                    return {
+                        status: 'error',
+                        error: 'PatchApprovalEventBus not available',
+                        originalIdea
+                    };
                 }
 
                 console.log(`[BrainstormEditTool] Waiting for approval of transform ${result.transformId}`);
                 const approvalResult = await patchApprovalEventBus.waitForPatchApproval(result.transformId);
 
                 if (approvalResult === 'rejected') {
-                    throw new Error('Patches were rejected by user');
+                    console.log(`[BrainstormEditTool] Patches rejected by user for transform ${result.transformId}`);
+                    return {
+                        status: 'rejected',
+                        reason: 'User rejected the proposed patches',
+                        originalIdea
+                    };
                 }
 
                 console.log(`[BrainstormEditTool] Patches approved, finding derived jsondoc`);
@@ -246,7 +283,11 @@ export function createBrainstormEditToolDefinition(
                 );
 
                 if (!approvalTransform) {
-                    throw new Error('Could not find human_patch_approval transform');
+                    return {
+                        status: 'error',
+                        error: 'Could not find human_patch_approval transform',
+                        originalIdea
+                    };
                 }
 
                 // Get the derived jsondoc created by the approval transform
@@ -254,7 +295,11 @@ export function createBrainstormEditToolDefinition(
                 const derivedJsondocId = approvalOutputs.find(output => output.output_role === 'approved_result')?.jsondoc_id;
 
                 if (!derivedJsondocId) {
-                    throw new Error('Could not find derived jsondoc from approval transform');
+                    return {
+                        status: 'error',
+                        error: 'Could not find derived jsondoc from approval transform',
+                        originalIdea
+                    };
                 }
 
                 // Get the final derived jsondoc to extract the edited idea
@@ -264,6 +309,7 @@ export function createBrainstormEditToolDefinition(
                 console.log(`[BrainstormEditTool] Successfully completed unified patch edit with derived jsondoc ${derivedJsondocId}`);
 
                 return {
+                    status: 'success',
                     outputJsondocId: derivedJsondocId, // Return the derived jsondoc, not the original AI patch jsondoc
                     finishReason: result.finishReason,
                     originalIdea,
@@ -275,7 +321,11 @@ export function createBrainstormEditToolDefinition(
 
             } catch (error) {
                 console.error(`[BrainstormEditTool] Unified patch edit failed:`, error);
-                throw new Error(`Brainstorm edit failed: ${error instanceof Error ? error.message : String(error)}`);
+                return {
+                    status: 'error',
+                    error: `Brainstorm edit failed: ${error instanceof Error ? error.message : String(error)}`,
+                    originalIdea
+                };
             }
         }
     };

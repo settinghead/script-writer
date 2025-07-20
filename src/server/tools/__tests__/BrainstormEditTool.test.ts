@@ -2,6 +2,17 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createBrainstormEditToolDefinition } from '../BrainstormTools';
 import { createMockJsondocRepository, createMockTransformRepository } from '../../../__tests__/mocks/databaseMocks';
 
+// Mock the ParticleSystemInitializer module
+vi.mock('../../services/ParticleSystemInitializer', async (importOriginal) => {
+    const actual = await importOriginal() as any;
+    return {
+        ...actual,
+        getPatchApprovalEventBus: vi.fn()
+    };
+});
+
+import { getPatchApprovalEventBus } from '../../services/ParticleSystemInitializer';
+
 describe('BrainstormEditTool (Unified Streaming Patch)', () => {
     let mockTransformRepo: any;
     let mockJsondocRepo: any;
@@ -65,96 +76,113 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
             const input = {
                 jsondocs: [{
                     jsondocId: 'non-existent-jsondoc',
-                    description: '不存在的故事创意',
-                    schemaType: 'brainstorm_idea'
+                    role: 'source_idea'
                 }],
                 editRequirements: '改进故事'
             };
 
-            // Act & Assert
-            await expect(brainstormEditTool.execute(input, { toolCallId: 'test-error' }))
-                .rejects.toThrow('Source jsondoc not found');
+            // Act
+            const result = await brainstormEditTool.execute(input, { toolCallId: 'test-error' });
+
+            // Assert
+            expect(result).toEqual({
+                status: 'error',
+                error: expect.stringContaining('Source jsondoc not found'),
+                originalIdea: { title: 'Unknown', body: 'Unknown' }
+            });
         });
 
         it('should handle access denied errors', async () => {
             // Arrange
             mockJsondocRepo.getJsondoc.mockResolvedValue({
                 id: 'restricted-jsondoc',
+                project_id: 'test-project',
                 schema_type: 'brainstorm_idea',
-                project_id: 'different-project', // Different project
-                data: { title: 'test', body: 'test' }
+                data: { title: 'Test', body: 'Test content' }
             });
-
-            // Mock userHasProjectAccess to return false
-            mockJsondocRepo.userHasProjectAccess = vi.fn().mockResolvedValue(false);
+            mockJsondocRepo.userHasProjectAccess.mockResolvedValue(false);
 
             const input = {
                 jsondocs: [{
                     jsondocId: 'restricted-jsondoc',
-                    description: '受限制的故事创意',
-                    schemaType: 'brainstorm_idea'
+                    role: 'source_idea'
                 }],
                 editRequirements: '改进故事'
             };
 
-            // Act & Assert
-            await expect(brainstormEditTool.execute(input, { toolCallId: 'test-access-error' }))
-                .rejects.toThrow('Access denied to source jsondoc');
+            // Act
+            const result = await brainstormEditTool.execute(input, { toolCallId: 'test-access-error' });
+
+            // Assert
+            expect(result).toEqual({
+                status: 'error',
+                error: expect.stringContaining('Access denied to source jsondoc'),
+                originalIdea: { title: 'Unknown', body: 'Unknown' }
+            });
         });
 
         it('should handle unsupported jsondoc schema_type', async () => {
             // Arrange
             mockJsondocRepo.getJsondoc.mockResolvedValue({
                 id: 'unsupported-jsondoc',
+                project_id: 'test-project',
                 schema_type: 'unsupported_type',
-                project_id: 'test-project-1',
-                data: { some: 'data' }
+                data: { title: 'Test', body: 'Test content' }
             });
-
-            mockJsondocRepo.userHasProjectAccess = vi.fn().mockResolvedValue(true);
+            mockJsondocRepo.userHasProjectAccess.mockResolvedValue(true);
 
             const input = {
                 jsondocs: [{
                     jsondocId: 'unsupported-jsondoc',
-                    description: '不支持的数据类型',
-                    schemaType: 'unsupported_type'
+                    role: 'source_idea'
                 }],
                 editRequirements: '改进故事'
             };
 
-            // Act & Assert
-            await expect(brainstormEditTool.execute(input, { toolCallId: 'test-type-error' }))
-                .rejects.toThrow(/Unsupported source jsondoc/);
+            // Act
+            const result = await brainstormEditTool.execute(input, { toolCallId: 'test-type-error' });
+
+            // Assert
+            expect(result).toEqual({
+                status: 'error',
+                error: expect.stringContaining('Unsupported source jsondoc'),
+                originalIdea: { title: 'Unknown', body: 'Unknown' }
+            });
         });
 
         it('should handle invalid idea index for collections', async () => {
             // Arrange
             mockJsondocRepo.getJsondoc.mockResolvedValue({
                 id: 'collection-invalid-index',
+                project_id: 'test-project',
                 schema_type: 'brainstorm_collection',
-                project_id: 'test-project-1',
                 data: {
                     ideas: [
-                        { title: 'idea1', body: 'body1' }
+                        { title: 'Idea 1', body: 'Content 1' },
+                        { title: 'Idea 2', body: 'Content 2' }
                     ]
                 }
             });
-
-            mockJsondocRepo.userHasProjectAccess = vi.fn().mockResolvedValue(true);
+            mockJsondocRepo.userHasProjectAccess.mockResolvedValue(true);
 
             const input = {
                 jsondocs: [{
                     jsondocId: 'collection-invalid-index',
-                    description: '故事创意集合',
-                    schemaType: 'brainstorm_collection'
+                    role: 'source_idea'
                 }],
                 ideaIndex: 5, // Invalid index
                 editRequirements: '改进故事'
             };
 
-            // Act & Assert
-            await expect(brainstormEditTool.execute(input, { toolCallId: 'test-index-error' }))
-                .rejects.toThrow('Failed to extract idea at index 5');
+            // Act
+            const result = await brainstormEditTool.execute(input, { toolCallId: 'test-index-error' });
+
+            // Assert
+            expect(result).toEqual({
+                status: 'error',
+                error: expect.stringContaining('Failed to extract idea at index 5'),
+                originalIdea: { title: 'Unknown', body: 'Unknown' }
+            });
         });
     });
 
@@ -306,20 +334,40 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
         });
 
         it('should have output schema that matches unified approach expectations', () => {
+            // Arrange
             const schema = brainstormEditTool.outputSchema;
 
             // The output schema should be defined and validate expected output structure
             expect(schema).toBeDefined();
 
-            // Test with expected output structure
-            const validOutput = {
+            // Test with expected success output structure
+            const validSuccessOutput = {
+                status: 'success',
                 outputJsondocId: 'output-id',
                 finishReason: 'stop',
                 originalIdea: { title: 'original', body: 'original content' },
                 editedIdea: { title: 'edited', body: 'edited content' }
             };
 
-            expect(() => schema.parse(validOutput)).not.toThrow();
+            expect(() => schema.parse(validSuccessOutput)).not.toThrow();
+
+            // Test with expected rejected output structure
+            const validRejectedOutput = {
+                status: 'rejected',
+                reason: 'User rejected the proposed patches',
+                originalIdea: { title: 'original', body: 'original content' }
+            };
+
+            expect(() => schema.parse(validRejectedOutput)).not.toThrow();
+
+            // Test with expected error output structure
+            const validErrorOutput = {
+                status: 'error',
+                error: 'Something went wrong',
+                originalIdea: { title: 'original', body: 'original content' }
+            };
+
+            expect(() => schema.parse(validErrorOutput)).not.toThrow();
         });
     });
 
@@ -353,26 +401,82 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
         });
 
         it('should handle repository access control correctly', async () => {
-            // Test that access control is properly enforced
+            // Arrange
             mockJsondocRepo.getJsondoc.mockResolvedValue({
                 id: 'protected-jsondoc',
+                project_id: 'test-project',
                 schema_type: 'brainstorm_idea',
-                project_id: 'other-project',
-                data: { title: 'protected', body: 'protected content' }
+                data: { title: 'Protected', body: 'Protected content' }
             });
-            mockJsondocRepo.userHasProjectAccess = vi.fn().mockResolvedValue(false);
+            mockJsondocRepo.userHasProjectAccess.mockResolvedValue(false);
 
             const input = {
                 jsondocs: [{
                     jsondocId: 'protected-jsondoc',
-                    description: '受保护的故事创意',
-                    schemaType: 'brainstorm_idea'
+                    role: 'source_idea'
                 }],
-                editRequirements: '测试访问控制'
+                editRequirements: '改进故事'
             };
 
-            await expect(brainstormEditTool.execute(input, { toolCallId: 'test-access-control' }))
-                .rejects.toThrow('Access denied to source jsondoc');
+            // Act
+            const result = await brainstormEditTool.execute(input, { toolCallId: 'test-access-control' });
+
+            // Assert
+            expect(result).toEqual({
+                status: 'error',
+                error: expect.stringContaining('Access denied to source jsondoc'),
+                originalIdea: { title: 'Unknown', body: 'Unknown' }
+            });
+        });
+    });
+
+    describe('Patch Rejection Handling', () => {
+        it('should handle user rejection of patches gracefully', async () => {
+            // Arrange
+            const sourceJsondoc = {
+                id: 'rejection-test-jsondoc',
+                schema_type: 'brainstorm_idea',
+                project_id: 'test-project',
+                data: {
+                    title: '测试标题',
+                    body: '测试内容'
+                }
+            };
+
+            mockJsondocRepo.getJsondoc.mockResolvedValue(sourceJsondoc);
+            mockJsondocRepo.userHasProjectAccess.mockResolvedValue(true);
+
+            // Mock the patch approval event bus to return 'rejected'
+            const mockPatchApprovalEventBus = {
+                waitForPatchApproval: vi.fn().mockResolvedValue('rejected')
+            } as any;
+            vi.mocked(getPatchApprovalEventBus).mockReturnValue(mockPatchApprovalEventBus);
+
+            const input = {
+                jsondocs: [{
+                    jsondocId: 'rejection-test-jsondoc',
+                    role: 'source_idea',
+                    description: '测试故事创意',
+                    schemaType: 'brainstorm_idea'
+                }],
+                editRequirements: '改进故事内容'
+            };
+
+            // Act
+            const result = await brainstormEditTool.execute(input, { toolCallId: 'test-rejection' });
+
+            // Assert
+            expect(result).toEqual({
+                status: 'rejected',
+                reason: 'User rejected the proposed patches',
+                originalIdea: {
+                    title: '测试标题',
+                    body: '测试内容'
+                }
+            });
+
+            // Verify that the patch approval was awaited
+            expect(mockPatchApprovalEventBus.waitForPatchApproval).toHaveBeenCalled();
         });
     });
 }); 

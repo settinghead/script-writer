@@ -16,17 +16,18 @@ const DiffView: React.FC<{ oldValue: string; newValue: string }> = ({ oldValue, 
     const diff = Diff.diffWords(oldValue || '', newValue || '');
 
     return (
-        <div style={{
+        <pre style={{
             background: '#1a1a1a',
             border: '1px solid #434343',
             borderRadius: '4px',
             padding: '8px',
             marginTop: '4px',
-            maxHeight: '150px',
             overflowY: 'auto',
             fontFamily: 'monospace',
-            fontSize: '13px',
-            lineHeight: '1.4'
+            fontSize: '14px',
+            lineHeight: '1.4',
+            whiteSpace: 'auto',
+            textWrap: "wrap"
         }}>
             {diff.map((part, index) => {
                 if (part.removed) {
@@ -64,7 +65,7 @@ const DiffView: React.FC<{ oldValue: string; newValue: string }> = ({ oldValue, 
                     );
                 }
             })}
-        </div>
+        </pre>
     );
 };
 
