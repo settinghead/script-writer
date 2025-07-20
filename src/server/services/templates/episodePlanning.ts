@@ -53,7 +53,8 @@ export const episodePlanningTemplate: LLMTemplate = {
 
 ## 输出要求
 
-基于**时间顺序大纲**，生成优化的剧集框架。重点关注：
+基于**时间顺序大纲**，生成优化的剧集框架：
+- 严格按照输入参数中的numberOfEpisodes生成剧集框架
 - 将故事重新组织为吸引人的观看顺序（不必按时间顺序）
 - 每个阶段都有明确的戏剧功能
 - 充分利用悬念和情感冲击
@@ -62,7 +63,7 @@ export const episodePlanningTemplate: LLMTemplate = {
 **重要约束：**
 - 每个阶段最多包含6集
 - 必须创建足够的阶段以涵盖所有要求的集数
-- 所有阶段的集数总和必须等于totalEpisodes
+- 所有阶段的集数总和必须等于numberOfEpisodes
 
 输出应该是一个包含以下结构的JSON对象：
 - totalEpisodes: 总集数
