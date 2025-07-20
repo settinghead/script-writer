@@ -412,7 +412,7 @@ describe('Brainstorm Edit Chain Integration Test', () => {
         expect(singleIdeaEditor).toBeTruthy();
         expect(singleIdeaEditor?.mode).toBe('editable');
         expect(singleIdeaEditor?.props.brainstormIdea).toBeTruthy();
-        expect(singleIdeaEditor?.props.brainstormIdea.jsondocId).toBe('jsondoc-4');
+        expect(singleIdeaEditor?.props.brainstormIdea.id).toBe('jsondoc-4');
 
         // Verify that ProjectBrainstormPage is NOT included in manual path idea_editing stage
         const brainstormPage = displayComponents.find((component: any) =>

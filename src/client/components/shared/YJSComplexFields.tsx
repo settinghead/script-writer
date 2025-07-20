@@ -16,7 +16,7 @@ export const YJSComplexFields = React.memo(() => {
                 </div>
                 <div style={{ marginBottom: 16 }}>
                     <Text strong>描述：</Text>
-                    <YJSTextAreaField path="description" placeholder="输入描述" rows={3} />
+                    <YJSTextAreaField path="description" placeholder="输入描述" maxRows={6} />
                 </div>
             </div>
 

@@ -138,7 +138,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ onScriptEdit }) => {
                         placeholder="输入你的问题... (Ctrl+Enter 或 Shift+Enter 发送)"
                         disabled={isLoading}
                         minRows={1}
-                        maxRows={5}
+                        maxRows={20}
                         style={{
                             width: '100%',
                             resize: 'none',

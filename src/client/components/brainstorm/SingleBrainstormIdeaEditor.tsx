@@ -40,7 +40,7 @@ const EditableBrainstormForm: React.FC = () => {
                 <YJSTextAreaField
                     path="body"
                     placeholder="详细描述你的创意想法..."
-                    rows={6}
+
                 />
             </div>
         </Space>
@@ -56,10 +56,14 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
     const { projectId } = useParams<{ projectId: string }>();
     const projectData = useProjectData();
 
+
+
     // If we have props from actionComputation, use them directly
     if (propsBrainstormIdea && propsBrainstormIdea.id) {
         const isEditable = propsIsEditable ?? false;
         const effectiveJsondoc = propsBrainstormIdea;
+
+
 
         return (
             <SectionWrapper
@@ -85,6 +89,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
 
     // Otherwise, find the latest brainstorm idea from project data
     const latestBrainstormIdea = useMemo(() => {
+
         if (!projectData || !projectData.jsondocs || projectData.jsondocs === "pending" || projectData.jsondocs === "error") {
             return null;
         }
@@ -92,6 +97,8 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
         const brainstormIdeaJsondocs = projectData.jsondocs.filter(
             (jsondoc: any) => jsondoc.schema_type === 'brainstorm_idea'
         );
+
+
 
         if (brainstormIdeaJsondocs.length === 0) {
             return null;
@@ -122,6 +129,8 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
         // Only editable if it's user_input and has no descendants
         return latestBrainstormIdea.origin_type === 'user_input' && !hasDescendants && (propsIsEditable ?? true);
     }, [latestBrainstormIdea, projectData.transformInputs, propsIsEditable]);
+
+
 
     return (
         <SectionWrapper

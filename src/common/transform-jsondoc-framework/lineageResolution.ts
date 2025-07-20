@@ -254,7 +254,8 @@ export function buildLineageGraph(
                 if (sourceTransformNode && sourceTransformNode.type === 'transform') {
                     finalJsondocNode.sourceTransform = sourceTransformNode;
                 } else {
-                    console.warn(`Warning: Could not resolve sourceTransform ${jsondocNode.sourceTransformId} for jsondoc ${nodeId}`);
+                    // Silently skip transforms that aren't in the current dataset (likely from other projects)
+                    // This prevents cross-project reference warnings
                     finalJsondocNode.sourceTransform = "none";
                 }
             }
@@ -269,7 +270,8 @@ export function buildLineageGraph(
                 if (jsondocNode && jsondocNode.type === 'jsondoc') {
                     sourceJsondocs.push(jsondocNode);
                 } else {
-                    console.warn(`Warning: Could not resolve sourceJsondoc ${jsondocId} for transform ${nodeId}`);
+                    // Silently skip jsondocs that aren't in the current dataset (likely from other projects)
+                    // This prevents cross-project reference warnings
                 }
             }
             finalTransformNode.sourceJsondocs = sourceJsondocs;

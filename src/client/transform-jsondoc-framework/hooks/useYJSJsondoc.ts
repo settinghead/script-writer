@@ -740,6 +740,8 @@ export const useYJSJsondoc = (
     const data = enableCollaboration ? collaborativeData : jsondoc?.data;
 
 
+
+
     return {
         doc,
         provider,

@@ -29,10 +29,10 @@ export const YJSTextField = React.memo(({ path, placeholder, fontSize = DEFAULT_
 });
 
 // TextArea Field Component
-export const YJSTextAreaField = React.memo(({ path, placeholder, rows = 4, fontSize = DEFAULT_FONT_SIZE }: {
+export const YJSTextAreaField = React.memo(({ path, placeholder, maxRows = 6, fontSize = DEFAULT_FONT_SIZE }: {
     path: string;
     placeholder?: string;
-    rows?: number;
+    maxRows?: number;
     fontSize?: number;
 }) => {
     const { value, updateValue, isInitialized } = useYJSField(path);
@@ -48,7 +48,7 @@ export const YJSTextAreaField = React.memo(({ path, placeholder, rows = 4, fontS
             value={value || ''}
             onChange={handleChange}
             placeholder={placeholder}
-            rows={rows}
+            autoSize={true}
             style={{ fontSize: fontSize }}
         />
     );
@@ -200,7 +200,7 @@ export const YJSEmotionArcsArray = React.memo(({ path, fontSize = DEFAULT_FONT_S
                             value={item?.content || ''}
                             onChange={(e) => handleItemChange(index, 'content', e.target.value)}
                             placeholder="描述这个阶段的情感发展..."
-                            rows={3}
+                            autoSize={{ minRows: 2, }}
                             style={{ marginTop: 4, fontSize: fontSize }}
                         />
                     </div>
@@ -305,7 +305,7 @@ export const YJSRelationshipDevelopmentsArray = React.memo(({ path, fontSize = D
                             value={item?.content || ''}
                             onChange={(e) => handleItemChange(index, 'content', e.target.value)}
                             placeholder="描述关系如何发展..."
-                            rows={3}
+                            autoSize={{ minRows: 2, }}
                             style={{ marginTop: 4, fontSize: fontSize }}
                         />
                     </div>
@@ -453,7 +453,7 @@ export const YJSCharacterArray = React.memo(({ path, fontSize = DEFAULT_FONT_SIZ
                                 value={character?.description || ''}
                                 onChange={(e) => handleItemChange(index, 'description', e.target.value)}
                                 placeholder="角色描述"
-                                rows={2}
+                                autoSize={{ minRows: 2, }}
                                 style={{ fontSize: fontSize }}
                             />
                         </div>
@@ -471,7 +471,7 @@ export const YJSCharacterArray = React.memo(({ path, fontSize = DEFAULT_FONT_SIZ
                                 value={character?.character_arc || ''}
                                 onChange={(e) => handleItemChange(index, 'character_arc', e.target.value)}
                                 placeholder="成长轨迹"
-                                rows={2}
+                                autoSize={{ minRows: 2, }}
                             />
                         </div>
                     </Space>
@@ -530,7 +530,7 @@ const YJSArrayFieldInline = React.memo(({ value, onChange, placeholder, fontSize
             value={textAreaValue}
             onChange={handleTextAreaChange}
             placeholder={placeholder}
-            rows={3}
+            autoSize={{ minRows: 2, }}
             style={{ resize: 'vertical', fontSize: fontSize }}
         />
     );

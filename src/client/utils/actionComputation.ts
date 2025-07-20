@@ -11,6 +11,10 @@ import {
     WorkflowParameters,
 } from './workflowTypes';
 import { getComponentById } from './componentRegistry';
+import {
+    computeCanonicalJsondocsFromLineage,
+    type CanonicalJsondocContext
+} from '../../common/canonicalJsondocLogic';
 
 // Re-export types from lineageBasedActionComputation for backward compatibility
 export type { ActionItem } from './lineageBasedActionComputation';
@@ -63,7 +67,10 @@ interface UnifiedComputationContext {
     // Workflow path detection
     isManualPath: boolean;
 
-    // Resolved jsondocs from lineage graph
+    // Canonical jsondocs from canonical logic
+    canonicalContext: CanonicalJsondocContext;
+
+    // Legacy computed data for backward compatibility
     canonicalBrainstormJsondocs: any[];
     brainstormInput: any;
     brainstormIdeas: any[];
@@ -87,7 +94,7 @@ interface UnifiedComputationContext {
  */
 function computeUnifiedContext(
     projectData: ProjectDataContextType,
-    _projectId: string
+    projectId: string
 ): UnifiedComputationContext | null {
 
     // Check if any data is still loading
@@ -106,6 +113,20 @@ function computeUnifiedContext(
             return {
                 hasActiveTransforms: false,
                 isManualPath: false,
+                canonicalContext: {
+                    canonicalBrainstormIdea: null,
+                    canonicalBrainstormCollection: null,
+                    canonicalOutlineSettings: null,
+                    canonicalChronicles: null,
+                    canonicalEpisodePlanning: null,
+                    canonicalBrainstormInput: null,
+                    workflowNodes: [],
+                    hasActiveTransforms: false,
+                    activeTransforms: [],
+                    lineageGraph: { nodes: new Map(), edges: new Map(), rootNodes: new Set(), paths: new Map() },
+                    rootNodes: [],
+                    leafNodes: []
+                },
                 canonicalBrainstormJsondocs: [],
                 brainstormInput: null,
                 brainstormIdeas: [],
@@ -138,6 +159,20 @@ function computeUnifiedContext(
                 return {
                     hasActiveTransforms: false,
                     isManualPath: true,
+                    canonicalContext: {
+                        canonicalBrainstormIdea: userInputIdeas[0],
+                        canonicalBrainstormCollection: null,
+                        canonicalOutlineSettings: null,
+                        canonicalChronicles: null,
+                        canonicalEpisodePlanning: null,
+                        canonicalBrainstormInput: null,
+                        workflowNodes: [],
+                        hasActiveTransforms: false,
+                        activeTransforms: [],
+                        lineageGraph: { nodes: new Map(), edges: new Map(), rootNodes: new Set(), paths: new Map() },
+                        rootNodes: [],
+                        leafNodes: []
+                    },
                     canonicalBrainstormJsondocs: brainstormIdeas,
                     brainstormInput: null,
                     brainstormIdeas,
@@ -154,6 +189,20 @@ function computeUnifiedContext(
                 return {
                     hasActiveTransforms: false,
                     isManualPath: false,
+                    canonicalContext: {
+                        canonicalBrainstormIdea: brainstormIdeas[0],
+                        canonicalBrainstormCollection: null,
+                        canonicalOutlineSettings: null,
+                        canonicalChronicles: null,
+                        canonicalEpisodePlanning: null,
+                        canonicalBrainstormInput: null,
+                        workflowNodes: [],
+                        hasActiveTransforms: false,
+                        activeTransforms: [],
+                        lineageGraph: { nodes: new Map(), edges: new Map(), rootNodes: new Set(), paths: new Map() },
+                        rootNodes: [],
+                        leafNodes: []
+                    },
                     canonicalBrainstormJsondocs: brainstormIdeas,
                     brainstormInput: null,
                     brainstormIdeas,
@@ -172,6 +221,20 @@ function computeUnifiedContext(
             return {
                 hasActiveTransforms: false,
                 isManualPath: false,
+                canonicalContext: {
+                    canonicalBrainstormIdea: null,
+                    canonicalBrainstormCollection: brainstormCollections[0],
+                    canonicalOutlineSettings: null,
+                    canonicalChronicles: null,
+                    canonicalEpisodePlanning: null,
+                    canonicalBrainstormInput: null,
+                    workflowNodes: [],
+                    hasActiveTransforms: false,
+                    activeTransforms: [],
+                    lineageGraph: { nodes: new Map(), edges: new Map(), rootNodes: new Set(), paths: new Map() },
+                    rootNodes: [],
+                    leafNodes: []
+                },
                 canonicalBrainstormJsondocs: brainstormCollections,
                 brainstormInput: null,
                 brainstormIdeas: brainstormCollections,
@@ -189,6 +252,20 @@ function computeUnifiedContext(
         return {
             hasActiveTransforms: false,
             isManualPath: false,
+            canonicalContext: {
+                canonicalBrainstormIdea: null,
+                canonicalBrainstormCollection: null,
+                canonicalOutlineSettings: null,
+                canonicalChronicles: null,
+                canonicalEpisodePlanning: null,
+                canonicalBrainstormInput: null,
+                workflowNodes: [],
+                hasActiveTransforms: false,
+                activeTransforms: [],
+                lineageGraph: { nodes: new Map(), edges: new Map(), rootNodes: new Set(), paths: new Map() },
+                rootNodes: [],
+                leafNodes: []
+            },
             canonicalBrainstormJsondocs: [],
             brainstormInput: null,
             brainstormIdeas: [],
@@ -213,6 +290,20 @@ function computeUnifiedContext(
         return {
             hasActiveTransforms: false,
             isManualPath: false,
+            canonicalContext: {
+                canonicalBrainstormIdea: null,
+                canonicalBrainstormCollection: null,
+                canonicalOutlineSettings: null,
+                canonicalChronicles: null,
+                canonicalEpisodePlanning: null,
+                canonicalBrainstormInput: null,
+                workflowNodes: [],
+                hasActiveTransforms: false,
+                activeTransforms: [],
+                lineageGraph: { nodes: new Map(), edges: new Map(), rootNodes: new Set(), paths: new Map() },
+                rootNodes: [],
+                leafNodes: []
+            },
             canonicalBrainstormJsondocs: [],
             brainstormInput: null,
             brainstormIdeas: [],
@@ -227,6 +318,20 @@ function computeUnifiedContext(
         };
     }
 
+
+
+    // *** USE CANONICAL JSONDOC LOGIC ***
+    const canonicalContext = computeCanonicalJsondocsFromLineage(
+        projectData.lineageGraph,
+        projectData.jsondocs,
+        projectData.transforms,
+        projectData.humanTransforms,
+        projectData.transformInputs,
+        projectData.transformOutputs
+    );
+
+
+
     // Use the lineage-based computation for actions and stage detection
     const lineageResult = computeActionsFromLineage(
         projectData.lineageGraph,
@@ -237,61 +342,37 @@ function computeUnifiedContext(
         projectData.transformOutputs
     );
 
-    // Extract all needed data from lineage graph and jsondocs in a single pass
+    // Extract legacy data from canonical context for backward compatibility
     const lineageGraph = projectData.lineageGraph;
     const jsondocs = projectData.jsondocs;
     const transformInputs = Array.isArray(projectData.transformInputs)
         ? projectData.transformInputs
         : [];
 
-    // Single pass through lineage graph to collect all jsondoc types
+    // Build legacy canonical brainstorm jsondocs array
     const canonicalBrainstormJsondocs: ElectricJsondoc[] = [];
-    const canonicalOutlineJsondocs: ElectricJsondoc[] = [];
-    const canonicalChroniclesJsondocs: ElectricJsondoc[] = [];
-    const canonicalEpisodePlanningJsondocs: ElectricJsondoc[] = [];
-
-    // Process all lineage nodes in one pass
-    for (const node of lineageGraph.nodes.values()) {
-        if (node.type !== 'jsondoc') continue;
-
-        const lineageJsondocNode = node as any;
-        const jsondoc = jsondocs.find((a) => a.id === lineageJsondocNode.jsondocId);
-
-        if (!jsondoc) {
-            continue;
-        }
-
-        // Categorize jsondocs by type
-        if (jsondoc.schema_type === 'brainstorm_input_params' ||
-            jsondoc.schema_type === 'brainstorm_idea' ||
-            jsondoc.schema_type === 'brainstorm_collection') {
-            canonicalBrainstormJsondocs.push(jsondoc);
-        } else if (jsondoc.schema_type === 'outline_settings') {
-            canonicalOutlineJsondocs.push(jsondoc);
-        } else if (jsondoc.schema_type === 'chronicles') {
-            canonicalChroniclesJsondocs.push(jsondoc);
-        } else if (jsondoc.schema_type === 'episode_planning') {
-            canonicalEpisodePlanningJsondocs.push(jsondoc);
-        }
+    if (canonicalContext.canonicalBrainstormInput) {
+        canonicalBrainstormJsondocs.push(canonicalContext.canonicalBrainstormInput);
     }
-
-    // Extract specific jsondoc types from brainstorm jsondocs
-    const brainstormInput = canonicalBrainstormJsondocs.find((a) =>
-        a.schema_type === 'brainstorm_input_params'
-    );
+    if (canonicalContext.canonicalBrainstormIdea) {
+        canonicalBrainstormJsondocs.push(canonicalContext.canonicalBrainstormIdea);
+    }
+    if (canonicalContext.canonicalBrainstormCollection) {
+        canonicalBrainstormJsondocs.push(canonicalContext.canonicalBrainstormCollection);
+    }
 
     // Extract brainstorm ideas from canonical context
     const brainstormIdeas: any[] = [];
 
     // If we have a canonical brainstorm collection, extract ideas from it
-    if (lineageResult.actionContext.canonicalBrainstormCollection) {
+    if (canonicalContext.canonicalBrainstormCollection) {
         try {
-            const collectionData = JSON.parse(lineageResult.actionContext.canonicalBrainstormCollection.data);
+            const collectionData = JSON.parse(canonicalContext.canonicalBrainstormCollection.data);
             if (collectionData.ideas && Array.isArray(collectionData.ideas)) {
                 brainstormIdeas.push(...collectionData.ideas.map((idea: any, index: number) => ({
                     title: idea.title || `创意 ${index + 1}`,
                     body: idea.body || idea.description || '',
-                    jsondocId: lineageResult.actionContext.canonicalBrainstormCollection!.id,
+                    jsondocId: canonicalContext.canonicalBrainstormCollection!.id,
                     ideaIndex: index
                 })));
             }
@@ -301,119 +382,37 @@ function computeUnifiedContext(
     }
 
     // If we have a canonical brainstorm idea, add it as well
-    if (lineageResult.actionContext.canonicalBrainstormIdea) {
+    if (canonicalContext.canonicalBrainstormIdea) {
         try {
-            const ideaData = JSON.parse(lineageResult.actionContext.canonicalBrainstormIdea.data);
+            const ideaData = JSON.parse(canonicalContext.canonicalBrainstormIdea.data);
             brainstormIdeas.push({
                 title: ideaData.title || '创意',
                 body: ideaData.body || ideaData.description || '',
-                jsondocId: lineageResult.actionContext.canonicalBrainstormIdea.id,
+                jsondocId: canonicalContext.canonicalBrainstormIdea.id,
                 ideaIndex: 0
             });
+
         } catch (error) {
             console.warn('Failed to parse brainstorm idea data:', error);
         }
     }
 
-    const brainstormIdeasWithTitle = brainstormIdeas;
-
-    // Find chosen idea using lineage computation result
-    let chosenIdea = lineageResult.actionContext.canonicalBrainstormIdea;
-
-    // Process outline settings with priority logic
-    let outlineSettings = null;
-    if (canonicalOutlineJsondocs.length > 0) {
-        // Find leaf nodes from canonical set
-        const leafOutlineSettings = canonicalOutlineJsondocs.filter((jsondoc) => {
-            const lineageNode = lineageGraph.nodes.get(jsondoc.id);
-            const isLeaf = lineageNode && lineageNode.isLeaf;
-            return isLeaf;
-        });
-
-        if (leafOutlineSettings.length > 0) {
-            // Prioritize user_input jsondocs, then by most recent
-            leafOutlineSettings.sort((a, b) => {
-                // First priority: user_input origin type
-                if (a.origin_type === 'user_input' && b.origin_type !== 'user_input') return -1;
-                if (b.origin_type === 'user_input' && a.origin_type !== 'user_input') return 1;
-                // Second priority: most recent
-                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-            });
-            outlineSettings = leafOutlineSettings[0];
-        } else {
-            // Fallback to most recent from canonical set if no leaf nodes found
-            canonicalOutlineJsondocs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-            outlineSettings = canonicalOutlineJsondocs[0];
-        }
-    }
-
-    // Process chronicles with priority logic (same as outline settings)
-    let canonicalChronicles = null;
-    if (canonicalChroniclesJsondocs.length > 0) {
-        // Find leaf nodes from canonical set
-        const leafChronicles = canonicalChroniclesJsondocs.filter((jsondoc) => {
-            const lineageNode = lineageGraph.nodes.get(jsondoc.id);
-            const isLeaf = lineageNode && lineageNode.isLeaf;
-            return isLeaf;
-        });
-
-        if (leafChronicles.length > 0) {
-            // Prioritize user_input jsondocs, then by most recent
-            leafChronicles.sort((a, b) => {
-                // First priority: user_input origin type
-                if (a.origin_type === 'user_input' && b.origin_type !== 'user_input') return -1;
-                if (b.origin_type === 'user_input' && a.origin_type !== 'user_input') return 1;
-                // Second priority: most recent
-                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-            });
-            canonicalChronicles = leafChronicles[0];
-        } else {
-            // Fallback to most recent from canonical set if no leaf nodes found
-            canonicalChroniclesJsondocs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-            canonicalChronicles = canonicalChroniclesJsondocs[0];
-        }
-    }
-
-    // Process episode planning with priority logic (same as outline settings)
-    let canonicalEpisodePlanning = null;
-    if (canonicalEpisodePlanningJsondocs.length > 0) {
-        // Find leaf nodes from canonical set
-        const leafEpisodePlanning = canonicalEpisodePlanningJsondocs.filter((jsondoc) => {
-            const lineageNode = lineageGraph.nodes.get(jsondoc.id);
-            const isLeaf = lineageNode && lineageNode.isLeaf;
-            return isLeaf;
-        });
-
-        if (leafEpisodePlanning.length > 0) {
-            // Prioritize user_input jsondocs, then by most recent
-            leafEpisodePlanning.sort((a, b) => {
-                // First priority: user_input origin type
-                if (a.origin_type === 'user_input' && b.origin_type !== 'user_input') return -1;
-                if (b.origin_type === 'user_input' && a.origin_type !== 'user_input') return 1;
-                // Second priority: most recent
-                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-            });
-            canonicalEpisodePlanning = leafEpisodePlanning[0];
-        } else {
-            // Fallback to most recent from canonical set if no leaf nodes found
-            canonicalEpisodePlanningJsondocs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-            canonicalEpisodePlanning = canonicalEpisodePlanningJsondocs[0];
-        }
-    }
-
     // Detect workflow path
-    const isManualPath = !brainstormInput;
+    const isManualPath = !canonicalContext.canonicalBrainstormInput;
+
+
 
     return {
-        hasActiveTransforms: lineageResult.actionContext.hasActiveTransforms,
+        hasActiveTransforms: canonicalContext.hasActiveTransforms,
         isManualPath,
+        canonicalContext,
         canonicalBrainstormJsondocs,
-        brainstormInput,
-        brainstormIdeas: brainstormIdeasWithTitle, // Use converted format
-        chosenIdea,
-        outlineSettings,
-        canonicalChronicles,
-        canonicalEpisodePlanning,
+        brainstormInput: canonicalContext.canonicalBrainstormInput,
+        brainstormIdeas,
+        chosenIdea: canonicalContext.canonicalBrainstormIdea,
+        outlineSettings: canonicalContext.canonicalOutlineSettings,
+        canonicalChronicles: canonicalContext.canonicalChronicles,
+        canonicalEpisodePlanning: canonicalContext.canonicalEpisodePlanning,
         lineageGraph,
         transformInputs,
         jsondocs,
@@ -480,15 +479,15 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
             isIdeaLeafNode &&
             context.chosenIdea.origin_type === 'user_input';
 
+        const ideaData = JSON.parse(context.chosenIdea.data);
+
+
         components.push({
             id: 'single-idea-editor',
             component: getComponentById('single-idea-editor'),
             mode: context.hasActiveTransforms ? 'readonly' : 'editable',
             props: {
-                brainstormIdea: {
-                    jsondocId: context.chosenIdea.id,
-                    ...JSON.parse(context.chosenIdea.data)
-                },
+                brainstormIdea: context.chosenIdea, // Pass the full jsondoc, not just the data
                 isEditable: isIdeaEditable,
                 currentStage: 'idea_editing' // This will be removed from UnifiedWorkflowState
             },

@@ -90,7 +90,8 @@ async function saveUpdate({ jsondoc_id, update }: Update, userId?: string) {
         throw new Error(`Jsondoc not found: ${jsondoc_id}`);
     }
 
-    // Save the YJS update to jsondoc_yjs_documents
+    // Save the YJS update to jsondoc_yjs_documents using UPSERT
+    // This prevents multiple documents for the same jsondoc
     await db
         .insertInto('jsondoc_yjs_documents')
         .values({
@@ -99,6 +100,13 @@ async function saveUpdate({ jsondoc_id, update }: Update, userId?: string) {
             room_id,
             document_state: Buffer.from(update)
         })
+        .onConflict((oc) => oc
+            .column('jsondoc_id')
+            .doUpdateSet({
+                document_state: Buffer.from(update),
+                updated_at: new Date()
+            })
+        )
         .execute();
 
     // Auto-sync YJS document to jsondoc record

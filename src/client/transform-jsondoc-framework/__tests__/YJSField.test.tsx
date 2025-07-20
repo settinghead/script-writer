@@ -34,13 +34,13 @@ vi.mock('antd', async () => {
         />
     );
 
-    const MockTextArea = ({ value, onChange, placeholder, rows, ...props }: any) => (
+    const MockTextArea = ({ value, onChange, placeholder, autoSize, ...props }: any) => (
         <textarea
             data-testid="textarea"
             value={value || ''}
             onChange={(e) => onChange?.(e)}
             placeholder={placeholder}
-            rows={rows}
+            rows={autoSize?.minRows || 2}
             {...props}
         />
     );
@@ -147,13 +147,13 @@ describe('YJS Field Components - Working Tests', () => {
         it('renders correctly with mocked data', () => {
             mockValue.mockReturnValue('Test Description');
 
-            render(<YJSTextAreaField path="description" placeholder="Enter description" rows={4} />);
+            render(<YJSTextAreaField path="description" placeholder="Enter description" maxRows={8} />);
 
             // Check that the textarea is rendered
             const textarea = screen.getByTestId('textarea');
             expect(textarea).toBeInTheDocument();
             expect(textarea).toHaveAttribute('placeholder', 'Enter description');
-            expect(textarea).toHaveAttribute('rows', '4');
+            expect(textarea).toHaveAttribute('rows', '2'); // minRows from autoSize
         });
 
         it('calls updateValue when textarea changes', async () => {
