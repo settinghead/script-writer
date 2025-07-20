@@ -49,13 +49,6 @@ const OutlineGenerationForm: React.FC<OutlineGenerationFormProps> = (props) => {
 
     // Handle outline generation
     const handleGenerateOutline = useCallback(async (values: OutlineFormValues) => {
-        console.log('[OutlineGenerationForm] Starting outline generation with:', {
-            sourceJsondocId,
-            projectId,
-            values,
-            ideaData
-        });
-
         if (!sourceJsondocId) {
             console.error('[OutlineGenerationForm] No source jsondoc ID found');
             message.error('未找到选中的创意');
