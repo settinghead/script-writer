@@ -29,26 +29,6 @@ interface YJSJsondocProviderProps {
 export function YJSJsondocProvider({ jsondocId, basePath, enableCollaboration, children }: YJSJsondocProviderProps) {
     const { data, jsondoc, isLoading, error, isConnected, updateField } = useYJSJsondoc(jsondocId);
 
-    // Set global debug variable for field components
-    useEffect(() => {
-        (window as any).__currentYJSJsondocId = jsondocId;
-        console.log(`[YJSProvider] Initializing provider for jsondoc:`, {
-            jsondocId,
-            basePath,
-            isLoading,
-            isConnected,
-            hasData: !!data,
-            hasJsondoc: !!jsondoc,
-            error: error
-        });
-
-        return () => {
-            if ((window as any).__currentYJSJsondocId === jsondocId) {
-                (window as any).__currentYJSJsondocId = null;
-            }
-        };
-    }, [jsondocId, basePath, isLoading, isConnected, error]);
-
     // Get the actual data to use - prefer jsondoc data if YJS data is not ready
     const actualData = useMemo(() => {
         const hasYJSData = data && typeof data === 'object' && Object.keys(data).length > 0;
@@ -65,14 +45,6 @@ export function YJSJsondocProvider({ jsondocId, basePath, enableCollaboration, c
         }
 
         const hasJsondocData = parsedJsondocData && typeof parsedJsondocData === 'object' && Object.keys(parsedJsondocData).length > 0;
-
-        console.log(`[YJSProvider] Data resolution for ${jsondocId}:`, {
-            hasYJSData,
-            hasJsondocData,
-            yjsDataKeys: hasYJSData ? Object.keys(data) : [],
-            jsondocDataKeys: hasJsondocData ? Object.keys(parsedJsondocData) : [],
-            usingYJS: hasYJSData
-        });
 
         if (hasYJSData) {
             // Use YJS data if available (most recent collaborative changes)
@@ -155,23 +127,14 @@ export function YJSJsondocProvider({ jsondocId, basePath, enableCollaboration, c
     const updateValue = useCallback((path: string, value: any) => {
         const fullPath = resolvePath(path);
 
-        console.log(`[YJSProvider] updateValue called:`, {
-            jsondocId,
-            path,
-            fullPath,
-            valueType: typeof value,
-            valuePreview: typeof value === 'string' ? value.substring(0, 50) + (value.length > 50 ? '...' : '') : value
-        });
-
         updateField(fullPath, value);
 
         // Notify subscribers
         const pathSubscriptions = subscriptionsRef.current.get(fullPath);
         if (pathSubscriptions) {
-            console.log(`[YJSProvider] Notifying ${pathSubscriptions.size} subscribers for path ${fullPath}`);
             pathSubscriptions.forEach(callback => callback(value));
         }
-    }, [resolvePath, updateField, jsondocId]);
+    }, [resolvePath, updateField]);
 
     // Notify subscribers when data changes
     useEffect(() => {
@@ -217,30 +180,14 @@ export function useYJSField(path: string = '') {
 
     // Initialize and subscribe to value changes
     useEffect(() => {
-        console.log(`[useYJSField] Initializing field:`, {
-            jsondocId: structural.jsondocId,
-            path,
-            timestamp: new Date().toISOString()
-        });
-
         // Get initial value
         const initialValue = structural.getValue(path);
-        console.log(`[useYJSField] Initial value for ${path}:`, {
-            jsondocId: structural.jsondocId,
-            value: initialValue,
-            valueType: typeof initialValue
-        });
 
         setLocalValue(initialValue);
         setIsInitialized(true);
 
         // Subscribe to changes
         const unsubscribe = structural.subscribeToValue(path, (newValue) => {
-            console.log(`[useYJSField] Value changed for ${path}:`, {
-                jsondocId: structural.jsondocId,
-                newValue,
-                valueType: typeof newValue
-            });
             setLocalValue(newValue);
         });
 
@@ -249,12 +196,6 @@ export function useYJSField(path: string = '') {
 
     // Update function that updates both local state and YJS
     const updateValue = useCallback((newValue: any) => {
-        console.log(`[useYJSField] updateValue called for ${path}:`, {
-            jsondocId: structural.jsondocId,
-            newValue,
-            valueType: typeof newValue
-        });
-
         setLocalValue(newValue); // Immediate local update
         structural.updateValue(path, newValue); // YJS update
     }, [structural, path]);

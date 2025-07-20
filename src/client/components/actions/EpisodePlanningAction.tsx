@@ -113,14 +113,7 @@ const EpisodePlanningAction: React.FC<EpisodePlanningActionProps> = (props) => {
                 {isGenerating ? '正在生成剧集框架...' : '生成剧集框架'}
             </AIButton>
 
-            {isGenerating && (
-                <Alert
-                    message="正在生成中"
-                    description="AI正在基于时间顺序大纲生成适合短视频平台的剧集框架，请稍候..."
-                    type="info"
-                    showIcon
-                />
-            )}
+
         </Space>
     );
 };

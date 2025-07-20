@@ -56,29 +56,10 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
     const { projectId } = useParams<{ projectId: string }>();
     const projectData = useProjectData();
 
-    console.log(`[SingleBrainstormIdeaEditor] Component render:`, {
-        projectId,
-        hasPropsBrainstormIdea: !!propsBrainstormIdea,
-        propsBrainstormIdeaId: propsBrainstormIdea?.id,
-        propsIsEditable,
-        propsMode,
-        projectDataLoading: projectData.isLoading,
-        jsondocsStatus: Array.isArray(projectData.jsondocs) ? 'loaded' : projectData.jsondocs
-    });
-
     // If we have props from actionComputation, use them directly
     if (propsBrainstormIdea && propsBrainstormIdea.id) {
         const isEditable = propsIsEditable ?? false;
         const effectiveJsondoc = propsBrainstormIdea;
-
-        console.log(`[SingleBrainstormIdeaEditor] Using props brainstorm idea:`, {
-            jsondocId: effectiveJsondoc.id,
-            isEditable,
-            schemaType: effectiveJsondoc.schema_type,
-            originType: effectiveJsondoc.origin_type,
-            hasMetadata: !!effectiveJsondoc.metadata,
-            dataSize: effectiveJsondoc.data?.length || 0
-        });
 
         return (
             <SectionWrapper
