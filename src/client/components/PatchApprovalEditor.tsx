@@ -17,7 +17,7 @@ const DiffPreview: React.FC<{ oldValue: string; newValue: string }> = ({ oldValu
     return (
         <div style={{
             fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace',
-            fontSize: '12px',
+            fontSize: '14px',
             lineHeight: '1.4',
             whiteSpace: 'pre-wrap',
             padding: '12px',
@@ -503,7 +503,7 @@ export const PatchApprovalEditor: React.FC<PatchApprovalEditorProps> = ({
                                                 value={String(value)}
                                                 onChange={(e) => setEditedContent(prev => ({ ...prev, [path]: e.target.value }))}
                                                 placeholder={`请输入 ${path} 的内容`}
-                                                rows={20}
+                                                autoSize={true}
                                                 style={{ marginTop: '8px' }}
                                             />
                                         ) : (

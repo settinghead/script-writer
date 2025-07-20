@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { Modal, Button, Space, Card, Typography, Checkbox, Input, message, Divider } from 'antd';
+import { Modal, Button, Space, Card, Typography, Checkbox, message } from 'antd';
 import { CheckOutlined, CloseOutlined, EditOutlined } from '@ant-design/icons';
 import { usePendingPatchApproval, type PendingPatchGroup } from '../hooks/usePendingPatchApproval';
 import { YJSJsondocProvider } from '../transform-jsondoc-framework/contexts/YJSJsondocContext';
@@ -10,7 +10,6 @@ import type { ElectricJsondoc } from '../../common/types';
 import * as Diff from 'diff';
 
 const { Title, Text, Paragraph } = Typography;
-const { TextArea } = Input;
 
 // Diff view component
 const DiffView: React.FC<{ oldValue: string; newValue: string }> = ({ oldValue, newValue }) => {
@@ -328,8 +327,6 @@ interface PatchReviewModalProps {
 export const PatchReviewModal: React.FC<PatchReviewModalProps> = ({ projectId }) => {
     const { pendingPatches, isLoading, error } = usePendingPatchApproval(projectId);
     const [selectedPatches, setSelectedPatches] = useState<Set<string>>(new Set());
-    const [rejectionReason, setRejectionReason] = useState('');
-    const [showRejectionInput, setShowRejectionInput] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
     const [modalVisible, setModalVisible] = useState(true);
 
@@ -394,8 +391,6 @@ export const PatchReviewModal: React.FC<PatchReviewModalProps> = ({ projectId })
 
             // Reset state
             setSelectedPatches(new Set());
-            setRejectionReason('');
-            setShowRejectionInput(false);
         } catch (error) {
             console.error('Failed to approve patches:', error);
             message.error(`批准失败：${error instanceof Error ? error.message : '未知错误'}`);
@@ -417,7 +412,7 @@ export const PatchReviewModal: React.FC<PatchReviewModalProps> = ({ projectId })
                     'Authorization': 'Bearer debug-auth-token-script-writer-dev'
                 },
                 body: JSON.stringify({
-                    rejectionReason: rejectionReason || 'User rejected patches'
+                    rejectionReason: 'User rejected patches'
                 })
             });
 
@@ -433,7 +428,7 @@ export const PatchReviewModal: React.FC<PatchReviewModalProps> = ({ projectId })
             const patchCount = result.deletedPatchIds?.length || 0;
             const transformCount = result.deletedTransformIds?.length || 0;
 
-            let successMessage = `补丁已拒绝！删除了 ${patchCount} 个补丁`;
+            let successMessage = `补丁已删除！删除了 ${patchCount} 个补丁`;
             if (transformCount > 1) {
                 successMessage += ` 和 ${transformCount - 1} 个相关的编辑版本`;
             }
@@ -442,15 +437,13 @@ export const PatchReviewModal: React.FC<PatchReviewModalProps> = ({ projectId })
 
             // Reset state
             setSelectedPatches(new Set());
-            setRejectionReason('');
-            setShowRejectionInput(false);
         } catch (error) {
             console.error('Failed to reject patches:', error);
             message.error(`拒绝失败：${error instanceof Error ? error.message : '未知错误'}`);
         } finally {
             setIsProcessing(false);
         }
-    }, [pendingPatches, rejectionReason]);
+    }, [pendingPatches]);
 
     // Handle modal close
     const handleClose = useCallback(() => {
@@ -506,7 +499,7 @@ export const PatchReviewModal: React.FC<PatchReviewModalProps> = ({ projectId })
                     </Button>
                     <Button
                         danger
-                        onClick={() => setShowRejectionInput(true)}
+                        onClick={handleReject}
                         loading={isProcessing}
                     >
                         拒绝选中的补丁
@@ -569,42 +562,6 @@ export const PatchReviewModal: React.FC<PatchReviewModalProps> = ({ projectId })
                         projectId={projectId}
                     />
                 ))}
-
-                {/* Rejection Reason Input */}
-                {showRejectionInput && (
-                    <>
-                        <Divider />
-                        <Card size="small" title="拒绝原因">
-                            <div className="yjs-field-dark-theme">
-                                <TextArea
-                                    value={rejectionReason}
-                                    onChange={(e) => setRejectionReason(e.target.value)}
-                                    placeholder="请说明拒绝这些补丁的原因（可选）..."
-                                    rows={3}
-                                    style={{ marginBottom: '12px' }}
-                                />
-                            </div>
-                            <Space>
-                                <Button
-                                    danger
-                                    icon={<CloseOutlined />}
-                                    onClick={handleReject}
-                                    loading={isProcessing}
-                                >
-                                    确认拒绝
-                                </Button>
-                                <Button
-                                    onClick={() => {
-                                        setShowRejectionInput(false);
-                                        setRejectionReason('');
-                                    }}
-                                >
-                                    取消
-                                </Button>
-                            </Space>
-                        </Card>
-                    </>
-                )}
             </div>
         </Modal>
     );
