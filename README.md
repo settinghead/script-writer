@@ -478,8 +478,8 @@ This dual-computation system ensures that users always see the correct workflow 
 - **Outline Settings** - Character development, story foundation, and commercial elements
 - **Chronicles** - Chronological story timeline and staged progression
 - **Episode Planning** - TikTok-optimized episode structure with "pulsing" emotional rhythm
-- **Episode Synopses** - Individual episode breakdowns
-- **Script Content** - Full dialogue and scene descriptions
+- **Episode Synopses** - Individual episode breakdowns (to be implemented)
+- **Script Content** - Full dialogue and scene descriptions (to be implemented)
 
 ### 🔍 Canonical Content Principle
 

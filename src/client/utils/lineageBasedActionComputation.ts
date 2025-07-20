@@ -254,33 +254,6 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
         });
     }
 
-    // If episode planning but no episode synopsis, add EpisodeGenerationAction
-    const shouldShowEpisodeGeneration = context.canonicalEpisodePlanning && !context.canonicalChronicles?.schema_type.includes('episode_synopsis');
-    if (shouldShowEpisodeGeneration) {
-        actions.push({
-            id: 'episode_synopsis_generation',
-            type: 'button',
-            title: '生成剧本',
-            description: '基于分集概要生成具体剧本',
-            component: EpisodeGenerationAction,
-            props: {
-                jsondocs: {
-                    brainstormIdea: context.canonicalBrainstormIdea,
-                    brainstormCollection: context.canonicalBrainstormCollection,
-                    outlineSettings: context.canonicalOutlineSettings,
-                    chronicles: context.canonicalChronicles,
-                    episodePlanning: context.canonicalEpisodePlanning,
-                    brainstormInput: context.canonicalBrainstormInput
-                },
-                workflowContext: {
-                    hasActiveTransforms: context.hasActiveTransforms,
-                    workflowNodes: context.workflowNodes
-                }
-            },
-            enabled: true,
-            priority: 1
-        });
-    }
 
     return actions;
 } 

@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import type { EpisodeSynopsisV1 } from '../../common/types';
 
 // Legacy outline session data type (simplified for backward compatibility)
 interface OutlineSessionData {
@@ -15,21 +14,6 @@ export interface Stage {
   outlineSessionId: string;
 }
 
-export interface EpisodeData extends EpisodeSynopsisV1 {
-  hasScript?: boolean;
-}
-
-export interface StageEpisodeState {
-  episodes: EpisodeData[];
-  loading: boolean;
-  isStreaming: boolean;
-  sessionData?: {
-    session: { id: string };
-    status: 'active' | 'completed' | 'failed';
-    episodes: EpisodeSynopsisV1[];
-    currentTransformId?: string;
-  };
-}
 
 // Define the shape of a single project's data
 interface ProjectData {
@@ -38,7 +22,6 @@ interface ProjectData {
   description?: string;
   outline: OutlineSessionData | null;
   stages: Stage[];
-  episodes: Record<string, StageEpisodeState>; // Keyed by stage jsondocId
   expandedKeys: string[];
   selectedStageId: string | null;
   selectedEpisodeId: string | null;
@@ -63,8 +46,6 @@ interface ProjectStoreState {
 
   // Actions for stages data
   setStages: (projectId: string, stages: Stage[]) => void;
-  setStageEpisodes: (projectId: string, stageId: string, episodeState: StageEpisodeState) => void;
-  updateStreamingEpisodes: (projectId: string, stageId: string, episodes: EpisodeData[]) => void;
 
   // Actions for UI state
   setExpandedKeys: (projectId: string, keys: string[]) => void;
@@ -73,12 +54,7 @@ interface ProjectStoreState {
   setLoading: (projectId: string, loading: boolean) => void;
   setError: (projectId: string, error: string | null) => void;
 
-  // Actions for streaming state
-  startStreaming: (projectId: string, stageId: string, transformId: string) => void;
-  stopStreaming: (projectId: string) => void;
 
-  // Action to update episode script status
-  updateEpisodeScriptStatus: (projectId: string, stageId: string, episodeNumber: number, hasScript: boolean) => void;
 
   // Helper action to ensure project exists
   ensureProject: (projectId: string) => void;
@@ -103,7 +79,6 @@ const createEmptyProject = (id: string): ProjectData => ({
   description: undefined,
   outline: null,
   stages: [],
-  episodes: {},
   expandedKeys: [],
   selectedStageId: null,
   selectedEpisodeId: null,
@@ -172,49 +147,6 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
     };
   }),
 
-  setStageEpisodes: (projectId, stageId, episodeState) => set(state => {
-    const project = state.projects[projectId] || createEmptyProject(projectId);
-
-    return {
-      projects: {
-        ...state.projects,
-        [projectId]: {
-          ...project,
-          episodes: {
-            ...project.episodes,
-            [stageId]: episodeState,
-          },
-        },
-      },
-    };
-  }),
-
-  updateStreamingEpisodes: (projectId, stageId, episodes) => set(state => {
-    const project = state.projects[projectId] || createEmptyProject(projectId);
-    const currentEpisodeState = project.episodes?.[stageId] || {
-      episodes: [],
-      loading: false,
-      isStreaming: false,
-    };
-
-    return {
-      projects: {
-        ...state.projects,
-        [projectId]: {
-          ...project,
-          episodes: {
-            ...project.episodes,
-            [stageId]: {
-              ...currentEpisodeState,
-              episodes,
-              isStreaming: true,
-            },
-          },
-        },
-      },
-    };
-  }),
-
   setExpandedKeys: (projectId, keys) => set(state => {
     const project = state.projects[projectId] || createEmptyProject(projectId);
     return {
@@ -265,73 +197,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
     };
   }),
 
-  startStreaming: (projectId, stageId, transformId) => set(state => {
-    const project = state.projects[projectId] || createEmptyProject(projectId);
-    return {
-      projects: {
-        ...state.projects,
-        [projectId]: {
-          ...project,
-          activeStreamingStageId: stageId,
-          streamingTransformId: transformId,
-        },
-      },
-    };
-  }),
 
-  stopStreaming: (projectId) => set(state => {
-    const project = state.projects[projectId] || createEmptyProject(projectId);
-
-    // Update the streaming stage's state
-    const updatedEpisodes = { ...project.episodes };
-    if (project.activeStreamingStageId && updatedEpisodes[project.activeStreamingStageId]) {
-      updatedEpisodes[project.activeStreamingStageId] = {
-        ...updatedEpisodes[project.activeStreamingStageId],
-        isStreaming: false,
-      };
-    }
-
-    return {
-      projects: {
-        ...state.projects,
-        [projectId]: {
-          ...project,
-          activeStreamingStageId: null,
-          streamingTransformId: null,
-          episodes: updatedEpisodes,
-        },
-      },
-    };
-  }),
-
-  updateEpisodeScriptStatus: (projectId, stageId, episodeNumber, hasScript) => set(state => {
-    const project = state.projects[projectId] || createEmptyProject(projectId);
-    const currentStageData = project.episodes?.[stageId];
-
-    if (!currentStageData) return state;
-
-    const updatedEpisodes = currentStageData.episodes.map(episode =>
-      episode.episodeNumber === episodeNumber
-        ? { ...episode, hasScript }
-        : episode
-    );
-
-    return {
-      projects: {
-        ...state.projects,
-        [projectId]: {
-          ...project,
-          episodes: {
-            ...project.episodes,
-            [stageId]: {
-              ...currentStageData,
-              episodes: updatedEpisodes,
-            },
-          },
-        },
-      },
-    };
-  }),
 
   setProject: (projectId, projectData) =>
     set(state => {

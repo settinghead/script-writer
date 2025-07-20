@@ -251,91 +251,9 @@ export interface OutlineSynopsisStageV1 {
     outlineSessionId: string;
 }
 
-export interface EpisodeGenerationSessionV1 {
-    id: string;
-    outlineSessionId: string;
-    stageJsondocId: string;
-    status: 'active' | 'completed' | 'failed';
-    totalEpisodes: number;
-    episodeDuration: number;
-}
 
-export interface EpisodeSynopsisV1 {
-    episodeNumber: number;
-    title: string;
-    briefSummary: string;
-    keyEvents: string[];  // 2-3 key events per episode
-    hooks: string;        // End-of-episode hook to next episode
-    stageJsondocId: string;
-    episodeGenerationSessionId: string;
-    // 🔥 NEW: Episode-level emotion and relationship development tracking
-    emotionDevelopments?: Array<{
-        characters: string[];  // Characters involved in this emotion development
-        content: string;       // Detailed description of emotional change/progression
-    }>;
-    relationshipDevelopments?: Array<{
-        characters: string[];  // Characters involved in this relationship development
-        content: string;       // Detailed description of relationship change/progression
-    }>;
-}
 
-// Extended parameters for episode generation with cascading params
-export interface EpisodeGenerationParamsV1 {
-    stageJsondocId: string;
-    numberOfEpisodes: number;
-    stageSynopsis: string;
-    customRequirements?: string;
 
-    // 🔥 NEW: Cascaded parameters from previous stages (user can modify)
-    cascadedParams?: WorkflowCascadingParamsV1 & {
-        // Additional episode-specific cascaded params
-        totalEpisodes?: number;
-        episodeDuration?: number;
-    };
-}
-
-export interface ScriptGenerationJobParamsV1 {
-    platform: string;
-    genre_paths: string[][];
-    requirements: string;
-    totalEpisodes: number;
-    episodeDuration: number;
-    episode_synopsis: string;
-    characters_info: string;
-    user_requirements: string;
-    episode_number: number;
-}
-
-// Episode script data structure (matches streaming types)
-export interface EpisodeScriptV1 {
-    episodeNumber: number;
-    stageJsondocId: string;
-    episodeGenerationSessionId: string;
-
-    // Script content
-    scriptContent: string;
-    scenes: Array<{
-        sceneNumber: number;
-        location: string;
-        timeOfDay: string;
-        characters: string[];
-        action: string;
-        dialogue: Array<{
-            character: string;
-            line: string;
-            direction?: string;
-        }>;
-    }>;
-
-    // Metadata
-    wordCount: number;
-    estimatedDuration: number;
-    generatedAt: string;
-
-    // Source references
-    episodeSynopsisJsondocId: string;
-    userRequirements?: string;
-}
 
 // Workflow context for carrying parameters between stages
 export interface WorkflowContextV1 {
