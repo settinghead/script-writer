@@ -18,6 +18,123 @@ export function createAdminRoutes(
     const router = Router();
     const templateService = new TemplateService();
 
+    /**
+     * Dynamically build tool registry from actual tool definitions
+     */
+    async function buildToolRegistry(userId: string) {
+        // Use a dummy project ID for tool listing (tools are the same across projects)
+        const dummyProjectId = 'admin-tools-listing';
+
+        // Get all available tools using the same function as the agent
+        const tools = buildToolsForRequestType(
+            transformRepo || {} as any, // Fallback if transformRepo not provided
+            jsondocRepo,
+            dummyProjectId,
+            userId
+        );
+
+        // Build registry with tool metadata
+        const toolRegistry = new Map();
+
+        for (const tool of tools) {
+            // Extract template name from tool configuration
+            // This is a bit hacky but works by introspecting the tool's execute method
+            let templateName = 'unknown';
+            let outputJsondocType = 'unknown';
+
+            // Map tool names to their template configurations based on known patterns
+            const toolConfigs: Record<string, { templateName: string; outputJsondocType: string; schemas: any }> = {
+                'generate_brainstorm_ideas': {
+                    templateName: 'brainstorming',
+                    outputJsondocType: 'brainstorm_collection',
+                    schemas: {
+                        inputSchema: () => import('@/common/transform_schemas.js').then(m => m.IdeationInputSchema),
+                        outputSchema: () => import('@/common/transform_schemas.js').then(m => m.IdeationOutputSchema)
+                    }
+                },
+                'edit_brainstorm_idea': {
+                    templateName: 'brainstorm_edit_patch',
+                    outputJsondocType: 'brainstorm_idea',
+                    schemas: {
+                        inputSchema: () => import('@/common/schemas/transforms.js').then(m => m.BrainstormEditInputSchema),
+                        outputSchema: () => Promise.resolve(JsonPatchOperationsSchema)
+                    }
+                },
+                'generate_outline_settings': {
+                    templateName: 'outline_settings',
+                    outputJsondocType: 'outline_settings',
+                    schemas: {
+                        inputSchema: () => import('@/common/schemas/outlineSchemas.js').then(m => m.OutlineSettingsInputSchema),
+                        outputSchema: () => import('@/common/schemas/outlineSchemas.js').then(m => m.OutlineSettingsOutputSchema)
+                    }
+                },
+                'edit_outline_settings': {
+                    templateName: 'outline_settings_edit_patch',
+                    outputJsondocType: 'outline_settings',
+                    schemas: {
+                        inputSchema: () => import('@/common/schemas/transforms.js').then(m => m.OutlineSettingsEditInputSchema),
+                        outputSchema: () => Promise.resolve(JsonPatchOperationsSchema)
+                    }
+                },
+                'generate_chronicles': {
+                    templateName: 'chronicles',
+                    outputJsondocType: 'chronicles',
+                    schemas: {
+                        inputSchema: () => import('@/common/schemas/outlineSchemas.js').then(m => m.ChroniclesInputSchema),
+                        outputSchema: () => import('@/common/schemas/outlineSchemas.js').then(m => m.ChroniclesOutputSchema)
+                    }
+                },
+                'edit_chronicles': {
+                    templateName: 'chronicles_edit_patch',
+                    outputJsondocType: 'chronicles',
+                    schemas: {
+                        inputSchema: () => import('@/common/schemas/transforms.js').then(m => m.ChroniclesEditInputSchema),
+                        outputSchema: () => Promise.resolve(JsonPatchOperationsSchema)
+                    }
+                },
+                'generate_episode_planning': {
+                    templateName: 'episode_planning',
+                    outputJsondocType: 'episode_planning',
+                    schemas: {
+                        inputSchema: () => import('@/common/schemas/outlineSchemas.js').then(m => m.EpisodePlanningInputSchema),
+                        outputSchema: () => import('@/common/schemas/outlineSchemas.js').then(m => m.EpisodePlanningOutputSchema)
+                    }
+                },
+                'edit_episode_planning': {
+                    templateName: 'episode_planning_edit_patch',
+                    outputJsondocType: 'episode_planning',
+                    schemas: {
+                        inputSchema: () => import('@/common/schemas/outlineSchemas.js').then(m => m.EpisodePlanningEditInputSchema),
+                        outputSchema: () => Promise.resolve(JsonPatchOperationsSchema)
+                    }
+                },
+                'generate_episode_synopsis': {
+                    templateName: 'episode_synopsis_generation',
+                    outputJsondocType: 'episode_synopsis',
+                    schemas: {
+                        inputSchema: () => import('@/common/schemas/outlineSchemas.js').then(m => m.EpisodeSynopsisInputSchema),
+                        outputSchema: () => import('@/common/schemas/outlineSchemas.js').then(m => m.EpisodeSynopsisGroupSchema)
+                    }
+                }
+            };
+
+            const config = toolConfigs[tool.name];
+            if (config) {
+                templateName = config.templateName;
+                outputJsondocType = config.outputJsondocType;
+            }
+
+            toolRegistry.set(tool.name, {
+                tool,
+                templateName,
+                outputJsondocType,
+                config
+            });
+        }
+
+        return toolRegistry;
+    }
+
     // GET /api/admin/tools - List available tools
     router.get('/tools', authMiddleware.authenticate, async (req: Request, res: Response) => {
         try {
@@ -27,31 +144,10 @@ export function createAdminRoutes(
                 return;
             }
 
-            // Use a dummy project ID for tool listing (tools are the same across projects)
-            const dummyProjectId = 'admin-tools-listing';
-
-            // Get all available tools using the same function as the agent
-            const tools = buildToolsForRequestType(
-                transformRepo || {} as any, // Fallback if transformRepo not provided
-                jsondocRepo,
-                dummyProjectId,
-                userId
-            );
-
-            // Map tool names to template names for frontend compatibility
-            const toolToTemplate: Record<string, string> = {
-                'generate_brainstorm_ideas': 'brainstorming',
-                'edit_brainstorm_idea': 'brainstorm_edit_patch',
-                'generate_outline_settings': 'outline_settings',
-                'edit_outline_settings': 'outline_settings_edit_patch',
-                'generate_chronicles': 'chronicles',
-                'edit_chronicles': 'chronicles_edit_patch',
-                'generate_episode_planning': 'episode_planning',
-                'edit_episode_planning': 'episode_planning_edit_patch'
-            };
+            const toolRegistry = await buildToolRegistry(userId);
 
             // Format tools for admin display (matching frontend Tool interface)
-            const toolList = tools.map(tool => {
+            const toolList = Array.from(toolRegistry.values()).map(({ tool, templateName }) => {
                 // Safely extract schema properties for display
                 let inputProperties: Record<string, any> = {};
                 try {
@@ -80,7 +176,7 @@ export function createAdminRoutes(
                         type: 'object',
                         properties: inputProperties
                     },
-                    templatePath: toolToTemplate[tool.name] || 'unknown',
+                    templatePath: templateName,
                     hasCustomTemplateVariables: tool.name === 'edit_brainstorm_idea' // Only brainstorm edit has custom logic
                 };
             });
@@ -92,6 +188,9 @@ export function createAdminRoutes(
                 'outline_settings',
                 'outline_settings_edit_patch',
                 'chronicles',
+                'chronicles_edit_patch',
+                'episode_planning',
+                'episode_planning_edit_patch',
                 'episode_synopsis_generation',
                 'script_generation'
             ].map(templateId => {
@@ -133,33 +232,24 @@ export function createAdminRoutes(
     router.get('/tools/:toolName/prompt', async (req: Request, res: Response) => {
         try {
             const { toolName } = req.params;
+            const userId = req.user?.id || 'anonymous'; // Allow anonymous for prompt viewing
 
-            // Map tool names to template names (reuse the mapping from above)
-            const toolToTemplate: Record<string, string> = {
-                'generate_brainstorm_ideas': 'brainstorming',
-                'edit_brainstorm_idea': 'brainstorm_edit_patch',
-                'generate_outline_settings': 'outline_settings',
-                'edit_outline_settings': 'outline_settings_edit_patch',
-                'generate_chronicles': 'chronicles',
-                'edit_chronicles': 'chronicles_edit_patch',
-                'generate_episode_planning': 'episode_planning',
-                'edit_episode_planning': 'episode_planning_edit_patch'
-            };
+            const toolRegistry = await buildToolRegistry(userId);
+            const toolInfo = toolRegistry.get(toolName);
 
-            const templateName = toolToTemplate[toolName];
-            if (!templateName) {
+            if (!toolInfo) {
                 res.status(404).json({
-                    error: 'Tool not found or no template mapping',
-                    availableTools: Object.keys(toolToTemplate)
+                    error: 'Tool not found',
+                    availableTools: Array.from(toolRegistry.keys())
                 });
                 return;
             }
 
-            const template = templateService.getTemplate(templateName);
+            const template = templateService.getTemplate(toolInfo.templateName);
 
             res.json({
                 toolName,
-                templateName,
+                templateName: toolInfo.templateName,
                 template: {
                     id: template.id,
                     name: template.name,
@@ -190,6 +280,19 @@ export function createAdminRoutes(
                 return;
             }
 
+            // Build tool registry to check if tool exists
+            const toolRegistry = await buildToolRegistry(userId);
+            const toolInfo = toolRegistry.get(toolName);
+
+            if (!toolInfo) {
+                // Return 404 for unknown tools instead of silent 200
+                res.status(404).json({
+                    error: `Tool '${toolName}' not found`,
+                    availableTools: Array.from(toolRegistry.keys())
+                });
+                return;
+            }
+
             // Set up SSE headers
             res.writeHead(200, {
                 'Content-Type': 'text/event-stream',
@@ -205,49 +308,6 @@ export function createAdminRoutes(
                 res.write(`data: ${JSON.stringify(data)}\n\n`);
             };
 
-            // Map tool names to their instantiation functions
-            const toolMap: Record<string, any> = {
-                'generate_brainstorm_ideas': async (projectId: string, userId: string) => {
-                    const { createBrainstormToolDefinition } = await import('../tools/BrainstormTools.js');
-                    return createBrainstormToolDefinition(transformRepo, jsondocRepo, projectId, userId);
-                },
-                'edit_brainstorm_idea': async (projectId: string, userId: string) => {
-                    const { createBrainstormEditToolDefinition } = await import('../tools/BrainstormTools.js');
-                    return createBrainstormEditToolDefinition(transformRepo, jsondocRepo, projectId, userId);
-                },
-                'generate_outline_settings': async (projectId: string, userId: string) => {
-                    const { createOutlineSettingsToolDefinition } = await import('../tools/OutlineSettingsTool.js');
-                    return createOutlineSettingsToolDefinition(transformRepo, jsondocRepo, projectId, userId);
-                },
-                'edit_outline_settings': async (projectId: string, userId: string) => {
-                    const { createOutlineSettingsEditToolDefinition } = await import('../tools/OutlineSettingsTool.js');
-                    return createOutlineSettingsEditToolDefinition(transformRepo, jsondocRepo, projectId, userId);
-                },
-                'generate_chronicles': async (projectId: string, userId: string) => {
-                    const { createChroniclesToolDefinition } = await import('../tools/ChroniclesTool.js');
-                    return createChroniclesToolDefinition(transformRepo, jsondocRepo, projectId, userId);
-                },
-                'edit_chronicles': async (projectId: string, userId: string) => {
-                    const { createChroniclesEditToolDefinition } = await import('../tools/ChroniclesTool.js');
-                    return createChroniclesEditToolDefinition(transformRepo, jsondocRepo, projectId, userId);
-                },
-                'generate_episode_planning': async (projectId: string, userId: string) => {
-                    const { createEpisodePlanningToolDefinition } = await import('../tools/EpisodePlanningTool.js');
-                    return createEpisodePlanningToolDefinition(transformRepo, jsondocRepo, projectId, userId);
-                },
-                'edit_episode_planning': async (projectId: string, userId: string) => {
-                    const { createEpisodePlanningEditToolDefinition } = await import('../tools/EpisodePlanningTool.js');
-                    return createEpisodePlanningEditToolDefinition(transformRepo, jsondocRepo, projectId, userId);
-                }
-            };
-
-            const toolLoader = toolMap[toolName];
-            if (!toolLoader) {
-                sendSSE('error', { message: `Tool '${toolName}' not found` });
-                res.end();
-                return;
-            }
-
             sendSSE('status', { message: 'Loading tool...', toolName });
 
             // Get a default project ID for dry run (use first accessible project)
@@ -259,8 +319,8 @@ export function createAdminRoutes(
             }
             const projectId = projects[0].id;
 
-            // Load the tool definition
-            const toolDefinition = await toolLoader(projectId, userId);
+            // Load the tool definition using the actual tool factory
+            const toolDefinition = toolInfo.tool;
 
             // Prepare input data
             const input: any = { ...additionalParams };
@@ -279,72 +339,27 @@ export function createAdminRoutes(
             // Import the executeStreamingTransform function directly
             const { executeStreamingTransform } = await import('../transform-jsondoc-framework/StreamingTransformExecutor.js');
 
-            // Get the tool's configuration by examining its structure
-            // We'll need to create a custom streaming execution with dryRun: true
-            let config: any;
-            let transformMetadata: any;
-            let outputJsondocType: 'brainstorm_collection' | 'brainstorm_idea' | 'outline_settings' | 'chronicles';
-
-            // Extract configuration based on tool type
-            if (toolName === 'generate_brainstorm_ideas') {
-                const { IdeationInputSchema, IdeationOutputSchema } = await import('@/common/transform_schemas.js');
-                config = {
-                    templateName: 'brainstorming',
-                    inputSchema: IdeationInputSchema,
-                    outputSchema: IdeationOutputSchema
-                };
-                outputJsondocType = 'brainstorm_collection';
-                transformMetadata = {
-                    toolName: 'generate_brainstorm_ideas',
-                    platform: 'unknown',
-                    genre: 'unknown',
-                    numberOfIdeas: 2
-                };
-            } else if (toolName === 'edit_brainstorm_idea') {
-                const { BrainstormEditInputSchema } = await import('@/common/schemas/transforms.js');
-                const { z } = await import('zod');
-                config = {
-                    templateName: 'brainstorm_edit_patch',
-                    inputSchema: BrainstormEditInputSchema,
-                    outputSchema: JsonPatchOperationsSchema
-                };
-                outputJsondocType = 'brainstorm_idea';
-                transformMetadata = { toolName: 'edit_brainstorm_idea' };
-            } else if (toolName === 'generate_outline_settings') {
-                // Import outline schemas
-                const { OutlineSettingsInputSchema, OutlineSettingsOutputSchema } = await import('@/common/schemas/outlineSchemas.js');
-                config = {
-                    templateName: 'outline_settings',
-                    inputSchema: OutlineSettingsInputSchema,
-                    outputSchema: OutlineSettingsOutputSchema
-                };
-                outputJsondocType = 'outline_settings';
-                transformMetadata = { toolName: 'generate_outline_settings' };
-            } else if (toolName === 'edit_outline_settings') {
-                const { OutlineSettingsEditInputSchema } = await import('@/common/schemas/transforms.js');
-                const { z } = await import('zod');
-                config = {
-                    templateName: 'outline_settings_edit_patch',
-                    inputSchema: OutlineSettingsEditInputSchema,
-                    outputSchema: JsonPatchOperationsSchema
-                };
-                outputJsondocType = 'outline_settings';
-                transformMetadata = { toolName: 'edit_outline_settings' };
-            } else if (toolName === 'generate_chronicles') {
-                // Import chronicles schemas
-                const { ChroniclesInputSchema, ChroniclesOutputSchema } = await import('@/common/schemas/outlineSchemas.js');
-                config = {
-                    templateName: 'chronicles',
-                    inputSchema: ChroniclesInputSchema,
-                    outputSchema: ChroniclesOutputSchema
-                };
-                outputJsondocType = 'chronicles';
-                transformMetadata = { toolName: 'generate_chronicles' };
-            } else {
-                sendSSE('error', { message: `Unsupported tool for non-persistent run: ${toolName}` });
+            // Get the tool's configuration from our registry
+            if (!toolInfo.config || !toolInfo.config.schemas) {
+                sendSSE('error', { message: `Tool configuration not found for: ${toolName}` });
                 res.end();
                 return;
             }
+
+            // Load schemas dynamically
+            const inputSchema = await toolInfo.config.schemas.inputSchema();
+            const outputSchema = await toolInfo.config.schemas.outputSchema();
+
+            const config = {
+                templateName: toolInfo.templateName,
+                inputSchema,
+                outputSchema
+            };
+
+            const transformMetadata = {
+                toolName,
+                ...(additionalParams || {})
+            };
 
             // Execute the streaming transform with dryRun: true and streaming callback
             const result = await executeStreamingTransform({
@@ -354,7 +369,7 @@ export function createAdminRoutes(
                 userId,
                 transformRepo,
                 jsondocRepo,
-                outputJsondocType,
+                outputJsondocType: toolInfo.outputJsondocType as any,
                 transformMetadata,
                 dryRun: true,  // This will skip database operations but still call LLM
                 onStreamChunk: async (chunk: any, chunkCount: number) => {
@@ -401,29 +416,20 @@ export function createAdminRoutes(
                 return;
             }
 
-            // Map tool names to template names
-            const toolToTemplate: Record<string, string> = {
-                'generate_brainstorm_ideas': 'brainstorming',
-                'edit_brainstorm_idea': 'brainstorm_edit_patch',
-                'generate_outline_settings': 'outline_settings',
-                'edit_outline_settings': 'outline_settings_edit_patch',
-                'generate_chronicles': 'chronicles',
-                'edit_chronicles': 'chronicles_edit_patch',
-                'generate_episode_planning': 'episode_planning',
-                'edit_episode_planning': 'episode_planning_edit_patch'
-            };
+            // Build tool registry to check if tool exists
+            const toolRegistry = await buildToolRegistry(userId);
+            const toolInfo = toolRegistry.get(toolName);
 
-            const templateName = toolToTemplate[toolName];
-            if (!templateName) {
+            if (!toolInfo) {
                 res.status(404).json({
-                    error: 'Tool not found or no template mapping',
-                    availableTools: Object.keys(toolToTemplate)
+                    error: 'Tool not found',
+                    availableTools: Array.from(toolRegistry.keys())
                 });
                 return;
             }
 
             // Get the template using the same method as tools
-            const template = templateService.getTemplate(templateName);
+            const template = templateService.getTemplate(toolInfo.templateName);
 
             // Prepare context data exactly like tools do
             let jsondocData: any[] = [];
@@ -464,7 +470,7 @@ export function createAdminRoutes(
                 tool: {
                     name: toolName,
                     description: `Debug prompt generation for ${toolName}`,
-                    templatePath: templateName
+                    templatePath: toolInfo.templateName
                 },
                 input: {
                     jsondocs,

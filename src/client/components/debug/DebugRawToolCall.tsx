@@ -54,8 +54,41 @@ const getDefaultParamsForTool = (toolName: string): Record<string, any> => {
             return {
                 otherRequirements: '生成有创意的故事想法，快节奏，高颜值主角'
             };
+        case 'generate_outline_settings':
+            return {
+                title: '示例短剧标题',
+                requirements: '现代都市甜宠，去脸谱化，避免刻板印象'
+            };
+        case 'edit_outline_settings':
+            return {
+                editRequirements: '调整剧本设定，优化角色设定和故事背景'
+            };
+        case 'generate_chronicles':
+            return {
+                requirements: '按时间顺序展开故事，注重情感节拍和冲突设置'
+            };
+        case 'edit_chronicles':
+            return {
+                editRequirements: '调整时间线，优化故事发展节奏'
+            };
+        case 'generate_episode_planning':
+            return {
+                numberOfEpisodes: 20,
+                requirements: '适合短视频平台，每集2-3分钟，注重钩子设计和悬念'
+            };
+        case 'edit_episode_planning':
+            return {
+                editRequirements: '调整剧集分组，优化观看顺序和情感节拍'
+            };
+        case 'generate_episode_synopsis':
+            return {
+                groupTitle: '第一组：相遇篇',
+                episodeRange: '第1-5集',
+                episodes: [1, 2, 3, 4, 5]
+            };
         default:
-            return {};
+            console.error(`[getDefaultParamsForTool] Missing default parameters for tool: ${toolName}`);
+            throw new Error(`Default parameters not defined for tool: ${toolName}. Please add it to getDefaultParamsForTool() function.`);
     }
 };
 
@@ -66,8 +99,23 @@ const getExpectedJsondocTypes = (toolName: string): string[] => {
             return ['brainstorm_collection', 'brainstorm_idea'];
         case 'generate_brainstorm_ideas':
             return ['brainstorm_input_params'];
+        case 'generate_outline_settings':
+            return ['brainstorm_collection', 'brainstorm_idea'];
+        case 'edit_outline_settings':
+            return ['outline_settings'];
+        case 'generate_chronicles':
+            return ['outline_settings', 'brainstorm_collection'];
+        case 'edit_chronicles':
+            return ['chronicles'];
+        case 'generate_episode_planning':
+            return ['chronicles', 'outline_settings'];
+        case 'edit_episode_planning':
+            return ['episode_planning'];
+        case 'generate_episode_synopsis':
+            return ['episode_planning'];
         default:
-            return [];
+            console.error(`[getExpectedJsondocTypes] Missing expected jsondoc types for tool: ${toolName}`);
+            throw new Error(`Expected jsondoc types not defined for tool: ${toolName}. Please add it to getExpectedJsondocTypes() function.`);
     }
 };
 
@@ -130,10 +178,16 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
         // Prepare jsondocs array for the request
         const jsondocsArray = selectedJsondocs.map(jsondocId => {
             const jsondoc = jsondocs.find(j => j.id === jsondocId);
+            if (!jsondoc) {
+                throw new Error(`Jsondoc with ID ${jsondocId} not found. This should not happen - check jsondoc loading logic.`);
+            }
+            if (!jsondoc.schemaType) {
+                throw new Error(`Jsondoc ${jsondocId} has no schemaType. This indicates a data integrity issue.`);
+            }
             return {
                 jsondocId,
-                description: jsondoc ? `${jsondoc.schemaType} (${jsondoc.originType})` : 'Unknown',
-                schemaType: jsondoc?.schemaType || 'unknown'
+                description: `${jsondoc.schemaType} (${jsondoc.originType})`,
+                schemaType: jsondoc.schemaType
             };
         });
 
@@ -532,10 +586,16 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
                             runNonPersistentRun(selectedTool, {
                                 jsondocs: selectedJsondocs.map(id => {
                                     const jsondoc = jsondocs.find(j => j.id === id);
+                                    if (!jsondoc) {
+                                        throw new Error(`Jsondoc with ID ${id} not found during test run. This should not happen - check jsondoc loading logic.`);
+                                    }
+                                    if (!jsondoc.schemaType) {
+                                        throw new Error(`Jsondoc ${id} has no schemaType during test run. This indicates a data integrity issue.`);
+                                    }
                                     return {
                                         jsondocId: id,
-                                        description: jsondoc?.schemaType || 'unknown',
-                                        schemaType: jsondoc?.schemaType || 'unknown'
+                                        description: jsondoc.schemaType,
+                                        schemaType: jsondoc.schemaType
                                     };
                                 }),
                                 additionalParams: mergedParams
