@@ -11,6 +11,7 @@ import {
     type EpisodeSynopsisGroupV1,
     type EpisodeSynopsisToolResult
 } from '../../common/schemas/outlineSchemas';
+import { createJsondocProcessor } from './shared/JsondocProcessor';
 
 // Type aliases for clarity - use z.infer to handle optional/default values properly
 type EpisodeSynopsisInput = EpisodeSynopsisInputV1;
@@ -43,6 +44,12 @@ export function createEpisodeSynopsisToolDefinition(
         execute: async (params: EpisodeSynopsisInput, { toolCallId }) => {
             console.log(`[EpisodeSynopsisTool] Generating episode synopsis for group: ${params.groupTitle} (${params.episodeRange})`);
 
+            // Use shared jsondoc processor
+            const jsondocProcessor = createJsondocProcessor(jsondocRepo, userId);
+            const { jsondocData, jsondocMetadata, processedCount } = await jsondocProcessor.processJsondocs(params.jsondocs);
+
+            console.log(`[EpisodeSynopsisTool] Processed ${processedCount} jsondocs`);
+
             // Streaming transform configuration
             const config: StreamingTransformConfig<EpisodeSynopsisInput, EpisodeSynopsisOutput> = {
                 templateName: 'episode_synopsis_generation',
@@ -62,11 +69,17 @@ export function createEpisodeSynopsisToolDefinition(
                 outputJsondocType: 'episode_synopsis',
                 transformMetadata: {
                     toolName: 'generate_episode_synopsis',
+                    ...jsondocMetadata, // Include all jsondoc IDs with their schema types as keys
                     target_group_title: params.groupTitle,
                     target_episode_range: params.episodeRange,
                     target_episodes: params.episodes.join(',')
                 },
-                ...cachingOptions
+                // Pass caching options from factory
+                enableCaching: cachingOptions?.enableCaching,
+                seed: cachingOptions?.seed,
+                temperature: cachingOptions?.temperature,
+                topP: cachingOptions?.topP,
+                maxTokens: cachingOptions?.maxTokens
             });
 
             console.log(`[EpisodeSynopsisTool] Episode synopsis generation completed. Output jsondoc: ${result.outputJsondocId}`);

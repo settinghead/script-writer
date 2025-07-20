@@ -144,7 +144,23 @@ export class TemplateService {
       let jsondocsOutput = '';
 
       for (const [key, jsondoc] of Object.entries(context.jsondocs)) {
-        jsondocsOutput += `${key}:\n`;
+        // Create a more descriptive label based on schema type
+        const schemaTypeLabels: Record<string, string> = {
+          'brainstorm_idea': '故事创意',
+          'brainstorm_collection': '创意集合',
+          'brainstorm_input_params': '头脑风暴参数',
+          'outline_settings': '剧本设定',
+          'chronicles': '时间顺序大纲',
+          'episode_planning': '剧集框架',
+          'episode_synopsis': '分集大纲',
+          'user_input': '用户输入'
+        };
+
+        const jsondocTyped = jsondoc as any;
+        const schemaType = jsondocTyped.schema_type || jsondocTyped.schemaType || 'unknown';
+        const displayLabel = schemaTypeLabels[schemaType] || schemaType;
+
+        jsondocsOutput += `[jsondoc] ${displayLabel}:\n`;
 
         // Handle each field in the jsondoc
         for (const [field, value] of Object.entries(jsondoc as any)) {
