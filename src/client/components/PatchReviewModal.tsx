@@ -123,7 +123,14 @@ const PatchReviewCard: React.FC<PatchReviewCardProps> = ({
         console.log(`[PatchReviewModal] Looking for source_jsondoc_id: ${patchJsondoc.id} with derivation_path: '$'`);
 
         return found;
-    }, [projectData.humanTransforms, patchJsondoc.id]);
+    }, [
+        // Create a stable dependency by hashing relevant transform data
+        Array.isArray(projectData.humanTransforms) ?
+            projectData.humanTransforms.map((t: any) =>
+                `${t.source_jsondoc_id}-${t.derivation_path}-${t.derived_jsondoc_id}`
+            ).join(',') : '',
+        patchJsondoc.id
+    ]);
 
     // Get the derived jsondoc ID if human transform exists
     const derivedJsondocId = useMemo(() => {
@@ -137,7 +144,14 @@ const PatchReviewCard: React.FC<PatchReviewCardProps> = ({
         );
 
         return humanTransform?.derived_jsondoc_id || null;
-    }, [projectData.humanTransforms, patchJsondoc.id]);
+    }, [
+        // Create a stable dependency by hashing relevant transform data
+        Array.isArray(projectData.humanTransforms) ?
+            projectData.humanTransforms.map((t: any) =>
+                `${t.source_jsondoc_id}-${t.derivation_path}-${t.derived_jsondoc_id}`
+            ).join(',') : '',
+        patchJsondoc.id
+    ]);
 
     // Handle creating human transform for editing
     const handleStartEdit = useCallback(async () => {
@@ -281,10 +295,7 @@ const PatchReviewCard: React.FC<PatchReviewCardProps> = ({
             }
         >
             <div>
-                {(() => {
-                    console.log(`[PatchReviewModal] Rendering content - hasHumanTransform: ${hasHumanTransform}, derivedJsondocId: ${derivedJsondocId}`);
-                    return hasHumanTransform;
-                })() ? (
+                {hasHumanTransform ? (
                     <PatchApprovalEditor
                         patchJsondocId={derivedJsondocId || patchJsondoc.id}
                         onSave={() => {
@@ -417,7 +428,17 @@ export const PatchReviewModal: React.FC<PatchReviewModalProps> = ({ projectId })
 
             const result = await response.json();
             console.log('Patches rejected:', result);
-            message.success(`补丁已拒绝！删除了 ${result.deletedPatchIds?.length || 0} 个补丁`);
+
+            // Create a detailed success message
+            const patchCount = result.deletedPatchIds?.length || 0;
+            const transformCount = result.deletedTransformIds?.length || 0;
+
+            let successMessage = `补丁已拒绝！删除了 ${patchCount} 个补丁`;
+            if (transformCount > 1) {
+                successMessage += ` 和 ${transformCount - 1} 个相关的编辑版本`;
+            }
+
+            message.success(successMessage);
 
             // Reset state
             setSelectedPatches(new Set());

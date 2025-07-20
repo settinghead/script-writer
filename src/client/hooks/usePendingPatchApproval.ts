@@ -142,10 +142,15 @@ export function usePendingPatchApproval(projectId: string): PendingPatchApproval
         }
     }, [
         projectData.lineageGraph,
-        projectData.transforms,
-        projectData.transformOutputs,
-        projectData.transformInputs,
-        projectData.jsondocs,
+        // Use stable identifiers instead of array references
+        Array.isArray(projectData.transforms) ?
+            projectData.transforms.map((t: any) => `${t.id}-${t.status}-${t.type}`).join(',') : '',
+        Array.isArray(projectData.transformOutputs) ?
+            projectData.transformOutputs.map((o: any) => `${o.transform_id}-${o.jsondoc_id}`).join(',') : '',
+        Array.isArray(projectData.transformInputs) ?
+            projectData.transformInputs.map((i: any) => `${i.transform_id}-${i.jsondoc_id}`).join(',') : '',
+        Array.isArray(projectData.jsondocs) ?
+            projectData.jsondocs.map((j: any) => `${j.id}-${j.schema_type}`).join(',') : '',
         projectId
     ]);
 

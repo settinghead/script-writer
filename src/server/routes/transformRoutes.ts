@@ -1,4 +1,4 @@
-import express from 'express';
+import * as express from 'express';
 import { AuthMiddleware } from '../middleware/auth';
 import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
 import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
@@ -8,6 +8,88 @@ import {
     applyCanonicalPatches
 } from '../../common/canonicalJsondocLogic';
 import { TypedJsondoc } from '../../common/types';
+
+/**
+ * Recursively delete a transform and all its descendants
+ * This includes any transforms that use the outputs of this transform as inputs
+ */
+async function deleteTransformRecursively(
+    transformId: string,
+    transformRepo: TransformRepository,
+    jsondocRepo: JsondocRepository,
+    visitedTransforms: Set<string> = new Set()
+): Promise<{ deletedTransformIds: string[], deletedJsondocIds: string[] }> {
+    // Prevent infinite loops
+    if (visitedTransforms.has(transformId)) {
+        return { deletedTransformIds: [], deletedJsondocIds: [] };
+    }
+    visitedTransforms.add(transformId);
+
+    console.log(`[DeleteTransformRecursively] Processing transform: ${transformId}`);
+
+    // Get the transform to verify it exists
+    const transform = await transformRepo.getTransform(transformId);
+    if (!transform) {
+        console.log(`[DeleteTransformRecursively] Transform not found: ${transformId}`);
+        return { deletedTransformIds: [], deletedJsondocIds: [] };
+    }
+
+    // Get all output jsondocs for this transform
+    const outputJsondocs = await transformRepo.getTransformOutputs(transformId);
+    console.log(`[DeleteTransformRecursively] Found ${outputJsondocs.length} output jsondocs for transform ${transformId}`);
+
+    let allDeletedTransformIds: string[] = [];
+    let allDeletedJsondocIds: string[] = [];
+
+    // For each output jsondoc, find and recursively delete dependent transforms
+    for (const output of outputJsondocs) {
+        const dependentTransforms = await transformRepo.getTransformInputsByJsondoc(output.jsondoc_id);
+        console.log(`[DeleteTransformRecursively] Jsondoc ${output.jsondoc_id} has ${dependentTransforms.length} dependent transforms`);
+
+        // Recursively delete all dependent transforms first
+        for (const dependentInput of dependentTransforms) {
+            const recursiveResult = await deleteTransformRecursively(
+                dependentInput.transform_id,
+                transformRepo,
+                jsondocRepo,
+                visitedTransforms
+            );
+            allDeletedTransformIds.push(...recursiveResult.deletedTransformIds);
+            allDeletedJsondocIds.push(...recursiveResult.deletedJsondocIds);
+        }
+    }
+
+    // Now delete this transform itself (all dependents have been deleted)
+    console.log(`[DeleteTransformRecursively] Deleting transform ${transformId} and its ${outputJsondocs.length} jsondocs`);
+
+    // Delete transform relationships first
+    await transformRepo.deleteTransformInputs(transformId);
+    await transformRepo.deleteTransformOutputs(transformId);
+
+    // Delete transform-specific records
+    await transformRepo.deleteHumanTransformByTransformId(transformId);
+    await transformRepo.deleteLLMTransformByTransformId(transformId);
+
+    // Delete output jsondocs
+    const deletedJsondocIds: string[] = [];
+    for (const output of outputJsondocs) {
+        await jsondocRepo.deleteJsondoc(output.jsondoc_id);
+        deletedJsondocIds.push(output.jsondoc_id);
+    }
+
+    // Finally, delete the transform itself
+    await transformRepo.deleteTransform(transformId);
+
+    // Add this transform's results to the totals
+    allDeletedTransformIds.push(transformId);
+    allDeletedJsondocIds.push(...deletedJsondocIds);
+
+    console.log(`[DeleteTransformRecursively] Completed deletion of transform ${transformId}`);
+    return {
+        deletedTransformIds: allDeletedTransformIds,
+        deletedJsondocIds: allDeletedJsondocIds
+    };
+}
 
 export function createTransformRoutes(
     authMiddleware: AuthMiddleware,
@@ -296,18 +378,16 @@ export function createTransformRoutes(
                 return;
             }
 
-            // Get all output jsondocs (patches) for this transform
-            const outputJsondocs = await transformRepo.getTransformOutputs(transformId);
+            console.log(`[RejectPatch] Starting recursive deletion of ai_patch transform ${transformId} and all descendants`);
 
-            // Delete all patch jsondocs
-            const deletedJsondocIds: string[] = [];
-            for (const output of outputJsondocs) {
-                await jsondocRepo.deleteJsondoc(output.jsondoc_id);
-                deletedJsondocIds.push(output.jsondoc_id);
-            }
+            // Recursively delete the transform and all its descendants
+            const deletionResult = await deleteTransformRecursively(
+                transformId,
+                transformRepo,
+                jsondocRepo
+            );
 
-            // Delete the ai_patch transform itself
-            await transformRepo.deleteTransform(transformId);
+            console.log(`[RejectPatch] Deletion completed. Deleted ${deletionResult.deletedTransformIds.length} transforms and ${deletionResult.deletedJsondocIds.length} jsondocs`);
 
             // Notify the PatchApprovalEventBus
             const patchApprovalEventBus = getPatchApprovalEventBus();
@@ -318,9 +398,10 @@ export function createTransformRoutes(
             res.json({
                 success: true,
                 deletedTransformId: transformId,
-                deletedPatchIds: deletedJsondocIds,
+                deletedPatchIds: deletionResult.deletedJsondocIds,
+                deletedTransformIds: deletionResult.deletedTransformIds,
                 rejectionReason: rejectionReason || 'No reason provided',
-                message: `Rejected and deleted ${deletedJsondocIds.length} patches`
+                message: `Rejected and deleted AI patch transform with ${deletionResult.deletedTransformIds.length} descendant transforms and ${deletionResult.deletedJsondocIds.length} jsondocs`
             });
 
         } catch (error: any) {

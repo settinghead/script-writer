@@ -148,11 +148,18 @@ export const PatchApprovalEditor: React.FC<PatchApprovalEditorProps> = ({
 
     // Track initialization to prevent auto-save on first load
     const initializedRef = useRef(false);
+    const lastSavedContentRef = useRef<Record<string, any>>({});
 
     // Get the patch jsondoc
     const patchJsondoc = useMemo(() => {
         return projectData.getJsondocById(patchJsondocId);
-    }, [projectData, patchJsondocId]);
+    }, [
+        patchJsondocId,
+        // Use stable dependency instead of entire projectData
+        Array.isArray(projectData.jsondocs) ?
+            projectData.jsondocs.find(j => j.id === patchJsondocId)?.updated_at : undefined,
+        projectData.getJsondocById
+    ]);
 
     // Find the original brainstorm_idea via transformInput relationships
     const originalBrainstormIdea = useMemo(() => {
@@ -258,7 +265,18 @@ export const PatchApprovalEditor: React.FC<PatchApprovalEditorProps> = ({
 
         console.log('[PatchApprovalEditor] Found original brainstorm_idea:', originalJsondoc.id);
         return originalJsondoc;
-    }, [patchJsondoc, projectData, patchJsondocId]);
+    }, [
+        patchJsondoc,
+        patchJsondocId,
+        projectData.lineageGraph,
+        // Use specific arrays instead of entire projectData object
+        projectData.humanTransforms?.length,
+        projectData.transforms?.length,
+        projectData.transformOutputs?.length,
+        projectData.transformInputs?.length,
+        // Include getJsondocById function reference
+        projectData.getJsondocById
+    ]);
 
     // Parse the patch data
     const patchData = useMemo(() => {
@@ -341,6 +359,7 @@ export const PatchApprovalEditor: React.FC<PatchApprovalEditorProps> = ({
     useEffect(() => {
         if (currentAfterState) {
             setEditedContent(currentAfterState);
+            lastSavedContentRef.current = currentAfterState;
             initializedRef.current = true;
         }
     }, [currentAfterState]);
@@ -407,7 +426,12 @@ export const PatchApprovalEditor: React.FC<PatchApprovalEditorProps> = ({
     // Auto-save when editedContent changes (but not on initialization)
     useEffect(() => {
         if (initializedRef.current && editedContent && Object.keys(editedContent).length > 0) {
-            debouncedSave(editedContent);
+            // Check if content has actually changed from last saved version
+            const contentChanged = JSON.stringify(editedContent) !== JSON.stringify(lastSavedContentRef.current);
+            if (contentChanged) {
+                lastSavedContentRef.current = editedContent;
+                debouncedSave(editedContent);
+            }
         }
     }, [editedContent, debouncedSave]);
 
