@@ -16,7 +16,9 @@ const EpisodeSynopsisDisplay: React.FC<EpisodeSynopsisDisplayProps> = ({ episode
         const episodes = [];
         for (const synopsisJsondoc of episodeSynopsisList) {
             try {
-                const data = JSON.parse(synopsisJsondoc.data);
+                const data = typeof synopsisJsondoc.data === 'string'
+                    ? JSON.parse(synopsisJsondoc.data)
+                    : synopsisJsondoc.data;
                 if (data.episodes && Array.isArray(data.episodes)) {
                     episodes.push(...data.episodes.map((episode: any) => ({
                         ...episode,

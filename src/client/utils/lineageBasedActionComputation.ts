@@ -276,7 +276,9 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
     if (context.canonicalEpisodePlanning && context.canonicalEpisodeSynopsisList.length === 0) {
         // First group - get from episode planning
         try {
-            const episodePlanningData = JSON.parse(context.canonicalEpisodePlanning.data);
+            const episodePlanningData = typeof context.canonicalEpisodePlanning.data === 'string'
+                ? JSON.parse(context.canonicalEpisodePlanning.data)
+                : context.canonicalEpisodePlanning.data;
             const firstGroup = episodePlanningData.episodeGroups?.[0];
 
             if (firstGroup) {
@@ -315,11 +317,13 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
     } else if (context.canonicalEpisodePlanning && context.canonicalEpisodeSynopsisList.length > 0) {
         // Check if we need next group
         try {
-            const episodePlanningData = JSON.parse(context.canonicalEpisodePlanning.data);
+            const episodePlanningData = typeof context.canonicalEpisodePlanning.data === 'string'
+                ? JSON.parse(context.canonicalEpisodePlanning.data)
+                : context.canonicalEpisodePlanning.data;
             const allGroups = episodePlanningData.episodeGroups || [];
             const completedRanges = new Set(context.canonicalEpisodeSynopsisList.map(synopsis => {
                 try {
-                    const data = JSON.parse(synopsis.data);
+                    const data = typeof synopsis.data === 'string' ? JSON.parse(synopsis.data) : synopsis.data;
                     return data.episodeRange;
                 } catch {
                     return null;

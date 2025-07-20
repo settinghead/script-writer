@@ -17,7 +17,8 @@ export type ComponentId =
     | 'single-idea-editor'
     | 'outline-settings-display'
     | 'chronicles-display'
-    | 'episode-planning-display';
+    | 'episode-planning-display'
+    | 'episode-synopsis-display';
 
 // Component modes
 export type ComponentMode =

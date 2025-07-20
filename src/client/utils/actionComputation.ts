@@ -372,7 +372,9 @@ function computeUnifiedContext(
     // If we have a canonical brainstorm collection, extract ideas from it
     if (canonicalContext.canonicalBrainstormCollection) {
         try {
-            const collectionData = JSON.parse(canonicalContext.canonicalBrainstormCollection.data);
+            const collectionData = typeof canonicalContext.canonicalBrainstormCollection.data === 'string'
+                ? JSON.parse(canonicalContext.canonicalBrainstormCollection.data)
+                : canonicalContext.canonicalBrainstormCollection.data;
             if (collectionData.ideas && Array.isArray(collectionData.ideas)) {
                 brainstormIdeas.push(...collectionData.ideas.map((idea: any, index: number) => ({
                     title: idea.title || `创意 ${index + 1}`,
@@ -389,7 +391,9 @@ function computeUnifiedContext(
     // If we have a canonical brainstorm idea, add it as well
     if (canonicalContext.canonicalBrainstormIdea) {
         try {
-            const ideaData = JSON.parse(canonicalContext.canonicalBrainstormIdea.data);
+            const ideaData = typeof canonicalContext.canonicalBrainstormIdea.data === 'string'
+                ? JSON.parse(canonicalContext.canonicalBrainstormIdea.data)
+                : canonicalContext.canonicalBrainstormIdea.data;
             brainstormIdeas.push({
                 title: ideaData.title || '创意',
                 body: ideaData.body || ideaData.description || '',
@@ -486,7 +490,9 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
             isIdeaLeafNode &&
             context.chosenIdea.origin_type === 'user_input';
 
-        const ideaData = JSON.parse(context.chosenIdea.data);
+        const ideaData = typeof context.chosenIdea.data === 'string'
+            ? JSON.parse(context.chosenIdea.data)
+            : context.chosenIdea.data;
 
 
         components.push({
@@ -614,7 +620,7 @@ export function computeAgentContext(
     const getFullData = (jsondoc: ElectricJsondoc | null) => {
         if (!jsondoc) return undefined;
         try {
-            return JSON.parse(jsondoc.data);
+            return typeof jsondoc.data === 'string' ? JSON.parse(jsondoc.data) : jsondoc.data;
         } catch (error) {
             throw new Error(`Failed to parse jsondoc data for ${jsondoc.schema_type}: ${(error as Error).message}`);
         }
