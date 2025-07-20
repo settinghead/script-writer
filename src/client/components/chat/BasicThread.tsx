@@ -202,9 +202,9 @@ const ChatMessage: React.FC<{
         if (message.display_type === 'thinking') {
             if (message.status === 'streaming') {
                 return (
-                    <div style={{ fontSize: '12px', color: AppColors.text.secondary, maxWidth: '300px', lineHeight: 1.4 }}>
+                    <div style={{ fontSize: '12px', color: AppColors.text.secondary, maxWidth: '300px', lineHeight: 1.4, display: "flex", flexWrap: "wrap" }}>
                         <div style={{ marginBottom: '4px' }}>{processedMessage.content}</div>
-                        <Spin size="small" />
+                        <Spin size="small" style={{ display: 'inline-block' }} />
                     </div>
                 );
             }
@@ -296,6 +296,7 @@ const ChatMessage: React.FC<{
             }}>
                 <div style={{
                     display: 'flex',
+                    flexWrap: 'wrap',
                     alignItems: 'center',
                     gap: 8,
                     marginBottom: 4,
@@ -361,7 +362,7 @@ const ChatMessage: React.FC<{
                             >
                                 {processedMessage.content}
                                 {(message.status === 'streaming' || processedMessage.showSpinner || isStreaming) && (
-                                    <Spin size="small" style={{ marginLeft: 8 }} />
+                                    <Spin size="small" style={{ marginLeft: 8, display: 'inline-block' }} />
                                 )}
                             </Paragraph>
                         </Card>
