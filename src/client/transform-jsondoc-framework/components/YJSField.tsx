@@ -13,8 +13,14 @@ export const YJSTextField = React.memo(({ path, placeholder, fontSize = DEFAULT_
     const { value, updateValue, isInitialized } = useYJSField(path);
 
     const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-        updateValue(e.target.value);
-    }, [updateValue]);
+        const newValue = e.target.value;
+        console.log(`[YJSTextField] Field ${path} changed:`, {
+            oldValue: value,
+            newValue,
+            jsondocId: (window as any).__currentYJSJsondocId
+        });
+        updateValue(newValue);
+    }, [updateValue, value, path]);
 
     if (!isInitialized) return null;
 
@@ -38,8 +44,15 @@ export const YJSTextAreaField = React.memo(({ path, placeholder, maxRows = 6, fo
     const { value, updateValue, isInitialized } = useYJSField(path);
 
     const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        updateValue(e.target.value);
-    }, [updateValue]);
+        const newValue = e.target.value;
+        console.log(`[YJSTextAreaField] Field ${path} changed:`, {
+            oldValue: value,
+            newValue: newValue.substring(0, 100) + (newValue.length > 100 ? '...' : ''),
+            fullLength: newValue.length,
+            jsondocId: (window as any).__currentYJSJsondocId
+        });
+        updateValue(newValue);
+    }, [updateValue, value, path]);
 
     if (!isInitialized) return null;
 

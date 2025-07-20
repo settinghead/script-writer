@@ -79,6 +79,14 @@ const parseRequest = async (req: express.Request): Promise<ValidRequest | Invali
 async function saveUpdate({ jsondoc_id, update }: Update, userId?: string) {
     const room_id = `jsondoc-${jsondoc_id}`;
 
+    console.log(`[YJS Server] saveUpdate called:`, {
+        jsondoc_id,
+        updateSize: update.length,
+        userId,
+        room_id,
+        timestamp: new Date().toISOString()
+    });
+
     // Get project_id from jsondoc
     const jsondoc = await db
         .selectFrom('jsondocs')
@@ -87,12 +95,16 @@ async function saveUpdate({ jsondoc_id, update }: Update, userId?: string) {
         .executeTakeFirst();
 
     if (!jsondoc) {
+        console.error(`[YJS Server] Jsondoc not found: ${jsondoc_id}`);
         throw new Error(`Jsondoc not found: ${jsondoc_id}`);
     }
 
-    // Save the YJS update to jsondoc_yjs_documents using UPSERT
-    // This prevents multiple documents for the same jsondoc
-    await db
+    console.log(`[YJS Server] Found jsondoc project_id: ${jsondoc.project_id}`);
+
+    // Save the YJS update to jsondoc_yjs_documents 
+    // IMPORTANT: We need to ACCUMULATE updates, not overwrite them
+    // Each update should be stored as a separate row so we can apply them in sequence
+    const result = await db
         .insertInto('jsondoc_yjs_documents')
         .values({
             jsondoc_id,
@@ -100,14 +112,13 @@ async function saveUpdate({ jsondoc_id, update }: Update, userId?: string) {
             room_id,
             document_state: Buffer.from(update)
         })
-        .onConflict((oc) => oc
-            .column('jsondoc_id')
-            .doUpdateSet({
-                document_state: Buffer.from(update),
-                updated_at: new Date()
-            })
-        )
         .execute();
+
+    console.log(`[YJS Server] Saved YJS update to database (accumulated):`, {
+        jsondoc_id,
+        insertResult: result,
+        updateSize: update.length
+    });
 
     // Auto-sync YJS document to jsondoc record
     await syncYJSToJsondoc(jsondoc_id, userId);
@@ -115,6 +126,12 @@ async function saveUpdate({ jsondoc_id, update }: Update, userId?: string) {
 
 // Helper function to sync YJS document to jsondoc
 const syncYJSToJsondoc = async (jsondocId: string, userId?: string) => {
+    console.log(`[YJS Server] syncYJSToJsondoc called:`, {
+        jsondocId,
+        userId,
+        timestamp: new Date().toISOString()
+    });
+
     try {
 
         // Get all YJS updates for this jsondoc
@@ -125,8 +142,10 @@ const syncYJSToJsondoc = async (jsondocId: string, userId?: string) => {
             .orderBy('created_at', 'asc')
             .execute();
 
+        console.log(`[YJS Server] Found ${updates.length} YJS updates for jsondoc ${jsondocId}`);
 
         if (updates.length === 0) {
+            console.log(`[YJS Server] No YJS updates found for jsondoc ${jsondocId}, skipping sync`);
             return;
         }
 
@@ -142,14 +161,14 @@ const syncYJSToJsondoc = async (jsondocId: string, userId?: string) => {
 
                 // Basic validation before applying
                 if (updateData.length === 0) {
-                    console.warn(`[YJS Sync] Skipping empty update for jsondoc ${jsondocId}`);
+                    console.warn(`[YJS Server] Skipping empty update for jsondoc ${jsondocId}`);
                     skippedCount++;
                     continue;
                 }
 
                 // Validate minimum size for YJS updates (should be at least a few bytes)
                 if (updateData.length < 10) {
-                    console.warn(`[YJS Sync] Skipping suspiciously small update (${updateData.length} bytes) for jsondoc ${jsondocId}`);
+                    console.warn(`[YJS Server] Skipping suspiciously small update (${updateData.length} bytes) for jsondoc ${jsondocId}`);
                     skippedCount++;
                     continue;
                 }
@@ -157,11 +176,13 @@ const syncYJSToJsondoc = async (jsondocId: string, userId?: string) => {
                 Y.applyUpdate(tempDoc, updateData);
                 updateCount++;
             } catch (error) {
-                // console.warn(`[YJS Sync] Skipping corrupted update ${updateCount + skippedCount + 1} for jsondoc ${jsondocId}:`, error instanceof Error ? error.message : String(error));
+                console.warn(`[YJS Server] Skipping corrupted update ${updateCount + skippedCount + 1} for jsondoc ${jsondocId}:`, error instanceof Error ? error.message : String(error));
                 skippedCount++;
                 continue;
             }
         }
+
+        console.log(`[YJS Server] Applied ${updateCount} updates, skipped ${skippedCount} for jsondoc ${jsondocId}`);
 
         // Extract data from the YJS document
         const contentMap = tempDoc.getMap('content');
@@ -202,15 +223,21 @@ const syncYJSToJsondoc = async (jsondocId: string, userId?: string) => {
             }
         });
 
+        console.log(`[YJS Server] Extracted data from YJS document:`, {
+            jsondocId,
+            extractedKeys: Object.keys(extractedData),
+            dataSize: JSON.stringify(extractedData).length
+        });
 
         if (Object.keys(extractedData).length === 0) {
+            console.log(`[YJS Server] No data extracted from YJS document ${jsondocId}, skipping database update`);
             return;
         }
 
         // Update the jsondoc in the database
         const updateTime = new Date().toISOString();
 
-        await db
+        const updateResult = await db
             .updateTable('jsondocs')
             .set({
                 data: JSON.stringify(extractedData),
@@ -219,12 +246,19 @@ const syncYJSToJsondoc = async (jsondocId: string, userId?: string) => {
             .where('id', '=', jsondocId)
             .execute();
 
+        console.log(`[YJS Server] Updated jsondoc in database:`, {
+            jsondocId,
+            updateResult,
+            newDataSize: JSON.stringify(extractedData).length,
+            timestamp: updateTime
+        });
+
         // YJS sync complete - no additional transform creation needed
         // Human transforms should be created via jsondocRoutes.ts, not here
 
 
     } catch (error) {
-        console.error(`[YJS Debug] Error syncing YJS to jsondoc ${jsondocId}:`, error);
+        console.error(`[YJS Server] Error syncing YJS to jsondoc ${jsondocId}:`, error);
     }
 };
 
@@ -313,27 +347,40 @@ async function upsertAwarenessUpdate({ jsondoc_id, client_id, update }: Awarenes
 
 // Main update endpoint (based on Electric YJS example)
 router.put('/update', async (req: any, res: any) => {
+    const startTime = Date.now();
+    console.log(`[YJS Server] /update endpoint called at ${new Date().toISOString()}`);
+
     try {
         const user = authMiddleware.getCurrentUser(req);
         if (!user) {
+            console.log(`[YJS Server] Authentication failed for /update request`);
             return res.status(401).json({ error: 'Authentication required' });
         }
 
+        console.log(`[YJS Server] Authenticated user: ${user.id}`);
+
         const parsedRequest = await parseRequest(req);
         if (!parsedRequest.isValid) {
+            console.log(`[YJS Server] Invalid request:`, parsedRequest.error);
             return res.status(400).json({ error: parsedRequest.error || 'Invalid request' });
         }
 
         const jsondocId = parsedRequest.jsondoc_id;
 
+        console.log(`[YJS Server] Processing update for jsondoc ${jsondocId}:`, {
+            updateSize: parsedRequest.update.length,
+            hasClientId: 'client_id' in parsedRequest,
+            clientId: 'client_id' in parsedRequest ? parsedRequest.client_id : undefined
+        });
+
         // Validate update size (reasonable limits)
         if (parsedRequest.update.length > 1024 * 1024) { // 1MB limit
-            console.error(`YJS: Rejecting oversized update (${parsedRequest.update.length} bytes) for jsondoc ${jsondocId}`);
+            console.error(`[YJS Server] Rejecting oversized update (${parsedRequest.update.length} bytes) for jsondoc ${jsondocId}`);
             return res.status(400).json({ error: 'Update too large' });
         }
 
         if (parsedRequest.update.length === 0) {
-            console.error(`YJS: Rejecting empty update for jsondoc ${jsondocId}`);
+            console.error(`[YJS Server] Rejecting empty update for jsondoc ${jsondocId}`);
             return res.status(400).json({ error: 'Empty update' });
         }
 
@@ -345,30 +392,56 @@ router.put('/update', async (req: any, res: any) => {
                 throw new Error('Empty update');
             }
 
+            // Add size validation - very small updates are likely corrupted
+            if (parsedRequest.update.length < 5) {
+                console.warn(`[YJS Server] Rejecting suspiciously small update (${parsedRequest.update.length} bytes) for jsondoc ${jsondocId}`);
+                return res.status(400).json({ error: 'Update too small to be valid' });
+            }
+
             // YJS updates typically start with specific byte patterns
             // This is a lightweight check without full reconstruction
             const firstByte = parsedRequest.update[0];
             if (firstByte > 127) {
-                console.warn(`YJS: Update has unusual first byte: ${firstByte}, but proceeding anyway`);
+                console.warn(`[YJS Server] Update has unusual first byte: ${firstByte}, but proceeding anyway`);
+            }
+
+            // Try to validate the YJS update format by attempting to parse it
+            // This is a more thorough validation without applying it to a document
+            const Y = await import('yjs');
+            try {
+                // Create a temporary document just for validation
+                const tempDoc = new Y.Doc();
+                Y.applyUpdate(tempDoc, parsedRequest.update);
+                // If we get here, the update is valid
+                console.log(`[YJS Server] Update validation passed for jsondoc ${jsondocId}`);
+            } catch (validationError) {
+                console.error(`[YJS Server] YJS update validation failed for jsondoc ${jsondocId}:`, validationError);
+                return res.status(400).json({ error: 'Invalid YJS update format' });
             }
 
         } catch (validationError) {
-            console.error(`YJS: Update validation failed for jsondoc ${jsondocId}:`, validationError);
-            console.error(`YJS: Update details - Size: ${parsedRequest.update.length} bytes`);
+            console.error(`[YJS Server] Update validation failed for jsondoc ${jsondocId}:`, validationError);
+            console.error(`[YJS Server] Update details - Size: ${parsedRequest.update.length} bytes`);
 
             return res.status(400).json({ error: 'Invalid YJS update format' });
         }
 
         if ('client_id' in parsedRequest) {
+            console.log(`[YJS Server] Processing awareness update for jsondoc ${jsondocId}`);
             await upsertAwarenessUpdate(parsedRequest);
         } else {
+            console.log(`[YJS Server] Processing document update for jsondoc ${jsondocId}`);
             await saveUpdate(parsedRequest, user.id);
         }
+
+        const duration = Date.now() - startTime;
+        console.log(`[YJS Server] Update processed successfully for jsondoc ${jsondocId} in ${duration}ms`);
 
         res.status(200).json({ success: true });
 
     } catch (error) {
-        console.error('YJS: Error handling update:', error);
+        const duration = Date.now() - startTime;
+        console.error(`[YJS Server] Error handling update after ${duration}ms:`, error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });

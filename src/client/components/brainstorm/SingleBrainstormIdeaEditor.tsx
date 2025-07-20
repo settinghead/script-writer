@@ -56,14 +56,29 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
     const { projectId } = useParams<{ projectId: string }>();
     const projectData = useProjectData();
 
-
+    console.log(`[SingleBrainstormIdeaEditor] Component render:`, {
+        projectId,
+        hasPropsBrainstormIdea: !!propsBrainstormIdea,
+        propsBrainstormIdeaId: propsBrainstormIdea?.id,
+        propsIsEditable,
+        propsMode,
+        projectDataLoading: projectData.isLoading,
+        jsondocsStatus: Array.isArray(projectData.jsondocs) ? 'loaded' : projectData.jsondocs
+    });
 
     // If we have props from actionComputation, use them directly
     if (propsBrainstormIdea && propsBrainstormIdea.id) {
         const isEditable = propsIsEditable ?? false;
         const effectiveJsondoc = propsBrainstormIdea;
 
-
+        console.log(`[SingleBrainstormIdeaEditor] Using props brainstorm idea:`, {
+            jsondocId: effectiveJsondoc.id,
+            isEditable,
+            schemaType: effectiveJsondoc.schema_type,
+            originType: effectiveJsondoc.origin_type,
+            hasMetadata: !!effectiveJsondoc.metadata,
+            dataSize: effectiveJsondoc.data?.length || 0
+        });
 
         return (
             <SectionWrapper
@@ -77,15 +92,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                         jsondoc={effectiveJsondoc}
                         isEditable={isEditable}
                         title={(() => {
-                            // Debug logging
-                            console.log('[SingleBrainstormIdeaEditor] Debug info:', {
-                                jsondocId: effectiveJsondoc.id,
-                                schema_type: effectiveJsondoc.schema_type,
-                                origin_type: effectiveJsondoc.origin_type,
-                                metadata: effectiveJsondoc.metadata,
-                                hasOriginalJsondocId: effectiveJsondoc.metadata && typeof effectiveJsondoc.metadata === 'object' && 'original_jsondoc_id' in effectiveJsondoc.metadata,
-                                metadataKeys: effectiveJsondoc.metadata ? Object.keys(effectiveJsondoc.metadata) : 'no metadata'
-                            });
+
 
                             // Parse metadata if it's a string
                             let parsedMetadata;
@@ -99,14 +106,11 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
 
                             // Determine title based on jsondoc context
                             if (parsedMetadata && typeof parsedMetadata === 'object' && 'original_jsondoc_id' in parsedMetadata) {
-                                console.log('[SingleBrainstormIdeaEditor] Title: 故事创意 (has original_jsondoc_id)');
                                 return '故事创意';
                             }
                             if (!parsedMetadata || Object.keys(parsedMetadata).length === 0) {
-                                console.log('[SingleBrainstormIdeaEditor] Title: 故事创意 (no metadata)');
                                 return '故事创意';
                             }
-                            console.log('[SingleBrainstormIdeaEditor] Title: 选中的创意 (has metadata but no original_jsondoc_id)');
                             return '选中的创意';
                         })()}
                         icon="💡"

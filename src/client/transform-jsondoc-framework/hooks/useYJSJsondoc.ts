@@ -263,6 +263,16 @@ export const useYJSJsondoc = (
                 const electricProvider = new ElectricProvider(electricOptions);
                 providerRef.current = electricProvider;
 
+                // Add debug logging for document updates
+                yjsDoc.on('update', (update: Uint8Array, origin: any) => {
+                    console.log(`[useYJSJsondoc] YJS document update generated:`, {
+                        jsondocId,
+                        updateSize: update.length,
+                        origin: origin?.constructor?.name || origin,
+                        timestamp: new Date().toISOString(),
+                        isLocal: origin === yjsDoc
+                    });
+                });
 
                 // Subscribe to resume state changes (same pattern as Electric YJS example)
                 const resumeStateUnsubscribe = resumeStateProvider.subscribeToResumeState(electricProvider);
@@ -535,6 +545,15 @@ export const useYJSJsondoc = (
 
     // Update field in YJS document
     const updateField = useCallback(async (field: string, value: any) => {
+        console.log(`[useYJSJsondoc] updateField called:`, {
+            jsondocId,
+            field,
+            valueType: typeof value,
+            valuePreview: typeof value === 'string' ? value.substring(0, 100) + (value.length > 100 ? '...' : '') : value,
+            hasDoc: !!docRef.current,
+            collaborationEnabled: enableCollaborationRef.current
+        });
+
         if (!docRef.current || !enableCollaborationRef.current) {
             console.warn(`[useYJSJsondoc] Cannot update field - no doc or collaboration disabled`);
             return;
@@ -545,17 +564,26 @@ export const useYJSJsondoc = (
             const Y = await import('yjs');
             const yMap = yMapRef.current;
 
+            console.log(`[useYJSJsondoc] Starting YJS update for field ${field}:`, {
+                jsondocId,
+                hasYMap: !!yMap,
+                currentMapKeys: yMap ? Array.from(yMap.keys()) : []
+            });
+
             // Handle array index paths like "emotionArcs[0]" or "emotionArcs[0].characters"
             const arrayIndexMatch = field.match(/^(.+)\[(\d+)\](.*)$/);
             if (arrayIndexMatch) {
                 const [, arrayName, indexStr, remainingPath] = arrayIndexMatch;
                 const index = parseInt(indexStr, 10);
 
+                console.log(`[useYJSJsondoc] Array update detected:`, { arrayName, index, remainingPath });
+
                 // Get or create the YJS array
                 let yArray = yMap?.get(arrayName);
                 if (!yArray) {
                     yArray = new Y.Array();
                     yMap?.set(arrayName, yArray);
+                    console.log(`[useYJSJsondoc] Created new YJS array for ${arrayName}`);
                 }
 
                 // Ensure the array has enough elements
